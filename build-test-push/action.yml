@@ -1,0 +1,22 @@
+name: 'Posit Images Bake, Test, Push Action'
+description: 'Build an image using bake, test it with Goss, scan it with Snyk, and push it to a registry'
+inputs:
+  target:
+    description: 'The bake file target to build'
+    default: 'default'
+  bake-files:
+    description: 'A list of bake files to build'
+    required: true
+  test:
+    description: 'Whether to test images using Goss'
+    default: 'true'
+  scan:
+    description: 'Whether to scan images using Snyk'
+    default: 'true'
+  push:
+    description: 'Whether to push images to a registry'
+    default: 'true'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
