@@ -1,8 +1,7 @@
-CONTAINER_FILE_TPL = """
-FROM {{ base_image }}:{% raw %}{{ image_version }}{% endraw %}
+CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ image_version }}{% endraw %}
 
 ### ARG declarations ###
-ARG SCRIPTS_DIR=/opt/positscripts
+ARG SCRIPTS_DIR=/opt/posit/scripts
 # Declare your arguments here...
 
 ### ENV declarations ###
@@ -28,8 +27,7 @@ ARG SCRIPTS_DIR=/opt/positscripts
 ENTRYPOINT ["tini", "--"]
 """
 
-DOCKER_BAKE_TPL = """
-variable image_name {
+DOCKER_BAKE_TPL = """variable image_name {
   default = "{{ image_name }}"
 }
 
