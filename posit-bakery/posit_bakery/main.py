@@ -5,9 +5,11 @@ from pathlib import Path
 from pprint import pformat
 from typing import Annotated, List
 
+import jinja2
+from rich import print, print_json
 import typer
 
-from posit_bakery import bake_tools
+from posit_bakery import bake_tools, templates
 
 app = typer.Typer()
 
@@ -23,17 +25,17 @@ def auto_discover_bake_files_by_image_name(context, image_name):
     if root_bake_file.exists():
         bake_file.append(root_bake_file)
     else:
-        typer.secho(
-            f"WARNING: Unable to auto-discover a root bake file at {root_bake_file}, "
+        print(
+            f"[bright_yellow bold]WARNING:[/bold] Unable to auto-discover a root bake file at {root_bake_file}, "
             f"this may cause unexpected behavior.",
-            fg=typer.colors.YELLOW,
         )
     image_bake_file = context / image_name / "docker-bake.hcl"
     if not image_bake_file.exists():
-        raise typer.secho(
-            f"ERROR: Unable to auto-discover image bake file expected at {image_bake_file}. Exiting...",
-            fg=typer.colors.RED,
+        print(
+            f"[bright_red bold]ERROR:[/bold] Unable to auto-discover image bake file expected at {image_bake_file}. "
+            f"Exiting...",
         )
+        raise typer.Exit(code=1)
     bake_file.append(image_bake_file)
     override_bake_file = context / "docker-bake.override.hcl"
     if override_bake_file.exists():
@@ -42,15 +44,168 @@ def auto_discover_bake_files_by_image_name(context, image_name):
 
 
 @app.command()
-def plan(
-        context: Path = None,
-        image_name: str = None,
-        targets: Annotated[List[str], typer.Option()] = None,
-        bake_file: Annotated[List[Path], typer.Option()] = None,
+def new(
+        image_name: Annotated[str, typer.Argument(
+            help="The image name to create a skeleton for."
+        )],
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
+        image_base: Annotated[str, typer.Option(
+            help="The base to use for the new image."
+        )] = "posit/base",
+        image_base_version: Annotated[str, typer.Option(
+            help="The version of the base image to use."
+        )] = "ubuntu2204",
 ):
-    if context is None:
-        context = auto_path()
+    """Creates a quickstart skeleton for a new image."""
+    if not context.exists():
+        print(f"[bold bright_red]ERROR:[/bold red] Context path [bold]'{context}'[/bold] not found")
+        raise typer.Exit(code=1)
+    image_path = context / image_name
+    if not image_path.exists():
+        print(f"[bright_black]Creating new image directory [bold]{image_path}")
+        image_path.mkdir()
+    image_template_path = image_path / "template"
+    if not image_template_path.exists():
+        print(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
+        image_template_path.mkdir()
 
+    bake_file_path = image_path / "docker-bake.hcl"
+    if not bake_file_path.exists():
+        print(f"[bright_black]Creating new docker-bake file [bold]{bake_file_path}")
+        tpl = jinja2.Environment().from_string(templates.DOCKER_BAKE_TPL)
+        rendered = tpl.render(image_name=image_name, base_image_version=image_base_version)
+        with open(bake_file_path, "w") as f:
+            f.write(rendered)
+
+    containerfile_path = image_template_path / "Containerfile.jinja2"
+    if not containerfile_path.exists():
+        print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
+        tpl = jinja2.Environment().from_string(templates.CONTAINER_FILE_TPL)
+        rendered = tpl.render(base_image=image_base, base_image_version=image_base_version)
+        with open(containerfile_path, "w") as f:
+            f.write(rendered)
+
+    print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
+
+
+@app.command()
+def render(
+        image_name: Annotated[Path, typer.Argument(
+            help="The path to the root of the image directory to render. "
+                 "This should be the path above the template directory."
+        )],
+        image_version: Annotated[str, typer.Argument(
+            help="The new version to render the templates to."
+        )],
+        value: Annotated[List[str], typer.Option(
+            help="A 'key=value' pair to pass to the templates. Accepts multiple pairs."
+        )] = None,
+        skip_render_minimal: Annotated[bool, typer.Option(
+            help="Skip rendering the minimal version of the Containerfile."
+        )] = False,
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
+):
+    """Renders templates for an image to a versioned subdirectory of the image directory.
+
+    This tool expects an image directory to use the following structure as generated by `bakery new`:
+    .
+    └── image_path/
+        └── template/
+            ├── optional_subdirectories/
+            │   └── *.jinja2
+            ├── *.jinja2
+            └── Containerfile*.jinja2
+    """
+    image_path = context / image_name
+    # Check if the image path exists and exit if it doesn't
+    if not image_path.exists():
+        print(f"[bright_red bold]ERROR:[/bold] Image path [bold]{image_path}[/bold] not found")
+        raise typer.Exit(code=1)
+    # Check for a template directory under the provided image path and exit if it doesn't exist
+    image_template_path = image_path / "template"
+    if not image_template_path.exists():
+        print(f"[bright_red bold]ERROR:[/bold] Image templates path [bold]{image_template_path}[/bold] not found")
+        raise typer.Exit(code=1)
+    # Create a new versioned directory for the image if it doesn't exist
+    image_versioned_path = image_path / image_version
+    if not image_versioned_path.exists():
+        print(f"[bright_black]Creating new directory [bold]{image_versioned_path}")
+        image_versioned_path.mkdir()
+
+    # Parse the key=value pairs into a dictionary
+    value_map = dict()
+    if value is not None:
+        for v in value:
+            sp = v.split("=")
+            if len(sp) != 2:
+                print(f"[bright_red bold]ERROR:[/bold] Expected key=value pair, got [bold]'{v}'")
+                raise typer.Exit(code=1)
+            value_map[sp[0]] = sp[1]
+    if "rel_path" not in value_map:
+        value_map["rel_path"] = context
+
+    # Create a Jinja2 environment with the template directory as the loader
+    e = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(image_template_path),
+        autoescape=True,
+        undefined=jinja2.StrictUndefined
+    )
+    for tpl_rel_path in e.list_templates():
+        tpl = e.get_template(tpl_rel_path)
+
+        # If the template is a Containerfile, render it to both a minimal and standard version
+        if tpl_rel_path.startswith("Containerfile") and not skip_render_minimal:
+            containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+            rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
+            with open(image_versioned_path / f"{containerfile_base_name}.std", "w") as f:
+                print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.std'}")
+                f.write(rendered)
+            rendered_min = tpl.render(image_version=image_version, **value_map, is_minimal=True)
+            with open(image_versioned_path / f"{containerfile_base_name}.min", "w") as f:
+                print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.min'}")
+                f.write(rendered_min)
+            continue
+        rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
+        rel_path = tpl_rel_path.removesuffix(".jinja2")
+        target_dir = Path(image_versioned_path / rel_path).parent
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with open(image_versioned_path / rel_path, "w") as f:
+            print(f"[bright_black]Rendering [bold]{image_versioned_path / rel_path}")
+            f.write(rendered)
+
+    print(f"[green bold]Successfully rendered {image_name}/{image_version}[/green bold] ✅")
+
+
+@app.command()
+def plan(
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
+        image_name: Annotated[str, typer.Option(
+            help="The image name to isolate plan rendering to."
+        )] = None,
+        target: Annotated[List[str], typer.Option(
+            help="The targets to filter the rendered plan by. Multiple can be provided."
+        )] = None,
+        bake_file: Annotated[List[Path], typer.Option(
+            help="The bake file(s) to use. Multiple can be provided."
+        )] = None,
+):
+    """
+    Generates a plan in JSON based off of provided or auto-discovered bake files.
+
+    If no options are provided, the command will auto-discover all bake files in the current
+    directory and generate a plan for all targets. If target names overlap, this could result in an error.
+
+    If only an image name is provided, the command will auto-discover that image's bake file and will also load the
+    root bake file and any override bake files if they exist.
+
+    If only a bake file is provided, the command will generate a plan for that bake file only.
+    """
     if image_name is None and bake_file is None:
         bake_file = list(context.rglob("docker-bake*.hcl"))
     elif image_name is not None and bake_file is None:
@@ -59,17 +214,40 @@ def plan(
         bake_file = list(bake_file)
         bake_file.extend(x for x in auto_discover_bake_files_by_image_name(context, image_name) if x not in bake_file)
 
-    json_plan = bake_tools.get_bake_plan(context, targets, bake_file)
-    typer.echo(json.dumps(json_plan, indent=2))
+    json_plan = bake_tools.get_bake_plan(context, target, bake_file)
+    print_json(json.dumps(json_plan))
 
 
 @app.command()
-def test(
-        context: Path = os.getcwd(),
-        image_name: str = None,
-        targets: Annotated[List[str], typer.Option()] = None,
-        image_version: Annotated[str, typer.Option()] = None,
-        bake_file: Annotated[List[Path], typer.Option()] = None,
-        skip: Annotated[List[str], typer.Option()] = None,
+def dgoss(
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
+        image_name: Annotated[str, typer.Option(
+            help="The image name to isolate goss testing to."
+        )] = None,
+        image_version: Annotated[str, typer.Option(
+            help="The image version to isolate goss testing to."
+        )] = None,
+        target: Annotated[List[str], typer.Option(
+            help="The targets to filter the initial plan render by. Multiple can be provided."
+        )] = None,
+        bake_file: Annotated[List[Path], typer.Option(
+            help="The bake file(s) to use. Multiple can be provided."
+        )] = None,
+        skip: Annotated[List[str], typer.Option(
+            help="A regex filter for targets to skip. Multiple can be provided."
+        )] = None,
+        runtime_option: Annotated[List[str], typer.Option(
+            help="Additional runtime options to pass to dgoss. Multiple can be provided."
+        )] = None,
 ):
-    pass
+    if image_name is None and bake_file is None:
+        bake_file = list(context.rglob("docker-bake*.hcl"))
+    elif image_name is not None and bake_file is None:
+        bake_file = auto_discover_bake_files_by_image_name(context, image_name)
+    elif bake_file is not None and image_name is not None:
+        bake_file = list(bake_file)
+        bake_file.extend(x for x in auto_discover_bake_files_by_image_name(context, image_name) if x not in bake_file)
+
+    json_plan = bake_tools.get_bake_plan(context, target, bake_file)

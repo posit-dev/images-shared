@@ -1,4 +1,4 @@
-CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ image_version }}{% endraw %}
+CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
 
 ### ARG declarations ###
 ARG SCRIPTS_DIR=/opt/posit/scripts

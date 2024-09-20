@@ -9,6 +9,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 typer = "^0.12.5"
+jinja2 = "^3.1.4"
+rich = "^13.8.1"
 
 [tool.poetry.scripts]
 bakery = "posit_bakery.main:app"
