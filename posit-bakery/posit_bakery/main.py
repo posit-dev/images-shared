@@ -250,4 +250,4 @@ def dgoss(
         bake_file = list(bake_file)
         bake_file.extend(x for x in auto_discover_bake_files_by_image_name(context, image_name) if x not in bake_file)
 
-    json_plan = bake_tools.get_bake_plan(context, target, bake_file)
+    plan = bake_tools.get_bake_plan(context, target, bake_file)
