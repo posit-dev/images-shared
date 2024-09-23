@@ -10,6 +10,7 @@ from rich import print, print_json
 import typer
 
 from posit_bakery import bake_tools, templates
+from posit_bakery.dgoss import DGossManager
 
 app = typer.Typer()
 
@@ -17,30 +18,6 @@ app = typer.Typer()
 def auto_path():
     context = Path(os.getcwd())
     return context
-
-
-def auto_discover_bake_files_by_image_name(context, image_name):
-    bake_file = []
-    root_bake_file = context / "docker-bake.hcl"
-    if root_bake_file.exists():
-        bake_file.append(root_bake_file)
-    else:
-        print(
-            f"[bright_yellow bold]WARNING:[/bold] Unable to auto-discover a root bake file at {root_bake_file}, "
-            f"this may cause unexpected behavior.",
-        )
-    image_bake_file = context / image_name / "docker-bake.hcl"
-    if not image_bake_file.exists():
-        print(
-            f"[bright_red bold]ERROR:[/bold] Unable to auto-discover image bake file expected at {image_bake_file}. "
-            f"Exiting...",
-        )
-        raise typer.Exit(code=1)
-    bake_file.append(image_bake_file)
-    override_bake_file = context / "docker-bake.override.hcl"
-    if override_bake_file.exists():
-        bake_file.append(override_bake_file)
-    return bake_file
 
 
 @app.command()
@@ -146,7 +123,7 @@ def render(
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
     if "rel_path" not in value_map:
-        value_map["rel_path"] = context
+        value_map["rel_path"] = image_versioned_path.relative_to(context)
 
     # Create a Jinja2 environment with the template directory as the loader
     e = jinja2.Environment(
@@ -194,6 +171,9 @@ def plan(
         bake_file: Annotated[List[Path], typer.Option(
             help="The bake file(s) to use. Multiple can be provided."
         )] = None,
+        no_override: Annotated[bool, typer.Option(
+            help="Skip loading docker-bake.override.hcl files for auto-discovery."
+        )] = False,
 ):
     """
     Generates a plan in JSON based off of provided or auto-discovered bake files.
@@ -206,16 +186,45 @@ def plan(
 
     If only a bake file is provided, the command will generate a plan for that bake file only.
     """
-    if image_name is None and bake_file is None:
-        bake_file = list(context.rglob("docker-bake*.hcl"))
-    elif image_name is not None and bake_file is None:
-        bake_file = auto_discover_bake_files_by_image_name(context, image_name)
-    elif bake_file is not None and image_name is not None:
-        bake_file = list(bake_file)
-        bake_file.extend(x for x in auto_discover_bake_files_by_image_name(context, image_name) if x not in bake_file)
+    b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
+    plan = b.plan(target)
+    print_json(json.dumps(plan))
 
-    json_plan = bake_tools.get_bake_plan(context, target, bake_file)
-    print_json(json.dumps(json_plan))
+
+@app.command()
+def build(
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
+        image_name: Annotated[str, typer.Option(
+            help="The image name to isolate plan rendering to."
+        )] = None,
+        target: Annotated[List[str], typer.Option(
+            help="The targets to filter the rendered plan by. Multiple can be provided."
+        )] = None,
+        bake_file: Annotated[List[Path], typer.Option(
+            help="The bake file(s) to use. Multiple can be provided."
+        )] = None,
+        no_override: Annotated[bool, typer.Option(
+            help="Skip loading docker-bake.override.hcl files for auto-discovery."
+        )] = False,
+        load: Annotated[bool, typer.Option(
+            help="Load the image to Docker after building."
+        )] = False,
+        push: Annotated[bool, typer.Option(
+            help="Push the image to the registry after building."
+        )] = False,
+        build_options: Annotated[List[str], typer.Option(
+            help="Additional build options to pass to docker buildx. Multiple can be provided."
+        )] = None,
+):
+    b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
+    exit_code = b.build(target, load, push, build_options)
+    if exit_code != 0:
+        print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
+        raise typer.Exit(code=exit_code)
+    else:
+        print(f"[green]Build succeeded[/green]")
 
 
 @app.command()
@@ -242,12 +251,7 @@ def dgoss(
             help="Additional runtime options to pass to dgoss. Multiple can be provided."
         )] = None,
 ):
-    if image_name is None and bake_file is None:
-        bake_file = list(context.rglob("docker-bake*.hcl"))
-    elif image_name is not None and bake_file is None:
-        bake_file = auto_discover_bake_files_by_image_name(context, image_name)
-    elif bake_file is not None and image_name is not None:
-        bake_file = list(bake_file)
-        bake_file.extend(x for x in auto_discover_bake_files_by_image_name(context, image_name) if x not in bake_file)
-
-    plan = bake_tools.get_bake_plan(context, target, bake_file)
+    b = bake_tools.BakeManager(context, image_name, bake_file)
+    plan = b.plan(target)
+    d = DGossManager(context, plan, image_version, skip, runtime_option)
+    d.exec()
