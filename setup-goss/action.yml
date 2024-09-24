@@ -3,11 +3,15 @@ description: 'Installs goss and dgoss to tools/'
 runs:
   using: "composite"
   steps:
+    - name: Make tools directory
+      run: mkdir -p tools
     - name: Install goss
+      shell: bash
       run: |
         curl -fsSL https://github.com/goss-org/goss/releases/latest/download/goss-linux-amd64 -o tools/goss
         chmod +rx tools/goss
     - name: Install dgoss
+      shell: bash
       run: |
         curl -fsSL https://github.com/goss-org/goss/releases/latest/download/dgoss -o tools/dgoss
         chmod +rx tools/dgoss
