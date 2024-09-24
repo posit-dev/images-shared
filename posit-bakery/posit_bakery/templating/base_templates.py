@@ -47,6 +47,11 @@ function get_clean_version {
   result = regex_replace(version, "[+|-].*", "")
 }
 
+function get_suffix {
+  params = [type]
+  result = type == "std" ? "" : "-${type}"
+}
+
 function get_tags {
   params = [version, type, mark_latest]
   result = concat(

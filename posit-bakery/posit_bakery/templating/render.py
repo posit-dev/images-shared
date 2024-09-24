@@ -176,7 +176,7 @@ def regenerate_build_matrix(
         mark_latest = "false"
         if skip_mark_latest:
             mark_latest = build["mark_latest"]
-        if build["version"] == "":
+        if build["version"] == "" or matrix_builds[0]["version"] == build["version"]:
             continue
         matrix_builds.append({"version": build["version"], "os": build.get("os"), "latest": mark_latest})
 
