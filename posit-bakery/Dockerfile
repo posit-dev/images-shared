@@ -18,4 +18,4 @@ RUN python -m venv /app/.venv \
 
 WORKDIR /data
 
-ENTRYPOINT ["/app/.venv/bin/bakery"]
+ENTRYPOINT ["/entrypoint.sh"]

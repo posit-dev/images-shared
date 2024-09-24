@@ -19,9 +19,6 @@ runs:
   image: 'docker://ianprstudio/posit-bakery:latest'
   args:
     - 'dgoss'
-    - '--context'
     - '${{ inputs.context }}'
-    - '--image-name'
-    - '${{ inputs.image-name }}'
-    - '--runtime-options'
     - '${{ inputs.build-options }}'
+    - '${{ inputs.image-name }}'

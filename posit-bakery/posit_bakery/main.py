@@ -214,12 +214,12 @@ def build(
         push: Annotated[bool, typer.Option(
             help="Push the image to the registry after building."
         )] = False,
-        build_options: Annotated[List[str], typer.Option(
+        build_option: Annotated[List[str], typer.Option(
             help="Additional build options to pass to docker buildx. Multiple can be provided."
         )] = None,
 ):
     b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
-    exit_code = b.build(target, load, push, build_options)
+    exit_code = b.build(target, load, push, build_option)
     if exit_code != 0:
         print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
         raise typer.Exit(code=exit_code)
