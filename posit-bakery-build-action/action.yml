@@ -1,0 +1,27 @@
+name: 'Posit Bakery Build'
+author: 'Ian Pittwood'
+description: 'Runs a Posit Bakery build command'
+inputs:
+  context:
+    description: 'The context path to run the Posit Bakery tool with'
+    required: false
+    default: '.'
+  image-name:
+    description: 'The image name to build'
+    required: false
+    default: ''
+  build-options:
+    description: 'Options for the build'
+    required: false
+    default: '--load'
+runs:
+  using: 'docker'
+  image: 'docker://ianprstudio/posit-bakery:latest'
+  args:
+    - 'build'
+    - '--context'
+    - '${{ inputs.context }}'
+    - '--image-name'
+    - '${{ inputs.image-name }}'
+    - '--build-options'
+    - '${{ inputs.build-options }}'
