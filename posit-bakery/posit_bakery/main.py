@@ -9,8 +9,10 @@ import jinja2
 from rich import print, print_json
 import typer
 
-from posit_bakery import bake_tools, templates
+from posit_bakery import bake_tools
 from posit_bakery.dgoss import DGossManager
+from posit_bakery.templating.render import create_new_image_directories, NewImageTypes, render_new_image_template_files, \
+    create_new_image_version_directory, render_new_image_version_template_files, regenerate_build_matrix
 
 app = typer.Typer()
 
@@ -31,60 +33,38 @@ def new(
         image_base: Annotated[str, typer.Option(
             help="The base to use for the new image."
         )] = "posit/base",
-        image_base_version: Annotated[str, typer.Option(
-            help="The version of the base image to use."
-        )] = "ubuntu2204",
+        image_type: Annotated[str, typer.Option(
+            help="The type of image to create."
+        )] = NewImageTypes.product,
 ):
     """Creates a quickstart skeleton for a new image."""
-    if not context.exists():
-        print(f"[bold bright_red]ERROR:[/bold red] Context path [bold]'{context}'[/bold] not found")
-        raise typer.Exit(code=1)
-    image_path = context / image_name
-    if not image_path.exists():
-        print(f"[bright_black]Creating new image directory [bold]{image_path}")
-        image_path.mkdir()
-    image_template_path = image_path / "template"
-    if not image_template_path.exists():
-        print(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
-        image_template_path.mkdir()
+    image_path = create_new_image_directories(context, image_name)
 
-    bake_file_path = image_path / "docker-bake.hcl"
-    if not bake_file_path.exists():
-        print(f"[bright_black]Creating new docker-bake file [bold]{bake_file_path}")
-        tpl = jinja2.Environment().from_string(templates.DOCKER_BAKE_TPL)
-        rendered = tpl.render(image_name=image_name, base_image_version=image_base_version)
-        with open(bake_file_path, "w") as f:
-            f.write(rendered)
-
-    containerfile_path = image_template_path / "Containerfile.jinja2"
-    if not containerfile_path.exists():
-        print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
-        tpl = jinja2.Environment().from_string(templates.CONTAINER_FILE_TPL)
-        rendered = tpl.render(base_image=image_base, base_image_version=image_base_version)
-        with open(containerfile_path, "w") as f:
-            f.write(rendered)
+    render_new_image_template_files(image_name, image_type, image_base, image_path)
 
     print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
 
 
 @app.command()
 def render(
-        image_name: Annotated[Path, typer.Argument(
-            help="The path to the root of the image directory to render. "
-                 "This should be the path above the template directory."
+        image_name: Annotated[str, typer.Argument(
+            help="The image directory to render. This should be the path above the template directory."
         )],
         image_version: Annotated[str, typer.Argument(
             help="The new version to render the templates to."
         )],
+        context: Annotated[Path, typer.Option(
+            help="The root path to use. Defaults to the current working directory where invoked."
+        )] = auto_path(),
         value: Annotated[List[str], typer.Option(
             help="A 'key=value' pair to pass to the templates. Accepts multiple pairs."
         )] = None,
         skip_render_minimal: Annotated[bool, typer.Option(
             help="Skip rendering the minimal version of the Containerfile."
         )] = False,
-        context: Annotated[Path, typer.Option(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
+        skip_mark_latest: Annotated[bool, typer.Option(
+            help="Skip marking the latest version of the image."
+        )] = False,
 ):
     """Renders templates for an image to a versioned subdirectory of the image directory.
 
@@ -97,21 +77,7 @@ def render(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    image_path = context / image_name
-    # Check if the image path exists and exit if it doesn't
-    if not image_path.exists():
-        print(f"[bright_red bold]ERROR:[/bold] Image path [bold]{image_path}[/bold] not found")
-        raise typer.Exit(code=1)
-    # Check for a template directory under the provided image path and exit if it doesn't exist
-    image_template_path = image_path / "template"
-    if not image_template_path.exists():
-        print(f"[bright_red bold]ERROR:[/bold] Image templates path [bold]{image_template_path}[/bold] not found")
-        raise typer.Exit(code=1)
-    # Create a new versioned directory for the image if it doesn't exist
-    image_versioned_path = image_path / image_version
-    if not image_versioned_path.exists():
-        print(f"[bright_black]Creating new directory [bold]{image_versioned_path}")
-        image_versioned_path.mkdir()
+    image_versioned_path = create_new_image_version_directory(context, image_name, image_version)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()
@@ -125,34 +91,9 @@ def render(
     if "rel_path" not in value_map:
         value_map["rel_path"] = image_versioned_path.relative_to(context)
 
-    # Create a Jinja2 environment with the template directory as the loader
-    e = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(image_template_path),
-        autoescape=True,
-        undefined=jinja2.StrictUndefined
-    )
-    for tpl_rel_path in e.list_templates():
-        tpl = e.get_template(tpl_rel_path)
+    render_new_image_version_template_files(context, image_name, image_version, value_map, skip_render_minimal)
 
-        # If the template is a Containerfile, render it to both a minimal and standard version
-        if tpl_rel_path.startswith("Containerfile") and not skip_render_minimal:
-            containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
-            rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
-            with open(image_versioned_path / f"{containerfile_base_name}.std", "w") as f:
-                print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.std'}")
-                f.write(rendered)
-            rendered_min = tpl.render(image_version=image_version, **value_map, is_minimal=True)
-            with open(image_versioned_path / f"{containerfile_base_name}.min", "w") as f:
-                print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.min'}")
-                f.write(rendered_min)
-            continue
-        rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
-        rel_path = tpl_rel_path.removesuffix(".jinja2")
-        target_dir = Path(image_versioned_path / rel_path).parent
-        target_dir.mkdir(parents=True, exist_ok=True)
-        with open(image_versioned_path / rel_path, "w") as f:
-            print(f"[bright_black]Rendering [bold]{image_versioned_path / rel_path}")
-            f.write(rendered)
+    regenerate_build_matrix(context, image_name, image_version, skip_render_minimal)
 
     print(f"[green bold]Successfully rendered {image_name}/{image_version}[/green bold] ✅")
 

@@ -13,6 +13,7 @@ from posit_bakery.error import BakeryPlanError, BakeryFileNotFoundError, BakeryB
 class BakeManager:
     DOCKER_BAKE_OVERRIDE_HCL_FILE = "docker-bake.override.hcl"
     DOCKER_BAKE_HCL_FILE = "docker-bake.hcl"
+    DOCKER_BAKE_MATRIX_HCL_FILE = "docker-bake.matrix.hcl"
 
     def __init__(self, context: Path, image_name: str = None, bake_files: List[Path] = None, no_override: bool = False):
         self.context = context
@@ -22,6 +23,7 @@ class BakeManager:
 
     def _auto_discover_bake_files_by_image_name(self, image_name: str, no_override: bool = False):
         bake_file = []
+
         root_bake_file = self.context / self.DOCKER_BAKE_HCL_FILE
         if root_bake_file.exists():
             bake_file.append(root_bake_file)
@@ -30,6 +32,7 @@ class BakeManager:
                 f"[bright_yellow bold]WARNING:[/bold] Unable to auto-discover a root bake file at {root_bake_file}, "
                 f"this may cause unexpected behavior.",
             )
+
         image_bake_file = self.context / image_name / self.DOCKER_BAKE_HCL_FILE
         if not image_bake_file.exists():
             print(
@@ -38,6 +41,16 @@ class BakeManager:
             )
             raise BakeryFileNotFoundError(f"Unable to auto-discover image bake file at {image_bake_file}")
         bake_file.append(image_bake_file)
+
+        image_matrix_bake_file = self.context / image_name / self.DOCKER_BAKE_MATRIX_HCL_FILE
+        if not image_matrix_bake_file.exists():
+            print(
+                f"[bright_red bold]ERROR:[/bold] Unable to auto-discover image bake file expected at {image_matrix_bake_file}. "
+                f"Exiting...",
+            )
+            raise BakeryFileNotFoundError(f"Unable to auto-discover image bake file at {image_matrix_bake_file}")
+        bake_file.append(image_matrix_bake_file)
+
         if not no_override:
             root_override_bake_file = self.context / self.DOCKER_BAKE_OVERRIDE_HCL_FILE
             if root_override_bake_file.exists():
@@ -45,14 +58,16 @@ class BakeManager:
             image_override_bake_file = self.context / image_name / self.DOCKER_BAKE_OVERRIDE_HCL_FILE
             if image_override_bake_file.exists():
                 bake_file.append(image_override_bake_file)
+
         return bake_file
 
     def _auto_discover_bake_files(self, image_name: str = None, bake_files: List[Path] = None, no_override: bool = False):
         if image_name is None and bake_files is None:
             # Full in-context auto-discovery if no options are provided
-            self.bake_files = list(self.context.rglob("docker-bake.hcl"))
+            self.bake_files = list(self.context.rglob(self.DOCKER_BAKE_HCL_FILE))
+            self.bake_files.extend(list(self.context.rglob(self.DOCKER_BAKE_MATRIX_HCL_FILE)))
             if not no_override:
-                override_bake_files = list(self.context.rglob("docker-bake.override.hcl"))
+                override_bake_files = list(self.context.rglob(self.DOCKER_BAKE_OVERRIDE_HCL_FILE))
                 self.bake_files.extend(override_bake_files)
         elif image_name is not None and bake_files is None:
             # Partial in-context auto-discovery by image name

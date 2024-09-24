@@ -2,6 +2,10 @@ class BakeryError(Exception):
     pass
 
 
+class BakeryTemplatingError(BakeryError):
+    pass
+
+
 class BakeryPlanError(BakeryError):
     pass
 

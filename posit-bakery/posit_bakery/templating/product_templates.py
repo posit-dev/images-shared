@@ -25,6 +25,7 @@ ARG SCRIPTS_DIR=/opt/posit/scripts
 ### Finalize image ###
 # Perform any final steps to prepare the image for use, such as setting the entrypoint, command, or exposing ports.
 ENTRYPOINT ["tini", "--"]
+
 """
 
 DOCKER_BAKE_TPL = """variable image_name {
@@ -62,14 +63,6 @@ function get_tags {
   )
 }
 
-variable build_matrix {
-  default = {
-    builds = [
-      {version = "", os = "", mark_latest = true},
-    ]
-  }
-}
-
 group "default" {
   targets = [
     "std",
@@ -98,4 +91,14 @@ target "min" {
     "REGISTRY" = registry
   }
 }
+"""
+
+MATRIX_TPL = """variable build_matrix {
+  default = {
+    builds = [
+      {version = "", os = "", mark_latest = true},
+    ]
+  }
+}
+
 """
