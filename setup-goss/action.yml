@@ -1,0 +1,13 @@
+name: 'Setup goss and dgoss'
+description: 'Installs goss and dgoss to tools/'
+runs:
+  using: "composite"
+  steps:
+    - name: Install goss
+      run: |
+        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/goss-linux-amd64 -o tools/goss
+        chmod +rx tools/goss
+    - name: Install dgoss
+      run: |
+        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/dgoss -o tools/dgoss
+        chmod +rx tools/dgoss

@@ -1,0 +1,11 @@
+name: 'Setup Posit Bakery'
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    # TODO: replace with a different Package installation method
+    - name: Install Posit Bakery tool
+      run: pip install https://saipittwood.blob.core.windows.net/packages/posit_bakery-0.1.0-py3-none-any.whl
