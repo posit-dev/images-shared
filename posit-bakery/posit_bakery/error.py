@@ -19,4 +19,6 @@ class BakeryFileNotFoundError(BakeryError):
 
 
 class BakeryGossError(BakeryError):
-    pass
+    def __init__(self, message, exit_code=1):
+        self.exit_code = exit_code
+        super().__init__(message)

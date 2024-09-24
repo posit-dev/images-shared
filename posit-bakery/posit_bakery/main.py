@@ -11,6 +11,7 @@ import typer
 
 from posit_bakery import bake_tools
 from posit_bakery.dgoss import DGossManager
+from posit_bakery.error import BakeryGossError
 from posit_bakery.templating.render import create_new_image_directories, NewImageTypes, render_new_image_template_files, \
     create_new_image_version_directory, render_new_image_version_template_files, regenerate_build_matrix
 
@@ -195,4 +196,8 @@ def dgoss(
     b = bake_tools.BakeManager(context, image_name, bake_file)
     plan = b.plan(target)
     d = DGossManager(context, plan, image_version, skip, option)
-    d.exec()
+    try:
+        d.exec()
+    except BakeryGossError as e:
+        print(f"[bright_red][bold]ERROR:[/bold] {e}[/bright_red]")
+        raise typer.Exit(code=1)

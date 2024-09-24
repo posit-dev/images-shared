@@ -30,10 +30,14 @@ class DGossManager:
 
     def exec(self):
         for run_env, cmd in self.dgoss_commands:
+            relevant_environment = {
+                k: v for k, v in run_env.items() if k in ["GOSS_PATH", "GOSS_FILES_PATH", "GOSS_SLEEP"]
+            }
+            print(f"Environment: {relevant_environment}")
             print(f"Running dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=run_env)
             if p.returncode != 0:
-                raise BakeryGossError(f"Command failed with exit code {p.returncode}")
+                raise BakeryGossError(f"Goss exited with code {p.returncode}", exit_code=p.returncode)
 
     def construct_dgoss_command(self, target_name: str, target_spec: Dict[str, Any]) -> (Dict[str, str], List[str]):
         run_env = os.environ.copy()
@@ -60,7 +64,7 @@ class DGossManager:
 
         if target_spec["labels"].get("co.posit.internal.goss.test.path") is None:
             raise BakeryFileNotFoundError(f"Missing 'co.posit.internal.goss.test.path' label for target '{target_name}")
-        run_env["GOSS_FILES_PATH"] = self.context / target_spec["labels"]["co.posit.internal.goss.test.path"]
+        run_env["GOSS_FILES_PATH"] = str(self.context / target_spec["labels"]["co.posit.internal.goss.test.path"])
 
         if target_spec["labels"].get("co.posit.internal.goss.test.deps") is not None:
             deps_path = target_spec["labels"].get("co.posit.internal.goss.test.deps")
