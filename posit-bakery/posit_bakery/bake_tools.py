@@ -11,6 +11,9 @@ from posit_bakery.error import BakeryPlanError, BakeryFileNotFoundError, BakeryB
 
 
 class BakeManager:
+    DOCKER_BAKE_OVERRIDE_HCL_FILE = "docker-bake.override.hcl"
+    DOCKER_BAKE_HCL_FILE = "docker-bake.hcl"
+
     def __init__(self, context: Path, image_name: str = None, bake_files: List[Path] = None, no_override: bool = False):
         self.context = context
         self.bake_files = []
@@ -19,7 +22,7 @@ class BakeManager:
 
     def _auto_discover_bake_files_by_image_name(self, image_name: str, no_override: bool = False):
         bake_file = []
-        root_bake_file = self.context / "docker-bake.hcl"
+        root_bake_file = self.context / self.DOCKER_BAKE_HCL_FILE
         if root_bake_file.exists():
             bake_file.append(root_bake_file)
         else:
@@ -27,7 +30,7 @@ class BakeManager:
                 f"[bright_yellow bold]WARNING:[/bold] Unable to auto-discover a root bake file at {root_bake_file}, "
                 f"this may cause unexpected behavior.",
             )
-        image_bake_file = self.context / image_name / "docker-bake.hcl"
+        image_bake_file = self.context / image_name / self.DOCKER_BAKE_HCL_FILE
         if not image_bake_file.exists():
             print(
                 f"[bright_red bold]ERROR:[/bold] Unable to auto-discover image bake file expected at {image_bake_file}. "
@@ -36,10 +39,10 @@ class BakeManager:
             raise BakeryFileNotFoundError(f"Unable to auto-discover image bake file at {image_bake_file}")
         bake_file.append(image_bake_file)
         if not no_override:
-            root_override_bake_file = self.context / "docker-bake.override.hcl"
+            root_override_bake_file = self.context / self.DOCKER_BAKE_OVERRIDE_HCL_FILE
             if root_override_bake_file.exists():
                 bake_file.append(root_override_bake_file)
-            image_override_bake_file = self.context / image_name / "docker-bake.override.hcl"
+            image_override_bake_file = self.context / image_name / self.DOCKER_BAKE_OVERRIDE_HCL_FILE
             if image_override_bake_file.exists():
                 bake_file.append(image_override_bake_file)
         return bake_file
