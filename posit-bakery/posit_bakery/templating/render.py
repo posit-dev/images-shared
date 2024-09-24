@@ -148,6 +148,7 @@ def regenerate_build_matrix(
             os_list.append(containerfile[1])
         else:
             print(f"Unable to parse Containerfile os from {containerfile}. This may cause issues when rendering the build matrix.")
+    os_list = list(set(os_list))
 
     matrix_file = image_path / "docker-bake.matrix.hcl"
     if not matrix_file.exists():
