@@ -10,7 +10,7 @@ inputs:
     description: 'The image name to build'
     required: false
     default: ''
-  build-options:
+  options:
     description: 'Options for the build'
     required: false
     default: '--load'
@@ -20,5 +20,5 @@ runs:
   args:
     - 'build'
     - '${{ inputs.context }}'
-    - '${{ inputs.build-options }}'
+    - '${{ inputs.options }}'
     - '${{ inputs.image-name }}'

@@ -214,12 +214,12 @@ def build(
         push: Annotated[bool, typer.Option(
             help="Push the image to the registry after building."
         )] = False,
-        build_option: Annotated[List[str], typer.Option(
+        option: Annotated[List[str], typer.Option(
             help="Additional build options to pass to docker buildx. Multiple can be provided."
         )] = None,
 ):
     b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
-    exit_code = b.build(target, load, push, build_option)
+    exit_code = b.build(target, load, push, option)
     if exit_code != 0:
         print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
         raise typer.Exit(code=exit_code)
@@ -247,11 +247,11 @@ def dgoss(
         skip: Annotated[List[str], typer.Option(
             help="A regex filter for targets to skip. Multiple can be provided."
         )] = None,
-        runtime_option: Annotated[List[str], typer.Option(
+        option: Annotated[List[str], typer.Option(
             help="Additional runtime options to pass to dgoss. Multiple can be provided."
         )] = None,
 ):
     b = bake_tools.BakeManager(context, image_name, bake_file)
     plan = b.plan(target)
-    d = DGossManager(context, plan, image_version, skip, runtime_option)
+    d = DGossManager(context, plan, image_version, skip, option)
     d.exec()

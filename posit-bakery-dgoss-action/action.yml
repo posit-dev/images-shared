@@ -10,15 +10,15 @@ inputs:
     description: 'The image name to build'
     required: false
     default: ''
-  build-options:
-    description: 'Options for the build'
+  options:
+    description: 'Testing runtime options'
     required: false
-    default: '--load'
+    default: ''
 runs:
   using: 'docker'
   image: 'docker://ianprstudio/posit-bakery:latest'
   args:
     - 'dgoss'
     - '${{ inputs.context }}'
-    - '${{ inputs.build-options }}'
+    - '${{ inputs.options }}'
     - '${{ inputs.image-name }}'

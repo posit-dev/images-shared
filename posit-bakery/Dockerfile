@@ -2,7 +2,7 @@ FROM docker:27-dind
 
 ENV PYTHONUNBUFFERED=1
 
-RUN apk add --update --no-cache curl python3 py3-pip  \
+RUN apk add --update --no-cache bash curl python3 py3-pip  \
     && ln -sf python3 /usr/bin/python
 
 WORKDIR /app
@@ -18,4 +18,4 @@ RUN python -m venv /app/.venv \
 
 WORKDIR /data
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]

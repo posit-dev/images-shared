@@ -5,9 +5,9 @@ set -e
 FULLPATH=$(readlink -f "$2")
 
 if [ -z "$3" ]; then
-  build_opts=""
+  opts=""
 else
-  build_opts="--build-option $3"
+  opts="--option $3"
 fi
 
 if [ -z "$4" ]; then
@@ -16,4 +16,4 @@ else
   image_name="--image-name $4"
 fi
 
-/app/.venv/bin/bakery $1 --context $FULLPATH $build_opts $image_name
+/app/.venv/bin/bakery $1 --context $FULLPATH $opts $image_name
