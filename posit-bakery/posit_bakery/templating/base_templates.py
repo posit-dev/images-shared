@@ -68,10 +68,8 @@ group "default" {
 target "std" {
   inherits = ["_"]
   matrix = build_matrix
-  name = "${get_tag(builds.version, "std")}"
-  tags = [
-    "${registry}/${namespace}/${image_name}:${get_tag(builds.version, "std")}"
-  ]
+  name = "${os}{replace(version, ".", "")}${get_suffix(type)}"
+  tags = get_tags(builds.version, "std", builds.mark_latest)
   labels = {
     "co.posit.image.type" = "std"
     "co.posit.image.os" = "${os}"
@@ -86,10 +84,8 @@ target "std" {
 target "min" {
   inherits = ["_"]
   matrix = build_matrix
-  name = "${get_tag(builds.version, "min")}"
-  tags = [
-    "${registry}/${namespace}/${image_name}:${get_tag(builds.version, "min")}"
-  ]
+  name = "${os}{replace(version, ".", "")}${get_suffix(type)}"
+  tags = get_tags(builds.version, "std", builds.mark_latest)
   labels = {
     "co.posit.image.type" = "min"
     "co.posit.image.os" = "${os}"

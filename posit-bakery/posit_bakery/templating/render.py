@@ -58,7 +58,7 @@ def render_new_image_template_files(image_name: str, image_type: str, image_base
     if not bake_file_path.exists():
         print(f"[bright_black]Creating new docker-bake file [bold]{bake_file_path}")
         tpl = jinja2.Environment().from_string(template_module.DOCKER_BAKE_TPL)
-        rendered = tpl.render(image_name=image_name)
+        rendered = tpl.render(image_name=image_name, base_image=image_base)
         with open(bake_file_path, "w") as f:
             f.write(rendered)
 
@@ -66,7 +66,7 @@ def render_new_image_template_files(image_name: str, image_type: str, image_base
     if not containerfile_path.exists():
         print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
         tpl = jinja2.Environment().from_string(template_module.CONTAINER_FILE_TPL)
-        rendered = tpl.render(base_image=image_base)
+        rendered = tpl.render(image_name=image_name, base_image=image_base)
         with open(containerfile_path, "w") as f:
             f.write(rendered)
 
@@ -176,6 +176,8 @@ def regenerate_build_matrix(
         mark_latest = "false"
         if skip_mark_latest:
             mark_latest = build["mark_latest"]
+        if build["version"] == "":
+            continue
         matrix_builds.append({"version": build["version"], "os": build.get("os"), "latest": mark_latest})
 
     tpl = jinja2.Environment().from_string(matrix_template)
