@@ -103,6 +103,8 @@ class BakeManager:
             for t in target:
                 cmd.extend(t)
         run_env = os.environ.copy()
+        if "GIT_SHA" not in run_env or not run_env.get("GIT_SHA"):
+            run_env["GIT_SHA"] = self.get_commit_sha()
         p = subprocess.run(cmd, capture_output=True, env=run_env)
         if p.returncode != 0:
             raise BakeryPlanError(f"Failed to get bake plan: {p.stderr}")
