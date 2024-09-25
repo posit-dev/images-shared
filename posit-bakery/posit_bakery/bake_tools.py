@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Dict
 
+import git
 from rich import print
 import typer
 
@@ -85,6 +86,15 @@ class BakeManager:
             if not bake_file.exists():
                 raise BakeryFileNotFoundError(f"Bake file '{bake_file}' does not exist")
 
+    def get_commit_sha(self):
+        sha = ""
+        try:
+            repo = git.Repo(self.context)
+            sha = repo.head.object.hexsha
+        except Exception as e:
+            print(f"[bright_red bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
+        return sha
+
     def plan(self, target: List[str] = None) -> Dict[str, Dict]:
         cmd = ["docker", "buildx", "bake", "--print"]
         for bake_file in self.bake_files:
@@ -113,6 +123,8 @@ class BakeManager:
             for t in target:
                 cmd.extend(t)
         run_env = os.environ.copy()
+        if "GIT_SHA" not in run_env or not run_env.get("GIT_SHA"):
+            run_env["GIT_SHA"] = self.get_commit_sha()
         p = subprocess.run(cmd, env=run_env)
         return p.returncode
 
