@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from pathlib import Path
 from typing import Dict
@@ -13,6 +14,10 @@ from posit_bakery.templating import base_templates, product_templates
 class NewImageTypes(str, Enum):
     base = "base"
     product = "product"
+
+
+def regex_replace(s, find, replace):
+    return re.sub(find, replace, s)
 
 
 def create_new_image_directories(context: Path, image_name: str) -> (Path, Path):
@@ -106,24 +111,29 @@ def render_new_image_version_template_files(
     e = jinja2.Environment(
         loader=jinja2.FileSystemLoader(image_template_path),
         autoescape=True,
-        undefined=jinja2.StrictUndefined
+        undefined=jinja2.StrictUndefined,
     )
+    e.filters["regex_replace"] = regex_replace
     for tpl_rel_path in e.list_templates():
         tpl = e.get_template(tpl_rel_path)
+
+        render_kwargs = {}
+        if tpl_rel_path.startswith("Containerfile"):
+            render_kwargs = {"trim_blocks": True}
 
         # If the template is a Containerfile, render it to both a minimal and standard version
         if tpl_rel_path.startswith("Containerfile") and not skip_render_minimal:
             containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
-            rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
+            rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False, **render_kwargs)
             with open(image_versioned_path / f"{containerfile_base_name}.std", "w") as f:
                 print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.std'}")
                 f.write(rendered)
-            rendered_min = tpl.render(image_version=image_version, **value_map, is_minimal=True)
+            rendered_min = tpl.render(image_version=image_version, **value_map, is_minimal=True, **render_kwargs)
             with open(image_versioned_path / f"{containerfile_base_name}.min", "w") as f:
                 print(f"[bright_black]Rendering [bold]{image_versioned_path / f'{containerfile_base_name}.min'}")
                 f.write(rendered_min)
             continue
-        rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False)
+        rendered = tpl.render(image_version=image_version, **value_map, is_minimal=False, **render_kwargs)
         rel_path = tpl_rel_path.removesuffix(".jinja2")
         target_dir = Path(image_versioned_path / rel_path).parent
         target_dir.mkdir(parents=True, exist_ok=True)
