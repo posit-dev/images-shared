@@ -4,6 +4,7 @@ from typing import Dict
 
 import hcl2
 import jinja2
+from rich import print
 
 from posit_bakery.error import BakeryTemplatingError
 from posit_bakery.templating import base_templates, product_templates
