@@ -1,4 +1,4 @@
-CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ image_version }}{% endraw %}
+CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
 
 ### ARG declarations ###
 ARG SCRIPTS_DIR=/opt/posit/scripts
@@ -6,6 +6,9 @@ ARG SCRIPTS_DIR=/opt/posit/scripts
 
 ### ENV declarations ###
 # Declare your environment variables here...
+
+### Copy scripts ###
+COPY --chmod=0755 common/scripts $SCRIPTS_DIR
 
 ### Install system packages ###
 # Typically, we start with updating and installing system dependencies.
@@ -25,10 +28,11 @@ ARG SCRIPTS_DIR=/opt/posit/scripts
 ### Finalize image ###
 # Perform any final steps to prepare the image for use, such as setting the entrypoint, command, or exposing ports.
 ENTRYPOINT ["tini", "--"]
+
 """
 
-DOCKER_BAKE_TPL = """variable image_name {
-  default = "{{ image_name }}"
+DOCKER_BAKE_TPL = """variable os {
+  default = "{{ base_image }}"
 }
 
 function get_safe_version {
@@ -49,25 +53,14 @@ function get_suffix {
 }
 
 function get_tags {
-  params = [version, os, type, mark_latest]
+  params = [version, type, mark_latest]
   result = concat(
     [
-      "${registry}/${namespace}/${image_name}:${os}-${get_clean_version(version)}",
-      "${registry}/${namespace}/${image_name}:${os}-${get_clean_version(version)}${get_suffix(type)}",
-      "${registry}/${namespace}/${image_name}:${os}-${get_safe_version(version)}",
-      "${registry}/${namespace}/${image_name}:${os}-${get_safe_version(version)}${get_suffix(type)}",
+      "${registry}/${namespace}/${image_name}:${os}{replace(version, ".", "")}${get_suffix(type)}"
     ],
       mark_latest ? ["${registry}/${namespace}/${image_name}:latest${get_suffix(type)}", "${registry}/${namespace}/${image_name}:${os}${get_suffix(type)}"] :
       []
   )
-}
-
-variable build_matrix {
-  default = {
-    builds = [
-      {version = "", os = "", mark_latest = true},
-    ]
-  }
 }
 
 group "default" {
@@ -80,22 +73,42 @@ group "default" {
 target "std" {
   inherits = ["_"]
   matrix = build_matrix
-  name = "${builds.os}-${replace(get_clean_version(builds.version), ".", "-")}-std"
-  tags = get_tags(builds.version, builds.os, "std", builds.mark_latest)
-  dockerfile = "${image_name}/${builds.version}/Containerfile.${builds.os}.std"
-  args = {
-    "REGISTRY" = registry
+  name = "${os}{replace(version, ".", "")}${get_suffix(type)}"
+  tags = get_tags(builds.version, "std", builds.mark_latest)
+  labels = {
+    "co.posit.image.type" = "std"
+    "co.posit.image.os" = "${os}"
+    "co.posit.image.version" = "${builds.version}"
+    "co.posit.internal.goss.test.wait" = "0"
+    "co.posit.internal.goss.test.path" = "${os}/${builds.version}/test"
+    "co.posit.internal.goss.test.deps" = "${os}/${builds.version}/deps"
   }
+  dockerfile = "${os}/${builds.version}/Containerfile.std"
 }
 
 target "min" {
   inherits = ["_"]
   matrix = build_matrix
-  name = "${builds.os}-${replace(get_clean_version(builds.version), ".", "-")}-min"
-  tags = get_tags(builds.version, builds.os, "min", builds.mark_latest)
-  dockerfile = "${image_name}/${builds.version}/Containerfile.${builds.os}.min"
-  args = {
-    "REGISTRY" = registry
+  name = "${os}{replace(version, ".", "")}${get_suffix(type)}"
+  tags = get_tags(builds.version, "std", builds.mark_latest)
+  labels = {
+    "co.posit.image.type" = "min"
+    "co.posit.image.os" = "${os}"
+    "co.posit.image.version" = "${builds.version}"
+    "co.posit.internal.goss.test.wait" = "0"
+    "co.posit.internal.goss.test.path" = "${os}/${builds.version}/test"
+    "co.posit.internal.goss.test.deps" = "${os}/${builds.version}/deps"
+  }
+  dockerfile = "${os}/${builds.version}/Containerfile.min"
+}
+
+"""
+
+MATRIX_TPL = """variable build_matrix {
+  default = {
+    builds = [
+    ]
   }
 }
+
 """
