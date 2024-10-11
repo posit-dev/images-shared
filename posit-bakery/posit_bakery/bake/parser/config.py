@@ -1,6 +1,8 @@
 import tomllib
 from pathlib import Path
 
+from rich import print
+
 from posit_bakery.error import BakeryConfigError
 
 
@@ -35,7 +37,14 @@ class Config:
     def get_registry_base_urls(self):
         return [f"{r['host']}/{r['namespace']}" for r in self.registries]
 
-def load_config_from_context(context: Path):
-    config_file = context / "config.toml"
-    override_config_file = context / "config.override.toml"
-    return Config(config_file, override_config_file)
+    @classmethod
+    def load_config_from_context(cls, context: Path):
+        config_file = context / "config.toml"
+        if not config_file.exists():
+            print(
+                f"[bright_red bold]ERROR:[/bold] No config file found at {config_file}. "
+                f"A `config.toml` file is required in the context root."
+            )
+            raise BakeryConfigError(f"No config file found at {config_file}")
+        override_config_file = context / "config.override.toml"
+        return cls(config_file, override_config_file)

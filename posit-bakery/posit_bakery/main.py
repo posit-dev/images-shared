@@ -6,7 +6,9 @@ from typing import Annotated, List
 from rich import print, print_json
 import typer
 
-from posit_bakery import bake_tools
+from posit_bakery import bake
+from posit_bakery.bake.manager import BakeManager
+from posit_bakery.bake.plan import BakePlan
 from posit_bakery.dgoss import DGossManager
 from posit_bakery.error import BakeryGossError
 from posit_bakery.templating.render import create_new_image_directories, NewImageTypes, render_new_image_template_files, \
@@ -98,7 +100,7 @@ def render(
 
 @app.command()
 def plan(
-        context: Annotated[Path, typer.Option(
+        context: Annotated[Path, typer.Argument(
             help="The root path to use. Defaults to the current working directory where invoked."
         )] = auto_path(),
         image_name: Annotated[str, typer.Option(
@@ -113,6 +115,9 @@ def plan(
         no_override: Annotated[bool, typer.Option(
             help="Skip loading docker-bake.override.hcl files for auto-discovery."
         )] = False,
+        output_file: Annotated[Path, typer.Option(
+            help="The file to write the rendered plan to. Defaults to bake-plan.json."
+        )] = Path(auto_path(), "bake-plan.json"),
 ):
     """
     Generates a plan in JSON based off of provided or auto-discovered bake files.
@@ -125,9 +130,9 @@ def plan(
 
     If only a bake file is provided, the command will generate a plan for that bake file only.
     """
-    b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
-    plan = b.plan(target)
-    print_json(json.dumps(plan))
+    plan = BakePlan.new_plan(context)
+    print_json(json.dumps(plan.render()), indent=2)
+    plan.to_json(output_file)
 
 
 @app.command()
@@ -157,8 +162,8 @@ def build(
             help="Additional build options to pass to docker buildx. Multiple can be provided."
         )] = None,
 ):
-    b = bake_tools.BakeManager(context, image_name, bake_file, no_override)
-    exit_code = b.build(target, load, push, option)
+    plan = BakePlan.new_plan(context)
+    exit_code = plan.build(load, push, option)
     if exit_code != 0:
         print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
         raise typer.Exit(code=exit_code)
@@ -190,7 +195,7 @@ def dgoss(
             help="Additional runtime options to pass to dgoss. Multiple can be provided."
         )] = None,
 ):
-    b = bake_tools.BakeManager(context, image_name, bake_file)
+    b = BakeManager(context, image_name, bake_file)
     plan = b.plan(target)
     d = DGossManager(context, plan, image_version, skip, option)
     try:
