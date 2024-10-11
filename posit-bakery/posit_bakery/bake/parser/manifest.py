@@ -34,7 +34,7 @@ class TargetBuild:
         if self.build_data.get("os"):
             self.os = self.build_data["os"]
             self.containerfile_name = render_template(
-                build.get("containerfile", "Containerfile.{{ build.os | condense_os }}.{{ target.type }}"),
+                build.get("containerfile", "Containerfile.{{ build.os | condense }}.{{ target.type }}"),
                 build=build,
                 target=target,
                 **const,
@@ -43,17 +43,17 @@ class TargetBuild:
 
             if self.type == "std":
                 default_tags = [
-                    "{{ build.version | tag_safe }}-{{ build.os | condense_os }}",
-                    "{{ build.version | clean_version }}-{{ build.os | condense_os }}",
+                    "{{ build.version | tag_safe }}-{{ build.os | condense }}",
+                    "{{ build.version | clean_version }}-{{ build.os | condense }}",
                 ]
                 if self.latest:
-                    default_latest_tags.append("{{ build.os | condense_os }}")
+                    default_latest_tags.append("{{ build.os | condense }}")
                     if self.build_data.get("primary_os"):
                         default_latest_tags.append("latest")
             else:
                 default_tags = ["{{ build.version }}-{{ target.type }}"]
                 if self.latest:
-                    default_latest_tags = ["{{ build.os | condense_os }}-{{ target.type }}"]
+                    default_latest_tags = ["{{ build.os | condense }}-{{ target.type }}"]
                     if self.build_data.get("primary_os"):
                         default_latest_tags.append("latest-{{ target.type }}")
         elif const.get("os"):
@@ -62,16 +62,16 @@ class TargetBuild:
             self.containerfile_path = manifest_path / self.version / self.containerfile_name
 
             if self.type == "std":
-                default_tags = ["{{ os | lower }}{{ build.version | condense_os }}"]
+                default_tags = ["{{ os | lower }}{{ build.version | condense }}"]
                 if self.latest:
-                    default_latest_tags = ["{{ os | lower }}{{ build.version | condense_os }}-latest"]
+                    default_latest_tags = ["{{ os | lower }}{{ build.version | condense }}-latest"]
             else:
                 default_tags = ["{{ build.version }}-{{ target.type }}"]
                 if self.latest:
                     default_latest_tags = ["latest-{{ target.type }}"]
         else:
             print(
-                f"[bright_yellow bold]WARNING:[/bold] No operating system could be determined for manifest {self.name}."
+                f"[bright_yellow][bold]WARNING:[/bold] No operating system could be determined for manifest {self.name}."
                 f" This can result in unexpected behavior."
             )
 
@@ -113,20 +113,21 @@ class TargetBuild:
 
 
 class Manifest:
-    def __init__(self, name: str, manifest_file: Path):
+    def __init__(self, context: Path, name: str, manifest_file: Path):
         self.name = name
         self.manifest_file = manifest_file
-        self.manifest_path = manifest_file.parent
+        self.manifest_file_relative = manifest_file.relative_to(context)
         with open(self.manifest_file, "rb") as f:
             self.manifest_config = tomllib.load(f)
+        self.const = self.manifest_config.get("const", {})
         self.targets_data = self.get_targets()
         self.builds_data = self.get_builds()
         self.target_builds = []
         for build in self.builds_data.values():
             for target_type, target in self.targets_data.items():
                 build_targets = build.get("targets", [])
-                if build_targets.empty() or target_type in build_targets:
-                    self.target_builds.append(TargetBuild(self.name, build, target, self.manifest_path))
+                if target_type in build_targets or not build_targets:
+                    self.target_builds.append(TargetBuild(self.name, build, target, self.manifest_file_relative.parent, self.const))
                 else:
                     print(f"[bright_black]Skipping target '{target_type}' for build version '{build['version']}'")
 
@@ -154,10 +155,10 @@ class Manifest:
                 builds[build["version"]] = build
         return builds
 
-
-def load_manifests_from_context(context: Path):
-    manifests = {}
-    for manifest_file in context.rglob("manifest.toml"):
-        manifest_name = str(manifest_file.parent.relative_to(context))
-        manifests[manifest_name] = Manifest(manifest_name, manifest_file)
-    return manifests
+    @classmethod
+    def load_manifests_from_context(cls, context: Path):
+        manifests = {}
+        for manifest_file in context.rglob("manifest.toml"):
+            manifest_name = str(manifest_file.parent.relative_to(context))
+            manifests[manifest_name] = cls(context, manifest_name, manifest_file)
+        return manifests
