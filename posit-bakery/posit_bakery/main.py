@@ -1,11 +1,8 @@
 import json
 import os
-import warnings
 from pathlib import Path
-from pprint import pformat
 from typing import Annotated, List
 
-import jinja2
 from rich import print, print_json
 import typer
 

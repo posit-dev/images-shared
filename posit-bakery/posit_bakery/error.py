@@ -22,3 +22,7 @@ class BakeryGossError(BakeryError):
     def __init__(self, message, exit_code=1):
         self.exit_code = exit_code
         super().__init__(message)
+
+
+class BakeryConfigError(BakeryError):
+    pass
