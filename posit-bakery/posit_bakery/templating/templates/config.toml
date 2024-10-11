@@ -1,0 +1,11 @@
+[[registry]]
+host = "docker.io"
+namespace = "posit"
+
+[repository]
+url = "github.com/rstudio/{{ repo_name }}"
+vendor = "Posit Software, PBC"
+maintainer = "docker@posit.co"
+authors = [
+    "Ian H. Pittwood <ian.pittwood@posit.co>"
+]
