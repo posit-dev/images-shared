@@ -6,13 +6,14 @@ from typing import Annotated, List
 from rich import print, print_json
 import typer
 
-from posit_bakery import bake
 from posit_bakery.bake.manager import BakeManager
 from posit_bakery.bake.plan import BakePlan
-from posit_bakery.dgoss import DGossManager
+from posit_bakery.bake.dgoss import DGossManager
 from posit_bakery.error import BakeryGossError
-from posit_bakery.templating.render import create_new_image_directories, NewImageTypes, render_new_image_template_files, \
-    create_new_image_version_directory, render_new_image_version_template_files, regenerate_build_matrix
+from posit_bakery.parser.config import Config
+from posit_bakery.parser.manifest import Manifest
+from posit_bakery.templating.render import NewImageTypes, render_new_image_template_files, \
+    create_new_image_version_directory, render_new_image_version_template_files, update_manifest_build_matrix
 
 app = typer.Typer()
 
@@ -38,9 +39,7 @@ def new(
         )] = NewImageTypes.product,
 ):
     """Creates a quickstart skeleton for a new image."""
-    image_path = create_new_image_directories(context, image_name)
-
-    render_new_image_template_files(image_name, image_type, image_base, image_path)
+    render_new_image_template_files(context, image_name, image_type, image_base)
 
     print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
 
@@ -93,7 +92,7 @@ def render(
 
     render_new_image_version_template_files(context, image_name, image_version, value_map, skip_render_minimal)
 
-    regenerate_build_matrix(context, image_name, image_version, skip_render_minimal)
+    update_manifest_build_matrix(context, image_name, image_version, skip_mark_latest)
 
     print(f"[green bold]Successfully rendered {image_name}/{image_version}[/green bold] ✅")
 
@@ -106,14 +105,11 @@ def plan(
         image_name: Annotated[str, typer.Option(
             help="The image name to isolate plan rendering to."
         )] = None,
-        target: Annotated[List[str], typer.Option(
-            help="The targets to filter the rendered plan by. Multiple can be provided."
+        image_version: Annotated[str, typer.Option(
+            help="The image version to isolate plan rendering to. Must be used with --image-name."
         )] = None,
-        bake_file: Annotated[List[Path], typer.Option(
-            help="The bake file(s) to use. Multiple can be provided."
-        )] = None,
-        no_override: Annotated[bool, typer.Option(
-            help="Skip loading docker-bake.override.hcl files for auto-discovery."
+        skip_override: Annotated[bool, typer.Option(
+            help="Skip loading config.override.toml file for auto-discovery."
         )] = False,
         output_file: Annotated[Path, typer.Option(
             help="The file to write the rendered plan to. Defaults to bake-plan.json."
@@ -130,7 +126,7 @@ def plan(
 
     If only a bake file is provided, the command will generate a plan for that bake file only.
     """
-    plan = BakePlan.new_plan(context)
+    plan = BakePlan.new_plan(context, skip_override, image_name, image_version)
     print_json(json.dumps(plan.render()), indent=2)
     plan.to_json(output_file)
 
@@ -143,13 +139,10 @@ def build(
         image_name: Annotated[str, typer.Option(
             help="The image name to isolate plan rendering to."
         )] = None,
-        target: Annotated[List[str], typer.Option(
-            help="The targets to filter the rendered plan by. Multiple can be provided."
+        image_version: Annotated[str, typer.Option(
+            help="The image version to isolate plan rendering to. Must be used with --image-name."
         )] = None,
-        bake_file: Annotated[List[Path], typer.Option(
-            help="The bake file(s) to use. Multiple can be provided."
-        )] = None,
-        no_override: Annotated[bool, typer.Option(
+        skip_override: Annotated[bool, typer.Option(
             help="Skip loading docker-bake.override.hcl files for auto-discovery."
         )] = False,
         load: Annotated[bool, typer.Option(
@@ -162,7 +155,7 @@ def build(
             help="Additional build options to pass to docker buildx. Multiple can be provided."
         )] = None,
 ):
-    plan = BakePlan.new_plan(context)
+    plan = BakePlan.new_plan(context, skip_override, image_name, image_version)
     exit_code = plan.build(load, push, option)
     if exit_code != 0:
         print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
@@ -182,22 +175,17 @@ def dgoss(
         image_version: Annotated[str, typer.Option(
             help="The image version to isolate goss testing to."
         )] = None,
-        target: Annotated[List[str], typer.Option(
-            help="The targets to filter the initial plan render by. Multiple can be provided."
-        )] = None,
-        bake_file: Annotated[List[Path], typer.Option(
-            help="The bake file(s) to use. Multiple can be provided."
-        )] = None,
-        skip: Annotated[List[str], typer.Option(
-            help="A regex filter for targets to skip. Multiple can be provided."
-        )] = None,
+        skip_override: Annotated[bool, typer.Option(
+            help="Skip loading config.override.toml file for auto-discovery."
+        )] = False,
         option: Annotated[List[str], typer.Option(
             help="Additional runtime options to pass to dgoss. Multiple can be provided."
         )] = None,
 ):
-    b = BakeManager(context, image_name, bake_file)
-    plan = b.plan(target)
-    d = DGossManager(context, plan, image_version, skip, option)
+    config = Config.load_config_from_context(context, skip_override)
+    manifests = Manifest.load_manifests_from_context(context, image_name, image_version)
+
+    d = DGossManager(context, config, manifests, option)
     try:
         d.exec()
     except BakeryGossError as e:
