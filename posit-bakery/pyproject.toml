@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "posit-bakery"
-version = "0.1.0"
+version = "0.2.0-dev"
 description = "Tools for extracting and manipulating bake artifacts for various commands"
 authors = ["Ian H. Pittwood <ian.pittwood@posit.co>"]
 license = "MIT"
