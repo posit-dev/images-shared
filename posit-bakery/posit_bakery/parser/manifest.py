@@ -1,11 +1,11 @@
-import tomllib
+import tomlkit
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import jinja2
 from rich import print
 
-from posit_bakery.bake.parser.filters import jinja2_env, render_template
+from posit_bakery.parser.filters import render_template
 
 
 class TargetBuild:
@@ -113,12 +113,13 @@ class TargetBuild:
 
 
 class Manifest:
-    def __init__(self, context: Path, name: str, manifest_file: Path):
+    def __init__(self, context: Path, name: str, manifest_file: Path, filters: Dict[str, str] = None):
+        if filters is None:
+            filters = {}
         self.name = name
         self.manifest_file = manifest_file
         self.manifest_file_relative = manifest_file.relative_to(context)
-        with open(self.manifest_file, "rb") as f:
-            self.manifest_config = tomllib.load(f)
+        self.load_manifest(manifest_file)
         self.const = self.manifest_config.get("const", {})
         self.targets_data = self.get_targets()
         self.builds_data = self.get_builds()
@@ -126,14 +127,14 @@ class Manifest:
         for build in self.builds_data.values():
             for target_type, target in self.targets_data.items():
                 build_targets = build.get("targets", [])
-                if target_type in build_targets or not build_targets:
+                if (target_type in build_targets or not build_targets) and (filters.get("image_version") == build["version"] or filters.get("image_version") is None):
                     self.target_builds.append(TargetBuild(self.name, build, target, self.manifest_file_relative.parent, self.const))
                 else:
                     print(f"[bright_black]Skipping target '{target_type}' for build version '{build['version']}'")
 
-    def load_manifest(self):
-        with open(self.manifest_file, "rb") as f:
-            self.manifest_config = tomllib.load(f)
+    def load_manifest(self, manifest_file: Path):
+        with open(manifest_file, "rb") as f:
+            self.manifest_config = tomlkit.load(f)
 
     def get_targets(self):
         targets = {}
@@ -156,9 +157,13 @@ class Manifest:
         return builds
 
     @classmethod
-    def load_manifests_from_context(cls, context: Path):
+    def load_manifests_from_context(cls, context: Path, image_name: str = None, image_version: str = None):
         manifests = {}
         for manifest_file in context.rglob("manifest.toml"):
             manifest_name = str(manifest_file.parent.relative_to(context))
-            manifests[manifest_name] = cls(context, manifest_name, manifest_file)
+            if image_name and image_name != manifest_name:
+                continue
+            manifests[manifest_name] = cls(
+                context, manifest_name, manifest_file, {"image_version": image_version}
+            )
         return manifests

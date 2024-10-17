@@ -8,8 +8,8 @@ from typing import List
 import git
 from rich import print
 
-from posit_bakery.bake.parser.config import Config
-from posit_bakery.bake.parser.manifest import Manifest
+from posit_bakery.parser.config import Config
+from posit_bakery.parser.manifest import Manifest
 
 
 class BakePlan:
@@ -90,14 +90,16 @@ class BakePlan:
 
     def to_json(self, output_file: Path = None):
         if output_file is None:
-            output_file = self.context / "bake-plan.json"
+            output_file = self.context / "docker-bake.json"
         with open(output_file, "w") as f:
             json.dump(self.render(), f, indent=2)
 
     @classmethod
-    def new_plan(cls, context: Path) -> "BakePlan":
-        config = Config.load_config_from_context(context)
-        manifests = Manifest.load_manifests_from_context(context)
+    def new_plan(
+            cls, context: Path, skip_override: bool = False, image_name: str = None, image_version: str = None
+    ) -> "BakePlan":
+        config = Config.load_config_from_context(context, skip_override)
+        manifests = Manifest.load_manifests_from_context(context, image_name, image_version)
         plan = cls(context, config)
         for manifest_name, manifest in manifests.items():
             print(f"[bright_blue]Loading manifest {manifest_name}")
@@ -105,7 +107,7 @@ class BakePlan:
         return plan
 
     def build(self, load: bool = False, push: bool = False, build_options: List[str] = None):
-        bake_file = self.context / ".bake-plan.json"
+        bake_file = self.context / ".docker-bake.json"
         self.to_json(bake_file)
         cmd = ["docker", "buildx", "bake", "--file", str(bake_file)]
         if load:

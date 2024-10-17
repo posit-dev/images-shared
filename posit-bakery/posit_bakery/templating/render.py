@@ -1,14 +1,21 @@
+import os
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
+import git
 import hcl2
 import jinja2
+import tomlkit
 from rich import print
+from tomlkit.items import AoT
 
 from posit_bakery.error import BakeryTemplatingError
-from posit_bakery.templating import base_templates, product_templates
+from posit_bakery.templating import templates
+from posit_bakery.templating.templates.configuration import CONFIG_TOML_TPL, BASE_MANIFEST_TOML_TPL, \
+    PRODUCT_MANIFEST_TOML_TPL
+from posit_bakery.templating.templates.containerfile import BASE_CONTAINER_FILE_TPL, PRODUCT_CONTAINER_FILE_TPL
 
 
 class NewImageTypes(str, Enum):
@@ -18,6 +25,25 @@ class NewImageTypes(str, Enum):
 
 def regex_replace(s, find, replace):
     return re.sub(find, replace, s)
+
+
+def try_get_repo_url(context: Path):
+    url = "<REPO_URL>"
+    try:
+        repo = git.Repo(context)
+        url = os.path.splitext(repo.remotes[0].config_reader.get("url"))[0]
+        if url.startswith("git@"):
+            url = url.removeprefix("git@")
+            url = url.replace(":", "/")
+    except:
+        print("[bright_yellow][bold]WARNING:[/bold] Unable to determine repository name ")
+    return url
+
+
+def try_human_readable_os_name(os: str):
+    p = re.compile(r"([a-zA-Z]+)(0-9\.+)")
+    res = p.match(os).groups()
+    return " ".join(res)
 
 
 def create_new_image_directories(context: Path, image_name: str) -> (Path, Path):
@@ -39,39 +65,53 @@ def create_new_image_directories(context: Path, image_name: str) -> (Path, Path)
     if not image_test_path.exists():
         print(f"[bright_black]Creating new image test templates directory [bold]{image_test_path}")
         image_test_path.mkdir()
-    image_test_goss_file = image_test_path / "goss.yaml"
+    image_test_goss_file = image_test_path / "goss.yaml.jinja2"
     image_test_goss_file.touch(exist_ok=True)
 
     image_deps_path = image_template_path / "deps"
     if not image_deps_path.exists():
         print(f"[bright_black]Creating new image dependencies directory [bold]{image_deps_path}")
         image_deps_path.mkdir()
-    image_deps_package_file = image_deps_path / "packages.txt"
+    image_deps_package_file = image_deps_path / "packages.txt.jinja2"
     image_deps_package_file.touch(exist_ok=True)
 
     return image_path
 
 
-def render_new_image_template_files(image_name: str, image_type: str, image_base: str, image_path: Path):
+def render_new_image_template_files(context: Path, image_name: str, image_type: str, image_base: str):
+    image_path = create_new_image_directories(context, image_name)
+
+    config_toml = context / "config.toml"
+    if not config_toml.exists():
+        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(CONFIG_TOML_TPL)
+        rendered = tpl.render(repo_url=try_get_repo_url(context))
+        with open(config_toml, "w") as f:
+            f.write(rendered)
+
     image_template_path = image_path / "template"
 
     if image_type == NewImageTypes.base:
-        template_module = base_templates
+        containerfile_tpl = BASE_CONTAINER_FILE_TPL
+        manifest_tpl = BASE_MANIFEST_TOML_TPL
     else:
-        template_module = product_templates
+        containerfile_tpl = PRODUCT_CONTAINER_FILE_TPL
+        manifest_tpl = PRODUCT_MANIFEST_TOML_TPL
 
-    bake_file_path = image_path / "docker-bake.hcl"
-    if not bake_file_path.exists():
-        print(f"[bright_black]Creating new docker-bake file [bold]{bake_file_path}")
-        tpl = jinja2.Environment().from_string(template_module.DOCKER_BAKE_TPL)
-        rendered = tpl.render(image_name=image_name, base_image=image_base)
-        with open(bake_file_path, "w") as f:
+    manifest_toml = image_path / "manifest.toml"
+    if manifest_toml.exists():
+        print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_toml}[/bold] already exists")
+        raise BakeryTemplatingError(f"Manifest file '{manifest_toml}' already exists")
+    else:
+        print(f"[bright_black]Creating new manifest file [bold]{manifest_toml}")
+        tpl = jinja2.Environment().from_string(manifest_tpl)
+        rendered = tpl.render(image_name=image_name)
+        with open(manifest_toml, "w") as f:
             f.write(rendered)
 
     containerfile_path = image_template_path / "Containerfile.jinja2"
     if not containerfile_path.exists():
         print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
-        tpl = jinja2.Environment().from_string(template_module.CONTAINER_FILE_TPL)
+        tpl = jinja2.Environment().from_string(containerfile_tpl)
         rendered = tpl.render(image_name=image_name, base_image=image_base)
         with open(containerfile_path, "w") as f:
             f.write(rendered)
@@ -142,57 +182,71 @@ def render_new_image_version_template_files(
             f.write(rendered)
 
 
-def regenerate_build_matrix(
+def update_manifest_build_matrix(
         context: Path,
         image_name: str,
         image_version: str,
-        skip_render_minimal: bool = False,
         skip_mark_latest: bool = False,
 ):
     image_path = context / image_name
+
+    manifest_file = image_path / "manifest.toml"
+    if not manifest_file.exists():
+        print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_file}[/bold] not found")
+        raise BakeryTemplatingError(f"Manifest file '{manifest_file}' not found")
+    with open(manifest_file, 'r') as f:
+        manifest = tomlkit.load(f)
+
+    is_mono_os = manifest["const"].get("os", None) is not None
+
     image_versioned_path = image_path / image_version
     containerfiles = list(image_versioned_path.rglob("Containerfile*"))
     containerfiles = [str(containerfile.name).split(".") for containerfile in containerfiles]
     os_list = []
+    target_list = []
     for containerfile in containerfiles:
-        if (len(containerfile) == 2 and skip_render_minimal) or len(containerfile) == 3:
+        if len(containerfile) == 2 and is_mono_os:
+            target_list.append(containerfile[1])
+        elif len(containerfile) == 3 and not is_mono_os:
             os_list.append(containerfile[1])
+            target_list.append(containerfile[2])
         else:
             print(f"Unable to parse Containerfile os from {containerfile}. This may cause issues when rendering the build matrix.")
     os_list = list(set(os_list))
+    target_list = list(set(target_list))
 
-    matrix_file = image_path / "docker-bake.matrix.hcl"
-    if not matrix_file.exists():
-        print(f"[bright_red bold]ERROR:[/bold] Matrix file [bold]{matrix_file}[/bold] not found")
-        raise BakeryTemplatingError(f"Matrix file '{matrix_file}' not found")
-    # Get OS extensions from Containerfiles
-    matrix_template = """variable build_matrix {
-    default = {
-        builds = [
-            {% for build in build_versions -%}
-            {version = "{{ build.version }}", {% if build.os %}os = "{{ build.os }}",{% endif %} mark_latest = {{ build.latest }}},
-            {% endfor -%}
-        ]
-    }
-}
-"""
-    matrix_builds = []
-    if os_list:
-        for os in os_list:
-            matrix_builds.append({"version": image_version, "os": os, "latest": str(not skip_mark_latest).lower()})
+    os_list = [try_human_readable_os_name(_os) for _os in os_list]
+
+    builds = manifest["build"].unwrap()
+    # If not skipping marking latest, mark all other versions as not latest
+    if not skip_mark_latest:
+        for build in builds:
+            build["latest"] = False
+
+    # Update the build matrix with the provided OS list and targets if the version already exists
+    if any(image_version == build["version"] for build in builds):
+        print(f"[bright_black]Replacing existing build entry for version '{image_version}'")
+        for build in builds:
+            if build["version"] == image_version:
+                if os_list:
+                    build["os"] = os_list
+                if not skip_mark_latest:
+                    build["latest"] = True
+    # Otherwise, add a new entry to the build matrix
     else:
-        matrix_builds = [{"version": image_version, "os": None, "latest": str(not skip_mark_latest).lower()}]
-    with open(matrix_file, 'r') as f:
-        matrix_content = hcl2.load(f)
-    for build in matrix_content["variable"][0]["build_matrix"]["default"]["builds"]:
-        mark_latest = "false"
-        if skip_mark_latest:
-            mark_latest = build["mark_latest"]
-        if build["version"] == "" or matrix_builds[0]["version"] == build["version"]:
-            continue
-        matrix_builds.append({"version": build["version"], "os": build.get("os"), "latest": mark_latest})
+        print(f"[bright_black]Adding new build entry for version '{image_version}'")
+        new_build = {
+            "version": image_version,
+        }
+        if not is_mono_os:
+            new_build["os"] = os_list or ["Ubuntu 22.04"]
+        if target_list:
+            new_build["targets"] = target_list
+        if not skip_mark_latest:
+            new_build["latest"] = True
+        builds.insert(0, new_build)
 
-    tpl = jinja2.Environment().from_string(matrix_template)
-    rendered = tpl.render(build_versions=matrix_builds)
-    with open(matrix_file, "w") as f:
-        f.write(rendered)
+    manifest["build"] = AoT(builds)
+
+    with open(manifest_file, "w") as f:
+        f.write(tomlkit.dumps(manifest))
