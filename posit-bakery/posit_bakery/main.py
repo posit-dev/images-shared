@@ -6,14 +6,18 @@ from typing import Annotated, List
 from rich import print, print_json
 import typer
 
-from posit_bakery.bake.manager import BakeManager
 from posit_bakery.bake.plan import BakePlan
 from posit_bakery.bake.dgoss import DGossManager
 from posit_bakery.error import BakeryGossError
 from posit_bakery.parser.config import Config
 from posit_bakery.parser.manifest import Manifest
-from posit_bakery.templating.render import NewImageTypes, render_new_image_template_files, \
-    create_new_image_version_directory, render_new_image_version_template_files, update_manifest_build_matrix
+from posit_bakery.templating.render import (
+    NewImageTypes,
+    render_new_image_template_files,
+    create_new_image_version_directory,
+    render_new_image_version_template_files,
+    update_manifest_build_matrix,
+)
 
 app = typer.Typer()
 
@@ -25,18 +29,12 @@ def auto_path():
 
 @app.command()
 def new(
-        image_name: Annotated[str, typer.Argument(
-            help="The image name to create a skeleton for."
-        )],
-        context: Annotated[Path, typer.Option(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
-        image_base: Annotated[str, typer.Option(
-            help="The base to use for the new image."
-        )] = "posit/base",
-        image_type: Annotated[str, typer.Option(
-            help="The type of image to create."
-        )] = NewImageTypes.product,
+    image_name: Annotated[str, typer.Argument(help="The image name to create a skeleton for.")],
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "posit/base",
+    image_type: Annotated[str, typer.Option(help="The type of image to create.")] = NewImageTypes.product,
 ):
     """Creates a quickstart skeleton for a new image."""
     render_new_image_template_files(context, image_name, image_type, image_base)
@@ -46,24 +44,20 @@ def new(
 
 @app.command()
 def render(
-        image_name: Annotated[str, typer.Argument(
-            help="The image directory to render. This should be the path above the template directory."
-        )],
-        image_version: Annotated[str, typer.Argument(
-            help="The new version to render the templates to."
-        )],
-        context: Annotated[Path, typer.Option(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
-        value: Annotated[List[str], typer.Option(
-            help="A 'key=value' pair to pass to the templates. Accepts multiple pairs."
-        )] = None,
-        skip_render_minimal: Annotated[bool, typer.Option(
-            help="Skip rendering the minimal version of the Containerfile."
-        )] = False,
-        skip_mark_latest: Annotated[bool, typer.Option(
-            help="Skip marking the latest version of the image."
-        )] = False,
+    image_name: Annotated[
+        str, typer.Argument(help="The image directory to render. This should be the path above the template directory.")
+    ],
+    image_version: Annotated[str, typer.Argument(help="The new version to render the templates to.")],
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    value: Annotated[
+        List[str], typer.Option(help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.")
+    ] = None,
+    skip_render_minimal: Annotated[
+        bool, typer.Option(help="Skip rendering the minimal version of the Containerfile.")
+    ] = False,
+    skip_mark_latest: Annotated[bool, typer.Option(help="Skip marking the latest version of the image.")] = False,
 ):
     """Renders templates for an image to a versioned subdirectory of the image directory.
 
@@ -99,21 +93,19 @@ def render(
 
 @app.command()
 def plan(
-        context: Annotated[Path, typer.Argument(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
-        image_name: Annotated[str, typer.Option(
-            help="The image name to isolate plan rendering to."
-        )] = None,
-        image_version: Annotated[str, typer.Option(
-            help="The image version to isolate plan rendering to. Must be used with --image-name."
-        )] = None,
-        skip_override: Annotated[bool, typer.Option(
-            help="Skip loading config.override.toml file for auto-discovery."
-        )] = False,
-        output_file: Annotated[Path, typer.Option(
-            help="The file to write the rendered plan to. Defaults to bake-plan.json."
-        )] = Path(auto_path(), "bake-plan.json"),
+    context: Annotated[
+        Path, typer.Argument(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
+    image_version: Annotated[
+        str, typer.Option(help="The image version to isolate plan rendering to. Must be used with --image-name.")
+    ] = None,
+    skip_override: Annotated[
+        bool, typer.Option(help="Skip loading config.override.toml file for auto-discovery.")
+    ] = False,
+    output_file: Annotated[
+        Path, typer.Option(help="The file to write the rendered plan to. Defaults to bake-plan.json.")
+    ] = Path(auto_path(), "bake-plan.json"),
 ):
     """
     Generates a plan in JSON based off of provided or auto-discovered bake files.
@@ -133,27 +125,21 @@ def plan(
 
 @app.command()
 def build(
-        context: Annotated[Path, typer.Option(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
-        image_name: Annotated[str, typer.Option(
-            help="The image name to isolate plan rendering to."
-        )] = None,
-        image_version: Annotated[str, typer.Option(
-            help="The image version to isolate plan rendering to. Must be used with --image-name."
-        )] = None,
-        skip_override: Annotated[bool, typer.Option(
-            help="Skip loading docker-bake.override.hcl files for auto-discovery."
-        )] = False,
-        load: Annotated[bool, typer.Option(
-            help="Load the image to Docker after building."
-        )] = False,
-        push: Annotated[bool, typer.Option(
-            help="Push the image to the registry after building."
-        )] = False,
-        option: Annotated[List[str], typer.Option(
-            help="Additional build options to pass to docker buildx. Multiple can be provided."
-        )] = None,
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
+    image_version: Annotated[
+        str, typer.Option(help="The image version to isolate plan rendering to. Must be used with --image-name.")
+    ] = None,
+    skip_override: Annotated[
+        bool, typer.Option(help="Skip loading docker-bake.override.hcl files for auto-discovery.")
+    ] = False,
+    load: Annotated[bool, typer.Option(help="Load the image to Docker after building.")] = False,
+    push: Annotated[bool, typer.Option(help="Push the image to the registry after building.")] = False,
+    option: Annotated[
+        List[str], typer.Option(help="Additional build options to pass to docker buildx. Multiple can be provided.")
+    ] = None,
 ):
     plan = BakePlan.new_plan(context, skip_override, image_name, image_version)
     exit_code = plan.build(load, push, option)
@@ -161,26 +147,22 @@ def build(
         print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
         raise typer.Exit(code=exit_code)
     else:
-        print(f"[green]Build succeeded[/green]")
+        print("[green]Build succeeded[/green]")
 
 
 @app.command()
 def dgoss(
-        context: Annotated[Path, typer.Option(
-            help="The root path to use. Defaults to the current working directory where invoked."
-        )] = auto_path(),
-        image_name: Annotated[str, typer.Option(
-            help="The image name to isolate goss testing to."
-        )] = None,
-        image_version: Annotated[str, typer.Option(
-            help="The image version to isolate goss testing to."
-        )] = None,
-        skip_override: Annotated[bool, typer.Option(
-            help="Skip loading config.override.toml file for auto-discovery."
-        )] = False,
-        option: Annotated[List[str], typer.Option(
-            help="Additional runtime options to pass to dgoss. Multiple can be provided."
-        )] = None,
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    image_name: Annotated[str, typer.Option(help="The image name to isolate goss testing to.")] = None,
+    image_version: Annotated[str, typer.Option(help="The image version to isolate goss testing to.")] = None,
+    skip_override: Annotated[
+        bool, typer.Option(help="Skip loading config.override.toml file for auto-discovery.")
+    ] = False,
+    option: Annotated[
+        List[str], typer.Option(help="Additional runtime options to pass to dgoss. Multiple can be provided.")
+    ] = None,
 ):
     config = Config.load_config_from_context(context, skip_override)
     manifests = Manifest.load_manifests_from_context(context, image_name, image_version)

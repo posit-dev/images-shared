@@ -6,6 +6,9 @@ authors = ["Ian H. Pittwood <ian.pittwood@posit.co>"]
 license = "MIT"
 readme = "README.md"
 
+[tool.poetry.scripts]
+bakery = "posit_bakery.main:app"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 typer = "^0.12.5"
@@ -15,8 +18,13 @@ python-hcl2 = "^4.3.5"
 gitpython = "^3.1.43"
 tomlkit = "^0.13.2"
 
-[tool.poetry.scripts]
-bakery = "posit_bakery.main:app"
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.7.0"
+
+[tool.ruff]
+line-length = 120
+fix = true
+target-version = "py311"
 
 [build-system]
 requires = ["poetry-core"]

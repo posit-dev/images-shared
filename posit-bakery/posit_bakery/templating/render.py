@@ -2,19 +2,20 @@ import os
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 import git
-import hcl2
 import jinja2
 import tomlkit
 from rich import print
 from tomlkit.items import AoT
 
 from posit_bakery.error import BakeryTemplatingError
-from posit_bakery.templating import templates
-from posit_bakery.templating.templates.configuration import CONFIG_TOML_TPL, BASE_MANIFEST_TOML_TPL, \
-    PRODUCT_MANIFEST_TOML_TPL
+from posit_bakery.templating.templates.configuration import (
+    CONFIG_TOML_TPL,
+    BASE_MANIFEST_TOML_TPL,
+    PRODUCT_MANIFEST_TOML_TPL,
+)
 from posit_bakery.templating.templates.containerfile import BASE_CONTAINER_FILE_TPL, PRODUCT_CONTAINER_FILE_TPL
 
 
@@ -35,7 +36,7 @@ def try_get_repo_url(context: Path):
         if url.startswith("git@"):
             url = url.removeprefix("git@")
             url = url.replace(":", "/")
-    except:
+    except:  # noqa
         print("[bright_yellow][bold]WARNING:[/bold] Unable to determine repository name ")
     return url
 
@@ -138,11 +139,11 @@ def create_new_image_version_directory(context: Path, image_name: str, image_ver
 
 
 def render_new_image_version_template_files(
-        context: Path,
-        image_name: str,
-        image_version: str,
-        value_map: Dict[str, str],
-        skip_render_minimal: bool = False,
+    context: Path,
+    image_name: str,
+    image_version: str,
+    value_map: Dict[str, str],
+    skip_render_minimal: bool = False,
 ):
     image_template_path = context / image_name / "template"
     image_versioned_path = context / image_name / image_version
@@ -183,10 +184,10 @@ def render_new_image_version_template_files(
 
 
 def update_manifest_build_matrix(
-        context: Path,
-        image_name: str,
-        image_version: str,
-        skip_mark_latest: bool = False,
+    context: Path,
+    image_name: str,
+    image_version: str,
+    skip_mark_latest: bool = False,
 ):
     image_path = context / image_name
 
@@ -194,7 +195,7 @@ def update_manifest_build_matrix(
     if not manifest_file.exists():
         print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_file}[/bold] not found")
         raise BakeryTemplatingError(f"Manifest file '{manifest_file}' not found")
-    with open(manifest_file, 'r') as f:
+    with open(manifest_file, "r") as f:
         manifest = tomlkit.load(f)
 
     is_mono_os = manifest["const"].get("os", None) is not None
@@ -211,7 +212,9 @@ def update_manifest_build_matrix(
             os_list.append(containerfile[1])
             target_list.append(containerfile[2])
         else:
-            print(f"Unable to parse Containerfile os from {containerfile}. This may cause issues when rendering the build matrix.")
+            print(
+                f"Unable to parse Containerfile os from {containerfile}. This may cause issues when rendering the build matrix."
+            )
     os_list = list(set(os_list))
     target_list = list(set(target_list))
 
