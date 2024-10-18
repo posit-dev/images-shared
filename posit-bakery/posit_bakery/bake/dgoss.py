@@ -15,7 +15,7 @@ class DGossManager:
         self,
         context: Path,
         config: Config,
-        manifests: List[Manifest],
+        manifests: Dict[str, Manifest],
         runtime_options: List[str] = None,
     ):
         self.context = context
@@ -24,7 +24,7 @@ class DGossManager:
         self.commands = []
         self.runtime_options = runtime_options
         self.dgoss_commands = []
-        for manifest in manifests:
+        for manifest_name, manifest in manifests.items():
             self.add_manifest(manifest)
 
     def exec(self):
@@ -61,18 +61,34 @@ class DGossManager:
                 )
             run_env["GOSS_PATH"] = str(goss_tools_path)
 
-        if target_build.goss_test_path is None or not target_build.goss_test_path.exists():
+        goss_test_path = target_build.goss_test_path
+        if goss_test_path is None:
+            raise BakeryGossError(
+                "Path to Goss test directory must be defined or left empty for default. Please check the manifest.toml."
+            )
+        if not goss_test_path.is_absolute():
+            goss_test_path = self.context / goss_test_path
+        if not goss_test_path.exists():
             raise BakeryGossError(
                 f"Unable to find goss test files at {target_build.goss_test_path}. "
                 f"Run `just install-goss` or specify 'GOSS_FILES_PATH' as an environment variable."
             )
-        run_env["GOSS_FILES_PATH"] = target_build.goss_test_path
+        run_env["GOSS_FILES_PATH"] = goss_test_path
 
-        if target_build.goss_deps is not None and target_build.goss_deps.exists():
-            cmd.append(f"--mount=type=bind,source={str(target_build.goss_deps)},destination=/tmp/deps")
+        if target_build.goss_deps is not None:
+            goss_deps = target_build.goss_deps
+            if not goss_deps.is_absolute():
+                goss_deps = self.context / goss_deps
+            if goss_deps.exists():
+                cmd.append(f"--mount=type=bind,source={str(goss_deps)},destination=/tmp/deps")
+            else:
+                print(
+                    f"[bright_yellow][bold]WARNING:[/bold] "
+                    f"Skipping mounting of goss deps directory {goss_deps} as it does not exist."
+                )
 
         if target_build.goss_wait is not None:
-            run_env["GOSS_SLEEP"] = target_build.goss_wait
+            run_env["GOSS_SLEEP"] = str(target_build.goss_wait)
 
         if target_build.type is not None:
             cmd.extend(["-e", f"IMAGE_TYPE={target_build.type}"])
@@ -87,7 +103,7 @@ class DGossManager:
         return run_env, cmd
 
     def add_manifest(self, manifest: Manifest):
-        self.manifests.append(manifest)
         for target_build in manifest.target_builds:
             run_env, cmd = self.construct_dgoss_command(target_build)
             self.dgoss_commands.append((run_env, cmd))
+        self.manifests.append(manifest)
