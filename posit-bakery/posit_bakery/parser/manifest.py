@@ -92,7 +92,7 @@ class TargetBuild:
             self.goss_deps = manifest_path / self.goss_deps
 
             self.goss_test_path = Path(
-                render_template(goss_data.get("path", f"{self.version}/tests"), build=build, target=target, **const)
+                render_template(goss_data.get("path", f"{self.version}/test"), build=build, target=target, **const)
             )
             self.goss_test_path = manifest_path / self.goss_test_path
 
@@ -103,7 +103,7 @@ class TargetBuild:
             )
         else:
             self.goss_deps = manifest_path / f"{self.version}/deps"
-            self.goss_test_path = manifest_path / f"{self.version}/tests"
+            self.goss_test_path = manifest_path / f"{self.version}/test"
             self.goss_wait = 0
             self.goss_command = "sleep infinity"
 
