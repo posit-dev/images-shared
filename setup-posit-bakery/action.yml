@@ -1,4 +1,13 @@
 name: 'Setup Posit Bakery'
+description: "Installs Posit Bakery tool in Github Actions CI"
+
+inputs:
+  # The version of the Posit Bakery tool to install
+  version:
+    description: "The version of the Posit Bakery tool to install"
+    required: true
+    default: "0.2.0.dev0"
+
 runs:
   using: "composite"
   steps:
@@ -9,4 +18,4 @@ runs:
     # TODO: replace with a different Package installation method
     - name: Install Posit Bakery tool
       shell: bash
-      run: pip install https://saipittwood.blob.core.windows.net/packages/posit_bakery-0.1.0-py3-none-any.whl
+      run: pip install https://saipittwood.blob.core.windows.net/packages/posit_bakery-${{ inputs.version }}-py3-none-any.whl
