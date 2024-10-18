@@ -1,24 +1,22 @@
 import os
-import re
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 
 from rich import print
 
-from posit_bakery.bake.plan import BakePlan
-from posit_bakery.error import BakeryFileNotFoundError, BakeryGossError
+from posit_bakery.error import BakeryGossError
 from posit_bakery.parser.config import Config
 from posit_bakery.parser.manifest import Manifest, TargetBuild
 
 
 class DGossManager:
     def __init__(
-            self,
-            context: Path,
-            config: Config,
-            manifests: List[Manifest],
-            runtime_options: List[str] = None,
+        self,
+        context: Path,
+        config: Config,
+        manifests: List[Manifest],
+        runtime_options: List[str] = None,
     ):
         self.context = context
         self.config = config

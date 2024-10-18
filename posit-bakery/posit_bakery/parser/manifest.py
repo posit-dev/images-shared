@@ -1,8 +1,7 @@
 import tomlkit
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
-import jinja2
 from rich import print
 
 from posit_bakery.parser.filters import render_template
@@ -21,9 +20,7 @@ class TargetBuild:
         self.type = target["type"]
 
         # Resolve a unique name to be used in Bake plans
-        self.name = (
-            f"{manifest_name}-{self.version}-{self.type}".replace(".", "-").replace("/","-")
-        )
+        self.name = f"{manifest_name}-{self.version}-{self.type}".replace(".", "-").replace("/", "-")
 
         self.latest = build.get("latest", False)
 
@@ -58,7 +55,9 @@ class TargetBuild:
                         default_latest_tags.append("latest-{{ target.type }}")
         elif const.get("os"):
             self.os = f"{const['os'].title()} {self.version}"
-            self.containerfile_name = render_template(build.get("containerfile", f"Containerfile.{self.type}"), build=build, target=target, **const)
+            self.containerfile_name = render_template(
+                build.get("containerfile", f"Containerfile.{self.type}"), build=build, target=target, **const
+            )
             self.containerfile_path = manifest_path / self.version / self.containerfile_name
 
             if self.type == "std":
@@ -127,8 +126,12 @@ class Manifest:
         for build in self.builds_data.values():
             for target_type, target in self.targets_data.items():
                 build_targets = build.get("targets", [])
-                if (target_type in build_targets or not build_targets) and (filters.get("image_version") == build["version"] or filters.get("image_version") is None):
-                    self.target_builds.append(TargetBuild(self.name, build, target, self.manifest_file_relative.parent, self.const))
+                if (target_type in build_targets or not build_targets) and (
+                    filters.get("image_version") == build["version"] or filters.get("image_version") is None
+                ):
+                    self.target_builds.append(
+                        TargetBuild(self.name, build, target, self.manifest_file_relative.parent, self.const)
+                    )
                 else:
                     print(f"[bright_black]Skipping target '{target_type}' for build version '{build['version']}'")
 
@@ -163,7 +166,5 @@ class Manifest:
             manifest_name = str(manifest_file.parent.relative_to(context))
             if image_name and image_name != manifest_name:
                 continue
-            manifests[manifest_name] = cls(
-                context, manifest_name, manifest_file, {"image_version": image_version}
-            )
+            manifests[manifest_name] = cls(context, manifest_name, manifest_file, {"image_version": image_version})
         return manifests

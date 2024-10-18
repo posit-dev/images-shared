@@ -17,11 +17,7 @@ class BakePlan:
         self.context = context
         self.config = config
         self.manifests = []
-        self.group = {
-            "default": {
-                "targets": []
-            }
-        }
+        self.group = {"default": {"targets": []}}
         self.target = {}
 
     @staticmethod
@@ -48,13 +44,9 @@ class BakePlan:
             if target_build.type not in self.group["default"]["targets"]:
                 self.group["default"]["targets"].append(target_build.type)
             if target_build.type not in self.group:
-                self.group[target_build.type] = {
-                    "targets": []
-                }
+                self.group[target_build.type] = {"targets": []}
             if manifest.name not in self.group:
-                self.group[manifest.name] = {
-                    "targets": []
-                }
+                self.group[manifest.name] = {"targets": []}
             self.group[target_build.type]["targets"].append(target_name)
             self.group[manifest.name]["targets"].append(target_name)
 
@@ -96,7 +88,7 @@ class BakePlan:
 
     @classmethod
     def new_plan(
-            cls, context: Path, skip_override: bool = False, image_name: str = None, image_version: str = None
+        cls, context: Path, skip_override: bool = False, image_name: str = None, image_version: str = None
     ) -> "BakePlan":
         config = Config.load_config_from_context(context, skip_override)
         manifests = Manifest.load_manifests_from_context(context, image_name, image_version)
