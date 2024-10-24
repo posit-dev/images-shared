@@ -10,7 +10,7 @@ import (
 )
 
 const quartoDownloadUrlRoot = "https://github.com/quarto-dev/quarto-cli/releases/download"
-const workbenchQuartoPath = "/lib/rstudio-server/bin/quarto"
+const WorkbenchQuartoPath = "/lib/rstudio-server/bin/quarto"
 
 func InstallQuarto(quartoVersion string, installTinyTeX, addPathTinyTeX, force bool) error {
 	quartoInstallationPath := "/opt/quarto"
@@ -18,7 +18,7 @@ func InstallQuarto(quartoVersion string, installTinyTeX, addPathTinyTeX, force b
 
 	slog.Debug("Quarto version: " + quartoVersion)
 
-	workbenchQuartoExists, err := system.PathExists(workbenchQuartoPath)
+	workbenchQuartoExists, err := system.PathExists(WorkbenchQuartoPath)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func InstallQuarto(quartoVersion string, installTinyTeX, addPathTinyTeX, force b
 
 	if workbenchQuartoExists && !force {
 		slog.Warn("Quarto is already installed via Workbench. Use the `--force` flag to install a standalone version.")
-		quartoInstallationPath = workbenchQuartoPath
+		quartoInstallationPath = WorkbenchQuartoPath
 		quartoBinPath = fmt.Sprintf("%s/bin/quarto", quartoInstallationPath)
 		slog.Info("Using Quarto from Workbench: " + quartoBinPath)
 	}
