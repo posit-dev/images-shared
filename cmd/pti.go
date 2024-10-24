@@ -424,11 +424,65 @@ func main() {
 							system.RequireSudo()
 
 							quartoVersion := cCtx.String("version")
+							force := cCtx.Bool("force")
+							workbenchQuartoExists, err := system.PathExists("/opt/posit-workbench/quarto")
+							if err != nil {
+								return err
+							}
+							if quartoVersion == "" && (!workbenchQuartoExists && force) {
+								return fmt.Errorf("Quarto version must be provided")
+							}
+
 							installTinyTex := cCtx.Bool("install-tinytex")
 							addPathTinyTex := cCtx.Bool("add-path-tinytex")
-							force := cCtx.Bool("force")
 
 							return tools.InstallQuarto(quartoVersion, installTinyTex, addPathTinyTex, force)
+						},
+					},
+					{
+						Name:  "install-tinytex",
+						Usage: "Install Quarto TinyTeX",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "quarto-path",
+								Usage: "Path to Quarto installation",
+							},
+							&cli.BoolFlag{
+								Name:  "add-path-tinytex",
+								Usage: "Add Quarto TinyTeX to PATH",
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							quartoPath := cCtx.String("quarto-path")
+							if quartoPath == "" {
+								quartoPath = "/opt/quarto/bin/quarto"
+
+								exists, err := system.PathExists(quartoPath)
+								if err != nil {
+									return err
+								}
+								if !exists {
+									slog.Debug("Quarto binary does not exist at path %s", quartoPath)
+								}
+
+								workbenchQuartoBinPath := tools.WorkbenchQuartoPath + "/bin/quarto"
+
+								exists, err = system.PathExists(workbenchQuartoBinPath)
+								if err != nil {
+									return err
+								}
+								if !exists {
+									return fmt.Errorf("Could not find Quarto binary at %s or %s", quartoPath, workbenchQuartoBinPath)
+								}
+							}
+
+							var options []string
+							addToPath := cCtx.Bool("add-path-tinytex")
+							if addToPath {
+								options = append(options, "--update-path")
+							}
+
+							return tools.InstallQuartoTool(quartoPath, "tinytex", &options)
 						},
 					},
 					{
@@ -436,9 +490,8 @@ func main() {
 						Usage: "Update Quarto TinyTeX",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:        "quarto-path",
-								Usage:       "Path to Quarto installation",
-								DefaultText: "/opt/quarto/bin/quarto",
+								Name:  "quarto-path",
+								Usage: "Path to Quarto installation",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
