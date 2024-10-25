@@ -518,6 +518,15 @@ func main() {
 				Usage: "Install or manage optional container-specific tooling",
 				Subcommands: []*cli.Command{
 					{
+						Name:  "bootstrap",
+						Usage: "Bootstrap container with necessary tools and packages",
+						Action: func(cCtx *cli.Context) error {
+							system.RequireSudo()
+
+							return tools.Bootstrap()
+						},
+					},
+					{
 						Name:  "install-tini",
 						Usage: "Install Tini",
 						Flags: []cli.Flag{
