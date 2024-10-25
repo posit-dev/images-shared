@@ -46,7 +46,7 @@ func InstallProDrivers(driversVersion string) error {
 	slog.Debug("Driver download URL: " + downloadUrl)
 
 	// Install the driver dependencies
-	if err := system.InstallPackages(driverDependencies); err != nil {
+	if err := system.InstallPackages(&driverDependencies); err != nil {
 		return err
 	}
 

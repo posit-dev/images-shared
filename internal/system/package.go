@@ -55,7 +55,7 @@ func ExtractTarGz(archivePath, destinationPath string, options *[]string) error 
 	return nil
 }
 
-func InstallPackages(packages []string) error {
+func InstallPackages(packages *[]string) error {
 	var si sysinfo.SysInfo
 	si.GetSysInfo()
 
@@ -86,7 +86,7 @@ func InstallPackages(packages []string) error {
 	return nil
 }
 
-func InstallPackagesFiles(packageFiles []string) error {
+func InstallPackagesFiles(packageFiles *[]string) error {
 	var si sysinfo.SysInfo
 	si.GetSysInfo()
 
@@ -105,6 +105,34 @@ func InstallPackagesFiles(packageFiles []string) error {
 	case "almalinux", "centos", "rockylinux", "rhel":
 		slog.Debug("Detected RHEL-based distribution, using yum")
 		if err := installRpmPackagesFiles(packageFiles); err != nil {
+			return err
+		}
+		if err := cleanYum(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+	}
+
+	return nil
+}
+
+func RemovePackages(packages *[]string) error {
+	var si sysinfo.SysInfo
+	si.GetSysInfo()
+
+	switch si.OS.Vendor {
+	case "ubuntu", "debian":
+		slog.Debug("Detected Debian-based distribution, using apt")
+		if err := removeDebPackages(packages); err != nil {
+			return err
+		}
+		if err := cleanApt(); err != nil {
+			return err
+		}
+	case "almalinux", "centos", "rockylinux", "rhel":
+		slog.Debug("Detected RHEL-based distribution, using yum")
+		if err := removeRpmPackages(packages); err != nil {
 			return err
 		}
 		if err := cleanYum(); err != nil {
@@ -247,10 +275,10 @@ func installLocalDebPackage(packagePath string) error {
 	return nil
 }
 
-func installDebPackages(packages []string) error {
-	slog.Info("Installing deb packages: " + strings.Join(packages, ", "))
+func installDebPackages(packages *[]string) error {
+	slog.Info("Installing deb packages: " + strings.Join(*packages, ", "))
 
-	args := append([]string{"install", "-y", "-q"}, packages...)
+	args := append([]string{"install", "-y", "-q"}, *packages...)
 	cmd := exec.Command("apt-get", args...)
 	slog.Debug("Running command: " + cmd.String())
 	if err := cmd.Run(); err != nil {
@@ -260,10 +288,10 @@ func installDebPackages(packages []string) error {
 	return nil
 }
 
-func installDebPackagesFiles(packagesFiles []string) error {
-	slog.Info("Installing deb packages from file(s): " + strings.Join(packagesFiles, ", "))
+func installDebPackagesFiles(packagesFiles *[]string) error {
+	slog.Info("Installing deb packages from file(s): " + strings.Join(*packagesFiles, ", "))
 
-	for _, packagesFile := range packagesFiles {
+	for _, packagesFile := range *packagesFiles {
 		slog.Info("Installing packages from file: " + packagesFile)
 
 		fh, err := os.Open(packagesFile)
@@ -281,10 +309,23 @@ func installDebPackagesFiles(packagesFiles []string) error {
 			return err
 		}
 
-		if err := installDebPackages(lines); err != nil {
+		if err := installDebPackages(&lines); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func removeDebPackages(packages *[]string) error {
+	slog.Info("Removing deb packages: " + strings.Join(*packages, ", "))
+
+	args := append([]string{"remove", "-y", "-q"}, *packages...)
+	cmd := exec.Command("apt-get", args...)
+	slog.Debug("Running command: " + cmd.String())
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -341,10 +382,10 @@ func installLocalRpmPackage(packagePath string) error {
 	return nil
 }
 
-func installRpmPackages(packages []string) error {
-	slog.Info("Installing rpm packages: " + strings.Join(packages, ", "))
+func installRpmPackages(packages *[]string) error {
+	slog.Info("Installing rpm packages: " + strings.Join(*packages, ", "))
 
-	args := append([]string{"install", "-y", "-q"}, packages...)
+	args := append([]string{"install", "-y", "-q"}, *packages...)
 	cmd := exec.Command("yum", args...)
 	slog.Debug("Running command: " + cmd.String())
 	if err := cmd.Run(); err != nil {
@@ -354,10 +395,10 @@ func installRpmPackages(packages []string) error {
 	return nil
 }
 
-func installRpmPackagesFiles(packagesFiles []string) error {
-	slog.Info("Installing rpm packages from file(s): " + strings.Join(packagesFiles, ", "))
+func installRpmPackagesFiles(packagesFiles *[]string) error {
+	slog.Info("Installing rpm packages from file(s): " + strings.Join(*packagesFiles, ", "))
 
-	for _, packagesFile := range packagesFiles {
+	for _, packagesFile := range *packagesFiles {
 		slog.Info("Installing packages from file: " + packagesFile)
 
 		fh, err := os.Open(packagesFile)
@@ -375,10 +416,23 @@ func installRpmPackagesFiles(packagesFiles []string) error {
 			return err
 		}
 
-		if err := installRpmPackages(lines); err != nil {
+		if err := installRpmPackages(&lines); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func removeRpmPackages(packages *[]string) error {
+	slog.Info("Removing rpm packages: " + strings.Join(*packages, ", "))
+
+	args := append([]string{"remove", "-y", "-q"}, *packages...)
+	cmd := exec.Command("yum", args...)
+	slog.Debug("Running command: " + cmd.String())
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
