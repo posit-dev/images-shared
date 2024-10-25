@@ -608,11 +608,31 @@ func main() {
 									},
 								},
 								Action: func(context *cli.Context) error {
-									if len(context.StringSlice("package")) > 0 {
-										return system.InstallPackages(context.StringSlice("package"))
+									packages := context.StringSlice("package")
+									if len(packages) > 0 {
+										return system.InstallPackages(&packages)
 									}
-									if len(context.StringSlice("packages-file")) > 0 {
-										return system.InstallPackagesFiles(context.StringSlice("packages-file"))
+									packageFiles := context.StringSlice("packages-file")
+									if len(packageFiles) > 0 {
+										return system.InstallPackagesFiles(&packageFiles)
+									}
+									return nil
+								},
+							},
+							{
+								Name:  "uninstall",
+								Usage: "Uninstall system packages",
+								Flags: []cli.Flag{
+									&cli.StringSliceFlag{
+										Name:    "package",
+										Aliases: []string{"p"},
+										Usage:   "Package(s) to install",
+									},
+								},
+								Action: func(cCtx *cli.Context) error {
+									packages := cCtx.StringSlice("package")
+									if len(packages) > 0 {
+										return system.RemovePackages(&packages)
 									}
 									return nil
 								},
