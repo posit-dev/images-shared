@@ -10,6 +10,18 @@ import (
 const tiniDownloadUrl = "https://cdn.posit.co/platform/tini/v0.19.0/tini-amd64"
 const waitForItDownloadUrl = "https://cdn.posit.co/platform/wait-for-it/wait-for-it.sh"
 
+func Bootstrap() error {
+	if err := system.InstallPackages([]string{"ca-certificates"}); err != nil {
+		slog.Error("Failed to install ca-certificates", err)
+		return err
+	}
+	if err := system.UpdateCACertificates(); err != nil {
+		slog.Error("Failed to update CA certificates", err)
+		return err
+	}
+	return nil
+}
+
 func InstallTini(installPath string) error {
 	downloadPath := "/tmp/tini"
 	s, _ := pterm.DefaultSpinner.Start("Downloading tini...")
