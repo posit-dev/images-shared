@@ -42,9 +42,9 @@ def try_get_repo_url(context: Path):
 
 
 def try_human_readable_os_name(os: str):
-    p = re.compile(r"([a-zA-Z]+)(0-9\.+)")
+    p = re.compile(r"([a-zA-Z]+)([0-9.]+)")
     res = p.match(os).groups()
-    return " ".join(res)
+    return " ".join(res).title()
 
 
 def create_new_image_directories(context: Path, image_name: str) -> (Path, Path):
