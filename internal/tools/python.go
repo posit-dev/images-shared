@@ -302,7 +302,7 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 	slog.Info("Installing Python package(s): " + strings.Join(*packages, ", "))
 
 	args := []string{"-m", "pip", "install"}
-	if len(*installOptions) > 0 {
+	if installOptions != nil {
 		args = append(args, *installOptions...)
 	}
 	args = append(args, *packages...)
@@ -319,15 +319,15 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 	return nil
 }
 
-func installPythonPackagesFromFile(pythonBin string, requirementsFile *[]string, installOptions *[]string) error {
-	slog.Info("Installing Python packages from requirements file(s): " + strings.Join(*requirementsFile, ", "))
+func installPythonPackagesFromFile(pythonBin string, requirementsFiles *[]string, installOptions *[]string) error {
+	slog.Info("Installing Python packages from requirements file(s): " + strings.Join(*requirementsFiles, ", "))
 
 	args := []string{"-m", "pip", "install"}
-	if len(*installOptions) > 0 {
+	if installOptions != nil {
 		args = append(args, *installOptions...)
 	}
-	for _, requirementFile := range *requirementsFile {
-		args = append(args, "-r", requirementFile)
+	for _, requirementsFile := range *requirementsFiles {
+		args = append(args, "-r", requirementsFile)
 	}
 	cmd := exec.Command(pythonBin, args...)
 	slog.Debug("Running command: " + cmd.String())
