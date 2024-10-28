@@ -20,7 +20,7 @@ class TargetBuild:
         self.type = target["type"]
 
         # Resolve a unique name to be used in Bake plans
-        self.name = f"{manifest_name}-{self.version}-{self.type}".replace(".", "-").replace("/", "-")
+        self.name = f"{manifest_name}-{self.version}-{self.type}".replace(".", "-").replace("/", "-").replace("+", "-")
 
         self.latest = build.get("latest", False)
 
@@ -48,7 +48,10 @@ class TargetBuild:
                     if self.build_data.get("primary_os"):
                         default_latest_tags.append("latest")
             else:
-                default_tags = ["{{ build.version }}-{{ target.type }}"]
+                default_tags = [
+                    "{{ build.version | tag_safe }}-{{ build.os | condense }}-{{ target.type }}",
+                    "{{ build.version | clean_version }}-{{ build.os | condense }}-{{ target.type }}",
+                ]
                 if self.latest:
                     default_latest_tags = ["{{ build.os | condense }}-{{ target.type }}"]
                     if self.build_data.get("primary_os"):
