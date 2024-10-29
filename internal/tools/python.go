@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"posit-images-shared/internal/system"
 	"strconv"
 	"strings"
@@ -150,9 +149,7 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 	// Create a new virtual environment for Jupyter
 	slog.Info("Creating a new virtual environment for Jupyter")
 	args := []string{"-m", "venv", jupyterPath}
-	cmd := exec.Command(pythonBinPath, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBinPath, &args, nil); err != nil {
 		return err
 	}
 
@@ -306,9 +303,7 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 		args = append(args, *installOptions...)
 	}
 	args = append(args, *packages...)
-	cmd := exec.Command(pythonBin, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
 		return err
 	}
 
@@ -329,9 +324,7 @@ func installPythonPackagesFromFile(pythonBin string, requirementsFiles *[]string
 	for _, requirementsFile := range *requirementsFiles {
 		args = append(args, "-r", requirementsFile)
 	}
-	cmd := exec.Command(pythonBin, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
 		return err
 	}
 
@@ -346,9 +339,7 @@ func EnsurePip(pythonBin string) error {
 	slog.Debug("Ensuring pip is installed")
 
 	args := []string{"-m", "ensurepip", "--upgrade"}
-	cmd := exec.Command(pythonBin, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
 		return err
 	}
 
@@ -359,9 +350,7 @@ func PurgePipCache(pythonBin string) error {
 	slog.Info("Purging pip cache")
 
 	args := []string{"-m", "pip", "cache", "purge"}
-	cmd := exec.Command(pythonBin, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
 		return err
 	}
 
@@ -396,9 +385,7 @@ func ConfigureIPythonKernel(pythonBin, machineName, displayName string) error {
 	}
 
 	args := []string{"-m", "ipykernel", "install", "--name", machineName, "--display-name", displayName}
-	cmd := exec.Command(pythonBin, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
 		return err
 	}
 

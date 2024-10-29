@@ -5,7 +5,6 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
-	"os/exec"
 	"posit-images-shared/internal/system"
 )
 
@@ -109,9 +108,7 @@ func InstallQuartoTool(quartoBinPath string, toolName string, options *[]string)
 	if len(*options) > 0 {
 		args = append(args, *options...)
 	}
-	cmd := exec.Command(quartoBinPath, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(quartoBinPath, &args, nil); err != nil {
 		return err
 	}
 
@@ -125,9 +122,7 @@ func UpdateQuartoTool(quartoBinPath, toolName string, options *[]string) error {
 	if len(*options) > 0 {
 		args = append(args, *options...)
 	}
-	cmd := exec.Command(quartoBinPath, args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := system.RunCommand(quartoBinPath, &args, nil); err != nil {
 		return err
 	}
 

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"posit-images-shared/internal/system"
 	"strconv"
 	"strings"
@@ -331,10 +330,8 @@ func installRPackages(rBin string, packages *[]string) error {
 		quotedPackages[i] = fmt.Sprintf("\"%s\"", pkg)
 	}
 	packageList := "c(" + strings.Join(quotedPackages, ", ") + ")"
-
-	cmd := exec.Command(rBin, "--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo))
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo)}
+	if err := system.RunCommand(rBin, &args, nil); err != nil {
 		return err
 	}
 
@@ -350,9 +347,8 @@ func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
 
 	for _, file := range *packagesFiles {
 		slog.Debug("Installing R packages from file: " + file)
-		cmd := exec.Command(rBin, "--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo))
-		slog.Debug("Running command: " + cmd.String())
-		if err := cmd.Run(); err != nil {
+		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo)}
+		if err := system.RunCommand(rBin, &args, nil); err != nil {
 			return err
 		}
 	}

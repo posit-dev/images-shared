@@ -6,7 +6,6 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -46,9 +45,7 @@ func ExtractTarGz(archivePath, destinationPath string, options *[]string) error 
 
 	args := []string{"-C", destinationPath, "-xvzf", archivePath}
 	args = append(args, *options...)
-	cmd := exec.Command("tar", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("tar", &args, nil); err != nil {
 		return err
 	}
 
@@ -229,9 +226,7 @@ func CleanPackages() error {
 func updateApt() error {
 	slog.Info("Updating package lists for apt")
 
-	cmd := exec.Command("apt-get", "update", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &[]string{"update", "-q"}, nil); err != nil {
 		return err
 	}
 
@@ -241,9 +236,7 @@ func updateApt() error {
 func upgradeApt() error {
 	slog.Info("Upgrading installed packages for apt")
 
-	cmd := exec.Command("apt-get", "upgrade", "-y", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &[]string{"upgrade", "-y", "-q"}, nil); err != nil {
 		return err
 	}
 
@@ -253,9 +246,7 @@ func upgradeApt() error {
 func distUpgradeApt() error {
 	slog.Info("Running dist-upgrade for apt")
 
-	cmd := exec.Command("apt-get", "dist-upgrade", "-y", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &[]string{"dist-upgrade", "-y", "-q"}, nil); err != nil {
 		return err
 	}
 
@@ -266,9 +257,7 @@ func installLocalDebPackage(packagePath string) error {
 	slog.Info("Installing local deb package: " + packagePath)
 
 	args := []string{"install", "-y", "-q", packagePath}
-	cmd := exec.Command("apt-get", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &args, nil); err != nil {
 		return err
 	}
 
@@ -279,9 +268,7 @@ func installDebPackages(packages *[]string) error {
 	slog.Info("Installing deb packages: " + strings.Join(*packages, ", "))
 
 	args := append([]string{"install", "-y", "-q"}, *packages...)
-	cmd := exec.Command("apt-get", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &args, nil); err != nil {
 		return err
 	}
 
@@ -303,7 +290,7 @@ func installDebPackagesFiles(packagesFiles *[]string) error {
 		var lines []string
 		scanner := bufio.NewScanner(fh)
 		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
+			lines = append(lines, strings.TrimSpace(scanner.Text()))
 		}
 		if err := scanner.Err(); err != nil {
 			return err
@@ -320,9 +307,7 @@ func removeDebPackages(packages *[]string) error {
 	slog.Info("Removing deb packages: " + strings.Join(*packages, ", "))
 
 	args := append([]string{"remove", "-y", "-q"}, *packages...)
-	cmd := exec.Command("apt-get", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &args, nil); err != nil {
 		return err
 	}
 
@@ -332,15 +317,11 @@ func removeDebPackages(packages *[]string) error {
 func cleanApt() error {
 	slog.Info("Cleaning up apt")
 
-	cmd := exec.Command("apt-get", "autoremove", "-y", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &[]string{"autoremove", "-y", "-q"}, nil); err != nil {
 		return err
 	}
 
-	cmd = exec.Command("apt-get", "clean", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("apt-get", &[]string{"clean", "-q"}, nil); err != nil {
 		return err
 	}
 
@@ -360,9 +341,7 @@ func cleanApt() error {
 func upgradeYum() error {
 	slog.Info("Upgrading installed packages for yum")
 
-	cmd := exec.Command("yum", "update", "-y", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &[]string{"update", "-y", "-q"}, nil); err != nil {
 		return err
 	}
 
@@ -373,9 +352,7 @@ func installLocalRpmPackage(packagePath string) error {
 	slog.Info("Installing local rpm package: " + packagePath)
 
 	args := []string{"install", "-y", "-q", packagePath}
-	cmd := exec.Command("yum", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &args, nil); err != nil {
 		return err
 	}
 
@@ -386,9 +363,7 @@ func installRpmPackages(packages *[]string) error {
 	slog.Info("Installing rpm packages: " + strings.Join(*packages, ", "))
 
 	args := append([]string{"install", "-y", "-q"}, *packages...)
-	cmd := exec.Command("yum", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &args, nil); err != nil {
 		return err
 	}
 
@@ -427,9 +402,7 @@ func removeRpmPackages(packages *[]string) error {
 	slog.Info("Removing rpm packages: " + strings.Join(*packages, ", "))
 
 	args := append([]string{"remove", "-y", "-q"}, *packages...)
-	cmd := exec.Command("yum", args...)
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &args, nil); err != nil {
 		return err
 	}
 
@@ -439,15 +412,11 @@ func removeRpmPackages(packages *[]string) error {
 func cleanYum() error {
 	slog.Info("Cleaning up yum")
 
-	cmd := exec.Command("yum", "autoremove", "-y", "-q")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &[]string{"autoremove", "-y", "-q"}, nil); err != nil {
 		return err
 	}
 
-	cmd = exec.Command("yum", "clean", "all")
-	slog.Debug("Running command: " + cmd.String())
-	if err := cmd.Run(); err != nil {
+	if err := RunCommand("yum", &[]string{"clean", "all"}, nil); err != nil {
 		return err
 	}
 
