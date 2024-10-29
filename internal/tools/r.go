@@ -331,11 +331,8 @@ func installRPackages(rBin string, packages *[]string) error {
 	}
 	packageList := "c(" + strings.Join(quotedPackages, ", ") + ")"
 	args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo)}
-	if err := system.RunCommand(rBin, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(rBin, &args)
+	return s.Execute()
 }
 
 func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
@@ -348,8 +345,9 @@ func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
 	for _, file := range *packagesFiles {
 		slog.Debug("Installing R packages from file: " + file)
 		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo)}
-		if err := system.RunCommand(rBin, &args, nil); err != nil {
-			return err
+		s := system.NewSysCmd(rBin, &args)
+		if err := s.Execute(); err != nil {
+			slog.Error(fmt.Sprintf("Error installing R packages from %s: %v", file, err))
 		}
 	}
 
