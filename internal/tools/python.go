@@ -149,7 +149,8 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 	// Create a new virtual environment for Jupyter
 	slog.Info("Creating a new virtual environment for Jupyter")
 	args := []string{"-m", "venv", jupyterPath}
-	if err := system.RunCommand(pythonBinPath, &args, nil); err != nil {
+	s := system.NewSysCmd(pythonBinPath, &args)
+	if err := s.Execute(); err != nil {
 		return err
 	}
 
@@ -303,7 +304,8 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 		args = append(args, *installOptions...)
 	}
 	args = append(args, *packages...)
-	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
+	s := system.NewSysCmd(pythonBin, &args)
+	if err := s.Execute(); err != nil {
 		return err
 	}
 
@@ -324,7 +326,8 @@ func installPythonPackagesFromFile(pythonBin string, requirementsFiles *[]string
 	for _, requirementsFile := range *requirementsFiles {
 		args = append(args, "-r", requirementsFile)
 	}
-	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
+	s := system.NewSysCmd(pythonBin, &args)
+	if err := s.Execute(); err != nil {
 		return err
 	}
 
@@ -339,22 +342,16 @@ func EnsurePip(pythonBin string) error {
 	slog.Debug("Ensuring pip is installed")
 
 	args := []string{"-m", "ensurepip", "--upgrade"}
-	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(pythonBin, &args)
+	return s.Execute()
 }
 
 func PurgePipCache(pythonBin string) error {
 	slog.Info("Purging pip cache")
 
 	args := []string{"-m", "pip", "cache", "purge"}
-	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(pythonBin, &args)
+	return s.Execute()
 }
 
 func PythonCoreModuleSetup(pythonBin string) error {
@@ -385,9 +382,6 @@ func ConfigureIPythonKernel(pythonBin, machineName, displayName string) error {
 	}
 
 	args := []string{"-m", "ipykernel", "install", "--name", machineName, "--display-name", displayName}
-	if err := system.RunCommand(pythonBin, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(pythonBin, &args)
+	return s.Execute()
 }
