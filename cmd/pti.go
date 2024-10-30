@@ -31,6 +31,7 @@ func main() {
 				Usage:   "Enable debug mode",
 				Action: func(c *cli.Context, debugMode bool) error {
 					if debugMode {
+						slog.Info("Debug mode enabled")
 						pterm.DefaultLogger.Level = pterm.LogLevelDebug
 					}
 					return nil
@@ -154,7 +155,7 @@ func main() {
 									return fmt.Errorf("Python version or path must be provided")
 								}
 
-								pythonPath := "/opt/python/" + pythonVersion + "/bin/python" // Assume pythonPath if not given
+								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
 								slog.Info("Assuming Python binary path " + pythonPath)
 							}
 							// Check that binary exists
@@ -205,7 +206,7 @@ func main() {
 									return fmt.Errorf("Python version or path must be provided")
 								}
 
-								pythonPath := "/opt/python/" + pythonVersion + "/bin/python" // Assume pythonPath if not given
+								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
 								slog.Info("Assuming Python binary path " + pythonPath)
 							}
 							// Check that binary exists
@@ -261,7 +262,7 @@ func main() {
 									return fmt.Errorf("Python version or path must be provided")
 								}
 
-								pythonPath := "/opt/python/" + pythonVersion + "/bin/python" // Assume pythonPath if not given
+								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
 								slog.Info("Assuming Python binary path " + pythonPath)
 							} else {
 								if machineName == "" && pythonVersion == "" {
