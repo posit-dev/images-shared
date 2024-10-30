@@ -71,13 +71,14 @@ func CopyFile(oldFilePath, newFilePath string) error {
 
 func PathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Debug("Path does not exist: " + path)
+			return false, nil
+		}
+		return false, err
 	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
+	return true, nil
 }
 
 func DirIsEmpty(path string) (bool, error) {

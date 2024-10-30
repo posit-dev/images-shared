@@ -123,6 +123,7 @@ func InstallPythonPackages(pythonBinPath string, pythonPackages *[]string, pytho
 
 func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) error {
 	slog.Debug("Python binary path: " + pythonBinPath)
+	jupyterPythonBinPath := jupyterPath + "/bin/python"
 
 	// Check if Python is installed
 	exists, err := system.PathExists(pythonBinPath)
@@ -154,11 +155,11 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 		return err
 	}
 
-	if err := PythonCoreModuleSetup(jupyterPath); err != nil {
+	if err := PythonCoreModuleSetup(jupyterPythonBinPath); err != nil {
 		return err
 	}
 
-	if err := installPythonPackages(jupyterPath, &[]string{"jupyterlab", "notebook", "pwb_jupyterlab"}, nil); err != nil {
+	if err := installPythonPackages(jupyterPythonBinPath, &[]string{"jupyterlab", "notebook", "pwb_jupyterlab"}, nil); err != nil {
 		return err
 	}
 
