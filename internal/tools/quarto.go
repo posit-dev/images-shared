@@ -108,11 +108,8 @@ func InstallQuartoTool(quartoBinPath string, toolName string, options *[]string)
 	if len(*options) > 0 {
 		args = append(args, *options...)
 	}
-	if err := system.RunCommand(quartoBinPath, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(quartoBinPath, &args)
+	return s.Execute()
 }
 
 func UpdateQuartoTool(quartoBinPath, toolName string, options *[]string) error {
@@ -122,9 +119,6 @@ func UpdateQuartoTool(quartoBinPath, toolName string, options *[]string) error {
 	if len(*options) > 0 {
 		args = append(args, *options...)
 	}
-	if err := system.RunCommand(quartoBinPath, &args, nil); err != nil {
-		return err
-	}
-
-	return nil
+	s := system.NewSysCmd(quartoBinPath, &args)
+	return s.Execute()
 }

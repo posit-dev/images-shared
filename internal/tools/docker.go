@@ -12,11 +12,11 @@ const waitForItDownloadUrl = "https://cdn.posit.co/platform/wait-for-it/wait-for
 
 func Bootstrap() error {
 	if err := system.InstallPackages(&[]string{"ca-certificates"}); err != nil {
-		slog.Error("Failed to install ca-certificates", err)
+		slog.Error("Failed to install ca-certificates: " + err.Error())
 		return err
 	}
 	if err := system.UpdateCACertificates(); err != nil {
-		slog.Error("Failed to update CA certificates", err)
+		slog.Error("Failed to update CA certificates" + err.Error())
 		return err
 	}
 	return nil
