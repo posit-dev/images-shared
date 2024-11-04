@@ -18,12 +18,18 @@ def condense(s: str) -> str:
     return s.replace(" ", "").replace("-", "").replace(".", "").lower()
 
 
-def jinja2_env() -> jinja2.Environment:
+def regex_replace(s: str, find: str, replace: str) -> str:
+    """Jinja2 filter to replace a regex pattern in a string."""
+    return re.sub(find, replace, s)
+
+
+def jinja2_env(**kwargs) -> jinja2.Environment:
     """Creates a Jinja2 environment with custom filters"""
-    env = jinja2.Environment()
+    env = jinja2.Environment(**kwargs)
     env.filters["tag_safe"] = tag_safe
     env.filters["clean_version"] = clean_version
     env.filters["condense"] = condense
+    env.filters["regex_replace"] = regex_replace
     return env
 
 

@@ -6,7 +6,6 @@ import tomlkit
 from rich import print
 from tomlkit import TOMLDocument
 from tomlkit.items import AoT
-from tomlkit.toml_file import TOMLFile
 
 from posit_bakery.error import BakeryConfigError
 
