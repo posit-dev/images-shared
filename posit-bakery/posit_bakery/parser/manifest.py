@@ -138,7 +138,7 @@ class Manifest:
                 else:
                     print(f"[bright_black]Skipping target '{target_type}' for build version '{build['version']}'")
 
-    def load_manifest(self, manifest_file: Path):
+    def load(self, manifest_file: Path):
         with open(manifest_file, "rb") as f:
             self.manifest_config = tomlkit.load(f)
 
