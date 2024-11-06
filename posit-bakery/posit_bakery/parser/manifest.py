@@ -9,7 +9,7 @@ from rich import print
 from tomlkit import TOMLDocument
 from tomlkit.items import AoT, Table
 
-from posit_bakery.parser.filters import render_template
+from posit_bakery.parser.templating.filters import render_template
 
 
 class TargetBuild:

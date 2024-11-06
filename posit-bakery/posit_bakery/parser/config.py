@@ -5,6 +5,7 @@ from typing import Union, List, Dict, Optional
 import tomlkit
 from rich import print
 from tomlkit import TOMLDocument
+from tomlkit.container import Container
 from tomlkit.items import AoT
 
 from posit_bakery.error import BakeryConfigError
@@ -13,8 +14,8 @@ from posit_bakery.error import BakeryConfigError
 class Config:
     def __init__(
             self,
-            config_file: Union[str, bytes, os.PathLike],
-            override_config_file: Union[str, bytes, os.PathLike] = None,
+            config_file: Union[str, os.PathLike],
+            override_config_file: Union[str, os.PathLike, None] = None,
     ) -> None:
         # The config.toml file for the project
         self.config_file: Path = Path(config_file)
@@ -49,10 +50,11 @@ class Config:
                 if self.override_config_data.get("registry", None):
                     self.registries: Union[AoT, List[Dict[str, str]]] = self.override_config_data["registry"]
                 if self.override_config_data.get("repository", None):
-                    self.repository_url: str = self.override_config_data["repository"].get("url", self.repository_url)
-                    self.vendor: str = self.override_config_data["repository"].get("vendor", self.vendor)
-                    self.maintainer: str = self.override_config_data["repository"].get("maintainer", self.maintainer)
-                    self.authors: List[str] = self.override_config_data["repository"].get("authors", self.authors)
+                    override_repository: Container = self.override_config_data["repository"]
+                    self.repository_url = override_repository.get("url", self.repository_url)
+                    self.vendor = override_repository.get("vendor", self.vendor)
+                    self.maintainer = override_repository.get("maintainer", self.maintainer)
+                    self.authors = override_repository.get("authors", self.authors)
 
     @staticmethod
     def load(config_file: Union[str, bytes, os.PathLike]) -> TOMLDocument:
@@ -68,7 +70,7 @@ class Config:
         return [f"{r['host']}/{r['namespace']}" for r in self.registries]
 
     @classmethod
-    def load_config_from_context(cls, context: Union[str, bytes, os.PathLike], skip_override: bool = False) -> "Config":
+    def load_config_from_context(cls, context: Union[str, os.PathLike], skip_override: bool = False) -> "Config":
         """Loads a Config object from a context directory
 
         :param context: The context directory
