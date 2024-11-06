@@ -1,4 +1,5 @@
-CONFIG_TOML_TPL = """#######################################################################################################################
+# Template for root config.toml file
+TPL_CONFIG_TOML = """#######################################################################################################################
 # BAKERY REPOSITORY CONFIG
 #
 # This file is used to define global properties for builds inside a repo managed by Posit's Bakery tool.
@@ -18,7 +19,8 @@ host = "docker.io"
 namespace = "posit"
 """
 
-BASE_MANIFEST_TOML_TPL = """#######################################################################################################################
+# Template for a base image manifest.toml file
+TPL_BASE_MANIFEST_TOML = """#######################################################################################################################
 # BAKERY MANIFEST
 #
 # This file is used to define nested image builds inside a repo managed by Posit's Bakery tool.
@@ -71,7 +73,8 @@ type = "std"
 # command = "sleep infinity"  # Defaults to sleep infinity to run if not specified.
 """
 
-PRODUCT_MANIFEST_TOML_TPL = """#######################################################################################################################
+# Template for a product image manifest.toml file
+TPL_PRODUCT_MANIFEST_TOML = """#######################################################################################################################
 # BAKERY MANIFEST
 #
 # This file is used to define nested image builds inside a repo managed by Posit's Bakery tool.

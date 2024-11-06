@@ -1,4 +1,5 @@
-BASE_CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
+# Template for a base image Containerfile
+TPL_BASE_CONTAINERFILE = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
 
 ### ARG declarations ###
 ARG SCRIPTS_DIR=/opt/posit/scripts
@@ -31,7 +32,8 @@ ENTRYPOINT ["tini", "--"]
 
 """
 
-PRODUCT_CONTAINER_FILE_TPL = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
+# Template for a product image Containerfile
+TPL_PRODUCT_CONTAINERFILE = """FROM {{ base_image }}:{% raw %}{{ base_image_version }}{% endraw %}
 
 ### ARG declarations ###
 ARG SCRIPTS_DIR=/opt/posit/scripts

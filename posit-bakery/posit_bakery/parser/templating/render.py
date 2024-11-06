@@ -2,7 +2,7 @@ import os
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 
 import git
 import jinja2
@@ -11,12 +11,13 @@ from rich import print
 from tomlkit.items import AoT
 
 from posit_bakery.error import BakeryTemplatingError
-from posit_bakery.templating.templates.configuration import (
-    CONFIG_TOML_TPL,
-    BASE_MANIFEST_TOML_TPL,
-    PRODUCT_MANIFEST_TOML_TPL,
+from posit_bakery.parser.templating.filters import regex_replace, jinja2_env
+from posit_bakery.parser.templating.templates.configuration import (
+    TPL_CONFIG_TOML,
+    TPL_BASE_MANIFEST_TOML,
+    TPL_PRODUCT_MANIFEST_TOML,
 )
-from posit_bakery.templating.templates.containerfile import BASE_CONTAINER_FILE_TPL, PRODUCT_CONTAINER_FILE_TPL
+from posit_bakery.parser.templating.templates.containerfile import TPL_BASE_CONTAINERFILE, TPL_PRODUCT_CONTAINERFILE
 
 
 class NewImageTypes(str, Enum):
@@ -24,30 +25,45 @@ class NewImageTypes(str, Enum):
     product = "product"
 
 
-def regex_replace(s, find, replace):
-    return re.sub(find, replace, s)
+def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
+    """Best guesses a repository URL for image labeling purposes based off the Git remote origin URL
 
-
-def try_get_repo_url(context: Path):
-    url = "<REPO_URL>"
+    :param context: The repository root to check for a remote URL in
+    :return: The guessed repository URL
+    """
+    url = "<REPLACE ME>"
     try:
         repo = git.Repo(context)
+        # Use splitext since remotes should have `.git` as a suffix
         url = os.path.splitext(repo.remotes[0].config_reader.get("url"))[0]
+        # If the URL is a git@ SSH URL, convert it to a https:// URL
         if url.startswith("git@"):
             url = url.removeprefix("git@")
             url = url.replace(":", "/")
+        # TODO: There should be more logic around HTTPS URLs that may use `user@` prefixing
     except:  # noqa
         print("[bright_yellow][bold]WARNING:[/bold] Unable to determine repository name ")
     return url
 
 
-def try_human_readable_os_name(os: str):
+def try_human_readable_os_name(os_name: str) -> str:
+    """Attempts to convert an OS name to a human-readable format by splitting the name and version and capitalizing it
+
+    :param os_name: The OS name to convert
+    """
     p = re.compile(r"([a-zA-Z]+)([0-9.]+)")
-    res = p.match(os).groups()
+    res = p.match(os_name).groups()
     return " ".join(res).title()
 
 
-def create_new_image_directories(context: Path, image_name: str) -> (Path, Path):
+def create_new_image_directories(context: Union[str, bytes, os.PathLike], image_name: str) -> Path:
+    """Creates an image directory structure for a new image in the provided context
+
+    :param context: The root context directory to create the image directories in
+    :param image_name: The name of the image to create directories for
+    :return: The path to the new image directory
+    """
+    context = Path(context)
     if not context.exists():
         print(f"[bold bright_red]ERROR:[/bold red] Context path [bold]'{context}'[/bold] not found")
         raise BakeryTemplatingError(f"Context path '{context}' not found")
@@ -79,25 +95,41 @@ def create_new_image_directories(context: Path, image_name: str) -> (Path, Path)
     return image_path
 
 
-def render_new_image_template_files(context: Path, image_name: str, image_type: str, image_base: str):
+def render_new_image_template_files(
+        context: Union[str, bytes, os.PathLike], image_name: str, image_type: str, image_base: str
+) -> None:
+    """Renders new template files for a new image in the provided context
+
+    :param context: The root context directory to render new image templates in
+    :param image_name: The name of the image
+    :param image_type: The type of the image, either 'base' or 'product'
+    :param image_base: The base image to use for the new image
+    """
+    context = Path(context)
+
+    # Create directories for the new image if they don't exist
     image_path = create_new_image_directories(context, image_name)
 
+    # Create a new config.toml file if it doesn't exist
     config_toml = context / "config.toml"
     if not config_toml.exists():
-        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(CONFIG_TOML_TPL)
+        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(TPL_CONFIG_TOML)
         rendered = tpl.render(repo_url=try_get_repo_url(context))
         with open(config_toml, "w") as f:
             f.write(rendered)
 
     image_template_path = image_path / "template"
 
+    # Choose the template to use based on the type of image being created
+    # TODO: Remove concept of a "base" image
     if image_type == NewImageTypes.base:
-        containerfile_tpl = BASE_CONTAINER_FILE_TPL
-        manifest_tpl = BASE_MANIFEST_TOML_TPL
+        containerfile_tpl = TPL_BASE_CONTAINERFILE
+        manifest_tpl = TPL_BASE_MANIFEST_TOML
     else:
-        containerfile_tpl = PRODUCT_CONTAINER_FILE_TPL
-        manifest_tpl = PRODUCT_MANIFEST_TOML_TPL
+        containerfile_tpl = TPL_PRODUCT_CONTAINERFILE
+        manifest_tpl = TPL_PRODUCT_MANIFEST_TOML
 
+    # Create a new manifest.toml file or raise an error if it already exists
     manifest_toml = image_path / "manifest.toml"
     if manifest_toml.exists():
         print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_toml}[/bold] already exists")
@@ -109,6 +141,7 @@ def render_new_image_template_files(context: Path, image_name: str, image_type: 
         with open(manifest_toml, "w") as f:
             f.write(rendered)
 
+    # Create a new Containerfile template if it doesn't exist
     containerfile_path = image_template_path / "Containerfile.jinja2"
     if not containerfile_path.exists():
         print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
@@ -118,17 +151,30 @@ def render_new_image_template_files(context: Path, image_name: str, image_type: 
             f.write(rendered)
 
 
-def create_new_image_version_directory(context: Path, image_name: str, image_version: str):
+def create_new_image_version_directory(
+        context: Union[str, bytes, os.PathLike], image_name: str, image_version: str
+) -> Path:
+    """Creates a new versioned directory for an image in the provided context
+
+    :param context: The root context directory where the image is located
+    :param image_name: The name of the image to create a versioned directory for
+    :param image_version: The version of the image to create a directory for
+    :return: The path to the new versioned image directory
+    """
+    context = Path(context)
     image_path = context / image_name
+
     # Check if the image path exists and exit if it doesn't
     if not image_path.exists():
         print(f"[bright_red bold]ERROR:[/bold] Image path [bold]{image_path}[/bold] not found")
         raise BakeryTemplatingError(f"Image path '{image_path}' not found")
+
     # Check for a template directory under the provided image path and exit if it doesn't exist
     image_template_path = image_path / "template"
     if not image_template_path.exists():
         print(f"[bright_red bold]ERROR:[/bold] Image templates path [bold]{image_template_path}[/bold] not found")
         raise BakeryTemplatingError(f"Image templates path '{image_template_path}' not found")
+
     # Create a new versioned directory for the image if it doesn't exist
     image_versioned_path = image_path / image_version
     if not image_versioned_path.exists():
@@ -139,22 +185,31 @@ def create_new_image_version_directory(context: Path, image_name: str, image_ver
 
 
 def render_new_image_version_template_files(
-    context: Path,
+    context: Union[str, bytes, os.PathLike],
     image_name: str,
     image_version: str,
     value_map: Dict[str, str],
     skip_render_minimal: bool = False,
 ):
+    """Render templates into a new version of the image
+
+    :param context: The root context directory where the image is located
+    :param image_name: The name of the image to render templates for
+    :param image_version: The version of the image to render templates for
+    :param value_map: A dictionary of key-value pairs to pass to the templates for rendering
+    :param skip_render_minimal: Skip rendering the minimal version of the Containerfile
+    :return:
+    """
+    context = Path(context)
     image_template_path = context / image_name / "template"
     image_versioned_path = context / image_name / image_version
 
     # Create a Jinja2 environment with the template directory as the loader
-    e = jinja2.Environment(
+    e = jinja2_env(
         loader=jinja2.FileSystemLoader(image_template_path),
         autoescape=True,
         undefined=jinja2.StrictUndefined,
     )
-    e.filters["regex_replace"] = regex_replace
     for tpl_rel_path in e.list_templates():
         tpl = e.get_template(tpl_rel_path)
 
@@ -184,11 +239,19 @@ def render_new_image_version_template_files(
 
 
 def update_manifest_build_matrix(
-    context: Path,
+    context: Union[str, bytes, os.PathLike],
     image_name: str,
     image_version: str,
     skip_mark_latest: bool = False,
-):
+) -> None:
+    """Updates the build matrix in the manifest file for an image
+
+    :param context: The root context directory where the image is located
+    :param image_name: The name of the image to update the build matrix for
+    :param image_version: The version of the image to add
+    :param skip_mark_latest: Skip marking the version as latest
+    """
+    context = Path(context)
     image_path = context / image_name
 
     manifest_file = image_path / "manifest.toml"

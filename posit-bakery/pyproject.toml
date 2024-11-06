@@ -20,6 +20,7 @@ tomlkit = "^0.13.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.0"
+mypy = "^1.13.0"
 
 [tool.ruff]
 line-length = 120
