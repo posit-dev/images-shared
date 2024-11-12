@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional, Set, Union
 
+import git
 from pydantic.dataclasses import dataclass
 
 from posit_bakery.parser.generic import GenericTOMLModel
@@ -35,10 +36,40 @@ class Config(GenericTOMLModel):
     registry: Set[ConfigRegistry]
     repository: ConfigRepository
 
+    @property
+    def authors(self):
+        return self.repository.authors
+
+    @property
+    def repository_url(self):
+        return self.repository.url
+
+    @property
+    def vendor(self):
+        return self.repository.vendor
+
+    @property
+    def maintainer(self):
+        return self.repository.maintainer
+
+    @property
+    def registry_urls(self):
+        return [r.base_url for r in self.registry]
+
+    def get_commit_sha(self) -> str:
+        """Get the git commit SHA for the current context"""
+        sha = ""
+        try:
+            repo = git.Repo(self.context)
+            sha = repo.head.object.hexsha
+        except Exception as e:
+            print(f"[bright_red bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
+        return sha
+
     @classmethod
     def load_file(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
         filepath = Path(filepath)
-        d = cls.__load_file_data(filepath)
+        d = cls.load_toml_file_data(filepath)
         registry = []
         for r in d["registry"]:
             registry.append(ConfigRegistry(**r))
@@ -46,7 +77,7 @@ class Config(GenericTOMLModel):
         return cls(
             filepath=filepath,
             context=filepath.parent,
-            __document=d,
+            document=d,
             registry=registry,
             repository=repository
         )

@@ -6,18 +6,8 @@ from typing import Annotated, List
 from rich import print, print_json
 import typer
 
-from posit_bakery.bake.plan import BakePlan
-from posit_bakery.bake.dgoss import DGossManager
-from posit_bakery.error import BakeryGossError
-from posit_bakery.parser.config import Config
-from posit_bakery.parser.manifest import Manifest
-from posit_bakery.parser.templating.render import (
-    NewImageTypes,
-    render_new_image_template_files,
-    create_new_image_version_directory,
-    render_new_image_version_template_files,
-    update_manifest_build_matrix,
-)
+from posit_bakery.models.project import Project
+from posit_bakery.error import BakeryGossError, BakeryBuildError
 
 app = typer.Typer()
 
@@ -33,11 +23,11 @@ def new(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "posit/base",
-    image_type: Annotated[str, typer.Option(help="The type of image to create.")] = NewImageTypes.product,
+    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "docker.io/library/ubuntu:22.04",
 ) -> None:
     """Creates a quickstart skeleton for a new image."""
-    render_new_image_template_files(context, image_name, image_type, image_base)
+    project = Project.from_context(context)
+    project.new_image(image_name, image_base)
 
     print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
 
@@ -70,7 +60,7 @@ def render(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    image_versioned_path = create_new_image_version_directory(context, image_name, image_version)
+    project = Project.from_context(context)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()
@@ -81,12 +71,8 @@ def render(
                 print(f"[bright_red bold]ERROR:[/bold] Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
-    if "rel_path" not in value_map:
-        value_map["rel_path"] = image_versioned_path.relative_to(context)
 
-    render_new_image_version_template_files(context, image_name, image_version, value_map, skip_render_minimal)
-
-    update_manifest_build_matrix(context, image_name, image_version, skip_mark_latest)
+    project.new_image_version(image_name, image_version, value_map, not skip_mark_latest)
 
     print(f"[green bold]Successfully rendered {image_name}/{image_version}[/green bold] ✅")
 
@@ -118,9 +104,11 @@ def plan(
 
     If only a bake file is provided, the command will generate a plan for that bake file only.
     """
-    plan = BakePlan.new_plan(context, skip_override, image_name, image_version)
-    print_json(json.dumps(plan.render()), indent=2)
-    plan.to_json(output_file)
+    project = Project.from_context(context, skip_override)
+    bake_plan = project.render_bake_plan(image_name, image_version)
+    print_json(json.dumps(bake_plan), indent=2)
+    with open(output_file, "w") as f:
+        f.write(json.dumps(bake_plan, indent=2))
 
 
 @app.command()
@@ -130,7 +118,10 @@ def build(
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
     image_version: Annotated[
-        str, typer.Option(help="The image version to isolate plan rendering to. Must be used with --image-name.")
+        str, typer.Option(help="The image version to isolate plan rendering to.")
+    ] = None,
+    image_type: Annotated[
+        str, typer.Option(help="The image type to isolate plan rendering to.")
     ] = None,
     skip_override: Annotated[
         bool, typer.Option(help="Skip loading docker-bake.override.hcl files for auto-discovery.")
@@ -141,13 +132,11 @@ def build(
         List[str], typer.Option(help="Additional build options to pass to docker buildx. Multiple can be provided.")
     ] = None,
 ) -> None:
-    plan = BakePlan.new_plan(context, skip_override, image_name, image_version)
-    exit_code = plan.build(load, push, option)
-    if exit_code != 0:
-        print(f"[bright_red]Build failed with exit code {exit_code}[/bright_red]")
-        raise typer.Exit(code=exit_code)
-    else:
-        print("[green]Build succeeded[/green]")
+    project = Project.from_context(context, skip_override)
+    try:
+        project.build(load, push, image_name, image_version, image_type, option)
+    except BakeryBuildError as e:
+        print(f"[bright_red bold]ERROR:[/bold] Build failed with exit code {e.exit_code}")
 
 
 @app.command()
@@ -164,12 +153,8 @@ def dgoss(
         List[str], typer.Option(help="Additional runtime options to pass to dgoss. Multiple can be provided.")
     ] = None,
 ) -> None:
-    config = Config.load_config_from_context(context, skip_override)
-    manifests = Manifest.load_manifests_from_context(context, image_name, image_version)
-
-    d = DGossManager(context, config, manifests, option)
+    project = Project.from_context(context, skip_override)
     try:
-        d.exec()
+        project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
-        print(f"[bright_red][bold]ERROR:[/bold] {e}[/bright_red]")
-        raise typer.Exit(code=1)
+        print(f"[bright_red bold]ERROR:[/bold] dgoss tests failed with exit code {e.exit_code}")

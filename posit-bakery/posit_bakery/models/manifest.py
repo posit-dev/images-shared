@@ -1,8 +1,9 @@
 import os
 import re
+from datetime import timezone, datetime
 
 from pathlib import Path
-from typing import Dict, Union, List, Any, Set
+from typing import Dict, Union, List, Any, Set, Optional
 
 import jinja2
 from pydantic import model_validator
@@ -60,9 +61,8 @@ class TargetBuild:
     version: str
     type: str
 
-    uid: str = None
     const: Dict[str, Any] = None
-    os: str = None
+    os: Optional[str] = None
     containerfile: str = None
     containerfile_path: Path = None
     latest: bool = False
@@ -74,13 +74,36 @@ class TargetBuild:
     @property
     def all_tags(self) -> List[str]:
         tags = []
-        for registry in self.config.registry:
+        for base_url in self.config.registry_urls:
             for tag in self.tags:
-                tags.append(f"{registry.base_url}/{self.image_name}:{tag}")
+                tags.append(f"{base_url}/{self.image_name}:{tag}")
             if self.latest:
                 for tag in self.latest_tags:
-                    tags.append(f"{registry.base_url}/{self.image_name}:{tag}")
+                    tags.append(f"{base_url}/{self.image_name}:{tag}")
         return tags
+
+    @property
+    def uid(self):
+        return re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{self.os}-{self.type}")
+
+    @property
+    def labels(self):
+        labels = {
+            "co.posit.image.name": self.image_name,
+            "co.posit.image.os": self.os,
+            "co.posit.image.type": self.type,
+            "co.posit.image.version": self.version,
+            "org.opencontainers.image.created": datetime.now(tz=timezone.utc).isoformat(),
+            "org.opencontainers.image.title": self.image_name,
+            "org.opencontainers.image.vendor": self.config.vendor,
+            "org.opencontainers.image.maintainer": self.config.maintainer,
+            "org.opencontainers.image.revision": self.config.get_commit_sha(),
+        }
+        if self.config.authors:
+            labels["org.opencontainers.image.authors"] = ", ".join(self.config.authors)
+        if self.config.repository_url:
+            labels["org.opencontainers.image.source"] = self.config.repository_url
+        return labels
 
     @model_validator(mode="before")
     @classmethod
@@ -100,9 +123,6 @@ class TargetBuild:
         return values
 
     def __post_init__(self):
-        if self.uid is None:
-            self.uid = re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{self.type}")
-
         if self.const is None:
             self.const = {"image_name": self.image_name}
         if "image_name" not in self.const:
@@ -172,6 +192,14 @@ class Manifest(GenericTOMLModel):
     config: Config
     target_builds: Set[TargetBuild] = None
 
+    @property
+    def types(self) -> Set[str]:
+        return set(target_build.type for target_build in self.target_builds)
+
+    @property
+    def versions(self) -> Set[str]:
+        return set(target_build.version for target_build in self.target_builds)
+
     @staticmethod
     def generate_target_builds(config: Config, manifest_context: Path, manifest_document: TOMLDocument):
         target_builds = []
@@ -186,7 +214,7 @@ class Manifest(GenericTOMLModel):
                         config=config,
                         build_data=build_data,
                         target_data=target_data,
-                        image_name=manifest_document["image_name"],
+                        image_name=str(manifest_document["image_name"]),
                         version=build_version,
                         type=target_type,
                         os=_os,
@@ -199,14 +227,14 @@ class Manifest(GenericTOMLModel):
     @classmethod
     def load_file_with_config(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
         filepath = Path(filepath)
-        d = cls.__load_file_data(filepath)
+        d = cls.load_toml_file_data(filepath)
         image_name = d.get("image_name")
         if image_name is None:
             raise BakeryConfigError(f"Manifest at '{filepath}' does not have an 'image_name' field.")
         target_builds = cls.generate_target_builds(config, Path(filepath).parent, d)
         return cls(
             filepath=filepath,
-            __document=d,
+            document=d,
             context=config.context,
             image_name=image_name,
             manifest_context=Path(filepath).parent,
@@ -214,17 +242,74 @@ class Manifest(GenericTOMLModel):
             target_builds=target_builds,
         )
 
-        :param context: The context directory
-        :param image_name: Filter the manifests loaded by image name
-        :param image_version: Filter the manifests loaded by image version
-        """
-        manifests = {}
-        context = Path(context)
-        for manifest_file in context.rglob("manifest.toml"):
-            manifest_name = str(manifest_file.parent.relative_to(context))
-            if image_name and image_name != manifest_name:
-                continue
-            manifests[manifest_name] = cls(
-                context, manifest_name, manifest_file, {"image_version": image_version}
-            )
-        return manifests
+    @staticmethod
+    def __guess_os_list(p: Path):
+        os_list = []
+        pat = re.compile(r"Containerfile\.([a-zA-Z]+)([0-9.]+)\.[a-zA-Z0-9]")
+        containerfiles = list(p.glob("Containerfile*"))
+        containerfiles = [
+            str(containerfile.relative_to(p)) for containerfile in containerfiles
+        ]
+        for containerfile in containerfiles:
+            match = pat.match(containerfile)
+            if match:
+                os_list.append(" ".join(match.groups()).title())
+        return os_list
+
+    def __add_build_version_to_manifest(self, version: str, mark_latest: bool = True):
+        build_data = {}
+        if mark_latest:
+            for build in self.document["build"].values():
+                build.pop("latest")
+            build_data["latest"] = True
+        if "os" not in self.document["const"]:
+            build_data["os"] = self.__guess_os_list(self.manifest_context / version)
+        self.document["build"].append(version, build_data)
+        self.generate_target_builds(self.config, self.manifest_context, self.document)
+        self.dump()
+
+    def __render_templates(self, version: str, value_map: Dict[str, str] = None):
+        template_directory = self.manifest_context / "template"
+        if not template_directory.exists():
+            raise BakeryFileNotFoundError(f"Path '{self.manifest_context}/template' does not exist.")
+        new_directory = self.manifest_context / version
+        new_directory.mkdir(exist_ok=True)
+
+        if value_map is None:
+            value_map = {}
+        if "rel_path" not in value_map:
+            value_map["rel_path"] = new_directory.relative_to(self.config.context)
+
+        e = jinja2_env(
+            loader=jinja2.FileSystemLoader(template_directory), autoescape=True, undefined=jinja2.StrictUndefined
+        )
+        for tpl_rel_path in e.list_templates():
+            tpl = e.get_template(tpl_rel_path)
+
+            render_kwargs = {}
+            if tpl_rel_path.startswith("Containerfile"):
+                render_kwargs["trim_blocks"] = True
+
+            # If the template is a Containerfile, render it to both a minimal and standard version
+            if tpl_rel_path.startswith("Containerfile"):
+                containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+                for image_type in self.types:
+                    rendered = tpl.render(image_version=version, **value_map, image_type=image_type, **render_kwargs)
+                    with open(new_directory / f"{containerfile_base_name}.{image_type}", "w") as f:
+                        print(f"[bright_black]Rendering [bold]{new_directory / f'{containerfile_base_name}.{image_type}'}")
+                        f.write(rendered)
+                    continue
+            else:
+                rendered = tpl.render(image_version=version, **value_map, **render_kwargs)
+                rel_path = tpl_rel_path.removesuffix(".jinja2")
+                target_dir = Path(new_directory / rel_path).parent
+                target_dir.mkdir(parents=True, exist_ok=True)
+                with open(new_directory / rel_path, "w") as f:
+                    print(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
+                    f.write(rendered)
+
+    def new_version(self, version: str, mark_latest: bool = True, value_map: Dict[str, str] = None):
+        self.__render_templates(version, value_map)
+        if version in self.document["build"]:
+            raise BakeryConfigError(f"Version '{version}' already exists in manifest '{self.filepath}'.")
+        self.__add_build_version_to_manifest(version, mark_latest)
