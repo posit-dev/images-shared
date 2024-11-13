@@ -15,7 +15,9 @@ class BakeryPlanError(BakeryError):
 
 class BakeryBuildError(BakeryError):
     """Error for build issues"""
-    pass
+    def __init__(self, exit_code: int = 1) -> None:
+        self.exit_code = exit_code
+        super().__init__()
 
 
 class BakeryFileNotFoundError(BakeryError):

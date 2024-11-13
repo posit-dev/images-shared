@@ -36,4 +36,4 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
 def render_template(template: str, **kwargs) -> str:
     """Renders a Jinja2 template with the provided keyword arguments and custom filters added"""
     template = jinja2_env().from_string(template)
-    return template.render(**kwargs)
+    return template.render(**kwargs).strip()

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "posit-bakery"
-version = "0.2.0-dev"
+version = "0.2.0-dev1"
 description = "Tools for extracting and manipulating bake artifacts for various commands"
 authors = ["Ian H. Pittwood <ian.pittwood@posit.co>"]
 license = "MIT"
@@ -17,10 +17,12 @@ rich = "^13.8.1"
 python-hcl2 = "^4.3.5"
 gitpython = "^3.1.43"
 tomlkit = "^0.13.2"
+pydantic = "^2.9.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.0"
 mypy = "^1.13.0"
+pytest = "^8.3.3"
 
 [tool.ruff]
 line-length = 120
