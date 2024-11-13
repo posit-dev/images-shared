@@ -1,0 +1,19 @@
+#######################################################################################################################
+# BAKERY CONFIG
+#######################################################################################################################
+
+[[registry]]
+host = "docker.io"
+namespace = "posit"
+
+[[registry]]
+host = "ghcr.io"
+namespace = "posit-dev"
+
+[repository]
+url = "github.com/rstudio/posit-images-shared"
+vendor = "Posit Software, PBC"
+maintainer = "docker@posit.co"
+authors = [
+    "Ian H. Pittwood <ian.pittwood@posit.co>"
+]
