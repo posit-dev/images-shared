@@ -9,13 +9,13 @@ import jinja2
 from pydantic import model_validator
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
+from rich import print
 from tomlkit import TOMLDocument
-from tomlkit.items import Table
 
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
-from posit_bakery.parser.config import Config
-from posit_bakery.parser.generic import GenericTOMLModel
-from posit_bakery.parser.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
+from posit_bakery.models.config import Config
+from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 
 
 @dataclass
@@ -84,7 +84,7 @@ class TargetBuild:
 
     @property
     def uid(self):
-        return re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{self.os}-{self.type}")
+        return re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{condense(self.os)}-{self.type}")
 
     @property
     def labels(self):
@@ -311,5 +311,9 @@ class Manifest(GenericTOMLModel):
     def new_version(self, version: str, mark_latest: bool = True, value_map: Dict[str, str] = None):
         self.__render_templates(version, value_map)
         if version in self.document["build"]:
-            raise BakeryConfigError(f"Version '{version}' already exists in manifest '{self.filepath}'.")
-        self.__add_build_version_to_manifest(version, mark_latest)
+            print(
+                f"[bright_yellow][bold]WARNING:[/bold] Build version '{version}' already exists in "
+                f"manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
+            )
+        else:
+            self.__add_build_version_to_manifest(version, mark_latest)
