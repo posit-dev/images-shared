@@ -7,12 +7,12 @@ from typing import Union, List, Dict, Any, Tuple
 
 import git
 import jinja2
+from rich import print
 
 from posit_bakery.error import BakeryFileNotFoundError, BakeryBuildError, BakeryGossError, BakeryConfigError, \
     BakeryTemplatingError
 from posit_bakery.models.config import Config
 from posit_bakery.models.manifest import Manifest
-
 from posit_bakery.templating.templates.configuration import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
 from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
 
@@ -202,6 +202,7 @@ class Project:
         if build_options:
             cmd.extend(build_options)
         run_env = os.environ.copy()
+        print(f"[bright_black]Executing build command: {' '.join(cmd)}")
         p = subprocess.run(cmd, env=run_env, cwd=self.context)
         if p.returncode != 0:
             raise BakeryBuildError(p.returncode)
@@ -213,7 +214,7 @@ class Project:
             image_version: str = None,
             image_type: str = None,
             runtime_options: List[str] = None,
-        ) -> List[Tuple[Dict[str, str], List[str]]]:
+        ) -> List[Tuple[str, Dict[str, str], List[str]]]:
         dgoss_bin = self.__find_bin("dgoss", "DGOSS_PATH") or "dgoss"
         goss_bin = self.__find_bin("goss", "GOSS_PATH")
         dgoss_commands = []
@@ -267,7 +268,7 @@ class Project:
                 # Append the goss command to run or use the default `sleep infinity`
                 cmd.extend(target_build.goss.command.split() or ["sleep", "infinity"])
 
-                dgoss_commands.append((run_env, cmd))
+                dgoss_commands.append((target_build.all_tags[0], run_env, cmd))
 
         return dgoss_commands
 
@@ -279,10 +280,13 @@ class Project:
             runtime_options: List[str] = None,
         ) -> None:
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
-        for env, cmd in dgoss_commands:
+        for tag, env, cmd in dgoss_commands:
+            print(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
+            print(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
             if p.returncode != 0:
                 raise BakeryGossError(f"Goss exited with code {p.returncode}", p.returncode)
+            print(f"[bright_green bold]=== Goss tests passed for {tag} ===")
 
 
 def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
