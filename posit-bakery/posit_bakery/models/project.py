@@ -170,7 +170,7 @@ class Project:
 
                 target_definition = {
                     "context": ".",
-                    "dockerfile": target_build.containerfile,
+                    "dockerfile": str(target_build.containerfile_path.relative_to(self.context)),
                     "labels": target_build.labels,
                     "tags": target_build.all_tags,
                 }
@@ -194,7 +194,7 @@ class Project:
         with open(build_file, "w") as f:
             json.dump(bake_plan, f, indent=2)
 
-        cmd = ["docker", "buildx", "build", "--file", str(build_file)]
+        cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
         if load:
             cmd.append("--load")
         if push:

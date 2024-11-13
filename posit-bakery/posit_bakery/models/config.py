@@ -5,7 +5,7 @@ from typing import Optional, Set, Union
 import git
 from pydantic.dataclasses import dataclass
 
-from posit_bakery.parser.generic import GenericTOMLModel
+from posit_bakery.models.generic import GenericTOMLModel
 
 
 @dataclass
