@@ -23,12 +23,27 @@ class GossConfig:
     version_context: Union[str, bytes, os.PathLike]
     build_data: Dict[str, Any]
     target_data: Dict[str, Any]
-    const: Dict[str, Any] = None
+    const: Dict[str, Any]
 
     deps: Path = None
     test_path: Path = None
     wait: int = 0
     command: str = "sleep infinity"
+
+    @model_validator(mode="before")
+    @classmethod
+    def pre_root(cls, values: ArgsKwargs) -> ArgsKwargs:
+        # If the wait value is a string, render it
+        if "wait" in values.kwargs and type(values.kwargs["wait"]) is str:
+            values.kwargs["wait"] = int(
+                render_template(
+                    str(values.kwargs["wait"]),
+                    build=values.kwargs["build_data"],
+                    target=values.kwargs["target_data"],
+                    **values.kwargs["const"]
+                )
+            )
+        return values
 
     def __post_init__(self):
         if self.deps is None:
@@ -44,8 +59,6 @@ class GossConfig:
             self.test_path = Path(
                 render_template(str(self.test_path), build=self.build_data, target=self.target_data, **self.const)
             )
-        if self.wait:
-            self.wait = int(render_template(str(self.wait), build=self.build_data, target=self.target_data, **self.const))
         if self.command:
             self.command = render_template(self.command, build=self.build_data, target=self.target_data, **self.const)
 
@@ -61,7 +74,7 @@ class TargetBuild:
     version: str
     type: str
 
-    const: Dict[str, Any] = None
+    const: Optional[Dict[str, Any]] = None
     os: Optional[str] = None
     containerfile: str = None
     containerfile_path: Path = None
@@ -205,18 +218,18 @@ class Manifest(GenericTOMLModel):
         target_builds = []
         for build_version, build_data in manifest_document["build"].unwrap().items():
             os_list = build_data.pop("os", build_data.get("const", {}).pop("os", None))
+            build_data["version"] = build_version
             if os_list is None or type(os_list) is str:
                 os_list = [os_list]
             for _os in os_list:
                 for target_type, target_data in manifest_document["target"].unwrap().items():
+                    target_data["type"] = target_type
                     target_builds.append(TargetBuild(
                         manifest_context=manifest_context,
                         config=config,
                         build_data=build_data,
                         target_data=target_data,
                         image_name=str(manifest_document["image_name"]),
-                        version=build_version,
-                        type=target_type,
                         os=_os,
                         const=manifest_document.get("const"),
                         **build_data,
