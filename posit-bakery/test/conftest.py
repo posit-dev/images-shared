@@ -27,25 +27,38 @@ def toml_basic_file(tmp_path, toml_basic_str):
 
 
 @pytest.fixture(scope="session")
-def test_resource_path():
+def resource_path():
     """Return the path to the test resources directory"""
     return TEST_DIRECTORY / "resources"
 
 
 @pytest.fixture(scope="session")
-def test_suite_basic_context(test_resource_path):
+def basic_context(resource_path):
     """Return the path to the basic test suite context"""
-    return test_resource_path / "basic"
+    return resource_path / "basic"
 
 
 @pytest.fixture(scope="session")
-def test_suite_basic_config_file(test_suite_basic_context):
+def basic_config_file(basic_context):
     """Return the path to the basic test suite config.toml file"""
-    return test_suite_basic_context / "config.toml"
+    return basic_context / "config.toml"
 
 
 @pytest.fixture
-def test_suite_basic_config_obj(test_suite_basic_config_file):
+def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
     from posit_bakery.models.config import Config
-    return Config.load_file(test_suite_basic_config_file)
+    return Config.load_file(basic_config_file)
+
+
+@pytest.fixture
+def basic_manifest_file(basic_context):
+    """Return the path to the basic test suite manifest.toml file"""
+    return basic_context / "test-image" / "manifest.toml"
+
+
+@pytest.fixture
+def basic_manifest_obj(basic_config_obj, basic_manifest_file):
+    """Return a Manifest object loaded from basic test suite manifest.toml file"""
+    from posit_bakery.models.manifest import Manifest
+    return Manifest.load_file_with_config(basic_config_obj, basic_manifest_file)
