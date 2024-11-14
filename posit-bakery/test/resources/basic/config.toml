@@ -15,5 +15,6 @@ url = "github.com/rstudio/posit-images-shared"
 vendor = "Posit Software, PBC"
 maintainer = "docker@posit.co"
 authors = [
-    "Ian H. Pittwood <ian.pittwood@posit.co>"
+    "Author 1 <author1@posit.co>",
+    "Author 2 <author2@posit.co>",
 ]

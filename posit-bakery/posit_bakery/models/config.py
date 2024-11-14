@@ -4,6 +4,7 @@ from typing import Optional, Set, Union
 
 import git
 from pydantic.dataclasses import dataclass
+from rich import print
 
 from posit_bakery.models.generic import GenericTOMLModel
 
@@ -11,7 +12,7 @@ from posit_bakery.models.generic import GenericTOMLModel
 @dataclass
 class ConfigRegistry:
     host: str
-    namespace: Optional[str]
+    namespace: Optional[str] = None
 
     @property
     def base_url(self) -> str:
@@ -26,10 +27,10 @@ class ConfigRegistry:
 
 @dataclass
 class ConfigRepository:
-    authors: Set[str]
-    url: Optional[str]
-    vendor: str = "Posit Software, PBC"
-    maintainer: str = "docker@posit.co"
+    authors: Set[str] = None
+    url: Optional[str] = None
+    vendor: Optional[str] = "Posit Software, PBC"
+    maintainer: Optional[str] = "docker@posit.co"
 
 
 class Config(GenericTOMLModel):
@@ -63,7 +64,7 @@ class Config(GenericTOMLModel):
             repo = git.Repo(self.context)
             sha = repo.head.object.hexsha
         except Exception as e:
-            print(f"[bright_red bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
+            print(f"[bright_red][bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
         return sha
 
     @classmethod

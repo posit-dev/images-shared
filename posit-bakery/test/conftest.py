@@ -26,6 +26,16 @@ def toml_basic_file(tmp_path, toml_basic_str):
     return filepath
 
 
-@pytest.fixture
-def resource_path():
+@pytest.fixture(scope="session")
+def test_resource_path():
     return TEST_DIRECTORY / "resources"
+
+
+@pytest.fixture(scope="session")
+def test_suite_basic_context(test_resource_path):
+    return test_resource_path / "basic"
+
+
+@pytest.fixture(scope="session")
+def test_suite_basic_config_file(test_suite_basic_context):
+    return test_suite_basic_context / "config.toml"
