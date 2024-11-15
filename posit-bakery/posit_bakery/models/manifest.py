@@ -3,7 +3,7 @@ import re
 from datetime import timezone, datetime
 
 from pathlib import Path
-from typing import Dict, Union, List, Any, Set, Optional
+from typing import Dict, Union, List, Any, Set, Optional, Tuple
 
 import jinja2
 from pydantic import model_validator
@@ -73,9 +73,9 @@ class TargetBuild:
     image_name: str
     version: str
     type: str
+    build_os: str
 
     const: Optional[Dict[str, Any]] = None
-    os: Optional[str] = None
     containerfile: str = None
     containerfile_path: Path = None
     latest: bool = False
@@ -85,7 +85,7 @@ class TargetBuild:
     goss: GossConfig = None
 
     @property
-    def all_tags(self) -> List[str]:
+    def all_tags(self) -> Set[str]:
         tags = []
         for base_url in self.config.registry_urls:
             for tag in self.tags:
@@ -93,17 +93,17 @@ class TargetBuild:
             if self.latest:
                 for tag in self.latest_tags:
                     tags.append(f"{base_url}/{self.image_name}:{tag}")
-        return tags
+        return set(tags)
 
     @property
     def uid(self):
-        return re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{condense(self.os)}-{self.type}")
+        return re.sub("[.+/]", "-", f"{self.image_name}-{self.version}-{condense(self.build_os)}-{self.type}")
 
     @property
     def labels(self):
         labels = {
             "co.posit.image.name": self.image_name,
-            "co.posit.image.os": self.os,
+            "co.posit.image.os": self.build_os,
             "co.posit.image.type": self.type,
             "co.posit.image.version": self.version,
             "org.opencontainers.image.created": datetime.now(tz=timezone.utc).isoformat(),
@@ -113,7 +113,9 @@ class TargetBuild:
             "org.opencontainers.image.revision": self.config.get_commit_sha(),
         }
         if self.config.authors:
-            labels["org.opencontainers.image.authors"] = ", ".join(self.config.authors)
+            authors = list(self.config.authors)
+            authors.sort()
+            labels["org.opencontainers.image.authors"] = ", ".join(authors)
         if self.config.repository_url:
             labels["org.opencontainers.image.source"] = self.config.repository_url
         return labels
@@ -133,57 +135,53 @@ class TargetBuild:
                 const=const,
                 **values.kwargs["goss"]
             )
+        if "os" in values.kwargs and "build_os" not in values.kwargs:
+            values.kwargs["build_os"] = values.kwargs.pop("os")
         return values
 
     def __post_init__(self):
+        self.manifest_context = Path(self.manifest_context)
+
         if self.const is None:
             self.const = {"image_name": self.image_name}
         if "image_name" not in self.const:
             self.const["image_name"] = self.image_name
 
-        if self.os is None and "os" in self.const:
-            self.os = self.const["os"]
-        elif self.os is None:
+        if self.build_os is None:
             raise ValueError(f"No operating system could be determined for manifest '{self.uid}'.")
 
         if self.containerfile is None:
-            condensed_os = condense(self.os)
-            potential_names = [f"Containerfile.{condensed_os}.{self.type}", f"Containerfile.{self.type}", "Containerfile"]
-            for name in potential_names:
-                potential_path = Path(self.manifest_context) / self.version / name
-                if potential_path.exists():
-                    self.containerfile = name
-                    self.containerfile_path = potential_path
-                    break
+            self.containerfile, self.containerfile_path = self.__find_containerfile(
+                self.manifest_context / self.version, self.type, self.build_os
+            )
         else:
             self.containerfile = render_template(
                 self.containerfile, build=self.build_data, target=self.target_data, **self.const
             )
             self.containerfile_path = Path(self.manifest_context) / self.version / self.containerfile
+        if self.containerfile is None:
+            raise BakeryFileNotFoundError(
+                f"Could not find a Containerfile for manifest '{self.uid}' in '{self.manifest_context / self.version}'."
+            )
 
         if self.tags is None or len(self.tags) == 0:
-            if self.type == "std":
-                self.tags = [
-                    f"{tag_safe(self.version)}-{condense(self.os)}",
-                    f"{clean_version(self.version)}-{condense(self.os)}",
-                ]
-                if self.primary_os or "os" in self.const:
-                    self.tags.append(f"{tag_safe(self.version)}")
-            else:
-                self.tags = [
-                    f"{tag_safe(self.version)}-{condense(self.os)}-{self.type}",
-                    f"{clean_version(self.version)}-{condense(self.os)}-{self.type}",
-                ]
-                if self.primary_os or "os" in self.const:
-                    self.tags.append(f"{tag_safe(self.version)}-{self.type}")
+            self.tags = [
+                f"{tag_safe(self.version)}-{condense(self.build_os)}",
+                f"{clean_version(self.version)}-{condense(self.build_os)}",
+            ]
+            if self.primary_os or "os" in self.const:
+                self.tags.extend([f"{tag_safe(self.version)}", f"{clean_version(self.version)}"])
+            if self.type != "std":
+                for i in range(len(self.tags)):
+                    self.tags[i] = f"{self.tags[i]}-{self.type}"
         else:
             self.tags = [render_template(tag, build=self.build_data, target=self.target_data, **self.const) for tag in self.tags]
 
         if self.latest_tags is None or len(self.latest_tags) == 0:
-            if self.type == "std":
-                self.latest_tags = [f"{condense(self.os)}", "latest"]
-            else:
-                self.latest_tags = [f"{condense(self.os)}-{self.type}", f"latest-{self.type}"]
+            self.latest_tags = [f"{condense(self.build_os)}", "latest"]
+            if self.type != "std":
+                for i in range(len(self.latest_tags)):
+                    self.latest_tags[i] = f"{self.latest_tags[i]}-{self.type}"
         else:
             self.latest_tags = [render_template(tag, build=self.build_data, target=self.target_data, **self.const) for tag in self.latest_tags]
 
@@ -194,6 +192,25 @@ class TargetBuild:
                 target_data=self.target_data,
                 const=self.const
             )
+
+    @staticmethod
+    def __find_containerfile(
+            search_context: Union[str, bytes, os.PathLike],
+            image_type: str,
+            build_os: str
+    ) -> Tuple[str, Path] | Tuple[None, None]:
+        condensed_os = condense(build_os)
+        potential_names = [
+            f"Containerfile.{condensed_os}.{image_type}",
+            f"Containerfile.{image_type}",
+            f"Containerfile.{condensed_os}",
+            "Containerfile",
+        ]
+        for name in potential_names:
+            potential_path = Path(search_context) / name
+            if potential_path.exists():
+                return name, potential_path
+        return None, None
 
     def __hash__(self):
         return hash(self.uid)
@@ -221,6 +238,7 @@ class Manifest(GenericTOMLModel):
             build_data["version"] = build_version
             if os_list is None or type(os_list) is str:
                 os_list = [os_list]
+            primary_os = os_list[0]
             for _os in os_list:
                 for target_type, target_data in manifest_document["target"].unwrap().items():
                     target_data["type"] = target_type
@@ -230,7 +248,8 @@ class Manifest(GenericTOMLModel):
                         build_data=build_data,
                         target_data=target_data,
                         image_name=str(manifest_document["image_name"]),
-                        os=_os,
+                        build_os=_os,
+                        primary_os=_os == primary_os,
                         const=manifest_document.get("const"),
                         **build_data,
                         **target_data,
