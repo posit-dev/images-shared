@@ -5,9 +5,10 @@ ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/loca
 
 ### ARG declarations ###
 ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="1.0.0"
 
 ### Install Apt Packages ###
-COPY test-image1/1.0.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+COPY test-image/1.0.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
 
 RUN pti container syspkg upgrade --dist \
     && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \

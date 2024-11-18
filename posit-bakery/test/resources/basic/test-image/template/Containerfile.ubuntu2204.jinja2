@@ -5,16 +5,17 @@ ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/loca
 
 ### ARG declarations ###
 ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="{{ image_version }}"
 
 ### Install Apt Packages ###
 COPY {{ rel_path }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
-{% if not is_minimal -%}
+{% if image_type != "min" -%}
 COPY {{ rel_path }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
 {%- endif %}
 RUN pti container syspkg upgrade --dist \
     && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \
     && rm -f /tmp/ubuntu2204_packages.txt \
-    {%- if not is_minimal %}
+    {%- if image_type != "min" %}
     && pti container syspkg install -f /tmp/ubuntu2204_optional_packages.txt \
     && rm -f /tmp/ubuntu2204_optional_packages.txt \
     {%- endif %}
