@@ -218,7 +218,6 @@ class TargetBuild:
 
 class Manifest(GenericTOMLModel):
     image_name: str
-    manifest_context: Path
     config: Config
     target_builds: Set[TargetBuild] = None
 
@@ -267,9 +266,8 @@ class Manifest(GenericTOMLModel):
         return cls(
             filepath=filepath,
             document=d,
-            context=config.context,
+            context=Path(filepath).parent,
             image_name=image_name,
-            manifest_context=Path(filepath).parent,
             config=config,
             target_builds=target_builds,
         )
@@ -295,16 +293,16 @@ class Manifest(GenericTOMLModel):
                 build.pop("latest")
             build_data["latest"] = True
         if "os" not in self.document["const"]:
-            build_data["os"] = self.__guess_os_list(self.manifest_context / version)
+            build_data["os"] = self.__guess_os_list(self.context / version)
         self.document["build"].append(version, build_data)
-        self.generate_target_builds(self.config, self.manifest_context, self.document)
+        self.generate_target_builds(self.config, self.context, self.document)
         self.dump()
 
     def __render_templates(self, version: str, value_map: Dict[str, str] = None):
-        template_directory = self.manifest_context / "template"
+        template_directory = self.context / "template"
         if not template_directory.exists():
-            raise BakeryFileNotFoundError(f"Path '{self.manifest_context}/template' does not exist.")
-        new_directory = self.manifest_context / version
+            raise BakeryFileNotFoundError(f"Path '{self.context}/template' does not exist.")
+        new_directory = self.context / version
         new_directory.mkdir(exist_ok=True)
 
         if value_map is None:
