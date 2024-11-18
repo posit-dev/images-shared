@@ -217,20 +217,57 @@ class TargetBuild:
 
 
 class Manifest(GenericTOMLModel):
+    """Models an image's manifest.toml file
+
+    :param image_name: Name of the image
+    :param config: Config object for the repository
+    :param target_builds: Set of TargetBuild objects for the image
+    """
     image_name: str
     config: Config
     target_builds: Set[TargetBuild] = None
 
     @property
     def types(self) -> Set[str]:
+        """Get the target types present in the target builds"""
         return set(target_build.type for target_build in self.target_builds)
 
     @property
     def versions(self) -> Set[str]:
+        """Get the build versions present in the target builds"""
         return set(target_build.version for target_build in self.target_builds)
+
+    def filter_target_builds(
+            self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
+    ) -> List[TargetBuild]:
+        """Filter the target builds based on the given criteria
+
+        :param build_version: Build version to filter by
+        :param target_type: Target type to filter by
+        :param build_os: Build OS to filter by
+        :param is_latest: Filter latest build(s)
+        """
+        results = []
+        for target_build in self.target_builds:
+            if build_version is not None and target_build.version != build_version:
+                continue
+            if target_type is not None and target_build.type != target_type:
+                continue
+            if build_os is not None and target_build.build_os != build_os:
+                continue
+            if is_latest is not None and target_build.latest != is_latest:
+                continue
+            results.append(target_build)
+        return results
 
     @staticmethod
     def generate_target_builds(config: Config, manifest_context: Path, manifest_document: TOMLDocument):
+        """Generate a set of TargetBuild objects from a manifest document
+
+        :param config: Config object for the repository
+        :param manifest_context: Path to the directory containing the manifest and associated image definitions
+        :param manifest_document: TOMLDocument object representing the manifest.toml file
+        """
         target_builds = []
         for build_version, build_data in manifest_document["build"].unwrap().items():
             os_list = build_data.pop("os", build_data.get("const", {}).pop("os", None))
@@ -253,10 +290,15 @@ class Manifest(GenericTOMLModel):
                         **build_data,
                         **target_data,
                     ))
-        return target_builds
+        return set(target_builds)
 
     @classmethod
     def load_file_with_config(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
+        """Load a Manifest object from a TOML file
+
+        :param config: Config object for the repository
+        :param filepath: Path to the manifest.toml file to load
+        """
         filepath = Path(filepath)
         d = cls.load_toml_file_data(filepath)
         image_name = d.get("image_name")
@@ -273,7 +315,11 @@ class Manifest(GenericTOMLModel):
         )
 
     @staticmethod
-    def __guess_os_list(p: Path):
+    def guess_image_os_list(p: Path):
+        """Guess the operating systems for an image based on the Containerfile extensions present in the image directory
+
+        :param p: Path to the versioned image directory containing Containerfiles to guess OSes from
+        """
         os_list = []
         pat = re.compile(r"Containerfile\.([a-zA-Z]+)([0-9.]+)\.[a-zA-Z0-9]")
         containerfiles = list(p.glob("Containerfile*"))
@@ -284,21 +330,30 @@ class Manifest(GenericTOMLModel):
             match = pat.match(containerfile)
             if match:
                 os_list.append(" ".join(match.groups()).title())
+        os_list = list(set(os_list))
         return os_list
 
-    def __add_build_version_to_manifest(self, version: str, mark_latest: bool = True):
+    def append_build_version(self, version: str, mark_latest: bool = True):
+        """Append a new build version to the manifest document
+
+        :param version: Build version to append
+        :param mark_latest: Mark the new build version as the latest and remove the latest flag from other versions
+        """
         build_data = {}
         if mark_latest:
             for build in self.document["build"].values():
                 build.pop("latest")
             build_data["latest"] = True
-        if "os" not in self.document["const"]:
-            build_data["os"] = self.__guess_os_list(self.context / version)
+        if "os" not in self.document.get("const", {}):
+            build_data["os"] = self.guess_image_os_list(self.context / version)
         self.document["build"].append(version, build_data)
-        self.generate_target_builds(self.config, self.context, self.document)
-        self.dump()
 
-    def __render_templates(self, version: str, value_map: Dict[str, str] = None):
+    def render_image_template(self, version: str, value_map: Dict[str, str] = None):
+        """Render the image template files for a new version
+
+        :param version: Version to render the image template files for
+        :param value_map: Map of values to use in the template rendering
+        """
         template_directory = self.context / "template"
         if not template_directory.exists():
             raise BakeryFileNotFoundError(f"Path '{self.context}/template' does not exist.")
@@ -338,12 +393,24 @@ class Manifest(GenericTOMLModel):
                     print(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
                     f.write(rendered)
 
-    def new_version(self, version: str, mark_latest: bool = True, value_map: Dict[str, str] = None):
-        self.__render_templates(version, value_map)
+    def new_version(
+            self, version: str, mark_latest: bool = True, save: bool = True, value_map: Dict[str, str] = None
+    ) -> None:
+        """Render a new version, add the version to the manifest document, and regenerate target builds
+
+        :param version: Version to render and add to the manifest
+        :param mark_latest: Mark the new version as the latest build and remove the latest flag from other versions
+        :param save: If true, writes the updated manifest back to the manifest.toml file
+        :param value_map: Map of values to use in the template rendering
+        """
+        self.render_image_template(version, value_map)
         if version in self.document["build"]:
             print(
                 f"[bright_yellow][bold]WARNING:[/bold] Build version '{version}' already exists in "
                 f"manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
             )
         else:
-            self.__add_build_version_to_manifest(version, mark_latest)
+            self.append_build_version(version, mark_latest)
+        self.target_builds = self.generate_target_builds(self.config, self.context, self.document)
+        if save:
+            self.dump()
