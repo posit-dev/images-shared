@@ -129,8 +129,8 @@ namespace = "posit-dev"
 
         assert len(commands) == 2
         # Ensure tags are different
-        assert commands[0][0] == manifest_std.all_tags[0]
-        assert commands[1][0] == manifest_min.all_tags[0]
+        assert commands[0][0] == manifest_std.get_tags()[0]
+        assert commands[1][0] == manifest_min.get_tags()[0]
         # Ensure run env is there, this is impossible to check for the exact value
         for run_env in [commands[0][1], commands[1][1]]:
             assert isinstance(run_env, dict)
@@ -142,13 +142,13 @@ namespace = "posit-dev"
         cmdstr = " ".join(commands[0][2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={manifest_std.type} {manifest_std.all_tags[0]} {goss_std.command}"
+            f"-e IMAGE_TYPE={manifest_std.type} {manifest_std.get_tags()[0]} {goss_std.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
         cmdstr = " ".join(commands[1][2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={manifest_min.type} {manifest_min.all_tags[0]} {goss_min.command}"
+            f"-e IMAGE_TYPE={manifest_min.type} {manifest_min.get_tags()[0]} {goss_min.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
 

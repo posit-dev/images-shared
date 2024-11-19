@@ -80,21 +80,24 @@ class TargetBuild:
     containerfile_path: Path = None
     latest: bool = False
     primary_os: bool = False
-    tags: List[str] = None
+    generic_tags: List[str] = None
     latest_tags: List[str] = None
     goss: GossConfig = None
 
-    @property
-    def all_tags(self) -> List[str]:
+    def get_tags(self, fully_qualified: bool = True) -> List[str]:
         tags = []
         for base_url in self.config.registry_urls:
-            for tag in self.tags:
-                t = f"{base_url}/{self.image_name}:{tag}"
+            for tag in self.generic_tags:
+                t = f"{self.image_name}:{tag}"
+                if fully_qualified:
+                    t = f"{base_url}/{t}"
                 if t not in tags:
                     tags.append(t)
             if self.latest:
                 for tag in self.latest_tags:
-                    t = f"{base_url}/{self.image_name}:{tag}"
+                    t = f"{self.image_name}:{tag}"
+                    if fully_qualified:
+                        t = f"{base_url}/{t}"
                     if t not in tags:
                         tags.append(t)
         tags.sort()
@@ -169,26 +172,34 @@ class TargetBuild:
                 f"Could not find a Containerfile for manifest '{self.uid}' in '{self.manifest_context / self.version}'."
             )
 
-        if self.tags is None or len(self.tags) == 0:
-            self.tags = [
+        # Generate the generic tags if not provided, otherwise render them
+        if self.generic_tags is None or len(self.generic_tags) == 0:
+            self.generic_tags = [
                 f"{tag_safe(self.version)}-{condense(self.build_os)}",
                 f"{clean_version(self.version)}-{condense(self.build_os)}",
             ]
             if self.primary_os or "os" in self.const:
-                self.tags.extend([f"{tag_safe(self.version)}", f"{clean_version(self.version)}"])
+                self.generic_tags.extend([f"{tag_safe(self.version)}", f"{clean_version(self.version)}"])
             if self.type != "std":
-                for i in range(len(self.tags)):
-                    self.tags[i] = f"{self.tags[i]}-{self.type}"
+                for i in range(len(self.generic_tags)):
+                    self.generic_tags[i] = f"{self.generic_tags[i]}-{self.type}"
         else:
-            self.tags = [render_template(tag, build=self.build_data, target=self.target_data, **self.const) for tag in self.tags]
+            self.generic_tags = [
+                render_template(tag, build=self.build_data, target=self.target_data, **self.const)
+                for tag in self.generic_tags
+            ]
 
+        # Generate the latest tags if not provided, otherwise render them
         if self.latest_tags is None or len(self.latest_tags) == 0:
             self.latest_tags = [f"{condense(self.build_os)}", "latest"]
             if self.type != "std":
                 for i in range(len(self.latest_tags)):
                     self.latest_tags[i] = f"{self.latest_tags[i]}-{self.type}"
         else:
-            self.latest_tags = [render_template(tag, build=self.build_data, target=self.target_data, **self.const) for tag in self.latest_tags]
+            self.latest_tags = [
+                render_template(tag, build=self.build_data, target=self.target_data, **self.const)
+                for tag in self.latest_tags
+            ]
 
         if self.goss is None:
             self.goss = GossConfig(
