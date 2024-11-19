@@ -112,7 +112,7 @@ class Config(GenericTOMLModel):
             registry.append(ConfigRegistry(**r))
 
         # Create repository object from config.toml
-        repository = ConfigRepository(**d["repository"])
+        repository = ConfigRepository(**d.get("repository", {}))
 
         return cls(
             filepath=filepath,

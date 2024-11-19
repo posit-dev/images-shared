@@ -85,15 +85,20 @@ class TargetBuild:
     goss: GossConfig = None
 
     @property
-    def all_tags(self) -> Set[str]:
+    def all_tags(self) -> List[str]:
         tags = []
         for base_url in self.config.registry_urls:
             for tag in self.tags:
-                tags.append(f"{base_url}/{self.image_name}:{tag}")
+                t = f"{base_url}/{self.image_name}:{tag}"
+                if t not in tags:
+                    tags.append(t)
             if self.latest:
                 for tag in self.latest_tags:
-                    tags.append(f"{base_url}/{self.image_name}:{tag}")
-        return set(tags)
+                    t = f"{base_url}/{self.image_name}:{tag}"
+                    if t not in tags:
+                        tags.append(t)
+        tags.sort()
+        return tags
 
     @property
     def uid(self):
@@ -225,7 +230,7 @@ class Manifest(GenericTOMLModel):
     """
     image_name: str
     config: Config
-    target_builds: Set[TargetBuild] = None
+    __target_builds: Set[TargetBuild] = None
 
     @property
     def types(self) -> Set[str]:
@@ -236,6 +241,21 @@ class Manifest(GenericTOMLModel):
     def versions(self) -> Set[str]:
         """Get the build versions present in the target builds"""
         return set(target_build.version for target_build in self.target_builds)
+
+    @property
+    def target_builds(self) -> List[TargetBuild]:
+        """Get the target builds for the manifest with consistent ordering"""
+        if self.__target_builds is None:
+            return []
+        t = list(self.__target_builds)
+        t.sort(key=lambda x: (x.version, x.type, x.build_os))
+        return t
+
+    @target_builds.setter
+    def target_builds(self, value: List[TargetBuild]):
+        """Set the target builds for the manifest"""
+        t = set(value)
+        self.__target_builds = t
 
     def filter_target_builds(
             self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
@@ -261,7 +281,9 @@ class Manifest(GenericTOMLModel):
         return results
 
     @staticmethod
-    def generate_target_builds(config: Config, manifest_context: Path, manifest_document: TOMLDocument):
+    def generate_target_builds(
+            config: Config, manifest_context: Path, manifest_document: TOMLDocument
+    ) -> List[TargetBuild]:
         """Generate a set of TargetBuild objects from a manifest document
 
         :param config: Config object for the repository
@@ -290,7 +312,7 @@ class Manifest(GenericTOMLModel):
                         **build_data,
                         **target_data,
                     ))
-        return set(target_builds)
+        return target_builds
 
     @classmethod
     def load_file_with_config(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
@@ -305,14 +327,15 @@ class Manifest(GenericTOMLModel):
         if image_name is None:
             raise BakeryConfigError(f"Manifest at '{filepath}' does not have an 'image_name' field.")
         target_builds = cls.generate_target_builds(config, Path(filepath).parent, d)
-        return cls(
+        m = cls(
             filepath=filepath,
             document=d,
             context=Path(filepath).parent,
             image_name=image_name,
             config=config,
-            target_builds=target_builds,
         )
+        m.target_builds = target_builds
+        return m
 
     @staticmethod
     def guess_image_os_list(p: Path):
