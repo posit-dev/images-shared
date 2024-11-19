@@ -2,7 +2,6 @@
 TPL_CONTAINERFILE = """FROM {{ base_tag }}
 
 ### ARG declarations ###
-ARG SCRIPTS_DIR=/opt/posit/scripts
 # Declare your arguments here...
 
 ### ENV declarations ###
@@ -25,6 +24,5 @@ ARG SCRIPTS_DIR=/opt/posit/scripts
 
 ### Finalize image ###
 # Perform any final steps to prepare the image for use, such as setting the entrypoint, command, or exposing ports.
-ENTRYPOINT ["tini", "--"]
 
 """

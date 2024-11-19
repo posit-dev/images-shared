@@ -55,7 +55,7 @@ class Project:
         override_config_filepath = context / "config.override.toml"
         if not no_override and override_config_filepath.exists():
             override_config = Config.load_file(override_config_filepath)
-            config.merge(override_config)
+            config.update(override_config)
 
         return config
 

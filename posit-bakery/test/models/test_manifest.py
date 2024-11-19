@@ -293,7 +293,7 @@ class TestTargetBuild:
             )
 
     def test_tags_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        basic_manifest_obj.config.registry = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
@@ -376,7 +376,7 @@ class TestTargetBuild:
     def test_tags_render(self, basic_manifest_obj, target_data_min, build_data):
         tag_tpl = ["{{ build.version }}-dev"]
         latest_tag_tpl = ["latest-dev"]
-        basic_manifest_obj.config.registry = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
