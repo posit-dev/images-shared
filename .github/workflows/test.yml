@@ -24,7 +24,7 @@ jobs:
       - name: Run tests
         working-directory: ./posit-bakery
         run: |
-          pytest -n auto \
+          poetry run pytest -n auto \
             --cov=posit_bakery \
             --cov-report=xml \
             --junit-xml=results.xml \
