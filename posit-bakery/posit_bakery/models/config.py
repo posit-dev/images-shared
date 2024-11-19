@@ -56,11 +56,23 @@ class ConfigRepository:
 class Config(GenericTOMLModel):
     """Models a repository's config.toml file
 
-    :param registry: One or more image registries to use for tagging and pushing images
+    :param __registries: One or more image registries to use for tagging and pushing images
     :param repository: Repository information for labeling purposes
     """
-    registry: Set[ConfigRegistry]
+    __registries: Set[ConfigRegistry]
     repository: ConfigRepository
+
+    @property
+    def registries(self) -> List[ConfigRegistry]:
+        """Get the registries for the Config object"""
+        r = list(self.__registries)
+        r.sort(key=lambda x: x.base_url)
+        return r
+
+    @registries.setter
+    def registries(self, r: List[ConfigRegistry]) -> None:
+        """Set the registries for the Config object"""
+        self.__registries = set(r)
 
     @property
     def authors(self) -> Set[str]:
@@ -85,7 +97,7 @@ class Config(GenericTOMLModel):
     @property
     def registry_urls(self) -> List[str]:
         """Get the base URLs for all the ConfigRegistry objects as a list"""
-        return [r.base_url for r in self.registry]
+        return [r.base_url for r in self.registries]
 
     def get_commit_sha(self) -> str:
         """Get the git commit SHA for the current context"""
@@ -107,9 +119,9 @@ class Config(GenericTOMLModel):
         d = cls.load_toml_file_data(filepath)
 
         # Create registry objects for each registry defined in config.toml
-        registry = []
+        registries = []
         for r in d["registry"]:
-            registry.append(ConfigRegistry(**r))
+            registries.append(ConfigRegistry(**r))
 
         # Create repository object from config.toml
         repository = ConfigRepository(**d.get("repository", {}))
@@ -118,11 +130,11 @@ class Config(GenericTOMLModel):
             filepath=filepath,
             context=filepath.parent,
             document=d,
-            registry=registry,
+            registries=registries,
             repository=repository
         )
 
-    def merge(self, c: "Config") -> None:
+    def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object
 
         This is used to overlay config.override.toml data on top of config.toml data when applicable
@@ -130,8 +142,8 @@ class Config(GenericTOMLModel):
         :param c: Config object to overwrite onto the current object
         """
         # Only replace registries if defined in the provided config
-        if len(c.registry) > 0:
-            self.registry = c.registry
+        if len(c.registries) > 0:
+            self.registries = c.registries
 
         # Only replace repository data if defined in the provided config
         if c.repository.authors:

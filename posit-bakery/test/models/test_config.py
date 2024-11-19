@@ -54,7 +54,7 @@ class TestConfig:
             filepath=basic_config_file,
             context=basic_context,
             document=config.GenericTOMLModel.load_toml_file_data(basic_config_file),
-            registry=[config.ConfigRegistry(host="docker.io", namespace="posit")],
+            registries=[config.ConfigRegistry(host="docker.io", namespace="posit")],
             repository=config.ConfigRepository(
                 authors={"author1", "author2"},
                 url="github.com/rstudio/example",
@@ -76,7 +76,7 @@ class TestConfig:
         assert c.repository_url == "github.com/rstudio/posit-images-shared"
         assert c.vendor == "Posit Software, PBC"
         assert c.maintainer == "docker@posit.co"
-        assert len(c.registry) == 2
+        assert len(c.registries) == 2
         assert "docker.io/posit" in c.registry_urls
         assert "ghcr.io/posit-dev" in c.registry_urls
 
@@ -87,7 +87,7 @@ class TestConfig:
         assert basic_config_obj.repository_url == "github.com/rstudio/posit-images-shared"
         assert basic_config_obj.vendor == "Posit Software, PBC"
         assert basic_config_obj.maintainer == "docker@posit.co"
-        assert len(basic_config_obj.registry) == 2
+        assert len(basic_config_obj.registries) == 2
         assert "docker.io/posit" in basic_config_obj.registry_urls
         assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
 
@@ -96,7 +96,7 @@ class TestConfig:
             filepath=basic_config_file,
             context=basic_context,
             document=config.GenericTOMLModel.load_toml_file_data(basic_config_file),
-            registry=[],
+            registries=[],
             repository=config.ConfigRepository(
                 authors={"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"},
                 url="github.com/rstudio/example",
@@ -104,17 +104,17 @@ class TestConfig:
                 maintainer="images@example.com",
             )
         )
-        basic_config_obj.merge(c_override)
+        basic_config_obj.update(c_override)
         assert basic_config_obj.authors == {"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"}
         assert basic_config_obj.repository_url == "github.com/rstudio/example"
         assert basic_config_obj.vendor == "Example Company"
         assert basic_config_obj.maintainer == "images@example.com"
-        assert len(basic_config_obj.registry) == 2
+        assert len(basic_config_obj.registries) == 2
         assert "docker.io/posit" in basic_config_obj.registry_urls
         assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
 
         # Test overriding registry
-        c_override.registry = [config.ConfigRegistry(host="docker.io", namespace="example")]
-        basic_config_obj.merge(c_override)
-        assert len(basic_config_obj.registry) == 1
+        c_override.registries = [config.ConfigRegistry(host="docker.io", namespace="example")]
+        basic_config_obj.update(c_override)
+        assert len(basic_config_obj.registries) == 1
         assert "docker.io/example" in basic_config_obj.registry_urls
