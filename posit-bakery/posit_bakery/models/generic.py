@@ -20,7 +20,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     document: tomlkit.TOMLDocument
 
     @staticmethod
-    def load_toml_file_data(filepath: Union[str, bytes, os.PathLike]) -> tomlkit.TOMLDocument:
+    def read(filepath: Union[str, bytes, os.PathLike]) -> tomlkit.TOMLDocument:
         """Load a TOML file at the given filepath into a TOMLDocument object
 
         :param filepath: Path to the TOML file

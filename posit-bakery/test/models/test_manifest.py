@@ -490,14 +490,14 @@ class TestManifest:
         manifest.Manifest(
             filepath=basic_manifest_file,
             context=basic_manifest_file.parent,
-            document=manifest.GenericTOMLModel.load_toml_file_data(basic_manifest_file),
+            document=manifest.GenericTOMLModel.read(basic_manifest_file),
             image_name="test-image",
             config=basic_config_obj,
         )
 
     def test_manifest_with_target_build(self, basic_config_obj, basic_manifest_file):
         """Test creating a basic Manifest object with a TargetBuild does not raise an exception"""
-        data = manifest.GenericTOMLModel.load_toml_file_data(basic_manifest_file)
+        data = manifest.GenericTOMLModel.read(basic_manifest_file)
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_file.parent,
             config=basic_config_obj,
@@ -547,7 +547,7 @@ class TestManifest:
 
     def test_generate_target_builds(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
         """Test the generate_target_builds method of a Manifest object returns expected number of TargetBuild objects"""
-        data = manifest.GenericTOMLModel.load_toml_file_data(basic_manifest_file)
+        data = manifest.GenericTOMLModel.read(basic_manifest_file)
         target_builds = manifest.Manifest.generate_target_builds(basic_config_obj, basic_manifest_file.parent, data)
         assert len(target_builds) == basic_expected_num_target_builds
 
