@@ -31,16 +31,14 @@ jobs:
             test/
 
       - name: Publish test results
-        working-directory: ./posit-bakery
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: results.xml
+          files: ./posit-bakery/results.xml
 
       - name: Publish coverage results
-        working-directory: ./posit-bakery
         if: always()
         uses: MishaKav/pytest-coverage-comment@main
         with:
-          pytest-coverage-path: coverage.xml
-          junitxml-path: results.xml
+          pytest-coverage-path: ./posit-bakery/coverage.xml
+          junitxml-path: ./posit-bakery/results.xml
