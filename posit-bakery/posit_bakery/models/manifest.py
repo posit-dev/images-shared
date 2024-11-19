@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Union, List, Any, Set, Optional, Tuple
 
 import jinja2
-from pydantic import model_validator
+from pydantic import model_validator, BaseModel
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
 from rich import print
@@ -63,8 +63,7 @@ class GossConfig:
             self.command = render_template(self.command, build=self.build_data, target=self.target_data, **self.const)
 
 
-@dataclass
-class TargetBuild:
+class TargetBuild(BaseModel):
     manifest_context: Union[str, bytes, os.PathLike]
     config: Config
     build_data: Dict[str, Any]
@@ -81,26 +80,8 @@ class TargetBuild:
     primary_os: bool = False
     generic_tags: List[str] = None
     latest_tags: List[str] = None
-    goss: GossConfig = None
 
-    def get_tags(self, fully_qualified: bool = True) -> List[str]:
-        tags = []
-        for base_url in self.config.registry_urls:
-            for tag in self.generic_tags:
-                t = f"{self.image_name}:{tag}"
-                if fully_qualified:
-                    t = f"{base_url}/{t}"
-                if t not in tags:
-                    tags.append(t)
-            if self.latest:
-                for tag in self.latest_tags:
-                    t = f"{self.image_name}:{tag}"
-                    if fully_qualified:
-                        t = f"{base_url}/{t}"
-                    if t not in tags:
-                        tags.append(t)
-        tags.sort()
-        return tags
+    goss: GossConfig = None
 
     @property
     def uid(self):
@@ -129,31 +110,45 @@ class TargetBuild:
 
     @model_validator(mode="before")
     @classmethod
-    def pre_root(cls, values: ArgsKwargs) -> ArgsKwargs:
-        version_context = Path(values.kwargs["manifest_context"]) / values.kwargs["version"]
-        const = values.kwargs.get("const")
-        if const is None:
-            const = {"image_name": values.kwargs["image_name"]}
-        if "goss" in values.kwargs:
-            values.kwargs["goss"] = GossConfig(
+    def unpack_goss(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "goss" in data:
+            version_context = Path(data["manifest_context"]) / data["version"]
+            const = data.get("const")
+            if const is None:
+                const = {"image_name": data["image_name"]}
+            data["goss"] = GossConfig(
                 version_context=version_context,
-                build_data=values.kwargs["build_data"],
-                target_data=values.kwargs["target_data"],
+                build_data=data["build_data"],
+                target_data=data["target_data"],
                 const=const,
-                **values.kwargs["goss"]
+                **data["goss"],
             )
-        if "containerfile" in values.kwargs:
-            values.kwargs["containerfile_path"] = version_context / render_template(
-                values.kwargs.pop("containerfile"),
-                build=values.kwargs["build_data"],
-                target=values.kwargs["target_data"],
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_containerfile(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "containerfile" in data:
+            version_context = Path(data["manifest_context"]) / data["version"]
+            const = data.get("const")
+            if const is None:
+                const = {"image_name": data["image_name"]}
+            data["containerfile_path"] = version_context / render_template(
+                data.pop("containerfile"),
+                build=data["build_data"],
+                target=data["target_data"],
                 **const,
             )
-        if "os" in values.kwargs and "build_os" not in values.kwargs:
-            values.kwargs["build_os"] = values.kwargs.pop("os")
-        return values
+        return data
 
-    def __post_init__(self):
+    @model_validator(mode="before")
+    @classmethod
+    def set_build_os(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "os" in data and "build_os" not in data:
+            data["build_os"] = data.pop("os")
+        return data
+
+    def model_post_init(self, __context: Any) -> None:
         self.manifest_context = Path(self.manifest_context)
         if not self.manifest_context.is_dir():
             raise BakeryFileNotFoundError(f"Manifest context '{self.manifest_context}' is not a directory.")
@@ -212,6 +207,74 @@ class TargetBuild:
                 const=self.const
             )
 
+    @classmethod
+    def load(
+            cls, config: Config, manifest_context: Path, manifest_document: TOMLDocument
+    ) -> List["TargetBuild"]:
+        """Generate a set of TargetBuild objects from a manifest document
+
+        :param config: Config object for the repository
+        :param manifest_context: Path to the directory containing the manifest and associated image definitions
+        :param manifest_document: TOMLDocument object representing the manifest.toml file
+        """
+        target_builds = []
+
+        # If the manifest document does not have at least one build and one target section, return an empty list.
+        if "build" not in manifest_document:
+            print(
+                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
+                f"does not have any defined builds."
+            )
+            return target_builds
+        if "target" not in manifest_document:
+            print(
+                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
+                f"does not have any defined targets."
+            )
+            return target_builds
+
+        for build_version, build_data in manifest_document["build"].unwrap().items():
+            os_list = build_data.pop("os", build_data.get("const", {}).pop("os", None))
+            build_data["version"] = build_version
+            if os_list is None or type(os_list) is str:
+                os_list = [os_list]
+            primary_os = os_list[0]
+            for _os in os_list:
+                for target_type, target_data in manifest_document["target"].unwrap().items():
+                    target_data["type"] = target_type
+                    target_builds.append(cls(
+                        manifest_context=manifest_context,
+                        config=config,
+                        build_data=build_data,
+                        target_data=target_data,
+                        image_name=str(manifest_document["image_name"]),
+                        build_os=_os,
+                        primary_os=_os == primary_os,
+                        const=manifest_document.get("const"),
+                        **build_data,
+                        **target_data,
+                    ))
+        return target_builds
+
+    def get_tags(self, fully_qualified: bool = True) -> List[str]:
+        tags = []
+        for base_url in self.config.registry_urls:
+            for tag in self.generic_tags:
+                t = f"{self.image_name}:{tag}"
+                if fully_qualified:
+                    t = f"{base_url}/{t}"
+                if t not in tags:
+                    tags.append(t)
+            if self.latest:
+                for tag in self.latest_tags:
+                    t = f"{self.image_name}:{tag}"
+                    if fully_qualified:
+                        t = f"{base_url}/{t}"
+                    if t not in tags:
+                        tags.append(t)
+        tags.sort()
+        return tags
+
     @staticmethod
     def __find_containerfile(
             search_context: Union[str, bytes, os.PathLike],
@@ -244,6 +307,7 @@ class Manifest(GenericTOMLModel):
     """
     image_name: str
     config: Config
+
     __target_builds: Set[TargetBuild] = None
 
     @property
@@ -294,55 +358,6 @@ class Manifest(GenericTOMLModel):
             results.append(target_build)
         return results
 
-    @staticmethod
-    def generate_target_builds(
-            config: Config, manifest_context: Path, manifest_document: TOMLDocument
-    ) -> List[TargetBuild]:
-        """Generate a set of TargetBuild objects from a manifest document
-
-        :param config: Config object for the repository
-        :param manifest_context: Path to the directory containing the manifest and associated image definitions
-        :param manifest_document: TOMLDocument object representing the manifest.toml file
-        """
-        target_builds = []
-
-        # If the manifest document does not have at least one build and one target section, return an empty list.
-        if "build" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined builds."
-            )
-            return target_builds
-        if "target" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined targets."
-            )
-            return target_builds
-
-        for build_version, build_data in manifest_document["build"].unwrap().items():
-            os_list = build_data.pop("os", build_data.get("const", {}).pop("os", None))
-            build_data["version"] = build_version
-            if os_list is None or type(os_list) is str:
-                os_list = [os_list]
-            primary_os = os_list[0]
-            for _os in os_list:
-                for target_type, target_data in manifest_document["target"].unwrap().items():
-                    target_data["type"] = target_type
-                    target_builds.append(TargetBuild(
-                        manifest_context=manifest_context,
-                        config=config,
-                        build_data=build_data,
-                        target_data=target_data,
-                        image_name=str(manifest_document["image_name"]),
-                        build_os=_os,
-                        primary_os=_os == primary_os,
-                        const=manifest_document.get("const"),
-                        **build_data,
-                        **target_data,
-                    ))
-        return target_builds
-
     @classmethod
     def load(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
         """Load a Manifest object from a TOML file
@@ -355,7 +370,7 @@ class Manifest(GenericTOMLModel):
         image_name = d.get("image_name")
         if image_name is None:
             raise BakeryConfigError(f"Manifest at '{filepath}' does not have an 'image_name' field.")
-        target_builds = cls.generate_target_builds(config, Path(filepath).parent, d)
+        target_builds = TargetBuild.load(config, Path(filepath).parent, d)
         m = cls(
             filepath=filepath,
             document=d,
@@ -463,6 +478,6 @@ class Manifest(GenericTOMLModel):
             )
         else:
             self.append_build_version(version, mark_latest)
-        self.target_builds = self.generate_target_builds(self.config, self.context, self.document)
+        self.target_builds = TargetBuild.load(self.config, self.context, self.document)
         if save:
             self.dump()

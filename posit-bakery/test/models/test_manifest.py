@@ -138,6 +138,12 @@ class TestTargetBuild:
         d["os"] = d["os"][0]
         return d
 
+    def test_load(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
+        """Test the load method of TargetBuild returns expected number of TargetBuild objects"""
+        data = manifest.GenericTOMLModel.read(basic_manifest_file)
+        target_builds = manifest.TargetBuild.load(basic_config_obj, basic_manifest_file.parent, data)
+        assert len(target_builds) == basic_expected_num_target_builds
+
     def test_target_build(self, basic_manifest_obj, target_data_min, build_data):
         """Test creating a basic TargetBuild object does not raise an exception"""
         manifest.TargetBuild(
@@ -560,12 +566,6 @@ class TestManifest:
         assert len(basic_manifest_obj.versions) == len(basic_manifest_versions)
         for version in basic_manifest_versions:
             assert version in basic_manifest_obj.versions
-
-    def test_generate_target_builds(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
-        """Test the generate_target_builds method of a Manifest object returns expected number of TargetBuild objects"""
-        data = manifest.GenericTOMLModel.read(basic_manifest_file)
-        target_builds = manifest.Manifest.generate_target_builds(basic_config_obj, basic_manifest_file.parent, data)
-        assert len(target_builds) == basic_expected_num_target_builds
 
     def test_guess_image_os_list(self, tmpdir):
         """Test the guess_image_os_list method of a Manifest object returns expected OS list"""
