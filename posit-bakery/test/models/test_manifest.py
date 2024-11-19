@@ -174,7 +174,6 @@ class TestTargetBuild:
             **build_data,
             **target_data_min,
         )
-        assert target_build.containerfile == "Containerfile.ubuntu2204.min"
         assert target_build.containerfile_path == basic_manifest_obj.context / "1.0.0" / "Containerfile.ubuntu2204.min"
 
         target_build = manifest.TargetBuild(
@@ -186,7 +185,6 @@ class TestTargetBuild:
             **build_data,
             **target_data_std,
         )
-        assert target_build.containerfile == "Containerfile.ubuntu2204.std"
         assert target_build.containerfile_path == basic_manifest_obj.context / "1.0.0" / "Containerfile.ubuntu2204.std"
 
     def test_containerfile_multipattern_resolution(self, tmpdir):
@@ -216,7 +214,6 @@ class TestTargetBuild:
             build_os="Ubuntu 22.04",
         )
         assert target_build.containerfile_path == test_containerfile
-        assert target_build.containerfile == test_containerfile.name
 
         test_containerfile = versioned_context / "Containerfile.ubuntu2204"
         test_containerfile.touch(exist_ok=True)
@@ -231,7 +228,6 @@ class TestTargetBuild:
             build_os="Ubuntu 22.04",
         )
         assert target_build.containerfile_path == test_containerfile
-        assert target_build.containerfile == test_containerfile.name
 
         test_containerfile = versioned_context / "Containerfile.std"
         test_containerfile.touch(exist_ok=True)
@@ -246,7 +242,6 @@ class TestTargetBuild:
             build_os="Ubuntu 22.04",
         )
         assert target_build.containerfile_path == test_containerfile
-        assert target_build.containerfile == test_containerfile.name
 
         test_containerfile = versioned_context / "Containerfile.ubuntu2204.std"
         test_containerfile.touch(exist_ok=True)
@@ -261,7 +256,6 @@ class TestTargetBuild:
             build_os="Ubuntu 22.04",
         )
         assert target_build.containerfile_path == test_containerfile
-        assert target_build.containerfile == test_containerfile.name
 
     def test_containerfile_render(self, basic_manifest_obj, target_data_min, build_data):
         """Test that containerfiles with template rendering are resolved correctly"""
@@ -275,7 +269,6 @@ class TestTargetBuild:
             **build_data,
             **target_data_min,
         )
-        assert target_build.containerfile == "Containerfile.ubuntu2204.min"
         assert target_build.containerfile_path == basic_manifest_obj.context / "1.0.0" / "Containerfile.ubuntu2204.min"
 
     def test_containerfile_not_found(self, basic_manifest_obj, target_data_min, build_data):

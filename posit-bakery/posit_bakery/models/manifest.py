@@ -76,7 +76,6 @@ class TargetBuild:
     build_os: str
 
     const: Optional[Dict[str, Any]] = None
-    containerfile: str = None
     containerfile_path: Path = None
     latest: bool = False
     primary_os: bool = False
@@ -131,17 +130,24 @@ class TargetBuild:
     @model_validator(mode="before")
     @classmethod
     def pre_root(cls, values: ArgsKwargs) -> ArgsKwargs:
+        version_context = Path(values.kwargs["manifest_context"]) / values.kwargs["version"]
+        const = values.kwargs.get("const")
+        if const is None:
+            const = {"image_name": values.kwargs["image_name"]}
         if "goss" in values.kwargs:
-            version_context = values.kwargs["manifest_context"] / values.kwargs["version"]
-            const = values.kwargs.get("const")
-            if const is None:
-                const = {"image_name": values.kwargs["image_name"]}
             values.kwargs["goss"] = GossConfig(
                 version_context=version_context,
                 build_data=values.kwargs["build_data"],
                 target_data=values.kwargs["target_data"],
                 const=const,
                 **values.kwargs["goss"]
+            )
+        if "containerfile" in values.kwargs:
+            values.kwargs["containerfile_path"] = version_context / render_template(
+                values.kwargs.pop("containerfile"),
+                build=values.kwargs["build_data"],
+                target=values.kwargs["target_data"],
+                **const,
             )
         if "os" in values.kwargs and "build_os" not in values.kwargs:
             values.kwargs["build_os"] = values.kwargs.pop("os")
@@ -160,16 +166,11 @@ class TargetBuild:
         if self.build_os is None:
             raise ValueError(f"No operating system could be determined for manifest '{self.uid}'.")
 
-        if self.containerfile is None:
-            self.containerfile, self.containerfile_path = self.__find_containerfile(
+        if self.containerfile_path is None:
+            self.containerfile_path = self.__find_containerfile(
                 self.manifest_context / self.version, self.type, self.build_os
             )
-        else:
-            self.containerfile = render_template(
-                self.containerfile, build=self.build_data, target=self.target_data, **self.const
-            )
-            self.containerfile_path = Path(self.manifest_context) / self.version / self.containerfile
-        if self.containerfile is None:
+        if self.containerfile_path is None:
             raise BakeryFileNotFoundError(
                 f"Could not find a Containerfile for manifest '{self.uid}' in '{self.manifest_context / self.version}'."
             )
@@ -216,7 +217,7 @@ class TargetBuild:
             search_context: Union[str, bytes, os.PathLike],
             image_type: str,
             build_os: str
-    ) -> Tuple[str, Path] | Tuple[None, None]:
+    ) -> Path | None:
         condensed_os = condense(build_os)
         potential_names = [
             f"Containerfile.{condensed_os}.{image_type}",
@@ -227,8 +228,8 @@ class TargetBuild:
         for name in potential_names:
             potential_path = Path(search_context) / name
             if potential_path.exists():
-                return name, potential_path
-        return None, None
+                return potential_path
+        return None
 
     def __hash__(self):
         return hash(self.uid)
