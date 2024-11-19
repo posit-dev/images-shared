@@ -53,7 +53,7 @@ class TestConfig:
         c = config.Config(
             filepath=basic_config_file,
             context=basic_context,
-            document=config.GenericTOMLModel.load_toml_file_data(basic_config_file),
+            document=config.GenericTOMLModel.read(basic_config_file),
             registries=[config.ConfigRegistry(host="docker.io", namespace="posit")],
             repository=config.ConfigRepository(
                 authors={"author1", "author2"},
@@ -95,7 +95,7 @@ class TestConfig:
         c_override = config.Config(
             filepath=basic_config_file,
             context=basic_context,
-            document=config.GenericTOMLModel.load_toml_file_data(basic_config_file),
+            document=config.GenericTOMLModel.read(basic_config_file),
             registries=[],
             repository=config.ConfigRepository(
                 authors={"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"},

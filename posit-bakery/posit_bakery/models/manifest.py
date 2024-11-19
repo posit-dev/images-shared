@@ -337,7 +337,7 @@ class Manifest(GenericTOMLModel):
         :param filepath: Path to the manifest.toml file to load
         """
         filepath = Path(filepath)
-        d = cls.load_toml_file_data(filepath)
+        d = cls.read(filepath)
         image_name = d.get("image_name")
         if image_name is None:
             raise BakeryConfigError(f"Manifest at '{filepath}' does not have an 'image_name' field.")

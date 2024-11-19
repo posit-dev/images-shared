@@ -116,7 +116,7 @@ class Config(GenericTOMLModel):
         :param filepath: Path to the config.toml file
         """
         filepath = Path(filepath)
-        d = cls.load_toml_file_data(filepath)
+        d = cls.read(filepath)
 
         # Create registry objects for each registry defined in config.toml
         registries = []
