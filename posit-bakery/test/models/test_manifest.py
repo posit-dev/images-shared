@@ -535,7 +535,7 @@ class TestManifest:
 
     def test_load_file_with_config(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
         """Test that the load_file_with_config method returns a Manifest object with expected data"""
-        m = manifest.Manifest.load_file_with_config(basic_config_obj, basic_manifest_file)
+        m = manifest.Manifest.load(basic_config_obj, basic_manifest_file)
         assert m.image_name == "test-image"
         assert m.config == basic_config_obj
         assert len(m.target_builds) == basic_expected_num_target_builds
@@ -612,9 +612,9 @@ class TestManifest:
     def test_render_image_template(self, basic_tmpcontext):
         """Test rendering the image template for a new version creates the expected files"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load_file(config_file)
+        c = config.Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load_file_with_config(c, image_dir / "manifest.toml")
+        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.render_image_template("1.0.1")
         new_version_dir = image_dir / "1.0.1"
         assert new_version_dir.exists()
@@ -633,9 +633,9 @@ class TestManifest:
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load_file(config_file)
+        c = config.Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load_file_with_config(c, image_dir / "manifest.toml")
+        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -664,9 +664,9 @@ class TestManifest:
     def test_new_version_no_save(self, basic_tmpcontext):
         """Test save=False does not update the manifest file when creating a new version"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load_file(config_file)
+        c = config.Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load_file_with_config(c, image_dir / "manifest.toml")
+        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1", save=False)
         new_version_dir = image_dir / "1.0.1"
 
