@@ -36,7 +36,6 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: results.xml
-          format: JUnit
 
       - name: Publish coverage results
         working-directory: ./posit-bakery
