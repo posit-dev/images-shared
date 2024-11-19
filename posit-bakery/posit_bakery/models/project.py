@@ -189,7 +189,7 @@ class Project:
                     "context": ".",
                     "dockerfile": str(target_build.containerfile_path.relative_to(self.context)),
                     "labels": target_build.labels,
-                    "tags": target_build.all_tags,
+                    "tags": target_build.get_tags(),
                 }
                 bake_plan["target"][target_build.uid] = target_definition
                 bake_plan["group"]["default"]["targets"].append(target_build.uid)
@@ -296,12 +296,12 @@ class Project:
                     cmd.extend(runtime_options)
 
                 # Append the target image tag, assuming the first one is valid to use and no duplications exist
-                cmd.append(target_build.all_tags[0])
+                cmd.append(target_build.get_tags()[0])
 
                 # Append the goss command to run or use the default `sleep infinity`
                 cmd.extend(target_build.goss.command.split() or ["sleep", "infinity"])
 
-                dgoss_commands.append((target_build.all_tags[0], run_env, cmd))
+                dgoss_commands.append((target_build.get_tags()[0], run_env, cmd))
 
         dgoss_commands.sort(key=lambda x: x[0])
         return dgoss_commands

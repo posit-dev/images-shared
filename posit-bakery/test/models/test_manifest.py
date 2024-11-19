@@ -292,7 +292,7 @@ class TestTargetBuild:
                 **target_data_min,
             )
 
-    def test_tags_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
+    def test_get_tags_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
         basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
@@ -311,9 +311,9 @@ class TestTargetBuild:
             "docker.io/posit/test-image:ubuntu2204-min",
             "docker.io/posit/test-image:latest-min",
         ]
-        assert len(target_build.all_tags) == len(expected_tags)
+        assert len(target_build.get_tags()) == len(expected_tags)
         for tag in expected_tags:
-            assert tag in target_build.all_tags
+            assert tag in target_build.get_tags()
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
@@ -331,9 +331,9 @@ class TestTargetBuild:
             "docker.io/posit/test-image:ubuntu2204",
             "docker.io/posit/test-image:latest",
         ]
-        assert len(target_build.all_tags) == len(expected_tags)
+        assert len(target_build.get_tags()) == len(expected_tags)
         for tag in expected_tags:
-            assert tag in target_build.all_tags
+            assert tag in target_build.get_tags()
 
         build_data["latest"] = False
         target_build = manifest.TargetBuild(
@@ -350,9 +350,9 @@ class TestTargetBuild:
             "docker.io/posit/test-image:1.0.0-min",
             "docker.io/posit/test-image:1.0.0-ubuntu2204-min",
         ]
-        assert len(target_build.all_tags) == len(expected_tags)
+        assert len(target_build.get_tags()) == len(expected_tags)
         for tag in expected_tags:
-            assert tag in target_build.all_tags
+            assert tag in target_build.get_tags()
 
 
         target_build = manifest.TargetBuild(
@@ -369,11 +369,34 @@ class TestTargetBuild:
             "docker.io/posit/test-image:1.0.0",
             "docker.io/posit/test-image:1.0.0-ubuntu2204",
         ]
-        assert len(target_build.all_tags) == len(expected_tags)
+        assert len(target_build.get_tags()) == len(expected_tags)
         for tag in expected_tags:
-            assert tag in target_build.all_tags
+            assert tag in target_build.get_tags()
 
-    def test_tags_render(self, basic_manifest_obj, target_data_min, build_data):
+    def test_get_tags_no_fully_qualified(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
+        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+
+        target_build = manifest.TargetBuild(
+            manifest_context=basic_manifest_obj.context,
+            config=basic_manifest_obj.config,
+            target_data=target_data_min,
+            build_data=build_data,
+            image_name=basic_manifest_obj.image_name,
+            primary_os=True,
+            **build_data,
+            **target_data_min,
+        )
+        expected_tags = [
+            "test-image:1.0.0-min",
+            "test-image:1.0.0-ubuntu2204-min",
+            "test-image:ubuntu2204-min",
+            "test-image:latest-min",
+        ]
+        assert len(target_build.get_tags(fully_qualified=False)) == len(expected_tags)
+        for tag in expected_tags:
+            assert tag in target_build.get_tags(fully_qualified=False)
+
+    def test_get_tags_render(self, basic_manifest_obj, target_data_min, build_data):
         tag_tpl = ["{{ build.version }}-dev"]
         latest_tag_tpl = ["latest-dev"]
         basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
@@ -384,7 +407,7 @@ class TestTargetBuild:
             target_data=target_data_min,
             build_data=build_data,
             image_name=basic_manifest_obj.image_name,
-            tags=tag_tpl,
+            generic_tags=tag_tpl,
             latest_tags=latest_tag_tpl,
             **build_data,
             **target_data_min,
@@ -393,9 +416,9 @@ class TestTargetBuild:
             "docker.io/posit/test-image:1.0.0-dev",
             "docker.io/posit/test-image:latest-dev",
         ]
-        assert len(target_build.all_tags) == len(expected_tags)
+        assert len(target_build.get_tags()) == len(expected_tags)
         for tag in expected_tags:
-            assert tag in target_build.all_tags
+            assert tag in target_build.get_tags()
 
     def test_goss_default_resolution(self, basic_manifest_obj, target_data_std, build_data):
         target_build = manifest.TargetBuild(
