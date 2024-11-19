@@ -80,8 +80,8 @@ class TestConfig:
         assert "docker.io/posit" in c.registry_urls
         assert "ghcr.io/posit-dev" in c.registry_urls
 
-    def test_merge(self, basic_context, basic_config_file, basic_config_obj):
-        """Test that the merge method updates the Config object with the provided Config object"""
+    def test_update(self, basic_context, basic_config_file, basic_config_obj):
+        """Test that the update method updates the Config object with the provided Config object"""
         # Test existing values
         assert basic_config_obj.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
         assert basic_config_obj.repository_url == "github.com/rstudio/posit-images-shared"

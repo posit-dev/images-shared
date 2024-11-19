@@ -291,6 +291,21 @@ class Manifest(GenericTOMLModel):
         :param manifest_document: TOMLDocument object representing the manifest.toml file
         """
         target_builds = []
+
+        # If the manifest document does not have at least one build and one target section, return an empty list.
+        if "build" not in manifest_document:
+            print(
+                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
+                f"does not have any defined builds."
+            )
+            return target_builds
+        if "target" not in manifest_document:
+            print(
+                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
+                f"does not have any defined targets."
+            )
+            return target_builds
+
         for build_version, build_data in manifest_document["build"].unwrap().items():
             os_list = build_data.pop("os", build_data.get("const", {}).pop("os", None))
             build_data["version"] = build_version
