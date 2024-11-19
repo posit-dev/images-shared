@@ -149,6 +149,8 @@ class TargetBuild:
 
     def __post_init__(self):
         self.manifest_context = Path(self.manifest_context)
+        if not self.manifest_context.is_dir():
+            raise BakeryFileNotFoundError(f"Manifest context '{self.manifest_context}' is not a directory.")
 
         if self.const is None:
             self.const = {"image_name": self.image_name}
