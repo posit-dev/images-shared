@@ -1,0 +1,51 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+exclude: ^(\.vscode.*)$
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: check-added-large-files
+    -   id: check-ast
+    -   id: check-case-conflict
+    -   id: check-executables-have-shebangs
+    -   id: check-json
+    -   id: check-shebang-scripts-are-executable
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+    -   id: detect-private-key
+    -   id: end-of-file-fixer
+        exclude: "docs/_extensions"
+    -   id: fix-byte-order-marker
+    -   id: mixed-line-ending
+    -   id: no-commit-to-branch
+        args: [--branch, main]
+    -   id: pretty-format-json
+    -   id: requirements-txt-fixer
+    -   id: trailing-whitespace
+        exclude: "docs/_extensions"
+-   repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+    -   id: shellcheck
+        args: ["-s", "bash"]
+-   repo: https://github.com/lovesegfault/beautysh
+    rev: v6.2.1
+    hooks:
+    -   id: beautysh
+        # Workaround for Python 3.12
+        # https://github.com/lovesegfault/beautysh/issues/249#issuecomment-2397256907
+        additional_dependencies:
+            - setuptools
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.2
+    hooks:
+    -   id: ruff
+        args: [ --fix ]
+    -   id: ruff-format
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+    - id: mypy
