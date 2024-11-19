@@ -35,10 +35,3 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
-
-      - name: Publish coverage results
-        if: always()
-        uses: MishaKav/pytest-coverage-comment@main
-        with:
-          pytest-coverage-path: ./posit-bakery/coverage.xml
-          junitxml-path: ./posit-bakery/results.xml
