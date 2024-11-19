@@ -71,7 +71,7 @@ class TestConfig:
 
     def test_load_file(self, basic_config_file):
         """Test that the load_file method returns a Config object with expected data"""
-        c = config.Config.load_file(basic_config_file)
+        c = config.Config.load(basic_config_file)
         assert c.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
         assert c.repository_url == "github.com/rstudio/posit-images-shared"
         assert c.vendor == "Posit Software, PBC"

@@ -23,7 +23,7 @@ class Project:
         self.manifests: Dict[str, "Manifest"] = {}
 
     @classmethod
-    def from_context(cls, context: Union[str, bytes, os.PathLike], no_override: bool = False) -> "Project":
+    def load(cls, context: Union[str, bytes, os.PathLike], no_override: bool = False) -> "Project":
         """Create a Project object and load config and manifests into it from a context directory
 
         :param context: The path to the context directory
@@ -50,11 +50,11 @@ class Project:
         config_filepath = context / "config.toml"
         if not config_filepath.exists():
             raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config.load_file(config_filepath)
+        config = Config.load(config_filepath)
 
         override_config_filepath = context / "config.override.toml"
         if not no_override and override_config_filepath.exists():
-            override_config = Config.load_file(override_config_filepath)
+            override_config = Config.load(override_config_filepath)
             config.update(override_config)
 
         return config
@@ -67,7 +67,7 @@ class Project:
         """
         manifests = {}
         for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest.load_file_with_config(config, manifest_file)
+            m = Manifest.load(config, manifest_file)
             if m.image_name in manifests:
                 raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m

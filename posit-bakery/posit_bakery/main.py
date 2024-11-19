@@ -26,7 +26,7 @@ def new(
     image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "docker.io/library/ubuntu:22.04",
 ) -> None:
     """Creates a quickstart skeleton for a new image."""
-    project = Project.from_context(context)
+    project = Project.load(context)
     project.new_image(image_name, image_base)
 
     print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
@@ -60,7 +60,7 @@ def render(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    project = Project.from_context(context)
+    project = Project.load(context)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()
@@ -104,7 +104,7 @@ def plan(
 
     If only a bake file is provided, the command will generate a plan for that bake file only.
     """
-    project = Project.from_context(context, skip_override)
+    project = Project.load(context, skip_override)
     bake_plan = project.render_bake_plan(image_name, image_version)
     print_json(json.dumps(bake_plan), indent=2)
     with open(output_file, "w") as f:
@@ -132,7 +132,7 @@ def build(
         List[str], typer.Option(help="Additional build options to pass to docker buildx. Multiple can be provided.")
     ] = None,
 ) -> None:
-    project = Project.from_context(context, skip_override)
+    project = Project.load(context, skip_override)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
@@ -153,7 +153,7 @@ def dgoss(
         List[str], typer.Option(help="Additional runtime options to pass to dgoss. Multiple can be provided.")
     ] = None,
 ) -> None:
-    project = Project.from_context(context, skip_override)
+    project = Project.load(context, skip_override)
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:

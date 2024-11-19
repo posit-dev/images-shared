@@ -110,7 +110,7 @@ class Config(GenericTOMLModel):
         return sha
 
     @classmethod
-    def load_file(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
+    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
         """Load a Config object from a TOML file
 
         :param filepath: Path to the config.toml file

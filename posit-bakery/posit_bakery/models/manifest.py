@@ -344,7 +344,7 @@ class Manifest(GenericTOMLModel):
         return target_builds
 
     @classmethod
-    def load_file_with_config(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
+    def load(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
         """Load a Manifest object from a TOML file
 
         :param config: Config object for the repository

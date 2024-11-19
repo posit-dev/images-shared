@@ -49,7 +49,7 @@ def basic_config_file(basic_context):
 def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
     from posit_bakery.models.config import Config
-    return Config.load_file(basic_config_file)
+    return Config.load(basic_config_file)
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def basic_manifest_file(basic_context):
 def basic_manifest_obj(basic_config_obj, basic_manifest_file):
     """Return a Manifest object loaded from basic test suite manifest.toml file"""
     from posit_bakery.models.manifest import Manifest
-    return Manifest.load_file_with_config(basic_config_obj, basic_manifest_file)
+    return Manifest.load(basic_config_obj, basic_manifest_file)
 
 
 @pytest.fixture
