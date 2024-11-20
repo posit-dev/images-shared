@@ -31,7 +31,7 @@ class Project:
         """
         project = cls()
         project.context = Path(context)
-        if not project.context.exists():
+        if not project.context.is_dir():
             raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
         project.config = project.load_context_config(project.context, no_override)
         project.manifests = project.load_config_manifests(project.config)
@@ -45,15 +45,15 @@ class Project:
         :param no_override: If true, ignores config.override.toml if it exists
         """
         context = Path(context)
-        if not context.exists():
+        if not context.is_dir():
             raise BakeryFileNotFoundError(f"Directory {context} does not exist.")
         config_filepath = context / "config.toml"
-        if not config_filepath.exists():
+        if not config_filepath.is_file():
             raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
         config = Config.load(config_filepath)
 
         override_config_filepath = context / "config.override.toml"
-        if not no_override and override_config_filepath.exists():
+        if not no_override and override_config_filepath.is_file():
             override_config = Config.load(override_config_filepath)
             config.update(override_config)
 
@@ -83,7 +83,7 @@ class Project:
             raise BakeryConfigError(f"Image name {image_name} already exists in this project.")
 
         config_file = self.context / "config.toml"
-        if not config_file.exists():
+        if not config_file.is_file():
             print(f"[bright_black]Creating new project config file [bold]{config_file}")
             tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(self.context)).from_string(TPL_CONFIG_TOML)
             rendered = tpl.render(repo_url=try_get_repo_url(self.context))
@@ -91,12 +91,12 @@ class Project:
                 f.write(rendered)
 
         image_path = self.context / image_name
-        if not image_path.exists():
+        if not image_path.is_dir():
             print(f"[bright_black]Creating new image directory [bold]{image_path}")
             image_path.mkdir()
 
         manifest_file = image_path / "manifest.toml"
-        if manifest_file.exists():
+        if manifest_file.is_file():
             print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_file}[/bold] already exists")
             raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
         else:
@@ -107,13 +107,13 @@ class Project:
                 f.write(rendered)
 
         image_template_path = image_path / "template"
-        if not image_template_path.exists():
+        if not image_template_path.is_dir():
             print(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
             image_template_path.mkdir()
 
         # Create a new Containerfile template if it doesn't exist
         containerfile_path = image_template_path / "Containerfile.jinja2"
-        if not containerfile_path.exists():
+        if not containerfile_path.is_file():
             print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
             tpl = jinja2.Environment().from_string(TPL_CONTAINERFILE)
             rendered = tpl.render(image_name=image_name, base_tag=base_tag)
@@ -121,14 +121,14 @@ class Project:
                 f.write(rendered)
 
         image_test_path = image_template_path / "test"
-        if not image_test_path.exists():
+        if not image_test_path.is_dir():
             print(f"[bright_black]Creating new image templates test directory [bold]{image_test_path}")
             image_test_path.mkdir()
         image_test_goss_file = image_test_path / "goss.yaml.jinja2"
         image_test_goss_file.touch(exist_ok=True)
 
         image_deps_path = image_template_path / "deps"
-        if not image_deps_path.exists():
+        if not image_deps_path.is_dir():
             print(f"[bright_black]Creating new image templates dependencies directory [bold]{image_deps_path}")
             image_deps_path.mkdir()
         image_deps_package_file = image_deps_path / "packages.txt.jinja2"
@@ -276,7 +276,7 @@ class Project:
                 run_env["GOSS_FILES_PATH"] = str(test_path)
 
                 deps = target_build.goss.deps
-                if deps.exists():
+                if deps.is_dir():
                     cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
                 else:
                     print(

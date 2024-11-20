@@ -290,7 +290,7 @@ class TargetBuild(BaseModel):
         ]
         for name in potential_names:
             potential_path = Path(search_context) / name
-            if potential_path.exists():
+            if potential_path.is_file():
                 return potential_path
         return None
 
@@ -422,7 +422,7 @@ class Manifest(GenericTOMLModel):
         :param value_map: Map of values to use in the template rendering
         """
         template_directory = self.context / "template"
-        if not template_directory.exists():
+        if not template_directory.is_dir():
             raise BakeryFileNotFoundError(f"Path '{self.context}/template' does not exist.")
         new_directory = self.context / version
         new_directory.mkdir(exist_ok=True)
