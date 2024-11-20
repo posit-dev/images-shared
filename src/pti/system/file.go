@@ -69,7 +69,7 @@ func CopyFile(oldFilePath, newFilePath string) error {
 	return err
 }
 
-func PathExists(path string) (bool, error) {
+func IsPathExist(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -81,6 +81,7 @@ func PathExists(path string) (bool, error) {
 	return true, nil
 }
 
+// TODO: Remove me
 func DirIsEmpty(path string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
