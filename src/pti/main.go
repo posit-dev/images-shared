@@ -159,7 +159,7 @@ func main() {
 								slog.Info("Assuming Python binary path " + pythonPath)
 							}
 							// Check that binary exists
-							exists, err := system.PathExists(pythonPath)
+							exists, err := system.IsPathExist(pythonPath)
 							if err != nil {
 								return err
 							}
@@ -210,7 +210,7 @@ func main() {
 								slog.Info("Assuming Python binary path " + pythonPath)
 							}
 							// Check that binary exists
-							exists, err := system.PathExists(pythonPath)
+							exists, err := system.IsPathExist(pythonPath)
 							if err != nil {
 								return err
 							}
@@ -279,7 +279,7 @@ func main() {
 							}
 
 							// Check that binary exists
-							exists, err := system.PathExists(pythonPath)
+							exists, err := system.IsPathExist(pythonPath)
 							if err != nil {
 								return err
 							}
@@ -378,7 +378,7 @@ func main() {
 							}
 
 							// Check that binary exists
-							exists, err := system.PathExists(rPath)
+							exists, err := system.IsPathExist(rPath)
 							if err != nil {
 								return err
 							}
@@ -426,7 +426,7 @@ func main() {
 
 							quartoVersion := cCtx.String("version")
 							force := cCtx.Bool("force")
-							workbenchQuartoExists, err := system.PathExists("/opt/posit-workbench/quarto")
+							workbenchQuartoExists, err := system.IsPathExist("/opt/posit-workbench/quarto")
 							if err != nil {
 								return err
 							}
@@ -458,7 +458,7 @@ func main() {
 							if quartoPath == "" {
 								quartoPath = "/opt/quarto/bin/quarto"
 
-								exists, err := system.PathExists(quartoPath)
+								exists, err := system.IsPathExist(quartoPath)
 								if err != nil {
 									return err
 								}
@@ -468,7 +468,7 @@ func main() {
 
 								workbenchQuartoBinPath := tools.WorkbenchQuartoPath + "/bin/quarto"
 
-								exists, err = system.PathExists(workbenchQuartoBinPath)
+								exists, err = system.IsPathExist(workbenchQuartoBinPath)
 								if err != nil {
 									return err
 								}
@@ -501,7 +501,7 @@ func main() {
 								quartoPath = "/opt/quarto/bin/quarto"
 							}
 
-							exists, err := system.PathExists(quartoPath)
+							exists, err := system.IsPathExist(quartoPath)
 							if err != nil {
 								return err
 							}

@@ -17,12 +17,12 @@ func InstallQuarto(quartoVersion string, installTinyTeX, addPathTinyTeX, force b
 
 	slog.Debug("Quarto version: " + quartoVersion)
 
-	workbenchQuartoExists, err := system.PathExists(WorkbenchQuartoPath)
+	workbenchQuartoExists, err := system.IsPathExist(WorkbenchQuartoPath)
 	if err != nil {
 		return err
 	}
 	slog.Debug("Workbench Quarto exists: " + fmt.Sprintf("%t", workbenchQuartoExists))
-	quartoBinPathExists, err := system.PathExists(quartoBinPath)
+	quartoBinPathExists, err := system.IsPathExist(quartoBinPath)
 	if err != nil {
 		return err
 	}

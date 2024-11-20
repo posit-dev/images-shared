@@ -98,7 +98,7 @@ func InstallPython(pythonVersion string, pythonPackages *[]string, pythonRequire
 func InstallPythonPackages(pythonBinPath string, pythonPackages *[]string, pythonRequirementsFiles *[]string) error {
 	slog.Debug("Python binary path: " + pythonBinPath)
 
-	exists, err := system.PathExists(pythonBinPath)
+	exists, err := system.IsPathExist(pythonBinPath)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 	jupyterPythonBinPath := jupyterPath + "/bin/python"
 
 	// Check if Python is installed
-	exists, err := system.PathExists(pythonBinPath)
+	exists, err := system.IsPathExist(pythonBinPath)
 	if err != nil {
 		return err
 	}

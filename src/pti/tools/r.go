@@ -85,7 +85,7 @@ func InstallR(rVersion string, rPackages *[]string, rPackageFiles *[]string, set
 func InstallRPackages(rBinPath string, rPackages *[]string, rPackageFiles *[]string) error {
 	slog.Debug("R binary path: " + rBinPath)
 
-	exists, err := system.PathExists(rBinPath)
+	exists, err := system.IsPathExist(rBinPath)
 	if err != nil {
 		return err
 	}
