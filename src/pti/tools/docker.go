@@ -32,6 +32,8 @@ func InstallTini(installPath string) error {
 	}
 	s.Success("Download complete.")
 
+	// TODO: Implement checksum validation
+
 	slog.Debug("Installing tini binary to: " + installPath)
 	if err := system.MoveFile(downloadPath, installPath); err != nil {
 		return err
