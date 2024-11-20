@@ -38,8 +38,14 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "pro-drivers",
-				Usage: "Install or manage Posit Pro Drivers",
+				Name:   "init",
+				Usage:  "Initialize environment with necessary tools and packages",
+				Action: cmd.Init,
+			},
+			{
+				Name:     "pro-drivers",
+				Usage:    "Install or manage Posit Pro Drivers",
+				Category: "tools",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
@@ -57,8 +63,9 @@ func main() {
 				},
 			},
 			{
-				Name:  "python",
-				Usage: "Install or manage Python versions",
+				Name:     "python",
+				Usage:    "Install or manage Python versions",
+				Category: "tools",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
@@ -179,8 +186,9 @@ func main() {
 				},
 			},
 			{
-				Name:  "r",
-				Usage: "Install or manage R versions",
+				Name:     "r",
+				Usage:    "Install or manage R versions",
+				Category: "tools",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
@@ -244,8 +252,9 @@ func main() {
 				},
 			},
 			{
-				Name:  "quarto",
-				Usage: "Install or manage Quarto",
+				Name:     "quarto",
+				Usage:    "Install or manage Quarto",
+				Category: "tools",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
@@ -301,17 +310,13 @@ func main() {
 				},
 			},
 			{
-				Name:  "container",
-				Usage: "Install or manage optional container-specific tooling",
+				Name:     "tini",
+				Usage:    "Install or manage tini init tool for containers",
+				Category: "container",
 				Subcommands: []*cli.Command{
 					{
-						Name:   "bootstrap",
-						Usage:  "Bootstrap container with necessary tools and packages",
-						Action: cmd.Bootstrap,
-					},
-					{
-						Name:  "install-tini",
-						Usage: "Install Tini",
+						Name:  "install",
+						Usage: "Install tini",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:        "install-path",
@@ -321,9 +326,16 @@ func main() {
 						},
 						Action: cmd.ContainerInstallTini,
 					},
+				},
+			},
+			{
+				Name:     "wait-for-it",
+				Usage:    "Install or manage wait-for-it helper script for containers",
+				Category: "container",
+				Subcommands: []*cli.Command{
 					{
-						Name:  "install-wait-for-it",
-						Usage: "Install Wait-for-it",
+						Name:  "install",
+						Usage: "Install wait-for-it script",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:        "install-path",
@@ -333,61 +345,62 @@ func main() {
 						},
 						Action: cmd.ContainerInstallWaitForIt,
 					},
+				},
+			},
+			{
+				Name:     "syspkg",
+				Usage:    "Manage system package installations",
+				Category: "container",
+				Subcommands: []*cli.Command{
 					{
-						Name:  "syspkg",
-						Usage: "Manage system package installations",
-						Subcommands: []*cli.Command{
-							{
-								Name:   "update",
-								Usage:  "Update package lists",
-								Action: cmd.SysPkgUpdate,
-							},
-							{
-								Name:  "upgrade",
-								Usage: "Upgrade installed packages",
-								Flags: []cli.Flag{
-									&cli.BoolFlag{
-										Name:  "dist",
-										Usage: "Run dist-upgrade on Debian-based systems",
-									},
-								},
-								Action: cmd.SysPkgUpgrade,
-							},
-							{
-								Name:  "install",
-								Usage: "Install system packages",
-								Flags: []cli.Flag{
-									&cli.StringSliceFlag{
-										Name:    "package",
-										Aliases: []string{"p"},
-										Usage:   "Package(s) to install",
-									},
-									&cli.StringSliceFlag{
-										Name:    "packages-file",
-										Aliases: []string{"f"},
-										Usage:   "Path to file containing package names to install",
-									},
-								},
-								Action: cmd.SysPkgInstall,
-							},
-							{
-								Name:  "uninstall",
-								Usage: "Uninstall system packages",
-								Flags: []cli.Flag{
-									&cli.StringSliceFlag{
-										Name:    "package",
-										Aliases: []string{"p"},
-										Usage:   "Package(s) to install",
-									},
-								},
-								Action: cmd.SysPkgUninstall,
-							},
-							{
-								Name:   "clean",
-								Usage:  "Clean up package caches",
-								Action: cmd.SysPkgClean,
+						Name:   "update",
+						Usage:  "Update package lists",
+						Action: cmd.SysPkgUpdate,
+					},
+					{
+						Name:  "upgrade",
+						Usage: "Upgrade installed packages",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "dist",
+								Usage: "Run dist-upgrade on Debian-based systems",
 							},
 						},
+						Action: cmd.SysPkgUpgrade,
+					},
+					{
+						Name:  "install",
+						Usage: "Install system packages",
+						Flags: []cli.Flag{
+							&cli.StringSliceFlag{
+								Name:    "package",
+								Aliases: []string{"p"},
+								Usage:   "Package(s) to install",
+							},
+							&cli.StringSliceFlag{
+								Name:    "packages-file",
+								Aliases: []string{"f"},
+								Usage:   "Path to file containing package names to install",
+							},
+						},
+						Action: cmd.SysPkgInstall,
+					},
+					{
+						Name:  "uninstall",
+						Usage: "Uninstall system packages",
+						Flags: []cli.Flag{
+							&cli.StringSliceFlag{
+								Name:    "package",
+								Aliases: []string{"p"},
+								Usage:   "Package(s) to install",
+							},
+						},
+						Action: cmd.SysPkgUninstall,
+					},
+					{
+						Name:   "clean",
+						Usage:  "Clean up package caches",
+						Action: cmd.SysPkgClean,
 					},
 				},
 			},
