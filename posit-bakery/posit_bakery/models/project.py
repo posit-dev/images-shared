@@ -248,8 +248,8 @@ class Project:
         :param image_type: (Optional) The type of the image to render dgoss commands for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
-        dgoss_bin = find_bin("dgoss", "DGOSS_PATH") or "dgoss"
-        goss_bin = find_bin("goss", "GOSS_PATH")
+        dgoss_bin = find_bin(self.context, "dgoss", "DGOSS_PATH") or "dgoss"
+        goss_bin = find_bin(self.context, "goss", "GOSS_PATH")
         dgoss_commands = []
 
         for manifest in self.manifests.values():
