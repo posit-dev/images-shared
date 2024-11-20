@@ -5,7 +5,7 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
-	"posit-images-shared/internal/system"
+	"pti/system"
 )
 
 const quartoDownloadUrlRoot = "https://github.com/quarto-dev/quarto-cli/releases/download"

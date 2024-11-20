@@ -1,4 +1,4 @@
-module posit-images-shared
+module pti
 
 go 1.22
 

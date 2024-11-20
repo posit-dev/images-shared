@@ -7,8 +7,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"posit-images-shared/internal/system"
-	"posit-images-shared/internal/tools"
+	"pti/system"
+	"pti/tools"
 	"runtime"
 )
 
