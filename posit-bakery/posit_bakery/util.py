@@ -21,7 +21,7 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
         return os.environ[bin_env_var]
     elif which(bin_name) is not None:
         return None
-    elif (context / "tools" / bin_name).exists():
+    elif (context / "tools" / bin_name).is_file():
         return str(context / "tools" / bin_name)
     else:
         raise BakeryFileNotFoundError(

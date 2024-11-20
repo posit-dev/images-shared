@@ -53,14 +53,14 @@ namespace = "posit-dev"
         p = project.Project.load(basic_tmpcontext)
         p.new_image("new-image")
         new_image_path = Path(basic_tmpcontext) / "new-image"
-        assert new_image_path.exists()
-        assert (new_image_path / "manifest.toml").exists()
-        assert (new_image_path / "template").exists()
-        assert (new_image_path / "template" / "Containerfile.jinja2").exists()
-        assert (new_image_path / "template" / "test").exists()
-        assert (new_image_path / "template" / "test" / "goss.yaml.jinja2").exists()
-        assert (new_image_path / "template" / "deps").exists()
-        assert (new_image_path / "template" / "deps" / "packages.txt.jinja2").exists()
+        assert new_image_path.is_dir()
+        assert (new_image_path / "manifest.toml").is_file()
+        assert (new_image_path / "template").is_dir()
+        assert (new_image_path / "template" / "Containerfile.jinja2").is_file()
+        assert (new_image_path / "template" / "test").is_dir()
+        assert (new_image_path / "template" / "test" / "goss.yaml.jinja2").is_file()
+        assert (new_image_path / "template" / "deps").is_dir()
+        assert (new_image_path / "template" / "deps" / "packages.txt.jinja2").is_file()
 
     def test_new_image_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
@@ -69,16 +69,16 @@ namespace = "posit-dev"
         p.new_image_version("test-image", "1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
-        assert new_version_dir.exists()
-        assert (new_version_dir / "deps").exists()
-        assert (new_version_dir / "deps" / "ubuntu2204_packages.txt").exists()
-        assert (new_version_dir / "deps" / "ubuntu2204_optional_packages.txt").exists()
-        assert (new_version_dir / "test").exists()
-        assert (new_version_dir / "test" / "goss.yaml").exists()
-        assert (new_version_dir / "Containerfile.ubuntu2204.min").exists()
+        assert new_version_dir.is_dir()
+        assert (new_version_dir / "deps").is_dir()
+        assert (new_version_dir / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (new_version_dir / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (new_version_dir / "test").is_dir()
+        assert (new_version_dir / "test" / "goss.yaml").is_file()
+        assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
         assert 'ubuntu2204_optional_packages.txt' not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert (new_version_dir / "Containerfile.ubuntu2204.std").exists()
+        assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
         assert 'ubuntu2204_optional_packages.txt' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
@@ -104,7 +104,8 @@ namespace = "posit-dev"
         for target_data in plan["target"].values():
             assert "context" in target_data
             assert "dockerfile" in target_data
-            assert (Path(basic_context) / target_data["dockerfile"]).exists()
+            assert (Path(basic_context) / target_data["dockerfile"]).is_file()
+            assert not Path(target_data["dockerfile"]).is_absolute()
             assert "labels" in target_data
             assert "tags" in target_data
 
