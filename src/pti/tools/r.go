@@ -14,7 +14,7 @@ import (
 
 const rUrlRoot = "https://cdn.posit.co/r"
 const rVersionsJsonUrl = rUrlRoot + "/versions.json"
-const packageManagerUrl = "https://packagemanager.posit.co"
+const packageManagerUrl = "https://p3m.dev"
 
 func InstallR(rVersion string, rPackages *[]string, rPackageFiles *[]string, setDefault bool, addToPath bool) error {
 	rInstallationPath := fmt.Sprintf("/opt/R/%s", rVersion)
