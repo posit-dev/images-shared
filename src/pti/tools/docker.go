@@ -4,7 +4,7 @@ import (
 	"github.com/pterm/pterm"
 	"log/slog"
 	"os"
-	"posit-images-shared/internal/system"
+	"pti/system"
 )
 
 const tiniDownloadUrl = "https://cdn.posit.co/platform/tini/v0.19.0/tini-amd64"
