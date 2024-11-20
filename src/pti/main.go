@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 	"log"
 	"log/slog"
 	"os"
-	"pti/system"
-	"pti/tools"
+	"pti/cmd"
 	"runtime"
 )
 
@@ -51,19 +49,10 @@ func main() {
 								Name:        "version",
 								Aliases:     []string{"V"},
 								Usage:       "Posit Pro Drivers version to install",
-								DefaultText: "2024.03.0",
+								DefaultText: cmd.DefaultProDriverVersion,
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							driverVersion := cCtx.String("version")
-							if driverVersion == "" {
-								driverVersion = "2024.03.0"
-							}
-
-							return tools.InstallProDrivers(driverVersion)
-						},
+						Action: cmd.ProDriversInstall,
 					},
 				},
 			},
@@ -109,18 +98,7 @@ func main() {
 								Usage:   "Install a Jupyter kernel for the Python version",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							pythonVersion := cCtx.String("version")
-							pythonPackages := cCtx.StringSlice("package")
-							pythonRequirementFiles := cCtx.StringSlice("requirements-file")
-							setDefault := cCtx.Bool("default")
-							addToPath := cCtx.Bool("add-to-path")
-							addJupyterKernel := cCtx.Bool("add-jupyter-kernel")
-
-							return tools.InstallPython(pythonVersion, &pythonPackages, &pythonRequirementFiles, setDefault, addToPath, addJupyterKernel)
-						},
+						Action: cmd.PythonInstall,
 					},
 					{
 						Name:  "install-packages",
@@ -146,32 +124,7 @@ func main() {
 								Usage:   "Path to requirements file(s) to install",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							pythonVersion := cCtx.String("version")
-
-							pythonPath := cCtx.String("python-path")
-							if pythonPath == "" {
-								if pythonVersion == "" {
-									return fmt.Errorf("Python version or path must be provided")
-								}
-
-								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-								slog.Info("Assuming Python binary path " + pythonPath)
-							}
-							// Check that binary exists
-							exists, err := system.IsPathExist(pythonPath)
-							if err != nil {
-								return err
-							}
-							if !exists {
-								return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
-							}
-
-							pythonPackages := cCtx.StringSlice("package")
-							pythonRequirementFiles := cCtx.StringSlice("requirements-file")
-
-							return tools.InstallPythonPackages(pythonPath, &pythonPackages, &pythonRequirementFiles)
-						},
+						Action: cmd.PythonInstallPackages,
 					},
 					{
 						Name:  "install-jupyter",
@@ -197,36 +150,7 @@ func main() {
 								Usage:   "Force installation of Jupyter to <jupyter-path>, even if the path is not empty",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							pythonVersion := cCtx.String("version")
-
-							pythonPath := cCtx.String("python-path")
-							if pythonPath == "" {
-								if pythonVersion == "" {
-									return fmt.Errorf("Python version or path must be provided")
-								}
-
-								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-								slog.Info("Assuming Python binary path " + pythonPath)
-							}
-							// Check that binary exists
-							exists, err := system.IsPathExist(pythonPath)
-							if err != nil {
-								return err
-							}
-							if !exists {
-								return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
-							}
-
-							jupyterPath := cCtx.String("jupyter-path")
-							if jupyterPath == "" {
-								jupyterPath = "/opt/python/jupyter"
-							}
-
-							force := cCtx.Bool("force")
-
-							return tools.InstallJupyter4Workbench(pythonPath, jupyterPath, force)
-						},
+						Action: cmd.PythonInstallJupyter,
 					},
 					{
 						Name:  "add-jupyter-kernel",
@@ -250,45 +174,7 @@ func main() {
 								Usage: "Display name for the kernel",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							pythonVersion := cCtx.String("version")
-
-							machineName := cCtx.String("machine-name")
-							displayName := cCtx.String("display-name")
-
-							pythonPath := cCtx.String("python-path")
-							if pythonPath == "" {
-								if pythonVersion == "" {
-									return fmt.Errorf("Python version or path must be provided")
-								}
-
-								pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-								slog.Info("Assuming Python binary path " + pythonPath)
-							} else {
-								if machineName == "" && pythonVersion == "" {
-									return fmt.Errorf("Machine name must be provided if only providing python path")
-								} else if machineName == "" {
-									machineName = "py" + pythonVersion
-								}
-
-								if displayName == "" && pythonVersion == "" {
-									return fmt.Errorf("Display name must be provided if only providing python path")
-								} else if displayName == "" {
-									displayName = "Python " + pythonVersion
-								}
-							}
-
-							// Check that binary exists
-							exists, err := system.IsPathExist(pythonPath)
-							if err != nil {
-								return err
-							}
-							if !exists {
-								return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
-							}
-
-							return tools.ConfigureIPythonKernel(pythonPath, machineName, displayName)
-						},
+						Action: cmd.PythonAddJupyterKernel,
 					},
 				},
 			},
@@ -327,17 +213,7 @@ func main() {
 								Usage:   "Add the installed R version to the PATH",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							rVersion := cCtx.String("version")
-							rPackages := cCtx.StringSlice("package")
-							rPackagesFiles := cCtx.StringSlice("packages-file")
-							setDefault := cCtx.Bool("set-default")
-							addToPath := cCtx.Bool("add-to-path")
-
-							return tools.InstallR(rVersion, &rPackages, &rPackagesFiles, setDefault, addToPath)
-						},
+						Action: cmd.RInstall,
 					},
 					{
 						Name:  "install-packages",
@@ -363,34 +239,7 @@ func main() {
 								Usage:   "Path to requirements file(s) to install",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							rVersion := cCtx.String("version")
-
-							rPath := cCtx.String("r-path")
-							// Assume rPath if not given
-							if rPath == "" {
-								if rVersion == "" {
-									return fmt.Errorf("R version or path must be provided")
-								}
-
-								rPath = "/opt/R/" + rVersion + "/bin/R"
-								slog.Info("Assuming R binary path " + rPath)
-							}
-
-							// Check that binary exists
-							exists, err := system.IsPathExist(rPath)
-							if err != nil {
-								return err
-							}
-							if !exists {
-								return fmt.Errorf("R binary does not exist at path %s", rPath)
-							}
-
-							rPackages := cCtx.StringSlice("package")
-							rPackagesFiles := cCtx.StringSlice("packages-file")
-
-							return tools.InstallRPackages(rPath, &rPackages, &rPackagesFiles)
-						},
+						Action: cmd.RInstallPackages,
 					},
 				},
 			},
@@ -421,24 +270,7 @@ func main() {
 								Usage:   "Force installation of Quarto if it is already installed or is present in Posit Workbench",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							quartoVersion := cCtx.String("version")
-							force := cCtx.Bool("force")
-							workbenchQuartoExists, err := system.IsPathExist("/opt/posit-workbench/quarto")
-							if err != nil {
-								return err
-							}
-							if quartoVersion == "" && (!workbenchQuartoExists && force) {
-								return fmt.Errorf("Quarto version must be provided")
-							}
-
-							installTinyTex := cCtx.Bool("install-tinytex")
-							addPathTinyTex := cCtx.Bool("add-path-tinytex")
-
-							return tools.InstallQuarto(quartoVersion, installTinyTex, addPathTinyTex, force)
-						},
+						Action: cmd.QuartoInstall,
 					},
 					{
 						Name:  "install-tinytex",
@@ -453,38 +285,7 @@ func main() {
 								Usage: "Add Quarto TinyTeX to PATH",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							quartoPath := cCtx.String("quarto-path")
-							if quartoPath == "" {
-								quartoPath = "/opt/quarto/bin/quarto"
-
-								exists, err := system.IsPathExist(quartoPath)
-								if err != nil {
-									return err
-								}
-								if !exists {
-									slog.Debug("Quarto binary does not exist at path %s", quartoPath)
-								}
-
-								workbenchQuartoBinPath := tools.WorkbenchQuartoPath + "/bin/quarto"
-
-								exists, err = system.IsPathExist(workbenchQuartoBinPath)
-								if err != nil {
-									return err
-								}
-								if !exists {
-									return fmt.Errorf("Could not find Quarto binary at %s or %s", quartoPath, workbenchQuartoBinPath)
-								}
-							}
-
-							var options []string
-							addToPath := cCtx.Bool("add-path-tinytex")
-							if addToPath {
-								options = append(options, "--update-path")
-							}
-
-							return tools.InstallQuartoTool(quartoPath, "tinytex", &options)
-						},
+						Action: cmd.QuartoInstallTinyTex,
 					},
 					{
 						Name:  "update-tinytex",
@@ -495,22 +296,7 @@ func main() {
 								Usage: "Path to Quarto installation",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							quartoPath := cCtx.String("quarto-path")
-							if quartoPath == "" {
-								quartoPath = "/opt/quarto/bin/quarto"
-							}
-
-							exists, err := system.IsPathExist(quartoPath)
-							if err != nil {
-								return err
-							}
-							if !exists {
-								return fmt.Errorf("Quarto binary does not exist at path %s", quartoPath)
-							}
-
-							return tools.UpdateQuartoTool(quartoPath, "tinytex", &[]string{})
-						},
+						Action: cmd.QuartoUpdateTinyTex,
 					},
 				},
 			},
@@ -519,13 +305,9 @@ func main() {
 				Usage: "Install or manage optional container-specific tooling",
 				Subcommands: []*cli.Command{
 					{
-						Name:  "bootstrap",
-						Usage: "Bootstrap container with necessary tools and packages",
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							return tools.Bootstrap()
-						},
+						Name:   "bootstrap",
+						Usage:  "Bootstrap container with necessary tools and packages",
+						Action: cmd.Bootstrap,
 					},
 					{
 						Name:  "install-tini",
@@ -537,16 +319,7 @@ func main() {
 								DefaultText: "/usr/bin/tini",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							installPath := cCtx.String("install-path")
-							if installPath == "" {
-								installPath = "/usr/bin/tini"
-							}
-
-							return tools.InstallTini(installPath)
-						},
+						Action: cmd.ContainerInstallTini,
 					},
 					{
 						Name:  "install-wait-for-it",
@@ -558,27 +331,16 @@ func main() {
 								DefaultText: "/usr/bin/wait-for-it",
 							},
 						},
-						Action: func(cCtx *cli.Context) error {
-							system.RequireSudo()
-
-							installPath := cCtx.String("install-path")
-							if installPath == "" {
-								installPath = "/usr/bin/wait-for-it"
-							}
-
-							return tools.InstallWaitForIt(installPath)
-						},
+						Action: cmd.ContainerInstallWaitForIt,
 					},
 					{
 						Name:  "syspkg",
 						Usage: "Manage system package installations",
 						Subcommands: []*cli.Command{
 							{
-								Name:  "update",
-								Usage: "Update package lists",
-								Action: func(context *cli.Context) error {
-									return system.UpdatePackageLists()
-								},
+								Name:   "update",
+								Usage:  "Update package lists",
+								Action: cmd.SysPkgUpdate,
 							},
 							{
 								Name:  "upgrade",
@@ -589,9 +351,7 @@ func main() {
 										Usage: "Run dist-upgrade on Debian-based systems",
 									},
 								},
-								Action: func(context *cli.Context) error {
-									return system.UpgradePackages(context.Bool("dist"))
-								},
+								Action: cmd.SysPkgUpgrade,
 							},
 							{
 								Name:  "install",
@@ -608,17 +368,7 @@ func main() {
 										Usage:   "Path to file containing package names to install",
 									},
 								},
-								Action: func(context *cli.Context) error {
-									packages := context.StringSlice("package")
-									if len(packages) > 0 {
-										return system.InstallPackages(&packages)
-									}
-									packageFiles := context.StringSlice("packages-file")
-									if len(packageFiles) > 0 {
-										return system.InstallPackagesFiles(&packageFiles)
-									}
-									return nil
-								},
+								Action: cmd.SysPkgInstall,
 							},
 							{
 								Name:  "uninstall",
@@ -630,20 +380,12 @@ func main() {
 										Usage:   "Package(s) to install",
 									},
 								},
-								Action: func(cCtx *cli.Context) error {
-									packages := cCtx.StringSlice("package")
-									if len(packages) > 0 {
-										return system.RemovePackages(&packages)
-									}
-									return nil
-								},
+								Action: cmd.SysPkgUninstall,
 							},
 							{
-								Name:  "clean",
-								Usage: "Clean up package caches",
-								Action: func(context *cli.Context) error {
-									return system.CleanPackages()
-								},
+								Name:   "clean",
+								Usage:  "Clean up package caches",
+								Action: cmd.SysPkgClean,
 							},
 						},
 					},
