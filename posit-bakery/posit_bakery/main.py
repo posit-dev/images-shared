@@ -25,8 +25,21 @@ def new(
     ] = auto_path(),
     image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "docker.io/library/ubuntu:22.04",
 ) -> None:
-    """Creates a quickstart skeleton for a new image."""
+    """Creates a quickstart skeleton for a new image in the context path
+
+    This tool will create a new directory in the context path with the following structure:
+    .
+    └── image_name/
+        ├── manifest.toml
+        └── template/
+            ├── deps/
+            │   └── packages.txt.jinja2
+            ├── test/
+            │   └── goss.yaml.jinja2
+            └── Containerfile.jinja2
+    """
     project = Project.load(context)
+    # TODO: This will fail on projects with no config.toml, we should build in a full "new project" expectation in that case
     project.new_image(image_name, image_base)
 
     print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
@@ -93,16 +106,13 @@ def plan(
         Path, typer.Option(help="The file to write the rendered plan to. Defaults to bake-plan.json.")
     ] = Path(auto_path(), "bake-plan.json"),
 ) -> None:
-    """
-    Generates a plan in JSON based off of provided or auto-discovered bake files.
+    """Generates a plan in JSON based off of provided or auto-discovered bake files.
 
     If no options are provided, the command will auto-discover all bake files in the current
-    directory and generate a plan for all targets. If target names overlap, this could result in an error.
+    directory and generate a plan for all targets.
 
     If only an image name is provided, the command will auto-discover that image's bake file and will also load the
     root bake file and any override bake files if they exist.
-
-    If only a bake file is provided, the command will generate a plan for that bake file only.
     """
     project = Project.load(context, skip_override)
     bake_plan = project.render_bake_plan(image_name, image_version)
@@ -132,6 +142,13 @@ def build(
         List[str], typer.Option(help="Additional build options to pass to docker buildx. Multiple can be provided.")
     ] = None,
 ) -> None:
+    """Builds images in the context path using buildx bake
+
+    If no options are provided, the command will auto-discover all images in the current
+    directory and generate a temporary bake plan to execute for all targets.
+
+    Requires the Docker Engine and CLI to be installed and running.
+    """
     project = Project.load(context, skip_override)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
@@ -153,6 +170,17 @@ def dgoss(
         List[str], typer.Option(help="Additional runtime options to pass to dgoss. Multiple can be provided.")
     ] = None,
 ) -> None:
+    """Runs dgoss tests against images in the context path
+
+    If no options are provided, the command will auto-discover all images in the current
+    directory and generate and execute test commands on all images.
+
+    Images are expected to be in the local Docker daemon. It is advised to run `build --load` before running
+    dgoss tests.
+
+    Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
+    `DGOSS_BIN` environment variables if not present in the system PATH.
+    """
     project = Project.load(context, skip_override)
     try:
         project.dgoss(image_name, image_version, option)
