@@ -1,0 +1,120 @@
+from posit_bakery.models import config
+
+
+class TestConfigRegistry:
+    def test_create_config_registry(self):
+        """Test creating a generic ConfigRegistry object does not raise an exception"""
+        config.ConfigRegistry(host="docker.io", namespace="posit")
+
+    def test_create_config_registry_no_namespace(self):
+        """Test creating a generic ConfigRegistry object without a namespace does not raise an exception"""
+        config.ConfigRegistry(host="docker.io")
+
+    def test_base_url(self):
+        """Test the base_url property of a ConfigRegistry object"""
+        c = config.ConfigRegistry(host="docker.io", namespace="posit")
+        assert c.base_url == "docker.io/posit"
+
+    def test_base_url_no_namespace(self):
+        """Test the base_url property of a ConfigRegistry object without a namespace"""
+        c = config.ConfigRegistry(host="docker.io")
+        assert c.base_url == "docker.io"
+
+    def test_hash(self):
+        """Test the hash method of a ConfigRegistry object"""
+        c1 = config.ConfigRegistry(host="docker.io", namespace="posit")
+        c2 = config.ConfigRegistry(host="docker.io", namespace="posit")
+        c3 = config.ConfigRegistry(host="ghcr.io", namespace="posit")
+        assert hash(c1) == hash(c2)
+        assert hash(c1) != hash(c3)
+
+
+class TestConfigRepository:
+    def test_create_config_repository(self):
+        """Test creating a generic ConfigRepository object does not raise an exception"""
+        config.ConfigRepository(
+            authors=["author1", "author2"],
+            url="github.com/rstudio/example",
+            vendor="Posit Software, PBC",
+            maintainer="docker@posit.co",
+        )
+
+    def test_create_config_repository_empty(self):
+        """Test creating a generic ConfigRepository object with no arguments does not raise an exception
+
+        Repository information is currently not expected to be required since it is used as labeling
+        """
+        config.ConfigRepository()
+
+
+class TestConfig:
+    def test_create_config(self, basic_context, basic_config_file):
+        """Test creating a generic Config object does not raise an exception and test data appears as expected"""
+        c = config.Config(
+            filepath=basic_config_file,
+            context=basic_context,
+            document=config.GenericTOMLModel.read(basic_config_file),
+            registries=[config.ConfigRegistry(host="docker.io", namespace="posit")],
+            repository=config.ConfigRepository(
+                authors={"author1", "author2"},
+                url="github.com/rstudio/example",
+                vendor="Posit Software, PBC",
+                maintainer="docker@posit.co",
+            )
+        )
+        assert c.authors == {"author1", "author2"}
+        assert c.repository_url == "github.com/rstudio/example"
+        assert c.vendor == "Posit Software, PBC"
+        assert c.maintainer == "docker@posit.co"
+        assert "docker.io/posit" in c.registry_urls
+        assert c.get_commit_sha() == ""
+
+    def test_load_file(self, basic_config_file):
+        """Test that the load_file method returns a Config object with expected data"""
+        c = config.Config.load(basic_config_file)
+        assert c.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
+        assert c.repository_url == "github.com/rstudio/posit-images-shared"
+        assert c.vendor == "Posit Software, PBC"
+        assert c.maintainer == "docker@posit.co"
+        assert len(c.registries) == 2
+        assert "docker.io/posit" in c.registry_urls
+        assert "ghcr.io/posit-dev" in c.registry_urls
+
+    def test_update(self, basic_context, basic_config_file, basic_config_obj):
+        """Test that the update method updates the Config object with the provided Config object"""
+        # Test existing values
+        assert basic_config_obj.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
+        assert basic_config_obj.repository_url == "github.com/rstudio/posit-images-shared"
+        assert basic_config_obj.vendor == "Posit Software, PBC"
+        assert basic_config_obj.maintainer == "docker@posit.co"
+        assert len(basic_config_obj.registries) == 2
+        assert "docker.io/posit" in basic_config_obj.registry_urls
+        assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
+
+        # Test overriding values without modifying registry
+        c_override = config.Config(
+            filepath=basic_config_file,
+            context=basic_context,
+            document=config.GenericTOMLModel.read(basic_config_file),
+            registries=[],
+            repository=config.ConfigRepository(
+                authors={"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"},
+                url="github.com/rstudio/example",
+                vendor="Example Company",
+                maintainer="images@example.com",
+            )
+        )
+        basic_config_obj.update(c_override)
+        assert basic_config_obj.authors == {"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"}
+        assert basic_config_obj.repository_url == "github.com/rstudio/example"
+        assert basic_config_obj.vendor == "Example Company"
+        assert basic_config_obj.maintainer == "images@example.com"
+        assert len(basic_config_obj.registries) == 2
+        assert "docker.io/posit" in basic_config_obj.registry_urls
+        assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
+
+        # Test overriding registry
+        c_override.registries = [config.ConfigRegistry(host="docker.io", namespace="example")]
+        basic_config_obj.update(c_override)
+        assert len(basic_config_obj.registries) == 1
+        assert "docker.io/example" in basic_config_obj.registry_urls

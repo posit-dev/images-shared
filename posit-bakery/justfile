@@ -1,0 +1,13 @@
+#!/usr/bin/env just --justfile
+
+install:
+  poetry install
+
+alias package := build
+build:
+  poetry build
+
+test:
+  poetry run pytest -n auto \
+            --cov=posit_bakery \
+            test/

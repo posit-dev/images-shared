@@ -23,6 +23,9 @@ pydantic = "^2.9.2"
 ruff = "^0.7.0"
 mypy = "^1.13.0"
 pytest = "^8.3.3"
+pytest-mock = "^3.14.0"
+pytest-xdist = "^3.6.1"
+pytest-cov = "^6.0.0"
 
 [tool.ruff]
 line-length = 120

@@ -2,10 +2,8 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from shutil import which
 from typing import Union, List, Dict, Any, Tuple
 
-import git
 import jinja2
 from rich import print
 
@@ -15,6 +13,7 @@ from posit_bakery.models.config import Config
 from posit_bakery.models.manifest import Manifest
 from posit_bakery.templating.templates.configuration import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
 from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
+from posit_bakery.util import try_get_repo_url, find_bin
 
 
 class Project:
@@ -24,65 +23,67 @@ class Project:
         self.manifests: Dict[str, "Manifest"] = {}
 
     @classmethod
-    def from_context(cls, context: Union[str, bytes, os.PathLike], no_override: bool = False) -> "Project":
+    def load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
+        """Create a Project object and load config and manifests into it from a context directory
+
+        :param context: The path to the context directory
+        :param ignore_override: If true, ignores config.override.toml if it exists
+        """
         project = cls()
         project.context = Path(context)
-        if not project.context.exists():
+        if not project.context.is_dir():
             raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
-        project.config = project.__load_context_config(project.context, no_override)
-        project.manifests = project.__load_config_manifests(project.config)
+        project.config = project.load_context_config(project.context, ignore_override)
+        project.manifests = project.load_config_manifests(project.config)
         return project
 
-    def __find_bin(self, bin_name: str, bin_env_var: str):
-        if bin_env_var in os.environ:
-            return os.environ[bin_env_var]
-        elif which(bin_name) is not None:
-            return None
-        elif (self.context / "tools" / bin_name).exists():
-            return str(self.context / "tools" / bin_name)
-        else:
-            raise BakeryFileNotFoundError(
-                f"Could not find {bin_name} in PATH or in project tools directory. "
-                f"Either install {bin_name} or set the `{bin_env_var}` environment variable."
-            )
-
     @staticmethod
-    def __load_context_config(context: Union[str, bytes, os.PathLike], no_override: bool = False) -> Config:
+    def load_context_config(context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> Config:
+        """Load the project configuration from a context directory
+
+        :param context: The path to the context directory
+        :param ignore_override: If true, ignores config.override.toml if it exists
+        """
         context = Path(context)
-        if not context.exists():
+        if not context.is_dir():
             raise BakeryFileNotFoundError(f"Directory {context} does not exist.")
         config_filepath = context / "config.toml"
-        if not config_filepath.exists():
+        if not config_filepath.is_file():
             raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config.load_file(config_filepath)
+        config = Config.load(config_filepath)
 
         override_config_filepath = context / "config.override.toml"
-        if not no_override and override_config_filepath.exists():
-            override_config = Config.load_file(override_config_filepath)
-            config.merge(override_config)
+        if not ignore_override and override_config_filepath.is_file():
+            override_config = Config.load(override_config_filepath)
+            config.update(override_config)
 
         return config
 
     @staticmethod
-    def __load_config_manifests(config: Config) -> Dict[str, "Manifest"]:
+    def load_config_manifests(config: Config) -> Dict[str, "Manifest"]:
         """Loads all manifests from a context directory
 
         :param config: The project configuration
         """
         manifests = {}
         for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest.load_file_with_config(config, manifest_file)
+            m = Manifest.load(config, manifest_file)
             if m.image_name in manifests:
-                raise ValueError(f"Image name {m.name} shadows another image name in this project.")
+                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m
         return manifests
 
     def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
+        """Create a new image in the project with associated file structure from templates
+
+        :param image_name: The name of the new image
+        :param base_tag: The base tag to use for the new image
+        """
         if image_name in self.manifests:
             raise BakeryConfigError(f"Image name {image_name} already exists in this project.")
 
         config_file = self.context / "config.toml"
-        if not config_file.exists():
+        if not config_file.is_file():
             print(f"[bright_black]Creating new project config file [bold]{config_file}")
             tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(self.context)).from_string(TPL_CONFIG_TOML)
             rendered = tpl.render(repo_url=try_get_repo_url(self.context))
@@ -90,12 +91,12 @@ class Project:
                 f.write(rendered)
 
         image_path = self.context / image_name
-        if not image_path.exists():
+        if not image_path.is_dir():
             print(f"[bright_black]Creating new image directory [bold]{image_path}")
             image_path.mkdir()
 
         manifest_file = image_path / "manifest.toml"
-        if manifest_file.exists():
+        if manifest_file.is_file():
             print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_file}[/bold] already exists")
             raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
         else:
@@ -106,13 +107,13 @@ class Project:
                 f.write(rendered)
 
         image_template_path = image_path / "template"
-        if not image_template_path.exists():
+        if not image_template_path.is_dir():
             print(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
             image_template_path.mkdir()
 
         # Create a new Containerfile template if it doesn't exist
         containerfile_path = image_template_path / "Containerfile.jinja2"
-        if not containerfile_path.exists():
+        if not containerfile_path.is_file():
             print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
             tpl = jinja2.Environment().from_string(TPL_CONTAINERFILE)
             rendered = tpl.render(image_name=image_name, base_tag=base_tag)
@@ -120,26 +121,41 @@ class Project:
                 f.write(rendered)
 
         image_test_path = image_template_path / "test"
-        if not image_test_path.exists():
+        if not image_test_path.is_dir():
             print(f"[bright_black]Creating new image templates test directory [bold]{image_test_path}")
             image_test_path.mkdir()
         image_test_goss_file = image_test_path / "goss.yaml.jinja2"
         image_test_goss_file.touch(exist_ok=True)
 
         image_deps_path = image_template_path / "deps"
-        if not image_deps_path.exists():
+        if not image_deps_path.is_dir():
             print(f"[bright_black]Creating new image templates dependencies directory [bold]{image_deps_path}")
             image_deps_path.mkdir()
         image_deps_package_file = image_deps_path / "packages.txt.jinja2"
         image_deps_package_file.touch(exist_ok=True)
 
     def new_image_version(
-            self, image_name: str, image_version: str, value_map: Dict[str, str], mark_latest: bool = True
+            self,
+            image_name: str,
+            image_version: str,
+            value_map: Dict[str, str] = None,
+            mark_latest: bool = True,
+            save: bool = True,
     ):
+        """Create a new version of an image in the project, render templates, and add it to the manifest
+
+        :param image_name: The name of the image to create a new version for
+        :param image_version: The new version
+        :param value_map: A dictionary of key/values to use in template rendering
+        :param mark_latest: If true, mark the new version as the latest
+        :param save: If true, save to the manifest.toml after adding the new version
+        """
         if image_name not in self.manifests:
             raise BakeryConfigError(f"Image name {image_name} does not exist in this project.")
+        if value_map is None:
+            value_map = {}
         manifest = self.manifests[image_name]
-        manifest.new_version(image_version, mark_latest, value_map)
+        manifest.new_version(image_version, mark_latest=mark_latest, value_map=value_map, save=save)
 
     def render_bake_plan(
             self,
@@ -147,6 +163,12 @@ class Project:
             image_version: str = None,
             image_type: str = None,
     ) -> Dict[str, Any]:
+        """Render a bake plan for the project
+
+        :param image_name: (Optional) The name of the image to render a bake plan for
+        :param image_version: (Optional) The version of the image to render a bake plan for
+        :param image_type: (Optional) The type of the image to render a bake plan for
+        """
         bake_plan = {
             "group": {"default": {"targets": []}},
             "target": {},
@@ -159,12 +181,7 @@ class Project:
             if manifest.image_name not in bake_plan["group"]:
                 bake_plan["group"][manifest.image_name] = {"targets": []}
 
-            for target_build in manifest.target_builds:
-                if image_version and target_build.version != image_version:
-                    continue
-                if image_type and target_build.type != image_type:
-                    continue
-
+            for target_build in manifest.filter_target_builds(build_version=image_version, target_type=image_type):
                 if target_build.type not in bake_plan["group"]:
                     bake_plan["group"][target_build.type] = {"targets": []}
 
@@ -172,7 +189,7 @@ class Project:
                     "context": ".",
                     "dockerfile": str(target_build.containerfile_path.relative_to(self.context)),
                     "labels": target_build.labels,
-                    "tags": target_build.all_tags,
+                    "tags": target_build.get_tags(),
                 }
                 bake_plan["target"][target_build.uid] = target_definition
                 bake_plan["group"]["default"]["targets"].append(target_build.uid)
@@ -189,6 +206,15 @@ class Project:
             image_type: str = None,
             build_options: List[str] = None,
     ) -> None:
+        """Build images in the project using Buildkit Bake
+
+        :param load: If true, load the built images into the local Docker daemon
+        :param push: If true, push the built images to the registry
+        :param image_name: (Optional) The name of the image to build
+        :param image_version: (Optional) The version of the image to build
+        :param image_type: (Optional) The type of the image to build
+        :param build_options: (Optional) Additional build options to pass to `docker buildx bake` command
+        """
         bake_plan = self.render_bake_plan(image_name, image_version, image_type)
         build_file = self.context / ".docker-bake.json"
         with open(build_file, "w") as f:
@@ -215,8 +241,15 @@ class Project:
             image_type: str = None,
             runtime_options: List[str] = None,
         ) -> List[Tuple[str, Dict[str, str], List[str]]]:
-        dgoss_bin = self.__find_bin("dgoss", "DGOSS_PATH") or "dgoss"
-        goss_bin = self.__find_bin("goss", "GOSS_PATH")
+        """Render dgoss commands for the project
+
+        :param image_name: (Optional) The name of the image to render dgoss commands for
+        :param image_version: (Optional) The version of the image to render dgoss commands for
+        :param image_type: (Optional) The type of the image to render dgoss commands for
+        :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
+        """
+        dgoss_bin = find_bin(self.context, "dgoss", "DGOSS_PATH") or "dgoss"
+        goss_bin = find_bin(self.context, "goss", "GOSS_PATH")
         dgoss_commands = []
 
         for manifest in self.manifests.values():
@@ -243,7 +276,7 @@ class Project:
                 run_env["GOSS_FILES_PATH"] = str(test_path)
 
                 deps = target_build.goss.deps
-                if deps.exists():
+                if deps.is_dir():
                     cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
                 else:
                     print(
@@ -263,13 +296,14 @@ class Project:
                     cmd.extend(runtime_options)
 
                 # Append the target image tag, assuming the first one is valid to use and no duplications exist
-                cmd.append(target_build.all_tags[0])
+                cmd.append(target_build.get_tags()[0])
 
                 # Append the goss command to run or use the default `sleep infinity`
                 cmd.extend(target_build.goss.command.split() or ["sleep", "infinity"])
 
-                dgoss_commands.append((target_build.all_tags[0], run_env, cmd))
+                dgoss_commands.append((target_build.get_tags()[0], run_env, cmd))
 
+        dgoss_commands.sort(key=lambda x: x[0])
         return dgoss_commands
 
     def dgoss(
@@ -279,6 +313,13 @@ class Project:
             image_type: str = None,
             runtime_options: List[str] = None,
         ) -> None:
+        """Run Goss tests for the project's images using dgoss
+
+        :param image_name: (Optional) The name of the image to run Goss tests for
+        :param image_version: (Optional) The version of the image to run Goss tests for
+        :param image_type: (Optional) The type of the image to run Goss tests for
+        :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
+        """
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
         for tag, env, cmd in dgoss_commands:
             print(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
@@ -287,24 +328,3 @@ class Project:
             if p.returncode != 0:
                 raise BakeryGossError(f"Goss exited with code {p.returncode}", p.returncode)
             print(f"[bright_green bold]=== Goss tests passed for {tag} ===")
-
-
-def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
-    """Best guesses a repository URL for image labeling purposes based off the Git remote origin URL
-
-    :param context: The repository root to check for a remote URL in
-    :return: The guessed repository URL
-    """
-    url = "<REPLACE ME>"
-    try:
-        repo = git.Repo(context)
-        # Use splitext since remotes should have `.git` as a suffix
-        url = os.path.splitext(repo.remotes[0].config_reader.get("url"))[0]
-        # If the URL is a git@ SSH URL, convert it to a https:// URL
-        if url.startswith("git@"):
-            url = url.removeprefix("git@")
-            url = url.replace(":", "/")
-        # TODO: There should be more logic around HTTPS URLs that may use `user@` prefixing
-    except:  # noqa
-        print("[bright_yellow][bold]WARNING:[/bold] Unable to determine repository name ")
-    return url
