@@ -31,7 +31,7 @@ namespace = "posit-dev"
         with open(basic_tmpcontext / "config.override.toml", "w") as f:
             f.write(override_config_str)
 
-        c = project.Project.load_context_config(basic_tmpcontext, no_override=True)
+        c = project.Project.load_context_config(basic_tmpcontext, ignore_override=True)
         assert c.context == basic_tmpcontext
         assert len(c.registry_urls) == 2
 
