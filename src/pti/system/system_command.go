@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 type SysCmd struct {
@@ -43,12 +42,11 @@ func (s *SysCmd) Execute() error {
 	s.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	s.cmd.Cancel = func() error {
 		slog.Info("Interrupt signal received, cancelling command")
-		err := s.cmd.Process.Signal(syscall.SIGINT)
+		err := s.cmd.Process.Signal(syscall.SIGTERM)
 		if err != nil {
 			slog.Error("Failed to cancel command: " + err.Error())
 		}
-		time.Sleep(5 * time.Second)
-		return s.cmd.Process.Kill()
+		return err
 	}
 	s.cmd.Env = *s.EnvVars
 	if s.InheritEnvVars {
