@@ -23,26 +23,26 @@ class Project:
         self.manifests: Dict[str, "Manifest"] = {}
 
     @classmethod
-    def load(cls, context: Union[str, bytes, os.PathLike], no_override: bool = False) -> "Project":
+    def load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
         """Create a Project object and load config and manifests into it from a context directory
 
         :param context: The path to the context directory
-        :param no_override: If true, ignores config.override.toml if it exists
+        :param ignore_override: If true, ignores config.override.toml if it exists
         """
         project = cls()
         project.context = Path(context)
         if not project.context.is_dir():
             raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
-        project.config = project.load_context_config(project.context, no_override)
+        project.config = project.load_context_config(project.context, ignore_override)
         project.manifests = project.load_config_manifests(project.config)
         return project
 
     @staticmethod
-    def load_context_config(context: Union[str, bytes, os.PathLike], no_override: bool = False) -> Config:
+    def load_context_config(context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> Config:
         """Load the project configuration from a context directory
 
         :param context: The path to the context directory
-        :param no_override: If true, ignores config.override.toml if it exists
+        :param ignore_override: If true, ignores config.override.toml if it exists
         """
         context = Path(context)
         if not context.is_dir():
@@ -53,7 +53,7 @@ class Project:
         config = Config.load(config_filepath)
 
         override_config_filepath = context / "config.override.toml"
-        if not no_override and override_config_filepath.is_file():
+        if not ignore_override and override_config_filepath.is_file():
             override_config = Config.load(override_config_filepath)
             config.update(override_config)
 
