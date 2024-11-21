@@ -28,7 +28,7 @@ class ConfigRegistry:
 
     def __hash__(self) -> int:
         """Unique hash for a ConfigRegistry object"""
-        return hash(self.base_url + self.namespace)
+        return hash(self.base_url)
 
 
 @dataclass
