@@ -382,7 +382,7 @@ class Manifest(GenericTOMLModel):
         return m
 
     @staticmethod
-    def guess_image_os_list(p: Path):
+    def guess_image_os_list(p: Path) -> List[str]:
         """Guess the operating systems for an image based on the Containerfile extensions present in the image directory
 
         :param p: Path to the versioned image directory containing Containerfiles to guess OSes from
@@ -400,7 +400,7 @@ class Manifest(GenericTOMLModel):
         os_list = list(set(os_list))
         return os_list
 
-    def append_build_version(self, version: str, mark_latest: bool = True):
+    def append_build_version(self, version: str, mark_latest: bool = True) -> None:
         """Append a new build version to the manifest document
 
         :param version: Build version to append
@@ -415,7 +415,7 @@ class Manifest(GenericTOMLModel):
             build_data["os"] = self.guess_image_os_list(self.context / version)
         self.document["build"].append(version, build_data)
 
-    def render_image_template(self, version: str, value_map: Dict[str, str] = None):
+    def render_image_template(self, version: str, value_map: Dict[str, str] = None) -> None:
         """Render the image template files for a new version
 
         :param version: Version to render the image template files for
