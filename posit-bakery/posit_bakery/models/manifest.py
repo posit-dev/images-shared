@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from datetime import timezone, datetime
@@ -9,13 +10,15 @@ import jinja2
 from pydantic import model_validator, BaseModel
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
-from rich import print
 from tomlkit import TOMLDocument
 
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
 from posit_bakery.models.config import Config
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
+
+
+log = logging.getLogger("rich")
 
 
 @dataclass
@@ -219,16 +222,10 @@ class TargetBuild(BaseModel):
 
         # If the manifest document does not have at least one build and one target section, return an empty list.
         if "build" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined builds."
-            )
+            log.warning(f"Manifest '{manifest_context / 'manifest.toml'}' does not have any defined builds.")
             return target_builds
         if "target" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined targets."
-            )
+            log.warning(f"Manifest '{manifest_context / 'manifest.toml'}' does not have any defined targets.")
             return target_builds
 
         for build_version, build_data in manifest_document["build"].unwrap().items():
@@ -445,7 +442,7 @@ class Manifest(GenericTOMLModel):
                 for image_type in self.types:
                     rendered = tpl.render(image_version=version, **value_map, image_type=image_type, **render_kwargs)
                     with open(new_directory / f"{containerfile_base_name}.{image_type}", "w") as f:
-                        print(
+                        log.info(
                             f"[bright_black]Rendering [bold]{new_directory / f'{containerfile_base_name}.{image_type}'}"
                         )
                         f.write(rendered)
@@ -456,7 +453,7 @@ class Manifest(GenericTOMLModel):
                 target_dir = Path(new_directory / rel_path).parent
                 target_dir.mkdir(parents=True, exist_ok=True)
                 with open(new_directory / rel_path, "w") as f:
-                    print(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
+                    log.info(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
                     f.write(rendered)
 
     def new_version(
@@ -471,9 +468,8 @@ class Manifest(GenericTOMLModel):
         """
         self.render_image_template(version, value_map)
         if version in self.document["build"]:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Build version '{version}' already exists in "
-                f"manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
+            log.warning(
+                f"Build version '{version}' already exists in manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
             )
         else:
             self.append_build_version(version, mark_latest)

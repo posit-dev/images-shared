@@ -1,11 +1,11 @@
 import json
+import logging
 import os
 import subprocess
 from pathlib import Path
 from typing import Union, List, Dict, Any, Tuple
 
 import jinja2
-from rich import print
 
 from posit_bakery.error import (
     BakeryFileNotFoundError,
@@ -19,6 +19,9 @@ from posit_bakery.models.manifest import Manifest
 from posit_bakery.templating.templates.configuration import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
 from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
 from posit_bakery.util import try_get_repo_url, find_bin
+
+
+log = logging.getLogger("rich")
 
 
 class Project:
@@ -89,7 +92,7 @@ class Project:
 
         config_file = self.context / "config.toml"
         if not config_file.is_file():
-            print(f"[bright_black]Creating new project config file [bold]{config_file}")
+            log.info(f"[bright_black]Creating new project config file [bold]{config_file}")
             tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(self.context)).from_string(TPL_CONFIG_TOML)
             rendered = tpl.render(repo_url=try_get_repo_url(self.context))
             with open(config_file, "w") as f:
@@ -97,15 +100,15 @@ class Project:
 
         image_path = self.context / image_name
         if not image_path.is_dir():
-            print(f"[bright_black]Creating new image directory [bold]{image_path}")
+            log.info(f"[bright_black]Creating new image directory [bold]{image_path}")
             image_path.mkdir()
 
         manifest_file = image_path / "manifest.toml"
         if manifest_file.is_file():
-            print(f"[bright_red bold]ERROR:[/bold] Manifest file [bold]{manifest_file}[/bold] already exists")
+            log.error(f"Manifest file [bold]{manifest_file}[/bold] already exists")
             raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
         else:
-            print(f"[bright_black]Creating new manifest file [bold]{manifest_file}")
+            log.info(f"[bright_black]Creating new manifest file [bold]{manifest_file}")
             tpl = jinja2.Environment().from_string(TPL_MANIFEST_TOML)
             rendered = tpl.render(image_name=image_name)
             with open(manifest_file, "w") as f:
@@ -113,13 +116,13 @@ class Project:
 
         image_template_path = image_path / "template"
         if not image_template_path.is_dir():
-            print(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
+            log.info(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
             image_template_path.mkdir()
 
         # Create a new Containerfile template if it doesn't exist
         containerfile_path = image_template_path / "Containerfile.jinja2"
         if not containerfile_path.is_file():
-            print(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
+            log.info(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
             tpl = jinja2.Environment().from_string(TPL_CONTAINERFILE)
             rendered = tpl.render(image_name=image_name, base_tag=base_tag)
             with open(containerfile_path, "w") as f:
@@ -127,14 +130,14 @@ class Project:
 
         image_test_path = image_template_path / "test"
         if not image_test_path.is_dir():
-            print(f"[bright_black]Creating new image templates test directory [bold]{image_test_path}")
+            log.info(f"[bright_black]Creating new image templates test directory [bold]{image_test_path}")
             image_test_path.mkdir()
         image_test_goss_file = image_test_path / "goss.yaml.jinja2"
         image_test_goss_file.touch(exist_ok=True)
 
         image_deps_path = image_template_path / "deps"
         if not image_deps_path.is_dir():
-            print(f"[bright_black]Creating new image templates dependencies directory [bold]{image_deps_path}")
+            log.info(f"[bright_black]Creating new image templates dependencies directory [bold]{image_deps_path}")
             image_deps_path.mkdir()
         image_deps_package_file = image_deps_path / "packages.txt.jinja2"
         image_deps_package_file.touch(exist_ok=True)
@@ -233,7 +236,7 @@ class Project:
         if build_options:
             cmd.extend(build_options)
         run_env = os.environ.copy()
-        print(f"[bright_black]Executing build command: {' '.join(cmd)}")
+        log.info(f"[bright_black]Executing build command: {' '.join(cmd)}")
         p = subprocess.run(cmd, env=run_env, cwd=self.context)
         if p.returncode != 0:
             raise BakeryBuildError(p.returncode)
@@ -284,10 +287,7 @@ class Project:
                 if deps.is_dir():
                     cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
                 else:
-                    print(
-                        f"[bright_yellow][bold]WARNING:[/bold] "
-                        f"Skipping mounting of goss deps directory {deps} as it does not exist."
-                    )
+                    log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
 
                 if target_build.goss.wait is not None and target_build.goss.wait > 0:
                     run_env["GOSS_SLEEP"] = str(target_build.goss.wait)
@@ -327,9 +327,9 @@ class Project:
         """
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
         for tag, env, cmd in dgoss_commands:
-            print(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
-            print(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
+            log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
+            log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
             if p.returncode != 0:
                 raise BakeryGossError(f"Goss exited with code {p.returncode}", p.returncode)
-            print(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+            log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")

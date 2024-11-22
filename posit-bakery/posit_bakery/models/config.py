@@ -1,12 +1,15 @@
+import logging
 import os
 from pathlib import Path
 from typing import Optional, Set, Union, List
 
 import git
 from pydantic.dataclasses import dataclass
-from rich import print
 
 from posit_bakery.models.generic import GenericTOMLModel
+
+
+log = logging.getLogger("rich")
 
 
 @dataclass
@@ -109,7 +112,7 @@ class Config(GenericTOMLModel):
             repo = git.Repo(self.context)
             sha = repo.head.object.hexsha
         except Exception as e:
-            print(f"[bright_red][bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
+            log.error(f"Unable to get git commit for labels: {e}")
         return sha
 
     @classmethod
