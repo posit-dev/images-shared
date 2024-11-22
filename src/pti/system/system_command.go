@@ -41,12 +41,12 @@ func (s *SysCmd) Execute() error {
 	s.cmd = exec.CommandContext(ctx, s.Name, *s.Args...)
 	s.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	s.cmd.Cancel = func() error {
-		slog.Info("Interrupt signal received, cancelling command")
+		slog.Info("Interrupt signal received, terminating process...")
 		err := s.cmd.Process.Signal(syscall.SIGTERM)
 		if err != nil {
-			slog.Error("Failed to cancel command: " + err.Error())
+			return fmt.Errorf("failed to terminate process: %w", err)
 		}
-		return err
+		return nil
 	}
 	s.cmd.Env = *s.EnvVars
 	if s.InheritEnvVars {
@@ -60,7 +60,7 @@ func (s *SysCmd) Execute() error {
 	slog.Debug(fmt.Sprintf("Environment variables: %v", s.cmd.Env))
 	slog.Debug("Running cmd: " + s.cmd.String())
 	if err := s.cmd.Start(); err != nil {
-		return err
+		return fmt.Errorf("failed to start command %s: %w", s.cmd.String(), err)
 	}
 
 	err := s.cmd.Wait()

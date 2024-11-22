@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"pti/errors"
 	"pti/system"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ func InstallR(rVersion string, rPackages *[]string, rPackageFiles *[]string, set
 			return err
 		}
 		if !validVersion {
-			return fmt.Errorf("R version %s is not supported", rVersion)
+			return &errors.UnsupportedVersionError{Pkg: "R", Version: rVersion}
 		}
 
 		downloadPath, err := FetchRPackage(rVersion)
@@ -43,11 +44,11 @@ func InstallR(rVersion string, rPackages *[]string, rPackageFiles *[]string, set
 		}
 
 		if err := system.InstallLocalPackage(downloadPath); err != nil {
-			return err
+			return fmt.Errorf(errors.ToolInstallFailedErrorTpl, "R", err)
 		}
 
 		if err := os.Remove(downloadPath); err != nil {
-			return err
+			return fmt.Errorf(errors.ToolInstallerRemovalFailedErrorTpl, "R", err)
 		}
 	} else {
 		slog.Info("R version " + rVersion + " is already installed")
@@ -90,7 +91,7 @@ func InstallRPackages(rBinPath string, rPackages *[]string, rPackageFiles *[]str
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("R binary does not exist at path %s", rBinPath)
+		return &errors.BinaryDoesNotExistError{Pkg: "R", Path: rBinPath}
 	}
 
 	if len(*rPackages) > 0 {
@@ -118,12 +119,12 @@ func SymlinkDefaultR(rInstallationPath string) error {
 	if _, err := os.Lstat(defaultRPath); err == nil {
 		slog.Debug("Removing existing symlink at " + defaultRPath)
 		if err := os.Remove(defaultRPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, defaultRPath, err)
 		}
 	}
 
 	if err := os.Symlink(rInstallationPath, defaultRPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, rInstallationPath, defaultRPath, err)
 	}
 
 	return nil
@@ -139,22 +140,22 @@ func SymlinkVersionedRToPath(rInstallationPath string, rVersion string) error {
 
 	if _, err := os.Lstat(symlinkRPath); err == nil {
 		if err := os.Remove(symlinkRPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, symlinkRPath, err)
 		}
 	}
 	if err := os.Symlink(rBinPath, symlinkRPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, rBinPath, symlinkRPath, err)
 	}
 
 	slog.Info("Symlinking " + rScriptBinPath + " to " + symlinkRScriptPath)
 
 	if _, err := os.Lstat(symlinkRScriptPath); err == nil {
 		if err := os.Remove(symlinkRScriptPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, symlinkRScriptPath, err)
 		}
 	}
 	if err := os.Symlink(rScriptBinPath, symlinkRScriptPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, rScriptBinPath, symlinkRScriptPath, err)
 	}
 
 	return nil
@@ -167,13 +168,13 @@ func ValidateRVersion(rVersion string) (bool, error) {
 
 	res, err := http.Get(rVersionsJsonUrl)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to fetch R versions from %s: %w", rVersionsJsonUrl, err)
 	}
 	defer res.Body.Close()
 
 	var rVersions rVersionInfo
 	if err := json.NewDecoder(res.Body).Decode(&rVersions); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to unmarshal valid R versions: %w", err)
 	}
 
 	slog.Debug("Supported R versions: " + strings.Join(rVersions.Versions, ", "))
@@ -212,7 +213,7 @@ func FetchRPackage(rVersion string) (string, error) {
 		slog.Debug("Detected RHEL-based OS")
 		rhelVerison, err := strconv.Atoi(si.OS.Version)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to parse OS version: %w", err)
 		}
 
 		var osIdentifier string
@@ -245,7 +246,7 @@ func FetchRPackage(rVersion string) (string, error) {
 		downloadUrl = fmt.Sprintf("%s/%s/pkgs/R-%s-1-1.%s.rpm", rUrlRoot, osIdentifier, rVersion, archIdentifier)
 		downloadPath = fmt.Sprintf("/tmp/R-%s.deb", rVersion)
 	default:
-		return "", fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return "", &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	slog.Debug("Download URL: " + downloadUrl)
@@ -253,7 +254,7 @@ func FetchRPackage(rVersion string) (string, error) {
 
 	err := system.DownloadFile(downloadPath, downloadUrl)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf(errors.ToolDownloadFailedErrorTpl, "R", err)
 	}
 	return downloadPath, err
 }
@@ -332,7 +333,11 @@ func installRPackages(rBin string, packages *[]string) error {
 	packageList := "c(" + strings.Join(quotedPackages, ", ") + ")"
 	args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo)}
 	s := system.NewSysCmd(rBin, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf("failed to install packages to %s: %w", rBin, err)
+	}
+
+	return nil
 }
 
 func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
@@ -347,7 +352,7 @@ func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
 		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo)}
 		s := system.NewSysCmd(rBin, &args)
 		if err := s.Execute(); err != nil {
-			slog.Error(fmt.Sprintf("Error installing R packages from %s: %v", file, err))
+			return fmt.Errorf("failed to install R packages from %s: %v", file, err)
 		}
 	}
 

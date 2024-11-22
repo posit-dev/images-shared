@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"pti/errors"
 	"pti/system"
 	"strconv"
 	"strings"
@@ -35,7 +36,7 @@ func InstallPython(pythonVersion string, pythonPackages *[]string, pythonRequire
 			return err
 		}
 		if !validVersion {
-			return fmt.Errorf("Python version %s is not supported", pythonVersion)
+			return &errors.UnsupportedVersionError{Pkg: "python", Version: pythonVersion}
 		}
 
 		downloadPath, err := FetchPythonPackage(pythonVersion)
@@ -44,11 +45,11 @@ func InstallPython(pythonVersion string, pythonPackages *[]string, pythonRequire
 		}
 
 		if err := system.InstallLocalPackage(downloadPath); err != nil {
-			return err
+			return fmt.Errorf(errors.ToolInstallFailedErrorTpl, "python", err)
 		}
 
 		if err := os.Remove(downloadPath); err != nil {
-			return err
+			return fmt.Errorf(errors.ToolInstallerRemovalFailedErrorTpl, "python", err)
 		}
 	} else {
 		slog.Info("Python " + pythonVersion + " is already installed")
@@ -103,7 +104,7 @@ func InstallPythonPackages(pythonBinPath string, pythonPackages *[]string, pytho
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("Python binary does not exist at path %s", pythonBinPath)
+		return &errors.BinaryDoesNotExistError{Pkg: "python", Path: pythonBinPath}
 	}
 
 	if len(*pythonPackages) > 0 {
@@ -131,7 +132,7 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("Python binary does not exist at path %s", pythonBinPath)
+		return &errors.BinaryDoesNotExistError{Pkg: "python", Path: pythonBinPath}
 	}
 
 	// Remove existing Jupyter installation
@@ -140,10 +141,10 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 			slog.Info("Removing existing Jupyter installation")
 			err := os.RemoveAll(jupyterPath)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to remove jupyter installation at %s: %w", jupyterPath, err)
 			}
 		} else {
-			return fmt.Errorf("%s already exists. Use the --force flag to install Jupyter to this path.", jupyterPath)
+			return &errors.AlreadyExistsError{Pkg: "jupyter", Path: jupyterPath}
 		}
 	}
 
@@ -152,7 +153,7 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 	args := []string{"-m", "venv", jupyterPath}
 	s := system.NewSysCmd(pythonBinPath, &args)
 	if err := s.Execute(); err != nil {
-		return err
+		return fmt.Errorf("failed to create virtual environment for jupyter: %w", err)
 	}
 
 	if err := PythonCoreModuleSetup(jupyterPythonBinPath); err != nil {
@@ -160,7 +161,7 @@ func InstallJupyter4Workbench(pythonBinPath, jupyterPath string, force bool) err
 	}
 
 	if err := installPythonPackages(jupyterPythonBinPath, &[]string{"jupyterlab", "notebook", "pwb_jupyterlab"}, nil); err != nil {
-		return err
+		return fmt.Errorf("failed to install jupyerlab: %w", err)
 	}
 
 	return nil
@@ -173,13 +174,13 @@ func validatePythonVersion(pythonVersion string) (bool, error) {
 
 	res, err := http.Get(pythonVersionsJsonUrl)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to fetch python versions from %s: %w", pythonVersionsJsonUrl, err)
 	}
 	defer res.Body.Close()
 
 	var pythonVersions pythonVersionInfo
 	if err := json.NewDecoder(res.Body).Decode(&pythonVersions); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to unmarshal valid python versions: %w", err)
 	}
 
 	slog.Debug("Supported Python versions: " + strings.Join(pythonVersions.Versions, ", "))
@@ -197,11 +198,11 @@ func symlinkDefaultPython(pythonInstallationPath string) error {
 	const defaultPythonPath = "/opt/python/default"
 	if _, err := os.Lstat(defaultPythonPath); err == nil {
 		if err := os.Remove(defaultPythonPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, defaultPythonPath, err)
 		}
 	}
 	if err := os.Symlink(pythonInstallationPath, defaultPythonPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, pythonInstallationPath, defaultPythonPath, err)
 	}
 	return nil
 }
@@ -217,22 +218,22 @@ func symlinkVersionedPythonToPath(pythonInstallationPath string, pythonVersion s
 	if _, err := os.Lstat(symlinkPythonPath); err == nil {
 		slog.Debug("Removing existing symlink: " + symlinkPythonPath)
 		if err := os.Remove(symlinkPythonPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, symlinkPythonPath, err)
 		}
 	}
 	if err := os.Symlink(pythonBinPath, symlinkPythonPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, pythonBinPath, symlinkPythonPath, err)
 	}
 
 	slog.Info("Symlinking " + pipBinPath + " to " + symlinkPipPath)
 	if _, err := os.Lstat(symlinkPipPath); err == nil {
 		slog.Debug("Removing existing symlink: " + symlinkPipPath)
 		if err := os.Remove(symlinkPipPath); err != nil {
-			return err
+			return fmt.Errorf(errors.RemoveExistingSymlinkErrorTpl, symlinkPipPath, err)
 		}
 	}
 	if err := os.Symlink(pipBinPath, symlinkPipPath); err != nil {
-		return err
+		return fmt.Errorf(errors.CreateSymlinkErrorTpl, pipBinPath, symlinkPipPath, err)
 	}
 
 	return nil
@@ -263,7 +264,7 @@ func FetchPythonPackage(pythonVersion string) (string, error) {
 		slog.Debug("Detected RHEL-based OS")
 		rhelVersion, err := strconv.Atoi(si.OS.Version)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to parse OS version: %w", err)
 		}
 
 		var osIdentifier string
@@ -283,7 +284,7 @@ func FetchPythonPackage(pythonVersion string) (string, error) {
 		downloadUrl = fmt.Sprintf("%s/%s/pkgs/python-%s-1-1.%s.rpm", pythonUrlRoot, osIdentifier, pythonVersion, archIdentifier)
 		downloadPath = fmt.Sprintf("/tmp/python-%s.rpm", pythonVersion)
 	default:
-		return "", fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return "", &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	slog.Debug("Download URL: " + downloadUrl)
@@ -291,7 +292,7 @@ func FetchPythonPackage(pythonVersion string) (string, error) {
 
 	err := system.DownloadFile(downloadPath, downloadUrl)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf(errors.ToolDownloadFailedErrorTpl, "python", err)
 	}
 
 	return downloadPath, err
@@ -307,7 +308,7 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 	args = append(args, *packages...)
 	s := system.NewSysCmd(pythonBin, &args)
 	if err := s.Execute(); err != nil {
-		return err
+		return fmt.Errorf("failed to install packages to %s: %w", pythonBin, err)
 	}
 
 	if err := PurgePipCache(pythonBin); err != nil {
@@ -329,7 +330,7 @@ func installPythonPackagesFromFile(pythonBin string, requirementsFiles *[]string
 	}
 	s := system.NewSysCmd(pythonBin, &args)
 	if err := s.Execute(); err != nil {
-		return err
+		return fmt.Errorf("failed to install requirements files to %s: %w", pythonBin, err)
 	}
 
 	if err := PurgePipCache(pythonBin); err != nil {
@@ -344,7 +345,11 @@ func EnsurePip(pythonBin string) error {
 
 	args := []string{"-m", "ensurepip", "--upgrade"}
 	s := system.NewSysCmd(pythonBin, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf("%s ensurepip failed: %w", pythonBin, err)
+	}
+
+	return nil
 }
 
 func PurgePipCache(pythonBin string) error {
@@ -352,7 +357,11 @@ func PurgePipCache(pythonBin string) error {
 
 	args := []string{"-m", "pip", "cache", "purge"}
 	s := system.NewSysCmd(pythonBin, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf("failed to purge pip cache for %s: %w", pythonBin, err)
+	}
+
+	return nil
 }
 
 func PythonCoreModuleSetup(pythonBin string) error {
@@ -363,7 +372,7 @@ func PythonCoreModuleSetup(pythonBin string) error {
 
 	err = installPythonPackages(pythonBin, &[]string{"pip", "setuptools"}, &[]string{"--upgrade"})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to install pip and setuptools to %s: %w", pythonBin, err)
 	}
 
 	err = PurgePipCache(pythonBin)
@@ -379,10 +388,14 @@ func ConfigureIPythonKernel(pythonBin, machineName, displayName string) error {
 
 	err := installPythonPackages(pythonBin, &[]string{"ipykernel"}, &[]string{"--upgrade"})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to install ipykernel to %s: %w", pythonBin, err)
 	}
 
 	args := []string{"-m", "ipykernel", "install", "--name", machineName, "--display-name", displayName}
 	s := system.NewSysCmd(pythonBin, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf("failed to configure IPython kernel for %s: %w", pythonBin, err)
+	}
+
+	return nil
 }

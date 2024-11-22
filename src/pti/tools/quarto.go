@@ -5,6 +5,7 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
+	"pti/errors"
 	"pti/system"
 )
 
@@ -44,21 +45,21 @@ func InstallQuarto(quartoVersion string, installTinyTeX, addPathTinyTeX, force b
 		if quartoBinPathExists {
 			slog.Info("Removing existing Quarto installation")
 			if err := os.RemoveAll(quartoInstallationPath); err != nil {
-				return err
+				return fmt.Errorf(errors.ToolRemovalFailedErrorTpl, "quarto", quartoInstallationPath, err)
 			}
 		}
 
 		downloadPath, err := FetchQuartoPackage(quartoVersion)
 		if err != nil {
-			return err
+			return fmt.Errorf(errors.ToolDownloadFailedErrorTpl, "quarto", err)
 		}
 
 		if err := system.ExtractTarGz(downloadPath, quartoInstallationPath, &[]string{"--strip-components", "1"}); err != nil {
-			return err
+			return fmt.Errorf("failed to unpack quarto: %w", err)
 		}
 
 		if err := os.Remove(downloadPath); err != nil {
-			return err
+			return fmt.Errorf(errors.ToolInstallerRemovalFailedErrorTpl, "quarto", err)
 		}
 	} else {
 		slog.Info("Quarto is already installed")
@@ -84,7 +85,7 @@ func FetchQuartoPackage(quartoVersion string) (string, error) {
 	slog.Info("Fetching Quarto package " + quartoVersion)
 
 	if si.OS.Architecture != "amd64" && si.OS.Architecture != "arm64" {
-		return "", fmt.Errorf("Quarto is only supported on amd64 and arm64 architectures")
+		return "", fmt.Errorf("quarto is only supported on amd64 and arm64 architectures")
 	}
 
 	quartoDownloadUrl := fmt.Sprintf("%s/v%s/quarto-%s-linux-%s.tar.gz", quartoDownloadUrlRoot, quartoVersion, quartoVersion, si.OS.Architecture)
@@ -95,7 +96,7 @@ func FetchQuartoPackage(quartoVersion string) (string, error) {
 
 	err := system.DownloadFile(quartoDownloadPath, quartoDownloadUrl)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf(errors.ToolDownloadFailedErrorTpl, "quarto", err)
 	}
 
 	return quartoDownloadPath, nil
@@ -109,7 +110,11 @@ func InstallQuartoTool(quartoBinPath string, toolName string, options *[]string)
 		args = append(args, *options...)
 	}
 	s := system.NewSysCmd(quartoBinPath, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.ToolInstallFailedErrorTpl, "quarto tinytex", err)
+	}
+
+	return nil
 }
 
 func UpdateQuartoTool(quartoBinPath, toolName string, options *[]string) error {
@@ -120,5 +125,9 @@ func UpdateQuartoTool(quartoBinPath, toolName string, options *[]string) error {
 		args = append(args, *options...)
 	}
 	s := system.NewSysCmd(quartoBinPath, &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.ToolUpdateFailedErrorTpl, "quarto tinytex", err)
+	}
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
+	"pti/errors"
 	"pti/system"
 	"strings"
 )
@@ -47,22 +48,22 @@ func InstallProDrivers(driversVersion string) error {
 
 	// Install the driver dependencies
 	if err := system.InstallPackages(&driverDependencies); err != nil {
-		return err
+		return fmt.Errorf(errors.ToolDependencyInstallFailedErrorTpl, "pro drivers", err)
 	}
 
 	// Download and install the drivers
 	downloadPath := fmt.Sprintf("/tmp/%s", packageName)
 	slog.Debug("Downloading driver package to: " + downloadPath)
 	if err := system.DownloadFile(downloadPath, downloadUrl); err != nil {
-		return err
+		return fmt.Errorf(errors.ToolDownloadFailedErrorTpl, "pro drivers", err)
 	}
 	if err := system.InstallLocalPackage(downloadPath); err != nil {
-		return err
+		return fmt.Errorf(errors.ToolInstallFailedErrorTpl, "pro drivers", err)
 	}
 
 	// Clean up the downloaded package
 	if err := os.Remove(downloadPath); err != nil {
-		return err
+		return fmt.Errorf(errors.ToolInstallerRemovalFailedErrorTpl, "pro drivers", err)
 	}
 
 	// Copy the odbcinst.ini.sample from the Posit Drivers package
@@ -80,13 +81,13 @@ func CopyProDriversOdbcInstIni() error {
 	// Backup original odbcinst.ini
 	slog.Info("Backing up original odbcinst.ini to " + fmt.Sprintf("%s.bak", odbcInstIniPath))
 	if err := system.MoveFile(odbcInstIniPath, fmt.Sprintf("%s.bak", odbcInstIniPath)); err != nil {
-		return err
+		return fmt.Errorf("failed to backup existing odbcinst.ini to odbcinst.ini.bak: %w", err)
 	}
 
 	// Copy the odbcinst.ini.sample from the Posit Drivers package
 	slog.Info("Copying Posit Pro Drivers odbcinst.ini.sample to " + odbcInstIniPath)
 	if err := system.CopyFile(positDriversOdbcInstIniPath, odbcInstIniPath); err != nil {
-		return err
+		return fmt.Errorf(errors.FileCopyErrorTpl, positDriversOdbcInstIniPath, odbcInstIniPath, err)
 	}
 
 	return nil

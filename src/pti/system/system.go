@@ -5,6 +5,7 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log"
 	"os/user"
+	"pti/errors"
 )
 
 func RequireSudo() {
@@ -14,7 +15,7 @@ func RequireSudo() {
 	}
 
 	if current.Uid != "0" {
-		log.Fatal("This cmd must be run as root")
+		log.Fatal("command must be run as root")
 	}
 }
 
@@ -25,11 +26,17 @@ func UpdateCACertificates() error {
 	switch si.OS.Vendor {
 	case "ubuntu", "debian":
 		s := NewSysCmd("update-ca-certificates", nil)
-		return s.Execute()
+		if err := s.Execute(); err != nil {
+			return fmt.Errorf("failed to update-ca-certificates: %w", err)
+		}
 	case "almalinux", "centos", "rockylinux", "rhel":
 		s := NewSysCmd("update-ca-trust", nil)
-		return s.Execute()
+		if err := s.Execute(); err != nil {
+			return fmt.Errorf("failed to update-ca-trust: %w", err)
+		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
+
+	return nil
 }

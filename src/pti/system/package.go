@@ -6,6 +6,7 @@ import (
 	"github.com/zcalusic/sysinfo"
 	"log/slog"
 	"os"
+	"pti/errors"
 	"strings"
 )
 
@@ -34,7 +35,7 @@ func InstallLocalPackage(packagePath string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -47,7 +48,7 @@ func ExtractTarGz(archivePath, destinationPath string, options *[]string) error 
 	args = append(args, *options...)
 	cmd := NewSysCmd("tar", &args)
 	if err := cmd.Execute(); err != nil {
-		return err
+		return fmt.Errorf("failed to extract %s to %s: %w", archivePath, destinationPath, err)
 	}
 
 	return nil
@@ -78,7 +79,7 @@ func InstallPackages(packages *[]string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -109,7 +110,7 @@ func InstallPackagesFiles(packageFiles *[]string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -137,7 +138,7 @@ func RemovePackages(packages *[]string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -176,7 +177,7 @@ func UpgradePackages(distUpgrade bool) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -196,7 +197,7 @@ func UpdatePackageLists() error {
 		slog.Debug("Detected RHEL-based distribution, using yum")
 		slog.Warn("yum does not require updating package lists")
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -218,7 +219,7 @@ func CleanPackages() error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return &errors.UnsupportedOSError{Vendor: si.OS.Vendor, Version: si.OS.Version}
 	}
 
 	return nil
@@ -228,21 +229,33 @@ func updateApt() error {
 	slog.Info("Updating package lists for apt")
 
 	s := NewSysCmd("apt-get", &[]string{"update", "-q"})
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemUpdateErrorTpl, err)
+	}
+
+	return nil
 }
 
 func upgradeApt() error {
 	slog.Info("Upgrading installed packages for apt")
 
 	s := NewSysCmd("apt-get", &[]string{"upgrade", "-y", "-q"})
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemUpgradeErrorTpl, err)
+	}
+
+	return nil
 }
 
 func distUpgradeApt() error {
 	slog.Info("Running dist-upgrade for apt")
 
 	s := NewSysCmd("apt-get", &[]string{"dist-upgrade", "-y", "-q"})
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf("failed to dist-upgrade system package manager: %w", err)
+	}
+
+	return nil
 }
 
 func installLocalDebPackage(packagePath string) error {
@@ -250,7 +263,11 @@ func installLocalDebPackage(packagePath string) error {
 
 	args := []string{"install", "-y", "-q", packagePath}
 	s := NewSysCmd("apt-get", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemLocalPackageInstallErrorTpl, packagePath, err)
+	}
+
+	return nil
 }
 
 func installDebPackages(packages *[]string) error {
@@ -258,7 +275,11 @@ func installDebPackages(packages *[]string) error {
 
 	args := append([]string{"install", "-y", "-q"}, *packages...)
 	s := NewSysCmd("apt-get", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemPackageInstallErrorTpl, err)
+	}
+
+	return nil
 }
 
 func installDebPackagesFiles(packagesFiles *[]string) error {
@@ -269,7 +290,7 @@ func installDebPackagesFiles(packagesFiles *[]string) error {
 
 		fh, err := os.Open(packagesFile)
 		if err != nil {
-			return err
+			return fmt.Errorf(errors.FileOpenErrorTpl, packagesFile, err)
 		}
 		defer fh.Close()
 
@@ -279,7 +300,7 @@ func installDebPackagesFiles(packagesFiles *[]string) error {
 			lines = append(lines, strings.TrimSpace(scanner.Text()))
 		}
 		if err := scanner.Err(); err != nil {
-			return err
+			return fmt.Errorf(errors.FileReadErrorTpl, packagesFile, err)
 		}
 
 		if err := installDebPackages(&lines); err != nil {
@@ -290,11 +311,15 @@ func installDebPackagesFiles(packagesFiles *[]string) error {
 }
 
 func removeDebPackages(packages *[]string) error {
-	slog.Info("Removing deb packages: " + strings.Join(*packages, ", "))
+	slog.Info("Removing deb package(s): " + strings.Join(*packages, ", "))
 
 	args := append([]string{"remove", "-y", "-q"}, *packages...)
 	s := NewSysCmd("apt-get", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemPackageRemoveErrorTpl, err)
+	}
+
+	return nil
 }
 
 func cleanApt() error {
@@ -302,12 +327,12 @@ func cleanApt() error {
 
 	s := NewSysCmd("apt-get", &[]string{"autoremove", "-y", "-q"})
 	if err := s.Execute(); err != nil {
-		return err
+		return fmt.Errorf(errors.SystemPackageAutoremoveErrorTpl, err)
 	}
 
 	s = NewSysCmd("apt-get", &[]string{"clean", "-q"})
 	if err := s.Execute(); err != nil {
-		return err
+		return fmt.Errorf(errors.SystemCleanErrorTpl, err)
 	}
 
 	s = NewSysCmd("rm", &[]string{"-rf", "/var/lib/apt/lists"})
@@ -321,7 +346,7 @@ func cleanApt() error {
 		if os.IsNotExist(err) {
 			slog.Debug("/var/lib/apt/lists does not exist")
 		} else {
-			return err
+			return fmt.Errorf(errors.FileRemoveErrorTpl, "/var/lib/apt/lists", err)
 		}
 	}
 
@@ -332,7 +357,11 @@ func upgradeYum() error {
 	slog.Info("Upgrading installed packages for yum")
 
 	s := NewSysCmd("yum", &[]string{"upgrade", "-y", "-q"})
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemUpgradeErrorTpl, err)
+	}
+
+	return nil
 }
 
 func installLocalRpmPackage(packagePath string) error {
@@ -340,7 +369,11 @@ func installLocalRpmPackage(packagePath string) error {
 
 	args := []string{"install", "-y", "-q", packagePath}
 	s := NewSysCmd("yum", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemLocalPackageInstallErrorTpl, packagePath, err)
+	}
+
+	return nil
 }
 
 func installRpmPackages(packages *[]string) error {
@@ -348,7 +381,11 @@ func installRpmPackages(packages *[]string) error {
 
 	args := append([]string{"install", "-y", "-q"}, *packages...)
 	s := NewSysCmd("yum", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemPackageInstallErrorTpl, err)
+	}
+
+	return nil
 }
 
 func installRpmPackagesFiles(packagesFiles *[]string) error {
@@ -359,7 +396,7 @@ func installRpmPackagesFiles(packagesFiles *[]string) error {
 
 		fh, err := os.Open(packagesFile)
 		if err != nil {
-			return err
+			return fmt.Errorf(errors.FileOpenErrorTpl, packagesFile, err)
 		}
 		defer fh.Close()
 
@@ -369,7 +406,7 @@ func installRpmPackagesFiles(packagesFiles *[]string) error {
 			lines = append(lines, scanner.Text())
 		}
 		if err := scanner.Err(); err != nil {
-			return err
+			return fmt.Errorf(errors.FileReadErrorTpl, packagesFile, err)
 		}
 
 		if err := installRpmPackages(&lines); err != nil {
@@ -384,7 +421,11 @@ func removeRpmPackages(packages *[]string) error {
 
 	args := append([]string{"remove", "-y", "-q"}, *packages...)
 	s := NewSysCmd("yum", &args)
-	return s.Execute()
+	if err := s.Execute(); err != nil {
+		return fmt.Errorf(errors.SystemPackageRemoveErrorTpl, err)
+	}
+
+	return nil
 }
 
 func cleanYum() error {
@@ -392,12 +433,12 @@ func cleanYum() error {
 
 	s := NewSysCmd("yum", &[]string{"autoremove", "-y", "-q"})
 	if err := s.Execute(); err != nil {
-		slog.Error(fmt.Sprintf("Failed to autoremove packages: %v", err))
+		return fmt.Errorf(errors.SystemPackageAutoremoveErrorTpl, err)
 	}
 
 	s = NewSysCmd("yum", &[]string{"clean", "all"})
 	if err := s.Execute(); err != nil {
-		slog.Error(fmt.Sprintf("Failed to clean yum cache: %v", err))
+		return fmt.Errorf(errors.SystemCleanErrorTpl, err)
 	}
 
 	return nil
