@@ -32,6 +32,14 @@ line-length = 120
 fix = true
 target-version = "py311"
 
+[tool.ruff.lint]
+select = [
+    "T201",  # https://docs.astral.sh/ruff/rules/print/
+]
+unfixable = [
+    "T201",  # https://docs.astral.sh/ruff/rules/print/
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
