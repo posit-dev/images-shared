@@ -14,6 +14,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     :param context: Path to the context (parent directory) of the TOML file
     :param document: tomlkit.TOMLDocument object
     """
+
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     filepath: Path
     context: Path

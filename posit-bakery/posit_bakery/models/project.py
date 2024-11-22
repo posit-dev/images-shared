@@ -7,8 +7,13 @@ from typing import Union, List, Dict, Any, Tuple
 import jinja2
 from rich import print
 
-from posit_bakery.error import BakeryFileNotFoundError, BakeryBuildError, BakeryGossError, BakeryConfigError, \
-    BakeryTemplatingError
+from posit_bakery.error import (
+    BakeryFileNotFoundError,
+    BakeryBuildError,
+    BakeryGossError,
+    BakeryConfigError,
+    BakeryTemplatingError,
+)
 from posit_bakery.models.config import Config
 from posit_bakery.models.manifest import Manifest
 from posit_bakery.templating.templates.configuration import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
@@ -135,12 +140,12 @@ class Project:
         image_deps_package_file.touch(exist_ok=True)
 
     def new_image_version(
-            self,
-            image_name: str,
-            image_version: str,
-            value_map: Dict[str, str] = None,
-            mark_latest: bool = True,
-            save: bool = True,
+        self,
+        image_name: str,
+        image_version: str,
+        value_map: Dict[str, str] = None,
+        mark_latest: bool = True,
+        save: bool = True,
     ):
         """Create a new version of an image in the project, render templates, and add it to the manifest
 
@@ -158,10 +163,10 @@ class Project:
         manifest.new_version(image_version, mark_latest=mark_latest, value_map=value_map, save=save)
 
     def render_bake_plan(
-            self,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
+        self,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
     ) -> Dict[str, Any]:
         """Render a bake plan for the project
 
@@ -198,13 +203,13 @@ class Project:
         return bake_plan
 
     def build(
-            self,
-            load: bool = False,
-            push: bool = False,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
-            build_options: List[str] = None,
+        self,
+        load: bool = False,
+        push: bool = False,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
+        build_options: List[str] = None,
     ) -> None:
         """Build images in the project using Buildkit Bake
 
@@ -235,12 +240,12 @@ class Project:
         build_file.unlink()
 
     def render_dgoss_commands(
-            self,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
-            runtime_options: List[str] = None,
-        ) -> List[Tuple[str, Dict[str, str], List[str]]]:
+        self,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
+        runtime_options: List[str] = None,
+    ) -> List[Tuple[str, Dict[str, str], List[str]]]:
         """Render dgoss commands for the project
 
         :param image_name: (Optional) The name of the image to render dgoss commands for
@@ -307,12 +312,12 @@ class Project:
         return dgoss_commands
 
     def dgoss(
-            self,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
-            runtime_options: List[str] = None,
-        ) -> None:
+        self,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
+        runtime_options: List[str] = None,
+    ) -> None:
         """Run Goss tests for the project's images using dgoss
 
         :param image_name: (Optional) The name of the image to run Goss tests for
