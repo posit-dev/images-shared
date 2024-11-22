@@ -264,7 +264,7 @@ func FetchPythonPackage(pythonVersion string) (string, error) {
 		slog.Debug("Detected RHEL-based OS")
 		rhelVersion, err := strconv.Atoi(si.OS.Version)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse OS version: %w", err)
+			return "", fmt.Errorf(errors.OSVersionParseErrorTpl, si.OS.Version, err)
 		}
 
 		var osIdentifier string
@@ -308,7 +308,7 @@ func installPythonPackages(pythonBin string, packages *[]string, installOptions 
 	args = append(args, *packages...)
 	s := system.NewSysCmd(pythonBin, &args)
 	if err := s.Execute(); err != nil {
-		return fmt.Errorf("failed to install packages to %s: %w", pythonBin, err)
+		return fmt.Errorf(errors.ToolPackageInstallationErrorTpl, pythonBin, err)
 	}
 
 	if err := PurgePipCache(pythonBin); err != nil {
@@ -330,7 +330,7 @@ func installPythonPackagesFromFile(pythonBin string, requirementsFiles *[]string
 	}
 	s := system.NewSysCmd(pythonBin, &args)
 	if err := s.Execute(); err != nil {
-		return fmt.Errorf("failed to install requirements files to %s: %w", pythonBin, err)
+		return fmt.Errorf(errors.ToolPackageFileInstallationErrorTpl, "requirements.txt file(s)", pythonBin, err)
 	}
 
 	if err := PurgePipCache(pythonBin); err != nil {

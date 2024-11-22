@@ -213,7 +213,7 @@ func FetchRPackage(rVersion string) (string, error) {
 		slog.Debug("Detected RHEL-based OS")
 		rhelVerison, err := strconv.Atoi(si.OS.Version)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse OS version: %w", err)
+			return "", fmt.Errorf(errors.OSVersionParseErrorTpl, si.OS.Version, err)
 		}
 
 		var osIdentifier string
@@ -334,7 +334,7 @@ func installRPackages(rBin string, packages *[]string) error {
 	args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo)}
 	s := system.NewSysCmd(rBin, &args)
 	if err := s.Execute(); err != nil {
-		return fmt.Errorf("failed to install packages to %s: %w", rBin, err)
+		return fmt.Errorf(errors.ToolPackageInstallationErrorTpl, rBin, err)
 	}
 
 	return nil
@@ -352,7 +352,7 @@ func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
 		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo)}
 		s := system.NewSysCmd(rBin, &args)
 		if err := s.Execute(); err != nil {
-			return fmt.Errorf("failed to install R packages from %s: %v", file, err)
+			return fmt.Errorf(errors.ToolPackageFileInstallationErrorTpl, file, rBin, err)
 		}
 	}
 

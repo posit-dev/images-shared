@@ -11,6 +11,7 @@ var FileReadErrorTpl = "failed to read %s: %w"
 var FileRemoveErrorTpl = "failed to remove %s: %w"
 var FileMoveErrorTpl = "failed to move file from %s to %s: %w"
 var FileCopyErrorTpl = "failed to copy file from %s to %s: %w"
+var OSVersionParseErrorTpl = "failed to parse OS version %s: %w"
 
 // Request errors
 
@@ -41,6 +42,8 @@ var ToolUpdateFailedErrorTpl = "failed to update %s: %w"
 var ToolSetPermissionsFailedErrorTpl = "failed to set permissions on %s to %s: %w"
 var ToolInstallerRemovalFailedErrorTpl = "failed to remove installer file(s) for %s: %w"
 var ToolRemovalFailedErrorTpl = "failed to remove %s from %s: %w"
+var ToolPackageInstallationErrorTpl = "failed to install packages to %s: %w"
+var ToolPackageFileInstallationErrorTpl = "failed to install packages from %s to %s: %w"
 
 type UnsupportedOSError struct {
 	Vendor  string
