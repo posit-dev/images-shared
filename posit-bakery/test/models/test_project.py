@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import tomlkit
 
-from posit_bakery.models import project, config, manifest
+from posit_bakery.models import project
 
 
 class TestProject:
@@ -77,10 +77,10 @@ namespace = "posit-dev"
         assert (new_version_dir / "test" / "goss.yaml").is_file()
         assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert 'ubuntu2204_optional_packages.txt' not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
+        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
         assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert 'ubuntu2204_optional_packages.txt' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
+        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
         assert "1.0.1" in p.manifests["test-image"].versions
         assert len(p.manifests["test-image"].target_builds) == 4
@@ -115,7 +115,13 @@ namespace = "posit-dev"
         p = project.Project.load(basic_tmpcontext)
         p.build()
         project.subprocess.run.assert_called_once()
-        assert project.subprocess.run.call_args[0][0] == ["docker", "buildx", "bake", "--file", str(Path(basic_tmpcontext) / ".docker-bake.json")]
+        assert project.subprocess.run.call_args[0][0] == [
+            "docker",
+            "buildx",
+            "bake",
+            "--file",
+            str(Path(basic_tmpcontext) / ".docker-bake.json"),
+        ]
 
     def test_render_dgoss_commands(self, basic_context):
         p = project.Project.load(basic_context)

@@ -23,7 +23,9 @@ def new(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "docker.io/library/ubuntu:22.04",
+    image_base: Annotated[
+        str, typer.Option(help="The base to use for the new image.")
+    ] = "docker.io/library/ubuntu:22.04",
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
@@ -127,12 +129,8 @@ def build(
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
-    image_version: Annotated[
-        str, typer.Option(help="The image version to isolate plan rendering to.")
-    ] = None,
-    image_type: Annotated[
-        str, typer.Option(help="The image type to isolate plan rendering to.")
-    ] = None,
+    image_version: Annotated[str, typer.Option(help="The image version to isolate plan rendering to.")] = None,
+    image_type: Annotated[str, typer.Option(help="The image type to isolate plan rendering to.")] = None,
     skip_override: Annotated[
         bool, typer.Option(help="Skip loading docker-bake.override.hcl files for auto-discovery.")
     ] = False,

@@ -204,7 +204,7 @@ class TestTargetBuild:
             context=Path(tmpdir),
             document=tomlkit.TOMLDocument(),
             registry=[],
-            repository=config.ConfigRepository()
+            repository=config.ConfigRepository(),
         )
 
         test_containerfile = versioned_context / "Containerfile"
@@ -353,7 +353,6 @@ class TestTargetBuild:
         for tag in expected_tags:
             assert tag in target_build.get_tags()
 
-
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
@@ -468,7 +467,10 @@ class TestTargetBuild:
         assert target_build.labels["org.opencontainers.image.title"] == "test-image"
         assert target_build.labels["org.opencontainers.image.vendor"] == "Posit Software, PBC"
         assert target_build.labels["org.opencontainers.image.maintainer"] == "docker@posit.co"
-        assert target_build.labels["org.opencontainers.image.authors"] == "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>"
+        assert (
+            target_build.labels["org.opencontainers.image.authors"]
+            == "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>"
+        )
         assert target_build.labels["org.opencontainers.image.source"] == "github.com/rstudio/posit-images-shared"
 
     def test_hash(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
@@ -546,7 +548,13 @@ class TestManifest:
         assert m.config == basic_config_obj
         assert len(m.target_builds) == basic_expected_num_target_builds
 
-    def test_filter_target_builds(self, basic_manifest_obj, basic_manifest_types, basic_manifest_os_plus_versions, basic_expected_num_target_builds):
+    def test_filter_target_builds(
+        self,
+        basic_manifest_obj,
+        basic_manifest_types,
+        basic_manifest_os_plus_versions,
+        basic_expected_num_target_builds,
+    ):
         """Test the filter_target_builds method of a Manifest object"""
         target_builds = basic_manifest_obj.filter_target_builds(build_version="1.0.0")
         assert len(target_builds) == basic_expected_num_target_builds
@@ -625,10 +633,10 @@ class TestManifest:
         assert (new_version_dir / "test" / "goss.yaml").is_file()
         assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert 'ubuntu2204_optional_packages.txt' not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
+        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
         assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert 'ubuntu2204_optional_packages.txt' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
+        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
@@ -647,10 +655,10 @@ class TestManifest:
         assert (new_version_dir / "test" / "goss.yaml").is_file()
         assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert 'ubuntu2204_optional_packages.txt' not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
+        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
         assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert 'ubuntu2204_optional_packages.txt' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
+        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
         assert "1.0.1" in m.versions
         assert len(m.target_builds) == 4
@@ -678,10 +686,10 @@ class TestManifest:
         assert (new_version_dir / "test" / "goss.yaml").is_file()
         assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert 'ubuntu2204_optional_packages.txt' not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
+        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
         assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
         assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert 'ubuntu2204_optional_packages.txt' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
+        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
         assert "1.0.1" in m.versions
         assert len(m.target_builds) == 4

@@ -49,6 +49,7 @@ def basic_config_file(basic_context):
 def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
     from posit_bakery.models.config import Config
+
     return Config.load(basic_config_file)
 
 
@@ -62,13 +63,14 @@ def basic_manifest_file(basic_context):
 def basic_manifest_obj(basic_config_obj, basic_manifest_file):
     """Return a Manifest object loaded from basic test suite manifest.toml file"""
     from posit_bakery.models.manifest import Manifest
+
     return Manifest.load(basic_config_obj, basic_manifest_file)
 
 
 @pytest.fixture
 def basic_manifest_types(basic_manifest_file):
     """Return the target types in the basic manifest.toml file"""
-    with open(basic_manifest_file, 'rb') as f:
+    with open(basic_manifest_file, "rb") as f:
         d = tomlkit.load(f)
     return d["target"].keys()
 
@@ -76,7 +78,7 @@ def basic_manifest_types(basic_manifest_file):
 @pytest.fixture
 def basic_manifest_versions(basic_manifest_file):
     """Return the target types in the basic manifest.toml file"""
-    with open(basic_manifest_file, 'rb') as f:
+    with open(basic_manifest_file, "rb") as f:
         d = tomlkit.load(f)
     return d["build"].keys()
 
@@ -85,7 +87,7 @@ def basic_manifest_versions(basic_manifest_file):
 def basic_manifest_os_plus_versions(basic_manifest_file):
     """Return the versions/os pairs in the basic manifest.toml file"""
     results = []
-    with open(basic_manifest_file, 'rb') as f:
+    with open(basic_manifest_file, "rb") as f:
         d = tomlkit.load(f)
     for version, data in d["build"].items():
         if "os" in data and type(data["os"]) is list:
