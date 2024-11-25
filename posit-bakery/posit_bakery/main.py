@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, Optional, List
 
 from rich import print_json
 from rich.logging import RichHandler
@@ -16,11 +16,28 @@ from posit_bakery.error import (
 )
 
 
-logging.basicConfig(level="NOTSET", format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)])
-log = logging.getLogger("rich")
-
+log: logging.Logger  # Global log variable, set in the callback function
 
 app = typer.Typer()
+
+
+@app.callback()
+def __callback_logging(
+    debug: Annotated[Optional[bool], typer.Option("--debug", "-d", help="Enable debug logging")] = False,
+    quiet: Annotated[Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
+) -> None:
+    """Callback to configure logging based on the debug and quiet flags."""
+    global log
+
+    level: str = "INFO"
+    # TODO: Should we warn or error if `--debug` and `--quiet` are both set?
+    if debug:
+        level = "DEBUG"
+    elif quiet:
+        level = "ERROR"
+
+    logging.basicConfig(level=level, format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)])
+    log = logging.getLogger("rich")
 
 
 def auto_path() -> Path:
