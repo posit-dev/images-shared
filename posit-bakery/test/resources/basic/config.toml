@@ -11,7 +11,7 @@ host = "ghcr.io"
 namespace = "posit-dev"
 
 [repository]
-url = "github.com/rstudio/posit-images-shared"
+url = "github.com/posit-dev/images-shared"
 vendor = "Posit Software, PBC"
 maintainer = "docker@posit.co"
 authors = [

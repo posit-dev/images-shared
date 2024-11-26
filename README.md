@@ -1,2 +1,3 @@
-# posit-images-shared
+# images-shared
+
 Shared tools and actions around Posit images
