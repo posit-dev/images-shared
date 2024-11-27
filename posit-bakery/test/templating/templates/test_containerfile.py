@@ -1,5 +1,11 @@
+import pytest
+
 from posit_bakery.templating.filters import render_template
 from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
+
+pytestmark = [
+    pytest.mark.unit,
+]
 
 
 def test_containerfile_template_render():
