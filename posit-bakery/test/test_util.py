@@ -6,6 +6,10 @@ import pytest
 from posit_bakery import util
 from posit_bakery.error import BakeryFileNotFoundError
 
+pytestmark = [
+    pytest.mark.unit,
+]
+
 
 def test_find_bin_by_environ(mocker):
     """Test finding a binary by environment variable"""
