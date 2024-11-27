@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 from typing import List, Optional
@@ -51,6 +52,10 @@ class BakeryCommand:
             [cmd] + self.command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={
+                "TERM": "dumb",
+                "NO_COLOR": "1",
+            },
         ) as p:
             p.wait()
 
@@ -112,4 +117,5 @@ def check_help(bakery_command):
     # Help message goes to stderr if the command fails
     output = bakery_command.stdout if bakery_command.status == 0 else bakery_command.stderr
 
-    assert "Usage: bakery [OPTIONS] COMMAND [ARGS]..." in output
+    # Use regex to match when ASCII colors are present
+    assert re.search(r"Usage: .*?bakery \[OPTIONS\] COMMAND \[ARGS\]", output)
