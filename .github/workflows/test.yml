@@ -7,6 +7,10 @@ jobs:
     name: Run posit-bakery tests
     runs-on: ubuntu-latest
 
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +24,7 @@ jobs:
         run: |
           pipx install poetry
           poetry install
-        
+
       - name: Run tests
         working-directory: ./posit-bakery
         run: |
