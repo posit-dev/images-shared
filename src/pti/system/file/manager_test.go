@@ -1,6 +1,8 @@
 package file
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
@@ -146,7 +148,7 @@ func TestFile_CopyFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeString, err := tmpFile.WriteString("test")
+	_, err = tmpFile.WriteString("test")
 	if err != nil {
 		return
 	}
@@ -160,5 +162,89 @@ func TestFile_CopyFile(t *testing.T) {
 	}
 	if newFile.Path != newTmpFileName {
 		t.Errorf("File.Path = %v, want %v", newFile.Path, newTmpFileName)
+	}
+}
+
+func TestFile_DownloadFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	type fields struct {
+		Url      string
+		Path     string
+		Contents string
+		Srv      *httptest.Server
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		wantFile     bool
+		wantContents string
+		wantErr      bool
+	}{
+		{
+			name: "Successful request",
+			fields: fields{
+				Url:      "/success.txt",
+				Path:     tmpDir + "/success.txt",
+				Contents: "200 OK",
+				Srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != "/success.txt" {
+						t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+					}
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte("200 OK"))
+				})),
+			},
+			wantFile:     true,
+			wantContents: "200 OK",
+			wantErr:      false,
+		},
+		{
+			name: "Unsuccessful request",
+			fields: fields{
+				Url:  "/fail.txt",
+				Path: tmpDir + "/fail.txt",
+				Srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != "/fail.txt" {
+						t.Errorf("Request URL = %v, want %v", r.URL.Path, "/fail.txt")
+					}
+					w.WriteHeader(http.StatusNotFound)
+				})),
+			},
+			wantFile:     false,
+			wantContents: "",
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			file, err := DownloadFile(tt.fields.Srv.URL+tt.fields.Url, tt.fields.Path)
+			defer tt.fields.Srv.Close()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DownloadFile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if file != nil && !tt.wantFile {
+				t.Errorf("DownloadFile() returned File, want not exists")
+			}
+			if file != nil && file.Path != tt.fields.Path {
+				t.Errorf("File.Path = %v, want %v", file.Path, tt.fields.Path)
+			}
+			if file != nil {
+				fh, err := file.Open()
+				if err != nil {
+					t.Fatalf("File.Open() error = %v", err)
+				}
+				buf := make([]byte, 1024)
+				n, err := fh.Read(buf)
+				if err != nil {
+					t.Fatalf("File.Read() error = %v", err)
+				}
+				if string(buf[:n]) != tt.fields.Contents {
+					t.Errorf("File contents = %v, want %v", string(buf[:n]), tt.fields.Contents)
+				}
+			}
+		})
 	}
 }
