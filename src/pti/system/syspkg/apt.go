@@ -1,0 +1,167 @@
+package syspkg
+
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"pti/system/command"
+	"strings"
+)
+
+type AptManager struct {
+	binary          string
+	installOpts     []string
+	updateOpts      []string
+	upgradeOpts     []string
+	distUpgradeOpts []string
+	removeOpts      []string
+	autoRemoveOpts  []string
+	cleanOpts       []string
+}
+
+func NewAptManager() *AptManager {
+	return &AptManager{
+		binary:          "apt",
+		installOpts:     []string{"install", "-y", "-q"},
+		updateOpts:      []string{"update", "-q"},
+		upgradeOpts:     []string{"upgrade", "-y", "-q"},
+		distUpgradeOpts: []string{"dist-upgrade", "-y", "-q"},
+		removeOpts:      []string{"remove", "-y", "-q"},
+		autoRemoveOpts:  []string{"autoremove", "-y", "-q"},
+		cleanOpts:       []string{"clean", "-q"},
+	}
+}
+
+func (m *AptManager) GetBin() string {
+	return m.binary
+}
+
+func (m *AptManager) Install(list *PackageList) error {
+	packagesToInstall, err := list.GetPackages()
+	if err != nil {
+		return fmt.Errorf("error occurred while parsing packages to install: %w", err)
+	}
+	if len(packagesToInstall) > 0 {
+		slog.Info("Installing packages: " + strings.Join(packagesToInstall[:], ", "))
+
+		args := append(m.installOpts, packagesToInstall...)
+
+		cmd := command.NewShellCommand(m.binary, args, nil, true)
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("failed to install packages '%v': %w", packagesToInstall, err)
+		}
+	}
+	if len(list.LocalPackages) > 0 {
+		for _, localPackage := range list.LocalPackages {
+			slog.Info("Installing package " + localPackage.Path)
+
+			args := append(m.installOpts, localPackage.Path)
+
+			cmd := command.NewShellCommand(m.binary, args, nil, true)
+			err = cmd.Run()
+			if err != nil {
+				return fmt.Errorf("failed to install local syspkg '%s': %w", localPackage.Path, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *AptManager) Remove(list *PackageList) error {
+	packagesToRemove, err := list.GetPackages()
+	if err != nil {
+		return fmt.Errorf("error occurred while parsing packages to remove: %w", err)
+	}
+
+	if len(packagesToRemove) > 0 {
+		slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
+
+		args := append(m.removeOpts, packagesToRemove...)
+
+		cmd := command.NewShellCommand(m.binary, args, nil, true)
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("failed to remove packages '%v': %w", packagesToRemove, err)
+		}
+	}
+
+	return nil
+}
+
+func (m *AptManager) Update() error {
+	slog.Info("Updating apt")
+	cmd := command.NewShellCommand(m.binary, m.updateOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt update failed: %w", err)
+	}
+	return nil
+}
+
+func (m *AptManager) Upgrade(fullUpgrade bool) error {
+	slog.Info("Upgrading apt packages")
+	cmd := command.NewShellCommand(m.binary, m.upgradeOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt upgrade failed: %w", err)
+	}
+
+	if fullUpgrade {
+		cmd := command.NewShellCommand(m.binary, m.distUpgradeOpts, nil, true)
+		err := cmd.Run()
+		if err != nil {
+			return fmt.Errorf("apt dist-upgrade failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (m *AptManager) Clean() error {
+	slog.Info("Cleaning up apt")
+
+	cmd := command.NewShellCommand(m.binary, m.cleanOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt clean failed: %w", err)
+	}
+
+	err = m.autoRemove()
+	if err != nil {
+		return err
+	}
+
+	err = m.removePackageListCache()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AptManager) autoRemove() error {
+	cmd := command.NewShellCommand(m.binary, m.autoRemoveOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt autoremove failed: %w", err)
+	}
+
+	return nil
+}
+
+func (m *AptManager) removePackageListCache() error {
+	slog.Debug("Removing /var/lib/apt/lists")
+
+	err := os.RemoveAll("/var/lib/apt/lists")
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Debug("/var/lib/apt/lists does not exist")
+		} else {
+			return fmt.Errorf("failed to remove /var/lib/apt/lists: %w", err)
+		}
+	}
+
+	return nil
+}

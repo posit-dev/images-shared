@@ -1,0 +1,131 @@
+package syspkg
+
+import (
+	"fmt"
+	"log/slog"
+	"pti/system/command"
+	"strings"
+)
+
+type DnfManager struct {
+	binary         string
+	installOpts    []string
+	upgradeOpts    []string
+	removeOpts     []string
+	autoRemoveOpts []string
+	cleanOpts      []string
+}
+
+func NewDnfManager() *DnfManager {
+	return &DnfManager{
+		binary:         "dnf",
+		installOpts:    []string{"-y", "-q", "install"},
+		upgradeOpts:    []string{"-y", "-q", "upgrade"},
+		removeOpts:     []string{"-y", "-q", "remove"},
+		autoRemoveOpts: []string{"-y", "-q", "autoremove"},
+		cleanOpts:      []string{"-y", "-q", "clean", "all"},
+	}
+}
+
+func (m *DnfManager) GetBin() string {
+	return m.binary
+}
+
+func (m *DnfManager) Install(list *PackageList) error {
+	packagesToInstall, err := list.GetPackages()
+	if err != nil {
+		return fmt.Errorf("error occurred while parsing packages to install: %w", err)
+	}
+	if len(packagesToInstall) > 0 {
+		slog.Info("Installing packages: " + strings.Join(packagesToInstall[:], ", "))
+
+		args := append(m.installOpts, packagesToInstall...)
+
+		cmd := command.NewShellCommand(m.binary, args, nil, true)
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("failed to install packages '%v': %w", packagesToInstall, err)
+		}
+	}
+	if len(list.LocalPackages) > 0 {
+		for _, localPackage := range list.LocalPackages {
+			slog.Info("Installing package " + localPackage.Path)
+
+			args := append(m.installOpts, localPackage.Path)
+
+			cmd := command.NewShellCommand(m.binary, args, nil, true)
+			err = cmd.Run()
+			if err != nil {
+				return fmt.Errorf("failed to install local syspkg '%s': %w", localPackage.Path, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *DnfManager) Remove(list *PackageList) error {
+	packagesToRemove, err := list.GetPackages()
+	if err != nil {
+		return fmt.Errorf("error occurred while parsing packages to remove: %w", err)
+	}
+
+	slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
+
+	args := append(m.removeOpts, packagesToRemove...)
+
+	cmd := command.NewShellCommand(m.binary, args, nil, true)
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to remove packages '%v': %w", packagesToRemove, err)
+	}
+
+	return nil
+}
+
+func (m *DnfManager) Update() error {
+	slog.Debug("No update command required for dnf")
+	return nil
+}
+
+func (m *DnfManager) Upgrade(fullUpgrade bool) error {
+	slog.Info("Upgrading apt packages")
+	cmd := command.NewShellCommand(m.binary, m.upgradeOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt upgrade failed: %w", err)
+	}
+
+	if fullUpgrade {
+		slog.Debug("No full upgrade command is configured for dnf")
+	}
+
+	return nil
+}
+
+func (m *DnfManager) Clean() error {
+	slog.Info("Cleaning up dnf")
+
+	cmd := command.NewShellCommand(m.binary, m.cleanOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt clean failed: %w", err)
+	}
+
+	err = m.autoRemove()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *DnfManager) autoRemove() error {
+	cmd := command.NewShellCommand(m.binary, m.autoRemoveOpts, nil, true)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("apt autoremove failed: %w", err)
+	}
+
+	return nil
+}
