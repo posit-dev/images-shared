@@ -112,6 +112,9 @@ func DownloadFile(url string, filepath string) (*File, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to download file: %s", resp.Status)
+	}
 
 	newFile := &File{Path: filepath}
 	newFh, err := newFile.Create()
