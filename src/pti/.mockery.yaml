@@ -1,0 +1,6 @@
+with-expecter: true
+outpkg: "{{.PackageName}}_mock"
+packages:
+  pti/system/command:
+    config:
+      all: true

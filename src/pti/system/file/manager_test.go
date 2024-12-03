@@ -1,6 +1,8 @@
 package file
 
 import (
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,6 +10,8 @@ import (
 )
 
 func TestFile_IsPathExist(t *testing.T) {
+	assert := assert.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	tmpFile, err := os.Create(tmpFileName)
@@ -50,52 +54,47 @@ func TestFile_IsPathExist(t *testing.T) {
 				tt.fields.Path,
 			}
 			got, err := f.IsPathExist()
-			if got != tt.want {
-				t.Errorf("File.IsPathExist() got = %v, want %v", got, tt.want)
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("File.IsPathExist() error = %v, wantErr %v", err, tt.wantErr)
-			}
+
+			assert.Equal(tt.want, got)
+			assert.Equal(tt.wantErr, err != nil, "File.IsPathExist() error = %v, wantErr %v", err, tt.wantErr)
 		})
 	}
 }
 
 func TestFile_Stat(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	tmpFile, err := os.Create(tmpFileName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(err, "os.Create() error = %v", err)
 	defer tmpFile.Close()
 
 	file := &File{Path: tmpFileName}
 	fileInfo, err := file.Stat()
-	if err != nil {
-		t.Fatalf("File.Stat() error = %v", err)
-	}
-	if "file" != fileInfo.Name() {
-		t.Errorf("File.Stat().Name() = %v, want %v", fileInfo.Name(), "file")
-	}
-	if fileInfo.IsDir() {
-		t.Errorf("File.Stat().IsDir() = %v, want %v", fileInfo.IsDir(), false)
-	}
+
+	require.Nil(err)
+	assert.Equal("file", fileInfo.Name())
+	assert.False(fileInfo.IsDir())
 }
 
 func TestFile_Create(t *testing.T) {
+	require := require.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	file := &File{Path: tmpFileName}
 	fh, err := file.Create()
-	if err != nil {
-		t.Fatalf("File.Create() error = %v", err)
-	}
-	if err := fh.Close(); err != nil {
-		t.Fatalf("File.Create().Close() error = %v", err)
-	}
+
+	require.Nil(err)
+	err = fh.Close()
+	require.Nil(err, "File.Create().Close() error = %v", err)
 }
 
 func TestFile_Open(t *testing.T) {
+	require := require.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	tmpFile, err := os.Create(tmpFileName)
@@ -106,15 +105,16 @@ func TestFile_Open(t *testing.T) {
 
 	file := &File{Path: tmpFileName}
 	fh, err := file.Open()
-	if err != nil {
-		t.Fatalf("File.Open() error = %v", err)
-	}
-	if err := fh.Close(); err != nil {
-		t.Fatalf("File.Open().Close() error = %v", err)
-	}
+
+	require.Nil(err, "File.Open() error = %v", err)
+	err = fh.Close()
+	require.Nil(err, "File.Open().Close() error = %v", err)
 }
 
 func TestFile_MoveFile(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	tmpFile, err := os.Create(tmpFileName)
@@ -125,23 +125,21 @@ func TestFile_MoveFile(t *testing.T) {
 
 	newTmpFileName := tmpDir + "/newfile"
 	file := &File{Path: tmpFileName}
-	if err := file.MoveFile(newTmpFileName); err != nil {
-		t.Fatalf("File.MoveFile() error = %v", err)
-	}
-	if file.Path != newTmpFileName {
-		t.Errorf("File.Path = %v, want %v", file.Path, newTmpFileName)
-	}
+	err = file.MoveFile(newTmpFileName)
+
+	require.Nil(err, "File.MoveFile() error = %v", err)
+	assert.Equal(newTmpFileName, file.Path, "File.Path = %v, want %v", file.Path, newTmpFileName)
+
 	oldFile := &File{Path: tmpFileName}
 	exists, err := oldFile.IsPathExist()
-	if err != nil {
-		t.Fatalf("File.IsPathExist() error = %v", err)
-	}
-	if exists {
-		t.Errorf("File.MoveFile() old file exists")
-	}
+	require.Nil(err, "File.IsPathExist() error = %v", err)
+	assert.False(exists, "File.MoveFile() old file exists")
 }
 
 func TestFile_CopyFile(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	tmpDir := t.TempDir()
 	tmpFileName := tmpDir + "/file"
 	tmpFile, err := os.Create(tmpFileName)
@@ -157,15 +155,15 @@ func TestFile_CopyFile(t *testing.T) {
 	newTmpFileName := tmpDir + "/newfile"
 	file := &File{Path: tmpFileName}
 	newFile, err := file.CopyFile(newTmpFileName)
-	if err != nil {
-		t.Fatalf("File.CopyFile() error = %v", err)
-	}
-	if newFile.Path != newTmpFileName {
-		t.Errorf("File.Path = %v, want %v", newFile.Path, newTmpFileName)
-	}
+
+	require.Nil(err, "File.CopyFile() error = %v", err)
+	assert.Equal(newTmpFileName, newFile.Path, "File.Path = %v, want %v", newFile.Path, newTmpFileName)
 }
 
 func TestFile_DownloadFile(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
 	tmpDir := t.TempDir()
 
 	type fields struct {
@@ -222,28 +220,21 @@ func TestFile_DownloadFile(t *testing.T) {
 			t.Parallel()
 			file, err := DownloadFile(tt.fields.Srv.URL+tt.fields.Url, tt.fields.Path)
 			defer tt.fields.Srv.Close()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DownloadFile() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if file != nil && !tt.wantFile {
-				t.Errorf("DownloadFile() returned File, want not exists")
-			}
-			if file != nil && file.Path != tt.fields.Path {
-				t.Errorf("File.Path = %v, want %v", file.Path, tt.fields.Path)
-			}
+
+			assert.Equal(tt.wantErr, err != nil, "DownloadFile() error = %v, wantErr %v", err, tt.wantErr)
+			assert.Equal(tt.wantFile, file != nil, "DownloadFile() returned File, want not exists")
+
 			if file != nil {
+				assert.Equal(tt.fields.Path, file.Path, "File.Path = %v, want %v", file.Path, tt.fields.Path)
+
 				fh, err := file.Open()
-				if err != nil {
-					t.Fatalf("File.Open() error = %v", err)
-				}
+				require.Nil(err, "File.Open() error = %v", err)
+
 				buf := make([]byte, 1024)
 				n, err := fh.Read(buf)
-				if err != nil {
-					t.Fatalf("File.Read() error = %v", err)
-				}
-				if string(buf[:n]) != tt.fields.Contents {
-					t.Errorf("File contents = %v, want %v", string(buf[:n]), tt.fields.Contents)
-				}
+				require.Nil(err, "File.Read() error = %v", err)
+
+				assert.Equal(tt.wantContents, string(buf[:n]), "File contents = %v, want %v", string(buf[:n]), tt.wantContents)
 			}
 		})
 	}

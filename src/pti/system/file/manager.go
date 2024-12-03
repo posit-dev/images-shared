@@ -1,6 +1,9 @@
 package file
 
 import (
+	"archive/tar"
+	"bufio"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +20,7 @@ type Manager interface {
 	MoveFile(newFilePath string) error
 	CopyFile(newFilePath string) (*File, error)
 	Download(url string, filepath string) (*File, error)
+	ExtractTarGz(destinationPath string) error
 }
 
 type File struct {
@@ -131,4 +135,50 @@ func DownloadFile(url string, filepath string) (*File, error) {
 	slog.Debug("Download complete")
 
 	return newFile, nil
+}
+
+func (f *File) ExtractTarGz(destinationPath string) error {
+	slog.Info("Extracting tar.gz file " + f.Path + " to " + destinationPath)
+
+	fh, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("failed to open %s for extraction: %w", f.Path, err)
+	}
+	defer fh.Close()
+	reader := bufio.NewReader(fh)
+
+	gzr, err := gzip.NewReader(reader)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader for %s: %w", f.Path, err)
+	}
+
+	tr := tar.NewReader(gzr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar header for %s: %w", f.Path, err)
+		}
+
+		target := destinationPath + "/" + header.Name
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", target, err)
+			}
+		case tar.TypeReg:
+			fh, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("failed to create file %s: %w", target, err)
+			}
+			defer fh.Close()
+			if _, err := io.Copy(fh, tr); err != nil {
+				return fmt.Errorf("failed to copy file %s: %w", target, err)
+			}
+		}
+	}
+
+	return nil
 }
