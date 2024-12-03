@@ -10,12 +10,17 @@ import (
 	"syscall"
 )
 
+type Executor interface {
+	Execute() error
+}
+
 type SysCmd struct {
 	Name           string
 	Args           *[]string
 	EnvVars        *[]string
 	InheritEnvVars bool
 	cmd            *exec.Cmd
+	exec           Executor
 }
 
 func NewSysCmd(name string, args *[]string) *SysCmd {
