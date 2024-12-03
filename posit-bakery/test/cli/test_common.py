@@ -6,8 +6,8 @@ from typing import List, Optional
 import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
 
-scenarios("bakery.feature")
-scenarios("new.feature")
+scenarios("cli/bakery.feature")
+scenarios("cli/new.feature")
 
 
 class BakeryCommand:
