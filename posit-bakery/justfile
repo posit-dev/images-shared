@@ -31,5 +31,4 @@ test-mark mark:
 
 # Test the posit-bakery python project
 test:
-    just test-mark unit
-    just test-mark functional
+    just _pytest
