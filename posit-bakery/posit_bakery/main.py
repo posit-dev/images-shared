@@ -36,7 +36,14 @@ def __callback_logging(
     elif quiet:
         level = "ERROR"
 
-    logging.basicConfig(level=level, format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)])
+    logging.basicConfig(
+        level=level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[
+            RichHandler(markup=True, rich_tracebacks=True),
+        ],
+    )
     log = logging.getLogger("rich")
 
 
