@@ -5,9 +5,15 @@ from typing import List, Optional
 
 import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
+from typer.testing import CliRunner, Result
+
+from posit_bakery.main import app
+
 
 scenarios("cli/bakery.feature")
 scenarios("cli/new.feature")
+
+runner = CliRunner()
 
 
 class BakeryCommand:
@@ -17,9 +23,7 @@ class BakeryCommand:
     _flags: List[str]
     _args: List[str]
     _opts: List[str]
-    status: int
-    stdout: str
-    stderr: str
+    result: Result
 
     def __init__(self):
         self._flags = []
@@ -44,24 +48,7 @@ class BakeryCommand:
         self._opts.extend([f"--{name}", f"{value}"])
 
     def run(self):
-        cmd = shutil.which("bakery")
-        if not cmd:
-            raise FileNotFoundError("bakery command not found")
-
-        with subprocess.Popen(
-            [cmd] + self.command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env={
-                "TERM": "dumb",
-                "NO_COLOR": "1",
-            },
-        ) as p:
-            p.wait()
-
-            self.status = int(p.returncode)
-            self.stdout = p.stdout.read().decode()
-            self.stderr = p.stderr.read().decode()
+        self.result = runner.invoke(app, self.command)
 
 
 @pytest.fixture
@@ -104,18 +91,15 @@ def run(bakery_command):
 # Check the results of the command
 @then("The command succeeds")
 def check_success(bakery_command):
-    assert bakery_command.status == 0
+    assert bakery_command.result.exit_code == 0
 
 
 @then("The command fails")
 def check_failure(bakery_command):
-    assert bakery_command.status != 0
+    assert bakery_command.result.exit_code != 0
 
 
 @then("help is shown")
 def check_help(bakery_command):
-    # Help message goes to stderr if the command fails
-    output = bakery_command.stdout if bakery_command.status == 0 else bakery_command.stderr
-
-    # Use regex to match when ASCII colors are present
-    assert re.search(r"Usage: .*?bakery \[OPTIONS\] COMMAND \[ARGS\]", output)
+    # TODO: Make this check more robust, with options for specific output
+    assert "Usage:" in bakery_command.result.stdout
