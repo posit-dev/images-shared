@@ -1,12 +1,15 @@
+import logging
 import os
 from pathlib import Path
 from typing import Optional, Set, Union, List
 
 import git
 from pydantic.dataclasses import dataclass
-from rich import print
 
 from posit_bakery.models.generic import GenericTOMLModel
+
+
+log = logging.getLogger("rich")
 
 
 @dataclass
@@ -15,6 +18,7 @@ class ConfigRegistry:
 
     Used for tagging of images and pushing to the registry
     """
+
     host: str
     namespace: Optional[str] = None
 
@@ -42,6 +46,7 @@ class ConfigRepository:
     :param vendor: Vendor of the images in the repository
     :param maintainer: Maintainer of the images in the repository
     """
+
     authors: Set[str] = None
     url: Optional[str] = None
     vendor: Optional[str] = "Posit Software, PBC"
@@ -59,6 +64,7 @@ class Config(GenericTOMLModel):
     :param __registries: One or more image registries to use for tagging and pushing images
     :param repository: Repository information for labeling purposes
     """
+
     __registries: Set[ConfigRegistry]
     repository: ConfigRepository
 
@@ -106,7 +112,7 @@ class Config(GenericTOMLModel):
             repo = git.Repo(self.context)
             sha = repo.head.object.hexsha
         except Exception as e:
-            print(f"[bright_red][bold]ERROR:[/bold] Unable to get git commit for labels: {e}")
+            log.error(f"Unable to get git commit for labels: {e}")
         return sha
 
     @classmethod
@@ -126,13 +132,7 @@ class Config(GenericTOMLModel):
         # Create repository object from config.toml
         repository = ConfigRepository(**d.get("repository", {}))
 
-        return cls(
-            filepath=filepath,
-            context=filepath.parent,
-            document=d,
-            registries=registries,
-            repository=repository
-        )
+        return cls(filepath=filepath, context=filepath.parent, document=d, registries=registries, repository=repository)
 
     def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object

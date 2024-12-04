@@ -1,15 +1,50 @@
 import json
+import logging
 import os
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, Optional, List
 
-from rich import print, print_json
+from rich import print_json
+from rich.logging import RichHandler
 import typer
 
 from posit_bakery.models.project import Project
-from posit_bakery.error import BakeryGossError, BakeryBuildError
+from posit_bakery.error import (
+    BakeryBuildError,
+    BakeryConfigError,
+    BakeryGossError,
+)
+
+
+log: logging.Logger  # Global log variable, set in the callback function
 
 app = typer.Typer()
+
+
+@app.callback()
+def __callback_logging(
+    debug: Annotated[Optional[bool], typer.Option("--debug", "-d", help="Enable debug logging")] = False,
+    quiet: Annotated[Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
+) -> None:
+    """Callback to configure logging based on the debug and quiet flags."""
+    global log
+
+    level: str = "INFO"
+    # TODO: Should we warn or error if `--debug` and `--quiet` are both set?
+    if debug:
+        level = "DEBUG"
+    elif quiet:
+        level = "ERROR"
+
+    logging.basicConfig(
+        level=level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[
+            RichHandler(markup=True, rich_tracebacks=True),
+        ],
+    )
+    log = logging.getLogger("rich")
 
 
 def auto_path() -> Path:
@@ -23,7 +58,9 @@ def new(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = "docker.io/library/ubuntu:22.04",
+    image_base: Annotated[
+        str, typer.Option(help="The base to use for the new image.")
+    ] = "docker.io/library/ubuntu:22.04",
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
@@ -40,9 +77,13 @@ def new(
     """
     project = Project.load(context)
     # TODO: This will fail on projects with no config.toml, we should build in a full "new project" expectation in that case
-    project.new_image(image_name, image_base)
+    try:
+        project.new_image(image_name, image_base)
+    except BakeryConfigError as e:
+        log.error(f"{e}")
+        raise typer.Exit(code=1)
 
-    print(f"[green bold]Successfully generated {image_name}[/green bold] ✅")
+    log.info(f"Successfully generated {image_name} ✅")
 
 
 @app.command()
@@ -81,13 +122,13 @@ def render(
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                print(f"[bright_red bold]ERROR:[/bold] Expected key=value pair, got [bold]'{v}'")
+                log.error(f"[bright_red bold]ERROR:[/bold] Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
     project.new_image_version(image_name, image_version, value_map, not skip_mark_latest)
 
-    print(f"[green bold]Successfully rendered {image_name}/{image_version}[/green bold] ✅")
+    log.info(f"Successfully rendered {image_name}/{image_version} ✅")
 
 
 @app.command()
@@ -127,12 +168,8 @@ def build(
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
-    image_version: Annotated[
-        str, typer.Option(help="The image version to isolate plan rendering to.")
-    ] = None,
-    image_type: Annotated[
-        str, typer.Option(help="The image type to isolate plan rendering to.")
-    ] = None,
+    image_version: Annotated[str, typer.Option(help="The image version to isolate plan rendering to.")] = None,
+    image_type: Annotated[str, typer.Option(help="The image type to isolate plan rendering to.")] = None,
     skip_override: Annotated[
         bool, typer.Option(help="Skip loading docker-bake.override.hcl files for auto-discovery.")
     ] = False,
@@ -153,7 +190,7 @@ def build(
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
-        print(f"[bright_red][bold]ERROR:[/bold] Build failed with exit code {e.exit_code}")
+        log.error(f"Build failed with exit code {e.exit_code}")
 
 
 @app.command()
@@ -185,4 +222,4 @@ def dgoss(
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
-        print(f"[bright_red][bold]ERROR:[/bold] dgoss tests failed with exit code {e.exit_code}")
+        log.error(f"dgoss tests failed with exit code {e.exit_code}")

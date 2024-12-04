@@ -1,21 +1,24 @@
+import logging
 import os
 import re
 from datetime import timezone, datetime
 
 from pathlib import Path
-from typing import Dict, Union, List, Any, Set, Optional, Tuple
+from typing import Dict, Union, List, Any, Set, Optional
 
 import jinja2
 from pydantic import model_validator, BaseModel
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
-from rich import print
 from tomlkit import TOMLDocument
 
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
 from posit_bakery.models.config import Config
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
+
+
+log = logging.getLogger("rich")
 
 
 @dataclass
@@ -40,7 +43,7 @@ class GossConfig:
                     str(values.kwargs["wait"]),
                     build=values.kwargs["build_data"],
                     target=values.kwargs["target_data"],
-                    **values.kwargs["const"]
+                    **values.kwargs["const"],
                 )
             )
         return values
@@ -204,13 +207,11 @@ class TargetBuild(BaseModel):
                 version_context=self.manifest_context / self.version,
                 build_data=self.build_data,
                 target_data=self.target_data,
-                const=self.const
+                const=self.const,
             )
 
     @classmethod
-    def load(
-            cls, config: Config, manifest_context: Path, manifest_document: TOMLDocument
-    ) -> List["TargetBuild"]:
+    def load(cls, config: Config, manifest_context: Path, manifest_document: TOMLDocument) -> List["TargetBuild"]:
         """Generate a set of TargetBuild objects from a manifest document
 
         :param config: Config object for the repository
@@ -221,16 +222,10 @@ class TargetBuild(BaseModel):
 
         # If the manifest document does not have at least one build and one target section, return an empty list.
         if "build" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined builds."
-            )
+            log.warning(f"Manifest '{manifest_context / 'manifest.toml'}' does not have any defined builds.")
             return target_builds
         if "target" not in manifest_document:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Manifest '{manifest_context / 'manifest.toml'}' "
-                f"does not have any defined targets."
-            )
+            log.warning(f"Manifest '{manifest_context / 'manifest.toml'}' does not have any defined targets.")
             return target_builds
 
         for build_version, build_data in manifest_document["build"].unwrap().items():
@@ -242,18 +237,20 @@ class TargetBuild(BaseModel):
             for _os in os_list:
                 for target_type, target_data in manifest_document["target"].unwrap().items():
                     target_data["type"] = target_type
-                    target_builds.append(cls(
-                        manifest_context=manifest_context,
-                        config=config,
-                        build_data=build_data,
-                        target_data=target_data,
-                        image_name=str(manifest_document["image_name"]),
-                        build_os=_os,
-                        primary_os=_os == primary_os,
-                        const=manifest_document.get("const"),
-                        **build_data,
-                        **target_data,
-                    ))
+                    target_builds.append(
+                        cls(
+                            manifest_context=manifest_context,
+                            config=config,
+                            build_data=build_data,
+                            target_data=target_data,
+                            image_name=str(manifest_document["image_name"]),
+                            build_os=_os,
+                            primary_os=_os == primary_os,
+                            const=manifest_document.get("const"),
+                            **build_data,
+                            **target_data,
+                        )
+                    )
         return target_builds
 
     def get_tags(self, fully_qualified: bool = True) -> List[str]:
@@ -277,9 +274,7 @@ class TargetBuild(BaseModel):
 
     @staticmethod
     def __find_containerfile(
-            search_context: Union[str, bytes, os.PathLike],
-            image_type: str,
-            build_os: str
+        search_context: Union[str, bytes, os.PathLike], image_type: str, build_os: str
     ) -> Path | None:
         condensed_os = condense(build_os)
         potential_names = [
@@ -305,6 +300,7 @@ class Manifest(GenericTOMLModel):
     :param config: Config object for the repository
     :param target_builds: Set of TargetBuild objects for the image
     """
+
     image_name: str
     config: Config
 
@@ -336,7 +332,7 @@ class Manifest(GenericTOMLModel):
         self.__target_builds = t
 
     def filter_target_builds(
-            self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
+        self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
     ) -> List[TargetBuild]:
         """Filter the target builds based on the given criteria
 
@@ -390,9 +386,7 @@ class Manifest(GenericTOMLModel):
         os_list = []
         pat = re.compile(r"Containerfile\.([a-zA-Z]+)([0-9.]+)\.[a-zA-Z0-9]")
         containerfiles = list(p.glob("Containerfile*"))
-        containerfiles = [
-            str(containerfile.relative_to(p)) for containerfile in containerfiles
-        ]
+        containerfiles = [str(containerfile.relative_to(p)) for containerfile in containerfiles]
         for containerfile in containerfiles:
             match = pat.match(containerfile)
             if match:
@@ -448,7 +442,9 @@ class Manifest(GenericTOMLModel):
                 for image_type in self.types:
                     rendered = tpl.render(image_version=version, **value_map, image_type=image_type, **render_kwargs)
                     with open(new_directory / f"{containerfile_base_name}.{image_type}", "w") as f:
-                        print(f"[bright_black]Rendering [bold]{new_directory / f'{containerfile_base_name}.{image_type}'}")
+                        log.info(
+                            f"[bright_black]Rendering [bold]{new_directory / f'{containerfile_base_name}.{image_type}'}"
+                        )
                         f.write(rendered)
                     continue
             else:
@@ -457,11 +453,11 @@ class Manifest(GenericTOMLModel):
                 target_dir = Path(new_directory / rel_path).parent
                 target_dir.mkdir(parents=True, exist_ok=True)
                 with open(new_directory / rel_path, "w") as f:
-                    print(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
+                    log.info(f"[bright_black]Rendering [bold]{new_directory / rel_path}")
                     f.write(rendered)
 
     def new_version(
-            self, version: str, mark_latest: bool = True, save: bool = True, value_map: Dict[str, str] = None
+        self, version: str, mark_latest: bool = True, save: bool = True, value_map: Dict[str, str] = None
     ) -> None:
         """Render a new version, add the version to the manifest document, and regenerate target builds
 
@@ -472,9 +468,8 @@ class Manifest(GenericTOMLModel):
         """
         self.render_image_template(version, value_map)
         if version in self.document["build"]:
-            print(
-                f"[bright_yellow][bold]WARNING:[/bold] Build version '{version}' already exists in "
-                f"manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
+            log.warning(
+                f"Build version '{version}' already exists in manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
             )
         else:
             self.append_build_version(version, mark_latest)

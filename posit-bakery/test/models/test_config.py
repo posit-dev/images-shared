@@ -60,7 +60,7 @@ class TestConfig:
                 url="github.com/rstudio/example",
                 vendor="Posit Software, PBC",
                 maintainer="docker@posit.co",
-            )
+            ),
         )
         assert c.authors == {"author1", "author2"}
         assert c.repository_url == "github.com/rstudio/example"
@@ -102,7 +102,7 @@ class TestConfig:
                 url="github.com/rstudio/example",
                 vendor="Example Company",
                 maintainer="images@example.com",
-            )
+            ),
         )
         basic_config_obj.update(c_override)
         assert basic_config_obj.authors == {"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"}

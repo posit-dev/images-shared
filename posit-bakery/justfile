@@ -1,13 +1,26 @@
 #!/usr/bin/env just --justfile
 
-install:
-  poetry install
+################
+# Variables
+CWD := justfile_dir()
 
+################
+# Commands
+
+# Install the posit-bakery python project
+install:
+    poetry install \
+        --directory={{ CWD }}
+
+# Build the posit-bakery python project
 alias package := build
 build:
-  poetry build
+    poetry build \
+        --directory={{ CWD }}
 
+# Test the posit-bakery python project
 test:
-  poetry run pytest -n auto \
-            --cov=posit_bakery \
-            test/
+    poetry run -- pytest \
+        -n auto \
+        --cov=posit_bakery \
+        {{ CWD }}/test/

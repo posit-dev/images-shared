@@ -1,12 +1,15 @@
+import logging
 import os
 from pathlib import Path
 from shutil import which
 from typing import Union
 
 import git
-from rich import print
 
 from posit_bakery.error import BakeryFileNotFoundError
+
+
+log = logging.getLogger("rich")
 
 
 def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var: str):
@@ -49,5 +52,5 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
             url = url.removeprefix("https://")
             url = url.split("@")[-1]
     except:  # noqa
-        print("[bright_yellow][bold]WARNING:[/bold] Unable to determine repository name ")
+        log.warning("Unable to determine repository name ")
     return url
