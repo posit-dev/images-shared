@@ -73,7 +73,7 @@ class TestConfig:
         """Test that the load_file method returns a Config object with expected data"""
         c = config.Config.load(basic_config_file)
         assert c.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
-        assert c.repository_url == "github.com/rstudio/posit-images-shared"
+        assert c.repository_url == "github.com/posit-dev/images-shared"
         assert c.vendor == "Posit Software, PBC"
         assert c.maintainer == "docker@posit.co"
         assert len(c.registries) == 2
@@ -84,7 +84,7 @@ class TestConfig:
         """Test that the update method updates the Config object with the provided Config object"""
         # Test existing values
         assert basic_config_obj.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
-        assert basic_config_obj.repository_url == "github.com/rstudio/posit-images-shared"
+        assert basic_config_obj.repository_url == "github.com/posit-dev/images-shared"
         assert basic_config_obj.vendor == "Posit Software, PBC"
         assert basic_config_obj.maintainer == "docker@posit.co"
         assert len(basic_config_obj.registries) == 2

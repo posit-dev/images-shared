@@ -6,6 +6,10 @@ import pytest
 from posit_bakery import util
 from posit_bakery.error import BakeryFileNotFoundError
 
+pytestmark = [
+    pytest.mark.unit,
+]
+
 
 def test_find_bin_by_environ(mocker):
     """Test finding a binary by environment variable"""
@@ -40,18 +44,18 @@ def test_find_bin_not_found(tmpdir, mocker):
 
 def test_try_get_repo_url_ssh(mocker):
     """Test parsing a URL from an SSH remote"""
-    mock_remote = MagicMock(config_reader={"url": "git@github.com:rstudio/posit-images-shared.git"})
+    mock_remote = MagicMock(config_reader={"url": "git@github.com:posit-dev/images-shared.git"})
     mock_repo = MagicMock(remotes=[mock_remote])
     mocker.patch("posit_bakery.util.git.Repo", return_value=mock_repo)
-    assert util.try_get_repo_url("/tmp") == "github.com/rstudio/posit-images-shared"
+    assert util.try_get_repo_url("/tmp") == "github.com/posit-dev/images-shared"
 
 
 def test_try_get_repo_url_https(mocker):
     """Test parsing a URL from an HTTPS remote"""
-    mock_remote = MagicMock(config_reader={"url": "https://github.com/rstudio/posit-images-shared.git"})
+    mock_remote = MagicMock(config_reader={"url": "https://github.com/posit-dev/images-shared.git"})
     mock_repo = MagicMock(remotes=[mock_remote])
     mocker.patch("posit_bakery.util.git.Repo", return_value=mock_repo)
-    assert util.try_get_repo_url("/tmp") == "github.com/rstudio/posit-images-shared"
+    assert util.try_get_repo_url("/tmp") == "github.com/posit-dev/images-shared"
 
 
 def test_try_get_repo_url_no_remote(mocker):

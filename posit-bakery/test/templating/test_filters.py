@@ -1,4 +1,10 @@
+import pytest
+
 from posit_bakery.templating import filters
+
+pytestmark = [
+    pytest.mark.unit,
+]
 
 
 def test_tag_safe():

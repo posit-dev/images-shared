@@ -471,7 +471,7 @@ class TestTargetBuild:
             target_build.labels["org.opencontainers.image.authors"]
             == "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>"
         )
-        assert target_build.labels["org.opencontainers.image.source"] == "github.com/rstudio/posit-images-shared"
+        assert target_build.labels["org.opencontainers.image.source"] == "github.com/posit-dev/images-shared"
 
     def test_hash(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
         target_build_min = manifest.TargetBuild(

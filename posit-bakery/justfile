@@ -18,9 +18,17 @@ build:
     poetry build \
         --directory={{ CWD }}
 
-# Test the posit-bakery python project
-test:
+[private]
+_pytest *ARGS:
     poetry run -- pytest \
         -n auto \
         --cov=posit_bakery \
+        {{ ARGS }} \
         {{ CWD }}/test/
+
+test-mark mark:
+    just _pytest -m {{ mark }}
+
+# Test the posit-bakery python project
+test:
+    just _pytest
