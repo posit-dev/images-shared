@@ -5,7 +5,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	commandMock "pti/mocks/pti/system/command"
 	"pti/system/command"
 	"pti/system/file"
@@ -34,7 +33,7 @@ func TestAptManager_Install(t *testing.T) {
 	tests := []struct {
 		name                  string
 		packageList           *PackageList
-		setupFs               func(tmpDir string, list *PackageList) error
+		setupFs               func(fs afero.Fs, list *PackageList) error
 		expectedNewShellCalls int
 		runErr                error
 		wantErr               bool
@@ -43,7 +42,7 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name:        "no packages",
 			packageList: &PackageList{},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -52,7 +51,7 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name:        "runtime error not reached on empty package list",
 			packageList: &PackageList{},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -64,7 +63,7 @@ func TestAptManager_Install(t *testing.T) {
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -75,7 +74,7 @@ func TestAptManager_Install(t *testing.T) {
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -86,19 +85,24 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "local packages list",
 			packageList: &PackageList{
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "local_packages")
+				if err != nil {
+					return err
+				}
+
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -108,19 +112,24 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "local packages list runtime error",
 			packageList: &PackageList{
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "local_packages")
+				if err != nil {
+					return err
+				}
+
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -132,12 +141,12 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "local packages package does not exist",
 			packageList: &PackageList{
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -149,19 +158,24 @@ func TestAptManager_Install(t *testing.T) {
 			name: "string and local packages list",
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "local_packages")
+				if err != nil {
+					return err
+				}
+
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -172,18 +186,23 @@ func TestAptManager_Install(t *testing.T) {
 			name: "string, file lists, and local packages",
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
 
-				fh, err := os.Create(newPath)
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -194,15 +213,20 @@ func TestAptManager_Install(t *testing.T) {
 				}
 				defer fh.Close()
 
-				list.PackageListFiles[0].Path = newPath
+				list.PackageListFiles[0] = newPath
 
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+				tmpDir, err = afero.TempDir(fs, "", "local_packages")
+				if err != nil {
+					return err
+				}
+
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -213,18 +237,23 @@ func TestAptManager_Install(t *testing.T) {
 			name: "string, file lists, and local packages with runtime error",
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
 
-				fh, err := os.Create(newPath)
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -235,15 +264,20 @@ func TestAptManager_Install(t *testing.T) {
 				}
 				defer fh.Close()
 
-				list.PackageListFiles[0].Path = newPath
+				list.PackageListFiles[0] = newPath
 
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+				tmpDir, err = afero.TempDir(fs, "", "local_packages")
+				if err != nil {
+					return err
+				}
+
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -255,18 +289,23 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "file lists and local packages",
 			packageList: &PackageList{
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
-				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+				LocalPackages: []string{
+					"pkg1.deb",
+					"pkg2.deb",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
 
-				fh, err := os.Create(newPath)
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -277,15 +316,15 @@ func TestAptManager_Install(t *testing.T) {
 				}
 				defer fh.Close()
 
-				list.PackageListFiles[0].Path = newPath
+				list.PackageListFiles[0] = newPath
 
-				for _, pkg := range list.LocalPackages {
-					newPath := tmpDir + "/" + pkg.Path
-					_, err := os.Create(newPath)
+				for i, pkgPath := range list.LocalPackages {
+					newPath := tmpDir + "/" + pkgPath
+					_, err := fs.Create(newPath)
 					if err != nil {
 						return err
 					}
-					pkg.Path = newPath
+					list.LocalPackages[i] = newPath
 				}
 				return nil
 			},
@@ -295,14 +334,19 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "file lists",
 			packageList: &PackageList{
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
 
-				fh, err := os.Create(newPath)
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -313,7 +357,7 @@ func TestAptManager_Install(t *testing.T) {
 				}
 				defer fh.Close()
 
-				list.PackageListFiles[0].Path = newPath
+				list.PackageListFiles[0] = newPath
 
 				return nil
 			},
@@ -323,12 +367,18 @@ func TestAptManager_Install(t *testing.T) {
 		{
 			name: "file list does not exist",
 			packageList: &PackageList{
-				PackageListFiles: []*file.File{
-					{Path: "nonexistent.txt"},
+				PackageListFiles: []string{
+					"nonexistent.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				list.PackageListFiles[0].Path = tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
+
+				list.PackageListFiles[0] = tmpDir + "/" + list.PackageListFiles[0]
+
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -341,8 +391,12 @@ func TestAptManager_Install(t *testing.T) {
 			newShellCalls := 0
 			m := NewAptManager()
 
-			d := t.TempDir()
-			err := tt.setupFs(d, tt.packageList)
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+			err := tt.setupFs(file.AppFs, tt.packageList)
 			require.Nil(err, "setupFs() error = %v, want nil", err)
 
 			old := command.NewShellCommand
@@ -369,7 +423,7 @@ func TestAptManager_Install(t *testing.T) {
 					} else {
 						localPackageIndex = newShellCalls - 1
 					}
-					assert.Contains(args, tt.packageList.LocalPackages[localPackageIndex].Path, "args = %v, want args %v", args)
+					assert.Contains(args, tt.packageList.LocalPackages[localPackageIndex], "args = %v, want args %v", args)
 				}
 				newShellCalls++
 
@@ -396,7 +450,7 @@ func TestAptManager_Remove(t *testing.T) {
 	tests := []struct {
 		name                  string
 		packageList           *PackageList
-		setupFs               func(tmpDir string, list *PackageList) error
+		setupFs               func(fs afero.Fs, list *PackageList) error
 		expectedNewShellCalls int
 		runErr                error
 		wantErr               bool
@@ -405,7 +459,7 @@ func TestAptManager_Remove(t *testing.T) {
 		{
 			name:        "no packages",
 			packageList: &PackageList{},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -414,7 +468,7 @@ func TestAptManager_Remove(t *testing.T) {
 		{
 			name:        "empty package runtime error not reached",
 			packageList: &PackageList{},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -426,7 +480,7 @@ func TestAptManager_Remove(t *testing.T) {
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
+			setupFs: func(fs afero.Fs, list *PackageList) error {
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -435,13 +489,18 @@ func TestAptManager_Remove(t *testing.T) {
 		{
 			name: "file list packages",
 			packageList: &PackageList{
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
-				fh, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
+
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -450,7 +509,9 @@ func TestAptManager_Remove(t *testing.T) {
 					return err
 				}
 				defer fh.Close()
-				list.PackageListFiles[0].Path = newPath
+
+				list.PackageListFiles[0] = newPath
+
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -459,12 +520,17 @@ func TestAptManager_Remove(t *testing.T) {
 		{
 			name: "file list does not exist",
 			packageList: &PackageList{
-				PackageListFiles: []*file.File{
-					{Path: "nonexistent.txt"},
+				PackageListFiles: []string{
+					"nonexistent.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				list.PackageListFiles[0].Path = tmpDir + "/" + list.PackageListFiles[0].Path
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
+
+				list.PackageListFiles[0] = tmpDir + "/" + list.PackageListFiles[0]
 				return nil
 			},
 			expectedNewShellCalls: 0,
@@ -475,13 +541,18 @@ func TestAptManager_Remove(t *testing.T) {
 			name: "string and file list packages",
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
-				fh, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
+
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -490,7 +561,9 @@ func TestAptManager_Remove(t *testing.T) {
 					return err
 				}
 				defer fh.Close()
-				list.PackageListFiles[0].Path = newPath
+
+				list.PackageListFiles[0] = newPath
+
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -500,13 +573,18 @@ func TestAptManager_Remove(t *testing.T) {
 			name: "runtime error",
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
-				PackageListFiles: []*file.File{
-					{Path: "test_package_list.txt"},
+				PackageListFiles: []string{
+					"test_package_list.txt",
 				},
 			},
-			setupFs: func(tmpDir string, list *PackageList) error {
-				newPath := tmpDir + "/" + list.PackageListFiles[0].Path
-				fh, err := os.Create(newPath)
+			setupFs: func(fs afero.Fs, list *PackageList) error {
+				tmpDir, err := afero.TempDir(fs, "", "package_lists")
+				if err != nil {
+					return err
+				}
+
+				newPath := tmpDir + "/" + list.PackageListFiles[0]
+				fh, err := fs.Create(newPath)
 				if err != nil {
 					return err
 				}
@@ -515,7 +593,9 @@ func TestAptManager_Remove(t *testing.T) {
 					return err
 				}
 				defer fh.Close()
-				list.PackageListFiles[0].Path = newPath
+
+				list.PackageListFiles[0] = newPath
+
 				return nil
 			},
 			expectedNewShellCalls: 1,
@@ -529,8 +609,12 @@ func TestAptManager_Remove(t *testing.T) {
 			newShellCalls := 0
 			m := NewAptManager()
 
-			d := t.TempDir()
-			err := tt.setupFs(d, tt.packageList)
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+			err := tt.setupFs(file.AppFs, tt.packageList)
 			require.Nil(err, "setupFs() error = %v, want nil", err)
 
 			old := command.NewShellCommand
@@ -764,13 +848,13 @@ func TestAptManager_Clean(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewAptManager()
 
-			oldFs := AppFs
-			AppFs = afero.NewMemMapFs()
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
 			defer func() {
-				AppFs = oldFs
+				file.AppFs = oldFs
 			}()
 
-			err := tt.fsSetup(AppFs)
+			err := tt.fsSetup(file.AppFs)
 			require.NoError(err)
 
 			newShellCalls := 0
@@ -809,7 +893,7 @@ func TestAptManager_Clean(t *testing.T) {
 				assert.ErrorContains(err, tt.wantErrMessage, "Clean() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				assert.NoError(err, "Clean() error = %v, want nil", err)
-				exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
+				exists, err := afero.DirExists(file.AppFs, "/var/lib/apt/lists")
 				require.NoError(err)
 				assert.False(exists, "/var/lib/apt/lists should not exist")
 			}
@@ -900,19 +984,19 @@ func TestAptManager_removePackageListCache(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewAptManager()
 
-			oldFs := AppFs
-			AppFs = afero.NewMemMapFs()
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
 			defer func() {
-				AppFs = oldFs
+				file.AppFs = oldFs
 			}()
 
-			err := tt.setupFs(AppFs)
+			err := tt.setupFs(file.AppFs)
 			require.NoError(err)
 
 			err = m.removePackageListCache()
 			assert.NoError(err)
 
-			exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
+			exists, err := afero.DirExists(file.AppFs, "/var/lib/apt/lists")
 			require.NoError(err)
 			assert.False(exists, "/var/lib/apt/lists should not exist")
 		})

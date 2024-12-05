@@ -5,10 +5,9 @@ import (
 	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system/command"
+	"pti/system/file"
 	"strings"
 )
-
-var AppFs = afero.NewOsFs()
 
 type AptManager struct {
 	binary          string
@@ -55,23 +54,23 @@ func (m *AptManager) Install(list *PackageList) error {
 		}
 	}
 	if len(list.LocalPackages) > 0 {
-		for _, localPackage := range list.LocalPackages {
-			slog.Info("Installing package " + localPackage.Path)
+		for _, localPackagePath := range list.LocalPackages {
+			slog.Info("Installing package " + localPackagePath)
 
-			args := append(m.installOpts, localPackage.Path)
+			args := append(m.installOpts, localPackagePath)
 
-			exist, err := localPackage.IsPathExist()
+			exist, err := file.IsPathExist(localPackagePath)
 			if err != nil {
-				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackage.Path, err)
+				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackagePath, err)
 			}
 			if !exist {
-				return fmt.Errorf("local package '%s' does not exist", localPackage.Path)
+				return fmt.Errorf("local package '%s' does not exist", localPackagePath)
 			}
 
 			cmd := command.NewShellCommand(m.binary, args, nil, true)
 			err = cmd.Run()
 			if err != nil {
-				return fmt.Errorf("failed to install local package '%s': %w", localPackage.Path, err)
+				return fmt.Errorf("failed to install local package '%s': %w", localPackagePath, err)
 			}
 		}
 	}
@@ -164,7 +163,7 @@ func (m *AptManager) autoRemove() error {
 func (m *AptManager) removePackageListCache() error {
 	slog.Debug("Removing /var/lib/apt/lists")
 
-	exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
+	exists, err := afero.DirExists(file.AppFs, "/var/lib/apt/lists")
 	if err != nil {
 		return fmt.Errorf("failed to check if /var/lib/apt/lists exists: %w", err)
 	}
@@ -173,7 +172,7 @@ func (m *AptManager) removePackageListCache() error {
 		return nil
 	}
 
-	err = AppFs.RemoveAll("/var/lib/apt/lists")
+	err = file.AppFs.RemoveAll("/var/lib/apt/lists")
 	if err != nil {
 		return fmt.Errorf("failed to remove /var/lib/apt/lists: %w", err)
 	}

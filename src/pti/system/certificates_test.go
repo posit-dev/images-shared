@@ -12,11 +12,12 @@ func TestUpdateCACertificates(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
-		name        string
-		localSystem LocalSystem
-		wantBin     string
-		runErr      error
-		wantErr     bool
+		name           string
+		localSystem    LocalSystem
+		wantBin        string
+		runErr         error
+		wantErr        bool
+		wantErrMessage string
 	}{
 		{
 			name: "Test ubuntu",
@@ -41,18 +42,20 @@ func TestUpdateCACertificates(t *testing.T) {
 			localSystem: LocalSystem{
 				Vendor: "unsupported",
 			},
-			wantBin: "",
-			runErr:  nil,
-			wantErr: true,
+			wantBin:        "",
+			runErr:         nil,
+			wantErr:        true,
+			wantErrMessage: "unsupported OS",
 		},
 		{
 			name: "Test run error",
 			localSystem: LocalSystem{
 				Vendor: "ubuntu",
 			},
-			wantBin: "update-ca-certificates",
-			runErr:  fmt.Errorf("command failed"),
-			wantErr: true,
+			wantBin:        "update-ca-certificates",
+			runErr:         fmt.Errorf("command failed"),
+			wantErr:        true,
+			wantErrMessage: "failed to update CA certificates",
 		},
 	}
 	for _, tt := range tests {
@@ -70,7 +73,12 @@ func TestUpdateCACertificates(t *testing.T) {
 			}
 
 			err := tt.localSystem.UpdateCACertificates()
-			assert.Equal(tt.wantErr, err != nil, "UpdateCACertificates() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				assert.Error(err, "UpdateCACertificates() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(err, tt.wantErrMessage, "UpdateCACertificates() error = %v, wantErrMessage %v", err, tt.wantErrMessage)
+			} else {
+				assert.NoError(err, "UpdateCACertificates() error = %v, wantErr %v", err, tt.wantErr)
+			}
 		})
 	}
 }

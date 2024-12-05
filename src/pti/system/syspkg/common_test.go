@@ -1,10 +1,9 @@
 package syspkg
 
 import (
-	"fmt"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	"pti/system/file"
 	"testing"
 )
@@ -46,16 +45,22 @@ func TestPackageListFileToSlice(t *testing.T) {
 			name:           "file does not exist",
 			createFile:     false,
 			wantErr:        true,
-			wantErrMessage: "failed to open",
+			wantErrMessage: "does not exist",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := t.TempDir()
-			f := &file.File{Path: d + "/file.txt"}
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+
+			tmpDir, err := afero.TempDir(file.AppFs, "", "package_list_to_slice")
+			f := tmpDir + "/file.txt"
 			if tt.createFile {
-				fh, err := os.Create(f.Path)
+				fh, err := file.AppFs.Create(f)
 				require.Nil(err, "os.Create() error = %v", err)
 
 				_, err = fh.WriteString(tt.contents)
@@ -135,20 +140,27 @@ func TestPackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+
+			tmpDir, err := afero.TempDir(file.AppFs, "", "get_packages_from_package_lists")
+			require.NoError(err, "afero.TempDir() error = %v", err)
+
 			l := PackageList{
-				PackageListFiles: []*file.File{},
+				PackageListFiles: []string{},
 			}
-			d := t.TempDir()
-			for i, line := range tt.packageListFileContents {
-				f := &file.File{Path: d + "/file" + fmt.Sprint(i) + ".txt"}
-				fh, err := f.Create()
-				require.Nil(err, "os.Create() error = %v", err)
+			for _, line := range tt.packageListFileContents {
+				f, err := afero.TempFile(file.AppFs, tmpDir, "file*.txt")
+				require.NoError(err, "os.Create() error = %v", err)
 
-				_, err = fh.WriteString(line)
+				_, err = f.WriteString(line)
 				require.Nil(err, "f.WriteString() error = %v", err)
-				defer fh.Close()
+				defer f.Close()
 
-				l.PackageListFiles = append(l.PackageListFiles, f)
+				l.PackageListFiles = append(l.PackageListFiles, f.Name())
 			}
 
 			got, err := l.GetPackagesFromPackageListFiles()
@@ -280,27 +292,35 @@ func TestPackageList_GetPackages(t *testing.T) {
 			},
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+
+			tmpDir, err := afero.TempDir(file.AppFs, "", "get_packages_from_package_lists")
+			require.NoError(err, "afero.TempDir() error = %v", err)
+
 			l := PackageList{
 				Packages:         tt.packagesDirectList,
-				PackageListFiles: []*file.File{},
+				PackageListFiles: []string{},
 			}
-			d := t.TempDir()
-			for i, line := range tt.packageListFileContents {
-				f := &file.File{Path: d + "/file" + fmt.Sprint(i) + ".txt"}
-				fh, err := f.Create()
-				require.Nil(err, "os.Create() error = %v", err)
-				_, err = fh.WriteString(line)
-				require.Nil(err, "f.WriteString() error = %v", err)
-				defer fh.Close()
 
-				l.PackageListFiles = append(l.PackageListFiles, f)
+			for _, line := range tt.packageListFileContents {
+				f, err := afero.TempFile(file.AppFs, tmpDir, "file*.txt")
+				require.NoError(err, "os.Create() error = %v", err)
+
+				_, err = f.WriteString(line)
+				require.Nil(err, "f.WriteString() error = %v", err)
+				defer f.Close()
+
+				l.PackageListFiles = append(l.PackageListFiles, f.Name())
 			}
 
 			got, err := l.GetPackages()
-			require.Nil(err, "PackageList.GetPackages() error = %v", err)
+			require.NoError(err, "PackageList.GetPackages() error = %v", err)
 			assert.Equal(tt.want, got, "PackageList.GetPackages() got = %v, want %v", got, tt.want)
 		})
 	}
