@@ -8,8 +8,8 @@ import (
 
 type PackageList struct {
 	Packages         []string
-	PackageListFiles []*file.File
-	LocalPackages    []*file.File
+	PackageListFiles []string
+	LocalPackages    []string
 }
 
 type SystemPackageManager interface {
@@ -21,14 +21,18 @@ type SystemPackageManager interface {
 	Clean() error
 }
 
-func packageListFileToSlice(f *file.File) ([]string, error) {
-	if f == nil {
-		return nil, fmt.Errorf("given package list file is nil")
+func packageListFileToSlice(path string) ([]string, error) {
+	exists, err := file.IsPathExist(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if '%s' exists: %w", path, err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("file '%s' does not exist", path)
 	}
 
-	fh, err := f.Open()
+	fh, err := file.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open %s: %w", f.Path, err)
+		return nil, fmt.Errorf("failed to open '%s': %w", path, err)
 	}
 	defer fh.Close()
 
@@ -38,7 +42,7 @@ func packageListFileToSlice(f *file.File) ([]string, error) {
 		lines = append(lines, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while reading %s: %w", f.Path, err)
+		return nil, fmt.Errorf("error occurred while reading %s: %w", path, err)
 	}
 
 	return lines, nil

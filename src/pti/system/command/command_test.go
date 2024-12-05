@@ -62,60 +62,13 @@ func TestShellCommand_Run(t *testing.T) {
 		cmdSetupFunc   func(*testing.T, executorSetup) command.ShellCommandExecutor
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
+		name           string
+		fields         fields
+		wantErr        bool
+		wantErrMessage string
 	}{
 		{
-			name: "Command execution failed to start",
-			fields: fields{
-				Name: "ls",
-				Args: []string{"-l"},
-				cmdSetup: executorSetup{
-					start: fmt.Errorf("Failed to start command"),
-				},
-				cmdSetupFunc: func(tc *testing.T, setup executorSetup) command.ShellCommandExecutor {
-					mockExecutor := commandMock.NewMockShellCommandExecutor(t)
-					mockExecutor.EXPECT().Start().Return(setup.start)
-					mockExecutor.EXPECT().String().Return("ls -l")
-					return mockExecutor
-				},
-				ctxSetupFunc: func(t *testing.T, setup contextSetup) command.ShellCommandContexter {
-					mockContext := commandMock.NewMockShellCommandContexter(t)
-					return mockContext
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Command execution failed",
-			fields: fields{
-				Name: "ls",
-				Args: []string{"-l"},
-				cmdSetup: executorSetup{
-					start: nil,
-					wait:  fmt.Errorf("Failed to execute command"),
-				},
-				ctxSetup: contextSetup{
-					ctx: context.Background(),
-				},
-				cmdSetupFunc: func(t *testing.T, setup executorSetup) command.ShellCommandExecutor {
-					mockExecutor := commandMock.NewMockShellCommandExecutor(t)
-					mockExecutor.EXPECT().Start().Return(setup.start)
-					mockExecutor.EXPECT().Wait().Return(setup.wait)
-					mockExecutor.EXPECT().String().Return("ls -l")
-					return mockExecutor
-				},
-				ctxSetupFunc: func(t *testing.T, setup contextSetup) command.ShellCommandContexter {
-					mockContext := commandMock.NewMockShellCommandContexter(t)
-					mockContext.EXPECT().Done().Return(setup.ctx.Done())
-					return mockContext
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Command execution succeeded",
+			name: "success",
 			fields: fields{
 				Name: "ls",
 				Args: []string{"-l"},
@@ -142,6 +95,56 @@ func TestShellCommand_Run(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "failed to start",
+			fields: fields{
+				Name: "ls",
+				Args: []string{"-l"},
+				cmdSetup: executorSetup{
+					start: fmt.Errorf("generic error"),
+				},
+				cmdSetupFunc: func(tc *testing.T, setup executorSetup) command.ShellCommandExecutor {
+					mockExecutor := commandMock.NewMockShellCommandExecutor(t)
+					mockExecutor.EXPECT().Start().Return(setup.start)
+					mockExecutor.EXPECT().String().Return("ls -l")
+					return mockExecutor
+				},
+				ctxSetupFunc: func(t *testing.T, setup contextSetup) command.ShellCommandContexter {
+					mockContext := commandMock.NewMockShellCommandContexter(t)
+					return mockContext
+				},
+			},
+			wantErr:        true,
+			wantErrMessage: "failed to start command 'ls -l'",
+		},
+		{
+			name: "failed execution",
+			fields: fields{
+				Name: "ls",
+				Args: []string{"-l"},
+				cmdSetup: executorSetup{
+					start: nil,
+					wait:  fmt.Errorf("runtime error"),
+				},
+				ctxSetup: contextSetup{
+					ctx: context.Background(),
+				},
+				cmdSetupFunc: func(t *testing.T, setup executorSetup) command.ShellCommandExecutor {
+					mockExecutor := commandMock.NewMockShellCommandExecutor(t)
+					mockExecutor.EXPECT().Start().Return(setup.start)
+					mockExecutor.EXPECT().Wait().Return(setup.wait)
+					mockExecutor.EXPECT().String().Return("ls -l")
+					return mockExecutor
+				},
+				ctxSetupFunc: func(t *testing.T, setup contextSetup) command.ShellCommandContexter {
+					mockContext := commandMock.NewMockShellCommandContexter(t)
+					mockContext.EXPECT().Done().Return(setup.ctx.Done())
+					return mockContext
+				},
+			},
+			wantErr:        true,
+			wantErrMessage: "command 'ls -l' failed",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -155,7 +158,12 @@ func TestShellCommand_Run(t *testing.T) {
 			}
 
 			err := shellCmd.Run()
-			assert.Equal(tt.wantErr, err != nil, "ShellCommand.Run() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				assert.NoError(err)
+			}
 		})
 	}
 }

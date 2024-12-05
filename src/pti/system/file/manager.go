@@ -5,107 +5,88 @@ import (
 	"bufio"
 	"compress/gzip"
 	"fmt"
+	"github.com/spf13/afero"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 )
 
-type Manager interface {
-	IsPathExist() (bool, error)
-	Stat() (os.FileInfo, error)
-	Create() error
-	Open() (*os.File, error)
-	ChangePermissions(perm os.FileMode) error
-	MoveFile(newFilePath string) error
-	CopyFile(newFilePath string) (*File, error)
-	Download(url string, filepath string) (*File, error)
-	ExtractTarGz(destinationPath string) error
+var AppFs = afero.NewOsFs()
+
+func IsPathExist(path string) (bool, error) {
+	return afero.Exists(AppFs, path)
 }
 
-type File struct {
-	Path string
-}
-
-func (f *File) IsPathExist() (bool, error) {
-	_, err := os.Stat(f.Path)
+func Stat(path string) (os.FileInfo, error) {
+	i, err := AppFs.Stat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			slog.Debug("Path does not exist: " + f.Path)
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-func (f *File) Stat() (os.FileInfo, error) {
-	i, err := os.Stat(f.Path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat file %s: %w", f.Path, err)
+		return nil, fmt.Errorf("failed to stat file %s: %w", path, err)
 	}
 	return i, nil
 }
 
-func (f *File) Create() (*os.File, error) {
-	slog.Debug("Creating file: " + f.Path)
-	fh, err := os.Create(f.Path)
+func Create(path string) (afero.File, error) {
+	slog.Debug("Creating file: " + path)
+	fh, err := AppFs.Create(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file %s: %w", f.Path, err)
+		return nil, fmt.Errorf("failed to create file %s: %w", path, err)
 	}
 	slog.Debug("File created")
 	return fh, nil
 }
 
-func (f *File) Open() (*os.File, error) {
-	fh, err := os.Open(f.Path)
+func Open(path string) (afero.File, error) {
+	fh, err := AppFs.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	return fh, nil
 }
 
-func (f *File) MoveFile(newFilePath string) error {
-	slog.Debug("Moving file from " + f.Path + " to " + newFilePath)
-	if err := os.Rename(f.Path, newFilePath); err != nil {
-		return err
+func MoveFile(src, dest string) error {
+	slog.Debug("Moving file from " + src + " to " + dest)
+	if err := AppFs.Rename(src, dest); err != nil {
+		return fmt.Errorf("failed to move file: %w", err)
 	}
-	f.Path = newFilePath
 	slog.Debug("Move complete")
 	return nil
 }
 
-func (f *File) CopyFile(newFilePath string) (*File, error) {
-	slog.Debug("Copying file from " + f.Path + " to " + newFilePath)
+func CopyFile(src, dest string) error {
+	slog.Debug("Copying file from " + src + " to " + dest)
 
-	sourceFileStat, err := os.Stat(f.Path)
+	sourceFileStat, err := AppFs.Stat(src)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to stat file %s during copy: %w", src, err)
 	}
 
 	if !sourceFileStat.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", f.Path)
+		return fmt.Errorf("%s is not a regular file", src)
 	}
 
-	sourceFh, err := f.Open()
+	sourceFh, err := Open(src)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to open copy source file '%s': %w", src, err)
 	}
 
-	destination := &File{Path: newFilePath}
-	destinationFh, err := destination.Create()
+	destinationFh, err := Create(dest)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to create copy destination file '%s': %w", dest, err)
 	}
 	defer destinationFh.Close()
+
 	_, err = io.Copy(destinationFh, sourceFh)
+	if err != nil {
+		return fmt.Errorf("failed to copy '%s' to '%s': %w", src, dest, err)
+	}
 
 	slog.Debug("Copy complete")
 
-	return destination, err
+	return nil
 }
 
-func DownloadFile(url string, filepath string) (*File, error) {
+func DownloadFile(url string, filepath string) error {
 	slog.Debug("Downloading file from " + url + " to " + filepath)
 
 	request, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -113,43 +94,42 @@ func DownloadFile(url string, filepath string) (*File, error) {
 
 	resp, err := client.Do(request)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to download file: %s", resp.Status)
+		return fmt.Errorf("failed to download file with status '%s'", resp.Status)
 	}
 
-	newFile := &File{Path: filepath}
-	newFh, err := newFile.Create()
+	newFh, err := Create(filepath)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to save download to file '%s': %w", filepath, err)
 	}
 	defer newFh.Close()
 
 	_, err = io.Copy(newFh, resp.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	slog.Debug("Download complete")
 
-	return newFile, nil
+	return nil
 }
 
-func (f *File) ExtractTarGz(destinationPath string) error {
-	slog.Info("Extracting tar.gz file " + f.Path + " to " + destinationPath)
+func ExtractTarGz(archive, dest string) error {
+	slog.Info("Extracting tar.gz file " + archive + " to " + dest)
 
-	fh, err := f.Open()
+	fh, err := Open(archive)
 	if err != nil {
-		return fmt.Errorf("failed to open %s for extraction: %w", f.Path, err)
+		return fmt.Errorf("failed to open %s for extraction: %w", archive, err)
 	}
 	defer fh.Close()
 	reader := bufio.NewReader(fh)
 
 	gzr, err := gzip.NewReader(reader)
 	if err != nil {
-		return fmt.Errorf("failed to create gzip reader for %s: %w", f.Path, err)
+		return fmt.Errorf("failed to create gzip reader for %s: %w", archive, err)
 	}
 
 	tr := tar.NewReader(gzr)
@@ -159,17 +139,17 @@ func (f *File) ExtractTarGz(destinationPath string) error {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("failed to read tar header for %s: %w", f.Path, err)
+			return fmt.Errorf("failed to read tar header for %s: %w", archive, err)
 		}
 
-		target := destinationPath + "/" + header.Name
+		target := dest + "/" + header.Name
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+			if err := AppFs.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", target, err)
 			}
 		case tar.TypeReg:
-			fh, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			fh, err := AppFs.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return fmt.Errorf("failed to create file %s: %w", target, err)
 			}
