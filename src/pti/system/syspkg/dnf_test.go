@@ -2,7 +2,6 @@ package syspkg
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -12,22 +11,20 @@ import (
 	"testing"
 )
 
-func TestNewAptManager(t *testing.T) {
+func TestNewDnfManager(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewAptManager()
+	m := NewDnfManager()
 
-	assert.Equal("apt", m.GetBin())
+	assert.Equal("dnf", m.GetBin())
 	assert.Contains(m.installOpts, "install")
-	assert.Contains(m.updateOpts, "update")
 	assert.Contains(m.upgradeOpts, "upgrade")
-	assert.Contains(m.distUpgradeOpts, "dist-upgrade")
 	assert.Contains(m.removeOpts, "remove")
 	assert.Contains(m.autoRemoveOpts, "autoremove")
 	assert.Contains(m.cleanOpts, "clean")
 }
 
-func TestAptManager_Install(t *testing.T) {
+func TestDnfManager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -87,8 +84,8 @@ func TestAptManager_Install(t *testing.T) {
 			name: "local packages list",
 			packageList: &PackageList{
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -109,8 +106,8 @@ func TestAptManager_Install(t *testing.T) {
 			name: "local packages list runtime error",
 			packageList: &PackageList{
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -133,8 +130,8 @@ func TestAptManager_Install(t *testing.T) {
 			name: "local packages package does not exist",
 			packageList: &PackageList{
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -150,8 +147,8 @@ func TestAptManager_Install(t *testing.T) {
 			packageList: &PackageList{
 				Packages: []string{"pkg1", "pkg2"},
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -176,8 +173,8 @@ func TestAptManager_Install(t *testing.T) {
 					{Path: "test_package_list.txt"},
 				},
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -217,8 +214,8 @@ func TestAptManager_Install(t *testing.T) {
 					{Path: "test_package_list.txt"},
 				},
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -259,8 +256,8 @@ func TestAptManager_Install(t *testing.T) {
 					{Path: "test_package_list.txt"},
 				},
 				LocalPackages: []*file.File{
-					{Path: "pkg1.deb"},
-					{Path: "pkg2.deb"},
+					{Path: "pkg1.rpm"},
+					{Path: "pkg2.rpm"},
 				},
 			},
 			setupFs: func(tmpDir string, list *PackageList) error {
@@ -339,7 +336,7 @@ func TestAptManager_Install(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newShellCalls := 0
-			m := NewAptManager()
+			m := NewDnfManager()
 
 			d := t.TempDir()
 			err := tt.setupFs(d, tt.packageList)
@@ -350,7 +347,7 @@ func TestAptManager_Install(t *testing.T) {
 				command.NewShellCommand = old
 			}()
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("dnf", name, "binary name = %v, want binary dnf", name)
 				for _, arg := range m.installOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -389,7 +386,7 @@ func TestAptManager_Install(t *testing.T) {
 	}
 }
 
-func TestAptManager_Remove(t *testing.T) {
+func TestDnfManager_Remove(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -527,7 +524,7 @@ func TestAptManager_Remove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newShellCalls := 0
-			m := NewAptManager()
+			m := NewDnfManager()
 
 			d := t.TempDir()
 			err := tt.setupFs(d, tt.packageList)
@@ -538,7 +535,7 @@ func TestAptManager_Remove(t *testing.T) {
 				command.NewShellCommand = old
 			}()
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("dnf", name, "binary name = %v, want binary dnf", name)
 				for _, arg := range m.removeOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -567,62 +564,13 @@ func TestAptManager_Remove(t *testing.T) {
 	}
 }
 
-func TestAptManager_Update(t *testing.T) {
+func TestDnfManager_Update(t *testing.T) {
 	assert := assert.New(t)
 
-	tests := []struct {
-		name           string
-		runErr         error
-		wantErr        bool
-		wantErrMessage string
-	}{
-		{
-			name:    "success",
-			runErr:  nil,
-			wantErr: false,
-		},
-		{
-			name:           "update runtime error",
-			runErr:         fmt.Errorf("runtime error"),
-			wantErr:        true,
-			wantErrMessage: "apt update failed",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := NewAptManager()
-
-			newShellCalled := false
-			old := command.NewShellCommand
-			defer func() {
-				command.NewShellCommand = old
-			}()
-			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				newShellCalled = true
-
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
-				for _, arg := range m.updateOpts {
-					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
-				}
-
-				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
-				mockShellCommand.EXPECT().Run().Return(tt.runErr)
-				return mockShellCommand
-			}
-
-			err := m.Update()
-			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Update() error = %v, wantErr %v", err, tt.wantErr)
-			} else {
-				assert.NoError(err, "Update() error = %v, want nil", err)
-			}
-			assert.True(newShellCalled, "NewShellCommand() was not called")
-		})
-	}
+	assert.Nil(NewDnfManager().Update())
 }
 
-func TestAptManager_Upgrade(t *testing.T) {
+func TestDnfManager_Upgrade(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -648,29 +596,28 @@ func TestAptManager_Upgrade(t *testing.T) {
 			runErrOnCall:          1,
 			runErr:                fmt.Errorf("runtime error"),
 			wantErr:               true,
-			wantErrMessage:        "apt upgrade failed",
+			wantErrMessage:        "dnf upgrade failed",
 		},
 		{
-			name:                  "success full upgrade",
-			expectedNewShellCalls: 2,
+			name:                  "success with full upgrade flag does nothing",
+			expectedNewShellCalls: 1,
 			fullUpgrade:           true,
 			runErr:                nil,
 			wantErr:               false,
 		},
 		{
-			name:                  "full upgrade runtime error",
-			expectedNewShellCalls: 2,
+			name:                  "full upgrade runtime error not reached",
+			expectedNewShellCalls: 1,
 			runErrOnCall:          2,
 			fullUpgrade:           true,
 			runErr:                fmt.Errorf("runtime error"),
-			wantErr:               true,
-			wantErrMessage:        "apt dist-upgrade failed",
+			wantErr:               false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewAptManager()
+			m := NewDnfManager()
 
 			newShellCalls := 0
 			old := command.NewShellCommand
@@ -680,14 +627,9 @@ func TestAptManager_Upgrade(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalls++
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("dnf", name, "binary name = %v, want binary dnf", name)
 
-				var opts []string
-				if newShellCalls == 2 && tt.fullUpgrade {
-					opts = m.distUpgradeOpts
-				} else {
-					opts = m.upgradeOpts
-				}
+				opts := m.upgradeOpts
 				for _, arg := range opts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -712,8 +654,7 @@ func TestAptManager_Upgrade(t *testing.T) {
 	}
 }
 
-func TestAptManager_Clean(t *testing.T) {
-	require := require.New(t)
+func TestDnfManager_Clean(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -721,7 +662,6 @@ func TestAptManager_Clean(t *testing.T) {
 		expectedNewShellCalls int
 		runErrOnCall          int
 		runErr                error
-		fsSetup               func(fs afero.Fs) error
 		wantErr               bool
 		wantErrMessage        string
 	}{
@@ -730,48 +670,29 @@ func TestAptManager_Clean(t *testing.T) {
 			expectedNewShellCalls: 2,
 			runErrOnCall:          0,
 			runErr:                nil,
-			fsSetup: func(fs afero.Fs) error {
-				err := fs.MkdirAll("/var/lib/apt/lists", 0755)
-				return err
-			},
-			wantErr: false,
+			wantErr:               false,
 		},
 		{
 			name:                  "Runtime error on clean",
 			expectedNewShellCalls: 1,
 			runErrOnCall:          1,
 			runErr:                fmt.Errorf("runtime error"),
-			fsSetup: func(fs afero.Fs) error {
-				return nil
-			},
-			wantErr:        true,
-			wantErrMessage: "apt clean failed",
+			wantErr:               true,
+			wantErrMessage:        "dnf clean failed",
 		},
 		{
 			name:                  "Runtime error on autoremove",
 			expectedNewShellCalls: 2,
 			runErrOnCall:          2,
 			runErr:                fmt.Errorf("runtime error"),
-			fsSetup: func(fs afero.Fs) error {
-				return nil
-			},
-			wantErr:        true,
-			wantErrMessage: "apt autoremove failed",
+			wantErr:               true,
+			wantErrMessage:        "dnf autoremove failed",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewAptManager()
-
-			oldFs := AppFs
-			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
-
-			err := tt.fsSetup(AppFs)
-			require.NoError(err)
+			m := NewDnfManager()
 
 			newShellCalls := 0
 			oldNSC := command.NewShellCommand
@@ -782,7 +703,7 @@ func TestAptManager_Clean(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalls++
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("dnf", name, "binary name = %v, want binary dnf", name)
 
 				var opts []string
 				switch newShellCalls {
@@ -804,21 +725,18 @@ func TestAptManager_Clean(t *testing.T) {
 				return mockShellCommand
 			}
 
-			err = m.Clean()
+			err := m.Clean()
 			if tt.wantErr {
 				assert.ErrorContains(err, tt.wantErrMessage, "Clean() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				assert.NoError(err, "Clean() error = %v, want nil", err)
-				exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
-				require.NoError(err)
-				assert.False(exists, "/var/lib/apt/lists should not exist")
 			}
 			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
 		})
 	}
 }
 
-func TestAptManager_autoRemove(t *testing.T) {
+func TestDnfManager_autoRemove(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -836,13 +754,13 @@ func TestAptManager_autoRemove(t *testing.T) {
 			name:           "Runtime error",
 			runErr:         fmt.Errorf("runtime error"),
 			wantErr:        true,
-			wantErrMessage: "apt autoremove failed",
+			wantErrMessage: "dnf autoremove failed",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewAptManager()
+			m := NewDnfManager()
 
 			newShellCalled := false
 			old := command.NewShellCommand
@@ -852,7 +770,7 @@ func TestAptManager_autoRemove(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalled = true
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("dnf", name, "binary name = %v, want binary dnf", name)
 				for _, arg := range m.autoRemoveOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -869,52 +787,6 @@ func TestAptManager_autoRemove(t *testing.T) {
 				assert.NoError(err, "autoRemove() error = %v, want nil", err)
 			}
 			assert.True(newShellCalled, "NewShellCommand() was not called")
-		})
-	}
-}
-
-func TestAptManager_removePackageListCache(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-
-	tests := []struct {
-		name    string
-		setupFs func(fs afero.Fs) error
-	}{
-		{
-			name: "success",
-			setupFs: func(fs afero.Fs) error {
-				err := fs.MkdirAll("/var/lib/apt/lists", 0644)
-				return err
-			},
-		},
-		{
-			name: "no error for not exists",
-			setupFs: func(fs afero.Fs) error {
-				return nil
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := NewAptManager()
-
-			oldFs := AppFs
-			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
-
-			err := tt.setupFs(AppFs)
-			require.NoError(err)
-
-			err = m.removePackageListCache()
-			assert.NoError(err)
-
-			exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
-			require.NoError(err)
-			assert.False(exists, "/var/lib/apt/lists should not exist")
 		})
 	}
 }

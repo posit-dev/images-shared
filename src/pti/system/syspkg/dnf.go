@@ -53,10 +53,18 @@ func (m *DnfManager) Install(list *PackageList) error {
 
 			args := append(m.installOpts, localPackage.Path)
 
+			exist, err := localPackage.IsPathExist()
+			if err != nil {
+				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackage.Path, err)
+			}
+			if !exist {
+				return fmt.Errorf("local package '%s' does not exist", localPackage.Path)
+			}
+
 			cmd := command.NewShellCommand(m.binary, args, nil, true)
 			err = cmd.Run()
 			if err != nil {
-				return fmt.Errorf("failed to install local syspkg '%s': %w", localPackage.Path, err)
+				return fmt.Errorf("failed to install local package '%s': %w", localPackage.Path, err)
 			}
 		}
 	}
@@ -70,14 +78,16 @@ func (m *DnfManager) Remove(list *PackageList) error {
 		return fmt.Errorf("error occurred while parsing packages to remove: %w", err)
 	}
 
-	slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
+	if len(packagesToRemove) > 0 {
+		slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
 
-	args := append(m.removeOpts, packagesToRemove...)
+		args := append(m.removeOpts, packagesToRemove...)
 
-	cmd := command.NewShellCommand(m.binary, args, nil, true)
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to remove packages '%v': %w", packagesToRemove, err)
+		cmd := command.NewShellCommand(m.binary, args, nil, true)
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("failed to remove packages '%v': %w", packagesToRemove, err)
+		}
 	}
 
 	return nil
@@ -89,11 +99,11 @@ func (m *DnfManager) Update() error {
 }
 
 func (m *DnfManager) Upgrade(fullUpgrade bool) error {
-	slog.Info("Upgrading apt packages")
+	slog.Info("Upgrading dnf packages")
 	cmd := command.NewShellCommand(m.binary, m.upgradeOpts, nil, true)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("apt upgrade failed: %w", err)
+		return fmt.Errorf("dnf upgrade failed: %w", err)
 	}
 
 	if fullUpgrade {
@@ -109,7 +119,7 @@ func (m *DnfManager) Clean() error {
 	cmd := command.NewShellCommand(m.binary, m.cleanOpts, nil, true)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("apt clean failed: %w", err)
+		return fmt.Errorf("dnf clean failed: %w", err)
 	}
 
 	err = m.autoRemove()
@@ -124,7 +134,7 @@ func (m *DnfManager) autoRemove() error {
 	cmd := command.NewShellCommand(m.binary, m.autoRemoveOpts, nil, true)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("apt autoremove failed: %w", err)
+		return fmt.Errorf("dnf autoremove failed: %w", err)
 	}
 
 	return nil

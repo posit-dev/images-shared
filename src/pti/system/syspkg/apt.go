@@ -2,11 +2,13 @@ package syspkg
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"log/slog"
-	"os"
 	"pti/system/command"
 	"strings"
 )
+
+var AppFs = afero.NewOsFs()
 
 type AptManager struct {
 	binary          string
@@ -58,10 +60,18 @@ func (m *AptManager) Install(list *PackageList) error {
 
 			args := append(m.installOpts, localPackage.Path)
 
+			exist, err := localPackage.IsPathExist()
+			if err != nil {
+				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackage.Path, err)
+			}
+			if !exist {
+				return fmt.Errorf("local package '%s' does not exist", localPackage.Path)
+			}
+
 			cmd := command.NewShellCommand(m.binary, args, nil, true)
 			err = cmd.Run()
 			if err != nil {
-				return fmt.Errorf("failed to install local syspkg '%s': %w", localPackage.Path, err)
+				return fmt.Errorf("failed to install local package '%s': %w", localPackage.Path, err)
 			}
 		}
 	}
@@ -154,13 +164,18 @@ func (m *AptManager) autoRemove() error {
 func (m *AptManager) removePackageListCache() error {
 	slog.Debug("Removing /var/lib/apt/lists")
 
-	err := os.RemoveAll("/var/lib/apt/lists")
+	exists, err := afero.DirExists(AppFs, "/var/lib/apt/lists")
 	if err != nil {
-		if os.IsNotExist(err) {
-			slog.Debug("/var/lib/apt/lists does not exist")
-		} else {
-			return fmt.Errorf("failed to remove /var/lib/apt/lists: %w", err)
-		}
+		return fmt.Errorf("failed to check if /var/lib/apt/lists exists: %w", err)
+	}
+	if !exists {
+		slog.Debug("/var/lib/apt/lists does not exist")
+		return nil
+	}
+
+	err = AppFs.RemoveAll("/var/lib/apt/lists")
+	if err != nil {
+		return fmt.Errorf("failed to remove /var/lib/apt/lists: %w", err)
 	}
 
 	return nil
