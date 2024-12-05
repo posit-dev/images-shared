@@ -14,42 +14,63 @@ func TestPackageListFileToSlice(t *testing.T) {
 	require := require.New(t)
 
 	tests := []struct {
-		name     string
-		contents string
-		want     []string
+		name           string
+		contents       string
+		createFile     bool
+		want           []string
+		wantErr        bool
+		wantErrMessage string
 	}{
 		{
-			name:     "Empty file",
-			contents: "",
-			want:     nil,
+			name:       "empty file",
+			contents:   "",
+			createFile: true,
+			want:       nil,
+			wantErr:    false,
 		},
 		{
-			name:     "Single line",
-			contents: "line1",
-			want:     []string{"line1"},
+			name:       "single line",
+			contents:   "line1",
+			createFile: true,
+			want:       []string{"line1"},
+			wantErr:    false,
 		},
 		{
-			name:     "Multiple lines",
-			contents: "line1\nline2\nline3",
-			want:     []string{"line1", "line2", "line3"},
+			name:       "multiple lines",
+			contents:   "line1\nline2\nline3",
+			createFile: true,
+			want:       []string{"line1", "line2", "line3"},
+			wantErr:    false,
+		},
+		{
+			name:           "file does not exist",
+			createFile:     false,
+			wantErr:        true,
+			wantErrMessage: "failed to open",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := os.TempDir()
-			f := &file.File{Path: d + "/file"}
-			fh, err := f.Create()
-			require.Nil(err, "os.Create() error = %v", err)
+			d := t.TempDir()
+			f := &file.File{Path: d + "/file.txt"}
+			if tt.createFile {
+				fh, err := os.Create(f.Path)
+				require.Nil(err, "os.Create() error = %v", err)
 
-			_, err = fh.WriteString(tt.contents)
-			require.Nil(err, "f.WriteString() error = %v", err)
-			defer fh.Close()
+				_, err = fh.WriteString(tt.contents)
+				require.Nil(err, "f.WriteString() error = %v", err)
+				defer fh.Close()
+			}
 
 			got, err := packageListFileToSlice(f)
-			require.Nil(err, "packageListFileToSlice() error = %v", err)
-
-			assert.Equal(tt.want, got, "packageListFileToSlice() got = %v, want %v", got, tt.want)
+			if tt.wantErr {
+				require.NotNil(err, "packageListFileToSlice() error = %v", err)
+				assert.ErrorContains(err, tt.wantErrMessage, "packageListFileToSlice() error message = %v, want %v", err.Error(), tt.wantErrMessage)
+			} else {
+				assert.Nil(err, "packageListFileToSlice() error = %v", err)
+				assert.Equal(tt.want, got, "packageListFileToSlice() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
@@ -117,7 +138,7 @@ func TestPackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 			l := PackageList{
 				PackageListFiles: []*file.File{},
 			}
-			d := os.TempDir()
+			d := t.TempDir()
 			for i, line := range tt.packageListFileContents {
 				f := &file.File{Path: d + "/file" + fmt.Sprint(i) + ".txt"}
 				fh, err := f.Create()
@@ -266,7 +287,7 @@ func TestPackageList_GetPackages(t *testing.T) {
 				Packages:         tt.packagesDirectList,
 				PackageListFiles: []*file.File{},
 			}
-			d := os.TempDir()
+			d := t.TempDir()
 			for i, line := range tt.packageListFileContents {
 				f := &file.File{Path: d + "/file" + fmt.Sprint(i) + ".txt"}
 				fh, err := f.Create()
