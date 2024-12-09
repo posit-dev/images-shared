@@ -60,3 +60,11 @@ func RequireSudo() error {
 
 	return nil
 }
+
+func (l *LocalSystem) GetAltArchName() string {
+	if l.Arch == "amd64" {
+		return "x86_64"
+	}
+
+	return l.Arch
+}
