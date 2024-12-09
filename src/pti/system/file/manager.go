@@ -45,7 +45,7 @@ func Open(path string) (afero.File, error) {
 	return fh, nil
 }
 
-func MoveFile(src, dest string) error {
+func moveFile(src, dest string) error {
 	slog.Debug("Moving file from " + src + " to " + dest)
 	if err := AppFs.Rename(src, dest); err != nil {
 		return fmt.Errorf("failed to move file: %w", err)
@@ -54,7 +54,7 @@ func MoveFile(src, dest string) error {
 	return nil
 }
 
-func CopyFile(src, dest string) error {
+func copyFile(src, dest string) error {
 	slog.Debug("Copying file from " + src + " to " + dest)
 
 	sourceFileStat, err := AppFs.Stat(src)
@@ -87,7 +87,7 @@ func CopyFile(src, dest string) error {
 	return nil
 }
 
-func MoveDir(src, dest string) error {
+func moveDir(src, dest string) error {
 	src = strings.TrimSuffix(src, "/")
 	dest = strings.TrimSuffix(dest, "/")
 
@@ -104,7 +104,7 @@ func MoveDir(src, dest string) error {
 				return fmt.Errorf("failed to create directory '%s': %w", destPath, err)
 			}
 		} else {
-			err := CopyFile(path, destPath)
+			err := copyFile(path, destPath)
 			if err != nil {
 				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
 			}
@@ -122,7 +122,7 @@ func MoveDir(src, dest string) error {
 	return nil
 }
 
-func CopyDir(src, dest string) error {
+func copyDir(src, dest string) error {
 	src = strings.TrimSuffix(src, "/")
 	dest = strings.TrimSuffix(dest, "/")
 
@@ -139,7 +139,7 @@ func CopyDir(src, dest string) error {
 				return fmt.Errorf("failed to create directory '%s': %w", destPath, err)
 			}
 		} else {
-			err := CopyFile(path, destPath)
+			err := copyFile(path, destPath)
 			if err != nil {
 				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
 			}
@@ -151,6 +151,32 @@ func CopyDir(src, dest string) error {
 	}
 	slog.Debug("Copy complete")
 	return nil
+}
+
+func Copy(src, dest string) error {
+	srcStat, err := Stat(src)
+	if err != nil {
+		return fmt.Errorf("failed to stat source file '%s': %w", src, err)
+	}
+
+	if srcStat.IsDir() {
+		return copyDir(src, dest)
+	} else {
+		return copyFile(src, dest)
+	}
+}
+
+func Move(src, dest string) error {
+	srcStat, err := Stat(src)
+	if err != nil {
+		return fmt.Errorf("failed to stat source file '%s': %w", src, err)
+	}
+
+	if srcStat.IsDir() {
+		return moveDir(src, dest)
+	} else {
+		return moveFile(src, dest)
+	}
 }
 
 func DownloadFile(url string, filepath string) error {

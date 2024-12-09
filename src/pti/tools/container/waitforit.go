@@ -37,7 +37,7 @@ func InstallWaitForIt(installPath string) error {
 	s.Success("Download complete.")
 
 	slog.Debug("Installing wait-for-it script to: " + installPath)
-	if err := file.MoveFile(downloadPath, installPath); err != nil {
+	if err := file.Move(downloadPath, installPath); err != nil {
 		return fmt.Errorf("failed to install wait-for-it to '%s': %w", installPath, err)
 	}
 	slog.Debug("Setting permissions for wait-for-it script to 0755")
