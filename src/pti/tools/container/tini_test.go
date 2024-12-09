@@ -95,7 +95,7 @@ func Test_InstallTini(t *testing.T) {
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -110,7 +110,7 @@ func Test_InstallTini(t *testing.T) {
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -126,7 +126,7 @@ func Test_InstallTini(t *testing.T) {
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -141,7 +141,7 @@ func Test_InstallTini(t *testing.T) {
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
 				}
 				w.WriteHeader(http.StatusNotFound)
 			})),
