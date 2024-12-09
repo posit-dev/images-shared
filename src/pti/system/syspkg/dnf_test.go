@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestNewDnfManager(t *testing.T) {
+func Test_NewDnfManager(t *testing.T) {
 	assert := assert.New(t)
 
 	m := NewDnfManager()
@@ -24,7 +24,7 @@ func TestNewDnfManager(t *testing.T) {
 	assert.Contains(m.cleanOpts, "clean")
 }
 
-func TestDnfManager_Install(t *testing.T) {
+func Test_DnfManager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -441,7 +441,7 @@ func TestDnfManager_Install(t *testing.T) {
 	}
 }
 
-func TestDnfManager_Remove(t *testing.T) {
+func Test_DnfManager_Remove(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -649,13 +649,13 @@ func TestDnfManager_Remove(t *testing.T) {
 	}
 }
 
-func TestDnfManager_Update(t *testing.T) {
+func Test_DnfManager_Update(t *testing.T) {
 	assert := assert.New(t)
 
 	assert.Nil(NewDnfManager().Update())
 }
 
-func TestDnfManager_Upgrade(t *testing.T) {
+func Test_DnfManager_Upgrade(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -739,7 +739,7 @@ func TestDnfManager_Upgrade(t *testing.T) {
 	}
 }
 
-func TestDnfManager_Clean(t *testing.T) {
+func Test_DnfManager_Clean(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -821,7 +821,7 @@ func TestDnfManager_Clean(t *testing.T) {
 	}
 }
 
-func TestDnfManager_autoRemove(t *testing.T) {
+func Test_DnfManager_autoRemove(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {

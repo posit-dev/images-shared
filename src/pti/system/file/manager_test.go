@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestFile_IsPathExist(t *testing.T) {
+func Test_IsPathExist(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -70,7 +70,7 @@ func TestFile_IsPathExist(t *testing.T) {
 	}
 }
 
-func TestFile_Stat(t *testing.T) {
+func Test_Stat(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -134,7 +134,7 @@ func TestFile_Stat(t *testing.T) {
 	}
 }
 
-func TestFile_Create(t *testing.T) {
+func Test_Create(t *testing.T) {
 	require := require.New(t)
 
 	oldFs := AppFs
@@ -157,7 +157,7 @@ func TestFile_Create(t *testing.T) {
 	require.NoError(err, "File.Create().Close() error = %v", err)
 }
 
-func TestFile_Open(t *testing.T) {
+func Test_Open(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -184,7 +184,7 @@ func TestFile_Open(t *testing.T) {
 	require.NoError(err, "File.Open().Close() error = %v", err)
 }
 
-func TestFile_MoveFile(t *testing.T) {
+func Test_MoveFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -220,7 +220,7 @@ func TestFile_MoveFile(t *testing.T) {
 	assert.Equal("test", string(contents), "File contents = %v, want %v", string(contents), "test")
 }
 
-func TestFile_CopyFile(t *testing.T) {
+func Test_CopyFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -313,7 +313,7 @@ func TestFile_CopyFile(t *testing.T) {
 	}
 }
 
-func TestFile_DownloadFile(t *testing.T) {
+func Test_DownloadFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
