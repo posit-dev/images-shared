@@ -120,11 +120,13 @@ func (m *DnfManager) Clean() error {
 	cmd := command.NewShellCommand(m.binary, m.cleanOpts, nil, true)
 	err := cmd.Run()
 	if err != nil {
+		slog.Error("dnf clean step failed: " + err.Error())
 		return fmt.Errorf("dnf clean failed: %w", err)
 	}
 
 	err = m.autoRemove()
 	if err != nil {
+		slog.Error("dnf autoremove step failed: " + err.Error())
 		return err
 	}
 
