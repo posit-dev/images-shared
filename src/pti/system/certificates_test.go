@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestUpdateCACertificates(t *testing.T) {
+func Test_UpdateCACertificates(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {

@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestNewAptManager(t *testing.T) {
+func Test_NewAptManager(t *testing.T) {
 	assert := assert.New(t)
 
 	m := NewAptManager()
@@ -26,7 +26,7 @@ func TestNewAptManager(t *testing.T) {
 	assert.Contains(m.cleanOpts, "clean")
 }
 
-func TestAptManager_Install(t *testing.T) {
+func Test_AptManager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -443,7 +443,7 @@ func TestAptManager_Install(t *testing.T) {
 	}
 }
 
-func TestAptManager_Remove(t *testing.T) {
+func Test_AptManager_Remove(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -651,7 +651,7 @@ func TestAptManager_Remove(t *testing.T) {
 	}
 }
 
-func TestAptManager_Update(t *testing.T) {
+func Test_AptManager_Update(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -706,7 +706,7 @@ func TestAptManager_Update(t *testing.T) {
 	}
 }
 
-func TestAptManager_Upgrade(t *testing.T) {
+func Test_AptManager_Upgrade(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -796,7 +796,7 @@ func TestAptManager_Upgrade(t *testing.T) {
 	}
 }
 
-func TestAptManager_Clean(t *testing.T) {
+func Test_AptManager_Clean(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -902,7 +902,7 @@ func TestAptManager_Clean(t *testing.T) {
 	}
 }
 
-func TestAptManager_autoRemove(t *testing.T) {
+func Test_AptManager_autoRemove(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -957,7 +957,7 @@ func TestAptManager_autoRemove(t *testing.T) {
 	}
 }
 
-func TestAptManager_removePackageListCache(t *testing.T) {
+func Test_AptManager_removePackageListCache(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestPackageListFileToSlice(t *testing.T) {
+func Test_packageListFileToSlice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -80,7 +80,7 @@ func TestPackageListFileToSlice(t *testing.T) {
 	}
 }
 
-func TestPackageList_GetPackagesFromPackageListFiles(t *testing.T) {
+func Test_PackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -170,7 +170,7 @@ func TestPackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 	}
 }
 
-func TestPackageList_GetPackages(t *testing.T) {
+func Test_PackageList_GetPackages(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestNewShellCommand(t *testing.T) {
+func Test_NewShellCommand(t *testing.T) {
 	assert := assert.New(t)
 
 	type args struct {
@@ -40,7 +40,7 @@ func TestNewShellCommand(t *testing.T) {
 	}
 }
 
-func TestShellCommand_Run(t *testing.T) {
+func Test_ShellCommand_Run(t *testing.T) {
 	assert := assert.New(t)
 
 	type executorSetup struct {

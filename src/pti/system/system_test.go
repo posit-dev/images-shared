@@ -18,7 +18,7 @@ type MockSysInfo struct {
 	OS MockOSInfo
 }
 
-func TestGetLocalSystem(t *testing.T) {
+func Test_GetLocalSystem(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -88,7 +88,7 @@ type MockUser struct {
 	Uid string
 }
 
-func TestRequireSudo(t *testing.T) {
+func Test_RequireSudo(t *testing.T) {
 	tests := []struct {
 		name        string
 		currentUser MockUser
