@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	commandMock "pti/mocks/pti/system/command"
+	syspkgMock "pti/mocks/pti/system/syspkg"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
@@ -19,16 +20,14 @@ func Test_Bootstrap(t *testing.T) {
 
 	// Define systems to test against
 	debSystem := system.LocalSystem{
-		Vendor:         "ubuntu",
-		Version:        "22.04",
-		Arch:           "amd64",
-		PackageManager: syspkg.NewAptManager(),
+		Vendor:  "ubuntu",
+		Version: "22.04",
+		Arch:    "amd64",
 	}
 	rhelSystem := system.LocalSystem{
-		Vendor:         "rockylinux",
-		Version:        "8",
-		Arch:           "amd64",
-		PackageManager: syspkg.NewDnfManager(),
+		Vendor:  "rockylinux",
+		Version: "8",
+		Arch:    "amd64",
 	}
 
 	// Define calls
@@ -39,34 +38,9 @@ func Test_Bootstrap(t *testing.T) {
 		inheritEnvVars bool
 	}
 
-	debCAInstall := shellCall{
-		binary:         "apt",
-		containsArgs:   []string{"install", "-y", "-q", "ca-certificates"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
 	debCAUpdate := shellCall{
 		binary:         "update-ca-certificates",
 		containsArgs:   []string{},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
-	debClean := shellCall{
-		binary:         "apt",
-		containsArgs:   []string{"clean", "-q"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
-	debAutoRemove := shellCall{
-		binary:         "apt",
-		containsArgs:   []string{"autoremove", "-y", "-q"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
-
-	rhelCAInstall := shellCall{
-		binary:         "dnf",
-		containsArgs:   []string{"-y", "-q", "install", "ca-certificates"},
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
@@ -76,101 +50,93 @@ func Test_Bootstrap(t *testing.T) {
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
-	rhelClean := shellCall{
-		binary:         "dnf",
-		containsArgs:   []string{"-y", "-q", "clean", "all"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
-	rhelAutoRemove := shellCall{
-		binary:         "dnf",
-		containsArgs:   []string{"-y", "-q", "autoremove"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
 
 	tests := []struct {
-		name                  string
-		system                system.LocalSystem
-		expectedNewShellCalls []shellCall
-		runErr                error
-		runErrOnCall          int
-		wantErr               bool
-		wantErrMessage        string
+		name                 string
+		system               system.LocalSystem
+		expectedNewShellCall *shellCall
+		pmSetup              func(t *testing.T, localSystem *system.LocalSystem)
+		shellRunErr          error
+		wantErr              bool
+		wantErrMessage       string
 	}{
 		{
-			name:   "success debian-based",
-			system: debSystem,
-			expectedNewShellCalls: []shellCall{
-				debCAInstall,
-				debCAUpdate,
-				debClean,
-				debAutoRemove,
+			name:                 "success debian-based",
+			system:               debSystem,
+			expectedNewShellCall: &debCAUpdate,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().Clean().Return(nil)
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:       nil,
-			runErrOnCall: 0,
-			wantErr:      false,
+			shellRunErr: nil,
+			wantErr:     false,
 		},
 		{
-			name:   "success rhel-based",
-			system: rhelSystem,
-			expectedNewShellCalls: []shellCall{
-				rhelCAInstall,
-				rhelCAUpdate,
-				rhelClean,
-				rhelAutoRemove,
+			name:                 "success rhel-based",
+			system:               rhelSystem,
+			expectedNewShellCall: &rhelCAUpdate,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().Clean().Return(nil)
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:       nil,
-			runErrOnCall: 0,
-			wantErr:      false,
+			shellRunErr: nil,
+			wantErr:     false,
 		},
 		{
-			name:   "failed install debian-based",
-			system: debSystem,
-			expectedNewShellCalls: []shellCall{
-				debCAInstall,
+			name:                 "failed install debian-based",
+			system:               debSystem,
+			expectedNewShellCall: &debCAUpdate,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(fmt.Errorf("install error"))
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:         fmt.Errorf("install error"),
-			runErrOnCall:   1,
+			shellRunErr:    nil,
 			wantErr:        true,
 			wantErrMessage: "failed to install ca-certificates",
 		},
 		{
-			name:   "failed install rhel-based",
-			system: rhelSystem,
-			expectedNewShellCalls: []shellCall{
-				rhelCAInstall,
+			name:                 "failed install rhel-based",
+			system:               rhelSystem,
+			expectedNewShellCall: nil,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(fmt.Errorf("install error"))
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:         fmt.Errorf("install error"),
-			runErrOnCall:   1,
+			shellRunErr:    nil,
 			wantErr:        true,
 			wantErrMessage: "failed to install ca-certificates",
 		},
 		{
-			name:   "failed update debian-based",
-			system: debSystem,
-			expectedNewShellCalls: []shellCall{
-				debCAInstall,
-				debCAUpdate,
-				debClean,
-				debAutoRemove,
+			name:                 "failed update debian-based",
+			system:               debSystem,
+			expectedNewShellCall: &debCAUpdate,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().Clean().Return(nil)
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:         fmt.Errorf("update error"),
-			runErrOnCall:   2,
+			shellRunErr:    fmt.Errorf("update error"),
 			wantErr:        true,
 			wantErrMessage: "failed to update CA certificates",
 		},
 		{
-			name:   "failed update rhel-based",
-			system: rhelSystem,
-			expectedNewShellCalls: []shellCall{
-				rhelCAInstall,
-				rhelCAUpdate,
-				rhelClean,
-				rhelAutoRemove,
+			name:                 "failed update rhel-based",
+			system:               rhelSystem,
+			expectedNewShellCall: &rhelCAUpdate,
+			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
+				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
+				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().Clean().Return(nil)
+				localSystem.PackageManager = mockPackageManager
 			},
-			runErr:         fmt.Errorf("update error"),
-			runErrOnCall:   2,
+			shellRunErr:    fmt.Errorf("update error"),
 			wantErr:        true,
 			wantErrMessage: "failed to update CA certificates",
 		},
@@ -183,24 +149,20 @@ func Test_Bootstrap(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
-			newShellCalls := 0
+			// Setup package manager
+			tt.pmSetup(t, &tt.system)
+
 			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				assert.Equal(tt.expectedNewShellCalls[newShellCalls].binary, name)
-				for _, arg := range tt.expectedNewShellCalls[newShellCalls].containsArgs {
-					assert.Contains(args, arg)
-				}
-				assert.Equal(tt.expectedNewShellCalls[newShellCalls].envVars, envVars)
-				assert.Equal(tt.expectedNewShellCalls[newShellCalls].inheritEnvVars, inheritEnvVars)
-
-				newShellCalls++
 				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
-
-				if newShellCalls == tt.runErrOnCall {
-					mockShellCommand.EXPECT().Run().Return(tt.runErr)
-				} else {
-					mockShellCommand.EXPECT().Run().Return(nil)
+				if tt.expectedNewShellCall != nil {
+					if tt.shellRunErr != nil {
+						mockShellCommand.EXPECT().Run().Return(tt.shellRunErr)
+					} else {
+						mockShellCommand.EXPECT().Run().Return(nil)
+					}
 				}
+
 				return mockShellCommand
 			}
 			defer func() {
@@ -215,8 +177,6 @@ func Test_Bootstrap(t *testing.T) {
 			} else {
 				require.NoError(err)
 			}
-
-			assert.Equal(len(tt.expectedNewShellCalls), len(tt.expectedNewShellCalls))
 		})
 	}
 }

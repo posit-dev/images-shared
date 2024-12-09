@@ -4,3 +4,6 @@ packages:
   pti/system/command:
     config:
       all: true
+  pti/system/syspkg:
+    config:
+      all: true
