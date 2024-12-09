@@ -57,7 +57,7 @@ func InstallTini(l *system.LocalSystem, installPath string) error {
 	// TODO: Implement checksum validation
 
 	slog.Debug("Installing tini binary to: " + installPath)
-	if err := file.MoveFile(downloadPath, installPath); err != nil {
+	if err := file.Move(downloadPath, installPath); err != nil {
 		return fmt.Errorf("failed to install tini to '%s': %w", installPath, err)
 	}
 	slog.Debug("Setting permissions for tini binary to 0755")

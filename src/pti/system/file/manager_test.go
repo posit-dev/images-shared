@@ -184,7 +184,7 @@ func Test_Open(t *testing.T) {
 	require.NoError(err, "File.Open().Close() error = %v", err)
 }
 
-func Test_MoveFile(t *testing.T) {
+func Test_moveFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -204,7 +204,7 @@ func Test_MoveFile(t *testing.T) {
 	tmpFile.Close()
 
 	destTmpFile := tmpDir + "/newfile"
-	err = MoveFile(tmpFileName, destTmpFile)
+	err = moveFile(tmpFileName, destTmpFile)
 
 	require.Nil(err, "File.MoveFile() error = %v", err)
 	exists, err := IsPathExist(tmpFileName)
@@ -220,7 +220,7 @@ func Test_MoveFile(t *testing.T) {
 	assert.Equal("test", string(contents), "File contents = %v, want %v", string(contents), "test")
 }
 
-func Test_CopyFile(t *testing.T) {
+func Test_copyFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -289,7 +289,7 @@ func Test_CopyFile(t *testing.T) {
 			require.Nil(err, "TempDir() error = %v", err)
 			destTmpFile := destTmpDir + "/newfile"
 
-			err = CopyFile(fileName, destTmpFile)
+			err = copyFile(fileName, destTmpFile)
 
 			if tt.wantErr {
 				require.Error(err, "File.CopyFile() error = %v", err)
@@ -313,7 +313,7 @@ func Test_CopyFile(t *testing.T) {
 	}
 }
 
-func Test_MoveDir(t *testing.T) {
+func Test_moveDir(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -389,7 +389,7 @@ func Test_MoveDir(t *testing.T) {
 
 			tt.setupFs(AppFs, srcDir)
 
-			err = MoveDir(srcDir, destDir)
+			err = moveDir(srcDir, destDir)
 
 			require.NoError(err, "File.MoveDir() error = %v", err)
 
@@ -399,7 +399,7 @@ func Test_MoveDir(t *testing.T) {
 	}
 }
 
-func Test_CopyDir(t *testing.T) {
+func Test_copyDir(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -471,7 +471,7 @@ func Test_CopyDir(t *testing.T) {
 
 			tt.setupFs(AppFs, srcDir)
 
-			err = CopyDir(srcDir, destDir)
+			err = copyDir(srcDir, destDir)
 
 			require.NoError(err, "File.MoveDir() error = %v", err)
 

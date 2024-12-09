@@ -110,7 +110,7 @@ func CopyProDriversOdbcInstIni() error {
 	// Backup original odbcinst.ini
 	if exists {
 		slog.Info("Backing up original odbcinst.ini to " + fmt.Sprintf("%s.bak", odbcInstIniPath))
-		if err := file.MoveFile(odbcInstIniPath, fmt.Sprintf("%s.bak", odbcInstIniPath)); err != nil {
+		if err := file.Move(odbcInstIniPath, fmt.Sprintf("%s.bak", odbcInstIniPath)); err != nil {
 			slog.Error("Failed to backup odbcinst.ini, Pro Drivers odbcinst.ini.sample will not be copied.")
 			return fmt.Errorf("unable to backup odbcinst.ini: %w", err)
 		}
@@ -118,9 +118,9 @@ func CopyProDriversOdbcInstIni() error {
 
 	// Copy the odbcinst.ini.sample from the Posit Drivers package
 	slog.Info("Copying Posit Pro Drivers odbcinst.ini.sample to " + odbcInstIniPath)
-	if err := file.CopyFile(positDriversOdbcInstIniPath, odbcInstIniPath); err != nil {
+	if err := file.Copy(positDriversOdbcInstIniPath, odbcInstIniPath); err != nil {
 		slog.Error(fmt.Sprintf("Failed to copy %s to %s. Original odbcinst.ini will be restored.", positDriversOdbcInstIniPath, odbcInstIniPath))
-		err := file.MoveFile(fmt.Sprintf("%s.bak", odbcInstIniPath), odbcInstIniPath)
+		err := file.Move(fmt.Sprintf("%s.bak", odbcInstIniPath), odbcInstIniPath)
 		if err != nil {
 			slog.Error("Failed to restore original odbcinst.ini.")
 		}
