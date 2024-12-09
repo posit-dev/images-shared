@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 )
 
 var AppFs = afero.NewOsFs()
@@ -83,6 +84,72 @@ func CopyFile(src, dest string) error {
 
 	slog.Debug("Copy complete")
 
+	return nil
+}
+
+func MoveDir(src, dest string) error {
+	src = strings.TrimSuffix(src, "/")
+	dest = strings.TrimSuffix(dest, "/")
+
+	slog.Debug("Moving directory from " + src + " to " + dest)
+	err := afero.Walk(AppFs, src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed to walk directory '%s': %w", src, err)
+		}
+		relPath := strings.TrimPrefix(path, src)
+		destPath := dest + "/" + relPath
+		if info.IsDir() {
+			err := AppFs.MkdirAll(destPath, info.Mode())
+			if err != nil {
+				return fmt.Errorf("failed to create directory '%s': %w", destPath, err)
+			}
+		} else {
+			err := CopyFile(path, destPath)
+			if err != nil {
+				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to move directory '%s' to '%s': %w", src, dest, err)
+	}
+	err = AppFs.RemoveAll(src)
+	if err != nil {
+		return fmt.Errorf("failed to remove source directory '%s' after move: %w", src, err)
+	}
+	slog.Debug("Move complete")
+	return nil
+}
+
+func CopyDir(src, dest string) error {
+	src = strings.TrimSuffix(src, "/")
+	dest = strings.TrimSuffix(dest, "/")
+
+	slog.Debug("Moving directory from " + src + " to " + dest)
+	err := afero.Walk(AppFs, src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed to walk directory '%s': %w", src, err)
+		}
+		relPath := strings.TrimPrefix(path, src)
+		destPath := dest + "/" + relPath
+		if info.IsDir() {
+			err := AppFs.MkdirAll(destPath, info.Mode())
+			if err != nil {
+				return fmt.Errorf("failed to create directory '%s': %w", destPath, err)
+			}
+		} else {
+			err := CopyFile(path, destPath)
+			if err != nil {
+				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to move directory '%s' to '%s': %w", src, dest, err)
+	}
+	slog.Debug("Copy complete")
 	return nil
 }
 

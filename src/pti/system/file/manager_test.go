@@ -313,6 +313,174 @@ func Test_CopyFile(t *testing.T) {
 	}
 }
 
+func Test_MoveDir(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	createTestFile := func(fs afero.Fs, path, contents string) {
+		fh, err := fs.Create(path)
+		require.NoError(err, "Create() error = %v", err)
+		_, err = fh.WriteString(contents)
+		require.NoError(err, "WriteString() error = %v", err)
+	}
+
+	tests := []struct {
+		name       string
+		setupFs    func(fs afero.Fs, dir string)
+		validateFs func(fs afero.Fs, src, dest string) error
+	}{
+		{
+			name: "success",
+			setupFs: func(fs afero.Fs, dir string) {
+				createTestFile(fs, dir+"/file1", "test1")
+				createTestFile(fs, dir+"/file2", "test2")
+				err := fs.MkdirAll(dir+"/subdir", 0755)
+				require.NoError(err, "MkdirAll() error = %v", err)
+				createTestFile(fs, dir+"/subdir1/file3", "test3")
+				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0755)
+				require.NoError(err, "MkdirAll() error = %v", err)
+				createTestFile(fs, dir+"/subdir1/subdir2/file4", "test4")
+			},
+			validateFs: func(fs afero.Fs, src, dest string) error {
+				_, err := fs.Stat(src)
+				require.Error(err, "Stat() error = %v", err)
+				exists, err := IsPathExist(src)
+				require.NoError(err, "IsPathExist() error = %v", err)
+				assert.False(exists, "source directory exists")
+
+				_, err = fs.Stat(dest)
+				require.NoError(err, "Stat() error = %v", err)
+				exists, err = IsPathExist(dest)
+				require.NoError(err, "IsPathExist() error = %v", err)
+				assert.True(exists, "destination directory does not exist")
+
+				contents, err := afero.ReadFile(fs, dest+"/file1")
+				require.NoError(err, "ReadFile() error = %v", err)
+				assert.Equal("test1", string(contents), "File contents = %v, want %v", string(contents), "test1")
+
+				contents, err = afero.ReadFile(fs, dest+"/file2")
+				require.NoError(err, "ReadFile() error = %v", err)
+				assert.Equal("test2", string(contents), "File contents = %v, want %v", string(contents), "test2")
+
+				contents, err = afero.ReadFile(fs, dest+"/subdir1/file3")
+				require.NoError(err, "ReadFile() error = %v", err)
+				assert.Equal("test3", string(contents), "File contents = %v, want %v", string(contents), "test3")
+
+				contents, err = afero.ReadFile(fs, dest+"/subdir1/subdir2/file4")
+				require.NoError(err, "ReadFile() error = %v", err)
+				assert.Equal("test4", string(contents), "File contents = %v, want %v", string(contents), "test4")
+
+				return nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := AppFs
+			AppFs = afero.NewMemMapFs()
+			defer func() {
+				AppFs = oldFs
+			}()
+
+			srcDir, err := afero.TempDir(AppFs, "", "src")
+			require.NoError(err, "TempDir() error = %v", err)
+			destDir, err := afero.TempDir(AppFs, "", "dest")
+			require.NoError(err, "TempDir() error = %v", err)
+
+			tt.setupFs(AppFs, srcDir)
+
+			err = MoveDir(srcDir, destDir)
+
+			require.NoError(err, "File.MoveDir() error = %v", err)
+
+			err = tt.validateFs(AppFs, srcDir, destDir)
+			require.NoError(err, "validateFs() error = %v", err)
+		})
+	}
+}
+
+func Test_CopyDir(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	createTestFile := func(fs afero.Fs, path, contents string) {
+		fh, err := fs.Create(path)
+		require.NoError(err, "Create() error = %v", err)
+		_, err = fh.WriteString(contents)
+		require.NoError(err, "WriteString() error = %v", err)
+	}
+
+	tests := []struct {
+		name       string
+		setupFs    func(fs afero.Fs, dir string)
+		validateFs func(fs afero.Fs, src, dest string) error
+	}{
+		{
+			name: "success",
+			setupFs: func(fs afero.Fs, dir string) {
+				createTestFile(fs, dir+"/file1", "test1")
+				createTestFile(fs, dir+"/file2", "test2")
+				err := fs.MkdirAll(dir+"/subdir", 0755)
+				require.NoError(err, "MkdirAll() error = %v", err)
+				createTestFile(fs, dir+"/subdir1/file3", "test3")
+				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0755)
+				require.NoError(err, "MkdirAll() error = %v", err)
+				createTestFile(fs, dir+"/subdir1/subdir2/file4", "test4")
+			},
+			validateFs: func(fs afero.Fs, src, dest string) error {
+				for _, path := range []string{dest, src} {
+					_, err := fs.Stat(path)
+					require.NoError(err, "Stat() error = %v", err)
+					exists, err := IsPathExist(path)
+					require.NoError(err, "IsPathExist() error = %v", err)
+					assert.True(exists, "destination directory does not exist")
+
+					contents, err := afero.ReadFile(fs, path+"/file1")
+					require.NoError(err, "ReadFile() error = %v", err)
+					assert.Equal("test1", string(contents), "File contents = %v, want %v", string(contents), "test1")
+
+					contents, err = afero.ReadFile(fs, path+"/file2")
+					require.NoError(err, "ReadFile() error = %v", err)
+					assert.Equal("test2", string(contents), "File contents = %v, want %v", string(contents), "test2")
+
+					contents, err = afero.ReadFile(fs, path+"/subdir1/file3")
+					require.NoError(err, "ReadFile() error = %v", err)
+					assert.Equal("test3", string(contents), "File contents = %v, want %v", string(contents), "test3")
+
+					contents, err = afero.ReadFile(fs, path+"/subdir1/subdir2/file4")
+					require.NoError(err, "ReadFile() error = %v", err)
+					assert.Equal("test4", string(contents), "File contents = %v, want %v", string(contents), "test4")
+				}
+
+				return nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := AppFs
+			AppFs = afero.NewMemMapFs()
+			defer func() {
+				AppFs = oldFs
+			}()
+
+			srcDir, err := afero.TempDir(AppFs, "", "src")
+			require.NoError(err, "TempDir() error = %v", err)
+			destDir, err := afero.TempDir(AppFs, "", "dest")
+			require.NoError(err, "TempDir() error = %v", err)
+
+			tt.setupFs(AppFs, srcDir)
+
+			err = CopyDir(srcDir, destDir)
+
+			require.NoError(err, "File.MoveDir() error = %v", err)
+
+			err = tt.validateFs(AppFs, srcDir, destDir)
+			require.NoError(err, "validateFs() error = %v", err)
+		})
+	}
+}
+
 func Test_DownloadFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
