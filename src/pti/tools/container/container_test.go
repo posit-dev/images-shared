@@ -2,14 +2,18 @@ package container
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	commandMock "pti/mocks/pti/system/command"
 	"pti/system"
+	"pti/system/command"
+	"pti/system/file"
 	"pti/system/syspkg"
 	"testing"
 )
 
-func TestBootstrap(t *testing.T) {
+func Test_Bootstrap(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -21,7 +25,7 @@ func TestBootstrap(t *testing.T) {
 		PackageManager: syspkg.NewAptManager(),
 	}
 	rhelSystem := system.LocalSystem{
-		Vendor:         "rocklinux",
+		Vendor:         "rockylinux",
 		Version:        "8",
 		Arch:           "amd64",
 		PackageManager: syspkg.NewDnfManager(),
@@ -47,6 +51,18 @@ func TestBootstrap(t *testing.T) {
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
+	debClean := shellCall{
+		binary:         "apt",
+		containsArgs:   []string{"clean", "-q"},
+		envVars:        nil,
+		inheritEnvVars: true,
+	}
+	debAutoRemove := shellCall{
+		binary:         "apt",
+		containsArgs:   []string{"autoremove", "-y", "-q"},
+		envVars:        nil,
+		inheritEnvVars: true,
+	}
 
 	rhelCAInstall := shellCall{
 		binary:         "dnf",
@@ -57,6 +73,18 @@ func TestBootstrap(t *testing.T) {
 	rhelCAUpdate := shellCall{
 		binary:         "update-ca-trust",
 		containsArgs:   []string{},
+		envVars:        nil,
+		inheritEnvVars: true,
+	}
+	rhelClean := shellCall{
+		binary:         "dnf",
+		containsArgs:   []string{"-y", "-q", "clean", "all"},
+		envVars:        nil,
+		inheritEnvVars: true,
+	}
+	rhelAutoRemove := shellCall{
+		binary:         "dnf",
+		containsArgs:   []string{"-y", "-q", "autoremove"},
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
@@ -76,6 +104,8 @@ func TestBootstrap(t *testing.T) {
 			expectedNewShellCalls: []shellCall{
 				debCAInstall,
 				debCAUpdate,
+				debClean,
+				debAutoRemove,
 			},
 			runErr:       nil,
 			runErrOnCall: 0,
@@ -87,6 +117,8 @@ func TestBootstrap(t *testing.T) {
 			expectedNewShellCalls: []shellCall{
 				rhelCAInstall,
 				rhelCAUpdate,
+				rhelClean,
+				rhelAutoRemove,
 			},
 			runErr:       nil,
 			runErrOnCall: 0,
@@ -120,6 +152,8 @@ func TestBootstrap(t *testing.T) {
 			expectedNewShellCalls: []shellCall{
 				debCAInstall,
 				debCAUpdate,
+				debClean,
+				debAutoRemove,
 			},
 			runErr:         fmt.Errorf("update error"),
 			runErrOnCall:   2,
@@ -132,6 +166,8 @@ func TestBootstrap(t *testing.T) {
 			expectedNewShellCalls: []shellCall{
 				rhelCAInstall,
 				rhelCAUpdate,
+				rhelClean,
+				rhelAutoRemove,
 			},
 			runErr:         fmt.Errorf("update error"),
 			runErrOnCall:   2,
@@ -141,7 +177,46 @@ func TestBootstrap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
 
+			newShellCalls := 0
+			oldNSC := command.NewShellCommand
+			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
+				assert.Equal(tt.expectedNewShellCalls[newShellCalls].binary, name)
+				for _, arg := range tt.expectedNewShellCalls[newShellCalls].containsArgs {
+					assert.Contains(args, arg)
+				}
+				assert.Equal(tt.expectedNewShellCalls[newShellCalls].envVars, envVars)
+				assert.Equal(tt.expectedNewShellCalls[newShellCalls].inheritEnvVars, inheritEnvVars)
+
+				newShellCalls++
+				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
+
+				if newShellCalls == tt.runErrOnCall {
+					mockShellCommand.EXPECT().Run().Return(tt.runErr)
+				} else {
+					mockShellCommand.EXPECT().Run().Return(nil)
+				}
+				return mockShellCommand
+			}
+			defer func() {
+				command.NewShellCommand = oldNSC
+			}()
+
+			// Run test
+			err := Bootstrap(&tt.system)
+			if tt.wantErr {
+				require.Error(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				require.NoError(err)
+			}
+
+			assert.Equal(len(tt.expectedNewShellCalls), len(tt.expectedNewShellCalls))
 		})
 	}
 }

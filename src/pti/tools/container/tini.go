@@ -5,7 +5,6 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/spf13/afero"
 	"log/slog"
-	"os"
 	"pti/system"
 	"pti/system/file"
 )
@@ -62,7 +61,7 @@ func InstallTini(l *system.LocalSystem, installPath string) error {
 		return fmt.Errorf("failed to install tini to '%s': %w", installPath, err)
 	}
 	slog.Debug("Setting permissions for tini binary to 0755")
-	if err := os.Chmod(installPath, 0755); err != nil {
+	if err := file.AppFs.Chmod(installPath, 0755); err != nil {
 		return fmt.Errorf("failed to set permissions for %s to 0755: %w", installPath, err)
 	}
 	slog.Info("tini installed successfully to " + installPath)

@@ -5,11 +5,10 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/spf13/afero"
 	"log/slog"
-	"os"
 	"pti/system/file"
 )
 
-const waitForItDownloadUrl = "https://cdn.posit.co/platform/wait-for-it/wait-for-it.sh"
+var waitForItDownloadUrl = "https://cdn.posit.co/platform/wait-for-it/wait-for-it.sh"
 
 func InstallWaitForIt(installPath string) error {
 	s, _ := pterm.DefaultSpinner.Start("Downloading wait-for-it...")
@@ -42,7 +41,7 @@ func InstallWaitForIt(installPath string) error {
 		return fmt.Errorf("failed to install wait-for-it to '%s': %w", installPath, err)
 	}
 	slog.Debug("Setting permissions for wait-for-it script to 0755")
-	if err := os.Chmod(installPath, 0755); err != nil {
+	if err := file.AppFs.Chmod(installPath, 0755); err != nil {
 		return fmt.Errorf("failed to set permissions for %s to 0755: %w", installPath, err)
 	}
 	slog.Info("wait-for-it installed successfully to " + installPath)
