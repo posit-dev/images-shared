@@ -14,6 +14,7 @@ type PackageList struct {
 
 type SystemPackageManager interface {
 	GetBin() string
+	GetPackageExtension() string
 	Install(list *PackageList) error
 	Remove(list *PackageList) error
 	Update() error

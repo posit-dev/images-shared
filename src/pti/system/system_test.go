@@ -127,3 +127,33 @@ func Test_RequireSudo(t *testing.T) {
 		})
 	}
 }
+
+func Test_LocalSystem_GetAltArchName(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		name string
+		arch string
+		want string
+	}{
+		{
+			name: "test amd64",
+			arch: "amd64",
+			want: "x86_64",
+		},
+		{
+			name: "test arm64",
+			arch: "arm64",
+			want: "arm64",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ls := &LocalSystem{
+				Arch: tt.arch,
+			}
+			got := ls.GetAltArchName()
+			assert.Equal(tt.want, got, "GetAltArchName() = %v, want %v", got, tt.want)
+		})
+	}
+}

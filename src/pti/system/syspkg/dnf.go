@@ -32,6 +32,10 @@ func (m *DnfManager) GetBin() string {
 	return m.binary
 }
 
+func (m *DnfManager) GetPackageExtension() string {
+	return ".rpm"
+}
+
 func (m *DnfManager) Install(list *PackageList) error {
 	packagesToInstall, err := list.GetPackages()
 	if err != nil {

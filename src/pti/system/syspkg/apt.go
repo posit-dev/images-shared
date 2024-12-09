@@ -37,6 +37,10 @@ func (m *AptManager) GetBin() string {
 	return m.binary
 }
 
+func (m *AptManager) GetPackageExtension() string {
+	return ".deb"
+}
+
 func (m *AptManager) Install(list *PackageList) error {
 	packagesToInstall, err := list.GetPackages()
 	if err != nil {
