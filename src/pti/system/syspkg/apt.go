@@ -134,16 +134,19 @@ func (m *AptManager) Clean() error {
 	cmd := command.NewShellCommand(m.binary, m.cleanOpts, nil, true)
 	err := cmd.Run()
 	if err != nil {
+		slog.Error("apt clean step failed: " + err.Error())
 		return fmt.Errorf("apt clean failed: %w", err)
 	}
 
 	err = m.autoRemove()
 	if err != nil {
+		slog.Error("apt autoremove step failed: " + err.Error())
 		return err
 	}
 
 	err = m.removePackageListCache()
 	if err != nil {
+		slog.Error("failed to remove apt lists (/var/lib/apt/lists) from file system: " + err.Error())
 		return err
 	}
 

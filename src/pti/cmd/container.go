@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/urfave/cli/v2"
 	"pti/system"
-	"pti/tools"
+	container2 "pti/tools/container"
 )
 
 func ContainerInstallTini(cCtx *cli.Context) error {
@@ -14,7 +14,7 @@ func ContainerInstallTini(cCtx *cli.Context) error {
 		installPath = "/usr/bin/tini"
 	}
 
-	return tools.InstallTini(installPath)
+	return container2.InstallTini(installPath)
 }
 
 func ContainerInstallWaitForIt(cCtx *cli.Context) error {
@@ -25,5 +25,5 @@ func ContainerInstallWaitForIt(cCtx *cli.Context) error {
 		installPath = "/usr/bin/wait-for-it"
 	}
 
-	return tools.InstallWaitForIt(installPath)
+	return container2.InstallWaitForIt(installPath)
 }
