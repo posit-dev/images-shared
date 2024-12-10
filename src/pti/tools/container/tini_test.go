@@ -70,7 +70,7 @@ func Test_getTiniDownloadUrl(t *testing.T) {
 	}
 }
 
-func Test_Tini_Installed(t *testing.T) {
+func Test_TiniManager_Installed(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -144,7 +144,7 @@ func Test_Tini_Installed(t *testing.T) {
 	}
 }
 
-func Test_Tini_Install(t *testing.T) {
+func Test_TiniManager_Install(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -157,16 +157,38 @@ func Test_Tini_Install(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
+		setupFs        func(fs afero.Fs)
 		srv            *httptest.Server
 		wantErr        bool
 		wantErrMessage string
 	}{
+		{
+			name: "already installed",
+			args: args{
+				arch:        "amd64",
+				installPath: "/tini",
+			},
+			setupFs: func(fs afero.Fs) {
+				_, err := fs.Create("/tini")
+				require.NoError(err)
+			},
+			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(successResponse))
+			})),
+			wantErr:        true,
+			wantErrMessage: "tini is already installed",
+		},
 		{
 			name: "success",
 			args: args{
 				arch:        "amd64",
 				installPath: "/tini",
 			},
+			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
 					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
@@ -182,6 +204,7 @@ func Test_Tini_Install(t *testing.T) {
 				arch:        "",
 				installPath: "",
 			},
+			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
 					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
@@ -198,6 +221,7 @@ func Test_Tini_Install(t *testing.T) {
 				arch:        "amd64",
 				installPath: "",
 			},
+			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
 					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
@@ -213,6 +237,7 @@ func Test_Tini_Install(t *testing.T) {
 				arch:        "amd64",
 				installPath: "",
 			},
+			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
 					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
@@ -231,6 +256,8 @@ func Test_Tini_Install(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
+			tt.setupFs(file.AppFs)
+
 			oldUrl := tiniDownloadUrl
 			tiniDownloadUrl = tt.srv.URL + "/platform/tini/v%s/tini-%s"
 			defer func() {
@@ -238,7 +265,7 @@ func Test_Tini_Install(t *testing.T) {
 				tt.srv.Close()
 			}()
 
-			m := NewTini(&system.LocalSystem{Arch: tt.args.arch}, "", tt.args.installPath)
+			m := NewTiniManager(&system.LocalSystem{Arch: tt.args.arch}, "", tt.args.installPath)
 
 			err := m.Install()
 			if tt.wantErr {
@@ -269,7 +296,7 @@ func Test_Tini_Install(t *testing.T) {
 	}
 }
 
-func Test_Tini_Update(t *testing.T) {
+func Test_TiniManager_Update(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -288,10 +315,30 @@ func Test_Tini_Update(t *testing.T) {
 		wantErrMessage string
 	}{
 		{
-			name: "success",
+			name: "not installed",
 			args: args{
 				arch:        "amd64",
 				installPath: "/tini",
+			},
+			setupFs: func(fs afero.Fs) {},
+			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
+					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(successResponse))
+			})),
+			wantErr: false,
+		},
+		{
+			name: "reinstall",
+			args: args{
+				arch:        "amd64",
+				installPath: "/tini",
+			},
+			setupFs: func(fs afero.Fs) {
+				err := afero.WriteFile(fs, "/tini", []byte("old tini"), 0755)
+				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
@@ -303,10 +350,14 @@ func Test_Tini_Update(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "fail with no arch given",
+			name: "path is directory",
 			args: args{
-				arch:        "",
-				installPath: "",
+				arch:        "amd64",
+				installPath: "/tini",
+			},
+			setupFs: func(fs afero.Fs) {
+				err := fs.MkdirAll("/tini", 0755)
+				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
@@ -316,22 +367,7 @@ func Test_Tini_Update(t *testing.T) {
 				w.Write([]byte(successResponse))
 			})),
 			wantErr:        true,
-			wantErrMessage: "unable to determine tini download url",
-		},
-		{
-			name: "success with no installPath given",
-			args: args{
-				arch:        "amd64",
-				installPath: "",
-			},
-			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
-				}
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(successResponse))
-			})),
-			wantErr: false,
+			wantErrMessage: "failed to check for existing tini installation: '/tini' is not a file",
 		},
 		{
 			name: "fail on bad response",
@@ -339,6 +375,7 @@ func Test_Tini_Update(t *testing.T) {
 				arch:        "amd64",
 				installPath: "",
 			},
+			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
 					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
@@ -357,6 +394,8 @@ func Test_Tini_Update(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
+			tt.setupFs(file.AppFs)
+
 			oldUrl := tiniDownloadUrl
 			tiniDownloadUrl = tt.srv.URL + "/platform/tini/v%s/tini-%s"
 			defer func() {
@@ -364,9 +403,9 @@ func Test_Tini_Update(t *testing.T) {
 				tt.srv.Close()
 			}()
 
-			m := NewTini(&system.LocalSystem{Arch: tt.args.arch}, "", tt.args.installPath)
+			m := NewTiniManager(&system.LocalSystem{Arch: tt.args.arch}, "", tt.args.installPath)
 
-			err := m.Install()
+			err := m.Update()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -395,7 +434,7 @@ func Test_Tini_Update(t *testing.T) {
 	}
 }
 
-func Test_Tini_Remove(t *testing.T) {
+func Test_TiniManager_Remove(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 

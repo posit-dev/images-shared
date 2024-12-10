@@ -19,7 +19,7 @@ type TiniManager struct {
 	InstallPath string
 }
 
-func NewTini(l *system.LocalSystem, version, installPath string) *TiniManager {
+func NewTiniManager(l *system.LocalSystem, version, installPath string) *TiniManager {
 	if version == "" {
 		version = tiniVersion
 	}
@@ -67,7 +67,7 @@ func (t *TiniManager) Install() error {
 	}
 	if installed {
 		slog.Info("tini is already installed")
-		return nil
+		return fmt.Errorf("tini is already installed")
 	}
 
 	s, _ := pterm.DefaultSpinner.Start("Downloading tini...")
@@ -116,14 +116,14 @@ func (t *TiniManager) Update() error {
 	slog.Info("Checking for existing tini installation")
 	installed, err := t.Installed()
 	if err != nil {
-		return fmt.Errorf("failed to check for existing tini: %w", err)
+		return fmt.Errorf("failed to check for existing tini installation: %w", err)
 	}
 
 	if installed {
 		slog.Info("Existing tini installation found")
 		err := t.Remove()
 		if err != nil {
-			return fmt.Errorf("failed to remove existing tini: %w", err)
+			return fmt.Errorf("failed to remove existing tini installation: %w", err)
 		}
 	} else {
 		slog.Info("tini is not installed")
@@ -138,7 +138,7 @@ func (t *TiniManager) Remove() error {
 		return fmt.Errorf("failed to check for existing tini: %w", err)
 	}
 	if !installed {
-		slog.Warn("tini is not installed")
+		slog.Info("tini is not installed")
 		return nil
 	}
 
