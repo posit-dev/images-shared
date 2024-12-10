@@ -5,6 +5,10 @@ type ToolManager interface {
 	Install() error
 	Update() error
 	Remove() error
-	InstallPackage() error
-	RemovePackage() error
+}
+
+type ToolPackageManager interface {
+	InstallPackage(string, []string) error
+	UpdatePackage(string, []string) error
+	RemovePackage(string, []string) error
 }

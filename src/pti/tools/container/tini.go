@@ -14,7 +14,7 @@ const tiniVersion = "0.19.0"
 var tiniDownloadUrl = "https://cdn.posit.co/platform/tini/v%s/tini-%s"
 
 type TiniManager struct {
-	system.LocalSystem
+	*system.LocalSystem
 	Version     string
 	InstallPath string
 }
@@ -27,7 +27,7 @@ func NewTiniManager(l *system.LocalSystem, version, installPath string) *TiniMan
 		installPath = "/usr/local/bin/tini"
 	}
 	return &TiniManager{
-		LocalSystem: *l,
+		LocalSystem: l,
 		Version:     version,
 		InstallPath: installPath,
 	}
@@ -43,25 +43,25 @@ func getTiniDownloadUrl(version, arch string) (string, error) {
 	return fmt.Sprintf(tiniDownloadUrl, version, arch), nil
 }
 
-func (t *TiniManager) Installed() (bool, error) {
-	exists, err := file.IsPathExist(t.InstallPath)
+func (m *TiniManager) Installed() (bool, error) {
+	exists, err := file.IsPathExist(m.InstallPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing tini installation at '%s': %w", t.InstallPath, err)
+		return false, fmt.Errorf("failed to check for existing tini installation at '%s': %w", m.InstallPath, err)
 	}
 	if exists {
-		isFile, err := file.IsFile(t.InstallPath)
+		isFile, err := file.IsFile(m.InstallPath)
 		if err != nil {
-			return false, fmt.Errorf("failed to check if '%s' is a file: %w", t.InstallPath, err)
+			return false, fmt.Errorf("failed to check if '%s' is a file: %w", m.InstallPath, err)
 		}
 		if !isFile {
-			return false, fmt.Errorf("'%s' is not a file", t.InstallPath)
+			return false, fmt.Errorf("'%s' is not a file", m.InstallPath)
 		}
 	}
 	return exists, nil
 }
 
-func (t *TiniManager) Install() error {
-	installed, err := t.Installed()
+func (m *TiniManager) Install() error {
+	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tini: %w", err)
 	}
@@ -84,7 +84,7 @@ func (t *TiniManager) Install() error {
 	}()
 	downloadPath := downloadDir + "/tini"
 
-	downloadUrl, err := getTiniDownloadUrl("", t.LocalSystem.Arch)
+	downloadUrl, err := getTiniDownloadUrl("", m.LocalSystem.Arch)
 	if err != nil {
 		return fmt.Errorf("unable to determine tini download url: %w", err)
 	}
@@ -98,30 +98,30 @@ func (t *TiniManager) Install() error {
 
 	// TODO: Implement checksum validation
 
-	slog.Debug("Installing tini binary to: " + t.InstallPath)
-	if err := file.Move(downloadPath, t.InstallPath); err != nil {
-		return fmt.Errorf("failed to install tini to '%s': %w", t.InstallPath, err)
+	slog.Debug("Installing tini binary to: " + m.InstallPath)
+	if err := file.Move(downloadPath, m.InstallPath); err != nil {
+		return fmt.Errorf("failed to install tini to '%s': %w", m.InstallPath, err)
 	}
 	slog.Debug("Setting permissions for tini binary to 0755")
-	if err := file.AppFs.Chmod(t.InstallPath, 0755); err != nil {
-		return fmt.Errorf("failed to set permissions for %s to 0755: %w", t.InstallPath, err)
+	if err := file.AppFs.Chmod(m.InstallPath, 0755); err != nil {
+		return fmt.Errorf("failed to set permissions for %s to 0755: %w", m.InstallPath, err)
 	}
-	slog.Info("tini installed successfully to " + t.InstallPath)
+	slog.Info("tini installed successfully to " + m.InstallPath)
 
 	return nil
 }
 
-func (t *TiniManager) Update() error {
+func (m *TiniManager) Update() error {
 	slog.Info("Updating tini")
 	slog.Info("Checking for existing tini installation")
-	installed, err := t.Installed()
+	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tini installation: %w", err)
 	}
 
 	if installed {
 		slog.Info("Existing tini installation found")
-		err := t.Remove()
+		err := m.Remove()
 		if err != nil {
 			return fmt.Errorf("failed to remove existing tini installation: %w", err)
 		}
@@ -129,11 +129,11 @@ func (t *TiniManager) Update() error {
 		slog.Info("tini is not installed")
 	}
 
-	return t.Install()
+	return m.Install()
 }
 
-func (t *TiniManager) Remove() error {
-	installed, err := t.Installed()
+func (m *TiniManager) Remove() error {
+	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tini: %w", err)
 	}
@@ -143,19 +143,11 @@ func (t *TiniManager) Remove() error {
 	}
 
 	slog.Info("Removing tini")
-	err = file.AppFs.Remove(t.InstallPath)
+	err = file.AppFs.Remove(m.InstallPath)
 	if err != nil {
-		return fmt.Errorf("failed to remove tini from '%s': %w", t.InstallPath, err)
+		return fmt.Errorf("failed to remove tini from '%s': %w", m.InstallPath, err)
 	}
-	slog.Info("tini removed successfully from " + t.InstallPath)
+	slog.Info("tini removed successfully from " + m.InstallPath)
 
 	return nil
-}
-
-func (t *TiniManager) InstallPackage() error {
-	return fmt.Errorf("tini does not utilize subpackage installation")
-}
-
-func (t *TiniManager) RemovePackage() error {
-	return fmt.Errorf("tini does not utilize subpackage installation")
 }
