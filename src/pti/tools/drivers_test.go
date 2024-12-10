@@ -1,4 +1,4 @@
-package drivers
+package tools
 
 import (
 	"fmt"
@@ -330,7 +330,10 @@ func Test_InstallProDrivers(t *testing.T) {
 			}()
 
 			tt.pmSetup(t, tt.args.l)
-			err = InstallProDrivers(tt.args.l, tt.args.driversVersion)
+
+			m := NewProDriversManager(tt.args.l, tt.args.driversVersion, true)
+
+			err = m.Install()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -475,7 +478,10 @@ func Test_CopyProDriversOdbcInstIni(t *testing.T) {
 			}()
 
 			tt.setupFs(file.AppFs)
-			err := CopyProDriversOdbcInstIni()
+
+			m := NewProDriversManager(&system.LocalSystem{}, "", false)
+
+			err := m.CopyProDriversOdbcInstIni()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
