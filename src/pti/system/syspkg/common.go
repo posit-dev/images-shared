@@ -12,6 +12,8 @@ type PackageList struct {
 	LocalPackages    []string
 }
 
+// TODO: Add an "IsInstalled" method for Package Managers
+
 type SystemPackageManager interface {
 	GetBin() string
 	GetPackageExtension() string

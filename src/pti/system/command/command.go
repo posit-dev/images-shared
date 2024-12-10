@@ -59,6 +59,7 @@ var NewShellCommand = func(name string, args []string, envVars []string, inherit
 	if inheritEnvVars {
 		cmd.Env = append(cmd.Env, os.Environ()...)
 	}
+	// TODO: Route stdout and stderr for programmatic access, maybe make this configurable to slog.Debug too
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
