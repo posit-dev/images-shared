@@ -13,12 +13,122 @@ import (
 	"strings"
 )
 
+// AppFs is the global file system object
 var AppFs = afero.NewOsFs()
 
+// hasSymlinkSupport checks if the file system supports symlinks.
+// Currently, we only use the OS file system which supports symlinks and the
+// MemMapFs for tests which does not support symlinks.
+func hasSymlinkSupport() bool {
+	_, ok := AppFs.(*afero.OsFs)
+	return ok
+}
+
+// IsPathExist checks if a path exists.
+// Returns true if the path exists, false otherwise.
+// The check is symlink naive and will return true for symlinks.
 func IsPathExist(path string) (bool, error) {
 	return afero.Exists(AppFs, path)
 }
 
+// IsDir checks if a path is a directory.
+// Returns true if the path is a directory, false otherwise.
+// The check is symlink aware and will return false for symlinks.
+func IsDir(path string) (bool, error) {
+	exists, err := IsPathExist(path)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+
+	var fileInfo os.FileInfo
+	if hasSymlinkSupport() {
+		fs := AppFs.(*afero.OsFs)
+		fileInfo, _, err = fs.LstatIfPossible(path)
+	} else {
+		fileInfo, err = AppFs.Stat(path)
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to stat file %s: %w", path, err)
+	}
+
+	if fileInfo.Mode().Type() == os.ModeSymlink {
+		return false, nil
+	}
+	if fileInfo.IsDir() {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// IsFile checks if a path is a file
+// Returns true if the path is a file, false otherwise.
+// The check is symlink aware and will return false for symlinks.
+func IsFile(path string) (bool, error) {
+	exists, err := IsPathExist(path)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+
+	var fileInfo os.FileInfo
+	if hasSymlinkSupport() {
+		fs := AppFs.(*afero.OsFs)
+		fileInfo, _, err = fs.LstatIfPossible(path)
+	} else {
+		fileInfo, err = AppFs.Stat(path)
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to stat file %s: %w", path, err)
+	}
+
+	if fileInfo.IsDir() {
+		return false, nil
+	}
+	if fileInfo.Mode().IsRegular() {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// IsSymlink checks if a path is a symlink.
+// Returns true if the path is a symlink, false otherwise.
+func IsSymlink(path string) (bool, error) {
+	exists, err := IsPathExist(path)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+
+	var fileInfo os.FileInfo
+	if hasSymlinkSupport() {
+		fs := AppFs.(*afero.OsFs)
+		fileInfo, _, err = fs.LstatIfPossible(path)
+	} else {
+		fileInfo, err = AppFs.Stat(path)
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to stat file %s: %w", path, err)
+	}
+
+	if fileInfo.Mode().Type() == os.ModeSymlink {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// Stat returns the FileInfo structure describing the file at the given path.
+// Returns an error if the file does not exist or if an error occurred during
+// the stat operation. Symlinks are followed in Afero's default implementation.
 func Stat(path string) (os.FileInfo, error) {
 	i, err := AppFs.Stat(path)
 	if err != nil {
@@ -27,6 +137,8 @@ func Stat(path string) (os.FileInfo, error) {
 	return i, nil
 }
 
+// Create creates a file at the given path.
+// Returns the file handle and an error if the file could not be created.
 func Create(path string) (afero.File, error) {
 	slog.Debug("Creating file: " + path)
 	fh, err := AppFs.Create(path)
@@ -37,6 +149,8 @@ func Create(path string) (afero.File, error) {
 	return fh, nil
 }
 
+// Open opens a file at the given path.
+// Returns the file handle and an error if the file could not be opened.
 func Open(path string) (afero.File, error) {
 	fh, err := AppFs.Open(path)
 	if err != nil {
@@ -45,6 +159,8 @@ func Open(path string) (afero.File, error) {
 	return fh, nil
 }
 
+// moveFile moves a single file from src to dest.
+// Returns an error if the file could not be moved.
 func moveFile(src, dest string) error {
 	slog.Debug("Moving file from " + src + " to " + dest)
 	if err := AppFs.Rename(src, dest); err != nil {
@@ -54,6 +170,8 @@ func moveFile(src, dest string) error {
 	return nil
 }
 
+// copyFile copies a single file from src to dest.
+// Returns an error if the file could not be copied.
 func copyFile(src, dest string) error {
 	slog.Debug("Copying file from " + src + " to " + dest)
 
@@ -87,6 +205,8 @@ func copyFile(src, dest string) error {
 	return nil
 }
 
+// moveDir moves a directory recursively from src to dest.
+// Returns an error if the directory or any of its elements could not be moved.
 func moveDir(src, dest string) error {
 	src = strings.TrimSuffix(src, "/")
 	dest = strings.TrimSuffix(dest, "/")
@@ -122,6 +242,8 @@ func moveDir(src, dest string) error {
 	return nil
 }
 
+// copyDir copies a directory recursively from src to dest.
+// Returns an error if the directory or any of its elements could not be copied.
 func copyDir(src, dest string) error {
 	src = strings.TrimSuffix(src, "/")
 	dest = strings.TrimSuffix(dest, "/")
@@ -153,6 +275,8 @@ func copyDir(src, dest string) error {
 	return nil
 }
 
+// Copy copies a file or directory from src to dest.
+// Returns an error if the file or directory could not be copied.
 func Copy(src, dest string) error {
 	srcStat, err := Stat(src)
 	if err != nil {
@@ -166,6 +290,8 @@ func Copy(src, dest string) error {
 	}
 }
 
+// Move moves a file or directory from src to dest.
+// Returns an error if the file or directory could not be moved.
 func Move(src, dest string) error {
 	srcStat, err := Stat(src)
 	if err != nil {
@@ -179,6 +305,8 @@ func Move(src, dest string) error {
 	}
 }
 
+// DownloadFile downloads a file from a URL and saves it to the given filepath.
+// Returns an error if the file could not be downloaded or saved.
 func DownloadFile(url string, filepath string) error {
 	slog.Debug("Downloading file from " + url + " to " + filepath)
 
@@ -210,6 +338,8 @@ func DownloadFile(url string, filepath string) error {
 	return nil
 }
 
+// ExtractTarGz extracts a tar.gz archive to the given destination.
+// Returns an error if the archive could not be extracted.
 func ExtractTarGz(archive, dest string) error {
 	slog.Info("Extracting tar.gz file " + archive + " to " + dest)
 
