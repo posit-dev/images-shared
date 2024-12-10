@@ -6,8 +6,20 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
+	"path"
+	"runtime"
 	"testing"
 )
+
+const testTarGz = "test.tar.gz"
+
+var testdataPath string
+
+func init() {
+	_, testPath, _, _ := runtime.Caller(0)
+	// The ".." may change depending on you folder structure
+	testdataPath = path.Join(path.Dir(testPath), "testdata")
+}
 
 func Test_IsPathExist(t *testing.T) {
 	require := require.New(t)
@@ -65,6 +77,398 @@ func Test_IsPathExist(t *testing.T) {
 				assert.NotNil(err)
 			} else {
 				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func Test_IsDir(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name      string
+		setupFs   func(fs afero.Fs) (testPath string, err error)
+		useMemMap bool
+		want      bool
+		wantErr   bool
+	}{
+		{
+			name: "path does not exist",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "")
+				if err != nil {
+					return "", err
+				}
+				return tmpDir + "/nonexistentdir", nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path exists",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", err
+				}
+				return tmpDir, nil
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "path is file",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				if err != nil {
+					return "", err
+				}
+				return tmpFile, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := AppFs
+			AppFs = afero.NewMemMapFs()
+			defer func() {
+				AppFs = oldFs
+			}()
+
+			testPath, err := tt.setupFs(AppFs)
+			require.NoError(err, "setupFs() error = %v", err)
+
+			require.NoError(err, "setupFs() error = %v", err)
+
+			got, err := IsDir(testPath)
+
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				assert.NotNil(err)
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func Test_IsDir_Symlink(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name           string
+		setupFs        func(fs afero.OsFs) (testPath string, tmpDir string, err error)
+		want           bool
+		wantErr        bool
+		wantErrMessage string
+	}{
+		{
+			name: "path is symlink to directory",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpDir, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path is symlink to file",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpFile, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testPath, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
+			defer AppFs.RemoveAll(tmpDir)
+
+			require.NoError(err, "setupFs() error = %v", err)
+
+			got, err := IsDir(testPath)
+
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				assert.NotNil(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func Test_IsFile(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name    string
+		setupFs func(fs afero.Fs) (string, error)
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "path does not exist",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "")
+				if err != nil {
+					return "", err
+				}
+				return tmpDir + "/nonexistentfile", nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path exists",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "")
+				if err != nil {
+					return "", err
+				}
+				fh, err := fs.Create(tmpDir + "/testfile")
+				if err != nil {
+					return "", err
+				}
+				defer fh.Close()
+				return fh.Name(), nil
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "path is directory",
+			setupFs: func(fs afero.Fs) (string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", err
+				}
+				return tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := AppFs
+			AppFs = afero.NewMemMapFs()
+			defer func() {
+				AppFs = oldFs
+			}()
+
+			fileName, err := tt.setupFs(AppFs)
+			require.Nil(err, "setupFs() error = %v", err)
+
+			got, err := IsFile(fileName)
+
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				assert.NotNil(err)
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func Test_IsFile_Symlink(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name    string
+		setupFs func(fs afero.OsFs) (testPath string, tmpDir string, err error)
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "path is symlink to directory",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpDir, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path is symlink to file",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpFile, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileName, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
+			defer AppFs.RemoveAll(tmpDir)
+
+			require.NoError(err, "setupFs() error = %v", err)
+
+			got, err := IsFile(fileName)
+
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				assert.NotNil(err)
+			} else {
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func Test_IsSymlink(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name    string
+		setupFs func(fs afero.OsFs) (testPath string, tmpDir string, err error)
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "path is directory",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpDir, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path is file",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpFile, tmpDir, nil
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "path is symlink to directory",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpDir, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "path is symlink to file",
+			setupFs: func(fs afero.OsFs) (string, string, error) {
+				tmpDir, err := afero.TempDir(fs, "", "testdir")
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				tmpSymlink := tmpDir + "/symlink"
+				err = fs.SymlinkIfPossible(tmpFile, tmpSymlink)
+				if err != nil {
+					return "", tmpDir, err
+				}
+				return tmpSymlink, tmpDir, nil
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileName, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
+			defer AppFs.RemoveAll(tmpDir)
+
+			require.NoError(err, "setupFs() error = %v", err)
+
+			got, err := IsSymlink(fileName)
+
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
 			}
 		})
 	}
@@ -563,5 +967,89 @@ func Test_DownloadFile(t *testing.T) {
 				assert.Equal(tt.wantContents, string(contents), "File contents = %v, want %v", string(contents), tt.wantContents)
 			}
 		})
+	}
+}
+
+func Test_ExtractTarGz(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	fileStructure := []struct {
+		path     string
+		contents string
+		isDir    bool
+	}{
+		{
+			path:  "/test_targz",
+			isDir: true,
+		},
+		{
+			path:     "/test_targz/file1",
+			contents: "test1",
+			isDir:    false,
+		},
+		{
+			path:  "/test_targz/subdir1",
+			isDir: true,
+		},
+		{
+			path:     "/test_targz/subdir1/file2",
+			contents: "test2",
+			isDir:    false,
+		},
+		{
+			path:     "/test_targz/subdir1/file3",
+			contents: "test3",
+			isDir:    false,
+		},
+		{
+			path:  "/test_targz/subdir1/subdir3",
+			isDir: true,
+		},
+		{
+			path:     "/test_targz/subdir1/subdir3/file4",
+			contents: "test4",
+			isDir:    false,
+		},
+		{
+			path:  "/test_targz/subdir2",
+			isDir: true,
+		},
+		{
+			path:     "/test_targz/subdir2/file5",
+			contents: "test5",
+			isDir:    false,
+		},
+	}
+
+	oldFs := AppFs
+	AppFs = afero.NewMemMapFs()
+	defer func() {
+		AppFs = oldFs
+	}()
+
+	contents, err := afero.ReadFile(oldFs, testdataPath+"/"+testTarGz)
+	require.NoError(err)
+
+	err = afero.WriteFile(AppFs, "/"+testTarGz, contents, 0644)
+	require.NoError(err)
+
+	err = ExtractTarGz("/"+testTarGz, "/")
+	require.NoError(err)
+
+	exists, err := IsPathExist("/" + testTarGz)
+	require.NoError(err)
+	assert.True(exists, "%s file does not exist", testTarGz)
+
+	for _, entry := range fileStructure {
+		if entry.isDir {
+			isDir, err := IsDir(entry.path)
+			assert.NoError(err)
+			assert.True(isDir, "%s is not a directory", entry.path)
+		} else {
+			contents, err := afero.ReadFile(AppFs, entry.path)
+			assert.NoError(err)
+			assert.Contains(string(contents), entry.contents, "File contents = %v, want %v", string(contents), entry.contents)
+		}
 	}
 }
