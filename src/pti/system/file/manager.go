@@ -126,6 +126,31 @@ func IsSymlink(path string) (bool, error) {
 	return false, nil
 }
 
+// CreateSymlink creates a symlink from src to dest.
+// Returns an error if the symlink could not be created.
+func CreateSymlink(oldName, newName string) error {
+	slog.Debug("Creating symlink from " + oldName + " to " + newName)
+	if hasSymlinkSupport() {
+		exists, err := IsPathExist(oldName)
+		if err != nil {
+			return fmt.Errorf("failed to check if source path '%s' exists: %w", oldName, err)
+		}
+		if !exists {
+			return fmt.Errorf("source path '%s' does not exist", oldName)
+		}
+
+		fs := AppFs.(*afero.OsFs)
+		err = fs.SymlinkIfPossible(oldName, newName)
+		if err != nil {
+			return fmt.Errorf("failed to create symlink from '%s' to '%s': %w", oldName, newName, err)
+		}
+	} else {
+		return fmt.Errorf("symlinks are not supported on this file system")
+	}
+
+	return nil
+}
+
 // Stat returns the FileInfo structure describing the file at the given path.
 // Returns an error if the file does not exist or if an error occurred during
 // the stat operation. Symlinks are followed in Afero's default implementation.

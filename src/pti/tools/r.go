@@ -3,164 +3,74 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zcalusic/sysinfo"
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 	"log/slog"
 	"net/http"
-	"os"
 	"pti/system"
+	"pti/system/command"
+	"pti/system/file"
+	"pti/system/syspkg"
 	"strconv"
 	"strings"
 )
 
-const rUrlRoot = "https://cdn.posit.co/r"
-const rVersionsJsonUrl = rUrlRoot + "/versions.json"
-const packageManagerUrl = "https://p3m.dev"
+const (
+	rDownloadUrl      = "https://cdn.posit.co/r/%s/pkgs/r-%s_1_%s.deb"
+	rVersionsJsonUrl  = "https://cdn.posit.co/r/versions.json"
+	packageManagerUrl = "https://p3m.dev"
+	rPathTpl          = "/opt/R/%s"
+	rBinPathTpl       = "/opt/R/%s/bin/R"
+	rScriptBinPathTpl = "/opt/R/%s/bin/Rscript"
+	defaultRPath      = "/opt/R/default"
+)
 
-func InstallR(rVersion string, rPackages *[]string, rPackageFiles *[]string, setDefault bool, addToPath bool) error {
-	rInstallationPath := fmt.Sprintf("/opt/R/%s", rVersion)
-	rBinPath := fmt.Sprintf("%s/bin/R", rInstallationPath)
-
-	slog.Debug("R version: " + rVersion)
-	slog.Debug("R installation path: " + rInstallationPath)
-	slog.Debug("R binary path: " + rBinPath)
-
-	slog.Debug("Checking if R " + rVersion + " is installed")
-	// Install R if not installed
-	if _, err := os.Stat(rBinPath); os.IsNotExist(err) {
-		slog.Info("Installing R version " + rVersion)
-
-		validVersion, err := ValidateRVersion(rVersion)
-		if err != nil {
-			return err
-		}
-		if !validVersion {
-			return fmt.Errorf("R version %s is not supported", rVersion)
-		}
-
-		downloadPath, err := FetchRPackage(rVersion)
-		if err != nil {
-			return err
-		}
-
-		if err := system.InstallLocalPackage(downloadPath); err != nil {
-			return err
-		}
-
-		if err := os.Remove(downloadPath); err != nil {
-			return err
-		}
-	} else {
-		slog.Info("R version " + rVersion + " is already installed")
-	}
-
-	if len(*rPackages) > 0 {
-		if err := installRPackages(rBinPath, rPackages); err != nil {
-			return err
-		}
-	}
-
-	if len(*rPackageFiles) > 0 {
-		if err := installRPackagesFiles(rBinPath, rPackageFiles); err != nil {
-			return err
-		}
-	}
-
-	if setDefault {
-		if err := SymlinkDefaultR(rInstallationPath); err != nil {
-			return err
-		}
-	}
-
-	if addToPath {
-		if err := SymlinkVersionedRToPath(rInstallationPath, rVersion); err != nil {
-			return err
-		}
-	}
-
-	slog.Info("R " + rVersion + " installation finished")
-
-	return nil
+type RInstallOptions struct {
+	SetDefault bool
+	AddToPath  bool
 }
 
-func InstallRPackages(rBinPath string, rPackages *[]string, rPackageFiles *[]string) error {
-	slog.Debug("R binary path: " + rBinPath)
-
-	exists, err := system.IsPathExist(rBinPath)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("R binary does not exist at path %s", rBinPath)
-	}
-
-	if len(*rPackages) > 0 {
-		if err := installRPackages(rBinPath, rPackages); err != nil {
-			return err
-		}
-	}
-
-	if len(*rPackageFiles) > 0 {
-		if err := installRPackagesFiles(rBinPath, rPackageFiles); err != nil {
-			return err
-		}
-	}
-
-	slog.Info("R package installation finished")
-
-	return nil
+type RManager struct {
+	*system.LocalSystem
+	Version          string
+	InstallationPath string
+	RPath            string
+	RscriptPath      string
+	InstallOptions   *RInstallOptions
 }
 
-func SymlinkDefaultR(rInstallationPath string) error {
-	const defaultRPath = "/opt/R/default"
-
-	slog.Info("Symlinking " + rInstallationPath + " to " + defaultRPath)
-
-	if _, err := os.Lstat(defaultRPath); err == nil {
-		slog.Debug("Removing existing symlink at " + defaultRPath)
-		if err := os.Remove(defaultRPath); err != nil {
-			return err
-		}
-	}
-
-	if err := os.Symlink(rInstallationPath, defaultRPath); err != nil {
-		return err
-	}
-
-	return nil
+type RPackageList struct {
+	Packages     []string
+	PackageFiles []string
 }
 
-func SymlinkVersionedRToPath(rInstallationPath string, rVersion string) error {
-	rBinPath := fmt.Sprintf("%s/bin/R", rInstallationPath)
-	rScriptBinPath := fmt.Sprintf("%s/bin/Rscript", rInstallationPath)
-	symlinkRPath := fmt.Sprintf("/usr/local/bin/R%s", rVersion)
-	symlinkRScriptPath := fmt.Sprintf("/usr/local/bin/Rscript%s", rVersion)
+func NewRManager(l *system.LocalSystem, version string, installOptions *RInstallOptions) (*RManager, error) {
+	if version == "" {
+		return nil, fmt.Errorf("r version is required")
+	}
 
-	slog.Info("Symlinking " + rBinPath + " to " + symlinkRPath)
-
-	if _, err := os.Lstat(symlinkRPath); err == nil {
-		if err := os.Remove(symlinkRPath); err != nil {
-			return err
+	if installOptions == nil {
+		installOptions = &RInstallOptions{
+			SetDefault: false,
+			AddToPath:  false,
 		}
 	}
-	if err := os.Symlink(rBinPath, symlinkRPath); err != nil {
-		return err
-	}
 
-	slog.Info("Symlinking " + rScriptBinPath + " to " + symlinkRScriptPath)
+	rInstallationPath := fmt.Sprintf(rPathTpl, version)
+	rBinPath := fmt.Sprintf(rBinPathTpl, rInstallationPath)
+	rScriptBinPath := fmt.Sprintf(rScriptBinPathTpl, rInstallationPath)
 
-	if _, err := os.Lstat(symlinkRScriptPath); err == nil {
-		if err := os.Remove(symlinkRScriptPath); err != nil {
-			return err
-		}
-	}
-	if err := os.Symlink(rScriptBinPath, symlinkRScriptPath); err != nil {
-		return err
-	}
-
-	return nil
+	return &RManager{
+		LocalSystem:      l,
+		Version:          version,
+		InstallationPath: rInstallationPath,
+		RPath:            rBinPath,
+		RscriptPath:      rScriptBinPath,
+		InstallOptions:   installOptions,
+	}, nil
 }
 
-func ValidateRVersion(rVersion string) (bool, error) {
+func (m *RManager) validVersion() (bool, error) {
 	type rVersionInfo struct {
 		Versions []string `json:"r_versions"`
 	}
@@ -179,8 +89,8 @@ func ValidateRVersion(rVersion string) (bool, error) {
 	slog.Debug("Supported R versions: " + strings.Join(rVersions.Versions, ", "))
 
 	for _, version := range rVersions.Versions {
-		if version == rVersion {
-			slog.Debug("R version " + rVersion + " is supported")
+		if version == m.Version {
+			slog.Debug("R version " + m.Version + " is supported")
 			return true, nil
 		}
 	}
@@ -188,89 +98,197 @@ func ValidateRVersion(rVersion string) (bool, error) {
 	return false, nil
 }
 
-func FetchRPackage(rVersion string) (string, error) {
-	var si sysinfo.SysInfo
-	si.GetSysInfo()
-
+func (m *RManager) downloadUrl() (string, error) {
 	var downloadUrl string
-	var downloadPath string
 
-	slog.Info("Fetching R package for " + si.OS.Vendor + " " + si.OS.Version)
-	switch strings.ToLower(si.OS.Vendor) {
+	slog.Info("Fetching R package URL for " + m.LocalSystem.Vendor + " " + m.LocalSystem.Version)
+	switch strings.ToLower(m.LocalSystem.Vendor) {
 	case "ubuntu":
 		slog.Debug("Detected Ubuntu")
-		osVersionClean := strings.Replace(si.OS.Version, ".", "", -1)
+		osVersionClean := strings.Replace(m.LocalSystem.Version, ".", "", -1)
 		osIdentifier := fmt.Sprintf("ubuntu-%s", osVersionClean)
-		downloadUrl = fmt.Sprintf("%s/%s/pkgs/r-%s_1_%s.deb", rUrlRoot, osIdentifier, rVersion, si.OS.Architecture)
-		downloadPath = fmt.Sprintf("/tmp/R-%s.deb", rVersion)
+		downloadUrl = fmt.Sprintf(rDownloadUrl, osIdentifier, m.Version, m.LocalSystem.Arch)
 	case "debian":
 		slog.Debug("Detected Debian")
-		osIdentifier := fmt.Sprintf("debian-%s", si.OS.Version)
-		downloadUrl = fmt.Sprintf("%s/%s/pkgs/r-%s_1_%s.deb", rUrlRoot, osIdentifier, rVersion, si.OS.Architecture)
-		downloadPath = fmt.Sprintf("/tmp/R-%s.deb", rVersion)
+		osIdentifier := fmt.Sprintf("debian-%s", m.LocalSystem.Version)
+		downloadUrl = fmt.Sprintf(rDownloadUrl, osIdentifier, m.Version, m.LocalSystem.Arch)
 	case "almalinux", "centos", "rockylinux", "rhel":
 		slog.Debug("Detected RHEL-based OS")
-		rhelVerison, err := strconv.Atoi(si.OS.Version)
+		rhelVerison, err := strconv.Atoi(m.LocalSystem.Version)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to cast RHEL version to int: %w", err)
 		}
 
 		var osIdentifier string
 		if rhelVerison <= 8 {
-			osIdentifier = fmt.Sprintf("centos-%s", si.OS.Version)
+			osIdentifier = fmt.Sprintf("centos-%s", m.LocalSystem.Version)
 		} else {
-			osIdentifier = fmt.Sprintf("rhel-%s", si.OS.Version)
+			osIdentifier = fmt.Sprintf("rhel-%s", m.LocalSystem.Version)
 		}
 
-		var archIdentifier string
-		if si.OS.Architecture == "amd64" {
-			archIdentifier = "x86_64"
-		} else {
-			archIdentifier = si.OS.Architecture
-		}
+		archIdentifier := m.LocalSystem.GetAltArchName()
 
-		downloadUrl = fmt.Sprintf("%s/%s/pkgs/R-%s-1-1.%s.rpm", rUrlRoot, osIdentifier, rVersion, archIdentifier)
-		downloadPath = fmt.Sprintf("/tmp/R-%s.rpm", rVersion)
+		downloadUrl = fmt.Sprintf(rDownloadUrl, osIdentifier, m.Version, archIdentifier)
 	case "fedora":
 		slog.Debug("Detected Fedora")
-		osIdentifier := fmt.Sprintf("fedora-%s", si.OS.Version)
+		osIdentifier := fmt.Sprintf("fedora-%s", m.LocalSystem.Version)
 
-		var archIdentifier string
-		if si.OS.Architecture == "amd64" {
-			archIdentifier = "x86_64"
-		} else {
-			archIdentifier = si.OS.Architecture
-		}
+		archIdentifier := m.LocalSystem.GetAltArchName()
 
-		downloadUrl = fmt.Sprintf("%s/%s/pkgs/R-%s-1-1.%s.rpm", rUrlRoot, osIdentifier, rVersion, archIdentifier)
-		downloadPath = fmt.Sprintf("/tmp/R-%s.deb", rVersion)
+		downloadUrl = fmt.Sprintf(rDownloadUrl, osIdentifier, m.Version, archIdentifier)
 	default:
-		return "", fmt.Errorf("unsupported OS: %s %s", si.OS.Vendor, si.OS.Version)
+		return "", fmt.Errorf("unsupported OS: %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
 	}
 
 	slog.Debug("Download URL: " + downloadUrl)
-	slog.Debug("Destination Path: " + downloadPath)
 
-	err := system.DownloadFile(downloadPath, downloadUrl)
-	if err != nil {
-		return "", err
-	}
-	return downloadPath, err
+	return downloadUrl, nil
 }
 
-func GetPackageManagerCRANMirror() string {
-	var si sysinfo.SysInfo
-	si.GetSysInfo()
+func (m *RManager) Installed() (bool, error) {
+	slog.Info("Checking if R " + m.Version + " is installed")
+	slog.Debug("Checking for existence of path " + m.RPath)
+	// TODO: This should check the Package Manager in the future instead or in addition to the install path
+	isFile, err := file.IsFile(m.RPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to check for existing python installation at '%s': %w", err)
+	}
+	return isFile, nil
+}
 
+func (m *RManager) Install() error {
+	// Check if R is already installed
+	installed, err := m.Installed()
+	if err != nil {
+		return fmt.Errorf("failed to check if R %s is installed: %w", m.Version, err)
+	}
+
+	// Install R if not installed
+	if !installed {
+		s, _ := pterm.DefaultSpinner.Start("Downloading R " + m.Version + "...")
+
+		// Verify R version is supported
+		validVersion, err := m.validVersion()
+		if err != nil {
+			s.Fail("Download failed.")
+			return err
+		}
+		if !validVersion {
+			s.Fail("Download failed.")
+			return fmt.Errorf("R version %s is not supported", m.Version)
+		}
+
+		// Create temporary directory for download
+		tmpDir, err := afero.TempDir(file.AppFs, "", "r")
+		if err != nil {
+			s.Fail("Download failed.")
+			return fmt.Errorf("unable to create temporary directory for R download: %w", err)
+		}
+		downloadPath := tmpDir + "/r" + m.LocalSystem.PackageManager.GetPackageExtension()
+		defer file.AppFs.RemoveAll(tmpDir)
+
+		// Download R package
+		slog.Debug("Downloading package to " + downloadPath)
+		downloadUrl, err := m.downloadUrl()
+		if err != nil {
+			s.Fail("Download failed.")
+			return fmt.Errorf("unable to determine download url for R %s on %s %s: %w", m.Version, m.LocalSystem.Vendor, m.LocalSystem.Version, err)
+		}
+		slog.Debug("Downloading R package from " + downloadUrl)
+		err = file.DownloadFile(downloadUrl, downloadPath)
+		if err != nil {
+			s.Fail("Download failed.")
+			return fmt.Errorf("failed to download R %s package: %w", m.Version, err)
+		}
+		s.Success("Download complete.")
+
+		s, _ = pterm.DefaultSpinner.Start("Installing R " + m.Version + "...")
+
+		// Install R package
+		pkgList := &syspkg.PackageList{LocalPackages: []string{downloadPath}}
+		if err := m.LocalSystem.PackageManager.Install(pkgList); err != nil {
+			s.Fail("Installation failed.")
+			return fmt.Errorf("failed to install R %s: %w", m.Version, err)
+		}
+		s.Success("Installation complete.")
+	} else {
+		slog.Info("R " + m.Version + " is already installed")
+	}
+
+	if m.InstallOptions.SetDefault {
+		if err := m.makeDefault(); err != nil {
+			slog.Error("Failed to set R %s as default: %v", m.Version, err)
+		}
+	}
+
+	if m.InstallOptions.AddToPath {
+		if err := m.addToPath(); err != nil {
+			slog.Error("Failed to add R %s to PATH: %v", m.Version, err)
+		}
+	}
+
+	slog.Info("R " + m.Version + " installation finished")
+	return nil
+}
+
+func (m *RManager) InstallPackages(packageList *RPackageList) error {
+	slog.Debug("R binary path: " + m.RPath)
+
+	installed, err := m.Installed()
+	if err != nil {
+		return fmt.Errorf("failed to check if R %s is installed: %w", m.Version, err)
+	}
+	if !installed {
+		return fmt.Errorf("R %s is not installed", m.Version)
+	}
+
+	cranRepo := m.cranMirror()
+
+	slog.Info("Using CRAN mirror: " + cranRepo)
+
+	if len(packageList.Packages) > 0 {
+
+		slog.Info("Installing R packages: " + strings.Join(packageList.Packages, ", "))
+
+		quotedPackages := make([]string, len(packageList.Packages))
+		for i, pkg := range packageList.Packages {
+			quotedPackages[i] = fmt.Sprintf("\"%s\"", pkg)
+		}
+		wrappedList := "c(" + strings.Join(quotedPackages, ", ") + ")"
+		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", wrappedList, cranRepo)}
+		s := command.NewShellCommand(m.RPath, args, nil, true)
+		err = s.Run()
+		if err != nil {
+			return fmt.Errorf("failed to install R packages: %w", err)
+		}
+	}
+
+	if len(packageList.PackageFiles) > 0 {
+		slog.Debug("Installing R packages: " + strings.Join(packageList.PackageFiles, ", "))
+
+		for _, packageListFile := range packageList.PackageFiles {
+			slog.Debug("Installing R packages from file: " + packageListFile)
+			args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", packageListFile, cranRepo)}
+			s := command.NewShellCommand(m.RPath, args, nil, true)
+			if err := s.Run(); err != nil {
+				slog.Error(fmt.Sprintf("Error installing R packages from %s: %v", packageListFile, err))
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *RManager) cranMirror() string {
 	codeName := ""
 	defaultCran := packageManagerUrl + "/cran/latest"
 
-	slog.Info("Getting CRAN mirror for " + si.OS.Vendor + " " + si.OS.Version)
+	slog.Info("Getting CRAN mirror for " + m.LocalSystem.Vendor + " " + m.LocalSystem.Version)
 
-	switch strings.ToLower(si.OS.Vendor) {
+	switch strings.ToLower(m.LocalSystem.Vendor) {
 	case "ubuntu":
 		slog.Debug("Detected Ubuntu")
-		switch si.OS.Version {
+		switch m.LocalSystem.Version {
 		case "20.04":
 			codeName = "focal"
 			slog.Debug("Using code name " + codeName)
@@ -281,12 +299,12 @@ func GetPackageManagerCRANMirror() string {
 			codeName = "noble"
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn("No pre-built binaries available for Ubuntu version " + si.OS.Version + ". Packages will be installed from source.")
+			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
 			return defaultCran
 		}
 	case "debian":
 		slog.Debug("Detected Debian")
-		switch si.OS.Version {
+		switch m.LocalSystem.Version {
 		case "10":
 			codeName = "bullseye"
 			slog.Debug("Using code name " + codeName)
@@ -294,61 +312,84 @@ func GetPackageManagerCRANMirror() string {
 			codeName = "bookworm"
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn("No pre-built binaries available for Debian version " + si.OS.Version + ". Packages will be installed from source.")
+			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
 			return defaultCran
 		}
 	case "centos", "rocky", "rhel":
 		slog.Debug("Detected RHEL-based OS")
-		switch si.OS.Version {
+		switch m.LocalSystem.Version {
 		case "7":
 			codeName = "centos7"
 			slog.Debug("Using code name " + codeName)
 		case "8", "9":
-			codeName = "rhel" + si.OS.Version
+			codeName = "rhel" + m.LocalSystem.Version
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn("No pre-built binaries available for " + si.OS.Vendor + " version " + si.OS.Version + ". Packages will be installed from source.")
+			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
 			return defaultCran
 		}
 	default:
-		slog.Warn("No pre-built binaries available for " + si.OS.Vendor + " version " + si.OS.Version + ". Packages will be installed from source.")
+		slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
 		return defaultCran
 	}
 
 	return fmt.Sprintf("%s/cran/__linux__/%s/latest", packageManagerUrl, codeName)
 }
 
-func installRPackages(rBin string, packages *[]string) error {
-	cranRepo := GetPackageManagerCRANMirror()
-
-	slog.Info("Using CRAN mirror: " + cranRepo)
-
-	slog.Info("Installing R packages: " + strings.Join(*packages, ", "))
-
-	quotedPackages := make([]string, len(*packages))
-	for i, pkg := range *packages {
-		quotedPackages[i] = fmt.Sprintf("\"%s\"", pkg)
+func (m *RManager) makeDefault() error {
+	exists, err := file.IsPathExist(defaultRPath)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing default R installation at '%s': %w", defaultRPath, err)
 	}
-	packageList := "c(" + strings.Join(quotedPackages, ", ") + ")"
-	args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", packageList, cranRepo)}
-	s := system.NewSysCmd(rBin, &args)
-	return s.Execute()
+	if exists {
+		err = file.AppFs.RemoveAll(defaultRPath)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing default R installation at '%s': %w", defaultRPath, err)
+		}
+	}
+
+	if err := file.CreateSymlink(m.InstallationPath, defaultRPath); err != nil {
+		return fmt.Errorf("failed to create symlink for default R installation: %w", err)
+	}
+
+	return nil
 }
 
-func installRPackagesFiles(rBin string, packagesFiles *[]string) error {
-	cranRepo := GetPackageManagerCRANMirror()
+func (m *RManager) addToPath() error {
+	slog.Info("Adding R " + m.Version + " to PATH")
+	versionedRTarget := "/usr/local/bin/R"
+	versionedRscriptTarget := "/usr/local/bin/Rscript"
+	if !m.InstallOptions.SetDefault {
+		versionedRTarget += m.Version
+		versionedRscriptTarget += m.Version
+	}
 
-	slog.Info("Using CRAN mirror: " + cranRepo)
-
-	slog.Debug("Installing R packages: " + strings.Join(*packagesFiles, ", "))
-
-	for _, file := range *packagesFiles {
-		slog.Debug("Installing R packages from file: " + file)
-		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", file, cranRepo)}
-		s := system.NewSysCmd(rBin, &args)
-		if err := s.Execute(); err != nil {
-			slog.Error(fmt.Sprintf("Error installing R packages from %s: %v", file, err))
+	exists, err := file.IsPathExist(versionedRTarget)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing python symlink: %w", err)
+	}
+	if exists {
+		err = file.AppFs.RemoveAll(versionedRTarget)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing python symlink: %w", err)
 		}
+	}
+	if err := file.CreateSymlink(m.RPath, versionedRTarget); err != nil {
+		return fmt.Errorf("failed to symlink python to path '%s': %w", versionedRTarget, err)
+	}
+
+	exists, err = file.IsPathExist(versionedRscriptTarget)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing python symlink: %w", err)
+	}
+	if exists {
+		err = file.AppFs.RemoveAll(versionedRscriptTarget)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing python symlink: %w", err)
+		}
+	}
+	if err := file.CreateSymlink(m.RscriptPath, versionedRscriptTarget); err != nil {
+		return fmt.Errorf("failed to symlink pip to path '%s': %w", versionedRscriptTarget, err)
 	}
 
 	return nil
