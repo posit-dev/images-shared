@@ -1,4 +1,4 @@
-package tools
+package quarto
 
 import (
 	"fmt"
@@ -10,35 +10,38 @@ import (
 	"strings"
 )
 
-const defaultQuartoInstallationPath = "/opt/quarto"
-const defaultQuartoBinPath = "/opt/quarto/bin/quarto"
-const workbenchQuartoPath = "/lib/rstudio-server/bin/quarto"
-const workbenchQuartoBinPath = "/lib/rstudio-server/bin/quarto/bin/quarto"
+const (
+	defaultInstallPath     = "/opt/quarto"
+	defaultBinPath         = "/opt/quarto/bin/quarto"
+	workbenchLibRoot       = "/lib/rstudio-server"
+	workbenchQuartoPath    = workbenchLibRoot + "/bin/quarto"
+	workbenchQuartoBinPath = workbenchLibRoot + "/bin/quarto/bin/quarto"
+)
 
-var quartoDownloadUrlRoot = "https://github.com/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
+var downloadUrl = "https://github.com/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
 
-type QuartoInstallOptions struct {
+type InstallOptions struct {
 	InstallTinyTeX bool
 	AddPathTinyTeX bool
 	Force          bool
 }
 
-type QuartoManager struct {
+type Manager struct {
 	*system.LocalSystem
 	Version                 string
 	InstallationPath        string
 	BinPath                 string
 	IsWorkbenchInstallation bool
-	InstallOptions          *QuartoInstallOptions
+	InstallOptions          *InstallOptions
 }
 
-func NewQuartoManager(l *system.LocalSystem, version, installationPath string, installOptions *QuartoInstallOptions) (*QuartoManager, error) {
+func NewManager(l *system.LocalSystem, version, installationPath string, installOptions *InstallOptions) (*Manager, error) {
 	if version == "" {
 		return nil, fmt.Errorf("quarto version is required")
 	}
 
 	if installOptions == nil {
-		installOptions = &QuartoInstallOptions{
+		installOptions = &InstallOptions{
 			InstallTinyTeX: false,
 			AddPathTinyTeX: false,
 			Force:          false,
@@ -58,23 +61,34 @@ func NewQuartoManager(l *system.LocalSystem, version, installationPath string, i
 			installationPath = workbenchQuartoPath
 			binPath = workbenchQuartoBinPath
 		} else {
-			slog.Info("Using default Quarto installation path: " + defaultQuartoInstallationPath)
-			installationPath = defaultQuartoInstallationPath
-			binPath = defaultQuartoBinPath
+			slog.Info("Using default Quarto installation path: " + defaultInstallPath)
+			installationPath = defaultInstallPath
+			binPath = defaultBinPath
 		}
 	} else {
 		binPath = installationPath + "/bin/quarto"
 
 		slog.Info("Using custom Quarto installation path: " + installationPath)
-		if strings.HasPrefix(installationPath, workbenchQuartoPath) {
-			slog.Warn("Quarto installation path is within Workbench: " + workbenchQuartoPath)
+		if strings.HasPrefix(installationPath, workbenchLibRoot) && !installOptions.Force {
+			slog.Warn("Quarto installation path is within Workbench lib path " + workbenchLibRoot + ".")
+			slog.Warn("Assuming Workbench Quarto installation at " + workbenchQuartoPath + " should be used.")
 			isWorkbenchInstallation = true
 			installationPath = workbenchQuartoPath
 			binPath = workbenchQuartoBinPath
+		} else if strings.HasPrefix(installationPath, workbenchLibRoot) && installOptions.Force {
+			slog.Warn("This appears to be a Workbench path, but --force was used.")
+			slog.Warn("Forcing use of custom Quarto installation path: " + installationPath)
 		}
 	}
 
-	return &QuartoManager{
+	err := file.InstallableDir(installationPath, true)
+	if !isWorkbenchInstallation && err != nil && !installOptions.Force {
+		slog.Error("Quarto installation path is not installable: " + installationPath)
+		slog.Error("Use --force to override!")
+		return nil, fmt.Errorf("installation path '%s' is not installable: %w", installationPath, err)
+	}
+
+	return &Manager{
 		LocalSystem:             l,
 		Version:                 version,
 		InstallationPath:        installationPath,
@@ -84,7 +98,7 @@ func NewQuartoManager(l *system.LocalSystem, version, installationPath string, i
 	}, nil
 }
 
-func (m *QuartoManager) validate() error {
+func (m *Manager) validate() error {
 	if m.Version == "" {
 		return fmt.Errorf("quarto version is required")
 	}
@@ -94,15 +108,15 @@ func (m *QuartoManager) validate() error {
 	return nil
 }
 
-func (m *QuartoManager) Installed() (bool, error) {
-	quartoBinExists, err := file.IsFile(m.InstallationPath + "/bin/quarto")
+func (m *Manager) Installed() (bool, error) {
+	quartoBinExists, err := file.IsFile(m.BinPath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for existing Quarto installation at '%s': %w", m.InstallationPath, err)
 	}
 	return quartoBinExists, nil
 }
 
-func getQuartoUrl(quartoVersion, arch string) (string, error) {
+func getDownloadUrl(quartoVersion, arch string) (string, error) {
 	slog.Info("Fetching Quarto package " + quartoVersion)
 
 	if arch != "amd64" && arch != "arm64" {
@@ -110,14 +124,14 @@ func getQuartoUrl(quartoVersion, arch string) (string, error) {
 		return "", fmt.Errorf("quarto is not supported on detected '%s' architecture", arch)
 	}
 
-	quartoDownloadUrl := fmt.Sprintf(quartoDownloadUrlRoot, quartoVersion, quartoVersion, arch)
+	quartoDownloadUrl := fmt.Sprintf(downloadUrl, quartoVersion, quartoVersion, arch)
 
 	slog.Debug("Download URL: " + quartoDownloadUrl)
 
 	return quartoDownloadUrl, nil
 }
 
-func (m *QuartoManager) Install() error {
+func (m *Manager) Install() error {
 	err := m.validate()
 	if err != nil {
 		return fmt.Errorf("quarto install failed: %w", err)
@@ -142,14 +156,14 @@ func (m *QuartoManager) Install() error {
 			}
 		}
 
-		downloadUrl, err := getQuartoUrl(m.Version, m.LocalSystem.Arch)
+		downloadUrl, err := getDownloadUrl(m.Version, m.LocalSystem.Arch)
 		if err != nil {
-			return fmt.Errorf("failed to determine Quarto download URL: %w", err)
+			return fmt.Errorf("failed to determine quarto download URL: %w", err)
 		}
 
 		tmpDir, err := afero.TempDir(file.AppFs, "", "quarto")
 		if err != nil {
-			return fmt.Errorf("failed to create temporary directory for Quarto download: %w", err)
+			return fmt.Errorf("failed to create temporary directory for quarto download: %w", err)
 		}
 		downloadPath := tmpDir + "/quarto.tar.gz"
 		defer file.AppFs.RemoveAll(tmpDir)
@@ -172,7 +186,7 @@ func (m *QuartoManager) Install() error {
 		}
 
 		if err := file.Move(extractDir, m.InstallationPath); err != nil {
-			return fmt.Errorf("failed to move Quarto from '%s' to installation path '%s': %w", extractDir, m.InstallOptions, err)
+			return fmt.Errorf("failed to move quarto from '%s' to installation path '%s': %w", extractDir, m.InstallationPath, err)
 		}
 	} else {
 		slog.Info("Quarto is already installed")
@@ -191,7 +205,7 @@ func (m *QuartoManager) Install() error {
 	return nil
 }
 
-func (m *QuartoManager) InstallPackage(name string, options []string) error {
+func (m *Manager) InstallPackage(name string, options []string) error {
 	slog.Info(fmt.Sprintf("Installing Quarto %s add-on", name))
 
 	args := []string{"install", name, "--no-prompt"}
@@ -200,13 +214,13 @@ func (m *QuartoManager) InstallPackage(name string, options []string) error {
 	}
 	s := command.NewShellCommand(m.BinPath, args, nil, true)
 	if err := s.Run(); err != nil {
-		return fmt.Errorf("failed to install Quarto %s add-on: %w", name, err)
+		return fmt.Errorf("failed to install quarto %s tool: %w", name, err)
 	}
 
 	return nil
 }
 
-func (m *QuartoManager) UpdatePackage(name string, options []string) error {
+func (m *Manager) UpdatePackage(name string, options []string) error {
 	slog.Info("Updating Quarto " + name + " tool")
 
 	args := []string{"update", name, "--no-prompt"}
@@ -216,13 +230,13 @@ func (m *QuartoManager) UpdatePackage(name string, options []string) error {
 
 	s := command.NewShellCommand(m.BinPath, args, nil, true)
 	if err := s.Run(); err != nil {
-		return fmt.Errorf("failed to update Quarto %s tool: %w", name, err)
+		return fmt.Errorf("failed to update quarto %s tool: %w", name, err)
 	}
 
 	return nil
 }
 
-func (m *QuartoManager) RemovePackage(name string, options []string) error {
+func (m *Manager) RemovePackage(name string, options []string) error {
 	slog.Info("Updating Quarto " + name + " tool")
 
 	args := []string{"remove", name, "--no-prompt"}
@@ -232,7 +246,7 @@ func (m *QuartoManager) RemovePackage(name string, options []string) error {
 
 	s := command.NewShellCommand(m.BinPath, args, nil, true)
 	if err := s.Run(); err != nil {
-		return fmt.Errorf("failed to remove Quarto %s tool: %w", name, err)
+		return fmt.Errorf("failed to remove quarto %s tool: %w", name, err)
 	}
 
 	return nil

@@ -600,6 +600,120 @@ func Test_CreateSymlink(t *testing.T) {
 	}
 }
 
+func Test_InstallableDir(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name           string
+		setupFs        func(fs afero.Fs) string
+		setEmpty       bool
+		wantErr        bool
+		wantErrMessage string
+	}{
+		{
+			name: "installable empty dir",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				return tmpDir
+			},
+			setEmpty: true,
+			wantErr:  false,
+		},
+		{
+			name: "installable empty dir empty agnostic",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				return tmpDir
+			},
+			setEmpty: false,
+			wantErr:  false,
+		},
+		{
+			name: "not empty dir",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				require.NoError(err)
+				return tmpDir
+			},
+			setEmpty:       true,
+			wantErr:        true,
+			wantErrMessage: "is not empty",
+		},
+		{
+			name: "not empty dir empty agnostic",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				require.NoError(err)
+				return tmpDir
+			},
+			setEmpty: false,
+			wantErr:  false,
+		},
+		{
+			name: "path does not exist",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				return tmpDir + "doesnotexist"
+			},
+			setEmpty: false,
+			wantErr:  false,
+		},
+		{
+			name: "path is file",
+			setupFs: func(fs afero.Fs) string {
+				tmpDir, err := afero.TempDir(fs, "", "installable")
+				require.NoError(err)
+				tmpFile := tmpDir + "/testfile"
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				require.NoError(err)
+				return tmpFile
+			},
+			setEmpty:       false,
+			wantErr:        true,
+			wantErrMessage: "is not a directory",
+		},
+		{
+			name: "no path given",
+			setupFs: func(fs afero.Fs) string {
+				return ""
+			},
+			setEmpty:       false,
+			wantErr:        true,
+			wantErrMessage: "installation path is required",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := AppFs
+			AppFs = afero.NewMemMapFs()
+			defer func() {
+				AppFs = oldFs
+			}()
+
+			path := tt.setupFs(AppFs)
+
+			err := InstallableDir(path, tt.setEmpty)
+
+			if tt.wantErr {
+				require.Error(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				require.NoError(err)
+			}
+		})
+	}
+}
+
 func Test_Stat(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)

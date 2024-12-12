@@ -1,0 +1,5 @@
+quarto-1.6.39/
+├─ bin/
+│  ├─ quarto
+├─ share/
+│  ├─ version

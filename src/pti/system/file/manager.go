@@ -151,6 +151,37 @@ func CreateSymlink(oldName, newName string) error {
 	return nil
 }
 
+// InstallableDir checks if a directory is usable for installing a tool.
+// To be installable, one of the following must be true about the directory:
+//  1. Does not exist
+//  2. Exists and is a directory, if empty is true the directory must be empty
+func InstallableDir(path string, empty bool) error {
+	if path == "" {
+		return fmt.Errorf("installation path is required")
+	}
+
+	exists, err := IsPathExist(path)
+	if err != nil {
+		return fmt.Errorf("failed to check if installation path '%s' exists: %w", path, err)
+	}
+	if exists {
+		isDir, err := IsDir(path)
+		if err != nil {
+			return fmt.Errorf("failed to check if installation path '%s' is a directory: %w", path, err)
+		}
+		if !isDir {
+			return fmt.Errorf("installation path '%s' is not a directory", path)
+		}
+
+		isEmpty, err := afero.IsEmpty(AppFs, path)
+		if !isEmpty && empty {
+			return fmt.Errorf("installation path '%s' is not empty", path)
+		}
+	}
+
+	return nil
+}
+
 // Stat returns the FileInfo structure describing the file at the given path.
 // Returns an error if the file does not exist or if an error occurred during
 // the stat operation. Symlinks are followed in Afero's default implementation.
