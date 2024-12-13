@@ -98,7 +98,7 @@ func NewManager(l *system.LocalSystem, version, installationPath string, install
 	}, nil
 }
 
-func (m *Manager) validate() error {
+func (m *Manager) valid() error {
 	if m.Version == "" {
 		return fmt.Errorf("quarto version is required")
 	}
@@ -132,7 +132,7 @@ func getDownloadUrl(quartoVersion, arch string) (string, error) {
 }
 
 func (m *Manager) Install() error {
-	err := m.validate()
+	err := m.valid()
 	if err != nil {
 		return fmt.Errorf("quarto install failed: %w", err)
 	}
