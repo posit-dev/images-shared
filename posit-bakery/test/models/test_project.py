@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
 import tomlkit
@@ -24,10 +25,13 @@ class TestProject:
 
     def test_load_context_config_with_override(self, basic_tmpcontext):
         """Test loading the context config.toml file"""
-        override_config_str = """[[registry]]
-host = "docker.io"
-namespace = "posit-dev"
-"""
+        override_config_str = dedent(
+            """
+            [[registries]]
+            host = "docker.io"
+            namespace = "posit-dev"
+            """
+        )
         with open(basic_tmpcontext / "config.override.toml", "w") as f:
             f.write(override_config_str)
 

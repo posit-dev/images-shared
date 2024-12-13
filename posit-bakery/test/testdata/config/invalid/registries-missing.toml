@@ -1,0 +1,10 @@
+[repository]
+authors = [
+    "author1",
+    "author2",
+]
+url = "github.com/rstudio/example"
+vendor = "Posit Software, PBC"
+maintainer = "docker@posit.co"
+
+# missing registries: Validation should fail

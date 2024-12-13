@@ -34,6 +34,12 @@ def resource_path():
 
 
 @pytest.fixture(scope="session")
+def testdata_path():
+    """Return the path to the test data directory"""
+    return TEST_DIRECTORY / "testdata"
+
+
+@pytest.fixture(scope="session")
 def basic_context(resource_path):
     """Return the path to the basic test suite context"""
     return resource_path / "basic"

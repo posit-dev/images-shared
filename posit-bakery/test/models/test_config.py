@@ -1,6 +1,14 @@
+import pytest
+import tomlkit
+from pathlib import Path
+
+from pydantic import ValidationError
+
 from posit_bakery.models import config
+from .helpers import toml_file_testcases
 
 
+@pytest.mark.config
 class TestConfigRegistry:
     def test_create_config_registry(self):
         """Test creating a generic ConfigRegistry object does not raise an exception"""
@@ -29,6 +37,7 @@ class TestConfigRegistry:
         assert hash(c1) != hash(c3)
 
 
+@pytest.mark.config
 class TestConfigRepository:
     def test_create_config_repository(self):
         """Test creating a generic ConfigRepository object does not raise an exception"""
@@ -46,7 +55,63 @@ class TestConfigRepository:
         """
         config.ConfigRepository()
 
+    def test_basic_doc(self, basic_config_file):
+        """Read basic/config.toml and validate the document"""
+        with open(basic_config_file, "r") as f:
+            doc = tomlkit.load(f)
 
+            config.ConfigDocument.model_validate(doc)
+            config.ConfigDocument(**doc)
+
+
+@pytest.mark.toml_schema
+@pytest.mark.config
+class TestConfigDocument:
+    def test_empty_init(self):
+        """Creating an empty ConfigDocument fails validation"""
+        with pytest.raises(ValidationError):
+            config.ConfigDocument()
+
+    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "valid"))
+    def test_valid(self, caplog, toml_file: Path):
+        """Test valid TOML config files
+
+        Files are stored in test/testdata/config/valid
+        """
+        with open(toml_file, "r") as f:
+            doc = tomlkit.load(f)
+
+        config.ConfigDocument(**doc)
+
+        assert "WARNING" not in caplog.text
+
+    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "valid-with-warning"))
+    def test_valid_with_warning(self, caplog, toml_file: Path):
+        """Test valid TOML config files, but raise warnings in the validation
+
+        Files are stored in test/testdata/config/valid-with-warning
+        """
+        with open(toml_file, "r") as f:
+            doc = tomlkit.load(f)
+
+        config.ConfigDocument(**doc)
+
+        assert "WARNING" in caplog.text
+
+    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "invalid"))
+    def test_invalid(self, toml_file: Path):
+        """Test invalid TOML config files
+
+        Files are stored in test/testdata/config/invalid
+        """
+        with open(toml_file, "r") as f:
+            doc = tomlkit.load(f)
+
+        with pytest.raises(ValidationError):
+            config.ConfigDocument(**doc)
+
+
+@pytest.mark.config
 class TestConfig:
     def test_create_config(self, basic_context, basic_config_file):
         """Test creating a generic Config object does not raise an exception and test data appears as expected"""
@@ -56,13 +121,13 @@ class TestConfig:
             document=config.GenericTOMLModel.read(basic_config_file),
             registries=[config.ConfigRegistry(host="docker.io", namespace="posit")],
             repository=config.ConfigRepository(
-                authors={"author1", "author2"},
+                authors=["author1", "author2"],
                 url="github.com/rstudio/example",
                 vendor="Posit Software, PBC",
                 maintainer="docker@posit.co",
             ),
         )
-        assert c.authors == {"author1", "author2"}
+        assert c.authors == ["author1", "author2"]
         assert c.repository_url == "github.com/rstudio/example"
         assert c.vendor == "Posit Software, PBC"
         assert c.maintainer == "docker@posit.co"
@@ -72,7 +137,7 @@ class TestConfig:
     def test_load_file(self, basic_config_file):
         """Test that the load_file method returns a Config object with expected data"""
         c = config.Config.load(basic_config_file)
-        assert c.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
+        assert c.authors == ["Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"]
         assert c.repository_url == "github.com/posit-dev/images-shared"
         assert c.vendor == "Posit Software, PBC"
         assert c.maintainer == "docker@posit.co"
@@ -83,7 +148,7 @@ class TestConfig:
     def test_update(self, basic_context, basic_config_file, basic_config_obj):
         """Test that the update method updates the Config object with the provided Config object"""
         # Test existing values
-        assert basic_config_obj.authors == {"Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"}
+        assert basic_config_obj.authors == ["Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"]
         assert basic_config_obj.repository_url == "github.com/posit-dev/images-shared"
         assert basic_config_obj.vendor == "Posit Software, PBC"
         assert basic_config_obj.maintainer == "docker@posit.co"
@@ -98,14 +163,14 @@ class TestConfig:
             document=config.GenericTOMLModel.read(basic_config_file),
             registries=[],
             repository=config.ConfigRepository(
-                authors={"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"},
+                authors=["Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"],
                 url="github.com/rstudio/example",
                 vendor="Example Company",
                 maintainer="images@example.com",
             ),
         )
         basic_config_obj.update(c_override)
-        assert basic_config_obj.authors == {"Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"}
+        assert basic_config_obj.authors == ["Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"]
         assert basic_config_obj.repository_url == "github.com/rstudio/example"
         assert basic_config_obj.vendor == "Example Company"
         assert basic_config_obj.maintainer == "images@example.com"
