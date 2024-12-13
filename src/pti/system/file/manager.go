@@ -17,11 +17,18 @@ import (
 var AppFs = afero.NewOsFs()
 
 // hasSymlinkSupport checks if the file system supports symlinks.
-// Currently, we only use the OS file system which supports symlinks and the
+// Currently, we only use the OsFs and BasePathFs file system which supports symlinks and the
 // MemMapFs for tests which does not support symlinks.
-func hasSymlinkSupport() bool {
+func hasSymlinkSupport() (afero.Symlinker, bool) {
 	_, ok := AppFs.(*afero.OsFs)
-	return ok
+	if ok {
+		return AppFs.(*afero.OsFs), true
+	}
+	_, ok = AppFs.(*afero.BasePathFs)
+	if ok {
+		return AppFs.(*afero.BasePathFs), true
+	}
+	return nil, false
 }
 
 // IsPathExist checks if a path exists.
@@ -44,9 +51,9 @@ func IsDir(path string) (bool, error) {
 	}
 
 	var fileInfo os.FileInfo
-	if hasSymlinkSupport() {
-		fs := AppFs.(*afero.OsFs)
-		fileInfo, _, err = fs.LstatIfPossible(path)
+	t, ok := hasSymlinkSupport()
+	if ok {
+		fileInfo, _, err = t.LstatIfPossible(path)
 	} else {
 		fileInfo, err = AppFs.Stat(path)
 	}
@@ -77,9 +84,9 @@ func IsFile(path string) (bool, error) {
 	}
 
 	var fileInfo os.FileInfo
-	if hasSymlinkSupport() {
-		fs := AppFs.(*afero.OsFs)
-		fileInfo, _, err = fs.LstatIfPossible(path)
+	t, ok := hasSymlinkSupport()
+	if ok {
+		fileInfo, _, err = t.LstatIfPossible(path)
 	} else {
 		fileInfo, err = AppFs.Stat(path)
 	}
@@ -109,9 +116,9 @@ func IsSymlink(path string) (bool, error) {
 	}
 
 	var fileInfo os.FileInfo
-	if hasSymlinkSupport() {
-		fs := AppFs.(*afero.OsFs)
-		fileInfo, _, err = fs.LstatIfPossible(path)
+	t, ok := hasSymlinkSupport()
+	if ok {
+		fileInfo, _, err = t.LstatIfPossible(path)
 	} else {
 		fileInfo, err = AppFs.Stat(path)
 	}
@@ -130,7 +137,8 @@ func IsSymlink(path string) (bool, error) {
 // Returns an error if the symlink could not be created.
 func CreateSymlink(oldName, newName string) error {
 	slog.Debug("Creating symlink from " + oldName + " to " + newName)
-	if hasSymlinkSupport() {
+	t, ok := hasSymlinkSupport()
+	if ok {
 		exists, err := IsPathExist(oldName)
 		if err != nil {
 			return fmt.Errorf("failed to check if source path '%s' exists: %w", oldName, err)
@@ -139,8 +147,7 @@ func CreateSymlink(oldName, newName string) error {
 			return fmt.Errorf("source path '%s' does not exist", oldName)
 		}
 
-		fs := AppFs.(*afero.OsFs)
-		err = fs.SymlinkIfPossible(oldName, newName)
+		err = t.SymlinkIfPossible(oldName, newName)
 		if err != nil {
 			return fmt.Errorf("failed to create symlink from '%s' to '%s': %w", oldName, newName, err)
 		}

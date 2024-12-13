@@ -359,7 +359,7 @@ func Test_Manager_validate(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
-			err := tt.manager.validate()
+			err := tt.manager.valid()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
