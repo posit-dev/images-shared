@@ -28,32 +28,17 @@ var supportedVendors = []string{"ubuntu", "debian", "almalinux", "centos", "rock
 var downloadUrl = "https://cdn.posit.co/python/%s/pkgs/%s"
 var versionsJsonUrl = "https://cdn.posit.co/python/versions.json"
 
-type InstallOptions struct {
-	SetDefault bool
-	AddKernel  bool
-	AddToPath  bool
-}
-
 type Manager struct {
 	*system.LocalSystem
 	Version          string
 	InstallationPath string
 	PythonPath       string
 	PipPath          string
-	InstallOptions   *InstallOptions
 }
 
-func NewManager(l *system.LocalSystem, version string, installOptions *InstallOptions) (*Manager, error) {
+func NewManager(l *system.LocalSystem, version string) (*Manager, error) {
 	if version == "" {
 		return nil, fmt.Errorf("python version is required")
-	}
-
-	if installOptions == nil {
-		installOptions = &InstallOptions{
-			SetDefault: false,
-			AddKernel:  false,
-			AddToPath:  false,
-		}
 	}
 
 	installationPath := fmt.Sprintf(installPathTpl, version)
@@ -66,7 +51,6 @@ func NewManager(l *system.LocalSystem, version string, installOptions *InstallOp
 		InstallationPath: installationPath,
 		PythonPath:       pyPath,
 		PipPath:          pipPath,
-		InstallOptions:   installOptions,
 	}, nil
 }
 
@@ -233,25 +217,6 @@ func (m *Manager) Install() error {
 	} else {
 		// Skip install if Python is already installed
 		slog.Info("Python " + m.Version + " is already installed")
-	}
-
-	if m.InstallOptions.AddKernel {
-		if err := m.addJupyterKernel(); err != nil {
-			slog.Error("Failed to add Jupyter kernel for Python " + m.Version)
-			slog.Error(err.Error())
-		}
-	}
-
-	if m.InstallOptions.SetDefault {
-		if err := m.makeDefault(); err != nil {
-			slog.Error("Failed to set Python %s as default Python version: %v", m.Version, err)
-		}
-	}
-
-	if m.InstallOptions.AddToPath {
-		if err := m.addToPath(); err != nil {
-			slog.Error("Failed to add Python %s to PATH: %v", m.Version, err)
-		}
 	}
 
 	slog.Info("Python " + m.Version + " installation finished")

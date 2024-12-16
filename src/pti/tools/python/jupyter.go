@@ -56,7 +56,6 @@ func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 		InstallationPath: path,
 		PythonPath:       pythonPath,
 		PipPath:          pipPath,
-		InstallOptions:   &InstallOptions{},
 	}
 
 	if err := jupyterManager.initCorePackages(); err != nil {

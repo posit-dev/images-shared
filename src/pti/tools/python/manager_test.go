@@ -78,7 +78,6 @@ func Test_NewManager(t *testing.T) {
 		name           string
 		system         *system.LocalSystem
 		version        string
-		InstallOptions *InstallOptions
 		want           *Manager
 		wantErr        bool
 		wantErrMessage string
@@ -87,34 +86,27 @@ func Test_NewManager(t *testing.T) {
 			name:           "no version",
 			system:         ubuntuSystem,
 			version:        "",
-			InstallOptions: nil,
 			want:           nil,
 			wantErr:        true,
 			wantErrMessage: "python version is required",
 		},
 		{
-			name:           "default",
-			system:         ubuntuSystem,
-			version:        "3.12.4",
-			InstallOptions: nil,
+			name:    "default",
+			system:  ubuntuSystem,
+			version: "3.12.4",
 			want: &Manager{
 				LocalSystem:      ubuntuSystem,
 				Version:          "3.12.4",
 				InstallationPath: "/opt/python/3.12.4",
 				PythonPath:       "/opt/python/3.12.4/bin/python",
 				PipPath:          "/opt/python/3.12.4/bin/pip",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewManager(tt.system, tt.version, tt.InstallOptions)
+			got, err := NewManager(tt.system, tt.version)
 			assert.Equal(tt.want, got)
 			if tt.wantErr {
 				require.Error(err)
@@ -497,12 +489,6 @@ func Test_Manager_Install(t *testing.T) {
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
-	ipykernelInstallCall := expectedCall{
-		name:           "/opt/python/3.12.4/bin/python",
-		args:           []string{"-m", "pip", "install", "ipykernel", "--upgrade"},
-		envVars:        nil,
-		inheritEnvVars: true,
-	}
 
 	tests := []struct {
 		name           string
@@ -527,11 +513,6 @@ func Test_Manager_Install(t *testing.T) {
 				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
 				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
 				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
 			},
 			srv: newServerPythonCdn,
 			setupFs: func(t *testing.T, version string) afero.Fs {
@@ -579,11 +560,6 @@ func Test_Manager_Install(t *testing.T) {
 				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
 				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
 				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
 			},
 			srv: newServerPythonCdn,
 			setupFs: func(t *testing.T, s string) afero.Fs {
@@ -608,202 +584,6 @@ func Test_Manager_Install(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name: "add kernel",
-			manager: &Manager{
-				LocalSystem: &system.LocalSystem{
-					Vendor:  "ubuntu",
-					Version: "22.04",
-					Arch:    "amd64",
-				},
-				InstallationPath: fmt.Sprintf(installPathTpl, "3.12.4"),
-				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
-				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  true,
-					AddToPath:  false,
-				},
-			},
-			srv: newServerPythonCdn,
-			setupFs: func(t *testing.T, s string) afero.Fs {
-				fs := afero.NewMemMapFs()
-				return fs
-			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
-				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-				mockPm.EXPECT().GetPackageExtension().Return(".deb")
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(
-					func(list *syspkg.PackageList) error {
-						assert.Contains(list.LocalPackages[0], "python.deb")
-						fakePythonInstallation(t, fs, "3.12.4")
-						return nil
-					},
-				)
-				manager.LocalSystem.PackageManager = mockPm
-			},
-			expectedCalls: []expectedCall{
-				ensurePipCall,
-				pipInstallUpgradeCall,
-				setuptoolsInstallUpgradeCall,
-				pipCleanCall,
-				ipykernelInstallCall,
-				pipCleanCall,
-				{
-					name:           "/opt/python/3.12.4/bin/python",
-					args:           []string{"-m", "ipykernel", "install", "--name", "py3.12.4", "--display-name", "Python 3.12.4"},
-					envVars:        nil,
-					inheritEnvVars: true,
-				},
-			},
-			validateFs: func(t *testing.T, fs afero.Fs) {
-				isFile, err := file.IsFile("/opt/python/3.12.4/bin/python")
-				require.NoError(err)
-				assert.True(isFile)
-
-				isFile, err = file.IsFile("/opt/python/3.12.4/bin/pip")
-				require.NoError(err)
-				assert.True(isFile)
-			},
-			wantErr: false,
-		},
-		{
-			name: "set default",
-			manager: &Manager{
-				LocalSystem: &system.LocalSystem{
-					Vendor:  "ubuntu",
-					Version: "22.04",
-					Arch:    "amd64",
-				},
-				InstallationPath: fmt.Sprintf(installPathTpl, "3.12.4"),
-				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
-				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: true,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
-			},
-			srv: newServerPythonCdn,
-			setupFs: func(t *testing.T, version string) afero.Fs {
-				fs := afero.NewBasePathFs(afero.NewOsFs(), os.TempDir()+"/setdefault")
-				err := fs.MkdirAll("/opt", 0755)
-				require.NoError(err)
-				err = fs.MkdirAll("/tmp", 0755)
-				require.NoError(err)
-
-				return fs
-			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
-				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-				mockPm.EXPECT().GetPackageExtension().Return(".deb")
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(
-					func(list *syspkg.PackageList) error {
-						assert.Contains(list.LocalPackages[0], "python.deb")
-						fakePythonInstallation(t, fs, "3.12.4")
-						return nil
-					},
-				)
-				manager.LocalSystem.PackageManager = mockPm
-			},
-			validateFs: func(t *testing.T, fs afero.Fs) {
-				isFile, err := file.IsFile("/opt/python/3.12.4/bin/python")
-				require.NoError(err)
-				assert.True(isFile)
-
-				isFile, err = file.IsFile("/opt/python/3.12.4/bin/pip")
-				require.NoError(err)
-				assert.True(isFile)
-
-				isSymlink, err := file.IsSymlink("/opt/python/default")
-				require.NoError(err)
-				assert.True(isSymlink)
-
-				osFs := afero.NewOsFs()
-				err = osFs.RemoveAll(os.TempDir() + "/setdefault")
-				require.NoError(err)
-			},
-			expectedCalls: []expectedCall{
-				ensurePipCall,
-				pipInstallUpgradeCall,
-				setuptoolsInstallUpgradeCall,
-				pipCleanCall,
-			},
-			wantErr: false,
-		},
-		{
-			name: "add to path",
-			manager: &Manager{
-				LocalSystem: &system.LocalSystem{
-					Vendor:  "ubuntu",
-					Version: "22.04",
-					Arch:    "amd64",
-				},
-				InstallationPath: fmt.Sprintf(installPathTpl, "3.12.4"),
-				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
-				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  true,
-				},
-			},
-			srv: newServerPythonCdn,
-			setupFs: func(t *testing.T, version string) afero.Fs {
-				fs := afero.NewBasePathFs(afero.NewOsFs(), os.TempDir()+"/addpath")
-				err := fs.MkdirAll("/usr/local/bin", 0755)
-				require.NoError(err)
-				err = fs.MkdirAll("/opt", 0755)
-				require.NoError(err)
-				err = fs.MkdirAll("/tmp", 0755)
-				require.NoError(err)
-
-				return fs
-			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
-				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-				mockPm.EXPECT().GetPackageExtension().Return(".deb")
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(
-					func(list *syspkg.PackageList) error {
-						assert.Contains(list.LocalPackages[0], "python.deb")
-						fakePythonInstallation(t, fs, "3.12.4")
-						return nil
-					},
-				)
-				manager.LocalSystem.PackageManager = mockPm
-			},
-			validateFs: func(t *testing.T, fs afero.Fs) {
-				isFile, err := file.IsFile("/opt/python/3.12.4/bin/python")
-				require.NoError(err)
-				assert.True(isFile)
-
-				isFile, err = file.IsFile("/opt/python/3.12.4/bin/pip")
-				require.NoError(err)
-				assert.True(isFile)
-
-				isSymlink, err := file.IsSymlink("/usr/local/bin/python3.12.4")
-				require.NoError(err)
-				assert.True(isSymlink)
-
-				isSymlink, err = file.IsSymlink("/usr/local/bin/pip3.12.4")
-				require.NoError(err)
-				assert.True(isSymlink)
-
-				osFs := afero.NewOsFs()
-				err = osFs.RemoveAll(os.TempDir() + "/addpath")
-				require.NoError(err)
-			},
-			expectedCalls: []expectedCall{
-				ensurePipCall,
-				pipInstallUpgradeCall,
-				setuptoolsInstallUpgradeCall,
-				pipCleanCall,
-			},
-			wantErr: false,
-		},
-		{
 			name: "download error",
 			manager: &Manager{
 				LocalSystem: &system.LocalSystem{
@@ -815,11 +595,6 @@ func Test_Manager_Install(t *testing.T) {
 				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
 				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
 				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
 			},
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -873,11 +648,6 @@ func Test_Manager_Install(t *testing.T) {
 				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
 				PipPath:          fmt.Sprintf(pipPathTpl, "3.12.4"),
 				Version:          "3.12.4",
-				InstallOptions: &InstallOptions{
-					SetDefault: false,
-					AddKernel:  false,
-					AddToPath:  false,
-				},
 			},
 			srv: newServerPythonCdn,
 			setupFs: func(t *testing.T, version string) afero.Fs {
