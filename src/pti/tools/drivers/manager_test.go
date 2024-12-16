@@ -313,15 +313,6 @@ func Test_InstallProDrivers(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
-			fh, err := file.AppFs.Create(odbcInstIniPath)
-			require.NoError(err)
-			_, err = fh.WriteString("original definition")
-			require.NoError(err)
-			fh, err = file.AppFs.Create(positDriversOdbcInstIniPath)
-			require.NoError(err)
-			_, err = fh.WriteString("new definition")
-			require.NoError(err)
-
 			oldUrl := proDriversUrl
 			proDriversUrl = tt.srv.URL + "/drivers/7C152C12/installer/%s"
 			defer func() {
@@ -331,36 +322,14 @@ func Test_InstallProDrivers(t *testing.T) {
 
 			tt.pmSetup(t, tt.args.l)
 
-			m := NewProDriversManager(tt.args.l, tt.args.driversVersion, true)
+			m := NewProDriversManager(tt.args.l, tt.args.driversVersion)
 
-			err = m.Install()
+			err := m.Install()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
 			} else {
 				require.NoError(err)
-
-				exists, err := afero.Exists(file.AppFs, odbcInstIniPath)
-				require.NoError(err)
-				assert.True(exists)
-
-				exists, err = afero.Exists(file.AppFs, positDriversOdbcInstIniPath)
-				require.NoError(err)
-				assert.True(exists)
-
-				exists, err = afero.Exists(file.AppFs, odbcInstIniPath+".bak")
-				require.NoError(err)
-				assert.True(exists)
-
-				// Check that the odbcinst.ini file was updated
-				contents, err := afero.ReadFile(file.AppFs, odbcInstIniPath)
-				require.NoError(err)
-				assert.Equal("new definition", string(contents))
-
-				// Check that the odbcinst.ini.bak file was saved
-				contents, err = afero.ReadFile(file.AppFs, odbcInstIniPath+".bak")
-				require.NoError(err)
-				assert.Equal("original definition", string(contents))
 			}
 		})
 	}
@@ -479,7 +448,7 @@ func Test_CopyProDriversOdbcInstIni(t *testing.T) {
 
 			tt.setupFs(file.AppFs)
 
-			m := NewProDriversManager(&system.LocalSystem{}, "", false)
+			m := NewProDriversManager(&system.LocalSystem{}, "")
 
 			err := m.CopyProDriversOdbcInstIni()
 			if tt.wantErr {

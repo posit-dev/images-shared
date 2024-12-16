@@ -21,18 +21,16 @@ var proDriversUrl = "https://cdn.posit.co/drivers/7C152C12/installer/%s"
 
 type ProDriversManager struct {
 	*system.LocalSystem
-	Version                string
-	CopyExampleOdbcInstIni bool
+	Version string
 }
 
-func NewProDriversManager(l *system.LocalSystem, version string, copyExample bool) *ProDriversManager {
+func NewProDriversManager(l *system.LocalSystem, version string) *ProDriversManager {
 	if version == "" {
 		version = driversVersion
 	}
 	return &ProDriversManager{
-		LocalSystem:            l,
-		Version:                version,
-		CopyExampleOdbcInstIni: copyExample,
+		LocalSystem: l,
+		Version:     version,
 	}
 }
 
@@ -107,13 +105,6 @@ func (m *ProDriversManager) Install() error {
 		return fmt.Errorf("failed to install pro drivers package located at '%s': %w", downloadPath, err)
 	}
 	defer m.LocalSystem.PackageManager.Clean()
-
-	// Copy the odbcinst.ini.sample from the Posit Drivers package
-	if m.CopyExampleOdbcInstIni {
-		if err := m.CopyProDriversOdbcInstIni(); err != nil {
-			return fmt.Errorf("failed to copy example odbcinst.ini file: %w", err)
-		}
-	}
 
 	return nil
 }
