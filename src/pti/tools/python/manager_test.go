@@ -784,7 +784,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/makedefault"
+	tmpDir := os.TempDir() + "/py_makedefault"
 
 	tests := []struct {
 		name           string
@@ -937,7 +937,7 @@ func Test_Manager_addToPath(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/addtopath"
+	tmpDir := os.TempDir() + "/py_addtopath"
 
 	tests := []struct {
 		name           string
