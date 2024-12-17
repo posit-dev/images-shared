@@ -454,6 +454,55 @@ func Test_Manager_downloadUrl(t *testing.T) {
 	}
 }
 
+func Test_Manager_Installed(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		name    string
+		manager *Manager
+		setupFs func(*testing.T, afero.Fs, string)
+		want    bool
+	}{
+		{
+			name: "installed",
+			manager: &Manager{
+				Version:          "3.12.4",
+				InstallationPath: fmt.Sprintf(installPathTpl, "3.12.4"),
+				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
+			},
+			setupFs: fakePythonInstallation,
+			want:    true,
+		},
+		{
+			name: "not installed",
+			manager: &Manager{
+				Version:          "3.12.4",
+				InstallationPath: fmt.Sprintf(installPathTpl, "3.12.4"),
+				PythonPath:       fmt.Sprintf(binPathTpl, "3.12.4"),
+			},
+			setupFs: nil,
+			want:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+
+			if tt.setupFs != nil {
+				tt.setupFs(t, file.AppFs, tt.manager.Version)
+			}
+
+			got, err := tt.manager.Installed()
+			assert.Equal(tt.want, got)
+			assert.NoError(err)
+		})
+	}
+}
+
 func Test_Manager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
@@ -1014,6 +1063,57 @@ func Test_Manager_addToPath(t *testing.T) {
 				if tt.validateFs != nil {
 					tt.validateFs(t, file.AppFs)
 				}
+			}
+		})
+	}
+}
+
+func Test_Manager_Remove(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tests := []struct {
+		name           string
+		manager        *Manager
+		runErr         error
+		wantErr        bool
+		wantErrMessage string
+	}{
+		{
+			name: "success",
+			manager: &Manager{
+				LocalSystem: &system.LocalSystem{},
+				Version:     "3.12.4",
+			},
+			runErr:  nil,
+			wantErr: false,
+		},
+		{
+			name: "failed to remove",
+			manager: &Manager{
+				LocalSystem: &system.LocalSystem{},
+				Version:     "3.12.4",
+			},
+			runErr:         fmt.Errorf("remove error"),
+			wantErr:        true,
+			wantErrMessage: "failed to remove python 3.12.4",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPm := syspkg_mock.NewMockSystemPackageManager(t)
+			mockPm.EXPECT().Remove(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
+				assert.Contains(list.Packages, "python-3.12.4")
+				return tt.runErr
+			})
+			tt.manager.LocalSystem.PackageManager = mockPm
+
+			err := tt.manager.Remove()
+			if tt.wantErr {
+				require.Error(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				require.NoError(err)
 			}
 		})
 	}

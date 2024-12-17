@@ -294,3 +294,17 @@ func (m *Manager) addToPath() error {
 
 	return nil
 }
+
+func (m *Manager) Update() error {
+	// TODO: maybe this uninstalls and reinstalls the highest patch on a minor version?
+	return fmt.Errorf("not implemented")
+}
+
+func (m *Manager) Remove() error {
+	l := &syspkg.PackageList{Packages: []string{"python-" + m.Version}}
+	err := m.PackageManager.Remove(l)
+	if err != nil {
+		return fmt.Errorf("failed to remove python %s: %w", m.Version, err)
+	}
+	return nil
+}
