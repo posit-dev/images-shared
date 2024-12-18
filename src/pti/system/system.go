@@ -3,7 +3,6 @@ package system
 import (
 	"fmt"
 	"github.com/zcalusic/sysinfo"
-	"log"
 	"os/user"
 	"pti/system/syspkg"
 )
@@ -51,7 +50,7 @@ var currentUser = func() (*user.User, error) {
 func RequireSudo() error {
 	current, err := currentUser()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to get current user: %w", err)
 	}
 
 	if current.Uid != "0" {
