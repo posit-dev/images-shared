@@ -11,48 +11,46 @@ import (
 )
 
 const (
-	positDriversOdbcInstIniPath = "/opt/rstudio-drivers/odbcinst.ini.sample"
-	odbcInstIniPath             = "/etc/odbcinst.ini"
-	driversVersion              = "2024.03.0"
-	driversPackageName          = "rstudio-drivers"
+	defaultVersion = "2024.03.0"
+	packageName    = "rstudio-drivers"
 )
 
-var proDriversUrl = "https://cdn.posit.co/drivers/7C152C12/installer/%s"
+var downloadUrl = "https://cdn.posit.co/drivers/7C152C12/installer/%s"
 
-type ProDriversManager struct {
+type Manager struct {
 	*system.LocalSystem
 	Version string
 }
 
-func NewProDriversManager(l *system.LocalSystem, version string) *ProDriversManager {
+func NewManager(l *system.LocalSystem, version string) *Manager {
 	if version == "" {
-		version = driversVersion
+		version = defaultVersion
 	}
-	return &ProDriversManager{
+	return &Manager{
 		LocalSystem: l,
 		Version:     version,
 	}
 }
 
-func getProDriversUrl(l *system.LocalSystem, driversVersion string) (string, error) {
+func (m *Manager) downloadUrl() (string, error) {
 	var packageName string
-	switch l.Vendor {
+	switch m.LocalSystem.Vendor {
 	case "ubuntu", "debian":
 		slog.Debug("Detected Debian-based distribution")
-		packageName = fmt.Sprintf("rstudio-drivers_%s_%s.deb", driversVersion, l.Arch)
+		packageName = fmt.Sprintf("rstudio-drivers_%s_%s.deb", m.Version, m.LocalSystem.Arch)
 	case "almalinux", "centos", "rockylinux", "rhel":
 		slog.Debug("Detected RHEL-based distribution")
-		packageName = fmt.Sprintf("rstudio-drivers-%s-1.el.%s.rpm", driversVersion, l.GetAltArchName())
+		packageName = fmt.Sprintf("rstudio-drivers-%s-1.el.%s.rpm", m.Version, m.LocalSystem.GetAltArchName())
 	default:
-		return "", fmt.Errorf("unsupported OS: %s %s", l.Vendor, l.Version)
+		return "", fmt.Errorf("unsupported OS: %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
 	}
 	slog.Debug("Using package name: " + packageName)
-	return fmt.Sprintf(proDriversUrl, packageName), nil
+	return fmt.Sprintf(downloadUrl, packageName), nil
 }
 
-func getProDriversDependencies(l *system.LocalSystem) ([]string, error) {
+func (m *Manager) dependencies() (*syspkg.PackageList, error) {
 	var packages []string
-	switch l.Vendor {
+	switch m.LocalSystem.Vendor {
 	case "ubuntu", "debian":
 		slog.Debug("Detected Debian-based distribution")
 		packages = []string{"unixodbc", "unixodbc-dev"}
@@ -60,33 +58,33 @@ func getProDriversDependencies(l *system.LocalSystem) ([]string, error) {
 		slog.Debug("Detected RHEL-based distribution")
 		packages = []string{"unixODBC", "unixODBC-devel"}
 	default:
-		return nil, fmt.Errorf("unsupported OS: %s %s", l.Vendor, l.Version)
+		return nil, fmt.Errorf("unsupported OS: %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
 	}
 	slog.Debug("Using driver dependencies: " + strings.Join(packages, ", "))
-	return packages, nil
+	return &syspkg.PackageList{Packages: packages}, nil
 }
 
-func (m *ProDriversManager) Installed() (bool, error) {
+func (m *Manager) Installed() (bool, error) {
 	// TODO: Implement an "IsInstalled" method for PackageManager
 	//       This will likely require some work with routing command outputs
 	return false, fmt.Errorf("not implemented")
 }
 
-func (m *ProDriversManager) Install() error {
-	slog.Info("Installing Posit Pro Drivers " + driversVersion)
+func (m *Manager) Install() error {
+	slog.Info("Installing Posit Pro Drivers " + defaultVersion)
 
 	// Determine driver dependencies if possible and the Drivers package name
-	downloadUrl, err := getProDriversUrl(m.LocalSystem, driversVersion)
+	url, err := m.downloadUrl()
 	if err != nil {
 		return fmt.Errorf("failed to determine Posit Pro Drivers download URL: %w", err)
 	}
-	driverDependencies, err := getProDriversDependencies(m.LocalSystem)
+	driverPackages, err := m.dependencies()
 	if err != nil {
 		return fmt.Errorf("failed to determine Posit Pro Drivers system dependencies: %w", err)
 	}
 
-	slog.Debug("Driver system dependencies to install: " + strings.Join(driverDependencies, ", "))
-	slog.Debug("Driver download URL: " + downloadUrl)
+	slog.Debug("Driver system dependencies to install: " + strings.Join(driverPackages.Packages, ", "))
+	slog.Debug("Driver download URL: " + url)
 
 	// Download and install the drivers
 	downloadTmpDir, err := afero.TempDir(file.AppFs, "", "drivers")
@@ -97,11 +95,12 @@ func (m *ProDriversManager) Install() error {
 	defer file.AppFs.RemoveAll(downloadPath)
 
 	slog.Debug("Downloading driver package to: " + downloadPath)
-	if err := file.DownloadFile(downloadUrl, downloadPath); err != nil {
-		return fmt.Errorf("failed to download pro drivers package from '%s': %w", downloadUrl, err)
+	if err := file.DownloadFile(url, downloadPath); err != nil {
+		return fmt.Errorf("failed to download pro drivers package from '%s': %w", url, err)
 	}
+	driverPackages.LocalPackages = []string{downloadPath}
 	// Install dependencies and then install local package
-	if err := m.LocalSystem.PackageManager.Install(&syspkg.PackageList{Packages: driverDependencies, LocalPackages: []string{downloadPath}}); err != nil {
+	if err := m.LocalSystem.PackageManager.Install(driverPackages); err != nil {
 		return fmt.Errorf("failed to install pro drivers package located at '%s': %w", downloadPath, err)
 	}
 	defer m.LocalSystem.PackageManager.Clean()
@@ -109,46 +108,7 @@ func (m *ProDriversManager) Install() error {
 	return nil
 }
 
-func (m *ProDriversManager) CopyProDriversOdbcInstIni() error {
-	// Check if the Posit Pro Drivers odbcinst.ini.sample exists
-	isFile, err := file.IsFile(positDriversOdbcInstIniPath)
-	if err != nil {
-		return fmt.Errorf("unable to check whether Posit Pro Drivers odbcinst.ini.sample exists at '%s': %w", positDriversOdbcInstIniPath, err)
-	}
-	if !isFile {
-		slog.Error(fmt.Sprintf("Posit Pro Drivers odbcinst.ini.sample does not exist as expected at '%s'. An installation error may have occurred.", positDriversOdbcInstIniPath))
-		return fmt.Errorf("odbcinst.ini.sample does not exist at '%s' as expected", positDriversOdbcInstIniPath)
-	}
-
-	isFile, err = file.IsFile(odbcInstIniPath)
-	if err != nil {
-		slog.Info("No odbcinst.ini detected, backup step will be skipped.")
-	}
-
-	// Backup original odbcinst.ini
-	if isFile {
-		slog.Info("Backing up original odbcinst.ini to " + fmt.Sprintf("%s.bak", odbcInstIniPath))
-		if err := file.Move(odbcInstIniPath, fmt.Sprintf("%s.bak", odbcInstIniPath)); err != nil {
-			slog.Error("Failed to backup odbcinst.ini, Pro Drivers odbcinst.ini.sample will not be copied.")
-			return fmt.Errorf("unable to backup odbcinst.ini: %w", err)
-		}
-	}
-
-	// Copy the odbcinst.ini.sample from the Posit Drivers package
-	slog.Info("Copying Posit Pro Drivers odbcinst.ini.sample to " + odbcInstIniPath)
-	if err := file.Copy(positDriversOdbcInstIniPath, odbcInstIniPath); err != nil {
-		slog.Error(fmt.Sprintf("Failed to copy %s to %s. Original odbcinst.ini will be restored.", positDriversOdbcInstIniPath, odbcInstIniPath))
-		err := file.Move(fmt.Sprintf("%s.bak", odbcInstIniPath), odbcInstIniPath)
-		if err != nil {
-			slog.Error("Failed to restore original odbcinst.ini.")
-		}
-		return fmt.Errorf("unable to copy Pro Drivers example ini file from %s to %s: %w", positDriversOdbcInstIniPath, odbcInstIniPath, err)
-	}
-
-	return nil
-}
-
-func (m *ProDriversManager) Update() error {
+func (m *Manager) Update() error {
 	err := m.Remove()
 	if err != nil {
 		slog.Error("Failed to remove Posit Pro Drivers: " + err.Error())
@@ -156,10 +116,10 @@ func (m *ProDriversManager) Update() error {
 	return m.Install()
 }
 
-func (m *ProDriversManager) Remove() error {
-	err := m.LocalSystem.PackageManager.Remove(&syspkg.PackageList{Packages: []string{driversPackageName}})
+func (m *Manager) Remove() error {
+	err := m.LocalSystem.PackageManager.Remove(&syspkg.PackageList{Packages: []string{packageName}})
 	if err != nil {
-		return fmt.Errorf("failed to uninstall %s: %w", driversPackageName, err)
+		return fmt.Errorf("failed to uninstall %s: %w", packageName, err)
 	}
 	return nil
 }
