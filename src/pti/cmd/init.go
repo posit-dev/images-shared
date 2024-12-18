@@ -6,8 +6,16 @@ import (
 	"pti/tools/container"
 )
 
-func Init(cCtx *cli.Context) error {
-	system.RequireSudo()
+func bootstrap(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
 
-	return container.Bootstrap()
+	localSystem, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	return container.Bootstrap(localSystem)
 }

@@ -1,15 +1,21 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/urfave/cli/v2"
-	"log/slog"
 	"pti/system"
-	"pti/tools"
+	"pti/tools/python"
 )
 
-func PythonInstall(cCtx *cli.Context) error {
-	system.RequireSudo()
+func pythonInstall(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
+
+	localSystem, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
 
 	pythonVersion := cCtx.String("version")
 	pythonPackages := cCtx.StringSlice("package")
@@ -18,103 +24,96 @@ func PythonInstall(cCtx *cli.Context) error {
 	addToPath := cCtx.Bool("add-to-path")
 	addJupyterKernel := cCtx.Bool("add-jupyter-kernel")
 
-	return tools.InstallPython(pythonVersion, &pythonPackages, &pythonRequirementFiles, setDefault, addToPath, addJupyterKernel)
-}
-
-func PythonInstallPackages(cCtx *cli.Context) error {
-	pythonVersion := cCtx.String("version")
-
-	pythonPath := cCtx.String("python-path")
-	if pythonPath == "" {
-		if pythonVersion == "" {
-			return fmt.Errorf("Python version or path must be provided")
-		}
-
-		pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-		slog.Info("Assuming Python binary path " + pythonPath)
-	}
-	// Check that binary exists
-	exists, err := system.IsPathExist(pythonPath)
+	m, err := python.NewManager(localSystem, pythonVersion)
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
+	err = m.Install()
+	if err != nil {
+		return err
+	}
+
+	if len(pythonPackages) > 0 || len(pythonRequirementFiles) > 0 {
+		list := &python.PackageList{Packages: pythonPackages, PackageFiles: pythonRequirementFiles}
+		err = m.InstallPackages(list, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	if setDefault {
+		err = m.MakeDefault()
+		if err != nil {
+			return err
+		}
+	}
+
+	if addToPath {
+		err = m.AddToPath()
+		if err != nil {
+			return err
+		}
+	}
+
+	if addJupyterKernel {
+		err = m.AddKernel()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func pythonInstallPackages(cCtx *cli.Context) error {
+	localSystem, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	pythonVersion := cCtx.String("version")
+
+	m, err := python.NewManager(localSystem, pythonVersion)
+	if err != nil {
+		return err
 	}
 
 	pythonPackages := cCtx.StringSlice("package")
 	pythonRequirementFiles := cCtx.StringSlice("requirements-file")
+	list := &python.PackageList{Packages: pythonPackages, PackageFiles: pythonRequirementFiles}
 
-	return tools.InstallPythonPackages(pythonPath, &pythonPackages, &pythonRequirementFiles)
+	return m.InstallPackages(list, nil)
 }
 
-func PythonInstallJupyter(cCtx *cli.Context) error {
-	pythonVersion := cCtx.String("version")
-
-	pythonPath := cCtx.String("python-path")
-	if pythonPath == "" {
-		if pythonVersion == "" {
-			return fmt.Errorf("Python version or path must be provided")
-		}
-
-		pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-		slog.Info("Assuming Python binary path " + pythonPath)
-	}
-	// Check that binary exists
-	exists, err := system.IsPathExist(pythonPath)
+func pythonInstallJupyter(cCtx *cli.Context) error {
+	localSystem, err := system.GetLocalSystem()
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
+
+	pythonVersion := cCtx.String("version")
+	m, err := python.NewManager(localSystem, pythonVersion)
+	if err != nil {
+		return err
 	}
 
-	jupyterPath := cCtx.String("jupyter-path")
-	if jupyterPath == "" {
-		jupyterPath = "/opt/python/jupyter"
-	}
-
+	jupyterPath := cCtx.String("path")
 	force := cCtx.Bool("force")
 
-	return tools.InstallJupyter4Workbench(pythonPath, jupyterPath, force)
+	return m.InstallJupyter4Workbench(jupyterPath, force)
 }
 
-func PythonAddJupyterKernel(cCtx *cli.Context) error {
-	pythonVersion := cCtx.String("version")
-
-	machineName := cCtx.String("machine-name")
-	displayName := cCtx.String("display-name")
-
-	pythonPath := cCtx.String("python-path")
-	if pythonPath == "" {
-		if pythonVersion == "" {
-			return fmt.Errorf("Python version or path must be provided")
-		}
-
-		pythonPath = "/opt/python/" + pythonVersion + "/bin/python3" // Assume pythonPath if not given
-		slog.Info("Assuming Python binary path " + pythonPath)
-	} else {
-		if machineName == "" && pythonVersion == "" {
-			return fmt.Errorf("Machine name must be provided if only providing python path")
-		} else if machineName == "" {
-			machineName = "py" + pythonVersion
-		}
-
-		if displayName == "" && pythonVersion == "" {
-			return fmt.Errorf("Display name must be provided if only providing python path")
-		} else if displayName == "" {
-			displayName = "Python " + pythonVersion
-		}
-	}
-
-	// Check that binary exists
-	exists, err := system.IsPathExist(pythonPath)
+func pythonAddKernel(cCtx *cli.Context) error {
+	localSystem, err := system.GetLocalSystem()
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return fmt.Errorf("Python binary does not exist at path %s", pythonPath)
+
+	pythonVersion := cCtx.String("version")
+	m, err := python.NewManager(localSystem, pythonVersion)
+	if err != nil {
+		return err
 	}
 
-	return tools.ConfigureIPythonKernel(pythonPath, machineName, displayName)
+	return m.AddKernel()
 }

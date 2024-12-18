@@ -919,7 +919,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 
 			tt.setupFs(t, file.AppFs, "3.12.4")
 
-			err := tt.manager.makeDefault()
+			err := tt.manager.MakeDefault()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -1054,7 +1054,7 @@ func Test_Manager_addToPath(t *testing.T) {
 
 			tt.setupFs(t, file.AppFs, "3.12.4")
 
-			err := tt.manager.addToPath()
+			err := tt.manager.AddToPath()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
