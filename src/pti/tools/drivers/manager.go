@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultVersion = "2024.03.0"
+	DefaultVersion = "2024.03.0"
 	packageName    = "rstudio-drivers"
 )
 
@@ -24,7 +24,7 @@ type Manager struct {
 
 func NewManager(l *system.LocalSystem, version string) *Manager {
 	if version == "" {
-		version = defaultVersion
+		version = DefaultVersion
 	}
 	return &Manager{
 		LocalSystem: l,
@@ -71,7 +71,7 @@ func (m *Manager) Installed() (bool, error) {
 }
 
 func (m *Manager) Install() error {
-	slog.Info("Installing Posit Pro Drivers " + defaultVersion)
+	slog.Info("Installing Posit Pro Drivers " + DefaultVersion)
 
 	// Determine driver dependencies if possible and the Drivers package name
 	url, err := m.downloadUrl()

@@ -224,7 +224,7 @@ func (m *Manager) Install() error {
 	return nil
 }
 
-func (m *Manager) makeDefault() error {
+func (m *Manager) MakeDefault() error {
 	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check if python %s is installed: %w", m.Version, err)
@@ -251,7 +251,7 @@ func (m *Manager) makeDefault() error {
 	return nil
 }
 
-func (m *Manager) addToPath() error {
+func (m *Manager) AddToPath() error {
 	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check if python %s is installed: %w", m.Version, err)

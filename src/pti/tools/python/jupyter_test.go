@@ -394,7 +394,7 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 				command.NewShellCommand = oldNSC
 			}()
 
-			err := tt.manager.addJupyterKernel()
+			err := tt.manager.AddKernel()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)

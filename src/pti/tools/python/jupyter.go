@@ -73,7 +73,7 @@ func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 	return nil
 }
 
-func (m *Manager) addJupyterKernel() error {
+func (m *Manager) AddKernel() error {
 	slog.Info("Configuring IPython kernel for Python " + m.Version)
 
 	err := m.InstallPackages(&PackageList{Packages: []string{"ipykernel"}}, []string{"--upgrade"})
