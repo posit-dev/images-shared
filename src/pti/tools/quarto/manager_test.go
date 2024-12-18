@@ -27,16 +27,69 @@ func init() {
 	testdataPath = path.Join(path.Dir(testPath), "testdata")
 }
 
-func validateInstallOptions(t *testing.T, want *Manager, got *Manager) {
-	assert := assert.New(t)
-	assert.Equal(want.InstallOptions.InstallTinyTeX, got.InstallOptions.InstallTinyTeX)
-	assert.Equal(want.InstallOptions.AddPathTinyTeX, got.InstallOptions.AddPathTinyTeX)
-	assert.Equal(want.InstallOptions.Force, got.InstallOptions.Force)
-}
-
 func validateQuartoManager(t *testing.T, want *Manager, got *Manager) {
 	assert := assert.New(t)
 	assert.Equal(want, got)
+}
+
+func Test_workbenchInstalled(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	tests := []struct {
+		name           string
+		setupFs        func(afero.Fs)
+		want           bool
+		wantErr        bool
+		wantErrMessage string
+	}{
+		{
+			name: "workbench quarto bin exists",
+			setupFs: func(fs afero.Fs) {
+				err := fs.MkdirAll(workbenchQuartoPath, 0755)
+				require.NoError(err)
+				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
+				require.NoError(err)
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "workbench does not exist",
+			setupFs: func(fs afero.Fs) {},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "workbench quarto bin not a file",
+			setupFs: func(fs afero.Fs) {
+				err := fs.MkdirAll(workbenchQuartoBinPath, 0755)
+				require.NoError(err)
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+
+			tt.setupFs(file.AppFs)
+
+			got, err := workbenchInstalled()
+			if tt.wantErr {
+				require.Error(err)
+				assert.ErrorContains(err, tt.wantErrMessage)
+			} else {
+				require.NoError(err)
+				assert.Equal(tt.want, got)
+			}
+		})
+	}
 }
 
 func Test_NewManager(t *testing.T) {
@@ -55,7 +108,7 @@ func Test_NewManager(t *testing.T) {
 		setupFs        func(afero.Fs) string
 		localSys       *system.LocalSystem
 		version        string
-		installOpts    *InstallOptions
+		useWorkbench   bool
 		validator      func(*testing.T, *Manager, *Manager)
 		want           *Manager
 		wantErr        bool
@@ -66,104 +119,24 @@ func Test_NewManager(t *testing.T) {
 			setupFs:        func(fs afero.Fs) string { return "" },
 			localSys:       &system.LocalSystem{},
 			version:        "",
-			installOpts:    nil,
+			useWorkbench:   true,
 			validator:      nil,
 			wantErr:        true,
 			wantErrMessage: "quarto version is required",
 		},
 		{
-			name:        "empty install options",
-			setupFs:     func(fs afero.Fs) string { return "" },
-			localSys:    ubuntuSystem,
-			version:     "1.6.39",
-			installOpts: nil,
-			validator:   validateInstallOptions,
-			want: &Manager{
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name:        "default",
-			setupFs:     func(fs afero.Fs) string { return "" },
-			localSys:    ubuntuSystem,
-			version:     "1.6.39",
-			installOpts: &InstallOptions{},
-			validator:   validateQuartoManager,
+			name:         "default",
+			setupFs:      func(fs afero.Fs) string { return "" },
+			localSys:     ubuntuSystem,
+			version:      "1.6.39",
+			useWorkbench: true,
+			validator:    validateQuartoManager,
 			want: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "default directory not installable",
-			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
-				require.NoError(err)
-				err = afero.WriteFile(fs, defaultBinPath, []byte{}, 0644)
-				require.NoError(err)
-				return ""
-			},
-			localSys:    ubuntuSystem,
-			version:     "1.6.39",
-			installOpts: &InstallOptions{},
-			validator:   validateQuartoManager,
-			want: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			},
-			wantErr:        true,
-			wantErrMessage: "installation path '/opt/quarto' is not installable",
-		},
-		{
-			name: "default directory not installable force",
-			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
-				require.NoError(err)
-				err = afero.WriteFile(fs, defaultBinPath, []byte{}, 0644)
-				require.NoError(err)
-				return ""
-			},
-			localSys: ubuntuSystem,
-			version:  "1.6.39",
-			installOpts: &InstallOptions{
-				InstallTinyTeX: false,
-				AddPathTinyTeX: false,
-				Force:          true,
-			},
-			validator: validateQuartoManager,
-			want: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          true,
-				},
 			},
 			wantErr: false,
 		},
@@ -176,26 +149,21 @@ func Test_NewManager(t *testing.T) {
 				require.NoError(err)
 				return ""
 			},
-			localSys:    ubuntuSystem,
-			version:     "1.6.39",
-			installOpts: &InstallOptions{},
-			validator:   validateQuartoManager,
+			localSys:     ubuntuSystem,
+			version:      "1.6.39",
+			useWorkbench: true,
+			validator:    validateQuartoManager,
 			want: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
 				InstallationPath:        workbenchQuartoPath,
 				BinPath:                 workbenchQuartoBinPath,
 				IsWorkbenchInstallation: true,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "workbench ignored on force",
+			name: "workbench ignored with useWorkbench false",
 			setupFs: func(fs afero.Fs) string {
 				err := fs.MkdirAll(workbenchQuartoPath, 0755)
 				require.NoError(err)
@@ -203,83 +171,16 @@ func Test_NewManager(t *testing.T) {
 				require.NoError(err)
 				return ""
 			},
-			localSys: ubuntuSystem,
-			version:  "1.6.39",
-			installOpts: &InstallOptions{
-				InstallTinyTeX: false,
-				AddPathTinyTeX: false,
-				Force:          true,
-			},
-			validator: validateQuartoManager,
+			localSys:     ubuntuSystem,
+			version:      "1.6.39",
+			useWorkbench: false,
+			validator:    validateQuartoManager,
 			want: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          true,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "workbench in given path",
-			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(workbenchQuartoPath, 0755)
-				require.NoError(err)
-				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
-				require.NoError(err)
-				return workbenchLibRoot + "/quarto"
-			},
-			localSys:    ubuntuSystem,
-			version:     "1.6.39",
-			installOpts: &InstallOptions{},
-			validator:   validateQuartoManager,
-			want: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        workbenchQuartoPath,
-				BinPath:                 workbenchQuartoBinPath,
-				IsWorkbenchInstallation: true,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "workbench in given path forced",
-			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(workbenchQuartoPath, 0755)
-				require.NoError(err)
-				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
-				require.NoError(err)
-				return workbenchLibRoot + "/quarto"
-			},
-			localSys: ubuntuSystem,
-			version:  "1.6.39",
-			installOpts: &InstallOptions{
-				InstallTinyTeX: false,
-				AddPathTinyTeX: false,
-				Force:          true,
-			},
-			validator: validateQuartoManager,
-			want: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        workbenchLibRoot + "/quarto",
-				BinPath:                 workbenchLibRoot + "/quarto/bin/quarto",
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          true,
-				},
 			},
 			wantErr: false,
 		},
@@ -294,7 +195,7 @@ func Test_NewManager(t *testing.T) {
 
 			path := tt.setupFs(file.AppFs)
 
-			got, err := NewManager(tt.localSys, tt.version, path, tt.installOpts)
+			got, err := NewManager(tt.localSys, tt.version, path, tt.useWorkbench)
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -310,7 +211,7 @@ func Test_Manager_validate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testNew, err := NewManager(&system.LocalSystem{}, "1.6.39", "", nil)
+	testNew, err := NewManager(&system.LocalSystem{}, "1.6.39", "", true)
 	assert.NoError(err)
 
 	tests := []struct {
@@ -320,7 +221,7 @@ func Test_Manager_validate(t *testing.T) {
 		wantErrMessage string
 	}{
 		{
-			name: "valid",
+			name: "validate",
 			manager: &Manager{
 				Version:          "1.6.39",
 				InstallationPath: defaultInstallPath,
@@ -328,7 +229,7 @@ func Test_Manager_validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "default NewManager is valid",
+			name:    "default NewManager is validate",
 			manager: testNew,
 			wantErr: false,
 		},
@@ -359,7 +260,7 @@ func Test_Manager_validate(t *testing.T) {
 				file.AppFs = oldFs
 			}()
 
-			err := tt.manager.valid()
+			err := tt.manager.validate()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -445,14 +346,14 @@ func Test_getDownloadUrl(t *testing.T) {
 		wantErrMessage string
 	}{
 		{
-			name:    "valid amd64",
+			name:    "validate amd64",
 			version: "1.6.39",
 			arch:    "amd64",
 			want:    fmt.Sprintf(downloadUrl, "1.6.39", "1.6.39", "amd64"),
 			wantErr: false,
 		},
 		{
-			name:    "valid arm64",
+			name:    "validate arm64",
 			version: "1.6.39",
 			arch:    "arm64",
 			want:    fmt.Sprintf(downloadUrl, "1.6.39", "1.6.39", "arm64"),
@@ -545,11 +446,6 @@ func Test_Manager_Install(t *testing.T) {
 		InstallationPath:        defaultInstallPath,
 		BinPath:                 defaultBinPath,
 		IsWorkbenchInstallation: false,
-		InstallOptions: &InstallOptions{
-			InstallTinyTeX: false,
-			AddPathTinyTeX: false,
-			Force:          false,
-		},
 	}
 
 	tests := []struct {
@@ -558,6 +454,7 @@ func Test_Manager_Install(t *testing.T) {
 		srv            func(*testing.T, afero.Fs, string, string) *httptest.Server
 		fsValidator    func(*testing.T, string, string)
 		manager        *Manager
+		force          bool
 		expectedCalls  []expectedCall
 		wantErr        bool
 		wantErrMessage string
@@ -568,6 +465,7 @@ func Test_Manager_Install(t *testing.T) {
 			srv:           newServerQuartoTestTarGz,
 			fsValidator:   validateTestQuartoInstallation,
 			manager:       defaultManager,
+			force:         false,
 			expectedCalls: []expectedCall{},
 			wantErr:       false,
 		},
@@ -582,12 +480,8 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        "/tmp/quarto",
 				BinPath:                 "/tmp/quarto/bin/quarto",
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
 			},
+			force:         false,
 			expectedCalls: []expectedCall{},
 			wantErr:       false,
 		},
@@ -618,6 +512,7 @@ func Test_Manager_Install(t *testing.T) {
 				assert.False(isFile)
 			},
 			manager:       defaultManager,
+			force:         false,
 			expectedCalls: []expectedCall{},
 			wantErr:       false,
 		},
@@ -637,14 +532,34 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          true,
-				},
 			},
+			force:         true,
 			expectedCalls: []expectedCall{},
 			wantErr:       false,
+		},
+		{
+			name: "install dirty path not installable",
+			setupFs: func(fs afero.Fs) {
+				err := fs.MkdirAll(defaultInstallPath, 0755)
+				require.NoError(err)
+				err = afero.WriteFile(fs, defaultInstallPath+"/share/version", []byte("test"), 0644)
+				require.NoError(err)
+				err = afero.WriteFile(fs, defaultInstallPath+"/bin/somelibrary", []byte("test"), 0644)
+				require.NoError(err)
+			},
+			fsValidator: nil,
+			srv:         newServerQuartoTestTarGz,
+			manager: &Manager{
+				LocalSystem:             ubuntuSystem,
+				Version:                 "1.6.39",
+				InstallationPath:        defaultInstallPath,
+				BinPath:                 defaultBinPath,
+				IsWorkbenchInstallation: false,
+			},
+			force:          false,
+			expectedCalls:  []expectedCall{},
+			wantErr:        true,
+			wantErrMessage: "installation path '/opt/quarto' is not installable",
 		},
 		{
 			name: "install dirty path force",
@@ -662,12 +577,8 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          true,
-				},
 			},
+			force:         true,
 			expectedCalls: []expectedCall{},
 			wantErr:       false,
 		},
@@ -680,6 +591,7 @@ func Test_Manager_Install(t *testing.T) {
 				}))
 			},
 			manager:        defaultManager,
+			force:          false,
 			expectedCalls:  []expectedCall{},
 			wantErr:        true,
 			wantErrMessage: "quarto 1.6.39 download failed",
@@ -699,12 +611,8 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
 			},
+			force:          false,
 			expectedCalls:  []expectedCall{},
 			wantErr:        true,
 			wantErrMessage: "failed to determine quarto download URL",
@@ -724,12 +632,8 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
 			},
+			force:          false,
 			expectedCalls:  []expectedCall{},
 			wantErr:        true,
 			wantErrMessage: "unable to extract quarto archive",
@@ -744,69 +648,11 @@ func Test_Manager_Install(t *testing.T) {
 				InstallationPath:        defaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
 			},
+			force:          false,
 			expectedCalls:  []expectedCall{},
 			wantErr:        true,
 			wantErrMessage: "does not exist",
-		},
-		{
-			name:        "install tinytex",
-			setupFs:     func(fs afero.Fs) {},
-			srv:         newServerQuartoTestTarGz,
-			fsValidator: validateTestQuartoInstallation,
-			manager: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: true,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			},
-			expectedCalls: []expectedCall{
-				{
-					bin:            "quarto",
-					args:           []string{"install", "tinytex", "--no-prompt"},
-					envVars:        nil,
-					inheritEnvVars: true,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name:        "install tinytex add path",
-			setupFs:     func(fs afero.Fs) {},
-			srv:         newServerQuartoTestTarGz,
-			fsValidator: validateTestQuartoInstallation,
-			manager: &Manager{
-				LocalSystem:             ubuntuSystem,
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: true,
-					AddPathTinyTeX: true,
-					Force:          false,
-				},
-			},
-			expectedCalls: []expectedCall{
-				{
-					bin:            "quarto",
-					args:           []string{"install", "tinytex", "--no-prompt", "--update-path"},
-					envVars:        nil,
-					inheritEnvVars: true,
-				},
-			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -854,7 +700,7 @@ func Test_Manager_Install(t *testing.T) {
 				command.NewShellCommand = oldShellCommand
 			}()
 
-			err = tt.manager.Install()
+			err = tt.manager.Install(tt.force)
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -862,315 +708,6 @@ func Test_Manager_Install(t *testing.T) {
 				require.NoError(err)
 
 				tt.fsValidator(t, tt.manager.InstallationPath, tt.manager.Version)
-			}
-		})
-	}
-}
-
-func Test_Manager_InstallPackage(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	type expectedCall struct {
-		bin            string
-		args           []string
-		envVars        []string
-		inheritEnvVars bool
-	}
-
-	tests := []struct {
-		name           string
-		toolName       string
-		options        []string
-		expectedCall   expectedCall
-		runErr         error
-		wantErr        bool
-		wantErrMessage string
-	}{
-		{
-			name:     "normal",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"install", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "normal with options",
-			toolName: "testpkg",
-			options:  []string{"--update-path"},
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"install", "testpkg", "--no-prompt", "--update-path"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "failed",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"install", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			runErr:         fmt.Errorf("runtime error"),
-			wantErr:        true,
-			wantErrMessage: "failed to install quarto testpkg tool",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			manager := &Manager{
-				LocalSystem:             &system.LocalSystem{},
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			}
-
-			oldShellCommand := command.NewShellCommand
-			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
-				mockShellCommand.EXPECT().Run().Return(tt.runErr)
-
-				assert.Contains(name, tt.expectedCall.bin)
-				for _, arg := range tt.expectedCall.args {
-					assert.Contains(args, arg)
-				}
-				assert.Equal(tt.expectedCall.envVars, envVars)
-				assert.Equal(tt.expectedCall.inheritEnvVars, inheritEnvVars)
-
-				return mockShellCommand
-			}
-			defer func() {
-				command.NewShellCommand = oldShellCommand
-			}()
-
-			err := manager.InstallPackage(tt.toolName, tt.options)
-			if tt.wantErr {
-				require.Error(err)
-				assert.ErrorContains(err, tt.wantErrMessage)
-			} else {
-				require.NoError(err)
-			}
-		})
-	}
-}
-
-func Test_Manager_UpdatePackage(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	type expectedCall struct {
-		bin            string
-		args           []string
-		envVars        []string
-		inheritEnvVars bool
-	}
-
-	tests := []struct {
-		name           string
-		toolName       string
-		options        []string
-		expectedCall   expectedCall
-		runErr         error
-		wantErr        bool
-		wantErrMessage string
-	}{
-		{
-			name:     "normal",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"update", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "normal with options",
-			toolName: "testpkg",
-			options:  []string{"--update-path"},
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"update", "testpkg", "--no-prompt", "--update-path"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "failed",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"update", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			runErr:         fmt.Errorf("runtime error"),
-			wantErr:        true,
-			wantErrMessage: "failed to update quarto testpkg tool",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			manager := &Manager{
-				LocalSystem:             &system.LocalSystem{},
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			}
-
-			oldShellCommand := command.NewShellCommand
-			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
-				mockShellCommand.EXPECT().Run().Return(tt.runErr)
-
-				assert.Contains(name, tt.expectedCall.bin)
-				for _, arg := range tt.expectedCall.args {
-					assert.Contains(args, arg)
-				}
-				assert.Equal(tt.expectedCall.envVars, envVars)
-				assert.Equal(tt.expectedCall.inheritEnvVars, inheritEnvVars)
-
-				return mockShellCommand
-			}
-			defer func() {
-				command.NewShellCommand = oldShellCommand
-			}()
-
-			err := manager.UpdatePackage(tt.toolName, tt.options)
-			if tt.wantErr {
-				require.Error(err)
-				assert.ErrorContains(err, tt.wantErrMessage)
-			} else {
-				require.NoError(err)
-			}
-		})
-	}
-}
-
-func Test_Manager_RemovePackage(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	type expectedCall struct {
-		bin            string
-		args           []string
-		envVars        []string
-		inheritEnvVars bool
-	}
-
-	tests := []struct {
-		name           string
-		toolName       string
-		options        []string
-		expectedCall   expectedCall
-		runErr         error
-		wantErr        bool
-		wantErrMessage string
-	}{
-		{
-			name:     "normal",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"remove", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "normal with options",
-			toolName: "testpkg",
-			options:  []string{"--remove-path"},
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"remove", "testpkg", "--no-prompt", "--remove-path"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			wantErr: false,
-		},
-		{
-			name:     "failed",
-			toolName: "testpkg",
-			options:  nil,
-			expectedCall: expectedCall{
-				bin:            "quarto",
-				args:           []string{"remove", "testpkg", "--no-prompt"},
-				envVars:        nil,
-				inheritEnvVars: true,
-			},
-			runErr:         fmt.Errorf("runtime error"),
-			wantErr:        true,
-			wantErrMessage: "failed to remove quarto testpkg tool",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			manager := &Manager{
-				LocalSystem:             &system.LocalSystem{},
-				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
-				BinPath:                 defaultBinPath,
-				IsWorkbenchInstallation: false,
-				InstallOptions: &InstallOptions{
-					InstallTinyTeX: false,
-					AddPathTinyTeX: false,
-					Force:          false,
-				},
-			}
-
-			oldShellCommand := command.NewShellCommand
-			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
-				mockShellCommand.EXPECT().Run().Return(tt.runErr)
-
-				assert.Contains(name, tt.expectedCall.bin)
-				for _, arg := range tt.expectedCall.args {
-					assert.Contains(args, arg)
-				}
-				assert.Equal(tt.expectedCall.envVars, envVars)
-				assert.Equal(tt.expectedCall.inheritEnvVars, inheritEnvVars)
-
-				return mockShellCommand
-			}
-			defer func() {
-				command.NewShellCommand = oldShellCommand
-			}()
-
-			err := manager.RemovePackage(tt.toolName, tt.options)
-			if tt.wantErr {
-				require.Error(err)
-				assert.ErrorContains(err, tt.wantErrMessage)
-			} else {
-				require.NoError(err)
 			}
 		})
 	}
