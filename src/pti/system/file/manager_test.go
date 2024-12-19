@@ -177,8 +177,13 @@ func Test_IsDir_Symlink(t *testing.T) {
 				if err != nil {
 					return "", tmpDir, err
 				}
+				tmpSrcDir := tmpDir + "/srcdir"
+				err = fs.Mkdir(tmpSrcDir, 0755)
+				if err != nil {
+					return "", tmpDir, err
+				}
 				tmpSymlink := tmpDir + "/symlink"
-				err = fs.SymlinkIfPossible(tmpDir, tmpSymlink)
+				err = fs.SymlinkIfPossible(tmpSrcDir, tmpSymlink)
 				if err != nil {
 					return "", tmpDir, err
 				}
