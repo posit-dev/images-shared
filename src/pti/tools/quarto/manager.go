@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultInstallPath     = "/opt/quarto"
+	DefaultInstallPath     = "/opt/quarto"
 	defaultBinPath         = "/opt/quarto/bin/quarto"
 	workbenchLibRoot       = "/lib/rstudio-server"
 	workbenchQuartoPath    = workbenchLibRoot + "/bin/quarto"
@@ -36,11 +36,7 @@ func workbenchInstalled() (bool, error) {
 	return workbenchExists, nil
 }
 
-func NewManager(l *system.LocalSystem, version, installationPath string, useWorkbench bool) (*Manager, error) {
-	if version == "" {
-		return nil, fmt.Errorf("quarto version is required")
-	}
-
+func NewManager(l *system.LocalSystem, version, installationPath string, useWorkbench bool) *Manager {
 	binPath := ""
 	workbenchQuartoExists, err := workbenchInstalled()
 	if err != nil {
@@ -55,8 +51,8 @@ func NewManager(l *system.LocalSystem, version, installationPath string, useWork
 		binPath = workbenchQuartoBinPath
 		isWorkbenchInstallation = true
 	} else if installationPath == "" {
-		slog.Info("Using default Quarto installation path: " + defaultInstallPath)
-		installationPath = defaultInstallPath
+		slog.Info("Using default Quarto installation path: " + DefaultInstallPath)
+		installationPath = DefaultInstallPath
 		binPath = defaultBinPath
 	} else {
 		binPath = installationPath + "/bin/quarto"
@@ -68,7 +64,7 @@ func NewManager(l *system.LocalSystem, version, installationPath string, useWork
 		InstallationPath:        installationPath,
 		BinPath:                 binPath,
 		IsWorkbenchInstallation: isWorkbenchInstallation,
-	}, nil
+	}
 }
 
 func (m *Manager) validate() error {

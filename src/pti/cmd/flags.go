@@ -57,3 +57,14 @@ func forceFlag(usage string) *cli.BoolFlag {
 		Usage:   usage,
 	}
 }
+
+func pathFlag(usage, defaultText string) *cli.StringFlag {
+	f := &cli.StringFlag{
+		Name:  "path",
+		Usage: usage,
+	}
+	if defaultText != "" {
+		f.DefaultText = defaultText
+	}
+	return f
+}

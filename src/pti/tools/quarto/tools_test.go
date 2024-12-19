@@ -74,7 +74,7 @@ func Test_Manager_InstallPackage(t *testing.T) {
 			manager := &Manager{
 				LocalSystem:             &system.LocalSystem{},
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			}
@@ -172,7 +172,7 @@ func Test_Manager_UpdatePackage(t *testing.T) {
 			manager := &Manager{
 				LocalSystem:             &system.LocalSystem{},
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			}
@@ -270,7 +270,7 @@ func Test_Manager_RemovePackage(t *testing.T) {
 			manager := &Manager{
 				LocalSystem:             &system.LocalSystem{},
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			}

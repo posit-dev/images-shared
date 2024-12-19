@@ -93,7 +93,6 @@ func Test_workbenchInstalled(t *testing.T) {
 }
 
 func Test_NewManager(t *testing.T) {
-	assert := assert.New(t)
 	require := require.New(t)
 
 	ubuntuSystem := &system.LocalSystem{
@@ -104,26 +103,14 @@ func Test_NewManager(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		setupFs        func(afero.Fs) string
-		localSys       *system.LocalSystem
-		version        string
-		useWorkbench   bool
-		validator      func(*testing.T, *Manager, *Manager)
-		want           *Manager
-		wantErr        bool
-		wantErrMessage string
+		name         string
+		setupFs      func(afero.Fs) string
+		localSys     *system.LocalSystem
+		version      string
+		useWorkbench bool
+		validator    func(*testing.T, *Manager, *Manager)
+		want         *Manager
 	}{
-		{
-			name:           "empty version",
-			setupFs:        func(fs afero.Fs) string { return "" },
-			localSys:       &system.LocalSystem{},
-			version:        "",
-			useWorkbench:   true,
-			validator:      nil,
-			wantErr:        true,
-			wantErrMessage: "quarto version is required",
-		},
 		{
 			name:         "default",
 			setupFs:      func(fs afero.Fs) string { return "" },
@@ -134,11 +121,10 @@ func Test_NewManager(t *testing.T) {
 			want: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
-			wantErr: false,
 		},
 		{
 			name: "workbench default",
@@ -160,7 +146,6 @@ func Test_NewManager(t *testing.T) {
 				BinPath:                 workbenchQuartoBinPath,
 				IsWorkbenchInstallation: true,
 			},
-			wantErr: false,
 		},
 		{
 			name: "workbench ignored with useWorkbench false",
@@ -178,11 +163,10 @@ func Test_NewManager(t *testing.T) {
 			want: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -195,14 +179,8 @@ func Test_NewManager(t *testing.T) {
 
 			path := tt.setupFs(file.AppFs)
 
-			got, err := NewManager(tt.localSys, tt.version, path, tt.useWorkbench)
-			if tt.wantErr {
-				require.Error(err)
-				assert.ErrorContains(err, tt.wantErrMessage)
-			} else {
-				require.NoError(err)
-				tt.validator(t, tt.want, got)
-			}
+			got := NewManager(tt.localSys, tt.version, path, tt.useWorkbench)
+			tt.validator(t, tt.want, got)
 		})
 	}
 }
@@ -211,8 +189,7 @@ func Test_Manager_validate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testNew, err := NewManager(&system.LocalSystem{}, "1.6.39", "", true)
-	assert.NoError(err)
+	testNew := NewManager(&system.LocalSystem{}, "1.6.39", "", true)
 
 	tests := []struct {
 		name           string
@@ -224,7 +201,7 @@ func Test_Manager_validate(t *testing.T) {
 			name: "validate",
 			manager: &Manager{
 				Version:          "1.6.39",
-				InstallationPath: defaultInstallPath,
+				InstallationPath: DefaultInstallPath,
 			},
 			wantErr: false,
 		},
@@ -237,7 +214,7 @@ func Test_Manager_validate(t *testing.T) {
 			name: "empty version",
 			manager: &Manager{
 				Version:          "",
-				InstallationPath: defaultInstallPath,
+				InstallationPath: DefaultInstallPath,
 			},
 			wantErr:        true,
 			wantErrMessage: "quarto version is required",
@@ -286,14 +263,14 @@ func Test_Manager_Installed(t *testing.T) {
 		{
 			name: "quarto bin exists",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0755)
 				require.NoError(err)
 				err = afero.WriteFile(fs, defaultBinPath, []byte{}, 0644)
 				require.NoError(err)
 			},
 			manager: &Manager{
 				Version:          "1.6.39",
-				InstallationPath: defaultInstallPath,
+				InstallationPath: DefaultInstallPath,
 				BinPath:          defaultBinPath,
 			},
 			want:    true,
@@ -304,7 +281,7 @@ func Test_Manager_Installed(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			manager: &Manager{
 				Version:          "1.6.39",
-				InstallationPath: defaultInstallPath,
+				InstallationPath: DefaultInstallPath,
 				BinPath:          defaultBinPath,
 			},
 			want:    false,
@@ -443,7 +420,7 @@ func Test_Manager_Install(t *testing.T) {
 	defaultManager := &Manager{
 		LocalSystem:             ubuntuSystem,
 		Version:                 "1.6.39",
-		InstallationPath:        defaultInstallPath,
+		InstallationPath:        DefaultInstallPath,
 		BinPath:                 defaultBinPath,
 		IsWorkbenchInstallation: false,
 	}
@@ -488,7 +465,7 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "no changes installed without force",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0755)
 				require.NoError(err)
 				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin-old"), 0644)
 				require.NoError(err)
@@ -519,7 +496,7 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "force reinstall",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0755)
 				require.NoError(err)
 				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin"), 0644)
 				require.NoError(err)
@@ -529,7 +506,7 @@ func Test_Manager_Install(t *testing.T) {
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
@@ -540,11 +517,11 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "install dirty path not installable",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultInstallPath+"/share/version", []byte("test"), 0644)
+				err = afero.WriteFile(fs, DefaultInstallPath+"/share/version", []byte("test"), 0644)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultInstallPath+"/bin/somelibrary", []byte("test"), 0644)
+				err = afero.WriteFile(fs, DefaultInstallPath+"/bin/somelibrary", []byte("test"), 0644)
 				require.NoError(err)
 			},
 			fsValidator: nil,
@@ -552,7 +529,7 @@ func Test_Manager_Install(t *testing.T) {
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
@@ -564,9 +541,9 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "install dirty path force",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(defaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultInstallPath+"testfile", []byte("testbin"), 0644)
+				err = afero.WriteFile(fs, DefaultInstallPath+"testfile", []byte("testbin"), 0644)
 				require.NoError(err)
 			},
 			fsValidator: validateTestQuartoInstallation,
@@ -574,7 +551,7 @@ func Test_Manager_Install(t *testing.T) {
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
@@ -608,7 +585,7 @@ func Test_Manager_Install(t *testing.T) {
 					PackageManager: syspkg.NewAptManager(),
 				},
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
@@ -629,7 +606,7 @@ func Test_Manager_Install(t *testing.T) {
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.6.39",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
@@ -645,7 +622,7 @@ func Test_Manager_Install(t *testing.T) {
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
 				Version:                 "1.4.538",
-				InstallationPath:        defaultInstallPath,
+				InstallationPath:        DefaultInstallPath,
 				BinPath:                 defaultBinPath,
 				IsWorkbenchInstallation: false,
 			},
