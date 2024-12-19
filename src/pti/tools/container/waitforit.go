@@ -8,6 +8,8 @@ import (
 	"pti/system/file"
 )
 
+const DefaultWaitForItPath = "/usr/local/bin/wait-for-it"
+
 var waitForItDownloadUrl = "https://cdn.posit.co/platform/wait-for-it/wait-for-it.sh"
 
 type WaitForItManager struct {
@@ -16,7 +18,7 @@ type WaitForItManager struct {
 
 func NewWaitForItManager(installPath string) *WaitForItManager {
 	if installPath == "" {
-		installPath = "/usr/local/bin/wait-for-it"
+		installPath = DefaultWaitForItPath
 	}
 	return &WaitForItManager{
 		InstallPath: installPath,

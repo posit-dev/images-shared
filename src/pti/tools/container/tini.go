@@ -9,6 +9,7 @@ import (
 	"pti/system/file"
 )
 
+const DefaultTiniPath = "/usr/local/bin/tini"
 const tiniVersion = "0.19.0"
 
 var tiniDownloadUrl = "https://cdn.posit.co/platform/tini/v%s/tini-%s"
@@ -24,7 +25,7 @@ func NewTiniManager(l *system.LocalSystem, version, installPath string) *TiniMan
 		version = tiniVersion
 	}
 	if installPath == "" {
-		installPath = "/usr/local/bin/tini"
+		installPath = DefaultTiniPath
 	}
 	return &TiniManager{
 		LocalSystem: l,
