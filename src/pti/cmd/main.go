@@ -5,6 +5,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"pti/tools/drivers"
+	"pti/tools/quarto"
 )
 
 func Cli() *cli.App {
@@ -66,14 +67,13 @@ func Cli() *cli.App {
 				Name:     "python",
 				Usage:    "Install or manage Python versions",
 				Category: "tools",
-				Flags: []cli.Flag{
-					versionFlag("Python version to use", ""),
-				},
+				Flags:    []cli.Flag{},
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
 						Usage: "Install a Python version",
 						Flags: []cli.Flag{
+							versionFlag("Python version to install", ""),
 							packageFlag("Python package(s) to install"),
 							packageFileFlag("Path to requirements file(s) to install"),
 							defaultFlag("Symlink the installed Python version to /opt/python/default"),
@@ -95,6 +95,7 @@ func Cli() *cli.App {
 								Name:  "install",
 								Usage: "Install Python packages",
 								Flags: []cli.Flag{
+									versionFlag("Python version to use", ""),
 									packageFlag("Python package(s) to install"),
 									packageFileFlag("Path to requirements file(s) to install"),
 								},
@@ -105,6 +106,9 @@ func Cli() *cli.App {
 					{
 						Name:  "jupyter",
 						Usage: "Install or manage Jupyter and its kernels",
+						Flags: []cli.Flag{
+							versionFlag("Python version to use", ""),
+						},
 						Subcommands: []*cli.Command{
 							{
 								Name:  "install",
@@ -138,118 +142,76 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install a R version",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "version",
-								Aliases:  []string{"V"},
-								Usage:    "Python version to install",
-								Required: true,
-							},
-							&cli.StringSliceFlag{
-								Name:    "package",
-								Aliases: []string{"p"},
-								Usage:   "Python package(s) to install",
-							},
-							&cli.StringSliceFlag{
-								Name:    "packages-file",
-								Aliases: []string{"f"},
-								Usage:   "Path to requirements file(s) to install",
-							},
-							&cli.BoolFlag{
-								Name:    "default",
-								Aliases: []string{"D"},
-								Usage:   "Symlink the installed R version to /opt/R/default",
-							},
-							&cli.BoolFlag{
-								Name:    "add-to-path",
-								Aliases: []string{"P"},
-								Usage:   "Add the installed R version to the PATH",
-							},
+							versionFlag("R version to install", ""),
+							packageFlag("R package(s) to install"),
+							packageFileFlag("Path to package list file(s) to install"),
+							defaultFlag("Symlink the installed R version to /opt/R/default"),
+							addToPathFlag("Symlink the installed R version to /usr/local/bin/R<version>"),
 						},
 						Action: RInstall,
 					},
 					{
-						Name:  "install-packages",
-						Usage: "Install Python packages",
+						Name:  "packages",
+						Usage: "Install R packages",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "version",
-								Aliases: []string{"V"},
-								Usage:   "Python version to install",
-							},
-							&cli.StringFlag{
-								Name:  "r-path",
-								Usage: "Path to R installation",
-							},
-							&cli.StringSliceFlag{
-								Name:    "package",
-								Aliases: []string{"p"},
-								Usage:   "Python package(s) to install",
-							},
-							&cli.StringSliceFlag{
-								Name:    "packages-file",
-								Aliases: []string{"f"},
-								Usage:   "Path to requirements file(s) to install",
+							versionFlag("R version to use", ""),
+						},
+						Subcommands: []*cli.Command{
+							{
+								Name:  "install",
+								Usage: "Install R packages",
+								Flags: []cli.Flag{
+									packageFlag("R package(s) to install"),
+									packageFileFlag("Path to package list file(s) to install"),
+								},
+								Action: RInstallPackages,
 							},
 						},
-						Action: RInstallPackages,
 					},
 				},
 			},
 			{
-				Name:     "quarto",
-				Usage:    "Install or manage Quarto",
+				Name:  "quarto",
+				Usage: "Install or manage Quarto",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "ignore-workbench",
+						Usage: "Disable auto-selection of Workbench Quarto if it exists",
+					},
+				},
 				Category: "tools",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "install",
 						Usage: "Install Quarto",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "version",
-								Aliases: []string{"V"},
-								Usage:   "Quarto version to install",
-							},
-							&cli.BoolFlag{
-								Name:  "install-tinytex",
-								Usage: "Install Quarto TinyTeX",
-							},
-							&cli.BoolFlag{
-								Name:  "add-path-tinytex",
-								Usage: "Add Quarto TinyTeX to PATH",
-							},
-							&cli.BoolFlag{
-								Name:    "force",
-								Aliases: []string{"f"},
-								Usage:   "Force installation of Quarto if it is already installed or is present in Posit Workbench",
-							},
+							versionFlag("Quarto version to install", ""),
+							forceFlag("Force installation of Quarto if it is already installed"),
+							pathFlag("Path to install Quarto to", quarto.DefaultInstallPath),
 						},
 						Action: QuartoInstall,
 					},
 					{
-						Name:  "install-tinytex",
-						Usage: "Install Quarto TinyTeX",
+						Name:  "tinytex",
+						Usage: "Manage Quarto TinyTeX tool",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:  "quarto-path",
-								Usage: "Path to Quarto installation",
+							pathFlag("Path to Quarto installation", quarto.DefaultInstallPath),
+						},
+						Subcommands: []*cli.Command{
+							{
+								Name:  "install",
+								Usage: "Install Quarto TinyTeX",
+								Flags: []cli.Flag{
+									addToPathFlag("Add Quarto TinyTeX to PATH"),
+								},
+								Action: QuartoInstallTinyTex,
 							},
-							&cli.BoolFlag{
-								Name:  "add-path-tinytex",
-								Usage: "Add Quarto TinyTeX to PATH",
+							{
+								Name:   "update",
+								Usage:  "Update Quarto TinyTeX",
+								Action: QuartoUpdateTinyTex,
 							},
 						},
-						Action: QuartoInstallTinyTex,
-					},
-					{
-						Name:  "update-tinytex",
-						Usage: "Update Quarto TinyTeX",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:  "quarto-path",
-								Usage: "Path to Quarto installation",
-							},
-						},
-						Action: QuartoUpdateTinyTex,
 					},
 				},
 			},
@@ -262,11 +224,7 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install tini",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "install-path",
-								Usage:       "Path to install Tini",
-								DefaultText: "/usr/bin/tini",
-							},
+							pathFlag("Path to install Tini", "/usr/bin/tini"),
 						},
 						Action: ContainerInstallTini,
 					},
