@@ -60,8 +60,7 @@ func fakeRInstallation(t *testing.T, fs afero.Fs, version string) {
 	require.NoError(err)
 }
 
-func Test_NewRManager(t *testing.T) {
-	require := require.New(t)
+func Test_NewManager(t *testing.T) {
 	assert := assert.New(t)
 
 	ubuntuSystem := system.LocalSystem{
@@ -71,11 +70,9 @@ func Test_NewRManager(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		version        string
-		want           *Manager
-		wantErr        bool
-		wantErrMessage string
+		name    string
+		version string
+		want    *Manager
 	}{
 		{
 			name:    "default",
@@ -87,26 +84,12 @@ func Test_NewRManager(t *testing.T) {
 				RPath:            "/opt/R/4.4.2/bin/R",
 				RscriptPath:      "/opt/R/4.4.2/bin/Rscript",
 			},
-			wantErr: false,
-		},
-		{
-			name:           "empty version",
-			version:        "",
-			want:           nil,
-			wantErr:        true,
-			wantErrMessage: "r version is required",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewRManager(&ubuntuSystem, tt.version)
-			if tt.wantErr {
-				require.Error(err)
-				assert.ErrorContains(err, tt.wantErrMessage)
-			} else {
-				require.NoError(err)
-				assert.Equal(tt.want, got)
-			}
+			got := NewManager(&ubuntuSystem, tt.version)
+			assert.Equal(tt.want, got)
 		})
 	}
 }
@@ -560,7 +543,7 @@ func Test_Manager_Install(t *testing.T) {
 			wantDownload:   false,
 			wantInstall:    false,
 			wantErr:        true,
-			wantErrMessage: "r version 2.1.3 is not supported",
+			wantErrMessage: "r version '2.1.3' is not supported",
 		},
 		{
 			name: "bad download url",
@@ -798,7 +781,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 
 			tt.setupFs(t, file.AppFs, "4.4.2")
 
-			err := tt.manager.makeDefault()
+			err := tt.manager.MakeDefault()
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)
@@ -970,7 +953,7 @@ func Test_Manager_addToPath(t *testing.T) {
 
 			tt.setupFs(t, file.AppFs)
 
-			err := tt.manager.addToPath(tt.appendVersion)
+			err := tt.manager.AddToPath(tt.appendVersion)
 			if tt.wantErr {
 				require.Error(err)
 				assert.ErrorContains(err, tt.wantErrMessage)

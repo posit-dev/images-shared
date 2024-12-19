@@ -1,50 +1,72 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"pti/system"
-	"pti/tools"
+	"pti/tools/r"
 )
 
 func RInstall(cCtx *cli.Context) error {
-	system.RequireSudo()
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
 
 	rVersion := cCtx.String("version")
 	rPackages := cCtx.StringSlice("package")
 	rPackagesFiles := cCtx.StringSlice("packages-file")
-	setDefault := cCtx.Bool("set-default")
+	setDefault := cCtx.Bool("default")
 	addToPath := cCtx.Bool("add-to-path")
 
-	return tools.InstallR(rVersion, &rPackages, &rPackagesFiles, setDefault, addToPath)
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	m := r.NewManager(l, rVersion)
+	err = m.Install()
+	if err != nil {
+		slog.Error("Failed to install R " + rVersion)
+		return err
+	}
+
+	if len(rPackages) > 0 || len(rPackagesFiles) > 0 {
+		list := &r.PackageList{Packages: rPackages, PackageFiles: rPackagesFiles}
+		err = m.InstallPackages(list)
+		if err != nil {
+			slog.Error("Failed to install R packages: " + err.Error())
+		}
+	}
+
+	if setDefault {
+		err = m.MakeDefault()
+		if err != nil {
+			slog.Error("Failed to set R " + rVersion + " as default")
+		}
+	}
+
+	if addToPath {
+		err = m.AddToPath(true)
+		if err != nil {
+			slog.Error("Failed to add R " + rVersion + " to PATH")
+		}
+	}
+
+	return nil
 }
 
 func RInstallPackages(cCtx *cli.Context) error {
 	rVersion := cCtx.String("version")
-
-	rPath := cCtx.String("r-path")
-	// Assume rPath if not given
-	if rPath == "" {
-		if rVersion == "" {
-			return fmt.Errorf("R version or path must be provided")
-		}
-
-		rPath = "/opt/R/" + rVersion + "/bin/R"
-		slog.Info("Assuming R binary path " + rPath)
-	}
-
-	// Check that binary exists
-	exists, err := system.IsPathExist(rPath)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("R binary does not exist at path %s", rPath)
-	}
-
 	rPackages := cCtx.StringSlice("package")
 	rPackagesFiles := cCtx.StringSlice("packages-file")
 
-	return tools.InstallRPackages(rPath, &rPackages, &rPackagesFiles)
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	m := r.NewManager(l, rVersion)
+	list := &r.PackageList{Packages: rPackages, PackageFiles: rPackagesFiles}
+	return m.InstallPackages(list)
 }
