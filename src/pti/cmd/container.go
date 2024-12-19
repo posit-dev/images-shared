@@ -3,27 +3,24 @@ package cmd
 import (
 	"github.com/urfave/cli/v2"
 	"pti/system"
-	container2 "pti/tools/container"
+	"pti/tools/container"
 )
 
 func ContainerInstallTini(cCtx *cli.Context) error {
-	system.RequireSudo()
+	installPath := cCtx.String("path")
 
-	installPath := cCtx.String("install-path")
-	if installPath == "" {
-		installPath = "/usr/bin/tini"
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
 	}
 
-	return container2.InstallTini(installPath)
+	m := container.NewTiniManager(l, "", installPath)
+	return m.Install()
 }
 
 func ContainerInstallWaitForIt(cCtx *cli.Context) error {
-	system.RequireSudo()
+	installPath := cCtx.String("path")
 
-	installPath := cCtx.String("install-path")
-	if installPath == "" {
-		installPath = "/usr/bin/wait-for-it"
-	}
-
-	return container2.InstallWaitForIt(installPath)
+	m := container.NewWaitForItManager(installPath)
+	return m.Install()
 }

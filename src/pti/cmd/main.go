@@ -4,6 +4,7 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 	"log/slog"
+	"pti/tools/container"
 	"pti/tools/drivers"
 	"pti/tools/quarto"
 )
@@ -224,7 +225,7 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install tini",
 						Flags: []cli.Flag{
-							pathFlag("Path to install Tini", "/usr/bin/tini"),
+							pathFlag("Path to install Tini to", container.DefaultTiniPath),
 						},
 						Action: ContainerInstallTini,
 					},
@@ -239,11 +240,7 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install wait-for-it script",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "install-path",
-								Usage:       "Path to install Tini",
-								DefaultText: "/usr/bin/wait-for-it",
-							},
+							pathFlag("Path to install wait-for-it to", container.DefaultWaitForItPath),
 						},
 						Action: ContainerInstallWaitForIt,
 					},
