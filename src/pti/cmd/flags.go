@@ -37,7 +37,7 @@ func packageFileFlag(usage string) *cli.StringSliceFlag {
 func defaultFlag(usage string) *cli.BoolFlag {
 	return &cli.BoolFlag{
 		Name:    "default",
-		Aliases: []string{"d"},
+		Aliases: []string{"D"},
 		Usage:   usage,
 	}
 }

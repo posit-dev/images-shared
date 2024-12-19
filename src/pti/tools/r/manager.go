@@ -36,11 +36,7 @@ type Manager struct {
 	RscriptPath      string
 }
 
-func NewRManager(l *system.LocalSystem, version string) (*Manager, error) {
-	if version == "" {
-		return nil, fmt.Errorf("r version is required")
-	}
-
+func NewManager(l *system.LocalSystem, version string) *Manager {
 	rInstallationPath := fmt.Sprintf(installPathTpl, version)
 	rBinPath := fmt.Sprintf(binPathTpl, version)
 	rScriptBinPath := fmt.Sprintf(rScriptBinPathTpl, version)
@@ -51,7 +47,7 @@ func NewRManager(l *system.LocalSystem, version string) (*Manager, error) {
 		InstallationPath: rInstallationPath,
 		RPath:            rBinPath,
 		RscriptPath:      rScriptBinPath,
-	}, nil
+	}
 }
 
 func (m *Manager) validVersion() (bool, error) {
@@ -160,6 +156,11 @@ func (m *Manager) Installed() (bool, error) {
 }
 
 func (m *Manager) Install() error {
+	err := m.validate()
+	if err != nil {
+		return fmt.Errorf("r install failed validation: %w", err)
+	}
+
 	// Check if R is already installed
 	installed, err := m.Installed()
 	if err != nil {
@@ -222,7 +223,7 @@ func (m *Manager) Install() error {
 	return nil
 }
 
-func (m *Manager) makeDefault() error {
+func (m *Manager) MakeDefault() error {
 	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check if r %s is installed: %w", m.Version, err)
@@ -249,7 +250,7 @@ func (m *Manager) makeDefault() error {
 	return nil
 }
 
-func (m *Manager) addToPath(appendVersion bool) error {
+func (m *Manager) AddToPath(appendVersion bool) error {
 	installed, err := m.Installed()
 	if err != nil {
 		return fmt.Errorf("failed to check if r %s is installed: %w", m.Version, err)
