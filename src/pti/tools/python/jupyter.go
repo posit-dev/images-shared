@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"pti/system/command"
 	"pti/system/file"
+	"pti/system/syspkg"
 )
 
 func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
@@ -76,7 +77,29 @@ func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 func (m *Manager) AddKernel() error {
 	slog.Info("Configuring IPython kernel for Python " + m.Version)
 
-	err := m.InstallPackages(&PackageList{Packages: []string{"ipykernel"}}, []string{"--upgrade"})
+	err := m.LocalSystem.PackageManager.Update()
+	if err != nil {
+		slog.Error("Failed to update package manager: " + err.Error())
+		slog.Warn("Continuing with kernel configuration...")
+	}
+	defer m.LocalSystem.PackageManager.Clean()
+
+	sysDeps := &syspkg.PackageList{}
+	switch m.LocalSystem.PackageManager.GetBin() {
+	case "apt-get":
+		sysDeps.Packages = []string{"sqlite3"}
+	case "dnf":
+		sysDeps.Packages = []string{"sqlite"}
+	default:
+		sysDeps.Packages = []string{"sqlite3"}
+	}
+	err = m.LocalSystem.PackageManager.Install(sysDeps)
+	if err != nil {
+		slog.Error("Failed to install system dependencies: " + err.Error())
+		slog.Warn("Continuing with kernel configuration...")
+	}
+
+	err = m.InstallPackages(&PackageList{Packages: []string{"ipykernel"}}, []string{"--upgrade"})
 	if err != nil {
 		return fmt.Errorf("failed to install ipykernel to python %s: %w", m.Version, err)
 	}

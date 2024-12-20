@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"pti/mocks/pti/system/command"
+	syspkg_mock "pti/mocks/pti/system/syspkg"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
+	"pti/system/syspkg"
 	"slices"
 	"testing"
 )
@@ -275,7 +279,36 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 	}
 }
 
-func Test_Manager_addJupyterKernel(t *testing.T) {
+func mockSqlite3InstallPackageManager(t *testing.T, m *Manager) {
+	mockPm := syspkg_mock.NewMockSystemPackageManager(t)
+	mockPm.EXPECT().Update().Return(nil)
+	mockPm.EXPECT().GetBin().RunAndReturn(func() string {
+		switch m.LocalSystem.Vendor {
+		case "ubuntu":
+			return "apt-get"
+		case "rockylinux":
+			return "dnf"
+		default:
+			t.Errorf("unsupported vendor %s", m.LocalSystem.Vendor)
+			return ""
+		}
+	})
+	mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(pl *syspkg.PackageList) error {
+		switch m.LocalSystem.Vendor {
+		case "ubuntu":
+			assert.Equal(t, "sqlite3", pl.Packages[0])
+		case "rockylinux":
+			assert.Equal(t, "sqlite", pl.Packages[0])
+		default:
+			t.Errorf("unsupported vendor %s", m.LocalSystem.Vendor)
+		}
+		return nil
+	})
+	mockPm.EXPECT().Clean().Return(nil)
+	m.LocalSystem.PackageManager = mockPm
+}
+
+func Test_Manager_AddKernel(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -308,6 +341,7 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 	tests := []struct {
 		name           string
 		manager        *Manager
+		setupPm        func(t *testing.T, m *Manager)
 		expectedCalls  []expectedCall
 		runErr         error
 		runErrOnCall   int
@@ -315,12 +349,31 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 		wantErrMessage string
 	}{
 		{
-			name: "success",
+			name: "success debian-based",
 			manager: &Manager{
-				Version:    "3.12.4",
-				PythonPath: fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:    fmt.Sprintf(pipPathTpl, "3.12.4"),
+				LocalSystem: ptitest.NewUbuntuSystem(),
+				Version:     "3.12.4",
+				PythonPath:  fmt.Sprintf(binPathTpl, "3.12.4"),
+				PipPath:     fmt.Sprintf(pipPathTpl, "3.12.4"),
 			},
+			setupPm: mockSqlite3InstallPackageManager,
+			expectedCalls: []expectedCall{
+				ipykernelInstallCall,
+				pipCleanCall,
+				ipykernelRegisterCall,
+			},
+			runErrOnCall: -1,
+			wantErr:      false,
+		},
+		{
+			name: "success rhel-based",
+			manager: &Manager{
+				LocalSystem: ptitest.NewRockySystem(),
+				Version:     "3.12.4",
+				PythonPath:  fmt.Sprintf(binPathTpl, "3.12.4"),
+				PipPath:     fmt.Sprintf(pipPathTpl, "3.12.4"),
+			},
+			setupPm: mockSqlite3InstallPackageManager,
 			expectedCalls: []expectedCall{
 				ipykernelInstallCall,
 				pipCleanCall,
@@ -332,10 +385,12 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 		{
 			name: "install error",
 			manager: &Manager{
-				Version:    "3.12.4",
-				PythonPath: fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:    fmt.Sprintf(pipPathTpl, "3.12.4"),
+				LocalSystem: ptitest.NewUbuntuSystem(),
+				Version:     "3.12.4",
+				PythonPath:  fmt.Sprintf(binPathTpl, "3.12.4"),
+				PipPath:     fmt.Sprintf(pipPathTpl, "3.12.4"),
 			},
+			setupPm: mockSqlite3InstallPackageManager,
 			expectedCalls: []expectedCall{
 				ipykernelInstallCall,
 				pipCleanCall,
@@ -348,10 +403,12 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 		{
 			name: "register error",
 			manager: &Manager{
-				Version:    "3.12.4",
-				PythonPath: fmt.Sprintf(binPathTpl, "3.12.4"),
-				PipPath:    fmt.Sprintf(pipPathTpl, "3.12.4"),
+				LocalSystem: ptitest.NewUbuntuSystem(),
+				Version:     "3.12.4",
+				PythonPath:  fmt.Sprintf(binPathTpl, "3.12.4"),
+				PipPath:     fmt.Sprintf(pipPathTpl, "3.12.4"),
 			},
+			setupPm: mockSqlite3InstallPackageManager,
 			expectedCalls: []expectedCall{
 				ipykernelInstallCall,
 				pipCleanCall,
@@ -364,14 +421,16 @@ func Test_Manager_addJupyterKernel(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		oldFs := file.AppFs
-		file.AppFs = afero.NewMemMapFs()
-		defer func() {
-			file.AppFs = oldFs
-		}()
-		fakePythonInstallation(t, file.AppFs, "3.12.4")
-
 		t.Run(tt.name, func(t *testing.T) {
+			oldFs := file.AppFs
+			file.AppFs = afero.NewMemMapFs()
+			defer func() {
+				file.AppFs = oldFs
+			}()
+			fakePythonInstallation(t, file.AppFs, "3.12.4")
+
+			tt.setupPm(t, tt.manager)
+
 			shellCalls := 0
 			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
