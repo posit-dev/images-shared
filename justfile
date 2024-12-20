@@ -2,7 +2,7 @@
 
 ################
 # Variables
-CWD := justfile_dir()
+CWD := justfile_directory()
 
 ################
 # Default command, must be first in the file
@@ -42,7 +42,13 @@ install:
 # Test all sub-projects in the repository
 test:
     just --justfile posit-bakery/justfile test
+    just --justfile src/pti/justfile test
 
 # Build all sub-projects in the repository
 build:
     just --justfile posit-bakery/justfile build
+    just --justfile src/pti/justfile build
+
+# Clean all sub-projects in the repository
+clean:
+    just --justfile src/pti/justfile clean
