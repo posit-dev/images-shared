@@ -151,11 +151,23 @@ func (m *Manager) Installed() (bool, error) {
 	slog.Info("Checking if Python " + m.Version + " is installed")
 	slog.Debug("Checking for existence of path " + m.PythonPath)
 	// TODO: This should check the Package Manager in the future instead or in addition to the install path
-	isFile, err := file.IsFile(m.PythonPath)
+	exists, err := file.IsPathExist(m.PythonPath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for existing python installation at '%s': %w", m.InstallationPath, err)
 	}
-	return isFile, nil
+	if exists {
+		isDir, err := file.IsDir(m.PythonPath)
+		if err != nil {
+			return false, fmt.Errorf("failed to check if '%s' is a directory: %w", m.PythonPath, err)
+		}
+		if isDir {
+			return false, fmt.Errorf("'%s' is not a file", m.PythonPath)
+		} else {
+			return true, nil
+		}
+	} else {
+		return false, nil
+	}
 }
 
 func (m *Manager) Install() error {
@@ -167,14 +179,13 @@ func (m *Manager) Install() error {
 
 	// Install Python if not installed
 	if !installed {
-		s, _ := pterm.DefaultSpinner.Start("Downloading python " + m.Version + "...")
-
 		// Verify Python version is supported
 		err = m.validate()
 		if err != nil {
-			s.Fail("Download failed.")
 			return err
 		}
+
+		s, _ := pterm.DefaultSpinner.Start("Downloading python " + m.Version + "...")
 
 		// Create temporary directory for download
 		tmpDir, err := afero.TempDir(file.AppFs, "", "python")
@@ -201,6 +212,13 @@ func (m *Manager) Install() error {
 		s.Success("Download complete.")
 
 		s, _ = pterm.DefaultSpinner.Start("Installing python " + m.Version + "...")
+
+		// Update package manager lists
+		if err := m.PackageManager.Update(); err != nil {
+			slog.Error("Failed to update package manager")
+			slog.Warn("Continuing with installation...")
+		}
+		defer m.PackageManager.Clean()
 
 		// Install Python package
 		pkgList := &syspkg.PackageList{LocalPackages: []string{downloadPath}}
