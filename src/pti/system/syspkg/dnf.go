@@ -41,6 +41,7 @@ func (m *DnfManager) Install(list *PackageList) error {
 	if err != nil {
 		return fmt.Errorf("error occurred while parsing packages to install: %w", err)
 	}
+
 	if len(packagesToInstall) > 0 {
 		slog.Info("Installing packages: " + strings.Join(packagesToInstall[:], ", "))
 
@@ -52,6 +53,7 @@ func (m *DnfManager) Install(list *PackageList) error {
 			return fmt.Errorf("failed to install packages '%v': %w", packagesToInstall, err)
 		}
 	}
+
 	if len(list.LocalPackages) > 0 {
 		for _, localPackagePath := range list.LocalPackages {
 			slog.Info("Installing package " + localPackagePath)
