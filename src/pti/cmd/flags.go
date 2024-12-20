@@ -7,7 +7,7 @@ const categoryPackage = "Package installation: "
 func versionFlag(usage, defaultText string) *cli.StringFlag {
 	f := &cli.StringFlag{
 		Name:    "version",
-		Aliases: []string{"v"},
+		Aliases: []string{"V"},
 		Usage:   usage,
 	}
 	if defaultText != "" {
