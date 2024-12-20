@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	syspkg_mock "pti/mocks/pti/system/syspkg"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/file"
 	"pti/system/syspkg"
@@ -483,12 +484,6 @@ func Test_Manager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	ubuntuSystem := &system.LocalSystem{
-		Vendor:  "ubuntu",
-		Version: "22.04",
-		Arch:    "amd64",
-	}
-
 	tests := []struct {
 		name           string
 		manager        *Manager
@@ -503,7 +498,7 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "install",
 			manager: &Manager{
-				LocalSystem:      ubuntuSystem,
+				LocalSystem:      ptitest.NewUbuntuSystem(),
 				Version:          "4.4.2",
 				InstallationPath: fmt.Sprintf(installPathTpl, "4.4.2"),
 				RPath:            fmt.Sprintf(binPathTpl, "4.4.2"),
@@ -518,7 +513,7 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "already installed",
 			manager: &Manager{
-				LocalSystem:      ubuntuSystem,
+				LocalSystem:      ptitest.NewUbuntuSystem(),
 				Version:          "4.4.2",
 				InstallationPath: fmt.Sprintf(installPathTpl, "4.4.2"),
 				RPath:            fmt.Sprintf(binPathTpl, "4.4.2"),
@@ -533,7 +528,7 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "invalid version",
 			manager: &Manager{
-				LocalSystem:      ubuntuSystem,
+				LocalSystem:      ptitest.NewUbuntuSystem(),
 				Version:          "2.1.3",
 				InstallationPath: fmt.Sprintf(installPathTpl, "2.1.3"),
 				RPath:            fmt.Sprintf(binPathTpl, "2.1.3"),
@@ -542,13 +537,14 @@ func Test_Manager_Install(t *testing.T) {
 			srv:            newServerRCdn,
 			wantDownload:   false,
 			wantInstall:    false,
+			installErr:     nil,
 			wantErr:        true,
 			wantErrMessage: "r version '2.1.3' is not supported",
 		},
 		{
 			name: "bad download url",
 			manager: &Manager{
-				LocalSystem:      ubuntuSystem,
+				LocalSystem:      ptitest.NewUbuntuSystem(),
 				Version:          "4.4.2",
 				InstallationPath: fmt.Sprintf(installPathTpl, "4.4.2"),
 				RPath:            fmt.Sprintf(binPathTpl, "4.4.2"),
@@ -569,13 +565,14 @@ func Test_Manager_Install(t *testing.T) {
 			},
 			wantDownload:   true,
 			wantInstall:    false,
+			installErr:     nil,
 			wantErr:        true,
 			wantErrMessage: "failed to download r 4.4.2 package",
 		},
 		{
 			name: "install error",
 			manager: &Manager{
-				LocalSystem:      ubuntuSystem,
+				LocalSystem:      ptitest.NewUbuntuSystem(),
 				Version:          "4.4.2",
 				InstallationPath: fmt.Sprintf(installPathTpl, "4.4.2"),
 				RPath:            fmt.Sprintf(binPathTpl, "4.4.2"),
@@ -618,18 +615,35 @@ func Test_Manager_Install(t *testing.T) {
 
 			mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 			if tt.wantDownload {
-				mockPm.On("GetPackageExtension").Return(".deb")
-			}
-			if tt.wantInstall {
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
-					assert.Contains(list.LocalPackages[0], "r.deb")
-					return tt.installErr
+				mockPm.EXPECT().GetPackageExtension().RunAndReturn(func() string {
+					switch tt.manager.LocalSystem.Vendor {
+					case "ubuntu":
+						return ".deb"
+					case "rockylinux":
+						return ".rpm"
+					default:
+						t.Errorf("unsupported vendor: %s", tt.manager.LocalSystem.Vendor)
+						return ""
+					}
 				})
 			}
+			if tt.wantInstall {
+				mockPm.EXPECT().Update().Return(nil)
+				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
+					switch tt.manager.LocalSystem.Vendor {
+					case "ubuntu":
+						assert.Contains(list.LocalPackages[0], "r.deb")
+					case "rockylinux":
+						assert.Contains(list.LocalPackages[0], "r.rpm")
+					default:
+						t.Errorf("unsupported vendor: %s", tt.manager.LocalSystem.Vendor)
+					}
+					fakeRInstallation(t, file.AppFs, "4.4.2")
+					return tt.installErr
+				})
+				mockPm.EXPECT().Clean().Return(nil)
+			}
 			tt.manager.LocalSystem.PackageManager = mockPm
-			defer func() {
-				tt.manager.LocalSystem.PackageManager = nil
-			}()
 
 			err = tt.manager.Install()
 			if tt.wantErr {

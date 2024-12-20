@@ -171,17 +171,6 @@ func (m *Manager) Install() error {
 	if !installed {
 		s, _ := pterm.DefaultSpinner.Start("Downloading R " + m.Version + "...")
 
-		// Verify R version is supported
-		validVersion, err := m.validVersion()
-		if err != nil {
-			s.Fail("Download failed.")
-			return err
-		}
-		if !validVersion {
-			s.Fail("Download failed.")
-			return fmt.Errorf("r version %s is not supported", m.Version)
-		}
-
 		// Create temporary directory for download
 		tmpDir, err := afero.TempDir(file.AppFs, "", "r")
 		if err != nil {
@@ -207,6 +196,13 @@ func (m *Manager) Install() error {
 		s.Success("Download complete.")
 
 		s, _ = pterm.DefaultSpinner.Start("Installing R " + m.Version + "...")
+
+		// Update package manager
+		if err := m.LocalSystem.PackageManager.Update(); err != nil {
+			slog.Error("Failed to update package manager")
+			slog.Warn("Continuing with installation...")
+		}
+		defer m.LocalSystem.PackageManager.Clean()
 
 		// Install R package
 		pkgList := &syspkg.PackageList{LocalPackages: []string{downloadPath}}
