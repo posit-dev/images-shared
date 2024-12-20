@@ -2,7 +2,7 @@
 
 ################
 # Variables
-CWD := justfile_dir()
+CWD := justfile_directory()
 
 ################
 # Default command, must be first in the file

@@ -2,7 +2,7 @@
 
 ################
 # Variables
-CWD := justfile_dir()
+CWD := justfile_directory()
 
 ################
 # Commands
