@@ -21,7 +21,7 @@ func bootstrapPackageManagerMock(t *testing.T, localSystem *system.LocalSystem) 
 	expectedPackages := []string{"ca-certificates"}
 	switch localSystem.Vendor {
 	case "ubuntu":
-		mockPackageManager.EXPECT().GetBin().Return("apt")
+		mockPackageManager.EXPECT().GetBin().Return("apt-get")
 	case "rockylinux":
 		mockPackageManager.EXPECT().GetBin().Return("dnf")
 		expectedPackages = append(expectedPackages, "epel-release")

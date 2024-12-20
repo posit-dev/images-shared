@@ -22,7 +22,7 @@ type AptManager struct {
 
 func NewAptManager() *AptManager {
 	return &AptManager{
-		binary:          "apt",
+		binary:          "apt-get",
 		installOpts:     []string{"install", "-y", "-q"},
 		updateOpts:      []string{"update", "-q"},
 		upgradeOpts:     []string{"upgrade", "-y", "-q"},

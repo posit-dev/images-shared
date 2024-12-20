@@ -35,7 +35,7 @@ func Test_GetLocalSystem(t *testing.T) {
 					Vendor: "ubuntu",
 				},
 			},
-			wantPmBin: "apt",
+			wantPmBin: "apt-get",
 			wantErr:   false,
 		},
 		{

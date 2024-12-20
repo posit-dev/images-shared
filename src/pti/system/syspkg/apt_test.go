@@ -16,7 +16,7 @@ func Test_NewAptManager(t *testing.T) {
 
 	m := NewAptManager()
 
-	assert.Equal("apt", m.GetBin())
+	assert.Equal("apt-get", m.GetBin())
 	assert.Contains(m.installOpts, "install")
 	assert.Contains(m.updateOpts, "update")
 	assert.Contains(m.upgradeOpts, "upgrade")
@@ -404,7 +404,7 @@ func Test_AptManager_Install(t *testing.T) {
 				command.NewShellCommand = old
 			}()
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 				for _, arg := range m.installOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -622,7 +622,7 @@ func Test_AptManager_Remove(t *testing.T) {
 				command.NewShellCommand = old
 			}()
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 				for _, arg := range m.removeOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -685,7 +685,7 @@ func Test_AptManager_Update(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalled = true
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 				for _, arg := range m.updateOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
@@ -764,7 +764,7 @@ func Test_AptManager_Upgrade(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalls++
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 
 				var opts []string
 				if newShellCalls == 2 && tt.fullUpgrade {
@@ -866,7 +866,7 @@ func Test_AptManager_Clean(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalls++
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 
 				var opts []string
 				switch newShellCalls {
@@ -936,7 +936,7 @@ func Test_AptManager_autoRemove(t *testing.T) {
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				newShellCalled = true
 
-				assert.Equal("apt", name, "binary name = %v, want binary apt", name)
+				assert.Equal("apt-get", name, "binary name = %v, want binary apt", name)
 				for _, arg := range m.autoRemoveOpts {
 					assert.Contains(args, arg, "args = %v, want contains %v", args, arg)
 				}
