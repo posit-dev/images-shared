@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/urfave/cli/v2"
 	"pti/system"
 	"pti/system/syspkg"
@@ -31,6 +32,12 @@ func SysPkgUpgrade(cCtx *cli.Context) error {
 		return err
 	}
 
+	err = l.PackageManager.Update()
+	defer l.PackageManager.Clean()
+	if err != nil {
+		return fmt.Errorf("failed to update package manager: %w", err)
+	}
+
 	fullUpgrade := cCtx.Bool("dist")
 
 	return l.PackageManager.Upgrade(fullUpgrade)
@@ -45,6 +52,12 @@ func SysPkgInstall(cCtx *cli.Context) error {
 	l, err := system.GetLocalSystem()
 	if err != nil {
 		return err
+	}
+
+	err = l.PackageManager.Update()
+	defer l.PackageManager.Clean()
+	if err != nil {
+		return fmt.Errorf("failed to update package manager: %w", err)
 	}
 
 	packages := cCtx.StringSlice("package")
