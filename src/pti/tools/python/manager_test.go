@@ -503,6 +503,38 @@ func Test_Manager_Installed(t *testing.T) {
 	}
 }
 
+func mockPrepPackageManager(t *testing.T, manager *Manager, fs afero.Fs) {
+	mockPm := syspkg_mock.NewMockSystemPackageManager(t)
+	mockPm.EXPECT().GetPackageExtension().RunAndReturn(func() string {
+		switch manager.LocalSystem.Vendor {
+		case "ubuntu":
+			return ".deb"
+		case "rockylinux":
+			return ".rpm"
+		default:
+			t.Errorf("unsupported vendor: %s", manager.LocalSystem.Vendor)
+			return ""
+		}
+	})
+	mockPm.EXPECT().Update().Return(nil)
+	mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(
+		func(list *syspkg.PackageList) error {
+			switch manager.LocalSystem.Vendor {
+			case "ubuntu":
+				assert.Contains(t, list.LocalPackages[0], "python.deb")
+			case "rockylinux":
+				assert.Contains(t, list.LocalPackages[0], "python.rpm")
+			default:
+				t.Errorf("unsupported vendor: %s", manager.LocalSystem.Vendor)
+			}
+			fakePythonInstallation(t, fs, "3.12.4")
+			return nil
+		},
+	)
+	mockPm.EXPECT().Clean().Return(nil)
+	manager.LocalSystem.PackageManager = mockPm
+}
+
 func Test_Manager_Install(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
@@ -544,7 +576,7 @@ func Test_Manager_Install(t *testing.T) {
 		manager        *Manager
 		srv            func(*testing.T, afero.Fs) *httptest.Server
 		setupFs        func(*testing.T, string) afero.Fs
-		setupPm        func(*Manager, afero.Fs)
+		setupPm        func(*testing.T, *Manager, afero.Fs)
 		validateFs     func(*testing.T, afero.Fs)
 		expectedCalls  []expectedCall
 		wantErr        bool
@@ -568,18 +600,7 @@ func Test_Manager_Install(t *testing.T) {
 				fs := afero.NewMemMapFs()
 				return fs
 			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
-				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-				mockPm.EXPECT().GetPackageExtension().Return(".deb")
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(
-					func(list *syspkg.PackageList) error {
-						assert.Contains(list.LocalPackages[0], "python.deb")
-						fakePythonInstallation(t, fs, "3.12.4")
-						return nil
-					},
-				)
-				manager.LocalSystem.PackageManager = mockPm
-			},
+			setupPm: mockPrepPackageManager,
 			validateFs: func(t *testing.T, fs afero.Fs) {
 				isFile, err := file.IsFile("/opt/python/3.12.4/bin/python")
 				require.NoError(err)
@@ -616,7 +637,7 @@ func Test_Manager_Install(t *testing.T) {
 				fakePythonInstallation(t, fs, "3.12.4")
 				return fs
 			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
+			setupPm: func(t *testing.T, manager *Manager, fs afero.Fs) {
 				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 				manager.LocalSystem.PackageManager = mockPm
 			},
@@ -662,7 +683,7 @@ func Test_Manager_Install(t *testing.T) {
 				fs := afero.NewMemMapFs()
 				return fs
 			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
+			setupPm: func(t *testing.T, manager *Manager, fs afero.Fs) {
 				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 				mockPm.EXPECT().GetPackageExtension().Return(".deb")
 				manager.LocalSystem.PackageManager = mockPm
@@ -703,10 +724,12 @@ func Test_Manager_Install(t *testing.T) {
 				fs := afero.NewMemMapFs()
 				return fs
 			},
-			setupPm: func(manager *Manager, fs afero.Fs) {
+			setupPm: func(t *testing.T, manager *Manager, fs afero.Fs) {
 				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 				mockPm.EXPECT().GetPackageExtension().Return(".deb")
+				mockPm.EXPECT().Update().Return(nil)
 				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).Return(errors.New("install error"))
+				mockPm.EXPECT().Clean().Return(nil)
 				manager.LocalSystem.PackageManager = mockPm
 			},
 			validateFs: func(t *testing.T, fs afero.Fs) {
@@ -747,7 +770,7 @@ func Test_Manager_Install(t *testing.T) {
 			downloadUrl = srv.URL + "/python/%s/pkgs/%s"
 
 			if tt.setupPm != nil {
-				tt.setupPm(tt.manager, file.AppFs)
+				tt.setupPm(t, tt.manager, file.AppFs)
 			}
 
 			shellCalls := 0
