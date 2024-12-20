@@ -1,0 +1,10 @@
+with-expecter: true
+outpkg: "{{.PackageName}}_mock"
+mock-build-tags: ignore
+packages:
+  pti/system/command:
+    config:
+      all: true
+  pti/system/syspkg:
+    config:
+      all: true

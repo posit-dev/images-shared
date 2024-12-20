@@ -1,38 +1,99 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/urfave/cli/v2"
 	"pti/system"
+	"pti/system/syspkg"
 )
 
-func SysPkgUpdate(context *cli.Context) error {
-	return system.UpdatePackageLists()
+func SysPkgUpdate(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	return l.PackageManager.Update()
 }
 
-func SysPkgUpgrade(context *cli.Context) error {
-	return system.UpgradePackages(context.Bool("dist"))
+func SysPkgUpgrade(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	err = l.PackageManager.Update()
+	defer l.PackageManager.Clean()
+	if err != nil {
+		return fmt.Errorf("failed to update package manager: %w", err)
+	}
+
+	fullUpgrade := cCtx.Bool("dist")
+
+	return l.PackageManager.Upgrade(fullUpgrade)
 }
 
-func SysPkgInstall(context *cli.Context) error {
-	packages := context.StringSlice("package")
-	if len(packages) > 0 {
-		return system.InstallPackages(&packages)
+func SysPkgInstall(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
 	}
-	packageFiles := context.StringSlice("packages-file")
-	if len(packageFiles) > 0 {
-		return system.InstallPackagesFiles(&packageFiles)
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
 	}
-	return nil
+
+	err = l.PackageManager.Update()
+	defer l.PackageManager.Clean()
+	if err != nil {
+		return fmt.Errorf("failed to update package manager: %w", err)
+	}
+
+	packages := cCtx.StringSlice("package")
+	packageFiles := cCtx.StringSlice("packages-file")
+	pkgList := &syspkg.PackageList{Packages: packages, PackageListFiles: packageFiles}
+
+	return l.PackageManager.Install(pkgList)
 }
 
 func SysPkgUninstall(cCtx *cli.Context) error {
-	packages := cCtx.StringSlice("package")
-	if len(packages) > 0 {
-		return system.RemovePackages(&packages)
+	err := system.RequireSudo()
+	if err != nil {
+		return err
 	}
-	return nil
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	packages := cCtx.StringSlice("package")
+	pkgList := &syspkg.PackageList{Packages: packages}
+
+	return l.PackageManager.Remove(pkgList)
 }
 
-func SysPkgClean(context *cli.Context) error {
-	return system.CleanPackages()
+func SysPkgClean(cCtx *cli.Context) error {
+	err := system.RequireSudo()
+	if err != nil {
+		return err
+	}
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	return l.PackageManager.Clean()
 }

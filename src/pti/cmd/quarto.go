@@ -1,78 +1,61 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/urfave/cli/v2"
-	"log/slog"
 	"pti/system"
-	"pti/tools"
+	"pti/tools/quarto"
 )
 
 func QuartoInstall(cCtx *cli.Context) error {
-	system.RequireSudo()
-
-	quartoVersion := cCtx.String("version")
-	force := cCtx.Bool("force")
-	workbenchQuartoExists, err := system.IsPathExist("/opt/posit-workbench/quarto")
+	err := system.RequireSudo()
 	if err != nil {
 		return err
 	}
-	if quartoVersion == "" && (!workbenchQuartoExists && force) {
-		return fmt.Errorf("Quarto version must be provided")
+
+	ignoreWorkbench := cCtx.Bool("ignore-workbench")
+	quartoVersion := cCtx.String("version")
+	force := cCtx.Bool("force")
+	path := cCtx.String("path")
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
 	}
 
-	installTinyTex := cCtx.Bool("install-tinytex")
-	addPathTinyTex := cCtx.Bool("add-path-tinytex")
+	m := quarto.NewManager(l, quartoVersion, path, ignoreWorkbench)
 
-	return tools.InstallQuarto(quartoVersion, installTinyTex, addPathTinyTex, force)
+	return m.Install(force)
 }
 
 func QuartoInstallTinyTex(cCtx *cli.Context) error {
-	quartoPath := cCtx.String("quarto-path")
-	if quartoPath == "" {
-		quartoPath = "/opt/quarto/bin/quarto"
+	path := cCtx.String("path")
+	ignoreWorkbench := cCtx.Bool("ignore-workbench")
+	addToPath := cCtx.Bool("add-to-path")
 
-		exists, err := system.IsPathExist(quartoPath)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			slog.Debug("Quarto binary does not exist at path %s", quartoPath)
-		}
-
-		workbenchQuartoBinPath := tools.WorkbenchQuartoPath + "/bin/quarto"
-
-		exists, err = system.IsPathExist(workbenchQuartoBinPath)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			return fmt.Errorf("Could not find Quarto binary at %s or %s", quartoPath, workbenchQuartoBinPath)
-		}
-	}
-
-	var options []string
-	addToPath := cCtx.Bool("add-path-tinytex")
-	if addToPath {
-		options = append(options, "--update-path")
-	}
-
-	return tools.InstallQuartoTool(quartoPath, "tinytex", &options)
-}
-
-func QuartoUpdateTinyTex(cCtx *cli.Context) error {
-	quartoPath := cCtx.String("quarto-path")
-	if quartoPath == "" {
-		quartoPath = "/opt/quarto/bin/quarto"
-	}
-
-	exists, err := system.IsPathExist(quartoPath)
+	l, err := system.GetLocalSystem()
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return fmt.Errorf("Quarto binary does not exist at path %s", quartoPath)
+
+	m := quarto.NewManager(l, "", path, ignoreWorkbench)
+
+	options := []string{}
+	if addToPath {
+		options = append(options, "--add-to-path")
 	}
 
-	return tools.UpdateQuartoTool(quartoPath, "tinytex", &[]string{})
+	return m.InstallPackage("tinytex", options)
+}
+
+func QuartoUpdateTinyTex(cCtx *cli.Context) error {
+	path := cCtx.String("path")
+	ignoreWorkbench := cCtx.Bool("ignore-workbench")
+
+	l, err := system.GetLocalSystem()
+	if err != nil {
+		return err
+	}
+
+	m := quarto.NewManager(l, "", path, ignoreWorkbench)
+	return m.UpdatePackage("tinytex", nil)
 }

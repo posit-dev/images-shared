@@ -1,0 +1,34 @@
+#!/usr/bin/env just --justfile
+
+################
+# Variables
+CWD := justfile_dir()
+
+################
+# Commands
+
+# Install the posit-bakery python project
+install:
+    poetry install \
+        --directory={{ CWD }}
+
+# Build the posit-bakery python project
+alias package := build
+build:
+    poetry build \
+        --directory={{ CWD }}
+
+[private]
+_pytest *ARGS:
+    poetry run -- pytest \
+        -n auto \
+        --cov=posit_bakery \
+        {{ ARGS }} \
+        {{ CWD }}/test/
+
+test-mark mark:
+    just _pytest -m {{ mark }}
+
+# Test the posit-bakery python project
+test:
+    just _pytest

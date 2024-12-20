@@ -1,0 +1,12 @@
+image_name = "test-image"
+
+[build."1.0.0"]
+os = ["Ubuntu 22.04"]
+latest = true
+
+[target.min]
+
+[target.std]
+[target.std.goss]
+command = "bash"
+wait = 1
