@@ -19,6 +19,6 @@ func main() {
 
 	cli := cmd.Cli()
 	if err := cli.Run(os.Args); err != nil {
-		log.Fatal(err)
+		slog.Error(err.Error())
 	}
 }
