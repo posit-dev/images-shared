@@ -2,6 +2,7 @@ package quarto
 
 import (
 	"fmt"
+	"github.com/pterm/pterm"
 	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system"
@@ -128,8 +129,6 @@ func (m *Manager) Install(force bool) error {
 			return fmt.Errorf("installation path '%s' is not installable: %w", m.InstallationPath, err)
 		}
 
-		slog.Info("Installing Quarto")
-
 		if installed {
 			slog.Info("Removing existing Quarto installation")
 			if err := file.AppFs.RemoveAll(m.InstallationPath); err != nil {
@@ -137,38 +136,53 @@ func (m *Manager) Install(force bool) error {
 			}
 		}
 
+		s, _ := pterm.DefaultSpinner.Start("Downloading Quarto " + m.Version)
+
 		url, err := getDownloadUrl(m.Version, m.LocalSystem.Arch)
 		if err != nil {
+			s.Fail("Download failed.")
 			return fmt.Errorf("failed to determine quarto download URL: %w", err)
 		}
 
 		tmpDir, err := afero.TempDir(file.AppFs, "", "quarto")
 		if err != nil {
+			s.Fail("Download failed.")
 			return fmt.Errorf("failed to create temporary directory for quarto download: %w", err)
 		}
 		downloadPath := tmpDir + "/quarto.tar.gz"
 		defer file.AppFs.RemoveAll(tmpDir)
 
 		if err := file.DownloadFile(url, downloadPath); err != nil {
+			s.Fail("Download failed.")
 			return fmt.Errorf("quarto %s download failed: %w", m.Version, err)
 		}
+		s.Success("Download complete.")
+
+		s, _ = pterm.DefaultSpinner.Start("Installing Quarto " + m.Version)
 
 		if err := file.ExtractTarGz(downloadPath, tmpDir); err != nil {
+			s.Fail("Installation failed.")
 			return fmt.Errorf("unable to extract quarto archive from '%s' to '%s': %w", downloadPath, tmpDir, err)
 		}
 
 		extractDir := tmpDir + "/quarto-" + m.Version
 		exists, err := file.IsDir(extractDir)
 		if err != nil {
+			s.Fail("Installation failed.")
 			return fmt.Errorf("could not read quarto extract path '%s': %w", extractDir, err)
 		}
 		if !exists {
+			s.Fail("Installation failed.")
 			return fmt.Errorf("expected quarto extract path '%s' does not exist", extractDir)
 		}
 
+		slog.Info("Installing Quarto to " + m.InstallationPath)
 		if err := file.Move(extractDir, m.InstallationPath); err != nil {
+			s.Fail("Installation failed.")
 			return fmt.Errorf("failed to move quarto from '%s' to installation path '%s': %w", extractDir, m.InstallationPath, err)
 		}
+
+		s.Success("Installation complete.")
 	} else {
 		slog.Info("Quarto is already installed")
 	}
