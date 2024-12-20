@@ -1,0 +1,14 @@
+#!/usr/bin/env just --justfile
+
+build:
+    go build -o out/ -tags test_helper main.go
+
+test:
+    go test -v ./...
+
+clean:
+    rm -rf out/
+    go clean -cache -testcache -modcache
+
+tidy:
+    go mod tidy
