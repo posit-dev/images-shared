@@ -36,6 +36,7 @@ func (m *DnfManager) GetPackageExtension() string {
 	return ".rpm"
 }
 
+//nolint:dupl
 func (m *DnfManager) Install(list *PackageList) error {
 	packagesToInstall, err := list.GetPackages()
 	if err != nil {
@@ -43,7 +44,7 @@ func (m *DnfManager) Install(list *PackageList) error {
 	}
 
 	if len(packagesToInstall) > 0 {
-		slog.Info("Installing packages: " + strings.Join(packagesToInstall[:], ", "))
+		slog.Info("Installing packages: " + strings.Join(packagesToInstall, ", "))
 
 		args := append(m.installOpts, packagesToInstall...)
 
@@ -62,7 +63,11 @@ func (m *DnfManager) Install(list *PackageList) error {
 
 			exist, err := file.IsPathExist(localPackagePath)
 			if err != nil {
-				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackagePath, err)
+				return fmt.Errorf(
+					"failed to check if local package '%s' exists: %w",
+					localPackagePath,
+					err,
+				)
 			}
 			if !exist {
 				return fmt.Errorf("local package '%s' does not exist", localPackagePath)
@@ -86,7 +91,7 @@ func (m *DnfManager) Remove(list *PackageList) error {
 	}
 
 	if len(packagesToRemove) > 0 {
-		slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
+		slog.Info("Removing package(s): " + strings.Join(packagesToRemove, ", "))
 
 		args := append(m.removeOpts, packagesToRemove...)
 
@@ -102,6 +107,7 @@ func (m *DnfManager) Remove(list *PackageList) error {
 
 func (m *DnfManager) Update() error {
 	slog.Debug("No update command required for dnf")
+
 	return nil
 }
 
@@ -127,12 +133,14 @@ func (m *DnfManager) Clean() error {
 	err := cmd.Run()
 	if err != nil {
 		slog.Error("dnf clean step failed: " + err.Error())
+
 		return fmt.Errorf("dnf clean failed: %w", err)
 	}
 
 	err = m.autoRemove()
 	if err != nil {
 		slog.Error("dnf autoremove step failed: " + err.Error())
+
 		return err
 	}
 

@@ -2,12 +2,13 @@ package drivers
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system"
 	"pti/system/file"
 	"pti/system/syspkg"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 const (
@@ -26,6 +27,7 @@ func NewManager(l *system.LocalSystem, version string) *Manager {
 	if version == "" {
 		version = DefaultVersion
 	}
+
 	return &Manager{
 		LocalSystem: l,
 		Version:     version,
@@ -40,11 +42,16 @@ func (m *Manager) downloadUrl() (string, error) {
 		packageName = fmt.Sprintf("rstudio-drivers_%s_%s.deb", m.Version, m.LocalSystem.Arch)
 	case "almalinux", "centos", "rockylinux", "rhel":
 		slog.Debug("Detected RHEL-based distribution")
-		packageName = fmt.Sprintf("rstudio-drivers-%s-1.el.%s.rpm", m.Version, m.LocalSystem.GetAltArchName())
+		packageName = fmt.Sprintf(
+			"rstudio-drivers-%s-1.el.%s.rpm",
+			m.Version,
+			m.LocalSystem.GetAltArchName(),
+		)
 	default:
 		return "", fmt.Errorf("unsupported OS: %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
 	}
 	slog.Debug("Using package name: " + packageName)
+
 	return fmt.Sprintf(downloadUrl, packageName), nil
 }
 
@@ -61,6 +68,7 @@ func (m *Manager) dependencies() (*syspkg.PackageList, error) {
 		return nil, fmt.Errorf("unsupported OS: %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
 	}
 	slog.Debug("Using driver dependencies: " + strings.Join(packages, ", "))
+
 	return &syspkg.PackageList{Packages: packages}, nil
 }
 
@@ -83,16 +91,21 @@ func (m *Manager) Install() error {
 		return fmt.Errorf("failed to determine Posit Pro Drivers system dependencies: %w", err)
 	}
 
-	slog.Debug("Driver system dependencies to install: " + strings.Join(driverPackages.Packages, ", "))
+	slog.Debug(
+		"Driver system dependencies to install: " + strings.Join(driverPackages.Packages, ", "),
+	)
 	slog.Debug("Driver download URL: " + url)
 
 	// Download and install the drivers
 	downloadTmpDir, err := afero.TempDir(file.AppFs, "", "drivers")
 	downloadPath := downloadTmpDir + "/drivers" + m.LocalSystem.PackageManager.GetPackageExtension()
 	if err != nil {
-		return fmt.Errorf("failed to create temporary download directory for driver package: %w", err)
+		return fmt.Errorf(
+			"failed to create temporary download directory for driver package: %w",
+			err,
+		)
 	}
-	defer file.AppFs.RemoveAll(downloadPath)
+	defer file.AppFs.RemoveAll(downloadPath) //nolint:errcheck
 
 	slog.Debug("Downloading driver package to: " + downloadPath)
 	if err := file.DownloadFile(url, downloadPath); err != nil {
@@ -101,9 +114,13 @@ func (m *Manager) Install() error {
 	driverPackages.LocalPackages = []string{downloadPath}
 	// Install dependencies and then install local package
 	if err := m.LocalSystem.PackageManager.Install(driverPackages); err != nil {
-		return fmt.Errorf("failed to install pro drivers package located at '%s': %w", downloadPath, err)
+		return fmt.Errorf(
+			"failed to install pro drivers package located at '%s': %w",
+			downloadPath,
+			err,
+		)
 	}
-	defer m.LocalSystem.PackageManager.Clean()
+	defer m.LocalSystem.PackageManager.Clean() //nolint:errcheck
 
 	return nil
 }
@@ -113,6 +130,7 @@ func (m *Manager) Update() error {
 	if err != nil {
 		slog.Error("Failed to remove Posit Pro Drivers: " + err.Error())
 	}
+
 	return m.Install()
 }
 
@@ -121,5 +139,6 @@ func (m *Manager) Remove() error {
 	if err != nil {
 		return fmt.Errorf("failed to uninstall %s: %w", packageName, err)
 	}
+
 	return nil
 }

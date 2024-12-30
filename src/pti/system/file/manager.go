@@ -5,12 +5,13 @@ import (
 	"bufio"
 	"compress/gzip"
 	"fmt"
-	"github.com/spf13/afero"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 // AppFs is the global file system object
@@ -28,6 +29,7 @@ func hasSymlinkSupport() (afero.Symlinker, bool) {
 	if ok {
 		return AppFs.(*afero.BasePathFs), true
 	}
+
 	return nil, false
 }
 
@@ -149,7 +151,12 @@ func CreateSymlink(oldName, newName string) error {
 
 		err = t.SymlinkIfPossible(oldName, newName)
 		if err != nil {
-			return fmt.Errorf("failed to create symlink from '%s' to '%s': %w", oldName, newName, err)
+			return fmt.Errorf(
+				"failed to create symlink from '%s' to '%s': %w",
+				oldName,
+				newName,
+				err,
+			)
 		}
 	} else {
 		return fmt.Errorf("symlinks are not supported on this file system")
@@ -174,13 +181,20 @@ func InstallableDir(path string, empty bool) error {
 	if exists {
 		isDir, err := IsDir(path)
 		if err != nil {
-			return fmt.Errorf("failed to check if installation path '%s' is a directory: %w", path, err)
+			return fmt.Errorf(
+				"failed to check if installation path '%s' is a directory: %w",
+				path,
+				err,
+			)
 		}
 		if !isDir {
 			return fmt.Errorf("installation path '%s' is not a directory", path)
 		}
 
 		isEmpty, err := afero.IsEmpty(AppFs, path)
+		if err != nil {
+			return fmt.Errorf("failed to check if installation path '%s' is empty: %w", path, err)
+		}
 		if !isEmpty && empty {
 			return fmt.Errorf("installation path '%s' is not empty", path)
 		}
@@ -197,6 +211,7 @@ func Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat file %s: %w", path, err)
 	}
+
 	return i, nil
 }
 
@@ -209,6 +224,7 @@ func Create(path string) (afero.File, error) {
 		return nil, fmt.Errorf("failed to create file %s: %w", path, err)
 	}
 	slog.Debug("File created")
+
 	return fh, nil
 }
 
@@ -219,6 +235,7 @@ func Open(path string) (afero.File, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return fh, nil
 }
 
@@ -230,6 +247,7 @@ func moveFile(src, dest string) error {
 		return fmt.Errorf("failed to move file: %w", err)
 	}
 	slog.Debug("Move complete")
+
 	return nil
 }
 
@@ -292,6 +310,7 @@ func moveDir(src, dest string) error {
 				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
 			}
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -302,6 +321,7 @@ func moveDir(src, dest string) error {
 		return fmt.Errorf("failed to remove source directory '%s' after move: %w", src, err)
 	}
 	slog.Debug("Move complete")
+
 	return nil
 }
 
@@ -329,12 +349,14 @@ func copyDir(src, dest string) error {
 				return fmt.Errorf("failed to copy file '%s' to '%s': %w", path, destPath, err)
 			}
 		}
+
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to move directory '%s' to '%s': %w", src, dest, err)
 	}
 	slog.Debug("Copy complete")
+
 	return nil
 }
 
@@ -403,6 +425,8 @@ func DownloadFile(url string, filepath string) error {
 
 // ExtractTarGz extracts a tar.gz archive to the given destination.
 // Returns an error if the archive could not be extracted.
+//
+//nolint:cyclop
 func ExtractTarGz(archive, dest string) error {
 	slog.Info("Extracting tar.gz file " + archive + " to " + dest)
 
@@ -429,17 +453,21 @@ func ExtractTarGz(archive, dest string) error {
 		}
 
 		target := dest + "/" + header.Name
+		// FIXME: This is a low security risk for decompression attacks and potential filemode conversion overflow
 		switch header.Typeflag {
 		case tar.TypeDir:
+			//nolint:gosec
 			if err := AppFs.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", target, err)
 			}
 		case tar.TypeReg:
+			//nolint:gosec
 			fh, err := AppFs.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return fmt.Errorf("failed to create file %s: %w", target, err)
 			}
 			defer fh.Close()
+			//nolint:gosec
 			if _, err := io.Copy(fh, tr); err != nil {
 				return fmt.Errorf("failed to copy file %s: %w", target, err)
 			}

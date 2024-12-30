@@ -2,15 +2,18 @@ package container
 
 import (
 	"fmt"
-	"github.com/pterm/pterm"
-	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system"
 	"pti/system/file"
+
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 )
 
-const DefaultTiniPath = "/usr/local/bin/tini"
-const tiniVersion = "0.19.0"
+const (
+	DefaultTiniPath = "/usr/local/bin/tini"
+	tiniVersion     = "0.19.0"
+)
 
 var tiniDownloadUrl = "https://cdn.posit.co/platform/tini/v%s/tini-%s"
 
@@ -27,6 +30,7 @@ func NewTiniManager(l *system.LocalSystem, version, installPath string) *TiniMan
 	if installPath == "" {
 		installPath = DefaultTiniPath
 	}
+
 	return &TiniManager{
 		LocalSystem: l,
 		Version:     version,
@@ -41,13 +45,18 @@ func getTiniDownloadUrl(version, arch string) (string, error) {
 	if arch == "" {
 		return "", fmt.Errorf("no system architecture provided for tini download")
 	}
+
 	return fmt.Sprintf(tiniDownloadUrl, version, arch), nil
 }
 
 func (m *TiniManager) Installed() (bool, error) {
 	exists, err := file.IsPathExist(m.InstallPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing tini installation at '%s': %w", m.InstallPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing tini installation at '%s': %w",
+			m.InstallPath,
+			err,
+		)
 	}
 	if exists {
 		isFile, err := file.IsFile(m.InstallPath)
@@ -58,6 +67,7 @@ func (m *TiniManager) Installed() (bool, error) {
 			return false, fmt.Errorf("'%s' is not a file", m.InstallPath)
 		}
 	}
+
 	return exists, nil
 }
 
@@ -68,6 +78,7 @@ func (m *TiniManager) Install() error {
 	}
 	if installed {
 		slog.Info("tini is already installed")
+
 		return fmt.Errorf("tini is already installed")
 	}
 
@@ -93,6 +104,7 @@ func (m *TiniManager) Install() error {
 	err = file.DownloadFile(downloadUrl, downloadPath)
 	if err != nil {
 		s.Fail("Download failed.")
+
 		return fmt.Errorf("tini download failed: %w", err)
 	}
 	s.Success("Download complete.")
@@ -104,7 +116,7 @@ func (m *TiniManager) Install() error {
 		return fmt.Errorf("failed to install tini to '%s': %w", m.InstallPath, err)
 	}
 	slog.Debug("Setting permissions for tini binary to 0755")
-	if err := file.AppFs.Chmod(m.InstallPath, 0755); err != nil {
+	if err := file.AppFs.Chmod(m.InstallPath, 0o755); err != nil {
 		return fmt.Errorf("failed to set permissions for %s to 0755: %w", m.InstallPath, err)
 	}
 	slog.Info("tini installed successfully to " + m.InstallPath)
@@ -140,6 +152,7 @@ func (m *TiniManager) Remove() error {
 	}
 	if !installed {
 		slog.Info("tini is not installed")
+
 		return nil
 	}
 

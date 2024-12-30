@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/urfave/cli/v2"
 	"pti/system"
 	"pti/system/syspkg"
+
+	"github.com/urfave/cli/v2"
 )
 
 func SysPkgUpdate(cCtx *cli.Context) error {
@@ -33,7 +34,7 @@ func SysPkgUpgrade(cCtx *cli.Context) error {
 	}
 
 	err = l.PackageManager.Update()
-	defer l.PackageManager.Clean()
+	defer l.PackageManager.Clean() //nolint:errcheck
 	if err != nil {
 		return fmt.Errorf("failed to update package manager: %w", err)
 	}
@@ -55,7 +56,7 @@ func SysPkgInstall(cCtx *cli.Context) error {
 	}
 
 	err = l.PackageManager.Update()
-	defer l.PackageManager.Clean()
+	defer l.PackageManager.Clean() //nolint:errcheck
 	if err != nil {
 		return fmt.Errorf("failed to update package manager: %w", err)
 	}

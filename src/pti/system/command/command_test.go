@@ -3,11 +3,12 @@ package command_test
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	commandMock "pti/mocks/pti/system/command"
 	"pti/system/command"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_NewShellCommand(t *testing.T) {
@@ -25,7 +26,12 @@ func Test_NewShellCommand(t *testing.T) {
 		envVars:        []string{"PATH=/usr/bin"},
 		inheritEnvVars: true,
 	}
-	shellCmd := command.NewShellCommand(testArgs.name, testArgs.args, testArgs.envVars, testArgs.inheritEnvVars)
+	shellCmd := command.NewShellCommand(
+		testArgs.name,
+		testArgs.args,
+		testArgs.envVars,
+		testArgs.inheritEnvVars,
+	)
 
 	assert.Equal(testArgs.name, shellCmd.GetName())
 	assert.Equal(testArgs.args, shellCmd.GetArgs())
@@ -34,7 +40,7 @@ func Test_NewShellCommand(t *testing.T) {
 	assert.NotNil(shellCmd.GetContext())
 	assert.NotNil(shellCmd.GetExecutor())
 	assert.IsType(&command.ShellCommand{}, shellCmd)
-	expectedCommand := strings.TrimSpace(testArgs.name + " " + strings.Join(testArgs.args[:], " "))
+	expectedCommand := strings.TrimSpace(testArgs.name + " " + strings.Join(testArgs.args, " "))
 	if !strings.HasSuffix(shellCmd.String(), expectedCommand) {
 		t.Errorf("Command string = %s, want suffix %s", shellCmd.String(), expectedCommand)
 	}

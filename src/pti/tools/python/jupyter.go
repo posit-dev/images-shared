@@ -8,6 +8,7 @@ import (
 	"pti/system/syspkg"
 )
 
+//nolint:cyclop
 func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 	slog.Info("Installing Jupyter for Workbench using Python " + m.Version)
 	slog.Debug("Python binary path: " + m.PythonPath)
@@ -30,7 +31,11 @@ func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 	// Remove existing Jupyter installation
 	exists, err := file.IsPathExist(path)
 	if err != nil {
-		return fmt.Errorf("failed to check for existing Jupyter installation at '%s': %w", path, err)
+		return fmt.Errorf(
+			"failed to check for existing Jupyter installation at '%s': %w",
+			path,
+			err,
+		)
 	}
 	if exists && force {
 		slog.Info("Removing existing Jupyter installation at " + path)
@@ -40,6 +45,7 @@ func (m *Manager) InstallJupyter4Workbench(path string, force bool) error {
 		}
 	} else {
 		slog.Info("Jupyter is already installed, use `--force` to reinstall")
+
 		return nil
 	}
 
@@ -82,7 +88,7 @@ func (m *Manager) AddKernel() error {
 		slog.Error("Failed to update package manager: " + err.Error())
 		slog.Warn("Continuing with kernel configuration...")
 	}
-	defer m.LocalSystem.PackageManager.Clean()
+	defer m.LocalSystem.PackageManager.Clean() //nolint:errcheck
 
 	sysDeps := &syspkg.PackageList{}
 	switch m.LocalSystem.PackageManager.GetBin() {
@@ -104,7 +110,15 @@ func (m *Manager) AddKernel() error {
 		return fmt.Errorf("failed to install ipykernel to python %s: %w", m.Version, err)
 	}
 
-	args := []string{"-m", "ipykernel", "install", "--name", fmt.Sprintf("py%s", m.Version), "--display-name", fmt.Sprintf("Python %s", m.Version)}
+	args := []string{
+		"-m",
+		"ipykernel",
+		"install",
+		"--name",
+		fmt.Sprintf("py%s", m.Version),
+		"--display-name",
+		fmt.Sprintf("Python %s", m.Version),
+	}
 	s := command.NewShellCommand(m.PythonPath, args, nil, true)
 	err = s.Run()
 	if err != nil {

@@ -13,6 +13,7 @@ func versionFlag(usage, defaultText string) *cli.StringFlag {
 	if defaultText != "" {
 		f.DefaultText = defaultText
 	}
+
 	return f
 }
 
@@ -66,5 +67,6 @@ func pathFlag(usage, defaultText string) *cli.StringFlag {
 	if defaultText != "" {
 		f.DefaultText = defaultText
 	}
+
 	return f
 }

@@ -1,13 +1,15 @@
 package cmd
 
 import (
-	"github.com/urfave/cli/v2"
 	"log/slog"
 	"pti/system"
 	"pti/tools/r"
+
+	"github.com/urfave/cli/v2"
 )
 
-func RInstall(cCtx *cli.Context) error {
+//nolint:cyclop
+func rInstall(cCtx *cli.Context) error {
 	err := system.RequireSudo()
 	if err != nil {
 		return err
@@ -28,6 +30,7 @@ func RInstall(cCtx *cli.Context) error {
 	err = m.Install()
 	if err != nil {
 		slog.Error("Failed to install R " + rVersion)
+
 		return err
 	}
 
@@ -56,7 +59,7 @@ func RInstall(cCtx *cli.Context) error {
 	return nil
 }
 
-func RInstallPackages(cCtx *cli.Context) error {
+func rInstallPackages(cCtx *cli.Context) error {
 	rVersion := cCtx.String("version")
 	rPackages := cCtx.StringSlice("package")
 	rPackagesFiles := cCtx.StringSlice("packages-file")
@@ -68,5 +71,6 @@ func RInstallPackages(cCtx *cli.Context) error {
 
 	m := r.NewManager(l, rVersion)
 	list := &r.PackageList{Packages: rPackages, PackageFiles: rPackagesFiles}
+
 	return m.InstallPackages(list)
 }

@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/urfave/cli/v2"
 	"pti/system"
 	"pti/tools/quarto"
+
+	"github.com/urfave/cli/v2"
 )
 
 func QuartoInstall(cCtx *cli.Context) error {
@@ -57,5 +58,6 @@ func QuartoUpdateTinyTex(cCtx *cli.Context) error {
 	}
 
 	m := quarto.NewManager(l, "", path, ignoreWorkbench)
+
 	return m.UpdatePackage("tinytex", nil)
 }

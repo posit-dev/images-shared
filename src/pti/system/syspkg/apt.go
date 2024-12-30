@@ -2,11 +2,12 @@ package syspkg
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system/command"
 	"pti/system/file"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 type AptManager struct {
@@ -41,6 +42,7 @@ func (m *AptManager) GetPackageExtension() string {
 	return ".deb"
 }
 
+//nolint:dupl
 func (m *AptManager) Install(list *PackageList) error {
 	packagesToInstall, err := list.GetPackages()
 	if err != nil {
@@ -48,7 +50,7 @@ func (m *AptManager) Install(list *PackageList) error {
 	}
 
 	if len(packagesToInstall) > 0 {
-		slog.Info("Installing packages: " + strings.Join(packagesToInstall[:], ", "))
+		slog.Info("Installing packages: " + strings.Join(packagesToInstall, ", "))
 
 		args := append(m.installOpts, packagesToInstall...)
 
@@ -67,7 +69,11 @@ func (m *AptManager) Install(list *PackageList) error {
 
 			exist, err := file.IsPathExist(localPackagePath)
 			if err != nil {
-				return fmt.Errorf("failed to check if local package '%s' exists: %w", localPackagePath, err)
+				return fmt.Errorf(
+					"failed to check if local package '%s' exists: %w",
+					localPackagePath,
+					err,
+				)
 			}
 			if !exist {
 				return fmt.Errorf("local package '%s' does not exist", localPackagePath)
@@ -91,7 +97,7 @@ func (m *AptManager) Remove(list *PackageList) error {
 	}
 
 	if len(packagesToRemove) > 0 {
-		slog.Info("Removing package(s): " + strings.Join(packagesToRemove[:], ", "))
+		slog.Info("Removing package(s): " + strings.Join(packagesToRemove, ", "))
 
 		args := append(m.removeOpts, packagesToRemove...)
 
@@ -112,6 +118,7 @@ func (m *AptManager) Update() error {
 	if err != nil {
 		return fmt.Errorf("apt update failed: %w", err)
 	}
+
 	return nil
 }
 
@@ -141,18 +148,23 @@ func (m *AptManager) Clean() error {
 	err := cmd.Run()
 	if err != nil {
 		slog.Error("apt clean step failed: " + err.Error())
+
 		return fmt.Errorf("apt clean failed: %w", err)
 	}
 
 	err = m.autoRemove()
 	if err != nil {
 		slog.Error("apt autoremove step failed: " + err.Error())
+
 		return err
 	}
 
 	err = m.removePackageListCache()
 	if err != nil {
-		slog.Error("failed to remove apt lists (/var/lib/apt/lists) from file system: " + err.Error())
+		slog.Error(
+			"failed to remove apt lists (/var/lib/apt/lists) from file system: " + err.Error(),
+		)
+
 		return err
 	}
 
@@ -178,6 +190,7 @@ func (m *AptManager) removePackageListCache() error {
 	}
 	if !exists {
 		slog.Debug("/var/lib/apt/lists does not exist")
+
 		return nil
 	}
 

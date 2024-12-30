@@ -2,10 +2,6 @@ package container
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	commandMock "pti/mocks/pti/system/command"
 	syspkgMock "pti/mocks/pti/system/syspkg"
 	"pti/ptitest"
@@ -14,6 +10,11 @@ import (
 	"pti/system/file"
 	"pti/system/syspkg"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func bootstrapPackageManagerMock(t *testing.T, localSystem *system.LocalSystem) {
@@ -29,10 +30,12 @@ func bootstrapPackageManagerMock(t *testing.T, localSystem *system.LocalSystem) 
 		t.Fatalf("unsupported vendor: %s", localSystem.Vendor)
 	}
 	mockPackageManager.EXPECT().Update().Return(nil)
-	mockPackageManager.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(l *syspkg.PackageList) error {
-		assert.Contains(t, expectedPackages, l.Packages[0])
-		return nil
-	})
+	mockPackageManager.EXPECT().
+		Install(mock.AnythingOfType("*syspkg.PackageList")).
+		RunAndReturn(func(l *syspkg.PackageList) error {
+			assert.Contains(t, expectedPackages, l.Packages[0])
+			return nil
+		})
 	mockPackageManager.EXPECT().Clean().Return(nil)
 	localSystem.PackageManager = mockPackageManager
 }
@@ -79,7 +82,9 @@ func Test_Bootstrap(t *testing.T) {
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
 				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
 				mockPackageManager.EXPECT().Update().Return(nil)
-				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(fmt.Errorf("install error"))
+				mockPackageManager.EXPECT().
+					Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).
+					Return(fmt.Errorf("install error"))
 				mockPackageManager.EXPECT().Clean().Return(nil)
 				localSystem.PackageManager = mockPackageManager
 			},
@@ -96,7 +101,9 @@ func Test_Bootstrap(t *testing.T) {
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
 				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
 				mockPackageManager.EXPECT().Update().Return(nil)
-				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(fmt.Errorf("install error"))
+				mockPackageManager.EXPECT().
+					Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).
+					Return(fmt.Errorf("install error"))
 				mockPackageManager.EXPECT().Clean().Return(nil)
 				localSystem.PackageManager = mockPackageManager
 			},
@@ -113,11 +120,16 @@ func Test_Bootstrap(t *testing.T) {
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
 				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
 				mockPackageManager.EXPECT().Update().Return(nil)
-				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().
+					Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).
+					Return(nil)
 				mockPackageManager.EXPECT().Clean().Return(nil)
 				localSystem.PackageManager = mockPackageManager
 			},
-			callErr:        &ptitest.FakeShellCallError{OnCall: 0, Err: fmt.Errorf("update certs error")},
+			callErr: &ptitest.FakeShellCallError{
+				OnCall: 0,
+				Err:    fmt.Errorf("update certs error"),
+			},
 			wantErr:        true,
 			wantErrMessage: "failed to update CA certificates",
 		},
@@ -130,11 +142,16 @@ func Test_Bootstrap(t *testing.T) {
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
 				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
 				mockPackageManager.EXPECT().Update().Return(nil)
-				mockPackageManager.EXPECT().Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).Return(nil)
+				mockPackageManager.EXPECT().
+					Install(&syspkg.PackageList{Packages: []string{"ca-certificates"}}).
+					Return(nil)
 				mockPackageManager.EXPECT().Clean().Return(nil)
 				localSystem.PackageManager = mockPackageManager
 			},
-			callErr:        &ptitest.FakeShellCallError{OnCall: 0, Err: fmt.Errorf("update certs error")},
+			callErr: &ptitest.FakeShellCallError{
+				OnCall: 0,
+				Err:    fmt.Errorf("update certs error"),
+			},
 			wantErr:        true,
 			wantErrMessage: "failed to update CA certificates",
 		},

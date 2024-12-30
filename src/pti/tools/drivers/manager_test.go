@@ -2,10 +2,6 @@ package drivers
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	syspkgMock "pti/mocks/pti/system/syspkg"
@@ -15,6 +11,11 @@ import (
 	"pti/system/syspkg"
 	"regexp"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_downloadUrl(t *testing.T) {
@@ -254,7 +255,11 @@ func Test_InstallProDrivers(t *testing.T) {
 		{
 			name: "unsupported OS",
 			args: args{
-				l:              &system.LocalSystem{Vendor: "unsupported", Version: "1.2.3", Arch: "amd64"},
+				l: &system.LocalSystem{
+					Vendor:  "unsupported",
+					Version: "1.2.3",
+					Arch:    "amd64",
+				},
 				driversVersion: "2024.03.0",
 			},
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
@@ -296,7 +301,9 @@ func Test_InstallProDrivers(t *testing.T) {
 			pmSetup: func(t *testing.T, localSystem *system.LocalSystem) {
 				mockPackageManager := syspkgMock.NewMockSystemPackageManager(t)
 				mockPackageManager.EXPECT().GetPackageExtension().Return(".deb")
-				mockPackageManager.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).Return(fmt.Errorf("install error"))
+				mockPackageManager.EXPECT().
+					Install(mock.AnythingOfType("*syspkg.PackageList")).
+					Return(fmt.Errorf("install error"))
 				localSystem.PackageManager = mockPackageManager
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

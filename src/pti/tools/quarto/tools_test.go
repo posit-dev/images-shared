@@ -2,12 +2,13 @@ package quarto
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"pti/mocks/pti/system/command"
+	command_mock "pti/mocks/pti/system/command"
 	"pti/system"
 	"pti/system/command"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Manager_InstallPackage(t *testing.T) {

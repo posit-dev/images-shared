@@ -2,10 +2,11 @@ package system
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	commandMock "pti/mocks/pti/system/command"
 	"pti/system/command"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_UpdateCACertificates(t *testing.T) {
@@ -75,7 +76,13 @@ func Test_UpdateCACertificates(t *testing.T) {
 			err := tt.localSystem.UpdateCACertificates()
 			if tt.wantErr {
 				assert.Error(err, "UpdateCACertificates() error = %v, wantErr %v", err, tt.wantErr)
-				assert.ErrorContains(err, tt.wantErrMessage, "UpdateCACertificates() error = %v, wantErrMessage %v", err, tt.wantErrMessage)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"UpdateCACertificates() error = %v, wantErrMessage %v",
+					err,
+					tt.wantErrMessage,
+				)
 			} else {
 				assert.NoError(err, "UpdateCACertificates() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"github.com/pterm/pterm"
-	"github.com/urfave/cli/v2"
 	"log/slog"
 	"pti/tools/container"
 	"pti/tools/drivers"
 	"pti/tools/quarto"
+
+	"github.com/pterm/pterm"
+	"github.com/urfave/cli/v2"
 )
 
 func Cli() *cli.App {
@@ -24,6 +25,7 @@ func Cli() *cli.App {
 						slog.Info("Debug mode enabled")
 						pterm.DefaultLogger.Level = pterm.LogLevelDebug
 					}
+
 					return nil
 				},
 			},
@@ -43,8 +45,10 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install Posit Pro Drivers",
 						Flags: []cli.Flag{
-
-							versionFlag("Posit Pro Drivers version to install", drivers.DefaultVersion),
+							versionFlag(
+								"Posit Pro Drivers version to install",
+								drivers.DefaultVersion,
+							),
 						},
 						Action: driversInstall,
 					},
@@ -52,7 +56,10 @@ func Cli() *cli.App {
 						Name:  "upgrade",
 						Usage: "Remove and reinstall Posit Pro Drivers",
 						Flags: []cli.Flag{
-							versionFlag("Posit Pro Drivers version to install", drivers.DefaultVersion),
+							versionFlag(
+								"Posit Pro Drivers version to install",
+								drivers.DefaultVersion,
+							),
 						},
 						Action: driversUpdate,
 					},
@@ -77,8 +84,12 @@ func Cli() *cli.App {
 							versionFlag("Python version to install", ""),
 							packageFlag("Python package(s) to install"),
 							packageFileFlag("Path to requirements file(s) to install"),
-							defaultFlag("Symlink the installed Python version to /opt/python/default"),
-							addToPathFlag("Symlink the installed Python version to /usr/local/bin/python<version>"),
+							defaultFlag(
+								"Symlink the installed Python version to /opt/python/default",
+							),
+							addToPathFlag(
+								"Symlink the installed Python version to /usr/local/bin/python<version>",
+							),
 							&cli.BoolFlag{
 								Name:    "add-jupyter-kernel",
 								Aliases: []string{"k"},
@@ -120,7 +131,9 @@ func Cli() *cli.App {
 										Usage:       "Path to install Jupyter to",
 										DefaultText: "/opt/python/jupyter",
 									},
-									forceFlag("Force installation of Jupyter if it is already installed"),
+									forceFlag(
+										"Force installation of Jupyter if it is already installed",
+									),
 								},
 								Action: pythonInstallJupyter,
 							},
@@ -147,9 +160,11 @@ func Cli() *cli.App {
 							packageFlag("R package(s) to install"),
 							packageFileFlag("Path to package list file(s) to install"),
 							defaultFlag("Symlink the installed R version to /opt/R/default"),
-							addToPathFlag("Symlink the installed R version to /usr/local/bin/R<version>"),
+							addToPathFlag(
+								"Symlink the installed R version to /usr/local/bin/R<version>",
+							),
 						},
-						Action: RInstall,
+						Action: rInstall,
 					},
 					{
 						Name:  "packages",
@@ -165,7 +180,7 @@ func Cli() *cli.App {
 									packageFlag("R package(s) to install"),
 									packageFileFlag("Path to package list file(s) to install"),
 								},
-								Action: RInstallPackages,
+								Action: rInstallPackages,
 							},
 						},
 					},
@@ -240,7 +255,10 @@ func Cli() *cli.App {
 						Name:  "install",
 						Usage: "Install wait-for-it script",
 						Flags: []cli.Flag{
-							pathFlag("Path to install wait-for-it to", container.DefaultWaitForItPath),
+							pathFlag(
+								"Path to install wait-for-it to",
+								container.DefaultWaitForItPath,
+							),
 						},
 						Action: ContainerInstallWaitForIt,
 					},
@@ -305,5 +323,6 @@ func Cli() *cli.App {
 			},
 		},
 	}
+
 	return app
 }

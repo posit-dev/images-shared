@@ -2,15 +2,16 @@ package r
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	command_mock "pti/mocks/pti/system/command"
 	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Manager_InstallPackages(t *testing.T) {
@@ -31,14 +32,22 @@ func Test_Manager_InstallPackages(t *testing.T) {
 	const rBinPath = "/opt/R/4.4.2/bin/R"
 
 	dplyrShinyInstallCall := expectedCall{
-		name:           rBinPath,
-		args:           []string{"--vanilla", "-e", "install.packages(c(\"dplyr\", \"shiny\"), repos = \"" + cranUrl + "\", clean = TRUE)"},
+		name: rBinPath,
+		args: []string{
+			"--vanilla",
+			"-e",
+			"install.packages(c(\"dplyr\", \"shiny\"), repos = \"" + cranUrl + "\", clean = TRUE)",
+		},
 		envVars:        nil,
 		inheritEnvVars: true,
 	}
 	fileInstallCall := expectedCall{
-		name:           rBinPath,
-		args:           []string{"--vanilla", "-e", "install.packages(readLines(\"/tmp/r-packages.txt\"), repos = \"" + cranUrl + "\", clean = TRUE)"},
+		name: rBinPath,
+		args: []string{
+			"--vanilla",
+			"-e",
+			"install.packages(readLines(\"/tmp/r-packages.txt\"), repos = \"" + cranUrl + "\", clean = TRUE)",
+		},
 		envVars:        nil,
 		inheritEnvVars: true,
 	}

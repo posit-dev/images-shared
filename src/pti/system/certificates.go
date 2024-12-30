@@ -6,7 +6,8 @@ import (
 )
 
 func (l *LocalSystem) UpdateCACertificates() error {
-	updateBin := ""
+	var updateBin string
+
 	switch l.Vendor {
 	case "ubuntu", "debian":
 		updateBin = "update-ca-certificates"
@@ -21,5 +22,6 @@ func (l *LocalSystem) UpdateCACertificates() error {
 	if err != nil {
 		return fmt.Errorf("failed to update CA certificates: %w", err)
 	}
+
 	return nil
 }
