@@ -1,0 +1,68 @@
+run:
+  go: '1.23'
+linters:  # Full list of linters can be found here https://golangci-lint.run/usage/linters/
+  disable-all: true
+  enable:
+    # Default set
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    # Extended set
+    ## Bugs
+    - asasalint
+    - asciicheck
+    - bodyclose
+    - errorlint
+    - gocheckcompilerdirectives
+    - reassign
+    ## Complexity
+    - cyclop
+    ## Formatting
+    - gofumpt
+    - goimports
+    ## Style & Patterns
+    - copyloopvar
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - gocritic
+    - grouper
+    - iface
+    - importas
+    - lll
+    - mirror
+    - misspell
+    - nilnil
+    - nlreturn
+    - nonamedreturns
+    - predeclared
+    - sloglint
+    - unconvert
+    - unparam
+    - wastedassign
+    ## Performance
+    - prealloc
+    ## Security
+    - gosec
+    ## Test
+    - tenv
+    - testifylint
+issues:
+  exclude-rules:
+    - linters:
+        - gocritic
+      text: "appendAssign: append result not assigned to the same slice"
+    - linters:
+        - gocritic
+      text: "unlambda: replace .*"
+  exclude-dirs:
+    - mocks
+output:
+  sort-results: true
+severity:
+  default-severity: info
