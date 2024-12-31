@@ -78,6 +78,8 @@ jobs:
       - name: Publish report
         if: always()
         working-directory: ./src/pti
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npx github-actions-ctrf suite-folded ctrf-report.json \
             --pull-request \
