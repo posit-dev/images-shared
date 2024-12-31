@@ -70,10 +70,12 @@ jobs:
         run: go-ctrf-json-reporter -output ctrf-report.json < test-results.json
 
       - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pti-unit-ctrf-report
-          path: ctrf-report.json
+          path: ./src/pti/ctrf-report.json
+          retention-days: 14
 
       - name: Publish report
         if: always()
@@ -85,4 +87,4 @@ jobs:
             --pull-request \
             --overwrite-comment \
             --comment-tag pti-unit \
-            --title "`pti` unit test results"
+            --title "PTI unit test results"
