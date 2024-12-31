@@ -39,3 +39,37 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
+
+  pti-unit:
+    name: Run pti unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: src/pti/go.mod
+          cache-dependency-path: src/pti/go.sum
+
+      - name: Install dependencies
+        working-directory: ./src/pti
+        run: |
+          go mod download
+          go install github.com/ctrf-io/go-ctrf-json-reporter/cmd/go-ctrf-json-reporter@latest
+
+      - name: Run tests
+        working-directory: ./src/pti
+        run: go test -json ./... > test-results.json
+
+      - name: Generate CTRF report
+        if: always()
+        working-directory: ./src/pti
+        run: go-ctrf-json-reporter -output ctrf-report.json < test-results.json
+
+      - name: Publish report
+        if: always()
+        working-directory: ./src/pti
+        run: npx github-actions-ctrf ctrf-report.json

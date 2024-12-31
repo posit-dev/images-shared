@@ -1,10 +1,17 @@
 #!/usr/bin/env just --justfile
 
+init:
+    go mod download
+    go install github.com/ctrf-io/go-ctrf-json-reporter/cmd/go-ctrf-json-reporter@latest
+
 build:
     go build -o out/ -tags test_helper main.go
 
 test:
     go test -v ./...
+
+test-ctrf:
+    go test -json ./... | go-ctrf-json-reporter -output ctrf-report.json
 
 clean:
     rm -rf out/
