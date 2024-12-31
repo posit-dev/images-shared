@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	syspkgMock "pti/mocks/pti/system/syspkg"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/file"
 	"pti/system/syspkg"
@@ -309,18 +310,15 @@ func Test_InstallProDrivers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
-			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
-
 			oldUrl := downloadUrl
-			downloadUrl = tt.srv.URL + "/drivers/7C152C12/installer/%s"
-			defer func() {
+			file.AppFs = afero.NewMemMapFs()
+			t.Cleanup(func() {
 				downloadUrl = oldUrl
 				tt.srv.Close()
-			}()
+				ptitest.ResetAppFs()
+			})
+
+			downloadUrl = tt.srv.URL + "/drivers/7C152C12/installer/%s"
 
 			tt.pmSetup(t, tt.args.l)
 

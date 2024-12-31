@@ -22,6 +22,10 @@ func init() {
 	testdataPath = path.Join(path.Dir(testPath), "testdata")
 }
 
+func resetAppFs() {
+	AppFs = afero.NewOsFs()
+}
+
 func Test_IsPathExist(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
@@ -136,11 +140,8 @@ func Test_IsDir(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
+			t.Cleanup(resetAppFs)
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
 
 			testPath, err := tt.setupFs(AppFs)
 			require.NoError(err, "setupFs() error = %v", err)
@@ -218,7 +219,10 @@ func Test_IsDir_Symlink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testPath, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
-			defer AppFs.RemoveAll(tmpDir)
+			t.Cleanup(func() {
+				AppFs.RemoveAll(tmpDir)
+				resetAppFs()
+			})
 
 			require.NoError(err, "setupFs() error = %v", err)
 
@@ -290,11 +294,8 @@ func Test_IsFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			fileName, err := tt.setupFs(AppFs)
 			require.Nil(err, "setupFs() error = %v", err)
@@ -365,7 +366,10 @@ func Test_IsFile_Symlink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fileName, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
-			defer AppFs.RemoveAll(tmpDir)
+			t.Cleanup(func() {
+				AppFs.RemoveAll(tmpDir)
+				resetAppFs()
+			})
 
 			require.NoError(err, "setupFs() error = %v", err)
 
@@ -464,7 +468,10 @@ func Test_IsSymlink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fileName, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
-			defer AppFs.RemoveAll(tmpDir)
+			t.Cleanup(func() {
+				AppFs.RemoveAll(tmpDir)
+				resetAppFs()
+			})
 
 			require.NoError(err, "setupFs() error = %v", err)
 
@@ -581,7 +588,10 @@ func Test_CreateSymlink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src, tmpDir, err := tt.setupFs(*AppFs.(*afero.OsFs))
-			defer AppFs.RemoveAll(tmpDir)
+			t.Cleanup(func() {
+				AppFs.RemoveAll(tmpDir)
+				resetAppFs()
+			})
 
 			require.NoError(err, "setupFs() error = %v", err)
 
@@ -699,15 +709,12 @@ func Test_InstallableDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
-			path := tt.setupFs(AppFs)
+			p := tt.setupFs(AppFs)
 
-			err := InstallableDir(path, tt.setEmpty)
+			err := InstallableDir(p, tt.setEmpty)
 
 			if tt.wantErr {
 				require.Error(err)
@@ -760,11 +767,8 @@ func Test_Stat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			fileName, err := tt.setupFs(AppFs)
 			require.Nil(err, "setupFs() error = %v", err)
@@ -786,11 +790,8 @@ func Test_Stat(t *testing.T) {
 func Test_Create(t *testing.T) {
 	require := require.New(t)
 
-	oldFs := AppFs
 	AppFs = afero.NewMemMapFs()
-	defer func() {
-		AppFs = oldFs
-	}()
+	t.Cleanup(resetAppFs)
 
 	tmpDir, err := afero.TempDir(AppFs, "", "create")
 	require.NoError(err)
@@ -810,11 +811,8 @@ func Test_Open(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	oldFs := AppFs
 	AppFs = afero.NewMemMapFs()
-	defer func() {
-		AppFs = oldFs
-	}()
+	t.Cleanup(resetAppFs)
 
 	tmpFile, err := afero.TempFile(AppFs, "", "open")
 	require.NoError(err)
@@ -837,11 +835,8 @@ func Test_moveFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	oldFs := AppFs
 	AppFs = afero.NewMemMapFs()
-	defer func() {
-		AppFs = oldFs
-	}()
+	t.Cleanup(resetAppFs)
 
 	tmpDir, err := afero.TempDir(AppFs, "", "move")
 	require.NoError(err)
@@ -925,11 +920,8 @@ func Test_copyFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			fileName, err := tt.setupFs(AppFs)
 			require.Nil(err, "setupFs() error = %v", err)
@@ -1025,11 +1017,8 @@ func Test_moveDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			srcDir, err := afero.TempDir(AppFs, "", "src")
 			require.NoError(err, "TempDir() error = %v", err)
@@ -1107,11 +1096,8 @@ func Test_copyDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			srcDir, err := afero.TempDir(AppFs, "", "src")
 			require.NoError(err, "TempDir() error = %v", err)
@@ -1188,11 +1174,8 @@ func Test_DownloadFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := AppFs
 			AppFs = afero.NewMemMapFs()
-			defer func() {
-				AppFs = oldFs
-			}()
+			t.Cleanup(resetAppFs)
 
 			err := DownloadFile(tt.fields.srv.URL+tt.fields.url, tt.fields.path)
 			defer tt.fields.srv.Close()
@@ -1266,15 +1249,11 @@ func Test_ExtractTarGz(t *testing.T) {
 			isDir:    false,
 		},
 	}
-
-	oldFs := AppFs
-	AppFs = afero.NewMemMapFs()
-	defer func() {
-		AppFs = oldFs
-	}()
-
-	contents, err := afero.ReadFile(oldFs, testdataPath+"/"+testTarGz)
+	contents, err := afero.ReadFile(AppFs, testdataPath+"/"+testTarGz)
 	require.NoError(err)
+
+	AppFs = afero.NewMemMapFs()
+	t.Cleanup(resetAppFs)
 
 	err = afero.WriteFile(AppFs, "/"+testTarGz, contents, 0644)
 	require.NoError(err)

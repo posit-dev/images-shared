@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"path"
 	commandMock "pti/mocks/pti/system/command"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
@@ -72,11 +73,8 @@ func Test_workbenchInstalled(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			tt.setupFs(file.AppFs)
 
@@ -171,11 +169,8 @@ func Test_NewManager(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			path := tt.setupFs(file.AppFs)
 
@@ -231,11 +226,8 @@ func Test_Manager_validate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			err := tt.manager.validate()
 			if tt.wantErr {
@@ -290,11 +282,8 @@ func Test_Manager_Installed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			tt.setupFs(file.AppFs)
 
@@ -634,30 +623,30 @@ func Test_Manager_Install(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
-			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
-
-			contents, err := afero.ReadFile(oldFs, testdataPath+"/"+testTarGz)
+			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testTarGz)
 			require.NoError(err)
+
+			file.AppFs = afero.NewMemMapFs()
+
+			tt.setupFs(file.AppFs)
+			server := tt.srv(t, file.AppFs, tt.manager.Version, tt.manager.LocalSystem.Arch)
+
+			oldURL := downloadUrl
+			downloadUrl = server.URL + "/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
+
+			oldShellCommand := command.NewShellCommand
+
+			t.Cleanup(func() {
+				command.NewShellCommand = oldShellCommand
+				server.Close()
+				downloadUrl = oldURL
+				ptitest.ResetAppFs()
+			})
 
 			err = afero.WriteFile(file.AppFs, "/"+testTarGz, contents, 0644)
 			require.NoError(err)
 
-			tt.setupFs(file.AppFs)
-			server := tt.srv(t, file.AppFs, tt.manager.Version, tt.manager.LocalSystem.Arch)
-			defer server.Close()
-
-			oldURL := downloadUrl
-			downloadUrl = server.URL + "/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
-			defer func() {
-				downloadUrl = oldURL
-			}()
-
 			newShellCalls := 0
-			oldShellCommand := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
 				mockShellCommand.EXPECT().Run().Return(nil)
@@ -673,9 +662,6 @@ func Test_Manager_Install(t *testing.T) {
 				require.LessOrEqual(newShellCalls, len(tt.expectedCalls))
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldShellCommand
-			}()
 
 			err = tt.manager.Install(tt.force)
 			if tt.wantErr {

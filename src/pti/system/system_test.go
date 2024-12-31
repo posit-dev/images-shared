@@ -62,9 +62,9 @@ func Test_GetLocalSystem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			old := sysInfo
-			defer func() {
+			t.Cleanup(func() {
 				sysInfo = old
-			}()
+			})
 			sysInfo = func() sysinfo.SysInfo {
 				return sysinfo.SysInfo{
 					OS: sysinfo.OS{
@@ -112,9 +112,9 @@ func Test_RequireSudo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			old := currentUser
-			defer func() {
+			t.Cleanup(func() {
 				currentUser = old
-			}()
+			})
 			currentUser = func() (*user.User, error) {
 				return &user.User{
 					Uid: tt.currentUser.Uid,
