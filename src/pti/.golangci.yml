@@ -53,6 +53,8 @@ linters:  # Full list of linters can be found here https://golangci-lint.run/usa
     - tenv
     - testifylint
 issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
   exclude-rules:
     - linters:
         - gocritic

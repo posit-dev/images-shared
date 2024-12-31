@@ -8,7 +8,7 @@ init:
 
 alias format := lint
 lint:
-    golines -w .
+    golines -w -m 120 --ignored-dirs=mocks --base-formatter="gofumpt" --shorten-comments .
     golangci-lint run --fix --tests=false
 
 build:
