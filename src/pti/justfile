@@ -3,6 +3,7 @@
 init:
     go mod download
     go install github.com/ctrf-io/go-ctrf-json-reporter/cmd/go-ctrf-json-reporter@latest
+    go install mvdan.cc/gofumpt@v0.7.0
     go install github.com/segmentio/golines@v0.12.2
     curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.62.2
 
