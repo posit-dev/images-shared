@@ -35,9 +35,17 @@ _setup-poetry:
 ################
 # Omnibus commands for all projects
 
+# Init all sub-projects in the repository
+init:
+    just --justfile src/pti/justfile init
+
 # Install all sub-projects in the repository
 install:
     just --justfile posit-bakery/justfile install
+
+# Lint all sub-projects in the repository
+lint:
+    just --justfile src/pti/justfile lint
 
 # Test all sub-projects in the repository
 test:
