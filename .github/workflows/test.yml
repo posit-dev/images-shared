@@ -69,7 +69,18 @@ jobs:
         working-directory: ./src/pti
         run: go-ctrf-json-reporter -output ctrf-report.json < test-results.json
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pti-unit-ctrf-report
+          path: ctrf-report.json
+
       - name: Publish report
         if: always()
         working-directory: ./src/pti
-        run: npx github-actions-ctrf ctrf-report.json
+        run: |
+          npx github-actions-ctrf suite-folded ctrf-report.json \
+            --pull-request \
+            --overwrite-comment \
+            --comment-tag pti-unit \
+            --title "`pti` unit test results"
