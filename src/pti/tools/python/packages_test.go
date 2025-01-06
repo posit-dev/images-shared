@@ -2,7 +2,6 @@ package python
 
 import (
 	"fmt"
-	"pti/mocks/pti/system/command"
 	command_mock "pti/mocks/pti/system/command"
 	"pti/ptitest"
 	"pti/system"
