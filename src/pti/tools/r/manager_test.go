@@ -17,6 +17,7 @@ import (
 	"pti/system/syspkg"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -169,7 +170,7 @@ func Test_validVersion(t *testing.T) {
 			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
 
 			srv := tt.srv(t, fs)
-			defer srv.Close()
+			t.Cleanup(srv.Close)
 
 			m := &Manager{Version: tt.version}
 
@@ -294,7 +295,7 @@ func Test_Manager_validate(t *testing.T) {
 			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
 
 			srv := tt.srv(t, fs)
-			defer srv.Close()
+			t.Cleanup(srv.Close)
 
 			versionsJsonUrl = srv.URL + "/r/versions.json"
 
@@ -463,11 +464,8 @@ func Test_Manager_Installed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			if tt.setupFs != nil {
 				tt.setupFs(t, file.AppFs, tt.manager.Version)
@@ -588,30 +586,29 @@ func Test_Manager_Install(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
-			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
-
-			contents, err := afero.ReadFile(oldFs, testdataPath+"/"+testVersionsJson)
+			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0644)
 
-			if tt.setupFs != nil {
-				tt.setupFs(t, file.AppFs, tt.manager.Version)
-			}
+			file.AppFs = afero.NewMemMapFs()
 
 			srv := tt.srv(t, file.AppFs)
 			oldJsonUrl := versionsJsonUrl
 			versionsJsonUrl = srv.URL + "/r/versions.json"
 			oldDownloadUrl := downloadUrl
 			downloadUrl = srv.URL + "/r/%s/pkgs/%s"
-			defer func() {
+
+			t.Cleanup(func() {
+				ptitest.ResetAppFs()
 				versionsJsonUrl = oldJsonUrl
 				downloadUrl = oldDownloadUrl
 				srv.Close()
-			}()
+			})
+
+			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0644)
+
+			if tt.setupFs != nil {
+				tt.setupFs(t, file.AppFs, tt.manager.Version)
+			}
 
 			mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 			if tt.wantDownload {
@@ -660,7 +657,11 @@ func Test_Manager_makeDefault(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/r_makedefault"
+	tmpDir := os.TempDir()
+	if !strings.HasSuffix(tmpDir, "/") {
+		tmpDir += "/"
+	}
+	tmpDir += "r_makedefault"
 
 	tests := []struct {
 		name           string
@@ -786,12 +787,11 @@ func Test_Manager_makeDefault(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewBasePathFs(afero.NewOsFs(), tmpDir)
-			defer func() {
-				file.AppFs = oldFs
+			t.Cleanup(func() {
+				ptitest.ResetAppFs()
 				file.AppFs.RemoveAll(tmpDir)
-			}()
+			})
 
 			tt.setupFs(t, file.AppFs, "4.4.2")
 
@@ -813,7 +813,11 @@ func Test_Manager_addToPath(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/r_addtopath"
+	tmpDir := os.TempDir()
+	if !strings.HasSuffix(tmpDir, "/") {
+		tmpDir += "/"
+	}
+	tmpDir += "r_addtopath"
 
 	tests := []struct {
 		name           string
@@ -958,12 +962,11 @@ func Test_Manager_addToPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewBasePathFs(afero.NewOsFs(), tmpDir)
-			defer func() {
-				file.AppFs = oldFs
+			t.Cleanup(func() {
+				ptitest.ResetAppFs()
 				file.AppFs.RemoveAll(tmpDir)
-			}()
+			})
 
 			tt.setupFs(t, file.AppFs)
 

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/file"
 	"testing"
@@ -114,11 +115,8 @@ func Test_CopyProDriversOdbcInstIni(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			tt.setupFs(file.AppFs)
 

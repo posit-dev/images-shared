@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"pti/ptitest"
 	"pti/system/file"
 	"testing"
 )
@@ -63,11 +64,8 @@ func Test_WaitForItManager_Installed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			tt.setupFs(file.AppFs)
 
@@ -167,20 +165,17 @@ func Test_WaitForItManager_Install(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldUrl := waitForItDownloadUrl
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				waitForItDownloadUrl = oldUrl
+				tt.srv.Close()
+				ptitest.ResetAppFs()
+			})
 
 			tt.setupFs(file.AppFs)
 
-			oldUrl := waitForItDownloadUrl
 			waitForItDownloadUrl = tt.srv.URL + "/platform/wait-for-it/wait-for-it.sh"
-			defer func() {
-				waitForItDownloadUrl = oldUrl
-				tt.srv.Close()
-			}()
 
 			w := NewWaitForItManager(tt.args.installPath)
 			err := w.Install()
@@ -304,20 +299,17 @@ func Test_WaitForItManager_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldUrl := waitForItDownloadUrl
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				waitForItDownloadUrl = oldUrl
+				tt.srv.Close()
+				ptitest.ResetAppFs()
+			})
 
 			tt.setupFs(file.AppFs)
 
-			oldUrl := waitForItDownloadUrl
 			waitForItDownloadUrl = tt.srv.URL + "/platform/wait-for-it/wait-for-it.sh"
-			defer func() {
-				waitForItDownloadUrl = oldUrl
-				tt.srv.Close()
-			}()
 
 			w := NewWaitForItManager(tt.args.installPath)
 
@@ -384,11 +376,8 @@ func Test_WaitForIt_Remove(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			tt.setupFs(file.AppFs)
 

@@ -13,12 +13,14 @@ import (
 	"path"
 	command_mock "pti/mocks/pti/system/command"
 	syspkg_mock "pti/mocks/pti/system/syspkg"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
 	"pti/system/syspkg"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -192,7 +194,7 @@ func Test_Manager_validVersion(t *testing.T) {
 			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
 
 			srv := tt.srv(t, fs)
-			defer srv.Close()
+			t.Cleanup(srv.Close)
 
 			m := &Manager{Version: tt.version}
 
@@ -317,7 +319,7 @@ func Test_Manager_validate(t *testing.T) {
 			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
 
 			srv := tt.srv(t, fs)
-			defer srv.Close()
+			t.Cleanup(srv.Close)
 
 			versionsJsonUrl = srv.URL + "/python/versions.json"
 
@@ -486,11 +488,8 @@ func Test_Manager_Installed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(ptitest.ResetAppFs)
 
 			if tt.setupFs != nil {
 				tt.setupFs(t, file.AppFs, tt.manager.Version)
@@ -753,18 +752,19 @@ func Test_Manager_Install(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
-			file.AppFs = tt.setupFs(t, "3.12.4")
-			defer func() {
-				file.AppFs = oldFs
-			}()
-
-			contents, err := afero.ReadFile(oldFs, testdataPath+"/"+testVersionsJson)
+			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0644)
 
+			oldNSC := command.NewShellCommand
+			file.AppFs = tt.setupFs(t, "3.12.4")
 			srv := tt.srv(t, file.AppFs)
-			defer srv.Close()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				srv.Close()
+				ptitest.ResetAppFs()
+			})
+
+			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0644)
 
 			versionsJsonUrl = srv.URL + "/python/versions.json"
 			downloadUrl = srv.URL + "/python/%s/pkgs/%s"
@@ -774,7 +774,6 @@ func Test_Manager_Install(t *testing.T) {
 			}
 
 			shellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				require.LessOrEqual(shellCalls, len(tt.expectedCalls)-1)
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
@@ -787,9 +786,6 @@ func Test_Manager_Install(t *testing.T) {
 				mockShellCommand.EXPECT().Run().Return(nil)
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err = tt.manager.Install()
 			if tt.wantErr {
@@ -807,7 +803,11 @@ func Test_Manager_makeDefault(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/py_makedefault"
+	tmpDir := os.TempDir()
+	if !strings.HasSuffix(tmpDir, "/") {
+		tmpDir += "/"
+	}
+	tmpDir += "py_makedefault"
 
 	tests := []struct {
 		name           string
@@ -933,12 +933,11 @@ func Test_Manager_makeDefault(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewBasePathFs(afero.NewOsFs(), tmpDir)
-			defer func() {
-				file.AppFs = oldFs
+			t.Cleanup(func() {
+				ptitest.ResetAppFs()
 				file.AppFs.RemoveAll(tmpDir)
-			}()
+			})
 
 			tt.setupFs(t, file.AppFs, "3.12.4")
 
@@ -960,7 +959,11 @@ func Test_Manager_addToPath(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpDir := os.TempDir() + "/py_addtopath"
+	tmpDir := os.TempDir()
+	if !strings.HasSuffix(tmpDir, "/") {
+		tmpDir += "/"
+	}
+	tmpDir += "py_addtopath"
 
 	tests := []struct {
 		name           string
@@ -1068,12 +1071,11 @@ func Test_Manager_addToPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
 			file.AppFs = afero.NewBasePathFs(afero.NewOsFs(), tmpDir)
-			defer func() {
-				file.AppFs = oldFs
+			t.Cleanup(func() {
+				ptitest.ResetAppFs()
 				file.AppFs.RemoveAll(tmpDir)
-			}()
+			})
 
 			tt.setupFs(t, file.AppFs, "3.12.4")
 

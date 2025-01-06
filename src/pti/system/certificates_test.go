@@ -61,9 +61,9 @@ func Test_UpdateCACertificates(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			old := command.NewShellCommand
-			defer func() {
+			t.Cleanup(func() {
 				command.NewShellCommand = old
-			}()
+			})
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				assert.Equal(tt.wantBin, name, "binary name = %v, want binary %v", name, tt.wantBin)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pti/mocks/pti/system/command"
+	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
@@ -103,18 +104,18 @@ func Test_Manager_InstallPackages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldNSC := command.NewShellCommand
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				ptitest.ResetAppFs()
+			})
 
 			if tt.setupFs != nil {
 				tt.setupFs(t, file.AppFs, tt.manager.Version)
 			}
 
 			shellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				require.LessOrEqual(shellCalls, len(tt.expectedCalls)-1)
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
@@ -127,9 +128,6 @@ func Test_Manager_InstallPackages(t *testing.T) {
 				mockShellCommand.EXPECT().Run().Return(nil)
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.InstallPackages(tt.packages, nil)
 			if tt.wantErr {
@@ -175,6 +173,9 @@ func Test_Manager_Clean(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			oldNSC := command.NewShellCommand
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+			})
 			command.NewShellCommand = func(name string, args []string, envVar []string, inheritEnvVars bool) command.ShellCommandRunner {
 				assert.Equal(tt.manager.PythonPath, name)
 				assert.Equal([]string{"-m", "pip", "cache", "purge"}, args)
@@ -186,9 +187,6 @@ func Test_Manager_Clean(t *testing.T) {
 
 				return shellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.Clean()
 			if tt.wantErr {
@@ -257,15 +255,15 @@ func Test_Manager_initCorePackages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldNSC := command.NewShellCommand
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				ptitest.ResetAppFs()
+			})
 			fakePythonInstallation(t, file.AppFs, tt.manager.Version)
 
 			shellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVar []string, inheritEnvVars bool) command.ShellCommandRunner {
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
 				assert.Equal(tt.expectedCalls[shellCalls].args, args)
@@ -278,9 +276,6 @@ func Test_Manager_initCorePackages(t *testing.T) {
 
 				return shellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.initCorePackages()
 			assert.NoError(err)
@@ -340,6 +335,9 @@ func Test_Manager_ensurePip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			shellCalls := 0
 			oldNSC := command.NewShellCommand
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+			})
 			command.NewShellCommand = func(name string, args []string, envVar []string, inheritEnvVars bool) command.ShellCommandRunner {
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
 				assert.Equal(tt.expectedCalls[shellCalls].args, args)
@@ -352,9 +350,6 @@ func Test_Manager_ensurePip(t *testing.T) {
 
 				return shellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.ensurePip()
 			if tt.wantErr {

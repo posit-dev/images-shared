@@ -229,18 +229,18 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldNSC := command.NewShellCommand
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				ptitest.ResetAppFs()
+			})
 
 			if tt.setupFs != nil {
 				tt.setupFs(t, file.AppFs, tt.manager.Version)
 			}
 
 			shellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				require.LessOrEqual(shellCalls, len(tt.expectedCalls)-1)
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
@@ -264,9 +264,6 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 				mockShellCommand.EXPECT().Run().Return(nil)
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.InstallJupyter4Workbench(tt.jupyterPath, tt.force)
 			if tt.wantErr {
@@ -422,17 +419,17 @@ func Test_Manager_AddKernel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldNSC := command.NewShellCommand
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				ptitest.ResetAppFs()
+			})
 			fakePythonInstallation(t, file.AppFs, "3.12.4")
 
 			tt.setupPm(t, tt.manager)
 
 			shellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				require.LessOrEqual(shellCalls, len(tt.expectedCalls)-1)
 				assert.Equal(tt.expectedCalls[shellCalls].name, name)
@@ -449,9 +446,6 @@ func Test_Manager_AddKernel(t *testing.T) {
 				shellCalls++
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			err := tt.manager.AddKernel()
 			if tt.wantErr {

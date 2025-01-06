@@ -141,17 +141,17 @@ func Test_Bootstrap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldFs := file.AppFs
+			oldNSC := command.NewShellCommand
 			file.AppFs = afero.NewMemMapFs()
-			defer func() {
-				file.AppFs = oldFs
-			}()
+			t.Cleanup(func() {
+				command.NewShellCommand = oldNSC
+				ptitest.ResetAppFs()
+			})
 
 			// Setup package manager
 			tt.pmSetup(t, tt.system)
 
 			iShellCalls := 0
-			oldNSC := command.NewShellCommand
 			command.NewShellCommand = func(name string, args []string, envVars []string, inheritEnvVars bool) command.ShellCommandRunner {
 				mockShellCommand := commandMock.NewMockShellCommandRunner(t)
 				tt.expectedNewShellCalls[iShellCalls].Equal(t, name, args, envVars, inheritEnvVars)
@@ -164,9 +164,6 @@ func Test_Bootstrap(t *testing.T) {
 
 				return mockShellCommand
 			}
-			defer func() {
-				command.NewShellCommand = oldNSC
-			}()
 
 			// Run test
 			err := Bootstrap(tt.system)

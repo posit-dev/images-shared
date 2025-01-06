@@ -93,9 +93,9 @@ func Test_Manager_InstallPackage(t *testing.T) {
 
 				return mockShellCommand
 			}
-			defer func() {
+			t.Cleanup(func() {
 				command.NewShellCommand = oldShellCommand
-			}()
+			})
 
 			err := manager.InstallPackage(tt.toolName, tt.options)
 			if tt.wantErr {
@@ -191,9 +191,9 @@ func Test_Manager_UpdatePackage(t *testing.T) {
 
 				return mockShellCommand
 			}
-			defer func() {
+			t.Cleanup(func() {
 				command.NewShellCommand = oldShellCommand
-			}()
+			})
 
 			err := manager.UpdatePackage(tt.toolName, tt.options)
 			if tt.wantErr {
@@ -289,9 +289,9 @@ func Test_Manager_RemovePackage(t *testing.T) {
 
 				return mockShellCommand
 			}
-			defer func() {
+			t.Cleanup(func() {
 				command.NewShellCommand = oldShellCommand
-			}()
+			})
 
 			err := manager.RemovePackage(tt.toolName, tt.options)
 			if tt.wantErr {
