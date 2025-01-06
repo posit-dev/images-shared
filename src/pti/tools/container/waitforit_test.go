@@ -1,15 +1,16 @@
 package container
 
 import (
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"pti/ptitest"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_WaitForItManager_Installed(t *testing.T) {
@@ -33,7 +34,7 @@ func Test_WaitForItManager_Installed(t *testing.T) {
 				installPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := afero.WriteFile(fs, "/wait-for-it", []byte("test"), 0755)
+				err := afero.WriteFile(fs, "/wait-for-it", []byte("test"), 0o755)
 				require.NoError(err)
 			},
 			want:    true,
@@ -45,7 +46,7 @@ func Test_WaitForItManager_Installed(t *testing.T) {
 				installPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := fs.Mkdir("/wait-for-it", 0755)
+				err := fs.Mkdir("/wait-for-it", 0o755)
 				require.NoError(err)
 			},
 			want:           false,
@@ -104,12 +105,16 @@ func Test_WaitForItManager_Install(t *testing.T) {
 				installPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := afero.WriteFile(fs, "/wait-for-it", []byte(successResponse), 0755)
+				err := afero.WriteFile(fs, "/wait-for-it", []byte(successResponse), 0o755)
 				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -125,7 +130,11 @@ func Test_WaitForItManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -140,7 +149,11 @@ func Test_WaitForItManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -155,7 +168,11 @@ func Test_WaitForItManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusNotFound)
 			})),
@@ -201,7 +218,7 @@ func Test_WaitForItManager_Install(t *testing.T) {
 				fileInfo, err := file.AppFs.Stat(installPath)
 				require.NoError(err, "Stat() error = %v", err)
 				assert.True(fileInfo.Mode().IsRegular(), "File is not a regular file")
-				assert.Equal(fs.FileMode(0755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0755)
+				assert.Equal(fs.FileMode(0o755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0o755)
 			}
 		})
 	}
@@ -234,7 +251,11 @@ func Test_WaitForItManager_Update(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -248,12 +269,16 @@ func Test_WaitForItManager_Update(t *testing.T) {
 				installPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := afero.WriteFile(fs, "/wait-for-it", []byte("old wait-for-it"), 0755)
+				err := afero.WriteFile(fs, "/wait-for-it", []byte("old wait-for-it"), 0o755)
 				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -267,12 +292,16 @@ func Test_WaitForItManager_Update(t *testing.T) {
 				installPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll("/wait-for-it", 0755)
+				err := fs.MkdirAll("/wait-for-it", 0o755)
 				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -289,7 +318,11 @@ func Test_WaitForItManager_Update(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/wait-for-it/wait-for-it.sh" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/wait-for-it/wait-for-it.sh")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/wait-for-it/wait-for-it.sh",
+					)
 				}
 				w.WriteHeader(http.StatusNotFound)
 			})),
@@ -331,7 +364,7 @@ func Test_WaitForItManager_Update(t *testing.T) {
 				fileInfo, err := file.AppFs.Stat(tt.args.installPath)
 				require.NoError(err, "Stat() error = %v", err)
 				assert.True(fileInfo.Mode().IsRegular(), "File is not a regular file")
-				assert.Equal(fs.FileMode(0755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0755)
+				assert.Equal(fs.FileMode(0o755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0o755)
 			}
 		})
 	}
@@ -368,7 +401,7 @@ func Test_WaitForIt_Remove(t *testing.T) {
 				InstallPath: "/wait-for-it",
 			},
 			setupFs: func(fs afero.Fs) {
-				_ = fs.MkdirAll("/wait-for-it", 0755)
+				_ = fs.MkdirAll("/wait-for-it", 0o755)
 			},
 			wantErr:        true,
 			wantErrMessage: "'/wait-for-it' is not a file",

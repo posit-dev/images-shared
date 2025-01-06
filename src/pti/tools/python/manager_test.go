@@ -3,10 +3,6 @@ package python
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +18,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const testVersionsJson = "versions.json"
@@ -37,7 +38,9 @@ func init() {
 func newServerPythonCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 	require := require.New(t)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		packagePat := regexp.MustCompile("/python/[a-z]+-[0-9]+/pkgs/python-3.[0-9]{1,2}.[0-9]{1,2}(_1_|-1-1.)(amd64|x86_64|arm64).(rpm|deb)")
+		packagePat := regexp.MustCompile(
+			"/python/[a-z]+-[0-9]+/pkgs/python-3.[0-9]{1,2}.[0-9]{1,2}(_1_|-1-1.)(amd64|x86_64|arm64).(rpm|deb)",
+		)
 
 		if r.URL.Path == "/python/versions.json" {
 			versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
@@ -45,7 +48,7 @@ func newServerPythonCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 
 			w.WriteHeader(http.StatusOK)
 			w.Write(versionsJsonData)
-		} else if packagePat.Match([]byte(r.URL.Path)) {
+		} else if packagePat.MatchString(r.URL.Path) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("200 OK"))
 		}
@@ -57,7 +60,7 @@ func newServerPythonCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 func fakePythonInstallation(t *testing.T, fs afero.Fs, version string) {
 	require := require.New(t)
 
-	err := fs.MkdirAll("/opt/python/"+version+"/bin", 0755)
+	err := fs.MkdirAll("/opt/python/"+version+"/bin", 0o755)
 	require.NoError(err)
 	_, err = fs.Create("/opt/python/" + version + "/bin/python")
 	require.NoError(err)
@@ -163,9 +166,11 @@ func Test_Manager_validVersion(t *testing.T) {
 		{
 			name: "bad server response",
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusInternalServerError)
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusInternalServerError)
+					}),
+				)
 			},
 			version:        "3.12.4",
 			want:           false,
@@ -175,10 +180,12 @@ func Test_Manager_validVersion(t *testing.T) {
 		{
 			name: "bad json parse",
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("{"))
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("{"))
+					}),
+				)
 			},
 			version:        "3.12.4",
 			want:           false,
@@ -191,7 +198,7 @@ func Test_Manager_validVersion(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
+			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0o644)
 
 			srv := tt.srv(t, fs)
 			t.Cleanup(srv.Close)
@@ -316,7 +323,7 @@ func Test_Manager_validate(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
+			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0o644)
 
 			srv := tt.srv(t, fs)
 			t.Cleanup(srv.Close)
@@ -666,17 +673,19 @@ func Test_Manager_Install(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/python/versions.json" {
-						versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
-						require.NoError(err)
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if r.URL.Path == "/python/versions.json" {
+							versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
+							require.NoError(err)
 
-						w.WriteHeader(http.StatusOK)
-						w.Write(versionsJsonData)
-					}
+							w.WriteHeader(http.StatusOK)
+							w.Write(versionsJsonData)
+						}
 
-					w.WriteHeader(http.StatusInternalServerError)
-				}))
+						w.WriteHeader(http.StatusInternalServerError)
+					}),
+				)
 			},
 			setupFs: func(t *testing.T, version string) afero.Fs {
 				fs := afero.NewMemMapFs()
@@ -727,7 +736,9 @@ func Test_Manager_Install(t *testing.T) {
 				mockPm := syspkg_mock.NewMockSystemPackageManager(t)
 				mockPm.EXPECT().GetPackageExtension().Return(".deb")
 				mockPm.EXPECT().Update().Return(nil)
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).Return(errors.New("install error"))
+				mockPm.EXPECT().
+					Install(mock.AnythingOfType("*syspkg.PackageList")).
+					Return(errors.New("install error"))
 				mockPm.EXPECT().Clean().Return(nil)
 				manager.LocalSystem.PackageManager = mockPm
 			},
@@ -764,7 +775,7 @@ func Test_Manager_Install(t *testing.T) {
 				ptitest.ResetAppFs()
 			})
 
-			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0644)
+			err = afero.WriteFile(file.AppFs, "/"+testVersionsJson, contents, 0o644)
 
 			versionsJsonUrl = srv.URL + "/python/versions.json"
 			downloadUrl = srv.URL + "/python/%s/pkgs/%s"
@@ -825,7 +836,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/python", 0755)
+				err := fs.MkdirAll("/opt/python", 0o755)
 				require.NoError(err)
 				fakePythonInstallation(t, fs, "3.12.4")
 			},
@@ -852,7 +863,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/python", 0755)
+				err := fs.MkdirAll("/opt/python", 0o755)
 				require.NoError(err)
 			},
 			validateFs:     nil,
@@ -867,7 +878,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/python/default", 0755)
+				err := fs.MkdirAll("/opt/python/default", 0o755)
 				require.NoError(err)
 				_, err = fs.Create("/opt/python/default/testfile")
 				require.NoError(err)
@@ -982,7 +993,7 @@ func Test_Manager_addToPath(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 				fakePythonInstallation(t, fs, "3.12.4")
 			},
@@ -1014,7 +1025,7 @@ func Test_Manager_addToPath(t *testing.T) {
 				Version:          "3.12.4",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 			},
 			validateFs:     nil,
@@ -1032,18 +1043,24 @@ func Test_Manager_addToPath(t *testing.T) {
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
 				fakePythonInstallation(t, fs, "3.12.3")
 				fakePythonInstallation(t, fs, "3.12.4")
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 
 				sFs, ok := fs.(*afero.BasePathFs)
 				require.True(ok)
-				err = sFs.SymlinkIfPossible("/opt/python/3.12.3/bin/python", "/usr/local/bin/python3.12.4")
+				err = sFs.SymlinkIfPossible(
+					"/opt/python/3.12.3/bin/python",
+					"/usr/local/bin/python3.12.4",
+				)
 				require.NoError(err)
 				rl, err := sFs.ReadlinkIfPossible("/usr/local/bin/python3.12.4")
 				require.NoError(err)
 				assert.Equal(tmpDir+"/opt/python/3.12.3/bin/python", rl)
 
-				err = sFs.SymlinkIfPossible("/opt/python/3.12.3/bin/pip", "/usr/local/bin/pip3.12.4")
+				err = sFs.SymlinkIfPossible(
+					"/opt/python/3.12.3/bin/pip",
+					"/usr/local/bin/pip3.12.4",
+				)
 				require.NoError(err)
 				rl, err = sFs.ReadlinkIfPossible("/usr/local/bin/pip3.12.4")
 				require.NoError(err)
@@ -1127,10 +1144,12 @@ func Test_Manager_Remove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-			mockPm.EXPECT().Remove(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
-				assert.Contains(list.Packages, "python-3.12.4")
-				return tt.runErr
-			})
+			mockPm.EXPECT().
+				Remove(mock.AnythingOfType("*syspkg.PackageList")).
+				RunAndReturn(func(list *syspkg.PackageList) error {
+					assert.Contains(list.Packages, "python-3.12.4")
+					return tt.runErr
+				})
 			tt.manager.LocalSystem.PackageManager = mockPm
 
 			err := tt.manager.Remove()

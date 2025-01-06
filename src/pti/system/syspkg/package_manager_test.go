@@ -1,11 +1,12 @@
 package syspkg
 
 import (
+	"pti/system/file"
+	"testing"
+
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"pti/system/file"
-	"testing"
 )
 
 func Test_packageListFileToSlice(t *testing.T) {
@@ -71,7 +72,13 @@ func Test_packageListFileToSlice(t *testing.T) {
 			got, err := packageListFileToSlice(f)
 			if tt.wantErr {
 				require.NotNil(err, "packageListFileToSlice() error = %v", err)
-				assert.ErrorContains(err, tt.wantErrMessage, "packageListFileToSlice() error message = %v, want %v", err.Error(), tt.wantErrMessage)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"packageListFileToSlice() error message = %v, want %v",
+					err.Error(),
+					tt.wantErrMessage,
+				)
 			} else {
 				assert.Nil(err, "packageListFileToSlice() error = %v", err)
 				assert.Equal(tt.want, got, "packageListFileToSlice() got = %v, want %v", got, tt.want)
@@ -134,7 +141,18 @@ func Test_PackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 				"line6",
 				"line7\nline8\nline9\nline10",
 			},
-			want: []string{"line1", "line2", "line3", "line4", "line5", "line6", "line7", "line8", "line9", "line10"},
+			want: []string{
+				"line1",
+				"line2",
+				"line3",
+				"line4",
+				"line5",
+				"line6",
+				"line7",
+				"line8",
+				"line9",
+				"line10",
+			},
 		},
 	}
 
@@ -165,7 +183,13 @@ func Test_PackageList_GetPackagesFromPackageListFiles(t *testing.T) {
 
 			got, err := l.GetPackagesFromPackageListFiles()
 			require.Nil(err, "PackageList.GetPackagesFromPackageListFiles() error = %v", err)
-			assert.Equal(tt.want, got, "PackageList.GetPackagesFromPackageListFiles() got = %v, want %v", got, tt.want)
+			assert.Equal(
+				tt.want,
+				got,
+				"PackageList.GetPackagesFromPackageListFiles() got = %v, want %v",
+				got,
+				tt.want,
+			)
 		})
 	}
 }

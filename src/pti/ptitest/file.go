@@ -1,8 +1,9 @@
 package ptitest
 
 import (
-	"github.com/spf13/afero"
 	"pti/system/file"
+
+	"github.com/spf13/afero"
 )
 
 func ResetAppFs() {

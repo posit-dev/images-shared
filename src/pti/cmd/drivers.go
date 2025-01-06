@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/urfave/cli/v2"
 	"pti/system"
 	"pti/tools/drivers"
+
+	"github.com/urfave/cli/v2"
 )
 
 func driversInstall(cCtx *cli.Context) error {

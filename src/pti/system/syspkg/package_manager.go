@@ -60,6 +60,7 @@ func (l *PackageList) GetPackagesFromPackageListFiles() ([]string, error) {
 		}
 		pkg = append(pkg, lines...)
 	}
+
 	return pkg, nil
 }
 

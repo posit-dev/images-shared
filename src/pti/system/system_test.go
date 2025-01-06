@@ -1,11 +1,12 @@
 package system
 
 import (
+	"os/user"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zcalusic/sysinfo"
-	"os/user"
-	"testing"
 )
 
 type MockOSInfo struct {
@@ -76,9 +77,21 @@ func Test_GetLocalSystem(t *testing.T) {
 			}
 			ls, err := GetLocalSystem()
 
-			require.Equal(tt.wantErr, err != nil, "GetLocalSystem() error = %v, wantErr %v", err, tt.wantErr)
+			require.Equal(
+				tt.wantErr,
+				err != nil,
+				"GetLocalSystem() error = %v, wantErr %v",
+				err,
+				tt.wantErr,
+			)
 			if err == nil {
-				assert.Equal(tt.wantPmBin, ls.PackageManager.GetBin(), "PackageManager.GetBin() = %v, want %v", ls.PackageManager.GetBin(), tt.wantPmBin)
+				assert.Equal(
+					tt.wantPmBin,
+					ls.PackageManager.GetBin(),
+					"PackageManager.GetBin() = %v, want %v",
+					ls.PackageManager.GetBin(),
+					tt.wantPmBin,
+				)
 			}
 		})
 	}

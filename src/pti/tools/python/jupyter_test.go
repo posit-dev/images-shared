@@ -2,11 +2,7 @@ package python
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"pti/mocks/pti/system/command"
+	command_mock "pti/mocks/pti/system/command"
 	syspkg_mock "pti/mocks/pti/system/syspkg"
 	"pti/ptitest"
 	"pti/system"
@@ -15,6 +11,11 @@ import (
 	"pti/system/syspkg"
 	"slices"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
@@ -191,7 +192,7 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 			force:       false,
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
 				fakePythonInstallation(t, fs, "3.12.4")
-				err := fs.MkdirAll(defaultJupyterPath, 0755)
+				err := fs.MkdirAll(defaultJupyterPath, 0o755)
 				require.NoError(err)
 			},
 			expectedCalls: []expectedCall{},
@@ -214,7 +215,7 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 			force:       true,
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
 				fakePythonInstallation(t, fs, "3.12.4")
-				err := fs.MkdirAll(defaultJupyterPath, 0755)
+				err := fs.MkdirAll(defaultJupyterPath, 0o755)
 				require.NoError(err)
 			},
 			expectedCalls: append(
@@ -254,7 +255,7 @@ func Test_Manager_InstallJupyter4Workbench(t *testing.T) {
 					if p == "" {
 						p = defaultJupyterPath
 					}
-					err := file.AppFs.Mkdir(p, 0755)
+					err := file.AppFs.Mkdir(p, 0o755)
 					require.NoError(err)
 					_, err = file.AppFs.Create(p + "/bin/python")
 					require.NoError(err)
@@ -290,17 +291,19 @@ func mockSqlite3InstallPackageManager(t *testing.T, m *Manager) {
 			return ""
 		}
 	})
-	mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(pl *syspkg.PackageList) error {
-		switch m.LocalSystem.Vendor {
-		case "ubuntu":
-			assert.Equal(t, "sqlite3", pl.Packages[0])
-		case "rockylinux":
-			assert.Equal(t, "sqlite", pl.Packages[0])
-		default:
-			t.Errorf("unsupported vendor %s", m.LocalSystem.Vendor)
-		}
-		return nil
-	})
+	mockPm.EXPECT().
+		Install(mock.AnythingOfType("*syspkg.PackageList")).
+		RunAndReturn(func(pl *syspkg.PackageList) error {
+			switch m.LocalSystem.Vendor {
+			case "ubuntu":
+				assert.Equal(t, "sqlite3", pl.Packages[0])
+			case "rockylinux":
+				assert.Equal(t, "sqlite", pl.Packages[0])
+			default:
+				t.Errorf("unsupported vendor %s", m.LocalSystem.Vendor)
+			}
+			return nil
+		})
 	mockPm.EXPECT().Clean().Return(nil)
 	m.LocalSystem.PackageManager = mockPm
 }
@@ -323,8 +326,16 @@ func Test_Manager_AddKernel(t *testing.T) {
 		inheritEnvVars: true,
 	}
 	ipykernelRegisterCall := expectedCall{
-		name:           fmt.Sprintf(binPathTpl, "3.12.4"),
-		args:           []string{"-m", "ipykernel", "install", "--name", "py3.12.4", "--display-name", "Python 3.12.4"},
+		name: fmt.Sprintf(binPathTpl, "3.12.4"),
+		args: []string{
+			"-m",
+			"ipykernel",
+			"install",
+			"--name",
+			"py3.12.4",
+			"--display-name",
+			"Python 3.12.4",
+		},
 		envVars:        nil,
 		inheritEnvVars: true,
 	}

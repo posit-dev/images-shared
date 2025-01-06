@@ -2,9 +2,10 @@ package system
 
 import (
 	"fmt"
-	"github.com/zcalusic/sysinfo"
 	"os/user"
 	"pti/system/syspkg"
+
+	"github.com/zcalusic/sysinfo"
 )
 
 type LocalSystem struct {
@@ -17,14 +18,13 @@ type LocalSystem struct {
 var sysInfo = func() sysinfo.SysInfo {
 	var si sysinfo.SysInfo
 	si.GetSysInfo()
+
 	return si
 }
 
 func GetLocalSystem() (*LocalSystem, error) {
 	si := sysInfo()
-
-	var pm *syspkg.SystemPackageManager
-	pm = new(syspkg.SystemPackageManager)
+	pm := new(syspkg.SystemPackageManager)
 
 	switch si.OS.Vendor {
 	case "ubuntu", "debian":

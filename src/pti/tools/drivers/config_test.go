@@ -1,13 +1,14 @@
 package drivers
 
 import (
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"pti/ptitest"
 	"pti/system"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_CopyProDriversOdbcInstIni(t *testing.T) {

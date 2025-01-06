@@ -53,6 +53,7 @@ var NewShellCommand = func(name string, args []string, envVars []string, inherit
 		if err != nil {
 			slog.Error("Failed to cancel command: " + err.Error())
 		}
+
 		return err
 	}
 	cmd.Env = envVars
@@ -84,12 +85,14 @@ func (s *ShellCommand) Run() error {
 	select {
 	case <-s.Ctx.Done():
 		slog.Debug("Command was interrupted")
+
 		return s.Ctx.Err()
 	default:
 		if err != nil {
 			return fmt.Errorf("command '%s' failed: %w", s.String(), err)
 		}
 		slog.Debug("Command finished successfully")
+
 		return nil
 	}
 }

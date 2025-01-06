@@ -2,15 +2,16 @@ package python
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"pti/mocks/pti/system/command"
+	command_mock "pti/mocks/pti/system/command"
 	"pti/ptitest"
 	"pti/system"
 	"pti/system/command"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Manager_InstallPackages(t *testing.T) {
@@ -171,7 +172,6 @@ func Test_Manager_Clean(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			oldNSC := command.NewShellCommand
 			t.Cleanup(func() {
 				command.NewShellCommand = oldNSC

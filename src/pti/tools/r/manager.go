@@ -3,8 +3,6 @@ package r
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pterm/pterm"
-	"github.com/spf13/afero"
 	"log/slog"
 	"net/http"
 	"pti/system"
@@ -13,6 +11,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -23,10 +24,19 @@ const (
 	defaultRPath      = "/opt/R/default"
 )
 
-var supportedArchitectures = []string{"amd64", "arm64"}
-var supportedVendors = []string{"ubuntu", "debian", "almalinux", "centos", "rockylinux", "rhel"}
-var downloadUrl = "https://cdn.posit.co/r/%s/pkgs/%s"
-var versionsJsonUrl = "https://cdn.posit.co/r/versions.json"
+var (
+	supportedArchitectures = []string{"amd64", "arm64"}
+	supportedVendors       = []string{
+		"ubuntu",
+		"debian",
+		"almalinux",
+		"centos",
+		"rockylinux",
+		"rhel",
+	}
+	downloadUrl     = "https://cdn.posit.co/r/%s/pkgs/%s"
+	versionsJsonUrl = "https://cdn.posit.co/r/versions.json"
+)
 
 type Manager struct {
 	*system.LocalSystem
@@ -55,12 +65,15 @@ func (m *Manager) validVersion() (bool, error) {
 		Versions []string `json:"r_versions"`
 	}
 
-	res, err := http.Get(versionsJsonUrl)
+	res, err := http.Get(versionsJsonUrl) //nolint:gosec
 	if err != nil {
 		return false, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("could not fetch r version list with status code %d", res.StatusCode)
+		return false, fmt.Errorf(
+			"could not fetch r version list with status code %d",
+			res.StatusCode,
+		)
 	}
 	defer res.Body.Close()
 
@@ -74,6 +87,7 @@ func (m *Manager) validVersion() (bool, error) {
 	for _, version := range rVersions.Versions {
 		if version == m.Version {
 			slog.Debug("R version " + m.Version + " is supported")
+
 			return true, nil
 		}
 	}
@@ -96,7 +110,11 @@ func (m *Manager) validate() error {
 		return fmt.Errorf("r installation path is required")
 	}
 	if !slices.Contains(supportedVendors, m.LocalSystem.Vendor) {
-		return fmt.Errorf("r is currently not supported for %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
+		return fmt.Errorf(
+			"r is currently not supported for %s %s",
+			m.LocalSystem.Vendor,
+			m.LocalSystem.Version,
+		)
 	}
 	if m.LocalSystem.Arch == "" {
 		return fmt.Errorf("unable to detect system architecture")
@@ -104,6 +122,7 @@ func (m *Manager) validate() error {
 	if !slices.Contains(supportedArchitectures, m.LocalSystem.Arch) {
 		return fmt.Errorf("r is currently not supported on %s", m.LocalSystem.Arch)
 	}
+
 	return nil
 }
 
@@ -114,7 +133,7 @@ func (m *Manager) downloadUrl() (string, error) {
 	switch strings.ToLower(m.LocalSystem.Vendor) {
 	case "ubuntu", "debian":
 		slog.Debug("Detected Debian-based OS: " + m.LocalSystem.Vendor)
-		osVersionClean := strings.Replace(m.LocalSystem.Version, ".", "", -1)
+		osVersionClean := strings.ReplaceAll(m.LocalSystem.Version, ".", "")
 		osIdentifier := fmt.Sprintf("%s-%s", m.LocalSystem.Vendor, osVersionClean)
 		packageName := fmt.Sprintf("r-%s_1_%s.deb", m.Version, m.LocalSystem.Arch)
 		url = fmt.Sprintf(downloadUrl, osIdentifier, packageName)
@@ -150,8 +169,13 @@ func (m *Manager) Installed() (bool, error) {
 	// TODO: This should check the Package Manager in the future instead or in addition to the install path
 	isFile, err := file.IsFile(m.RPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing r installation at '%s': %w", m.RPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing r installation at '%s': %w",
+			m.RPath,
+			err,
+		)
 	}
+
 	return isFile, nil
 }
 
@@ -175,22 +199,31 @@ func (m *Manager) Install() error {
 		tmpDir, err := afero.TempDir(file.AppFs, "", "r")
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("unable to create temporary directory for r download: %w", err)
 		}
 		downloadPath := tmpDir + "/r" + m.LocalSystem.PackageManager.GetPackageExtension()
-		defer file.AppFs.RemoveAll(tmpDir)
+		defer file.AppFs.RemoveAll(tmpDir) //nolint:errcheck
 
 		// Download R package
 		slog.Debug("Downloading package to " + downloadPath)
 		url, err := m.downloadUrl()
 		if err != nil {
 			s.Fail("Download failed.")
-			return fmt.Errorf("unable to determine download url for r %s on %s %s: %w", m.Version, m.LocalSystem.Vendor, m.LocalSystem.Version, err)
+
+			return fmt.Errorf(
+				"unable to determine download url for r %s on %s %s: %w",
+				m.Version,
+				m.LocalSystem.Vendor,
+				m.LocalSystem.Version,
+				err,
+			)
 		}
 		slog.Debug("Downloading R package from " + url)
 		err = file.DownloadFile(url, downloadPath)
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("failed to download r %s package: %w", m.Version, err)
 		}
 		s.Success("Download complete.")
@@ -202,12 +235,13 @@ func (m *Manager) Install() error {
 			slog.Error("Failed to update package manager")
 			slog.Warn("Continuing with installation...")
 		}
-		defer m.LocalSystem.PackageManager.Clean()
+		defer m.LocalSystem.PackageManager.Clean() //nolint:errcheck
 
 		// Install R package
 		pkgList := &syspkg.PackageList{LocalPackages: []string{downloadPath}}
 		if err := m.LocalSystem.PackageManager.Install(pkgList); err != nil {
 			s.Fail("Installation failed.")
+
 			return fmt.Errorf("failed to install r %s: %w", m.Version, err)
 		}
 		s.Success("Installation complete.")
@@ -216,6 +250,7 @@ func (m *Manager) Install() error {
 	}
 
 	slog.Info("R " + m.Version + " installation finished")
+
 	return nil
 }
 
@@ -230,12 +265,20 @@ func (m *Manager) MakeDefault() error {
 
 	exists, err := file.IsPathExist(defaultRPath)
 	if err != nil {
-		return fmt.Errorf("failed to check for existing default R installation at '%s': %w", defaultRPath, err)
+		return fmt.Errorf(
+			"failed to check for existing default R installation at '%s': %w",
+			defaultRPath,
+			err,
+		)
 	}
 	if exists {
 		err = file.AppFs.RemoveAll(defaultRPath)
 		if err != nil {
-			return fmt.Errorf("failed to remove existing default R installation at '%s': %w", defaultRPath, err)
+			return fmt.Errorf(
+				"failed to remove existing default R installation at '%s': %w",
+				defaultRPath,
+				err,
+			)
 		}
 	}
 
@@ -246,6 +289,7 @@ func (m *Manager) MakeDefault() error {
 	return nil
 }
 
+//nolint:cyclop
 func (m *Manager) AddToPath(appendVersion bool) error {
 	installed, err := m.Installed()
 	if err != nil {
@@ -303,5 +347,6 @@ func (m *Manager) Remove() error {
 	if err := m.LocalSystem.PackageManager.Remove(l); err != nil {
 		return fmt.Errorf("failed to remove r %s: %w", m.Version, err)
 	}
+
 	return nil
 }

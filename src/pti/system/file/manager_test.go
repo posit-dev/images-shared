@@ -1,15 +1,16 @@
 package file
 
 import (
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path"
 	"runtime"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testTarGz = "test.tar.gz"
@@ -127,7 +128,7 @@ func Test_IsDir(t *testing.T) {
 			setupFs: func(fs afero.Fs) (string, error) {
 				tmpDir, err := afero.TempDir(fs, "", "testdir")
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", err
 				}
@@ -179,7 +180,7 @@ func Test_IsDir_Symlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpSrcDir := tmpDir + "/srcdir"
-				err = fs.Mkdir(tmpSrcDir, 0755)
+				err = fs.Mkdir(tmpSrcDir, 0o755)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -201,7 +202,7 @@ func Test_IsDir_Symlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -347,7 +348,7 @@ func Test_IsFile_Symlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -415,7 +416,7 @@ func Test_IsSymlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -449,7 +450,7 @@ func Test_IsSymlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -516,7 +517,7 @@ func Test_CreateSymlink(t *testing.T) {
 				if err != nil {
 					return "", tmpDir, err
 				}
-				err = fs.Mkdir(tmpDir+"/test", 0755)
+				err = fs.Mkdir(tmpDir+"/test", 0o755)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -532,7 +533,7 @@ func Test_CreateSymlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -548,12 +549,12 @@ func Test_CreateSymlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
 				tmpFile = tmpDir + "/symlink"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -570,7 +571,7 @@ func Test_CreateSymlink(t *testing.T) {
 					return "", tmpDir, err
 				}
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				if err != nil {
 					return "", tmpDir, err
 				}
@@ -652,7 +653,7 @@ func Test_InstallableDir(t *testing.T) {
 				tmpDir, err := afero.TempDir(fs, "", "installable")
 				require.NoError(err)
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				require.NoError(err)
 				return tmpDir
 			},
@@ -666,7 +667,7 @@ func Test_InstallableDir(t *testing.T) {
 				tmpDir, err := afero.TempDir(fs, "", "installable")
 				require.NoError(err)
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				require.NoError(err)
 				return tmpDir
 			},
@@ -689,7 +690,7 @@ func Test_InstallableDir(t *testing.T) {
 				tmpDir, err := afero.TempDir(fs, "", "installable")
 				require.NoError(err)
 				tmpFile := tmpDir + "/testfile"
-				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0644)
+				err = afero.WriteFile(fs, tmpFile, []byte("test"), 0o644)
 				require.NoError(err)
 				return tmpFile
 			},
@@ -934,7 +935,13 @@ func Test_copyFile(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(err, "File.CopyFile() error = %v", err)
-				require.ErrorContains(err, tt.wantErrMessage, "File.CopyFile() error message = %v, want %v", err.Error(), tt.wantErrMessage)
+				require.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"File.CopyFile() error message = %v, want %v",
+					err.Error(),
+					tt.wantErrMessage,
+				)
 			} else {
 				require.NoError(err, "File.CopyFile() error = %v", err)
 
@@ -975,10 +982,10 @@ func Test_moveDir(t *testing.T) {
 			setupFs: func(fs afero.Fs, dir string) {
 				createTestFile(fs, dir+"/file1", "test1")
 				createTestFile(fs, dir+"/file2", "test2")
-				err := fs.MkdirAll(dir+"/subdir", 0755)
+				err := fs.MkdirAll(dir+"/subdir", 0o755)
 				require.NoError(err, "MkdirAll() error = %v", err)
 				createTestFile(fs, dir+"/subdir1/file3", "test3")
-				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0755)
+				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0o755)
 				require.NoError(err, "MkdirAll() error = %v", err)
 				createTestFile(fs, dir+"/subdir1/subdir2/file4", "test4")
 			},
@@ -997,19 +1004,43 @@ func Test_moveDir(t *testing.T) {
 
 				contents, err := afero.ReadFile(fs, dest+"/file1")
 				require.NoError(err, "ReadFile() error = %v", err)
-				assert.Equal("test1", string(contents), "File contents = %v, want %v", string(contents), "test1")
+				assert.Equal(
+					"test1",
+					string(contents),
+					"File contents = %v, want %v",
+					string(contents),
+					"test1",
+				)
 
 				contents, err = afero.ReadFile(fs, dest+"/file2")
 				require.NoError(err, "ReadFile() error = %v", err)
-				assert.Equal("test2", string(contents), "File contents = %v, want %v", string(contents), "test2")
+				assert.Equal(
+					"test2",
+					string(contents),
+					"File contents = %v, want %v",
+					string(contents),
+					"test2",
+				)
 
 				contents, err = afero.ReadFile(fs, dest+"/subdir1/file3")
 				require.NoError(err, "ReadFile() error = %v", err)
-				assert.Equal("test3", string(contents), "File contents = %v, want %v", string(contents), "test3")
+				assert.Equal(
+					"test3",
+					string(contents),
+					"File contents = %v, want %v",
+					string(contents),
+					"test3",
+				)
 
 				contents, err = afero.ReadFile(fs, dest+"/subdir1/subdir2/file4")
 				require.NoError(err, "ReadFile() error = %v", err)
-				assert.Equal("test4", string(contents), "File contents = %v, want %v", string(contents), "test4")
+				assert.Equal(
+					"test4",
+					string(contents),
+					"File contents = %v, want %v",
+					string(contents),
+					"test4",
+				)
 
 				return nil
 			},
@@ -1058,10 +1089,10 @@ func Test_copyDir(t *testing.T) {
 			setupFs: func(fs afero.Fs, dir string) {
 				createTestFile(fs, dir+"/file1", "test1")
 				createTestFile(fs, dir+"/file2", "test2")
-				err := fs.MkdirAll(dir+"/subdir", 0755)
+				err := fs.MkdirAll(dir+"/subdir", 0o755)
 				require.NoError(err, "MkdirAll() error = %v", err)
 				createTestFile(fs, dir+"/subdir1/file3", "test3")
-				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0755)
+				err = fs.MkdirAll(dir+"/subdir1/subdir2", 0o755)
 				require.NoError(err, "MkdirAll() error = %v", err)
 				createTestFile(fs, dir+"/subdir1/subdir2/file4", "test4")
 			},
@@ -1075,19 +1106,43 @@ func Test_copyDir(t *testing.T) {
 
 					contents, err := afero.ReadFile(fs, path+"/file1")
 					require.NoError(err, "ReadFile() error = %v", err)
-					assert.Equal("test1", string(contents), "File contents = %v, want %v", string(contents), "test1")
+					assert.Equal(
+						"test1",
+						string(contents),
+						"File contents = %v, want %v",
+						string(contents),
+						"test1",
+					)
 
 					contents, err = afero.ReadFile(fs, path+"/file2")
 					require.NoError(err, "ReadFile() error = %v", err)
-					assert.Equal("test2", string(contents), "File contents = %v, want %v", string(contents), "test2")
+					assert.Equal(
+						"test2",
+						string(contents),
+						"File contents = %v, want %v",
+						string(contents),
+						"test2",
+					)
 
 					contents, err = afero.ReadFile(fs, path+"/subdir1/file3")
 					require.NoError(err, "ReadFile() error = %v", err)
-					assert.Equal("test3", string(contents), "File contents = %v, want %v", string(contents), "test3")
+					assert.Equal(
+						"test3",
+						string(contents),
+						"File contents = %v, want %v",
+						string(contents),
+						"test3",
+					)
 
 					contents, err = afero.ReadFile(fs, path+"/subdir1/subdir2/file4")
 					require.NoError(err, "ReadFile() error = %v", err)
-					assert.Equal("test4", string(contents), "File contents = %v, want %v", string(contents), "test4")
+					assert.Equal(
+						"test4",
+						string(contents),
+						"File contents = %v, want %v",
+						string(contents),
+						"test4",
+					)
 				}
 
 				return nil
@@ -1142,13 +1197,15 @@ func Test_DownloadFile(t *testing.T) {
 				url:      "/success.txt",
 				path:     tmpDir + "/success.txt",
 				contents: "200 OK",
-				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path != "/success.txt" {
-						t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
-					}
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("200 OK"))
-				})),
+				srv: httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if r.URL.Path != "/success.txt" {
+							t.Errorf("Request URL = %v, want %v", r.URL.Path, "/success.txt")
+						}
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("200 OK"))
+					}),
+				),
 			},
 			wantFile:     true,
 			wantContents: "200 OK",
@@ -1159,12 +1216,14 @@ func Test_DownloadFile(t *testing.T) {
 			fields: fields{
 				url:  "/fail.txt",
 				path: tmpDir + "/fail.txt",
-				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path != "/fail.txt" {
-						t.Errorf("Request URL = %v, want %v", r.URL.Path, "/fail.txt")
-					}
-					w.WriteHeader(http.StatusNotFound)
-				})),
+				srv: httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if r.URL.Path != "/fail.txt" {
+							t.Errorf("Request URL = %v, want %v", r.URL.Path, "/fail.txt")
+						}
+						w.WriteHeader(http.StatusNotFound)
+					}),
+				),
 			},
 			wantFile:       false,
 			wantErr:        true,
@@ -1182,7 +1241,13 @@ func Test_DownloadFile(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(err, "File.DownloadFile() error = %v", err)
-				assert.ErrorContains(err, "failed to download file", "File.DownloadFile() error message = %v, want %v", err.Error(), "failed to download file")
+				assert.ErrorContains(
+					err,
+					"failed to download file",
+					"File.DownloadFile() error message = %v, want %v",
+					err.Error(),
+					"failed to download file",
+				)
 			} else {
 				require.NoError(err, "File.DownloadFile() error = %v", err)
 
@@ -1255,7 +1320,7 @@ func Test_ExtractTarGz(t *testing.T) {
 	AppFs = afero.NewMemMapFs()
 	t.Cleanup(resetAppFs)
 
-	err = afero.WriteFile(AppFs, "/"+testTarGz, contents, 0644)
+	err = afero.WriteFile(AppFs, "/"+testTarGz, contents, 0o644)
 	require.NoError(err)
 
 	err = ExtractTarGz("/"+testTarGz, "/")

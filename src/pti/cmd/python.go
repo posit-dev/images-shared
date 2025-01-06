@@ -1,11 +1,13 @@
 package cmd
 
 import (
-	"github.com/urfave/cli/v2"
 	"pti/system"
 	"pti/tools/python"
+
+	"github.com/urfave/cli/v2"
 )
 
+//nolint:cyclop
 func pythonInstall(cCtx *cli.Context) error {
 	err := system.RequireSudo()
 	if err != nil {

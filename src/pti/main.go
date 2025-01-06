@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/pterm/pterm"
 	"log"
 	"log/slog"
 	"os"
 	"pti/cmd"
 	"runtime"
+
+	"github.com/pterm/pterm"
 )
 
 func main() {

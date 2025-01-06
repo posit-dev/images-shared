@@ -2,9 +2,6 @@ package quarto
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -16,6 +13,10 @@ import (
 	"pti/system/syspkg"
 	"runtime"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testTarGz = "test_quarto.tar.gz"
@@ -47,9 +48,9 @@ func Test_workbenchInstalled(t *testing.T) {
 		{
 			name: "workbench quarto bin exists",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(workbenchQuartoPath, 0755)
+				err := fs.MkdirAll(workbenchQuartoPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
+				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0o644)
 				require.NoError(err)
 			},
 			want:    true,
@@ -64,7 +65,7 @@ func Test_workbenchInstalled(t *testing.T) {
 		{
 			name: "workbench quarto bin not a file",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(workbenchQuartoBinPath, 0755)
+				err := fs.MkdirAll(workbenchQuartoBinPath, 0o755)
 				require.NoError(err)
 			},
 			want:    false,
@@ -127,9 +128,9 @@ func Test_NewManager(t *testing.T) {
 		{
 			name: "workbench default",
 			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(workbenchQuartoPath, 0755)
+				err := fs.MkdirAll(workbenchQuartoPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
+				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0o644)
 				require.NoError(err)
 				return ""
 			},
@@ -148,9 +149,9 @@ func Test_NewManager(t *testing.T) {
 		{
 			name: "workbench ignored with useWorkbench false",
 			setupFs: func(fs afero.Fs) string {
-				err := fs.MkdirAll(workbenchQuartoPath, 0755)
+				err := fs.MkdirAll(workbenchQuartoPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0644)
+				err = afero.WriteFile(fs, workbenchQuartoBinPath, []byte{}, 0o644)
 				require.NoError(err)
 				return ""
 			},
@@ -255,9 +256,9 @@ func Test_Manager_Installed(t *testing.T) {
 		{
 			name: "quarto bin exists",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(DefaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultBinPath, []byte{}, 0644)
+				err = afero.WriteFile(fs, defaultBinPath, []byte{}, 0o644)
 				require.NoError(err)
 			},
 			manager: &Manager{
@@ -376,7 +377,12 @@ func validateTestQuartoInstallation(t *testing.T, path, version string) {
 func newServerQuartoTestTarGz(t *testing.T, fs afero.Fs, version, arch string) *httptest.Server {
 	require := require.New(t)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		expectedPath := fmt.Sprintf("/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz", version, version, arch)
+		expectedPath := fmt.Sprintf(
+			"/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz",
+			version,
+			version,
+			arch,
+		)
 		if r.URL.Path != expectedPath {
 			t.Errorf("Request URL = %v, want %v", r.URL.Path, expectedPath)
 		}
@@ -454,9 +460,9 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "no changes installed without force",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(DefaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin-old"), 0644)
+				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin-old"), 0o644)
 				require.NoError(err)
 			},
 			srv: newServerQuartoTestTarGz,
@@ -485,9 +491,9 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "force reinstall",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(DefaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin"), 0644)
+				err = afero.WriteFile(fs, defaultBinPath, []byte("testbin"), 0o644)
 				require.NoError(err)
 			},
 			fsValidator: validateTestQuartoInstallation,
@@ -506,11 +512,21 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "install dirty path not installable",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(DefaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, DefaultInstallPath+"/share/version", []byte("test"), 0644)
+				err = afero.WriteFile(
+					fs,
+					DefaultInstallPath+"/share/version",
+					[]byte("test"),
+					0o644,
+				)
 				require.NoError(err)
-				err = afero.WriteFile(fs, DefaultInstallPath+"/bin/somelibrary", []byte("test"), 0644)
+				err = afero.WriteFile(
+					fs,
+					DefaultInstallPath+"/bin/somelibrary",
+					[]byte("test"),
+					0o644,
+				)
 				require.NoError(err)
 			},
 			fsValidator: nil,
@@ -530,9 +546,9 @@ func Test_Manager_Install(t *testing.T) {
 		{
 			name: "install dirty path force",
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll(DefaultInstallPath, 0755)
+				err := fs.MkdirAll(DefaultInstallPath, 0o755)
 				require.NoError(err)
-				err = afero.WriteFile(fs, DefaultInstallPath+"testfile", []byte("testbin"), 0644)
+				err = afero.WriteFile(fs, DefaultInstallPath+"testfile", []byte("testbin"), 0o644)
 				require.NoError(err)
 			},
 			fsValidator: validateTestQuartoInstallation,
@@ -552,9 +568,11 @@ func Test_Manager_Install(t *testing.T) {
 			name:    "bad response",
 			setupFs: func(fs afero.Fs) {},
 			srv: func(t *testing.T, fs afero.Fs, version string, arch string) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusInternalServerError)
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusInternalServerError)
+					}),
+				)
 			},
 			manager:        defaultManager,
 			force:          false,
@@ -587,10 +605,12 @@ func Test_Manager_Install(t *testing.T) {
 			name:    "extract failed",
 			setupFs: func(fs afero.Fs) {},
 			srv: func(t *testing.T, fs afero.Fs, version string, arch string) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("not a tar"))
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("not a tar"))
+					}),
+				)
 			},
 			manager: &Manager{
 				LocalSystem:             ubuntuSystem,
@@ -643,7 +663,7 @@ func Test_Manager_Install(t *testing.T) {
 				ptitest.ResetAppFs()
 			})
 
-			err = afero.WriteFile(file.AppFs, "/"+testTarGz, contents, 0644)
+			err = afero.WriteFile(file.AppFs, "/"+testTarGz, contents, 0o644)
 			require.NoError(err)
 
 			newShellCalls := 0

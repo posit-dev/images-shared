@@ -2,13 +2,14 @@ package syspkg
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	commandMock "pti/mocks/pti/system/command"
 	"pti/system/command"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_NewAptManager(t *testing.T) {
@@ -433,9 +434,21 @@ func Test_AptManager_Install(t *testing.T) {
 			}
 
 			err = m.Install(tt.packageList)
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Install() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Install() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Install() error = %v, want nil", err)
 			}
@@ -642,11 +655,23 @@ func Test_AptManager_Remove(t *testing.T) {
 
 			err = m.Remove(tt.packageList)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Remove() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Remove() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Remove() error = %v, want nil", err)
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 		})
 	}
 }
@@ -697,7 +722,13 @@ func Test_AptManager_Update(t *testing.T) {
 
 			err := m.Update()
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Update() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Update() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Update() error = %v, want nil", err)
 			}
@@ -787,11 +818,22 @@ func Test_AptManager_Upgrade(t *testing.T) {
 
 			err := m.Upgrade(tt.fullUpgrade)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Upgrade() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Upgrade() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Upgrade() error = %v, want nil", err)
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want 1", newShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want 1",
+				newShellCalls,
+			)
 		})
 	}
 }
@@ -815,7 +857,7 @@ func Test_AptManager_Clean(t *testing.T) {
 			runErrOnCall:          0,
 			runErr:                nil,
 			fsSetup: func(fs afero.Fs) error {
-				err := fs.MkdirAll("/var/lib/apt/lists", 0755)
+				err := fs.MkdirAll("/var/lib/apt/lists", 0o755)
 				return err
 			},
 			wantErr: false,
@@ -890,14 +932,26 @@ func Test_AptManager_Clean(t *testing.T) {
 
 			err = m.Clean()
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Clean() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Clean() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Clean() error = %v, want nil", err)
 				exists, err := afero.DirExists(file.AppFs, "/var/lib/apt/lists")
 				require.NoError(err)
 				assert.False(exists, "/var/lib/apt/lists should not exist")
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 		})
 	}
 }
@@ -948,7 +1002,13 @@ func Test_AptManager_autoRemove(t *testing.T) {
 
 			err := m.autoRemove()
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "autoRemove() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"autoRemove() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "autoRemove() error = %v, want nil", err)
 			}
@@ -968,7 +1028,7 @@ func Test_AptManager_removePackageListCache(t *testing.T) {
 		{
 			name: "success",
 			setupFs: func(fs afero.Fs) error {
-				err := fs.MkdirAll("/var/lib/apt/lists", 0644)
+				err := fs.MkdirAll("/var/lib/apt/lists", 0o644)
 				return err
 			},
 		},

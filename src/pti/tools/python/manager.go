@@ -3,8 +3,6 @@ package python
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pterm/pterm"
-	"github.com/spf13/afero"
 	"log/slog"
 	"net/http"
 	"pti/system"
@@ -13,6 +11,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -23,10 +24,19 @@ const (
 	defaultPythonPath  = "/opt/python/default"
 )
 
-var supportedArchitectures = []string{"amd64"}
-var supportedVendors = []string{"ubuntu", "debian", "almalinux", "centos", "rockylinux", "rhel"}
-var downloadUrl = "https://cdn.posit.co/python/%s/pkgs/%s"
-var versionsJsonUrl = "https://cdn.posit.co/python/versions.json"
+var (
+	supportedArchitectures = []string{"amd64"}
+	supportedVendors       = []string{
+		"ubuntu",
+		"debian",
+		"almalinux",
+		"centos",
+		"rockylinux",
+		"rhel",
+	}
+	downloadUrl     = "https://cdn.posit.co/python/%s/pkgs/%s"
+	versionsJsonUrl = "https://cdn.posit.co/python/versions.json"
+)
 
 type Manager struct {
 	*system.LocalSystem
@@ -59,12 +69,20 @@ func (m *Manager) validVersion() (bool, error) {
 		Versions []string `json:"python_versions"`
 	}
 
-	res, err := http.Get(versionsJsonUrl)
+	res, err := http.Get(versionsJsonUrl) //nolint:gosec
 	if err != nil {
-		return false, fmt.Errorf("could not fetch python version list from '%s': %w", versionsJsonUrl, err)
+		return false, fmt.Errorf(
+			"could not fetch python version list from '%s': %w",
+			versionsJsonUrl,
+			err,
+		)
 	}
 	if res.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("could not fetch python version list from '%s': unexpected status code %s", versionsJsonUrl, res.Status)
+		return false, fmt.Errorf(
+			"could not fetch python version list from '%s': unexpected status code %s",
+			versionsJsonUrl,
+			res.Status,
+		)
 	}
 	defer res.Body.Close()
 
@@ -77,6 +95,7 @@ func (m *Manager) validVersion() (bool, error) {
 	for _, version := range pythonVersions.Versions {
 		if version == m.Version {
 			slog.Debug("Python version " + m.Version + " is supported")
+
 			return true, nil
 		}
 	}
@@ -99,7 +118,11 @@ func (m *Manager) validate() error {
 		return fmt.Errorf("python installation path is required")
 	}
 	if !slices.Contains(supportedVendors, m.LocalSystem.Vendor) {
-		return fmt.Errorf("python is currently not supported for %s %s", m.LocalSystem.Vendor, m.LocalSystem.Version)
+		return fmt.Errorf(
+			"python is currently not supported for %s %s",
+			m.LocalSystem.Vendor,
+			m.LocalSystem.Version,
+		)
 	}
 	if m.LocalSystem.Arch == "" {
 		return fmt.Errorf("unable to detect system architecture")
@@ -107,18 +130,21 @@ func (m *Manager) validate() error {
 	if !slices.Contains(supportedArchitectures, m.LocalSystem.Arch) {
 		return fmt.Errorf("python is currently not supported on %s", m.LocalSystem.Arch)
 	}
+
 	return nil
 }
 
 func (m *Manager) downloadUrl() (string, error) {
 	var url string
 
-	slog.Info("Fetching Python package URL for " + m.LocalSystem.Vendor + " " + m.LocalSystem.Version)
+	slog.Info(
+		"Fetching Python package URL for " + m.LocalSystem.Vendor + " " + m.LocalSystem.Version,
+	)
 
 	switch m.LocalSystem.Vendor {
 	case "ubuntu", "debian":
 		slog.Debug("Detected " + m.LocalSystem.Vendor)
-		osVersionClean := strings.Replace(m.LocalSystem.Version, ".", "", -1)
+		osVersionClean := strings.ReplaceAll(m.LocalSystem.Version, ".", "")
 		osIdentifier := fmt.Sprintf("%s-%s", m.LocalSystem.Vendor, osVersionClean)
 		packageName := fmt.Sprintf("python-%s_1_%s.deb", m.Version, m.LocalSystem.Arch)
 		url = fmt.Sprintf(downloadUrl, osIdentifier, packageName)
@@ -126,7 +152,11 @@ func (m *Manager) downloadUrl() (string, error) {
 		slog.Debug("Detected RHEL-based OS")
 		rhelVersion, err := strconv.Atoi(m.LocalSystem.Version)
 		if err != nil {
-			return "", fmt.Errorf("could not cast RHEL version '%s' to int: %w", m.LocalSystem.Version, err)
+			return "", fmt.Errorf(
+				"could not cast RHEL version '%s' to int: %w",
+				m.LocalSystem.Version,
+				err,
+			)
 		}
 
 		var osIdentifier string
@@ -153,12 +183,20 @@ func (m *Manager) Installed() (bool, error) {
 	// TODO: This should check the Package Manager in the future instead or in addition to the install path
 	exists, err := file.IsPathExist(m.PythonPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing python installation at '%s': %w", m.InstallationPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing python installation at '%s': %w",
+			m.InstallationPath,
+			err,
+		)
 	}
 	if exists {
 		isDir, err := file.IsDir(m.PythonPath)
 		if err != nil {
-			return false, fmt.Errorf("failed to check if '%s' is a directory: %w", m.PythonPath, err)
+			return false, fmt.Errorf(
+				"failed to check if '%s' is a directory: %w",
+				m.PythonPath,
+				err,
+			)
 		}
 		if isDir {
 			return false, fmt.Errorf("'%s' is not a file", m.PythonPath)
@@ -191,22 +229,31 @@ func (m *Manager) Install() error {
 		tmpDir, err := afero.TempDir(file.AppFs, "", "python")
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("unable to create temporary directory for python download: %w", err)
 		}
 		downloadPath := tmpDir + "/python" + m.LocalSystem.PackageManager.GetPackageExtension()
-		defer file.AppFs.RemoveAll(tmpDir)
+		defer file.AppFs.RemoveAll(tmpDir) //nolint:errcheck
 
 		// Download Python package
 		slog.Debug("Downloading package to " + downloadPath)
 		url, err := m.downloadUrl()
 		if err != nil {
 			s.Fail("Download failed.")
-			return fmt.Errorf("unable to determine download url for python %s on %s %s: %w", m.Version, m.LocalSystem.Vendor, m.LocalSystem.Version, err)
+
+			return fmt.Errorf(
+				"unable to determine download url for python %s on %s %s: %w",
+				m.Version,
+				m.LocalSystem.Vendor,
+				m.LocalSystem.Version,
+				err,
+			)
 		}
 		slog.Debug("Download URL: " + url)
 		err = file.DownloadFile(url, downloadPath)
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("failed to download python %s package: %w", m.Version, err)
 		}
 		s.Success("Download complete.")
@@ -218,12 +265,13 @@ func (m *Manager) Install() error {
 			slog.Error("Failed to update package manager")
 			slog.Warn("Continuing with installation...")
 		}
-		defer m.PackageManager.Clean()
+		defer m.PackageManager.Clean() //nolint:errcheck
 
 		// Install Python package
 		pkgList := &syspkg.PackageList{LocalPackages: []string{downloadPath}}
 		if err := m.LocalSystem.PackageManager.Install(pkgList); err != nil {
 			s.Fail("Installation failed.")
+
 			return fmt.Errorf("failed to install python %s: %w", m.Version, err)
 		}
 		s.Success("Installation complete.")
@@ -253,12 +301,20 @@ func (m *Manager) MakeDefault() error {
 
 	exists, err := file.IsPathExist(defaultPythonPath)
 	if err != nil {
-		return fmt.Errorf("failed to check for default python symlink at '%s': %w", defaultPythonPath, err)
+		return fmt.Errorf(
+			"failed to check for default python symlink at '%s': %w",
+			defaultPythonPath,
+			err,
+		)
 	}
 	if exists {
 		err = file.AppFs.RemoveAll(defaultPythonPath)
 		if err != nil {
-			return fmt.Errorf("failed to remove existing default python symlink at '%s': %w", defaultPythonPath, err)
+			return fmt.Errorf(
+				"failed to remove existing default python symlink at '%s': %w",
+				defaultPythonPath,
+				err,
+			)
 		}
 	}
 
@@ -269,6 +325,7 @@ func (m *Manager) MakeDefault() error {
 	return nil
 }
 
+//nolint:cyclop
 func (m *Manager) AddToPath() error {
 	installed, err := m.Installed()
 	if err != nil {
@@ -324,5 +381,6 @@ func (m *Manager) Remove() error {
 	if err != nil {
 		return fmt.Errorf("failed to remove python %s: %w", m.Version, err)
 	}
+
 	return nil
 }

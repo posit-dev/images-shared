@@ -36,7 +36,15 @@ func (m *Manager) InstallPackages(packageList *PackageList) error {
 			quotedPackages[i] = fmt.Sprintf("\"%s\"", pkg)
 		}
 		wrappedList := "c(" + strings.Join(quotedPackages, ", ") + ")"
-		args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(%s, repos = \"%s\", clean = TRUE)", wrappedList, cranRepo)}
+		args := []string{
+			"--vanilla",
+			"-e",
+			fmt.Sprintf(
+				"install.packages(%s, repos = \"%s\", clean = TRUE)",
+				wrappedList,
+				cranRepo,
+			),
+		}
 		s := command.NewShellCommand(m.RPath, args, nil, true)
 		err = s.Run()
 		if err != nil {
@@ -49,10 +57,20 @@ func (m *Manager) InstallPackages(packageList *PackageList) error {
 
 		for _, packageListFile := range packageList.PackageFiles {
 			slog.Debug("Installing R packages from file: " + packageListFile)
-			args := []string{"--vanilla", "-e", fmt.Sprintf("install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)", packageListFile, cranRepo)}
+			args := []string{
+				"--vanilla",
+				"-e",
+				fmt.Sprintf(
+					"install.packages(readLines(\"%s\"), repos = \"%s\", clean = TRUE)",
+					packageListFile,
+					cranRepo,
+				),
+			}
 			s := command.NewShellCommand(m.RPath, args, nil, true)
 			if err := s.Run(); err != nil {
-				slog.Error(fmt.Sprintf("Error installing R packages from %s: %v", packageListFile, err))
+				slog.Error(
+					fmt.Sprintf("Error installing R packages from %s: %v", packageListFile, err),
+				)
 			}
 		}
 	}
@@ -60,8 +78,9 @@ func (m *Manager) InstallPackages(packageList *PackageList) error {
 	return nil
 }
 
+//nolint:cyclop
 func (m *Manager) cranMirror() string {
-	codeName := ""
+	var codeName string
 	defaultCran := packageManagerUrl + "/cran/latest"
 
 	slog.Info("Getting CRAN mirror for " + m.LocalSystem.Vendor + " " + m.LocalSystem.Version)
@@ -80,7 +99,14 @@ func (m *Manager) cranMirror() string {
 			codeName = "noble"
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
+			slog.Warn(
+				fmt.Sprintf(
+					"No pre-built binaries available for %s %s. Packages will be installed from source.",
+					m.LocalSystem.Vendor,
+					m.LocalSystem.Version,
+				),
+			)
+
 			return defaultCran
 		}
 	case "debian":
@@ -93,7 +119,14 @@ func (m *Manager) cranMirror() string {
 			codeName = "bookworm"
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
+			slog.Warn(
+				fmt.Sprintf(
+					"No pre-built binaries available for %s %s. Packages will be installed from source.",
+					m.LocalSystem.Vendor,
+					m.LocalSystem.Version,
+				),
+			)
+
 			return defaultCran
 		}
 	case "centos", "rocky", "rhel":
@@ -106,11 +139,25 @@ func (m *Manager) cranMirror() string {
 			codeName = "rhel" + m.LocalSystem.Version
 			slog.Debug("Using code name " + codeName)
 		default:
-			slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
+			slog.Warn(
+				fmt.Sprintf(
+					"No pre-built binaries available for %s %s. Packages will be installed from source.",
+					m.LocalSystem.Vendor,
+					m.LocalSystem.Version,
+				),
+			)
+
 			return defaultCran
 		}
 	default:
-		slog.Warn(fmt.Sprintf("No pre-built binaries available for %s %s. Packages will be installed from source.", m.LocalSystem.Vendor, m.LocalSystem.Version))
+		slog.Warn(
+			fmt.Sprintf(
+				"No pre-built binaries available for %s %s. Packages will be installed from source.",
+				m.LocalSystem.Vendor,
+				m.LocalSystem.Version,
+			),
+		)
+
 		return defaultCran
 	}
 

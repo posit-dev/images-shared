@@ -2,10 +2,11 @@ package container
 
 import (
 	"fmt"
-	"github.com/pterm/pterm"
-	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system/file"
+
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 )
 
 const DefaultWaitForItPath = "/usr/local/bin/wait-for-it"
@@ -20,6 +21,7 @@ func NewWaitForItManager(installPath string) *WaitForItManager {
 	if installPath == "" {
 		installPath = DefaultWaitForItPath
 	}
+
 	return &WaitForItManager{
 		InstallPath: installPath,
 	}
@@ -28,17 +30,22 @@ func NewWaitForItManager(installPath string) *WaitForItManager {
 func (m *WaitForItManager) Installed() (bool, error) {
 	exists, err := file.IsPathExist(m.InstallPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing wait-for-it installation at '%s': %m", m.InstallPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing wait-for-it installation at '%s': %w",
+			m.InstallPath,
+			err,
+		)
 	}
 	if exists {
 		isFile, err := file.IsFile(m.InstallPath)
 		if err != nil {
-			return false, fmt.Errorf("failed to check if '%s' is a file: %m", m.InstallPath, err)
+			return false, fmt.Errorf("failed to check if '%s' is a file: %w", m.InstallPath, err)
 		}
 		if !isFile {
 			return false, fmt.Errorf("'%s' is not a file", m.InstallPath)
 		}
 	}
+
 	return exists, nil
 }
 
@@ -49,6 +56,7 @@ func (m *WaitForItManager) Install() error {
 	}
 	if installed {
 		slog.Warn("wait-for-it is installed")
+
 		return fmt.Errorf("wait-for-it is already installed")
 	}
 
@@ -56,7 +64,7 @@ func (m *WaitForItManager) Install() error {
 
 	downloadDir, err := afero.TempDir(file.AppFs, "", "pti")
 	if err != nil {
-		return fmt.Errorf("unable to create pti temporary directory for download: %m", err)
+		return fmt.Errorf("unable to create pti temporary directory for download: %w", err)
 	}
 	defer func() {
 		err := file.AppFs.RemoveAll(downloadDir)
@@ -69,17 +77,18 @@ func (m *WaitForItManager) Install() error {
 	err = file.DownloadFile(waitForItDownloadUrl, downloadPath)
 	if err != nil {
 		s.Fail("Download failed.")
-		return fmt.Errorf("wait-for-it download failed: %m", err)
+
+		return fmt.Errorf("wait-for-it download failed: %w", err)
 	}
 	s.Success("Download complete.")
 
 	slog.Debug("Installing wait-for-it script to: " + m.InstallPath)
 	if err := file.Move(downloadPath, m.InstallPath); err != nil {
-		return fmt.Errorf("failed to install wait-for-it to '%s': %m", m.InstallPath, err)
+		return fmt.Errorf("failed to install wait-for-it to '%s': %w", m.InstallPath, err)
 	}
 	slog.Debug("Setting permissions for wait-for-it script to 0755")
-	if err := file.AppFs.Chmod(m.InstallPath, 0755); err != nil {
-		return fmt.Errorf("failed to set permissions for %s to 0755: %m", m.InstallPath, err)
+	if err := file.AppFs.Chmod(m.InstallPath, 0o755); err != nil {
+		return fmt.Errorf("failed to set permissions for %s to 0755: %w", m.InstallPath, err)
 	}
 	slog.Info("wait-for-it installed successfully to " + m.InstallPath)
 
@@ -98,7 +107,7 @@ func (m *WaitForItManager) Update() error {
 		slog.Info("Existing wait-for-it installation found")
 		err := m.Remove()
 		if err != nil {
-			return fmt.Errorf("failed to remove existing wait-for-it: %m", err)
+			return fmt.Errorf("failed to remove existing wait-for-it: %w", err)
 		}
 	} else {
 		slog.Info("wait-for-it is not installed")
@@ -114,13 +123,14 @@ func (m *WaitForItManager) Remove() error {
 	}
 	if !installed {
 		slog.Warn("wait-for-it is not installed")
+
 		return nil
 	}
 
 	slog.Info("Removing wait-for-it")
 	err = file.AppFs.Remove(m.InstallPath)
 	if err != nil {
-		return fmt.Errorf("failed to remove wait-for-it from '%s': %m", m.InstallPath, err)
+		return fmt.Errorf("failed to remove wait-for-it from '%s': %w", m.InstallPath, err)
 	}
 	slog.Info("wait-for-it removed successfully from " + m.InstallPath)
 

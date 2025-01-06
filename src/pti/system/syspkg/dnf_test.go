@@ -2,13 +2,14 @@ package syspkg
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	commandMock "pti/mocks/pti/system/command"
 	"pti/system/command"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_NewDnfManager(t *testing.T) {
@@ -431,9 +432,21 @@ func Test_DnfManager_Install(t *testing.T) {
 			}
 
 			err = m.Install(tt.packageList)
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Install() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Install() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Install() error = %v, want nil", err)
 			}
@@ -640,11 +653,23 @@ func Test_DnfManager_Remove(t *testing.T) {
 
 			err = m.Remove(tt.packageList)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Remove() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Remove() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Remove() error = %v, want nil", err)
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 		})
 	}
 }
@@ -730,11 +755,22 @@ func Test_DnfManager_Upgrade(t *testing.T) {
 
 			err := m.Upgrade(tt.fullUpgrade)
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Upgrade() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Upgrade() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Upgrade() error = %v, want nil", err)
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want 1", newShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want 1",
+				newShellCalls,
+			)
 		})
 	}
 }
@@ -812,11 +848,23 @@ func Test_DnfManager_Clean(t *testing.T) {
 
 			err := m.Clean()
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "Clean() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"Clean() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "Clean() error = %v, want nil", err)
 			}
-			assert.Equal(tt.expectedNewShellCalls, newShellCalls, "newShellCalls = %v, want %v", newShellCalls, tt.expectedNewShellCalls)
+			assert.Equal(
+				tt.expectedNewShellCalls,
+				newShellCalls,
+				"newShellCalls = %v, want %v",
+				newShellCalls,
+				tt.expectedNewShellCalls,
+			)
 		})
 	}
 }
@@ -867,7 +915,13 @@ func Test_DnfManager_autoRemove(t *testing.T) {
 
 			err := m.autoRemove()
 			if tt.wantErr {
-				assert.ErrorContains(err, tt.wantErrMessage, "autoRemove() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorContains(
+					err,
+					tt.wantErrMessage,
+					"autoRemove() error = %v, wantErr %v",
+					err,
+					tt.wantErr,
+				)
 			} else {
 				assert.NoError(err, "autoRemove() error = %v, want nil", err)
 			}

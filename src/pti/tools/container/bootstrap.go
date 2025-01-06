@@ -9,7 +9,7 @@ import (
 
 func Bootstrap(l *system.LocalSystem) error {
 	err := l.PackageManager.Update()
-	defer l.PackageManager.Clean()
+	defer l.PackageManager.Clean() //nolint:errcheck
 	if err != nil {
 		return fmt.Errorf("failed to update package manager: %w", err)
 	}

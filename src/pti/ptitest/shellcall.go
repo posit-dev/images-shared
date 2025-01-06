@@ -1,8 +1,9 @@
 package ptitest
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type FakeShellCallError struct {
@@ -17,7 +18,13 @@ type ShellCall struct {
 	InheritEnvVars bool
 }
 
-func (s *ShellCall) Equal(t *testing.T, name string, args []string, envVars []string, inheritEnvVars bool) {
+func (s *ShellCall) Equal(
+	t *testing.T,
+	name string,
+	args []string,
+	envVars []string,
+	inheritEnvVars bool,
+) {
 	assert := assert.New(t)
 	assert.Equal(s.Binary, name)
 	for _, arg := range s.ContainsArgs {

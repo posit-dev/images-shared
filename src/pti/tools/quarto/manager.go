@@ -2,12 +2,13 @@ package quarto
 
 import (
 	"fmt"
-	"github.com/pterm/pterm"
-	"github.com/spf13/afero"
 	"log/slog"
 	"pti/system"
 	"pti/system/file"
 	"slices"
+
+	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -18,8 +19,10 @@ const (
 	workbenchQuartoBinPath = workbenchLibRoot + "/bin/quarto/bin/quarto"
 )
 
-var supportedArchitectures = []string{"amd64", "arm64"}
-var downloadUrl = "https://github.com/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
+var (
+	supportedArchitectures = []string{"amd64", "arm64"}
+	downloadUrl            = "https://github.com/quarto-dev/quarto-cli/releases/download/v%s/quarto-%s-linux-%s.tar.gz"
+)
 
 type Manager struct {
 	*system.LocalSystem
@@ -32,13 +35,22 @@ type Manager struct {
 func workbenchInstalled() (bool, error) {
 	workbenchExists, err := file.IsFile(workbenchQuartoBinPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing Workbench Quarto installation at '%s': %w", workbenchQuartoBinPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing Workbench Quarto installation at '%s': %w",
+			workbenchQuartoBinPath,
+			err,
+		)
 	}
+
 	return workbenchExists, nil
 }
 
-func NewManager(l *system.LocalSystem, version, installationPath string, useWorkbench bool) *Manager {
-	binPath := ""
+func NewManager(
+	l *system.LocalSystem,
+	version, installationPath string,
+	useWorkbench bool,
+) *Manager {
+	var binPath string
 	workbenchQuartoExists, err := workbenchInstalled()
 	if err != nil {
 		slog.Error("Failed to check for existing Workbench Quarto installation: " + err.Error())
@@ -46,16 +58,17 @@ func NewManager(l *system.LocalSystem, version, installationPath string, useWork
 		workbenchQuartoExists = false
 	}
 	isWorkbenchInstallation := false
-	if workbenchQuartoExists && useWorkbench {
+	switch {
+	case workbenchQuartoExists && useWorkbench:
 		slog.Info("Using Quarto from Workbench: " + workbenchQuartoPath)
 		installationPath = workbenchQuartoPath
 		binPath = workbenchQuartoBinPath
 		isWorkbenchInstallation = true
-	} else if installationPath == "" {
+	case installationPath == "":
 		slog.Info("Using default Quarto installation path: " + DefaultInstallPath)
 		installationPath = DefaultInstallPath
 		binPath = defaultBinPath
-	} else {
+	default:
 		binPath = installationPath + "/bin/quarto"
 	}
 
@@ -75,14 +88,20 @@ func (m *Manager) validate() error {
 	if m.InstallationPath == "" {
 		return fmt.Errorf("quarto installation path is required")
 	}
+
 	return nil
 }
 
 func (m *Manager) Installed() (bool, error) {
 	quartoBinExists, err := file.IsFile(m.BinPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for existing Quarto installation at '%s': %w", m.InstallationPath, err)
+		return false, fmt.Errorf(
+			"failed to check for existing Quarto installation at '%s': %w",
+			m.InstallationPath,
+			err,
+		)
 	}
+
 	return quartoBinExists, nil
 }
 
@@ -91,6 +110,7 @@ func getDownloadUrl(quartoVersion, arch string) (string, error) {
 
 	if !slices.Contains(supportedArchitectures, arch) {
 		slog.Error("Quarto is only supported on amd64 and arm64 architectures")
+
 		return "", fmt.Errorf("quarto is not supported on detected '%s' architecture", arch)
 	}
 
@@ -101,6 +121,7 @@ func getDownloadUrl(quartoVersion, arch string) (string, error) {
 	return quartoDownloadUrl, nil
 }
 
+//nolint:cyclop
 func (m *Manager) Install(force bool) error {
 	err := m.validate()
 	if err != nil {
@@ -109,6 +130,7 @@ func (m *Manager) Install(force bool) error {
 
 	if m.IsWorkbenchInstallation {
 		slog.Info("Workbench Quarto installation detected, skipping installation.")
+
 		return nil
 	}
 
@@ -126,7 +148,12 @@ func (m *Manager) Install(force bool) error {
 		if err != nil {
 			slog.Error("Quarto could not be installed on installation path " + m.InstallationPath)
 			slog.Error("Use `--force` flag to attempt to install anyways.")
-			return fmt.Errorf("installation path '%s' is not installable: %w", m.InstallationPath, err)
+
+			return fmt.Errorf(
+				"installation path '%s' is not installable: %w",
+				m.InstallationPath,
+				err,
+			)
 		}
 
 		if installed {
@@ -141,19 +168,22 @@ func (m *Manager) Install(force bool) error {
 		url, err := getDownloadUrl(m.Version, m.LocalSystem.Arch)
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("failed to determine quarto download URL: %w", err)
 		}
 
 		tmpDir, err := afero.TempDir(file.AppFs, "", "quarto")
 		if err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("failed to create temporary directory for quarto download: %w", err)
 		}
 		downloadPath := tmpDir + "/quarto.tar.gz"
-		defer file.AppFs.RemoveAll(tmpDir)
+		defer file.AppFs.RemoveAll(tmpDir) //nolint:errcheck
 
 		if err := file.DownloadFile(url, downloadPath); err != nil {
 			s.Fail("Download failed.")
+
 			return fmt.Errorf("quarto %s download failed: %w", m.Version, err)
 		}
 		s.Success("Download complete.")
@@ -162,24 +192,38 @@ func (m *Manager) Install(force bool) error {
 
 		if err := file.ExtractTarGz(downloadPath, tmpDir); err != nil {
 			s.Fail("Installation failed.")
-			return fmt.Errorf("unable to extract quarto archive from '%s' to '%s': %w", downloadPath, tmpDir, err)
+
+			return fmt.Errorf(
+				"unable to extract quarto archive from '%s' to '%s': %w",
+				downloadPath,
+				tmpDir,
+				err,
+			)
 		}
 
 		extractDir := tmpDir + "/quarto-" + m.Version
 		exists, err := file.IsDir(extractDir)
 		if err != nil {
 			s.Fail("Installation failed.")
+
 			return fmt.Errorf("could not read quarto extract path '%s': %w", extractDir, err)
 		}
 		if !exists {
 			s.Fail("Installation failed.")
+
 			return fmt.Errorf("expected quarto extract path '%s' does not exist", extractDir)
 		}
 
 		slog.Info("Installing Quarto to " + m.InstallationPath)
 		if err := file.Move(extractDir, m.InstallationPath); err != nil {
 			s.Fail("Installation failed.")
-			return fmt.Errorf("failed to move quarto from '%s' to installation path '%s': %w", extractDir, m.InstallationPath, err)
+
+			return fmt.Errorf(
+				"failed to move quarto from '%s' to installation path '%s': %w",
+				extractDir,
+				m.InstallationPath,
+				err,
+			)
 		}
 
 		s.Success("Installation complete.")

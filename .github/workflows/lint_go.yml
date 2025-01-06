@@ -1,0 +1,55 @@
+name: Lint Golang Code
+on:
+  pull_request:
+    paths:
+      - '**/*.go'
+
+permissions:
+  contents: read
+
+jobs:
+  golangci-lint:
+    name: Run golangci-lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.23'
+
+    - name: Golangci-lint
+      uses: golangci/golangci-lint-action@v6.1.1
+      with:
+        version: 'v1.62'
+        working-directory: src/pti
+        args: --tests=false
+
+  golines:
+    name: Run golines
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.23'
+
+      - name: Install golines
+        run: |
+          go install mvdan.cc/gofumpt@v0.7.0
+          go install github.com/segmentio/golines@v0.12.2
+
+      # This is done in a silly way since golines doesn't have a way to return a non-zero exit code for formatting alone
+      - name: Run golines
+        shell: bash
+        run: |
+          golines --dry-run -m 120 --ignored-dirs=mocks --base-formatter="gofumpt" --shorten-comments
+          if [[ $(golines --dry-run -m 120 --ignored-dirs=mocks --base-formatter="gofumpt" --shorten-comments) ]]; then
+            echo "golines found issues"
+            exit 1
+          fi

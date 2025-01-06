@@ -1,9 +1,6 @@
 package container
 
 import (
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +8,10 @@ import (
 	"pti/system"
 	"pti/system/file"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getTiniDownloadUrl(t *testing.T) {
@@ -103,7 +104,7 @@ func Test_TiniManager_Installed(t *testing.T) {
 				InstallPath: "/tini",
 			},
 			setupFs: func(fs afero.Fs) {
-				_ = fs.MkdirAll("/tini", 0755)
+				_ = fs.MkdirAll("/tini", 0o755)
 			},
 			want:           false,
 			wantErr:        true,
@@ -172,7 +173,11 @@ func Test_TiniManager_Install(t *testing.T) {
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -189,7 +194,11 @@ func Test_TiniManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -205,7 +214,11 @@ func Test_TiniManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -222,7 +235,11 @@ func Test_TiniManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -238,7 +255,11 @@ func Test_TiniManager_Install(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusNotFound)
 			})),
@@ -285,7 +306,7 @@ func Test_TiniManager_Install(t *testing.T) {
 				fileInfo, err := file.AppFs.Stat(installPath)
 				require.NoError(err, "Stat() error = %v", err)
 				assert.True(fileInfo.Mode().IsRegular(), "File is not a regular file")
-				assert.Equal(fs.FileMode(0755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0755)
+				assert.Equal(fs.FileMode(0o755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0o755)
 			}
 		})
 	}
@@ -318,7 +339,11 @@ func Test_TiniManager_Update(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -332,12 +357,16 @@ func Test_TiniManager_Update(t *testing.T) {
 				installPath: "/tini",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := afero.WriteFile(fs, "/tini", []byte("old tini"), 0755)
+				err := afero.WriteFile(fs, "/tini", []byte("old tini"), 0o755)
 				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -351,12 +380,16 @@ func Test_TiniManager_Update(t *testing.T) {
 				installPath: "/tini",
 			},
 			setupFs: func(fs afero.Fs) {
-				err := fs.MkdirAll("/tini", 0755)
+				err := fs.MkdirAll("/tini", 0o755)
 				require.NoError(err)
 			},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(successResponse))
@@ -373,7 +406,11 @@ func Test_TiniManager_Update(t *testing.T) {
 			setupFs: func(fs afero.Fs) {},
 			srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/platform/tini/v0.19.0/tini-amd64" {
-					t.Errorf("Request URL = %v, want %v", r.URL.Path, "/platform/tini/v0.19.0/tini-amd64")
+					t.Errorf(
+						"Request URL = %v, want %v",
+						r.URL.Path,
+						"/platform/tini/v0.19.0/tini-amd64",
+					)
 				}
 				w.WriteHeader(http.StatusNotFound)
 			})),
@@ -420,7 +457,7 @@ func Test_TiniManager_Update(t *testing.T) {
 				fileInfo, err := file.AppFs.Stat(installPath)
 				require.NoError(err, "Stat() error = %v", err)
 				assert.True(fileInfo.Mode().IsRegular(), "File is not a regular file")
-				assert.Equal(fs.FileMode(0755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0755)
+				assert.Equal(fs.FileMode(0o755), fileInfo.Mode().Perm(), "File mode = %v, want %v", fileInfo.Mode(), 0o755)
 			}
 		})
 	}
@@ -457,7 +494,7 @@ func Test_TiniManager_Remove(t *testing.T) {
 				InstallPath: "/tini",
 			},
 			setupFs: func(fs afero.Fs) {
-				_ = fs.MkdirAll("/tini", 0755)
+				_ = fs.MkdirAll("/tini", 0o755)
 			},
 			wantErr:        true,
 			wantErrMessage: "failed to check for existing tini",

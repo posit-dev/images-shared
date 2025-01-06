@@ -2,10 +2,6 @@ package r
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +15,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const testVersionsJson = "versions.json"
@@ -34,7 +35,9 @@ func init() {
 func newServerRCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 	require := require.New(t)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		packagePat := regexp.MustCompile("/r/[a-z]+-[0-9]+/pkgs/r-[3-5].[0-9].[0-9](_1_|-1-1.)(amd64|x86_64|arm64).(rpm|deb)")
+		packagePat := regexp.MustCompile(
+			"/r/[a-z]+-[0-9]+/pkgs/r-[3-5].[0-9].[0-9](_1_|-1-1.)(amd64|x86_64|arm64).(rpm|deb)",
+		)
 
 		if r.URL.Path == "/r/versions.json" {
 			versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
@@ -42,7 +45,7 @@ func newServerRCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 
 			w.WriteHeader(http.StatusOK)
 			w.Write(versionsJsonData)
-		} else if packagePat.Match([]byte(r.URL.Path)) {
+		} else if packagePat.MatchString(r.URL.Path) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("200 OK"))
 		}
@@ -54,7 +57,7 @@ func newServerRCdn(t *testing.T, fs afero.Fs) *httptest.Server {
 func fakeRInstallation(t *testing.T, fs afero.Fs, version string) {
 	require := require.New(t)
 
-	err := fs.MkdirAll("/opt/R/"+version+"/bin", 0755)
+	err := fs.MkdirAll("/opt/R/"+version+"/bin", 0o755)
 	require.NoError(err)
 	_, err = fs.Create("/opt/R/" + version + "/bin/R")
 	require.NoError(err)
@@ -139,9 +142,11 @@ func Test_validVersion(t *testing.T) {
 		{
 			name: "bad server response",
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusInternalServerError)
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusInternalServerError)
+					}),
+				)
 			},
 			version:        "4.4.2",
 			want:           false,
@@ -151,10 +156,12 @@ func Test_validVersion(t *testing.T) {
 		{
 			name: "bad json parse",
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("{"))
-				}))
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("{"))
+					}),
+				)
 			},
 			version:        "4.4.2",
 			want:           false,
@@ -167,7 +174,7 @@ func Test_validVersion(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
+			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0o644)
 
 			srv := tt.srv(t, fs)
 			t.Cleanup(srv.Close)
@@ -292,7 +299,7 @@ func Test_Manager_validate(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			contents, err := afero.ReadFile(file.AppFs, testdataPath+"/"+testVersionsJson)
 			require.NoError(err)
-			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0644)
+			err = afero.WriteFile(fs, "/"+testVersionsJson, contents, 0o644)
 
 			srv := tt.srv(t, fs)
 			t.Cleanup(srv.Close)
@@ -549,17 +556,19 @@ func Test_Manager_Install(t *testing.T) {
 			},
 			setupFs: nil,
 			srv: func(t *testing.T, fs afero.Fs) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/r/versions.json" {
-						versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
-						require.NoError(err)
+				return httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if r.URL.Path == "/r/versions.json" {
+							versionsJsonData, err := afero.ReadFile(fs, "/"+testVersionsJson)
+							require.NoError(err)
 
-						w.WriteHeader(http.StatusOK)
-						w.Write(versionsJsonData)
-					} else {
-						w.WriteHeader(http.StatusNotFound)
-					}
-				}))
+							w.WriteHeader(http.StatusOK)
+							w.Write(versionsJsonData)
+						} else {
+							w.WriteHeader(http.StatusNotFound)
+						}
+					}),
+				)
 			},
 			wantDownload:   true,
 			wantInstall:    false,
@@ -626,18 +635,20 @@ func Test_Manager_Install(t *testing.T) {
 			}
 			if tt.wantInstall {
 				mockPm.EXPECT().Update().Return(nil)
-				mockPm.EXPECT().Install(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
-					switch tt.manager.LocalSystem.Vendor {
-					case "ubuntu":
-						assert.Contains(list.LocalPackages[0], "r.deb")
-					case "rockylinux":
-						assert.Contains(list.LocalPackages[0], "r.rpm")
-					default:
-						t.Errorf("unsupported vendor: %s", tt.manager.LocalSystem.Vendor)
-					}
-					fakeRInstallation(t, file.AppFs, "4.4.2")
-					return tt.installErr
-				})
+				mockPm.EXPECT().
+					Install(mock.AnythingOfType("*syspkg.PackageList")).
+					RunAndReturn(func(list *syspkg.PackageList) error {
+						switch tt.manager.LocalSystem.Vendor {
+						case "ubuntu":
+							assert.Contains(list.LocalPackages[0], "r.deb")
+						case "rockylinux":
+							assert.Contains(list.LocalPackages[0], "r.rpm")
+						default:
+							t.Errorf("unsupported vendor: %s", tt.manager.LocalSystem.Vendor)
+						}
+						fakeRInstallation(t, file.AppFs, "4.4.2")
+						return tt.installErr
+					})
 				mockPm.EXPECT().Clean().Return(nil)
 			}
 			tt.manager.LocalSystem.PackageManager = mockPm
@@ -679,7 +690,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/R", 0755)
+				err := fs.MkdirAll("/opt/R", 0o755)
 				require.NoError(err)
 				fakeRInstallation(t, fs, "4.4.2")
 			},
@@ -706,7 +717,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/R", 0755)
+				err := fs.MkdirAll("/opt/R", 0o755)
 				require.NoError(err)
 			},
 			validateFs:     nil,
@@ -721,7 +732,7 @@ func Test_Manager_makeDefault(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs, s string) {
-				err := fs.MkdirAll("/opt/R/default", 0755)
+				err := fs.MkdirAll("/opt/R/default", 0o755)
 				require.NoError(err)
 				_, err = fs.Create("/opt/R/default/testfile")
 				require.NoError(err)
@@ -837,7 +848,7 @@ func Test_Manager_addToPath(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs) {
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 				fakeRInstallation(t, fs, "4.4.2")
 			},
@@ -870,7 +881,7 @@ func Test_Manager_addToPath(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs) {
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 				fakeRInstallation(t, fs, "4.4.2")
 			},
@@ -903,7 +914,7 @@ func Test_Manager_addToPath(t *testing.T) {
 				Version:          "4.4.2",
 			},
 			setupFs: func(t *testing.T, fs afero.Fs) {
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 			},
 			validateFs:     nil,
@@ -922,7 +933,7 @@ func Test_Manager_addToPath(t *testing.T) {
 			setupFs: func(t *testing.T, fs afero.Fs) {
 				fakeRInstallation(t, fs, "4.2.3")
 				fakeRInstallation(t, fs, "4.4.2")
-				err := fs.MkdirAll("/usr/local/bin", 0755)
+				err := fs.MkdirAll("/usr/local/bin", 0o755)
 				require.NoError(err)
 
 				sFs, ok := fs.(*afero.BasePathFs)
@@ -1018,10 +1029,12 @@ func Test_Manager_Remove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockPm := syspkg_mock.NewMockSystemPackageManager(t)
-			mockPm.EXPECT().Remove(mock.AnythingOfType("*syspkg.PackageList")).RunAndReturn(func(list *syspkg.PackageList) error {
-				assert.Contains(list.Packages, "r-4.4.2")
-				return tt.runErr
-			})
+			mockPm.EXPECT().
+				Remove(mock.AnythingOfType("*syspkg.PackageList")).
+				RunAndReturn(func(list *syspkg.PackageList) error {
+					assert.Contains(list.Packages, "r-4.4.2")
+					return tt.runErr
+				})
 			tt.manager.LocalSystem.PackageManager = mockPm
 
 			err := tt.manager.Remove()

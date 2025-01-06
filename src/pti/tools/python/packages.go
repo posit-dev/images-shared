@@ -22,7 +22,7 @@ func (m *Manager) InstallPackages(packageList *PackageList, options []string) er
 		return fmt.Errorf("python %s is not installed", m.Version)
 	}
 
-	defer m.Clean()
+	defer m.Clean() //nolint:errcheck
 
 	for _, name := range packageList.Packages {
 		slog.Info("Installing Python package " + name)
@@ -46,7 +46,11 @@ func (m *Manager) InstallPackages(packageList *PackageList, options []string) er
 		}
 		s := command.NewShellCommand(m.PythonPath, args, nil, true)
 		if err := s.Run(); err != nil {
-			return fmt.Errorf("failed to install python requirements file %s: %w", requirementsFile, err)
+			return fmt.Errorf(
+				"failed to install python requirements file %s: %w",
+				requirementsFile,
+				err,
+			)
 		}
 	}
 
@@ -72,7 +76,10 @@ func (m *Manager) initCorePackages() error {
 		return err
 	}
 
-	err = m.InstallPackages(&PackageList{Packages: []string{"pip", "setuptools"}}, []string{"--upgrade"})
+	err = m.InstallPackages(
+		&PackageList{Packages: []string{"pip", "setuptools"}},
+		[]string{"--upgrade"},
+	)
 	if err != nil {
 		return err
 	}
