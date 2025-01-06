@@ -39,3 +39,52 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
+
+  pti-unit:
+    name: Run pti unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: src/pti/go.mod
+          cache-dependency-path: src/pti/go.sum
+
+      - name: Install dependencies
+        working-directory: ./src/pti
+        run: |
+          go mod download
+          go install github.com/ctrf-io/go-ctrf-json-reporter/cmd/go-ctrf-json-reporter@latest
+
+      - name: Run tests
+        working-directory: ./src/pti
+        run: go test -json ./... > test-results.json
+
+      - name: Generate CTRF report
+        if: always()
+        working-directory: ./src/pti
+        run: go-ctrf-json-reporter -output ctrf-report.json < test-results.json
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pti-unit-ctrf-report
+          path: ./src/pti/ctrf-report.json
+          retention-days: 14
+
+      - name: Publish report
+        if: always()
+        working-directory: ./src/pti
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx github-actions-ctrf suite-folded ctrf-report.json \
+            --pull-request \
+            --overwrite-comment \
+            --comment-tag pti-unit \
+            --title "PTI unit test results"
