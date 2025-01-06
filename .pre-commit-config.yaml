@@ -50,12 +50,3 @@ repos:
 #     rev: v1.13.0
 #     hooks:
 #     - id: mypy
--   repo: local
-    hooks:
-    -   id: just-go-lint
-        name: run golang linting and formatting
-        description: "Runs golangci-lint and golines using just"
-        entry: just src/pti/lint
-        language: golang
-        types: [go]
-        pass_filenames: false
