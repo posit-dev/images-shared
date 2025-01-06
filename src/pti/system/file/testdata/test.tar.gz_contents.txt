@@ -1,9 +1,0 @@
-test_targz/
-├─ subdir1/
-│  ├─ subdir3/
-│  │  ├─ file4
-│  ├─ file2
-│  ├─ file3
-├─ subdir2/
-│  ├─ file5
-├─ file1
