@@ -26,9 +26,6 @@ _pytest *ARGS:
         {{ ARGS }} \
         {{ CWD }}/test/
 
-test-mark mark:
-    just _pytest -m {{ mark }}
-
 # Test the posit-bakery python project
-test:
-    just _pytest
+test *ARGS:
+    just _pytest {{ ARGS }}

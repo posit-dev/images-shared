@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, Union, List, Any, Set, Optional
 
 import jinja2
-from pydantic import model_validator, BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
 from tomlkit import TOMLDocument
@@ -19,6 +19,86 @@ from posit_bakery.templating.filters import render_template, condense, tag_safe,
 
 
 log = logging.getLogger("rich")
+
+
+class BuildOS:
+    id: str
+    name: str
+    version: str
+    codename: str | None
+    base_image: str
+    image_tag: str
+    pretty: str
+
+    """
+    Represent the operating systems that are supported for image builds
+
+    Due to inconsistency in the way versions are represented in the os-release
+    file, we have chosen to blend fields from os-release and lsb_release
+
+    :param id: ID field from os-release
+    :param name: NAME field from os-release
+    :param version: Major version of the OS
+    :param base: Base container image
+    :param tag: Container image tag
+    :param codename: VERSION_CODENAME from os-release
+    """
+
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        version: str,
+        base_image: str,
+        image_tag: str,
+        codename: str = None,
+    ):
+        self.id = id
+        self.name = name
+        self.version = version
+        self.base_image = base_image
+        self.image_tag = image_tag
+        self.codename = codename
+        self.pretty = f"{name} {version}"
+
+
+SUPPORTED_OS: List[BuildOS] = [
+    BuildOS(
+        id="ubuntu",
+        name="Ubuntu",
+        version="22.04",
+        codename="jammy",
+        base_image="ubuntu:22.04",
+        image_tag="ubuntu-22.04",
+    ),
+    BuildOS(
+        id="ubuntu",
+        name="Ubuntu",
+        version="24.04",
+        codename="noble",
+        base_image="ubuntu:24.04",
+        image_tag="ubuntu-24.04",
+    ),
+    BuildOS(
+        id="rocky",
+        name="Rocky Linux",
+        version="9",
+        base_image="rockylinux/rockylinux:9",
+        image_tag="rockylinux-9",
+    ),
+]
+
+
+def find_os(pretty: str) -> BuildOS | None:
+    """Find an OS object based on the pretty name
+
+    :param pretty: Pretty name of the OS
+    """
+    for os in SUPPORTED_OS:
+        if os.pretty == pretty:
+            return os
+
+    return None
 
 
 @dataclass
@@ -64,6 +144,130 @@ class GossConfig:
             )
         if self.command:
             self.command = render_template(self.command, build=self.build_data, target=self.target_data, **self.const)
+
+
+class ManifestBuild(BaseModel):
+    # version is part of the title
+    os: List[str]  # Supported OSes, validate with mapping
+    latest: bool = False
+    # optional targets, default to "all"
+
+    @field_validator("os", mode="after")
+    @classmethod
+    def validate_os(cls, _os: List[str]) -> List[str]:
+        for o in _os:
+            if not find_os(o):
+                raise ValueError(f"Operating system '{o}' is not supported.")
+
+        return _os
+
+    # Workaround for https://github.com/pydantic/pydantic/discussions/10978
+    @field_validator("latest", mode="before")
+    @classmethod
+    def validate_value(cls, latest: bool) -> bool:
+        return bool(latest)
+
+
+# TODO: Write custom validators as needed when performing the translation
+# from the TOML document to the TargetBuild object
+class ManifestGoss(BaseModel):
+    deps: str = None  # defaults to version/deps
+    path: str = None  # defaults to version/goss
+    wait: int = 0
+    command: str = "sleep infinity"
+
+
+# Only allow lowercase letters, number, hyphens, underscores, and periods
+# Do not use raw strings here to avoid escaping (e.g. r"{{.+?}}")
+TAG_STR: str = "[a-z0-9-_.]"
+RE_TAG_STR: re.Pattern = re.compile("^" + TAG_STR + "+$")
+# Allow for Jinja2 template in tags
+RE_TAG_JINJA: re.Pattern = re.compile("^((?P<jinja>{{.+?}})|" + TAG_STR + ")+$")
+
+
+class ManifestTarget(BaseModel):
+    tags: List[str] = []
+    latest_tags: List[str] = []
+    goss: ManifestGoss = None
+    # Declare containferfile extension
+
+    @classmethod
+    def _valid_tag_str(cls, tag: str) -> bool:
+        """Check if a tag is a valid string
+
+        :param tag: Tag to check
+        """
+        return len(tag) <= 128 and RE_TAG_STR.match(tag)
+
+    @classmethod
+    def _valid_tag_jinja(cls, tag: str) -> bool:
+        """Check if tag contains valid Jinja2
+
+        Since the regex also matches valid string tags, we need to check whether
+        the match actually includes Jinja2.
+
+        :param tag: Tag to check
+        """
+        j2 = RE_TAG_JINJA.match(tag)
+        return j2 and j2.groupdict().get("jinja")
+
+    @field_validator("tags", "latest_tags", mode="after")
+    @classmethod
+    def validate_tags(cls, tags: List[str]) -> List[str]:
+        """Ensure tags are short enough and match the expected format"""
+        invalid_tags: List[str] = []
+        for tag in tags:
+            if cls._valid_tag_str(tag) or cls._valid_tag_jinja(tag):
+                continue
+            invalid_tags.append(tag)
+
+        if len(invalid_tags) > 0:
+            invalid_tags = [f"'{t}'" for t in invalid_tags]
+            raise ValueError(f"Tags do not match the expected format: {', '.join([t for t in invalid_tags])}")
+
+        return tags
+
+
+# To standardize our images, we will only allow a subset of the regexes
+# https://github.com/containers/image/blob/main/docker/reference/regexp.go
+
+# Only allow lowercase letters and hyphens
+RE_IMAGE_NAME: re.Pattern = re.compile("^[a-z][a-z-]+$")
+
+
+class ManifestDocument(BaseModel):
+    """Document model for a manifest.toml file
+
+    Example:
+
+        image_name = "test-image"
+
+        [build."1.0.0"]
+        os = ["Ubuntu 24.04", "Ubuntu 22.04"]
+        latest = true
+
+        [target.min]
+
+        [target.std]
+        [target.std.goss]
+        command = "bash"
+        wait = 1
+    """
+
+    image_name: str
+    build: Dict[str, ManifestBuild] = {}
+    target: Dict[str, ManifestTarget] = {}
+
+    @field_validator("image_name", mode="after")
+    @classmethod
+    def validate_image_name(
+        cls,
+        image_name: str,
+    ) -> str:
+        if not RE_IMAGE_NAME.match(image_name):
+            raise ValueError(f"image_name must only contain lowercase letters and hyphens: {image_name}")
+
+        return image_name
 
 
 class TargetBuild(BaseModel):

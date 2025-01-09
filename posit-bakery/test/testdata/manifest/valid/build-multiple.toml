@@ -1,0 +1,8 @@
+image_name = "test-image"
+
+[build."1.0.0"]
+os = ["Ubuntu 22.04", "Ubuntu 24.04"]
+latest = true
+
+[build."0.8.1"]
+os = ["Ubuntu 22.04"]
