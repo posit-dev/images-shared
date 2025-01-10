@@ -1,5 +1,4 @@
-# Template for a Containerfile
-TPL_CONTAINERFILE = """FROM {{ base_tag }}
+FROM {{ base_tag }}
 
 ### ARG declarations ###
 # Declare your arguments here...
@@ -24,5 +23,3 @@ TPL_CONTAINERFILE = """FROM {{ base_tag }}
 
 ### Finalize image ###
 # Perform any final steps to prepare the image for use, such as setting the entrypoint, command, or exposing ports.
-
-"""

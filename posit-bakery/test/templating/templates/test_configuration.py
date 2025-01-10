@@ -4,7 +4,7 @@ import pytest
 
 from posit_bakery.models import Config, Manifest
 from posit_bakery.templating.filters import render_template
-from posit_bakery.templating.templates import configuration
+from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
 
 pytestmark = [
     pytest.mark.unit,
@@ -16,7 +16,7 @@ def test_config_template_render(tmpdir):
     config_toml = Path(tmpdir) / "config.toml"
     with open(config_toml, "w") as f:
         config_toml_data = render_template(
-            configuration.TPL_CONFIG_TOML,
+            TPL_CONFIG_TOML,
             repo_url="github.com/rstudio/example",
         )
         f.write(config_toml_data)
@@ -35,7 +35,7 @@ def test_manifest_template_render(tmpdir, basic_config_obj):
     manifest_toml = Path(tmpdir) / "manifest.toml"
     with open(manifest_toml, "w") as f:
         manifest_toml_data = render_template(
-            configuration.TPL_MANIFEST_TOML,
+            TPL_MANIFEST_TOML,
             image_name="example",
         )
         f.write(manifest_toml_data)

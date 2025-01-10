@@ -15,8 +15,7 @@ from posit_bakery.error import (
     BakeryTemplatingError,
 )
 from posit_bakery.models import Config, Manifest
-from posit_bakery.templating.templates.configuration import TPL_CONFIG_TOML, TPL_MANIFEST_TOML
-from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
+from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 from posit_bakery.util import try_get_repo_url, find_bin
 
 
