@@ -27,6 +27,7 @@ jobs:
       - name: Install poetry
         run: |
           pipx install poetry
+          pipx inject poetry "poetry-dynamic-versioning[plugin]"
 
       - name: Set up Python
         uses: actions/setup-python@v5
