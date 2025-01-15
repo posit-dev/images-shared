@@ -16,18 +16,17 @@ class BuildOS:
     Due to inconsistency in the way versions are represented in the os-release
     file, we have chosen to blend fields from os-release and lsb_release
 
-    :param id: ID field from os-release
+    :param distributor_id: Distributor ID field from lsb_release
     :param name: NAME field from os-release
     :param version: Major version of the OS
     :param base: Base container image
     :param tag: Container image tag
     :param codename: VERSION_CODENAME from os-release
     """
-    # TODO: Replace id with Distributor ID from lsb_release, which is more consistent
 
     def __init__(
         self,
-        id: str,
+        distributor_id: str,
         name: str,
         version: str,
         base_image: str,
@@ -46,7 +45,7 @@ class BuildOS:
 # TODO: Move to a file
 SUPPORTED_OS: List[BuildOS] = [
     BuildOS(
-        id="ubuntu",
+        distributor_id="Ubuntu",
         name="Ubuntu",
         version="22.04",
         codename="jammy",
@@ -54,7 +53,7 @@ SUPPORTED_OS: List[BuildOS] = [
         image_tag="ubuntu-22.04",
     ),
     BuildOS(
-        id="ubuntu",
+        distributor_id="Ubuntu",
         name="Ubuntu",
         version="24.04",
         codename="noble",
@@ -62,7 +61,7 @@ SUPPORTED_OS: List[BuildOS] = [
         image_tag="ubuntu-24.04",
     ),
     BuildOS(
-        id="rocky",
+        distributor_id="Rocky",
         name="Rocky Linux",
         version="9",
         base_image="rockylinux/rockylinux:9",
