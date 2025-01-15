@@ -7,6 +7,11 @@ CWD := justfile_directory()
 ################
 # Commands
 
+# Install plugins for poetry
+install-plugins:
+    poetry self add "poetry-dynamic-versioning[plugin]"
+    poetry dynamic-versioning enable
+
 # Install the posit-bakery python project
 install:
     poetry install \
@@ -16,7 +21,8 @@ install:
 alias package := build
 build:
     poetry build \
-        --directory={{ CWD }}
+        --directory={{ CWD }} \
+        --clean
 
 [private]
 _pytest *ARGS:
