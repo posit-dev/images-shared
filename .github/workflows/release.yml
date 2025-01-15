@@ -21,6 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install poetry
+        run: |
+          pipx install poetry
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -30,7 +34,6 @@ jobs:
       - name: Install dependencies
         working-directory: ./posit-bakery
         run: |
-          pipx install poetry
           poetry install
 
       - name: Build
