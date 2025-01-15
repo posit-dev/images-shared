@@ -1,17 +1,19 @@
 import re
+import subprocess
 from pathlib import Path
 from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
 import tomlkit
 
-from posit_bakery.models import project
+from posit_bakery.models import Manifest
+from posit_bakery.models.project import Project
 
 
 class TestProject:
     def test_from_context(self, basic_context, basic_expected_num_target_builds):
         """Test creating a Project object from the basic suite context path"""
-        p = project.Project.load(basic_context)
+        p = Project.load(basic_context)
         assert p.context == basic_context
         assert len(p.config.registry_urls) == 2
         assert "test-image" in p.manifests
@@ -19,7 +21,7 @@ class TestProject:
 
     def test_load_context_config(self, basic_context):
         """Test loading the context config.toml file"""
-        c = project.Project.load_context_config(basic_context)
+        c = Project.load_context_config(basic_context)
         assert c.context == basic_context
         assert len(c.registry_urls) == 2
 
@@ -35,26 +37,26 @@ class TestProject:
         with open(basic_tmpcontext / "config.override.toml", "w") as f:
             f.write(override_config_str)
 
-        c = project.Project.load_context_config(basic_tmpcontext, ignore_override=True)
+        c = Project.load_context_config(basic_tmpcontext, ignore_override=True)
         assert c.context == basic_tmpcontext
         assert len(c.registry_urls) == 2
 
-        c = project.Project.load_context_config(basic_tmpcontext)
+        c = Project.load_context_config(basic_tmpcontext)
         assert c.context == basic_tmpcontext
         assert len(c.registry_urls) == 1
         assert "docker.io/posit-dev" in c.registry_urls
 
     def test_load_config_manifests(self, basic_config_obj, basic_expected_num_target_builds):
         """Test loading manifests using a config object"""
-        m = project.Project.load_config_manifests(basic_config_obj)
+        m = Project.load_config_manifests(basic_config_obj)
         assert len(m) == 1
         assert "test-image" in m
-        assert isinstance(m["test-image"], project.Manifest)
+        assert isinstance(m["test-image"], Manifest)
         assert len(m["test-image"].target_builds) == basic_expected_num_target_builds
 
     def test_new_image(self, basic_tmpcontext):
         """Test creating a new image"""
-        p = project.Project.load(basic_tmpcontext)
+        p = Project.load(basic_tmpcontext)
         p.new_image("new-image")
         new_image_path = Path(basic_tmpcontext) / "new-image"
         assert new_image_path.is_dir()
@@ -69,7 +71,7 @@ class TestProject:
     def test_new_image_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         image_dir = basic_tmpcontext / "test-image"
-        p = project.Project.load(basic_tmpcontext)
+        p = Project.load(basic_tmpcontext)
         p.new_image_version("test-image", "1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -96,7 +98,7 @@ class TestProject:
         assert d["build"]["1.0.1"]["os"] == ["Ubuntu 2204"]
 
     def test_render_bake_plan(self, basic_context, basic_expected_num_target_builds):
-        p = project.Project.load(basic_context)
+        p = Project.load(basic_context)
         plan = p.render_bake_plan()
         assert len(plan["group"]) == 4
         assert "default" in plan["group"]
@@ -115,11 +117,11 @@ class TestProject:
 
     def test_build(self, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
-        project.subprocess.run = MagicMock(return_value=process_mock)
-        p = project.Project.load(basic_tmpcontext)
+        subprocess.run = MagicMock(return_value=process_mock)
+        p = Project.load(basic_tmpcontext)
         p.build()
-        project.subprocess.run.assert_called_once()
-        assert project.subprocess.run.call_args[0][0] == [
+        subprocess.run.assert_called_once()
+        assert subprocess.run.call_args[0][0] == [
             "docker",
             "buildx",
             "bake",
@@ -128,7 +130,7 @@ class TestProject:
         ]
 
     def test_render_dgoss_commands(self, basic_context):
-        p = project.Project.load(basic_context)
+        p = Project.load(basic_context)
 
         manifest_std = p.manifests["test-image"].filter_target_builds("1.0.0", "std")[0]
         goss_std = manifest_std.goss
@@ -165,12 +167,12 @@ class TestProject:
 
     def test_dgoss(self, basic_context):
         process_mock = MagicMock(returncode=0)
-        project.subprocess.run = MagicMock(return_value=process_mock)
-        p = project.Project.load(basic_context)
+        subprocess.run = MagicMock(return_value=process_mock)
+        p = Project.load(basic_context)
         with patch("posit_bakery.models.project.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
         with patch("posit_bakery.models.project.find_bin", side_effect=["dgoss", "goss"]):
             p.dgoss()
-        assert project.subprocess.run.call_count == 2
-        assert project.subprocess.run.call_args_list[0].args[0] == commands[0][2]
-        assert project.subprocess.run.call_args_list[1].args[0] == commands[1][2]
+        assert subprocess.run.call_count == 2
+        assert subprocess.run.call_args_list[0].args[0] == commands[0][2]
+        assert subprocess.run.call_args_list[1].args[0] == commands[1][2]

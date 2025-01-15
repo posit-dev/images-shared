@@ -1,2 +1,4 @@
-from posit_bakery.models.config.config import Config
-from posit_bakery.models.config.document import ConfigDocument
+from .config.config import Config
+from .config.document import ConfigDocument
+from .manifest.document import ManifestDocument
+from .manifest.manifest import Manifest
