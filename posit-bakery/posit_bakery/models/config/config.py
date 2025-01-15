@@ -1,127 +1,15 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set, Union, List
+from typing import Set, Union, List
 
 import git
-from pydantic import BaseModel, field_validator, model_validator
 
 from posit_bakery.models.generic import GenericTOMLModel
-
+from posit_bakery.models.config.registry import ConfigRegistry
+from posit_bakery.models.config.repository import ConfigRepository
 
 log = logging.getLogger("rich")
-
-
-class ConfigRegistry(BaseModel):
-    """Configuration for a container image registry
-
-    Used for tagging of images and pushing to the registry
-    """
-
-    host: str
-    namespace: Optional[str] = None
-
-    @property
-    def base_url(self) -> str:
-        """Get the base URL for the registry"""
-        u: str = f"{self.host}"
-        if self.namespace:
-            u = f"{u}/{self.namespace}"
-        return u
-
-    def __hash__(self) -> int:
-        """Unique hash for a ConfigRegistry object"""
-        return hash(self.base_url)
-
-
-class ConfigRepository(BaseModel):
-    """Configuration for a container image code repository
-
-    Primarily used for labeling purposes
-
-    :param authors: Authors of the repository images
-    :param url: URL to the repository (e.g. github.com/rstudio/example)
-    :param vendor: Vendor of the images in the repository
-    :param maintainer: Maintainer of the images in the repository
-    """
-
-    authors: List[str] = []
-    url: Optional[str] = None
-    vendor: Optional[str] = "Posit Software, PBC"
-    maintainer: Optional[str] = "docker@posit.co"
-
-    @field_validator("authors", mode="after")
-    @classmethod
-    def vaidate_authors(
-        cls,
-        authors: Set[str],
-    ) -> Set[str]:
-        """Ensure the author list is unique
-
-        De-duplicate authors and log a warning if duplicates are found
-        """
-        unique_authors = set(authors)
-        if len(unique_authors) != len(authors):
-            log.warning("Duplicate authors found in config.toml")
-
-        return authors
-
-
-class ConfigDocument(BaseModel):
-    """Document model for a config.toml file
-
-    :param repository: Repository information for labeling purposes
-    :param registries: One or more image registries to use for tagging and pushing images
-
-    Example:
-
-        [repository]
-        url = "github.com/posit-dev/images-shared"
-        vendor = "Posit Software, PBC"
-        maintainer = "docker@posit.co"
-        authors = [
-            "Author 1 <author1@posit.co>",
-            "Author 2 <author2@posit.co>",
-        ]
-
-        [[registries]]
-        host = "docker.io"
-        namespace = "posit"
-
-        [[registries]]
-        host = "ghcr.io"
-        namespace = "posit-dev"
-    """
-
-    repository: ConfigRepository = None
-    registries: List[ConfigRegistry]
-
-    @model_validator(mode="after")
-    def validate_repository(self) -> ConfigRepository:
-        """Log a warning if repository is undefined
-
-        Repository information is used for labeling purposes
-        """
-        if self.repository is None:
-            log.warning("Repository not found in config.toml")
-
-        return self
-
-    @field_validator("registries", mode="after")
-    @classmethod
-    def validate_registries(
-        cls,
-        registries: List[ConfigRegistry],
-    ) -> List[ConfigRegistry]:
-        """Ensure that the registry list is unique and sorted
-
-        De-duplicate registries and log a warning if duplicates are found
-        """
-        unique_registries = set(registries)
-        if len(unique_registries) != len(registries):
-            log.warning("Duplicate registries found in config.toml")
-
-        return sorted(unique_registries, key=lambda x: x.base_url)
 
 
 class Config(GenericTOMLModel):

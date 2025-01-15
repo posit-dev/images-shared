@@ -54,7 +54,7 @@ def basic_config_file(basic_context):
 @pytest.fixture
 def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
-    from posit_bakery.models.config import Config
+    from posit_bakery.models import Config
 
     return Config.load(basic_config_file)
 

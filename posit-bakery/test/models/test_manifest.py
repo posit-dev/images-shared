@@ -6,7 +6,9 @@ import tomlkit
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import manifest, config
+from posit_bakery.models import manifest, Config
+from posit_bakery.models.config.registry import ConfigRegistry
+from posit_bakery.models.config.repository import ConfigRepository
 from .helpers import toml_file_testcases
 
 
@@ -122,8 +124,8 @@ class TestGossConfig:
         assert goss_config.command == "start_app"
 
 
-@pytest.mark.toml_schema
 @pytest.mark.manifest
+@pytest.mark.schema
 class TestManifestDocument:
     def test_empty_init(self):
         """Creating an empty ManifestDocument fails validation"""
@@ -191,8 +193,8 @@ class TestManifestDocument:
             manifest.ManifestDocument(image_name=image_name)
 
 
-@pytest.mark.toml_schema
 @pytest.mark.manifest
+@pytest.mark.schema
 class TestManifestTarget:
     @pytest.mark.parametrize(
         "tag",
@@ -366,12 +368,12 @@ class TestTargetBuild:
         versioned_context = image_context / "1.0.0"
         versioned_context.mkdir(parents=True, exist_ok=True)
 
-        c = config.Config(
+        c = Config(
             filepath=Path(tmpdir) / "config.toml",
             context=Path(tmpdir),
             document=tomlkit.TOMLDocument(),
             registry=[],
-            repository=config.ConfigRepository(),
+            repository=ConfigRepository(),
         )
 
         test_containerfile = versioned_context / "Containerfile"
@@ -459,7 +461,7 @@ class TestTargetBuild:
             )
 
     def test_get_tags_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
@@ -539,7 +541,7 @@ class TestTargetBuild:
             assert tag in target_build.get_tags()
 
     def test_get_tags_no_fully_qualified(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
@@ -564,7 +566,7 @@ class TestTargetBuild:
     def test_get_tags_render(self, basic_manifest_obj, target_data_min, build_data):
         tag_tpl = ["{{ build.version }}-dev"]
         latest_tag_tpl = ["latest-dev"]
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
         target_build = manifest.TargetBuild(
             manifest_context=basic_manifest_obj.context,
@@ -787,7 +789,7 @@ class TestManifest:
     def test_render_image_template(self, basic_tmpcontext):
         """Test rendering the image template for a new version creates the expected files"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
         m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.render_image_template("1.0.1")
@@ -808,7 +810,7 @@ class TestManifest:
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
         m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1")
@@ -839,7 +841,7 @@ class TestManifest:
     def test_new_version_no_save(self, basic_tmpcontext):
         """Test save=False does not update the manifest file when creating a new version"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
         m = manifest.Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1", save=False)

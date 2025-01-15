@@ -13,7 +13,7 @@ from pydantic_core import ArgsKwargs
 from tomlkit import TOMLDocument
 
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
-from posit_bakery.models.config import Config
+from posit_bakery.models import Config
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from posit_bakery.models.config import Config
+from posit_bakery.models import Config
 from posit_bakery.models.manifest import Manifest
 from posit_bakery.templating.filters import render_template
 from posit_bakery.templating.templates import configuration
