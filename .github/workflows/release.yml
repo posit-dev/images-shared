@@ -23,9 +23,8 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v5
-        working-directory: ./posit-bakery
         with:
-          python-version-file: "pyproject.toml"
+          python-version-file: "posit-bakery/pyproject.toml"
           cache: "poetry"
 
       - name: Install dependencies
