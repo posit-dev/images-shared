@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        working-directory: ./posit-bakery
+        with:
+          python-version-file: "pyproject.toml"
+          cache: "poetry"
+
+      - name: Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          pipx install poetry
+          poetry install
+
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build --clean
+
+      - name: Upload snapshot artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakery-snapshot-pr${{ github.event.pull_request.number }}
+          path: ./posit-bakery/dist
+          retention-days: 7
+          overwrite: true
