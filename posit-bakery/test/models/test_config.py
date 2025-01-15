@@ -81,7 +81,7 @@ class TestConfigDocument:
         with open(toml_file, "r") as f:
             doc = tomlkit.load(f)
 
-        config.ConfigDocument(**doc)
+        config.ConfigDocument(**doc.unwrap())
 
         assert "WARNING" not in caplog.text
 
@@ -94,7 +94,7 @@ class TestConfigDocument:
         with open(toml_file, "r") as f:
             doc = tomlkit.load(f)
 
-        config.ConfigDocument(**doc)
+        config.ConfigDocument(**doc.unwrap())
 
         assert "WARNING" in caplog.text
 
@@ -108,7 +108,7 @@ class TestConfigDocument:
             doc = tomlkit.load(f)
 
         with pytest.raises(ValidationError):
-            config.ConfigDocument(**doc)
+            config.ConfigDocument(**doc.unwrap())
 
 
 @pytest.mark.config

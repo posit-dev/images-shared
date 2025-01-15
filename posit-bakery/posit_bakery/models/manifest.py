@@ -43,6 +43,7 @@ class BuildOS:
     :param tag: Container image tag
     :param codename: VERSION_CODENAME from os-release
     """
+    # TODO: Replace id with Distributor ID from lsb_release, which is more consistent
 
     def __init__(
         self,
@@ -62,6 +63,7 @@ class BuildOS:
         self.pretty = f"{name} {version}"
 
 
+# TODO: Move to a file
 SUPPORTED_OS: List[BuildOS] = [
     BuildOS(
         id="ubuntu",
@@ -94,9 +96,9 @@ def find_os(pretty: str) -> BuildOS | None:
 
     :param pretty: Pretty name of the OS
     """
-    for os in SUPPORTED_OS:
-        if os.pretty == pretty:
-            return os
+    for _os in SUPPORTED_OS:
+        if _os.pretty == pretty:
+            return _os
 
     return None
 
@@ -160,12 +162,6 @@ class ManifestBuild(BaseModel):
                 raise ValueError(f"Operating system '{o}' is not supported.")
 
         return _os
-
-    # Workaround for https://github.com/pydantic/pydantic/discussions/10978
-    @field_validator("latest", mode="before")
-    @classmethod
-    def validate_value(cls, latest: bool) -> bool:
-        return bool(latest)
 
 
 # TODO: Write custom validators as needed when performing the translation

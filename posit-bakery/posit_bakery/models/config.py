@@ -103,7 +103,7 @@ class ConfigDocument(BaseModel):
         Repository information is used for labeling purposes
         """
         if self.repository is None:
-            log.warning("Repository not found in configl.toml")
+            log.warning("Repository not found in config.toml")
 
         return self
 

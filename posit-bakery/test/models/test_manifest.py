@@ -139,7 +139,7 @@ class TestManifestDocument:
         with open(toml_file, "r") as f:
             doc = tomlkit.load(f)
 
-        manifest.ManifestDocument(**doc)
+        manifest.ManifestDocument(**doc.unwrap())
 
         assert "WARNING" not in caplog.text
 
@@ -152,7 +152,7 @@ class TestManifestDocument:
         with open(toml_file, "r") as f:
             doc = tomlkit.load(f)
 
-        manifest.ManifestDocument(**doc)
+        manifest.ManifestDocument(**doc.unwrap())
 
         assert "WARNING" in caplog.text
 
@@ -166,7 +166,7 @@ class TestManifestDocument:
             doc = tomlkit.load(f)
 
         with pytest.raises(ValidationError):
-            manifest.ManifestDocument(**doc)
+            manifest.ManifestDocument(**doc.unwrap())
 
     @pytest.mark.parametrize(
         "image_name",
