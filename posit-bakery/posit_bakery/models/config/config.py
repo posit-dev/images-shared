@@ -1,61 +1,15 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set, Union, List
+from typing import Set, Union, List
 
 import git
-from pydantic.dataclasses import dataclass
 
 from posit_bakery.models.generic import GenericTOMLModel
-
+from posit_bakery.models.config.registry import ConfigRegistry
+from posit_bakery.models.config.repository import ConfigRepository
 
 log = logging.getLogger("rich")
-
-
-@dataclass
-class ConfigRegistry:
-    """Configuration for a container image registry
-
-    Used for tagging of images and pushing to the registry
-    """
-
-    host: str
-    namespace: Optional[str] = None
-
-    @property
-    def base_url(self) -> str:
-        """Get the base URL for the registry"""
-        u: str = f"{self.host}"
-        if self.namespace:
-            u = f"{u}/{self.namespace}"
-        return u
-
-    def __hash__(self) -> int:
-        """Unique hash for a ConfigRegistry object"""
-        return hash(self.base_url)
-
-
-@dataclass
-class ConfigRepository:
-    """Configuration for a container image repository
-
-    Primarily used for labeling purposes
-
-    :param authors: Authors of the repository images
-    :param url: URL to the repository (e.g. github.com/rstudio/example)
-    :param vendor: Vendor of the images in the repository
-    :param maintainer: Maintainer of the images in the repository
-    """
-
-    authors: Set[str] = None
-    url: Optional[str] = None
-    vendor: Optional[str] = "Posit Software, PBC"
-    maintainer: Optional[str] = "docker@posit.co"
-
-    def __post_init__(self) -> None:
-        # Initialize authors as an empty set if not provided
-        if self.authors is None:
-            self.authors = set()
 
 
 class Config(GenericTOMLModel):
@@ -65,7 +19,7 @@ class Config(GenericTOMLModel):
     :param repository: Repository information for labeling purposes
     """
 
-    __registries: Set[ConfigRegistry]
+    __registries: List[ConfigRegistry]
     repository: ConfigRepository
 
     @property
@@ -126,7 +80,7 @@ class Config(GenericTOMLModel):
 
         # Create registry objects for each registry defined in config.toml
         registries = []
-        for r in d["registry"]:
+        for r in d["registries"]:
             registries.append(ConfigRegistry(**r))
 
         # Create repository object from config.toml

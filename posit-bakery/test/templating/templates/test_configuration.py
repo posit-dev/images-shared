@@ -2,8 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from posit_bakery.models.config import Config
-from posit_bakery.models.manifest import Manifest
+from posit_bakery.models import Config, Manifest
 from posit_bakery.templating.filters import render_template
 from posit_bakery.templating.templates import configuration
 
@@ -28,7 +27,7 @@ def test_config_template_render(tmpdir):
     assert c.repository_url == "github.com/rstudio/example"
     assert c.vendor == "Posit Software, PBC"
     assert c.maintainer == "docker@posit.co"
-    assert c.authors == set()
+    assert c.authors == []
 
 
 def test_manifest_template_render(tmpdir, basic_config_obj):

@@ -14,7 +14,7 @@ authors = []
 
 # Define image registries used by builds in this repository. Images will be tagged appropriately for each registry.
 # Logins for private registries should be managed independently of Bakery.
-[[registry]]
+[[registries]]
 host = "docker.io"
 namespace = "posit"
 """

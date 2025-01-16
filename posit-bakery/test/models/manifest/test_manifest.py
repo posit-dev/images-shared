@@ -3,11 +3,19 @@ from unittest.mock import MagicMock
 
 import pytest
 import tomlkit
+from pydantic import ValidationError
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import manifest, config
+from posit_bakery.models import Config, Manifest
+from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.config.registry import ConfigRegistry
+from posit_bakery.models.config.repository import ConfigRepository
+from posit_bakery.models.manifest.manifest import GossConfig, TargetBuild
+from ..helpers import toml_file_testcases
 
 
+@pytest.mark.goss
+@pytest.mark.manifest
 class TestGossConfig:
     def test_goss_config(self, basic_manifest_obj):
         """Test creating a basic GossConfig object does not raise an exception"""
@@ -16,7 +24,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        manifest.GossConfig(
+        GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -30,7 +38,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -45,11 +53,11 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
-            const={"image_name": "test-image"},
+            const={"image_namae": "test-image"},
         )
         assert goss_config.test_path == version_context / "test"
 
@@ -60,7 +68,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -76,7 +84,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -92,7 +100,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -108,7 +116,7 @@ class TestGossConfig:
         build_data = basic_manifest_obj.document["build"]["1.0.0"].unwrap()
         build_data["version"] = "1.0.0"
         version_context = basic_manifest_obj.context / "1.0.0"
-        goss_config = manifest.GossConfig(
+        goss_config = GossConfig(
             version_context=version_context,
             target_data=target_data,
             build_data=build_data,
@@ -118,6 +126,8 @@ class TestGossConfig:
         assert goss_config.command == "start_app"
 
 
+@pytest.mark.config
+@pytest.mark.manifest
 class TestTargetBuild:
     @pytest.fixture
     def target_data_min(self, basic_manifest_obj):
@@ -140,13 +150,13 @@ class TestTargetBuild:
 
     def test_load(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
         """Test the load method of TargetBuild returns expected number of TargetBuild objects"""
-        data = manifest.GenericTOMLModel.read(basic_manifest_file)
-        target_builds = manifest.TargetBuild.load(basic_config_obj, basic_manifest_file.parent, data)
+        data = GenericTOMLModel.read(basic_manifest_file)
+        target_builds = TargetBuild.load(basic_config_obj, basic_manifest_file.parent, data)
         assert len(target_builds) == basic_expected_num_target_builds
 
     def test_target_build(self, basic_manifest_obj, target_data_min, build_data):
         """Test creating a basic TargetBuild object does not raise an exception"""
-        manifest.TargetBuild(
+        TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -158,7 +168,7 @@ class TestTargetBuild:
 
     def test_default_const(self, basic_manifest_obj, target_data_min, build_data):
         """Test the default const values for a TargetBuild object"""
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -171,7 +181,7 @@ class TestTargetBuild:
 
     def test_containerfile_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
         """Test that the default containerfile is resolved correctly in the basic test suite"""
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -182,7 +192,7 @@ class TestTargetBuild:
         )
         assert target_build.containerfile_path == basic_manifest_obj.context / "1.0.0" / "Containerfile.ubuntu2204.min"
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -199,17 +209,17 @@ class TestTargetBuild:
         versioned_context = image_context / "1.0.0"
         versioned_context.mkdir(parents=True, exist_ok=True)
 
-        c = config.Config(
+        c = Config(
             filepath=Path(tmpdir) / "config.toml",
             context=Path(tmpdir),
             document=tomlkit.TOMLDocument(),
             registry=[],
-            repository=config.ConfigRepository(),
+            repository=ConfigRepository(),
         )
 
         test_containerfile = versioned_context / "Containerfile"
         test_containerfile.touch(exist_ok=True)
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=image_context,
             config=c,
             target_data={"type": "std"},
@@ -223,7 +233,7 @@ class TestTargetBuild:
 
         test_containerfile = versioned_context / "Containerfile.ubuntu2204"
         test_containerfile.touch(exist_ok=True)
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=image_context,
             config=c,
             target_data={"type": "std"},
@@ -237,7 +247,7 @@ class TestTargetBuild:
 
         test_containerfile = versioned_context / "Containerfile.std"
         test_containerfile.touch(exist_ok=True)
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=image_context,
             config=c,
             target_data={"type": "std"},
@@ -251,7 +261,7 @@ class TestTargetBuild:
 
         test_containerfile = versioned_context / "Containerfile.ubuntu2204.std"
         test_containerfile.touch(exist_ok=True)
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=image_context,
             config=c,
             target_data={"type": "std"},
@@ -265,7 +275,7 @@ class TestTargetBuild:
 
     def test_containerfile_render(self, basic_manifest_obj, target_data_min, build_data):
         """Test that containerfiles with template rendering are resolved correctly"""
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -281,7 +291,7 @@ class TestTargetBuild:
         """Test that a BakeryFileNotFoundError is raised when a containerfile is not found"""
         with pytest.raises(BakeryFileNotFoundError):
             build_data["os"] = "CentOS 7"
-            manifest.TargetBuild(
+            TargetBuild(
                 manifest_context=basic_manifest_obj.context,
                 config=basic_manifest_obj.config,
                 target_data=target_data_min,
@@ -292,9 +302,9 @@ class TestTargetBuild:
             )
 
     def test_get_tags_default_resolution(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -314,7 +324,7 @@ class TestTargetBuild:
         for tag in expected_tags:
             assert tag in target_build.get_tags()
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -335,7 +345,7 @@ class TestTargetBuild:
             assert tag in target_build.get_tags()
 
         build_data["latest"] = False
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -353,7 +363,7 @@ class TestTargetBuild:
         for tag in expected_tags:
             assert tag in target_build.get_tags()
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -372,9 +382,9 @@ class TestTargetBuild:
             assert tag in target_build.get_tags()
 
     def test_get_tags_no_fully_qualified(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -397,9 +407,9 @@ class TestTargetBuild:
     def test_get_tags_render(self, basic_manifest_obj, target_data_min, build_data):
         tag_tpl = ["{{ build.version }}-dev"]
         latest_tag_tpl = ["latest-dev"]
-        basic_manifest_obj.config.registries = {config.ConfigRegistry(host="docker.io", namespace="posit")}
+        basic_manifest_obj.config.registries = {ConfigRegistry(host="docker.io", namespace="posit")}
 
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -419,7 +429,7 @@ class TestTargetBuild:
             assert tag in target_build.get_tags()
 
     def test_goss_default_resolution(self, basic_manifest_obj, target_data_std, build_data):
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -435,7 +445,7 @@ class TestTargetBuild:
         assert target_build.goss.wait == 1
 
     def test_uid(self, basic_manifest_obj, target_data_std, build_data):
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -448,7 +458,7 @@ class TestTargetBuild:
         assert target_build.uid == "test-image-1-0-0-ubuntu2204-std"
 
     def test_labels(self, basic_manifest_obj, target_data_std, build_data):
-        target_build = manifest.TargetBuild(
+        target_build = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -474,7 +484,7 @@ class TestTargetBuild:
         assert target_build.labels["org.opencontainers.image.source"] == "github.com/posit-dev/images-shared"
 
     def test_hash(self, basic_manifest_obj, target_data_min, target_data_std, build_data):
-        target_build_min = manifest.TargetBuild(
+        target_build_min = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_min,
@@ -484,7 +494,7 @@ class TestTargetBuild:
             **build_data,
             **target_data_min,
         )
-        target_build_std = manifest.TargetBuild(
+        target_build_std = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -494,7 +504,7 @@ class TestTargetBuild:
             **build_data,
             **target_data_std,
         )
-        target_build_std2 = manifest.TargetBuild(
+        target_build_std2 = TargetBuild(
             manifest_context=basic_manifest_obj.context,
             config=basic_manifest_obj.config,
             target_data=target_data_std,
@@ -511,18 +521,18 @@ class TestTargetBuild:
 class TestManifest:
     def test_manifest(self, basic_config_obj, basic_manifest_file):
         """Test creating a basic Manifest object does not raise an exception"""
-        manifest.Manifest(
+        Manifest(
             filepath=basic_manifest_file,
             context=basic_manifest_file.parent,
-            document=manifest.GenericTOMLModel.read(basic_manifest_file),
+            document=GenericTOMLModel.read(basic_manifest_file),
             image_name="test-image",
             config=basic_config_obj,
         )
 
     def test_manifest_with_target_build(self, basic_config_obj, basic_manifest_file):
         """Test creating a basic Manifest object with a TargetBuild does not raise an exception"""
-        data = manifest.GenericTOMLModel.read(basic_manifest_file)
-        target_build = manifest.TargetBuild(
+        data = GenericTOMLModel.read(basic_manifest_file)
+        target_build = TargetBuild(
             manifest_context=basic_manifest_file.parent,
             config=basic_config_obj,
             build_data=data["build"]["1.0.0"].unwrap(),
@@ -532,7 +542,7 @@ class TestManifest:
             type="min",
             build_os="Ubuntu 22.04",
         )
-        manifest.Manifest(
+        Manifest(
             filepath=basic_manifest_file,
             context=basic_manifest_file.parent,
             document=data,
@@ -543,7 +553,7 @@ class TestManifest:
 
     def test_load_file_with_config(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
         """Test that the load_file_with_config method returns a Manifest object with expected data"""
-        m = manifest.Manifest.load(basic_config_obj, basic_manifest_file)
+        m = Manifest.load(basic_config_obj, basic_manifest_file)
         assert m.image_name == "test-image"
         assert m.config == basic_config_obj
         assert len(m.target_builds) == basic_expected_num_target_builds
@@ -590,7 +600,7 @@ class TestManifest:
         t = Path(tmpdir)
         for f in files:
             (t / f).touch(exist_ok=True)
-        os_list = manifest.Manifest.guess_image_os_list(t)
+        os_list = Manifest.guess_image_os_list(t)
         assert len(os_list) == 4
         assert "Ubuntu 2204" in os_list
         assert "Ubuntu 2404" in os_list
@@ -620,9 +630,9 @@ class TestManifest:
     def test_render_image_template(self, basic_tmpcontext):
         """Test rendering the image template for a new version creates the expected files"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.render_image_template("1.0.1")
         new_version_dir = image_dir / "1.0.1"
         assert new_version_dir.is_dir()
@@ -641,9 +651,9 @@ class TestManifest:
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -672,9 +682,9 @@ class TestManifest:
     def test_new_version_no_save(self, basic_tmpcontext):
         """Test save=False does not update the manifest file when creating a new version"""
         config_file = basic_tmpcontext / "config.toml"
-        c = config.Config.load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = manifest.Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1", save=False)
         new_version_dir = image_dir / "1.0.1"
 

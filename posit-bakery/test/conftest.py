@@ -34,6 +34,12 @@ def resource_path():
 
 
 @pytest.fixture(scope="session")
+def testdata_path():
+    """Return the path to the test data directory"""
+    return TEST_DIRECTORY / "testdata"
+
+
+@pytest.fixture(scope="session")
 def basic_context(resource_path):
     """Return the path to the basic test suite context"""
     return resource_path / "basic"
@@ -48,7 +54,7 @@ def basic_config_file(basic_context):
 @pytest.fixture
 def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
-    from posit_bakery.models.config import Config
+    from posit_bakery.models import Config
 
     return Config.load(basic_config_file)
 
@@ -62,7 +68,7 @@ def basic_manifest_file(basic_context):
 @pytest.fixture
 def basic_manifest_obj(basic_config_obj, basic_manifest_file):
     """Return a Manifest object loaded from basic test suite manifest.toml file"""
-    from posit_bakery.models.manifest import Manifest
+    from posit_bakery.models import Manifest
 
     return Manifest.load(basic_config_obj, basic_manifest_file)
 

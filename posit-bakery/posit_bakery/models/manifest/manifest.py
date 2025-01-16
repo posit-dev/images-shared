@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Dict, Union, List, Any, Set, Optional
 
 import jinja2
-from pydantic import model_validator, BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic.dataclasses import dataclass
 from pydantic_core import ArgsKwargs
 from tomlkit import TOMLDocument
 
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
-from posit_bakery.models.config import Config
+from posit_bakery.models import Config
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 
