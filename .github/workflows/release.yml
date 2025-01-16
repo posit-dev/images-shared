@@ -64,5 +64,4 @@ jobs:
             --generate-notes \
             --latest
           gh release upload ${{ github.ref_name }} \
-            --clobber \
-            ./dist/*
+            ./posit-bakery/dist/*
