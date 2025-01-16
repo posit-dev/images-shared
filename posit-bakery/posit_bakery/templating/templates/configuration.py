@@ -68,4 +68,32 @@ image_name = "{{ image_name }}"
 {% endraw %}
 # wait = 0  # Defaults to 0 if not specified.
 # command = "sleep infinity"  # Defaults to sleep infinity to run if not specified.
+
+# # (Optional) define alternative settings for Snyk scans for this manifest.
+# [tool.snyk]
+# severity_threshold = "medium"  # Defaults to "medium" if not specified.
+# [tool.snyk.test]
+# include_app_vulns = true  # Defaults to true if not specified.
+# include_base_image_vulns = false  # Defaults to false if not specified.
+# [tool.snyk.test.output]
+# json = false  # Defaults to false if not specified. Cannot be true if sarif is true.
+# json_file = false  # Defaults to false if not specified.
+# sarif = false  # Defaults to false if not specified. Cannot be true if json is true.
+# sarif_file = false  # Defaults to false if not specified.
+# [tool.snyk.monitor]
+# include_app_vulns = true  # Defaults to true if not specified.
+# output_json = false  # Defaults to false if not specified.
+# environment = "distributed"  # Defaults to None if not specified. See Snyk documentation for values.
+# lifecycle = "production"  # Defaults to None if not specified. See Snyk documentation for values.
+# business_criticality = "medium"  # Defaults to None if not specified. See Snyk documentation for values.
+# [tool.snyk.monitor.tags]
+# # Tags below will be automatically added unless overridden.
+# image_name = "{{ image_name }}"
+# image_tag = "{{ os.distributor_id | lower }}{{ build.version | condense }}"
+# os_distro = "{{ os.distributor_id | lower }}"
+# os_version = "{{ os.version }}"
+# version = "{{ build.version }}"
+# image_type = "{{ target.name }}"
+# [tool.snyk.sbom]
+# format = "cyclonedx1.5+json"  # Defaults to "cyclonedx1.5+json" if not specified. See Snyk documentation for values.
 """
