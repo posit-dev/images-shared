@@ -1,0 +1,67 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install poetry
+        run: |
+          pipx install poetry
+          pipx inject poetry "poetry-dynamic-versioning[plugin]"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "posit-bakery/pyproject.toml"
+          cache: "poetry"
+
+      - name: Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          poetry install
+
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build
+
+      - name: Upload snapshot artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakery-snapshot-pr${{ github.event.pull_request.number }}
+          path: ./posit-bakery/dist
+          retention-days: 7
+          overwrite: true
+
+      - name: Create a release draft
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --generate-notes \
+            --latest
+          gh release upload ${{ github.ref_name }} \
+            ./posit-bakery/dist/*

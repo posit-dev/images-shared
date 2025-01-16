@@ -1,13 +1,26 @@
 [tool.poetry]
 name = "posit-bakery"
-version = "0.2.0-dev1"
+version = "0.0.0"
 description = "Tools for extracting and manipulating bake artifacts for various commands"
-authors = ["Ian H. Pittwood <ian.pittwood@posit.co>"]
+authors = ["Ian H. Pittwood <ian.pittwood@posit.co>", "Ben Schwedler <ben@posit.co"]
 license = "MIT"
 readme = "README.md"
 
 [tool.poetry.scripts]
 bakery = "posit_bakery.main:app"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+format-jinja = """
+{% if distance == 0 -%}
+{{ serialize_pep440(base, stage, revision) }}
+{%- elif revision is not none -%}
+{{ serialize_pep440(base, stage, revision + 1, dev=distance, metadata=[commit]) }}
+{%- else -%}
+{{ serialize_pep440(bump_version(base), stage, revision, dev=distance, metadata=[commit]) }}
+{%- endif %}
+"""
+
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -42,5 +55,5 @@ unfixable = [
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
