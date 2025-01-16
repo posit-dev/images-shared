@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, field_validator
 
-from posit_bakery.models.manifest.os import find_os
+from posit_bakery.models.manifest import find_os
 
 
 class ManifestBuild(BaseModel):

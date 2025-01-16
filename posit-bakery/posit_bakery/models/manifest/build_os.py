@@ -1,8 +1,5 @@
-from typing import List
-
-
 class BuildOS:
-    id: str
+    distributor_id: str
     name: str
     version: str
     codename: str | None
@@ -33,50 +30,10 @@ class BuildOS:
         image_tag: str,
         codename: str = None,
     ):
-        self.id = id
+        self.distributor_id = distributor_id
         self.name = name
         self.version = version
         self.base_image = base_image
         self.image_tag = image_tag
         self.codename = codename
         self.pretty = f"{name} {version}"
-
-
-# TODO: Move to a file
-SUPPORTED_OS: List[BuildOS] = [
-    BuildOS(
-        distributor_id="Ubuntu",
-        name="Ubuntu",
-        version="22.04",
-        codename="jammy",
-        base_image="ubuntu:22.04",
-        image_tag="ubuntu-22.04",
-    ),
-    BuildOS(
-        distributor_id="Ubuntu",
-        name="Ubuntu",
-        version="24.04",
-        codename="noble",
-        base_image="ubuntu:24.04",
-        image_tag="ubuntu-24.04",
-    ),
-    BuildOS(
-        distributor_id="Rocky",
-        name="Rocky Linux",
-        version="9",
-        base_image="rockylinux/rockylinux:9",
-        image_tag="rockylinux-9",
-    ),
-]
-
-
-def find_os(pretty: str) -> BuildOS | None:
-    """Find an OS object based on the pretty name
-
-    :param pretty: Pretty name of the OS
-    """
-    for _os in SUPPORTED_OS:
-        if _os.pretty == pretty:
-            return _os
-
-    return None
