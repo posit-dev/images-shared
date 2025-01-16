@@ -8,7 +8,7 @@ from rich import print_json
 from rich.logging import RichHandler
 import typer
 
-from posit_bakery.models.project import Project
+from posit_bakery.models import Project
 from posit_bakery.error import (
     BakeryBuildError,
     BakeryConfigError,

@@ -4,12 +4,13 @@ from pathlib import Path
 from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
+import pytest
 import tomlkit
 
-from posit_bakery.models import Manifest
-from posit_bakery.models.project import Project
+from posit_bakery.models import Manifest, Project
 
 
+@pytest.mark.project
 class TestProject:
     def test_from_context(self, basic_context, basic_expected_num_target_builds):
         """Test creating a Project object from the basic suite context path"""
@@ -137,7 +138,7 @@ class TestProject:
         manifest_min = p.manifests["test-image"].filter_target_builds("1.0.0", "min")[0]
         goss_min = manifest_min.goss
 
-        with patch("posit_bakery.models.project.find_bin", side_effect=["dgoss", "goss"]):
+        with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
 
         assert len(commands) == 2
@@ -169,9 +170,9 @@ class TestProject:
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
         p = Project.load(basic_context)
-        with patch("posit_bakery.models.project.find_bin", side_effect=["dgoss", "goss"]):
+        with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
-        with patch("posit_bakery.models.project.find_bin", side_effect=["dgoss", "goss"]):
+        with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             p.dgoss()
         assert subprocess.run.call_count == 2
         assert subprocess.run.call_args_list[0].args[0] == commands[0][2]

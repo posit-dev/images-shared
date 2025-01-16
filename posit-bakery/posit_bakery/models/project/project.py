@@ -16,7 +16,7 @@ from posit_bakery.error import (
 )
 from posit_bakery.models import Config, Manifest
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
-from posit_bakery.util import try_get_repo_url, find_bin
+import posit_bakery.util as util
 
 
 log = logging.getLogger("rich")
@@ -92,7 +92,7 @@ class Project:
         if not config_file.is_file():
             log.info(f"[bright_black]Creating new project config file [bold]{config_file}")
             tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(self.context)).from_string(TPL_CONFIG_TOML)
-            rendered = tpl.render(repo_url=try_get_repo_url(self.context))
+            rendered = tpl.render(repo_url=util.try_get_repo_url(self.context))
             with open(config_file, "w") as f:
                 f.write(rendered)
 
@@ -254,8 +254,8 @@ class Project:
         :param image_type: (Optional) The type of the image to render dgoss commands for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
-        dgoss_bin = find_bin(self.context, "dgoss", "DGOSS_PATH") or "dgoss"
-        goss_bin = find_bin(self.context, "goss", "GOSS_PATH")
+        dgoss_bin = util.find_bin(self.context, "dgoss", "DGOSS_PATH") or "dgoss"
+        goss_bin = util.find_bin(self.context, "goss", "GOSS_PATH")
         dgoss_commands = []
 
         for manifest in self.manifests.values():
