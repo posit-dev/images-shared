@@ -1,3 +1,6 @@
+from posit_bakery.templating.filters import condense
+
+
 class BuildOS:
     distributor_id: str
     name: str
@@ -37,3 +40,4 @@ class BuildOS:
         self.image_tag = image_tag
         self.codename = codename
         self.pretty = f"{name} {version}"
+        self.condensed = condense(self.pretty)
