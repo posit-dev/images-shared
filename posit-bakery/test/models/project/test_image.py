@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, List
 from unittest.mock import patch
 
 import pytest
@@ -33,25 +34,25 @@ TARGET_COMPLEX: ManifestTarget = ManifestTarget()
 TARGET_PREVIEW: ManifestTarget = ManifestTarget()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def manifest_simple():
     return ManifestDocument(
         image_name="simple-image",
-        build={"simple": BUILD_SIMPLE},
+        build={"simple-version": BUILD_SIMPLE},
         target={"min": TARGET_MIN},
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def manifest_latest():
     return ManifestDocument(
         image_name="latest-image",
-        build={"latest": BUILD_LATEST},
+        build={"latest-version": BUILD_LATEST},
         target={"min": TARGET_MIN},
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def manifest_multi_os():
     return ManifestDocument(
         image_name="multi-os-image",
@@ -60,14 +61,14 @@ def manifest_multi_os():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def manifest_matrix():
     return ManifestDocument(
         image_name="matrix-image",
         build={
-            "simple": BUILD_SIMPLE,  # 4 variants
-            "latest": BUILD_LATEST,  # 4 variants
-            "complex": BUILD_MULTI_OS,  # 12 variants
+            "simple-version": BUILD_SIMPLE,  # 4 variants
+            "latest-version": BUILD_LATEST,  # 4 variants
+            "complex-version": BUILD_MULTI_OS,  # 12 variants
         },
         target={
             "min": TARGET_MIN,
@@ -92,7 +93,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "simple"
+        assert image.versions[0].version == "simple-version"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is False
@@ -106,14 +107,14 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "latest"
+        assert image.versions[0].version == "latest-version"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is True
 
     def test_load_multi_os(self, manifest_multi_os):
         """Test creating an image with multiple OS and default targets"""
-        with patch("pathlib.Path.is_file", side_effect=[True]):
+        with patch("pathlib.Path.is_file", side_effect=[True] * 6):
             image: Image = Image.load(self.context, manifest_multi_os)
 
         assert image.name == "multi-os-image"
@@ -126,7 +127,7 @@ class TestImageMatrix:
 
     def test_load_matrix(self, manifest_matrix):
         """Test creating an image with multiple builds and targets"""
-        with patch("pathlib.Path.is_file", side_effect=[True]):
+        with patch("pathlib.Path.is_file", side_effect=[True] * 20):
             image: Image = Image.load(self.context, manifest_matrix)
 
         assert image.name == "matrix-image"
@@ -134,6 +135,88 @@ class TestImageMatrix:
 
         assert len(image.versions) == 3
         assert len(image.targets) == 20
+
+
+@pytest.mark.image
+class TestImageMetadata:
+    context: Path = Path("fancy-image")
+
+    def test_simple_labels(self, manifest_simple):
+        """Ensure appropriate labels are being added to the image"""
+        with patch("pathlib.Path.is_file", side_effect=[True]):
+            image: Image = Image.load(self.context, manifest_simple)
+
+        assert image.name == "simple-image"
+
+        labels: Dict[str, str] = image.versions[0].variants[0].labels
+
+        assert labels.posit_prefix == "co.posit.image"
+        assert labels.posit.get("name") == "simple-image"
+        assert labels.posit.get("version") == "simple-version"
+        assert labels.posit.get("type") == "min"
+        assert labels.posit.get("os") == "Ubuntu 24.04"
+
+        assert labels.oci_prefix == "org.opencontainers.image"
+        assert labels.oci.get("title") == "simple-image"
+
+    def test_multi_labels(self, manifest_multi_os):
+        """Ensure appropriate labels are being added to all image variants
+
+        This test ensures that labels are being applied to each variant
+        and the label objects are unique to each variant
+        """
+        with patch("pathlib.Path.is_file", side_effect=[True] * 6):
+            image: Image = Image.load(self.context, manifest_multi_os)
+
+        assert image.name == "multi-os-image"
+
+        # Ubuntu 24.04
+        assert image.versions[0].variants[0].labels.posit.get("os") == "Ubuntu 24.04"
+        assert image.versions[0].variants[0].labels.posit.get("type") == "min"
+        assert image.versions[0].variants[1].labels.posit.get("os") == "Ubuntu 24.04"
+        assert image.versions[0].variants[1].labels.posit.get("type") == "std"
+        # Ubuntu 22.04
+        assert image.versions[0].variants[2].labels.posit.get("os") == "Ubuntu 22.04"
+        assert image.versions[0].variants[2].labels.posit.get("type") == "min"
+        assert image.versions[0].variants[3].labels.posit.get("os") == "Ubuntu 22.04"
+        assert image.versions[0].variants[3].labels.posit.get("type") == "std"
+        # Rocky Linux 9
+        assert image.versions[0].variants[4].labels.posit.get("os") == "Rocky Linux 9"
+        assert image.versions[0].variants[4].labels.posit.get("type") == "min"
+        assert image.versions[0].variants[5].labels.posit.get("os") == "Rocky Linux 9"
+        assert image.versions[0].variants[5].labels.posit.get("type") == "std"
+
+    def test_tags_default(self, manifest_simple):
+        """Ensure default tags are being added to the image"""
+        expected_tags: List[str] = [
+            "simple-version-ubuntu-24.04-min",
+            "simple-version-min",
+        ]
+
+        with patch("pathlib.Path.is_file", side_effect=[True]):
+            image: Image = Image.load(self.context, manifest_simple)
+
+        tags = image.versions[0].variants[0].tags
+        assert len(tags) == len(expected_tags)
+        for tag in expected_tags:
+            assert tag in tags
+
+    def test_tags_default_latest(self, manifest_latest):
+        """Ensure string tags are being added to the image"""
+        expected_tags: List[str] = [
+            "latest-version-ubuntu-24.04-min",
+            "latest-version-min",
+            "ubuntu-24.04-min",
+            "latest",
+        ]
+
+        with patch("pathlib.Path.is_file", side_effect=[True]):
+            image: Image = Image.load(self.context, manifest_latest)
+
+        tags = image.versions[0].variants[0].tags
+        assert len(tags) == len(expected_tags)
+        for tag in expected_tags:
+            assert tag in tags
 
 
 @pytest.mark.image
@@ -191,7 +274,13 @@ class TestImageVariant:
         filepath: Path = self.context / f"Containerfile.{suffix}"
 
         with patch("pathlib.Path.is_file", side_effect=[True]):
-            variant: ImageVariant = ImageVariant.load(self.context, latest, _os, target)
+            variant: ImageVariant = ImageVariant.load(
+                context=self.context,
+                version="version",
+                latest=latest,
+                _os=_os,
+                target=target,
+            )
 
         assert variant.latest is latest
         assert variant.os == _os
