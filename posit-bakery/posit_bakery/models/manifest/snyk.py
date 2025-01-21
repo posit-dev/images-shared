@@ -20,7 +20,7 @@ SNYK_MONITOR_TAG_KEY_LENGTH = 30
 REGEX_SNYK_MONITOR_TAG_VALUE = re.compile(r"^[a-zA-Z0-9_\-/:?#@&+=%~]+$")
 SNYK_MONITOR_TAG_VALUE_LENGTH = 256
 
-REGEX_SNYK_SBOM_FORMAT = re.compile(r"^(cyclonedx1\.[45]\+(json|xml)|spdx2\.3\+json)$")
+REGEX_SNYK_SBOM_FORMAT = re.compile(r"^(cyclonedx1\.[4-6]\+(json|xml)|spdx2\.3\+json)$")
 DEFAULT_SNYK_SBOM_FORMAT = "cyclonedx1.5+json"
 
 

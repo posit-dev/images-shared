@@ -171,6 +171,8 @@ class TestManifestSnykSbom:
             ("cyclonedx1.4+xml", False),
             ("cyclonedx1.5+json", False),
             ("cyclonedx1.5+xml", False),
+            ("cyclonedx1.6+json", False),
+            ("cyclonedx1.6+xml", False),
             ("spdx2.3+json", False),
             ("invalid", True),
         ],
