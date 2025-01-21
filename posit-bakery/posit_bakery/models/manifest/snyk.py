@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field, model_validator
 from pydantic.functional_validators import field_validator
 from pydantic_core import PydanticUseDefault
 
+REGEX_SNYK_TEST_OUTPUT_FORMAT = re.compile(r"^(sarif|json|default)$")
+DEFAULT_SNYK_TEST_OUTPUT_FORMAT = "default"
+
 REGEX_SNYK_TEST_SEVERITY_THRESHOLD = re.compile(r"^(low|medium|high|critical)$")
 DEFAULT_SNYK_TEST_SEVERITY_THRESHOLD = "medium"
 
@@ -25,10 +28,22 @@ log = logging.getLogger("rich")
 
 
 class ManifestSnykTestOutput(BaseModel):
-    json: bool = False
+    format: Annotated[str, Field(pattern=REGEX_SNYK_TEST_OUTPUT_FORMAT)] = DEFAULT_SNYK_TEST_OUTPUT_FORMAT
     json_file: bool = False
-    sarif: bool = False
     sarif_file: bool = False
+
+    @field_validator("format", mode="wrap")
+    @classmethod
+    def validate_format_to_warning(cls, value, handler):
+        try:
+            return handler(value)
+        except ValueError:
+            log.warning(
+                f"Invalid value for snyk.test.output.format, expected '{value}' to match regex pattern "
+                f"'{REGEX_SNYK_TEST_OUTPUT_FORMAT.pattern}'. Using default value "
+                f"'{DEFAULT_SNYK_TEST_OUTPUT_FORMAT}'."
+            )
+            raise PydanticUseDefault()
 
 
 class ManifestSnykTest(BaseModel):
