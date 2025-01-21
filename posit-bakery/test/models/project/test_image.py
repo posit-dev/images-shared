@@ -5,78 +5,20 @@ from unittest.mock import patch
 import pytest
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import Image, ManifestDocument
-from posit_bakery.models.manifest import find_os
-from posit_bakery.models.manifest.build import ManifestBuild
-from posit_bakery.models.manifest.target import ManifestTarget
+from posit_bakery.models import Image
 from posit_bakery.models.project.image import ImageVariant
 
-
-BUILD_LATEST: ManifestBuild = ManifestBuild(
-    os=["Ubuntu 24.04"],
-    latest=True,
-)
-BUILD_SIMPLE: ManifestBuild = ManifestBuild(
-    os=["Ubuntu 24.04"],
-)
-BUILD_MULTI_OS: ManifestBuild = ManifestBuild(
-    os=[
-        "Ubuntu 24.04",
-        "Ubuntu 22.04",
-        "Rocky Linux 9",
-    ]
+from .fixtures import (
+    manifest_simple,
+    manifest_latest,
+    manifest_multi_os,
+    manifest_matrix,
 )
 
-
-TARGET_MIN: ManifestTarget = ManifestTarget()
-TARGET_STD: ManifestTarget = ManifestTarget()
-TARGET_COMPLEX: ManifestTarget = ManifestTarget()
-TARGET_PREVIEW: ManifestTarget = ManifestTarget()
-
-
-@pytest.fixture
-def manifest_simple():
-    return ManifestDocument(
-        image_name="simple-image",
-        build={"simple-version": BUILD_SIMPLE},
-        target={"min": TARGET_MIN},
-    )
-
-
-@pytest.fixture
-def manifest_latest():
-    return ManifestDocument(
-        image_name="latest-image",
-        build={"latest-version": BUILD_LATEST},
-        target={"min": TARGET_MIN},
-    )
-
-
-@pytest.fixture
-def manifest_multi_os():
-    return ManifestDocument(
-        image_name="multi-os-image",
-        build={"multi-os": BUILD_MULTI_OS},
-        target={"min": TARGET_MIN, "std": TARGET_STD},
-    )
-
-
-@pytest.fixture
-def manifest_matrix():
-    return ManifestDocument(
-        image_name="matrix-image",
-        build={
-            "simple-version": BUILD_SIMPLE,  # 4 variants
-            "latest-version": BUILD_LATEST,  # 4 variants
-            "complex-version": BUILD_MULTI_OS,  # 12 variants
-        },
-        target={
-            "min": TARGET_MIN,
-            "std": TARGET_STD,
-            "complex": TARGET_COMPLEX,
-            "preview": TARGET_COMPLEX,
-        },
-    )
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.image,
+]
 
 
 # TODO: Figure out how to patch Path.is_file for this class
@@ -93,7 +35,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "simple-version"
+        assert image.versions[0].version == "v0.1.0"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is False
@@ -107,7 +49,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "latest-version"
+        assert image.versions[0].version == "v1.2.3"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is True
@@ -152,7 +94,7 @@ class TestImageMetadata:
 
         assert labels.posit_prefix == "co.posit.image"
         assert labels.posit.get("name") == "simple-image"
-        assert labels.posit.get("version") == "simple-version"
+        assert labels.posit.get("version") == "v0.1.0"
         assert labels.posit.get("type") == "min"
         assert labels.posit.get("os") == "Ubuntu 24.04"
 
@@ -189,8 +131,8 @@ class TestImageMetadata:
     def test_tags_default(self, manifest_simple):
         """Ensure default tags are being added to the image"""
         expected_tags: List[str] = [
-            "simple-version-ubuntu-24.04-min",
-            "simple-version-min",
+            "v0.1.0-ubuntu-24.04-min",
+            "v0.1.0-min",
         ]
 
         with patch("pathlib.Path.is_file", side_effect=[True]):
@@ -204,8 +146,8 @@ class TestImageMetadata:
     def test_tags_default_latest(self, manifest_latest):
         """Ensure string tags are being added to the image"""
         expected_tags: List[str] = [
-            "latest-version-ubuntu-24.04-min",
-            "latest-version-min",
+            "v1.2.3-ubuntu-24.04-min",
+            "v1.2.3-min",
             "ubuntu-24.04-min",
             "latest",
         ]

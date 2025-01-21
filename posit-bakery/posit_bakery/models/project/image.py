@@ -5,10 +5,10 @@ from typing import Dict, List
 from pydantic import BaseModel
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import Manifest, ManifestDocument
 from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.build_os import BuildOS
+from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.models.manifest.target import ManifestTarget
 
 
