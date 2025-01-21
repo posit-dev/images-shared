@@ -15,6 +15,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     :param document: tomlkit.TOMLDocument object
     """
 
+    # TODO: Stop allowing extra fields
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     filepath: Path
     context: Path

@@ -24,9 +24,9 @@ class TestProjectLoad:
         assert "test-image" in p.manifests
         assert len(p.manifests["test-image"].target_builds) == basic_expected_num_target_builds
 
-    def test_load_context_config(self, basic_context):
+    def test_load_config(self, basic_context):
         """Test loading the context config.toml file"""
-        c = Project.load_context_config(basic_context)
+        c = Project.load_config(basic_context)
         assert c.context == basic_context
         assert len(c.registry_urls) == 2
 

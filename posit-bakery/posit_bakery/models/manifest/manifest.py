@@ -315,7 +315,7 @@ class Manifest(GenericTOMLModel):
         """
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ManifestDocument(**document.unwrap())
+        model = ManifestDocument(**document.unwrap(), frozen=True)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
 

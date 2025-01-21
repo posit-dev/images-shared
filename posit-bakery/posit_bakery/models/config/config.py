@@ -14,14 +14,7 @@ log = logging.getLogger("rich")
 
 
 class Config(GenericTOMLModel):
-    """Models a repository's config.toml file
-
-    :param __registries: One or more image registries to use for tagging and pushing images
-    :param repository: Repository information for labeling purposes
-    """
-
-    __registries: List[ConfigRegistry]
-    repository: ConfigRepository
+    """Models a repository's config.toml file"""
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
@@ -31,41 +24,34 @@ class Config(GenericTOMLModel):
         """
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ConfigDocument(**document.unwrap())
+        model = ConfigDocument(**document.unwrap(), frozen=True)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
 
     @property
     def registries(self) -> List[ConfigRegistry]:
         """Get the registries for the Config object"""
-        r = list(self.__registries)
-        r.sort(key=lambda x: x.base_url)
-        return r
-
-    @registries.setter
-    def registries(self, r: List[ConfigRegistry]) -> None:
-        """Set the registries for the Config object"""
-        self.__registries = set(r)
+        return self.model.registries
 
     @property
     def authors(self) -> Set[str]:
         """Get the authors for the ConfigRepository object"""
-        return self.repository.authors
+        return self.model.repository.authors
 
     @property
     def repository_url(self) -> str:
         """Get the repository URL for the ConfigRepository object"""
-        return self.repository.url
+        return self.model.repository.url
 
     @property
     def vendor(self) -> str:
         """Get the vendor for the ConfigRepository object"""
-        return self.repository.vendor
+        return self.model.repository.vendor
 
     @property
     def maintainer(self) -> str:
         """Get the maintainer for the ConfigRepository object"""
-        return self.repository.maintainer
+        return self.model.repository.maintainer
 
     @property
     def registry_urls(self) -> List[str]:
