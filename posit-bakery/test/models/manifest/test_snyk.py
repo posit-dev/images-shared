@@ -82,6 +82,10 @@ class TestManifestSnykMonitor:
             ("saas", False),
             ("onprem", False),
             ("invalid", True),
+            (["frontend", "backend"], False),
+            (["frontend", "invalid"], True),
+            ("frontend,internal", False),
+            ("frontend,invalid", True),
         ],
     )
     def test_environment_validation(self, caplog, environment, expect_warning):
@@ -99,6 +103,10 @@ class TestManifestSnykMonitor:
             ("sandbox", False),
             ("production", False),
             ("invalid", True),
+            ("development,sandbox", False),
+            ("development,invalid", True),
+            (["development", "sandbox"], False),
+            (["development", "invalid"], True),
         ],
     )
     def test_lifecycle_validation(self, caplog, lifecycle, expect_warning):
@@ -117,6 +125,10 @@ class TestManifestSnykMonitor:
             ("high", False),
             ("critical", False),
             ("invalid", True),
+            (["low", "medium"], False),
+            (["low", "invalid"], True),
+            ("low,medium", False),
+            ("low,invalid", True),
         ],
     )
     def test_business_criticality_validation(self, caplog, business_criticality, expect_warning):
@@ -196,8 +208,8 @@ class TestManifestSnyk:
             },
             monitor={
                 "output_json": True,
-                "environment": "distributed",
-                "lifecycle": "development",
+                "environment": ["distributed", "onprem", "hosted"],
+                "lifecycle": "development,sandbox",
                 "business_criticality": "high",
                 "tags": {
                     "key-1": "value@1",
@@ -214,8 +226,15 @@ class TestManifestSnyk:
         assert s.test.output.format == "sarif"
         assert s.test.output.json_file is True
         assert s.monitor.output_json is True
-        assert s.monitor.environment == "distributed"
-        assert s.monitor.lifecycle == "development"
+        assert isinstance(s.monitor.environment, list)
+        assert len(s.monitor.environment) == 3
+        assert "distributed" in s.monitor.environment
+        assert "onprem" in s.monitor.environment
+        assert "hosted" in s.monitor.environment
+        assert isinstance(s.monitor.lifecycle, list)
+        assert len(s.monitor.lifecycle) == 2
+        assert "development" in s.monitor.lifecycle
+        assert "sandbox" in s.monitor.lifecycle
         assert s.monitor.business_criticality == "high"
         assert s.monitor.tags == {
             "key-1": "value@1",

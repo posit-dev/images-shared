@@ -104,11 +104,9 @@ class ManifestSnykTest(BaseModel):
 class ManifestSnykMonitor(BaseModel):
     include_app_vulns: bool = True
     output_json: bool = False
-    environment: Annotated[List[str] | str | None, Field(pattern=REGEX_SNYK_MONITOR_PROJECT_ENVIRONMENT)] = None
-    lifecycle: Annotated[List[str] | str | None, Field(pattern=REGEX_SNYK_MONITOR_PROJECT_LIFECYCLE)] = None
-    business_criticality: Annotated[
-        List[str] | str | None, Field(pattern=REGEX_SNYK_MONITOR_PROJECT_BUSINESS_CRITICALITY)
-    ] = None
+    environment: List[str] | str | None = None
+    lifecycle: List[str] | str | None = None
+    business_criticality: List[str] | str | None = None
     tags: Dict[str, str] | None = None
 
     @field_validator("environment", mode="before")
