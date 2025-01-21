@@ -13,9 +13,17 @@ from posit_bakery.models.config.repository import ConfigRepository
 from posit_bakery.models.manifest.manifest import GossConfig, TargetBuild
 from ..helpers import toml_file_testcases
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.manifest,
+]
+
+
+class TestManifestLoad:
+    pass
+
 
 @pytest.mark.goss
-@pytest.mark.manifest
 class TestGossConfig:
     def test_goss_config(self, basic_manifest_obj):
         """Test creating a basic GossConfig object does not raise an exception"""
@@ -127,7 +135,6 @@ class TestGossConfig:
 
 
 @pytest.mark.config
-@pytest.mark.manifest
 class TestTargetBuild:
     @pytest.fixture
     def target_data_min(self, basic_manifest_obj):
@@ -553,7 +560,7 @@ class TestManifest:
 
     def test_load_file_with_config(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
         """Test that the load_file_with_config method returns a Manifest object with expected data"""
-        m = Manifest.load(basic_config_obj, basic_manifest_file)
+        m = Manifest._load(basic_config_obj, basic_manifest_file)
         assert m.image_name == "test-image"
         assert m.config == basic_config_obj
         assert len(m.target_builds) == basic_expected_num_target_builds
@@ -630,9 +637,9 @@ class TestManifest:
     def test_render_image_template(self, basic_tmpcontext):
         """Test rendering the image template for a new version creates the expected files"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config.load(config_file)
+        c = Config._load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest._load(c, image_dir / "manifest.toml")
         m.render_image_template("1.0.1")
         new_version_dir = image_dir / "1.0.1"
         assert new_version_dir.is_dir()
@@ -651,9 +658,9 @@ class TestManifest:
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config.load(config_file)
+        c = Config._load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest._load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -682,9 +689,9 @@ class TestManifest:
     def test_new_version_no_save(self, basic_tmpcontext):
         """Test save=False does not update the manifest file when creating a new version"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config.load(config_file)
+        c = Config._load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest.load(c, image_dir / "manifest.toml")
+        m = Manifest._load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1", save=False)
         new_version_dir = image_dir / "1.0.1"
 

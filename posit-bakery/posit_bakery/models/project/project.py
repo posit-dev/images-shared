@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Union, List, Dict, Any, Tuple
 
 import jinja2
+from pydantic import BaseModel
 
 from posit_bakery.error import (
     BakeryFileNotFoundError,
@@ -15,6 +16,7 @@ from posit_bakery.error import (
     BakeryTemplatingError,
 )
 from posit_bakery.models import Config, Manifest
+from posit_bakery.models.project.image import Image
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 import posit_bakery.util as util
 
@@ -22,14 +24,14 @@ import posit_bakery.util as util
 log = logging.getLogger("rich")
 
 
-class Project:
-    def __init__(self) -> None:
-        self.context: Path = None
-        self.config: Config = None
-        self.manifests: Dict[str, "Manifest"] = {}
+class Project(BaseModel):
+    context: Path = None
+    config: Config = None
+    manifests: Dict[str, Manifest] = {}
+    images: List[Image] = []
 
     @classmethod
-    def load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
+    def _load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
         """Create a Project object and load config and manifests into it from a context directory
 
         :param context: The path to the context directory
@@ -42,6 +44,74 @@ class Project:
         project.config = project.load_context_config(project.context, ignore_override)
         project.manifests = project.load_config_manifests(project.config)
         return project
+
+    @classmethod
+    def load(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
+        """Create a Project object and load config and manifests into it from a context directory
+
+        :param context: The path to the context directory
+        :param ignore_override: If true, ignores config.override.toml if it exists
+        """
+        project = cls()
+        project.context = Path(context)
+        if not project.context.is_dir():
+            raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
+        project.config = project.load_config(project.context)
+        project.manifests = project.load_manifests(project.config)
+
+        return project
+
+    @staticmethod
+    def load_config(context: Union[str, bytes, os.PathLike]) -> Config:
+        """Load the project configuration from a context directory
+
+        :param context: The path to the context directory
+        :param ignore_override: If true, ignores config.override.toml if it exists
+        """
+        context = Path(context)
+        if not context.is_dir():
+            raise BakeryFileNotFoundError(f"Directory {context} does not exist.")
+        config_filepath = context / "config.toml"
+        if not config_filepath.is_file():
+            raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
+        config = Config.load(config_filepath)
+
+        return config
+
+    @staticmethod
+    def load_manifests(config: Config) -> Dict[str, "Manifest"]:
+        """Loads all manifests from a context directory
+
+        :param config: The project configuration
+        """
+        manifests = {}
+        for manifest_file in config.context.rglob("manifest.toml"):
+            m = Manifest.load(manifest_file)
+            if m.image_name in manifests:
+                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
+            manifests[m.image_name] = m
+        return manifests
+
+    @staticmethod
+    def load_images(manifests: List[Manifest]) -> List[Image]:
+        """Loads all images from the context directory"""
+        images: List[Image] = []
+        for manifest in manifests:
+            images.append(Image(manifest.model))
+
+    @staticmethod
+    def load_config_manifests(config: Config) -> Dict[str, "Manifest"]:
+        """Loads all manifests from a context directory
+
+        :param config: The project configuration
+        """
+        manifests = {}
+        for manifest_file in config.context.rglob("manifest.toml"):
+            m = Manifest._load(config, manifest_file)
+            if m.image_name in manifests:
+                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
+            manifests[m.image_name] = m
+        return manifests
 
     @staticmethod
     def load_context_config(context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> Config:
@@ -56,28 +126,14 @@ class Project:
         config_filepath = context / "config.toml"
         if not config_filepath.is_file():
             raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config.load(config_filepath)
+        config = Config._load(config_filepath)
 
         override_config_filepath = context / "config.override.toml"
         if not ignore_override and override_config_filepath.is_file():
-            override_config = Config.load(override_config_filepath)
+            override_config = Config._load(override_config_filepath)
             config.update(override_config)
 
         return config
-
-    @staticmethod
-    def load_config_manifests(config: Config) -> Dict[str, "Manifest"]:
-        """Loads all manifests from a context directory
-
-        :param config: The project configuration
-        """
-        manifests = {}
-        for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest.load(config, manifest_file)
-            if m.image_name in manifests:
-                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
-            manifests[m.image_name] = m
-        return manifests
 
     def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
         """Create a new image in the project with associated file structure from templates

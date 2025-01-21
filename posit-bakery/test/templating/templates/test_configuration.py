@@ -20,7 +20,7 @@ def test_config_template_render(tmpdir):
             repo_url="github.com/rstudio/example",
         )
         f.write(config_toml_data)
-    c = Config.load(config_toml)
+    c = Config._load(config_toml)
     assert len(c.registries) == 1
     assert c.registries[0].host == "docker.io"
     assert c.registries[0].namespace == "posit"
@@ -39,5 +39,5 @@ def test_manifest_template_render(tmpdir, basic_config_obj):
             image_name="example",
         )
         f.write(manifest_toml_data)
-    m = Manifest.load(basic_config_obj, manifest_toml)
+    m = Manifest._load(basic_config_obj, manifest_toml)
     assert m.image_name == "example"

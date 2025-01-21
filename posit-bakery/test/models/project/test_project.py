@@ -9,12 +9,16 @@ import tomlkit
 
 from posit_bakery.models import Manifest, Project
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.project,
+]
 
-@pytest.mark.project
-class TestProject:
+
+class TestProjectLoad:
     def test_from_context(self, basic_context, basic_expected_num_target_builds):
         """Test creating a Project object from the basic suite context path"""
-        p = Project.load(basic_context)
+        p = Project._load(basic_context)
         assert p.context == basic_context
         assert len(p.config.registry_urls) == 2
         assert "test-image" in p.manifests
@@ -55,9 +59,11 @@ class TestProject:
         assert isinstance(m["test-image"], Manifest)
         assert len(m["test-image"].target_builds) == basic_expected_num_target_builds
 
+
+class TestProjectImage:
     def test_new_image(self, basic_tmpcontext):
         """Test creating a new image"""
-        p = Project.load(basic_tmpcontext)
+        p = Project._load(basic_tmpcontext)
         p.new_image("new-image")
         new_image_path = Path(basic_tmpcontext) / "new-image"
         assert new_image_path.is_dir()
@@ -72,7 +78,7 @@ class TestProject:
     def test_new_image_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         image_dir = basic_tmpcontext / "test-image"
-        p = Project.load(basic_tmpcontext)
+        p = Project._load(basic_tmpcontext)
         p.new_image_version("test-image", "1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -98,8 +104,10 @@ class TestProject:
         assert d["build"]["1.0.1"]["latest"] is True
         assert d["build"]["1.0.1"]["os"] == ["Ubuntu 2204"]
 
+
+class TestProjectBuild:
     def test_render_bake_plan(self, basic_context, basic_expected_num_target_builds):
-        p = Project.load(basic_context)
+        p = Project._load(basic_context)
         plan = p.render_bake_plan()
         assert len(plan["group"]) == 4
         assert "default" in plan["group"]
@@ -119,7 +127,7 @@ class TestProject:
     def test_build(self, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
-        p = Project.load(basic_tmpcontext)
+        p = Project._load(basic_tmpcontext)
         p.build()
         subprocess.run.assert_called_once()
         assert subprocess.run.call_args[0][0] == [
@@ -131,7 +139,7 @@ class TestProject:
         ]
 
     def test_render_dgoss_commands(self, basic_context):
-        p = Project.load(basic_context)
+        p = Project._load(basic_context)
 
         manifest_std = p.manifests["test-image"].filter_target_builds("1.0.0", "std")[0]
         goss_std = manifest_std.goss
@@ -169,7 +177,7 @@ class TestProject:
     def test_dgoss(self, basic_context):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
-        p = Project.load(basic_context)
+        p = Project._load(basic_context)
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):

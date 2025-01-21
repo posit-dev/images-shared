@@ -6,6 +6,7 @@ from typing import Set, Union, List
 import git
 
 from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
 
@@ -21,6 +22,18 @@ class Config(GenericTOMLModel):
 
     __registries: List[ConfigRegistry]
     repository: ConfigRepository
+
+    @classmethod
+    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
+        """Load a Config object from a TOML file
+
+        :param filepath: Path to the config.toml file
+        """
+        filepath = Path(filepath)
+        document = cls.read(filepath)
+        model = ConfigDocument(**document.unwrap())
+
+        return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
 
     @property
     def registries(self) -> List[ConfigRegistry]:
@@ -70,7 +83,7 @@ class Config(GenericTOMLModel):
         return sha
 
     @classmethod
-    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
+    def _load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
         """Load a Config object from a TOML file
 
         :param filepath: Path to the config.toml file

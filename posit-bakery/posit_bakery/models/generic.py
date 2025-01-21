@@ -19,6 +19,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     filepath: Path
     context: Path
     document: tomlkit.TOMLDocument
+    model: BaseModel = None
 
     @staticmethod
     def read(filepath: Union[str, bytes, os.PathLike]) -> tomlkit.TOMLDocument:

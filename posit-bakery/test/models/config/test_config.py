@@ -5,8 +5,16 @@ from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
 
-@pytest.mark.config
+
+class TestConfigLoad:
+    pass
+
+
 class TestConfig:
     def test_create_config(self, basic_context, basic_config_file):
         """Test creating a generic Config object does not raise an exception and test data appears as expected"""
@@ -31,7 +39,7 @@ class TestConfig:
 
     def test_load_file(self, basic_config_file):
         """Test that the load_file method returns a Config object with expected data"""
-        c = Config.load(basic_config_file)
+        c = Config._load(basic_config_file)
         assert c.authors == ["Author 1 <author1@posit.co>", "Author 2 <author2@posit.co>"]
         assert c.repository_url == "github.com/posit-dev/images-shared"
         assert c.vendor == "Posit Software, PBC"

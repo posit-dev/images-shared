@@ -15,6 +15,7 @@ from tomlkit import TOMLDocument
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
 from posit_bakery.models import Config
 from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 
 
@@ -306,6 +307,22 @@ class Manifest(GenericTOMLModel):
 
     __target_builds: Set[TargetBuild] = None
 
+    @classmethod
+    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
+        """Load a Config object from a TOML file
+
+        :param filepath: Path to the config.toml file
+        """
+        filepath = Path(filepath)
+        document = cls.read(filepath)
+        model = ManifestDocument(**document.unwrap())
+
+        return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
+
+    @property
+    def image_name(self) -> str:
+        return str(self.model["image_name"])
+
     @property
     def types(self) -> Set[str]:
         """Get the target types present in the target builds"""
@@ -355,7 +372,7 @@ class Manifest(GenericTOMLModel):
         return results
 
     @classmethod
-    def load(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
+    def _load(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
         """Load a Manifest object from a TOML file
 
         :param config: Config object for the repository
