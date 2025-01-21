@@ -85,6 +85,7 @@ class ManifestSnykTest(BaseModel):
     ] = DEFAULT_SNYK_TEST_SEVERITY_THRESHOLD
     include_app_vulns: bool = True
     include_base_image_vulns: bool = False
+    include_node_modules: bool = True
     output: Annotated[ManifestSnykTestOutput, Field(default_factory=ManifestSnykTestOutput)]
 
     @field_validator("severity_threshold", mode="wrap")
@@ -103,6 +104,7 @@ class ManifestSnykTest(BaseModel):
 
 class ManifestSnykMonitor(BaseModel):
     include_app_vulns: bool = True
+    include_node_modules: bool = True
     output_json: bool = False
     environment: List[str] | str | None = None
     lifecycle: List[str] | str | None = None
