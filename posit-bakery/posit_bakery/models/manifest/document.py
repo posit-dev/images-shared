@@ -1,8 +1,9 @@
 import re
-from typing import Dict
+from typing import Dict, Annotated
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
+from posit_bakery.models.manifest.snyk import ManifestSnyk
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
 
@@ -36,6 +37,7 @@ class ManifestDocument(BaseModel):
     image_name: str
     build: Dict[str, ManifestBuild] = {}
     target: Dict[str, ManifestTarget] = {}
+    snyk: Annotated[ManifestSnyk, Field(default_factory=ManifestSnyk)]
 
     @field_validator("image_name", mode="after")
     @classmethod
