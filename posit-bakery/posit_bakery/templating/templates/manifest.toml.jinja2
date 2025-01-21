@@ -65,6 +65,7 @@ image_name = "{{ image_name }}"
 # lifecycle = "production"  # Defaults to None if not specified. See Snyk documentation for values.
 # business_criticality = "medium"  # Defaults to None if not specified. See Snyk documentation for values.
 # [snyk.monitor.tags]
+{% raw %}
 # # Tags below will be automatically added unless overridden.
 # image_name = "{{ image_name }}"
 # image_tag = "{{ os.distributor_id | lower }}{{ build.version | condense }}"
@@ -72,6 +73,7 @@ image_name = "{{ image_name }}"
 # os_version = "{{ os.version }}"
 # version = "{{ build.version }}"
 # image_type = "{{ target.name }}"
+{% endraw %}
 # [snyk.sbom]
 # include_app_vulns = true  # Defaults to true if not specified.
 # format = "cyclonedx1.5+json"  # Defaults to "cyclonedx1.5+json" if not specified. See Snyk documentation for values.
