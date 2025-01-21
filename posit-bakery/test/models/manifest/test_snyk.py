@@ -1,5 +1,4 @@
 import pytest
-from pydantic import ValidationError
 
 from posit_bakery.models.manifest import snyk
 
@@ -10,6 +9,23 @@ class TestManifestSnykTestOutput:
     def test_empty_init(self):
         """Test creating a generic ManifestSnykTestOutput object does not raise an exception"""
         snyk.ManifestSnykTestOutput()
+
+    @pytest.mark.parametrize(
+        "fmt,expect_warning",
+        [
+            ("sarif", False),
+            ("json", False),
+            ("default", False),
+            ("invalid", True),
+        ],
+    )
+    def test_format_validation(self, caplog, fmt, expect_warning):
+        """Test the format field validation"""
+        snyk.ManifestSnykTestOutput(format=fmt)
+        if expect_warning:
+            assert "WARNING" in caplog.text
+        else:
+            assert "WARNING" not in caplog.text
 
 
 @pytest.mark.manifest
@@ -23,7 +39,7 @@ class TestManifestSnykTest:
         """Test creating a generic ManifestSnykTest object does not raise an exception"""
         t = snyk.ManifestSnykTest()
         assert t.output is not None
-        assert t.output.json is False
+        assert t.output.format == "default"
 
     @pytest.mark.parametrize(
         "severity_threshold,expect_warning",
@@ -166,3 +182,43 @@ class TestManifestSnyk:
         assert isinstance(s.test.output, snyk.ManifestSnykTestOutput)
         assert isinstance(s.monitor, snyk.ManifestSnykMonitor)
         assert isinstance(s.sbom, snyk.ManifestSnykSbom)
+
+    def test_create(self, caplog):
+        """Test creating a ManifestSnyk object with valid data does not raise an exception"""
+        s = snyk.ManifestSnyk(
+            test={
+                "severity_threshold": "high",
+                "include_base_image_vulns": True,
+                "output": {
+                    "format": "sarif",
+                    "json_file": True,
+                },
+            },
+            monitor={
+                "output_json": True,
+                "environment": "distributed",
+                "lifecycle": "development",
+                "business_criticality": "high",
+                "tags": {
+                    "key-1": "value@1",
+                    "key_2": "value?2",
+                },
+            },
+            sbom={
+                "format": "cyclonedx1.4+xml",
+            },
+        )
+        assert "WARNING" not in caplog.text
+        assert s.test.severity_threshold == "high"
+        assert s.test.include_base_image_vulns is True
+        assert s.test.output.format == "sarif"
+        assert s.test.output.json_file is True
+        assert s.monitor.output_json is True
+        assert s.monitor.environment == "distributed"
+        assert s.monitor.lifecycle == "development"
+        assert s.monitor.business_criticality == "high"
+        assert s.monitor.tags == {
+            "key-1": "value@1",
+            "key_2": "value?2",
+        }
+        assert s.sbom.format == "cyclonedx1.4+xml"
