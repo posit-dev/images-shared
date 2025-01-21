@@ -134,5 +134,5 @@ class Image(BaseModel):
         return cls(name=manifest.image_name, context=context, versions=versions)
 
     @property
-    def targets(self):
+    def variants(self) -> List[ImageVariant]:
         return [variant for version in self.versions for variant in version.variants]

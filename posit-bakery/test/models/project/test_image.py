@@ -35,7 +35,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "v0.1.0"
+        assert image.versions[0].version == "0.1.0"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is False
@@ -49,7 +49,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "v1.2.3"
+        assert image.versions[0].version == "1.2.3"
 
         assert len(image.versions[0].variants) == 1
         assert image.versions[0].variants[0].latest is True
@@ -63,9 +63,9 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 1
-        assert image.versions[0].version == "multi-os"
+        assert image.versions[0].version == "2.1.5"
         assert len(image.versions[0].variants) == 6
-        assert len(image.targets) == 6
+        assert len(image.variants) == 6
 
     def test_load_matrix(self, manifest_matrix):
         """Test creating an image with multiple builds and targets"""
@@ -76,7 +76,7 @@ class TestImageMatrix:
         assert image.context == self.context
 
         assert len(image.versions) == 3
-        assert len(image.targets) == 20
+        assert len(image.variants) == 20
 
 
 @pytest.mark.image
@@ -94,7 +94,7 @@ class TestImageMetadata:
 
         assert labels.posit_prefix == "co.posit.image"
         assert labels.posit.get("name") == "simple-image"
-        assert labels.posit.get("version") == "v0.1.0"
+        assert labels.posit.get("version") == "0.1.0"
         assert labels.posit.get("type") == "min"
         assert labels.posit.get("os") == "Ubuntu 24.04"
 
@@ -131,8 +131,8 @@ class TestImageMetadata:
     def test_tags_default(self, manifest_simple):
         """Ensure default tags are being added to the image"""
         expected_tags: List[str] = [
-            "v0.1.0-ubuntu-24.04-min",
-            "v0.1.0-min",
+            "0.1.0-ubuntu-24.04-min",
+            "0.1.0-min",
         ]
 
         with patch("pathlib.Path.is_file", side_effect=[True]):
@@ -146,8 +146,8 @@ class TestImageMetadata:
     def test_tags_default_latest(self, manifest_latest):
         """Ensure string tags are being added to the image"""
         expected_tags: List[str] = [
-            "v1.2.3-ubuntu-24.04-min",
-            "v1.2.3-min",
+            "1.2.3-ubuntu-24.04-min",
+            "1.2.3-min",
             "ubuntu-24.04-min",
             "latest",
         ]
