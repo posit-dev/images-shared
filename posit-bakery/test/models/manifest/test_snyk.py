@@ -26,7 +26,7 @@ class TestManifestSnykTest:
         assert t.output.json is False
 
     @pytest.mark.parametrize(
-        "severity_threshold,expect_error",
+        "severity_threshold,expect_warning",
         [
             ("low", False),
             ("medium", False),
@@ -35,13 +35,13 @@ class TestManifestSnykTest:
             ("invalid", True),
         ],
     )
-    def test_severity_threshold_validation(self, severity_threshold, expect_error):
+    def test_severity_threshold_validation(self, caplog, severity_threshold, expect_warning):
         """Test the severity_threshold field validation"""
-        if expect_error:
-            with pytest.raises(ValidationError):
-                snyk.ManifestSnykTest(severity_threshold=severity_threshold)
+        snyk.ManifestSnykTest(severity_threshold=severity_threshold)
+        if expect_warning:
+            assert "WARNING" in caplog.text
         else:
-            snyk.ManifestSnykTest(severity_threshold=severity_threshold)
+            assert "WARNING" not in caplog.text
 
     def test_output_validation(self):
         """Test the output field can be passed in"""
@@ -56,7 +56,7 @@ class TestManifestSnykMonitor:
         snyk.ManifestSnykMonitor()
 
     @pytest.mark.parametrize(
-        "environment,expect_error",
+        "environment,expect_warning",
         [
             ("frontend", False),
             ("backend", False),
@@ -68,16 +68,16 @@ class TestManifestSnykMonitor:
             ("invalid", True),
         ],
     )
-    def test_environment_validation(self, environment, expect_error):
+    def test_environment_validation(self, caplog, environment, expect_warning):
         """Test the environment field validation"""
-        if expect_error:
-            with pytest.raises(ValidationError):
-                snyk.ManifestSnykMonitor(environment=environment)
+        snyk.ManifestSnykMonitor(environment=environment)
+        if expect_warning:
+            assert "WARNING" in caplog.text
         else:
-            snyk.ManifestSnykMonitor(environment=environment)
+            assert "WARNING" not in caplog.text
 
     @pytest.mark.parametrize(
-        "lifecycle,expect_error",
+        "lifecycle,expect_warning",
         [
             ("development", False),
             ("sandbox", False),
@@ -85,16 +85,16 @@ class TestManifestSnykMonitor:
             ("invalid", True),
         ],
     )
-    def test_lifecycle_validation(self, lifecycle, expect_error):
+    def test_lifecycle_validation(self, caplog, lifecycle, expect_warning):
         """Test the lifecycle field validation"""
-        if expect_error:
-            with pytest.raises(ValidationError):
-                snyk.ManifestSnykMonitor(lifecycle=lifecycle)
+        snyk.ManifestSnykMonitor(lifecycle=lifecycle)
+        if expect_warning:
+            assert "WARNING" in caplog.text
         else:
-            snyk.ManifestSnykMonitor(lifecycle=lifecycle)
+            assert "WARNING" not in caplog.text
 
     @pytest.mark.parametrize(
-        "business_criticality,expect_error",
+        "business_criticality,expect_warning",
         [
             ("low", False),
             ("medium", False),
@@ -103,13 +103,13 @@ class TestManifestSnykMonitor:
             ("invalid", True),
         ],
     )
-    def test_business_criticality_validation(self, business_criticality, expect_error):
+    def test_business_criticality_validation(self, caplog, business_criticality, expect_warning):
         """Test the business_criticality field validation"""
-        if expect_error:
-            with pytest.raises(ValidationError):
-                snyk.ManifestSnykMonitor(business_criticality=business_criticality)
+        snyk.ManifestSnykMonitor(business_criticality=business_criticality)
+        if expect_warning:
+            assert "WARNING" in caplog.text
         else:
-            snyk.ManifestSnykMonitor(business_criticality=business_criticality)
+            assert "WARNING" not in caplog.text
 
     @pytest.mark.parametrize(
         "tags,expect_warning",
@@ -137,7 +137,7 @@ class TestManifestSnykSbom:
         snyk.ManifestSnykSbom()
 
     @pytest.mark.parametrize(
-        "format,expect_error",
+        "fmt,expect_warning",
         [
             ("cyclonedx1.4+json", False),
             ("cyclonedx1.4+xml", False),
@@ -147,13 +147,13 @@ class TestManifestSnykSbom:
             ("invalid", True),
         ],
     )
-    def test_format_validation(self, format, expect_error):
+    def test_format_validation(self, caplog, fmt, expect_warning):
         """Test the format field validation"""
-        if expect_error:
-            with pytest.raises(ValidationError):
-                snyk.ManifestSnykSbom(format=format)
+        snyk.ManifestSnykSbom(format=fmt)
+        if expect_warning:
+            assert "WARNING" in caplog.text
         else:
-            snyk.ManifestSnykSbom(format=format)
+            assert "WARNING" not in caplog.text
 
 
 @pytest.mark.manifest
