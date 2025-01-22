@@ -314,9 +314,9 @@ class Manifest(GenericTOMLModel):
         return str(self.model.image_name)
 
     @property
-    def types(self) -> Set[str]:
+    def types(self) -> List[str]:
         """Get the target types present in the target builds"""
-        return set(target.type for target in self.model.target.keys())
+        return [target.type for target in self.model.target.keys()]
 
     @property
     def versions(self) -> Set[str]:

@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from pathlib import Path
@@ -155,11 +154,12 @@ def plan(
     If only an image name is provided, the command will auto-discover that image's bake file and will also load the
     root bake file and any override bake files if they exist.
     """
-    project = Project._load(context, skip_override)
+    # TODO; Add skip_override back in
+    project = Project.load(context)
     bake_plan = project.render_bake_plan(image_name, image_version)
-    print_json(json.dumps(bake_plan), indent=2)
+    print_json(bake_plan.model_dump_json(), indent=2)
     with open(output_file, "w") as f:
-        f.write(json.dumps(bake_plan, indent=2))
+        f.write(bake_plan.model_dump_json(indent=2))
 
 
 @app.command()

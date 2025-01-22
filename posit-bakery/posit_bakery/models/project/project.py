@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import subprocess
@@ -263,7 +262,7 @@ class Project(BaseModel):
         bake_plan = self.render_bake_plan(image_name, image_version, image_type)
         build_file = self.context / ".docker-bake.json"
         with open(build_file, "w") as f:
-            json.dump(bake_plan, f, indent=2)
+            f.write(bake_plan.model_dump_json(indent=2))
 
         cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
         if load:
