@@ -64,6 +64,8 @@ class ImageVariant(BaseModel):
         filepaths: List[Path] = [
             context / f"Containerfile.{build_os.condensed}.{target}",
             context / f"Containerfile.{target}",
+            context / f"Containerfile.{build_os.condensed}",
+            context / f"Containerfile",
         ]
         for filepath in filepaths:
             if filepath.is_file():

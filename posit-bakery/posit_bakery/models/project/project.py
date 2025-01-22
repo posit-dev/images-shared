@@ -16,6 +16,7 @@ from posit_bakery.error import (
     BakeryTemplatingError,
 )
 from posit_bakery.models import Config, Manifest
+from posit_bakery.models.project.bake import BakePlan, ImageFilter
 from posit_bakery.models.project.image import Image
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 import posit_bakery.util as util
@@ -234,33 +235,12 @@ class Project(BaseModel):
         :param image_version: (Optional) The version of the image to render a bake plan for
         :param image_type: (Optional) The type of the image to render a bake plan for
         """
-        bake_plan = {
-            "group": {"default": {"targets": []}},
-            "target": {},
-        }
-
-        for manifest in self.manifests.values():
-            if image_name and manifest.image_name != image_name:
-                continue
-
-            if manifest.image_name not in bake_plan["group"]:
-                bake_plan["group"][manifest.image_name] = {"targets": []}
-
-            for target_build in manifest.filter_target_builds(build_version=image_version, target_type=image_type):
-                if target_build.type not in bake_plan["group"]:
-                    bake_plan["group"][target_build.type] = {"targets": []}
-
-                target_definition = {
-                    "context": ".",
-                    "dockerfile": str(target_build.containerfile_path.relative_to(self.context)),
-                    "labels": target_build.labels,
-                    "tags": target_build.get_tags(),
-                }
-                bake_plan["target"][target_build.uid] = target_definition
-                bake_plan["group"]["default"]["targets"].append(target_build.uid)
-                bake_plan["group"][manifest.image_name]["targets"].append(target_build.uid)
-                bake_plan["group"][target_build.type]["targets"].append(target_build.uid)
-        return bake_plan
+        filter: ImageFilter = ImageFilter(
+            image_name=image_name,
+            image_version=image_version,
+            target_type=image_type,
+        )
+        return BakePlan.create(config=self.config.model, images=self.images.values(), filter=filter)
 
     def build(
         self,

@@ -119,20 +119,20 @@ class TestProjectBuild:
     def test_render_bake_plan(self, basic_context, basic_expected_num_variants):
         p = Project.load(basic_context)
         plan = p.render_bake_plan()
-        assert len(plan["group"]) == 4
-        assert "default" in plan["group"]
-        assert "test-image" in plan["group"]
-        assert "std" in plan["group"]
-        assert "min" in plan["group"]
-        assert len(plan["group"]["default"]["targets"]) == basic_expected_num_variants
-        assert len(plan["target"]) == basic_expected_num_variants
-        for target_data in plan["target"].values():
-            assert "context" in target_data
-            assert "dockerfile" in target_data
-            assert (Path(basic_context) / target_data["dockerfile"]).is_file()
-            assert not Path(target_data["dockerfile"]).is_absolute()
-            assert "labels" in target_data
-            assert "tags" in target_data
+        assert len(plan.group) == 4
+        assert "default" in plan.group
+        assert "test-image" in plan.group
+        assert "std" in plan.group
+        assert "min" in plan.group
+        assert len(plan.group["default"].targets) == basic_expected_num_variants
+        assert len(plan.target) == basic_expected_num_variants
+        for target_data in plan.target.values():
+            assert target_data.context
+            assert target_data.dockerfile
+            assert (Path(basic_context) / target_data.dockerfile).is_file()
+            assert not Path(target_data.dockerfile).is_absolute()
+            assert target_data.labels
+            assert target_data.tags
 
     def test_build(self, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
