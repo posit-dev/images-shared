@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from posit_bakery.models.project.bake import BakePlan
+from posit_bakery.models.project.bake import BakePlan, ImageFilter
 from posit_bakery.models.project.image import Image
 
 from .fixtures import (
@@ -186,3 +186,34 @@ class TestBakePlan:
         assert "docker.io/posit/simple-image:0.1.0-ubuntu-24.04-min" in tags
         assert "ghcr.io/posit-dev/simple-image:0.1.0-min" in tags
         assert "ghcr.io/posit-dev/simple-image:0.1.0-ubuntu-24.04-min" in tags
+
+    def test_bake_plan_filter(
+        self,
+        basic_config_obj,
+        basic_images_obj,
+        basic_manifest_os_plus_versions,
+        basic_expected_num_variants,
+    ):
+        """Test bake plan filtering"""
+        plan: BakePlan
+
+        plan = BakePlan.create(
+            config=basic_config_obj.model,
+            images=basic_images_obj.values(),
+            filter=ImageFilter(build_version="1.0.0"),
+        )
+        assert len(plan.target) == basic_expected_num_variants
+
+        plan = BakePlan.create(
+            config=basic_config_obj.model,
+            images=basic_images_obj.values(),
+            filter=ImageFilter(target_type="min"),
+        )
+        assert len(plan.target) == len(basic_manifest_os_plus_versions)
+
+        plan = BakePlan.create(
+            config=basic_config_obj.model,
+            images=basic_images_obj.values(),
+            filter=ImageFilter(target_type="std"),
+        )
+        assert len(plan.target) == len(basic_manifest_os_plus_versions)

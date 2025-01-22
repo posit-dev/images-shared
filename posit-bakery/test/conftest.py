@@ -111,6 +111,19 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
 
 
 @pytest.fixture
+def basic_images_obj(basic_manifest_obj):
+    """Return a dict of images loaded from the basic test suite manifest.toml file"""
+    from posit_bakery.models import Image
+
+    return {
+        basic_manifest_obj.image_name: Image.load(
+            context=basic_manifest_obj.context,
+            manifest=basic_manifest_obj.model,
+        )
+    }
+
+
+@pytest.fixture
 def basic_expected_num_variants(basic_manifest_types, basic_manifest_os_plus_versions):
     """Returns the expected number of target builds for the basic manifest.toml"""
     return len(basic_manifest_types) * len(basic_manifest_os_plus_versions)

@@ -15,7 +15,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     :param document: tomlkit.TOMLDocument object
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     filepath: Path
     context: Path

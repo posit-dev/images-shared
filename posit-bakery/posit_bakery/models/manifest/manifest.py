@@ -316,12 +316,12 @@ class Manifest(GenericTOMLModel):
     @property
     def types(self) -> List[str]:
         """Get the target types present in the target builds"""
-        return [target.type for target in self.model.target.keys()]
+        return [_type for _type in self.model.target.keys()]
 
     @property
-    def versions(self) -> Set[str]:
+    def versions(self) -> List[str]:
         """Get the build versions present in the target builds"""
-        return self.model.version
+        return [version for version in self.model.build.keys()]
 
     def filter_target_builds(
         self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
@@ -449,6 +449,7 @@ class Manifest(GenericTOMLModel):
                 f"Build version '{version}' already exists in manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
             )
         else:
+            # TODO:
             self.append_build_version(version, mark_latest)
         self.target_builds = TargetBuild.load(self.config, self.context, self.document)
         if save:

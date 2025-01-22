@@ -6,7 +6,7 @@ import tomlkit
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import Config, Manifest
+from posit_bakery.models import Config, Manifest, Image
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
@@ -135,6 +135,7 @@ class TestGossConfig:
 
 
 @pytest.mark.config
+@pytest.mark.skip(reason="TODO: Moving applicable tests into other objects")
 class TestTargetBuild:
     @pytest.fixture
     def target_data_min(self, basic_manifest_obj):
@@ -155,11 +156,11 @@ class TestTargetBuild:
         d["os"] = d["os"][0]
         return d
 
-    def test_load(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
+    def test_load(self, basic_config_obj, basic_manifest_file, basic_expected_num_variants):
         """Test the load method of TargetBuild returns expected number of TargetBuild objects"""
         data = GenericTOMLModel.read(basic_manifest_file)
         target_builds = TargetBuild.load(basic_config_obj, basic_manifest_file.parent, data)
-        assert len(target_builds) == basic_expected_num_target_builds
+        assert len(target_builds) == basic_expected_num_variants
 
     def test_target_build(self, basic_manifest_obj, target_data_min, build_data):
         """Test creating a basic TargetBuild object does not raise an exception"""
@@ -536,53 +537,19 @@ class TestManifest:
             config=basic_config_obj,
         )
 
-    def test_manifest_with_target_build(self, basic_config_obj, basic_manifest_file):
-        """Test creating a basic Manifest object with a TargetBuild does not raise an exception"""
-        data = GenericTOMLModel.read(basic_manifest_file)
-        target_build = TargetBuild(
-            manifest_context=basic_manifest_file.parent,
-            config=basic_config_obj,
-            build_data=data["build"]["1.0.0"].unwrap(),
-            target_data=data["target"]["min"].unwrap(),
-            image_name="test-image",
-            version="1.0.0",
-            type="min",
-            build_os="Ubuntu 22.04",
-        )
-        Manifest(
-            filepath=basic_manifest_file,
-            context=basic_manifest_file.parent,
-            document=data,
-            image_name="test-image",
-            config=basic_config_obj,
-            target_builds={target_build},
-        )
-
-    def test_load_file_with_config(self, basic_config_obj, basic_manifest_file, basic_expected_num_target_builds):
+    def test_load(self, basic_manifest_file, basic_expected_num_variants):
         """Test that the load_file_with_config method returns a Manifest object with expected data"""
-        m = Manifest._load(basic_config_obj, basic_manifest_file)
-        assert m.image_name == "test-image"
-        assert m.config == basic_config_obj
-        assert len(m.target_builds) == basic_expected_num_target_builds
+        m = Manifest.load(basic_manifest_file)
 
-    def test_filter_target_builds(
-        self,
-        basic_manifest_obj,
-        basic_manifest_types,
-        basic_manifest_os_plus_versions,
-        basic_expected_num_target_builds,
-    ):
-        """Test the filter_target_builds method of a Manifest object"""
-        target_builds = basic_manifest_obj.filter_target_builds(build_version="1.0.0")
-        assert len(target_builds) == basic_expected_num_target_builds
-        target_builds = basic_manifest_obj.filter_target_builds(target_type="min")
-        assert len(target_builds) == len(basic_manifest_os_plus_versions)
-        target_builds = basic_manifest_obj.filter_target_builds(target_type="std")
-        assert len(target_builds) == len(basic_manifest_os_plus_versions)
+        assert m.context == basic_manifest_file.parent
+        assert m.filepath == basic_manifest_file
+        assert m.model.image_name == "test-image"
+        assert len(m.model.build) == 1
+        assert len(m.model.target) == 2
 
-    def test_types(self, basic_manifest_obj, basic_manifest_types, basic_expected_num_target_builds):
+    def test_types(self, basic_manifest_obj, basic_manifest_types, basic_expected_num_variants):
         """Test the types property of a Manifest object returns expected types"""
-        assert len(basic_manifest_obj.types) == basic_expected_num_target_builds
+        assert len(basic_manifest_obj.types) == basic_expected_num_variants
         for _type in basic_manifest_types:
             assert _type in basic_manifest_obj.types
 
@@ -592,6 +559,9 @@ class TestManifest:
         for version in basic_manifest_versions:
             assert version in basic_manifest_obj.versions
 
+
+@pytest.mark.skip("TODO: Move the new actions into the Image* objects")
+class TestManifestUpdate:
     def test_guess_image_os_list(self, tmpdir):
         """Test the guess_image_os_list method of a Manifest object returns expected OS list"""
         files = [

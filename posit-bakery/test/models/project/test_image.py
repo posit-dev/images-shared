@@ -198,7 +198,7 @@ class TestImageVariant:
         _os: str = "Ubuntu 24.04"
         target: str = "min"
 
-        with patch("pathlib.Path.is_file", side_effect=[False, False, False]):
+        with patch("pathlib.Path.is_file", side_effect=[False] * 4):
             with pytest.raises(BakeryFileNotFoundError):
                 ImageVariant.find_containerfile(self.context, _os, target)
 
