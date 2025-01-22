@@ -295,17 +295,7 @@ class TargetBuild(BaseModel):
 
 
 class Manifest(GenericTOMLModel):
-    """Models an image's manifest.toml file
-
-    :param image_name: Name of the image
-    :param config: Config object for the repository
-    :param target_builds: Set of TargetBuild objects for the image
-    """
-
-    image_name: str
-    config: Config
-
-    __target_builds: Set[TargetBuild] = None
+    """Simple wrapper around an image manifest.toml file"""
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
@@ -321,32 +311,17 @@ class Manifest(GenericTOMLModel):
 
     @property
     def image_name(self) -> str:
-        return str(self.model["image_name"])
+        return str(self.model.image_name)
 
     @property
     def types(self) -> Set[str]:
         """Get the target types present in the target builds"""
-        return set(target_build.type for target_build in self.target_builds)
+        return set(target.type for target in self.model.target.keys())
 
     @property
     def versions(self) -> Set[str]:
         """Get the build versions present in the target builds"""
-        return set(target_build.version for target_build in self.target_builds)
-
-    @property
-    def target_builds(self) -> List[TargetBuild]:
-        """Get the target builds for the manifest with consistent ordering"""
-        if self.__target_builds is None:
-            return []
-        t = list(self.__target_builds)
-        t.sort(key=lambda x: (x.version, x.type, x.build_os))
-        return t
-
-    @target_builds.setter
-    def target_builds(self, value: List[TargetBuild]):
-        """Set the target builds for the manifest"""
-        t = set(value)
-        self.__target_builds = t
+        return self.model.version
 
     def filter_target_builds(
         self, build_version: str = None, target_type: str = None, build_os: str = None, is_latest: bool = None
@@ -410,21 +385,6 @@ class Manifest(GenericTOMLModel):
                 os_list.append(" ".join(match.groups()).title())
         os_list = list(set(os_list))
         return os_list
-
-    def append_build_version(self, version: str, mark_latest: bool = True) -> None:
-        """Append a new build version to the manifest document
-
-        :param version: Build version to append
-        :param mark_latest: Mark the new build version as the latest and remove the latest flag from other versions
-        """
-        build_data = {}
-        if mark_latest:
-            for build in self.document["build"].values():
-                build.pop("latest")
-            build_data["latest"] = True
-        if "os" not in self.document.get("const", {}):
-            build_data["os"] = self.guess_image_os_list(self.context / version)
-        self.document["build"].append(version, build_data)
 
     def render_image_template(self, version: str, value_map: Dict[str, str] = None) -> None:
         """Render the image template files for a new version

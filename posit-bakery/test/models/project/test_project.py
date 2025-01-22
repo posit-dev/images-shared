@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import tomlkit
 
-from posit_bakery.models import Manifest, Project
+from posit_bakery.models import Image, Manifest, Project
 
 pytestmark = [
     pytest.mark.unit,
@@ -16,13 +16,13 @@ pytestmark = [
 
 
 class TestProjectLoad:
-    def test_from_context(self, basic_context, basic_expected_num_target_builds):
+    def test_from_context(self, basic_context, basic_expected_num_variants):
         """Test creating a Project object from the basic suite context path"""
-        p = Project._load(basic_context)
+        p = Project.load(basic_context)
         assert p.context == basic_context
         assert len(p.config.registry_urls) == 2
         assert "test-image" in p.manifests
-        assert len(p.manifests["test-image"].target_builds) == basic_expected_num_target_builds
+        assert len(p.images["test-image"].variants) == basic_expected_num_variants
 
     def test_load_config(self, basic_context):
         """Test loading the context config.toml file"""
@@ -52,13 +52,22 @@ class TestProjectLoad:
         assert len(c.registry_urls) == 1
         assert "docker.io/posit-dev" in c.registry_urls
 
-    def test_load_config_manifests(self, basic_config_obj, basic_expected_num_target_builds):
+    def test_load_manifests(self, basic_config_obj, basic_expected_num_variants):
         """Test loading manifests using a config object"""
-        m = Project.load_config_manifests(basic_config_obj)
+        m = Project.load_manifests(basic_config_obj)
+
         assert len(m) == 1
         assert "test-image" in m
         assert isinstance(m["test-image"], Manifest)
-        assert len(m["test-image"].target_builds) == basic_expected_num_target_builds
+
+    def test_load_images(self, basic_config_obj, basic_expected_num_variants):
+        """Test loading imageses using a config object"""
+        m = Project.load_manifests(basic_config_obj)
+        i = Project.load_images(m)
+
+        assert len(i) == 1
+        assert isinstance(i["test-image"], Image)
+        assert len(i["test-image"].variants) == basic_expected_num_variants
 
 
 class TestProjectImage:
@@ -107,16 +116,16 @@ class TestProjectImage:
 
 
 class TestProjectBuild:
-    def test_render_bake_plan(self, basic_context, basic_expected_num_target_builds):
-        p = Project._load(basic_context)
+    def test_render_bake_plan(self, basic_context, basic_expected_num_variants):
+        p = Project.load(basic_context)
         plan = p.render_bake_plan()
         assert len(plan["group"]) == 4
         assert "default" in plan["group"]
         assert "test-image" in plan["group"]
         assert "std" in plan["group"]
         assert "min" in plan["group"]
-        assert len(plan["group"]["default"]["targets"]) == basic_expected_num_target_builds
-        assert len(plan["target"]) == basic_expected_num_target_builds
+        assert len(plan["group"]["default"]["targets"]) == basic_expected_num_variants
+        assert len(plan["target"]) == basic_expected_num_variants
         for target_data in plan["target"].values():
             assert "context" in target_data
             assert "dockerfile" in target_data

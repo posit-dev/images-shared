@@ -28,7 +28,7 @@ class Project(BaseModel):
     context: Path = None
     config: Config = None
     manifests: Dict[str, Manifest] = {}
-    images: List[Image] = []
+    images: Dict[str, Image] = {}
 
     @classmethod
     def _load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
@@ -58,6 +58,7 @@ class Project(BaseModel):
             raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
         project.config = project.load_config(project.context)
         project.manifests = project.load_manifests(project.config)
+        project.images = project.load_images(project.manifests)
 
         return project
 
@@ -66,7 +67,6 @@ class Project(BaseModel):
         """Load the project configuration from a context directory
 
         :param context: The path to the context directory
-        :param ignore_override: If true, ignores config.override.toml if it exists
         """
         context = Path(context)
         if not context.is_dir():
@@ -90,14 +90,17 @@ class Project(BaseModel):
             if m.image_name in manifests:
                 raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m
+
         return manifests
 
     @staticmethod
-    def load_images(manifests: List[Manifest]) -> List[Image]:
+    def load_images(manifests: Dict[str, Manifest]) -> Dict[str, Image]:
         """Loads all images from the context directory"""
-        images: List[Image] = []
-        for manifest in manifests:
-            images.append(Image(manifest.model))
+        images: Dict[str, Image] = {}
+        for image_name, manifest in manifests.items():
+            images[image_name] = Image.load(context=manifest.context, manifest=manifest.model)
+
+        return images
 
     @staticmethod
     def load_config_manifests(config: Config) -> Dict[str, "Manifest"]:

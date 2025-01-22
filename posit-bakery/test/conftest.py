@@ -56,7 +56,7 @@ def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.toml file"""
     from posit_bakery.models import Config
 
-    return Config._load(basic_config_file)
+    return Config.load(basic_config_file)
 
 
 @pytest.fixture
@@ -66,11 +66,11 @@ def basic_manifest_file(basic_context):
 
 
 @pytest.fixture
-def basic_manifest_obj(basic_config_obj, basic_manifest_file):
+def basic_manifest_obj(basic_manifest_file):
     """Return a Manifest object loaded from basic test suite manifest.toml file"""
     from posit_bakery.models import Manifest
 
-    return Manifest._load(basic_config_obj, basic_manifest_file)
+    return Manifest.load(basic_manifest_file)
 
 
 @pytest.fixture
@@ -94,13 +94,13 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
     """Return the versions/os pairs in the basic manifest.toml file"""
     results = []
     with open(basic_manifest_file, "rb") as f:
-        d = tomlkit.load(f)
+        d = tomlkit.load(f).unwrap()
     for version, data in d["build"].items():
-        if "os" in data and type(data["os"]) is list:
+        if "os" in data and isinstance(data["os"], list):
             for _os in data["os"]:
                 results.append((version, _os))
         elif "os" in d.get("const", {}):
-            if type(d["const"]["os"]) is list:
+            if isinstance(d["const"]["os"], list):
                 for _os in d["const"]["os"]:
                     results.append((version, _os))
             else:
@@ -111,7 +111,7 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
 
 
 @pytest.fixture
-def basic_expected_num_target_builds(basic_manifest_types, basic_manifest_os_plus_versions):
+def basic_expected_num_variants(basic_manifest_types, basic_manifest_os_plus_versions):
     """Returns the expected number of target builds for the basic manifest.toml"""
     return len(basic_manifest_types) * len(basic_manifest_os_plus_versions)
 

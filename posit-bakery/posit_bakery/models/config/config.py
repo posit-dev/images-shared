@@ -14,7 +14,7 @@ log = logging.getLogger("rich")
 
 
 class Config(GenericTOMLModel):
-    """Models a repository's config.toml file"""
+    """Simple wrapper around a project config.toml file"""
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
