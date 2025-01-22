@@ -68,25 +68,6 @@ class Config(GenericTOMLModel):
             log.error(f"Unable to get git commit for labels: {e}")
         return sha
 
-    @classmethod
-    def _load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
-        """Load a Config object from a TOML file
-
-        :param filepath: Path to the config.toml file
-        """
-        filepath = Path(filepath)
-        d = cls.read(filepath)
-
-        # Create registry objects for each registry defined in config.toml
-        registries = []
-        for r in d["registries"]:
-            registries.append(ConfigRegistry(**r))
-
-        # Create repository object from config.toml
-        repository = ConfigRepository(**d.get("repository", {}))
-
-        return cls(filepath=filepath, context=filepath.parent, document=d, registries=registries, repository=repository)
-
     def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object
 

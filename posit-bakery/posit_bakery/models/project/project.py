@@ -30,21 +30,7 @@ class Project(BaseModel):
     manifests: Dict[str, Manifest] = {}
     images: Dict[str, Image] = {}
 
-    @classmethod
-    def _load(cls, context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> "Project":
-        """Create a Project object and load config and manifests into it from a context directory
-
-        :param context: The path to the context directory
-        :param ignore_override: If true, ignores config.override.toml if it exists
-        """
-        project = cls()
-        project.context = Path(context)
-        if not project.context.is_dir():
-            raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
-        project.config = project.load_context_config(project.context, ignore_override)
-        project.manifests = project.load_config_manifests(project.config)
-        return project
-
+    # TODO: Add back in support for handling overrides
     @classmethod
     def load(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
         """Create a Project object and load config and manifests into it from a context directory
@@ -101,42 +87,6 @@ class Project(BaseModel):
             images[image_name] = Image.load(context=manifest.context, manifest=manifest.model)
 
         return images
-
-    @staticmethod
-    def load_config_manifests(config: Config) -> Dict[str, "Manifest"]:
-        """Loads all manifests from a context directory
-
-        :param config: The project configuration
-        """
-        manifests = {}
-        for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest._load(config, manifest_file)
-            if m.image_name in manifests:
-                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
-            manifests[m.image_name] = m
-        return manifests
-
-    @staticmethod
-    def load_context_config(context: Union[str, bytes, os.PathLike], ignore_override: bool = False) -> Config:
-        """Load the project configuration from a context directory
-
-        :param context: The path to the context directory
-        :param ignore_override: If true, ignores config.override.toml if it exists
-        """
-        context = Path(context)
-        if not context.is_dir():
-            raise BakeryFileNotFoundError(f"Directory {context} does not exist.")
-        config_filepath = context / "config.toml"
-        if not config_filepath.is_file():
-            raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config._load(config_filepath)
-
-        override_config_filepath = context / "config.override.toml"
-        if not ignore_override and override_config_filepath.is_file():
-            override_config = Config._load(override_config_filepath)
-            config.update(override_config)
-
-        return config
 
     def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
         """Create a new image in the project with associated file structure from templates

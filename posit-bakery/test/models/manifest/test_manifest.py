@@ -607,9 +607,9 @@ class TestManifestUpdate:
     def test_render_image_template(self, basic_tmpcontext):
         """Test rendering the image template for a new version creates the expected files"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config._load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest._load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.render_image_template("1.0.1")
         new_version_dir = image_dir / "1.0.1"
         assert new_version_dir.is_dir()
@@ -628,9 +628,9 @@ class TestManifestUpdate:
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config._load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest._load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1")
         new_version_dir = image_dir / "1.0.1"
 
@@ -659,9 +659,9 @@ class TestManifestUpdate:
     def test_new_version_no_save(self, basic_tmpcontext):
         """Test save=False does not update the manifest file when creating a new version"""
         config_file = basic_tmpcontext / "config.toml"
-        c = Config._load(config_file)
+        c = Config.load(config_file)
         image_dir = basic_tmpcontext / "test-image"
-        m = Manifest._load(c, image_dir / "manifest.toml")
+        m = Manifest.load(c, image_dir / "manifest.toml")
         m.new_version("1.0.1", save=False)
         new_version_dir = image_dir / "1.0.1"
 

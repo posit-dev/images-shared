@@ -74,7 +74,7 @@ class TestProjectLoad:
 class TestProjectUpdate:
     def test_new_image(self, basic_tmpcontext):
         """Test creating a new image"""
-        p = Project._load(basic_tmpcontext)
+        p = Project.load(basic_tmpcontext)
         p.new_image("new-image")
         new_image_path = Path(basic_tmpcontext) / "new-image"
         assert new_image_path.is_dir()
@@ -150,7 +150,7 @@ class TestProjectBuild:
         ]
 
     def test_render_dgoss_commands(self, basic_context):
-        p = Project._load(basic_context)
+        p = Project.load(basic_context)
 
         manifest_std = p.manifests["test-image"].filter_target_builds("1.0.0", "std")[0]
         goss_std = manifest_std.goss
@@ -188,7 +188,7 @@ class TestProjectBuild:
     def test_dgoss(self, basic_context):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
-        p = Project._load(basic_context)
+        p = Project.load(basic_context)
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):

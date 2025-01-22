@@ -74,7 +74,7 @@ def new(
             │   └── goss.yaml.jinja2
             └── Containerfile.jinja2
     """
-    project = Project._load(context)
+    project = Project.load(context)
     # TODO: This will fail on projects with no config.toml, we should build in a full "new project" expectation in that case
     try:
         project.new_image(image_name, image_base)
@@ -113,7 +113,7 @@ def render(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    project = Project._load(context)
+    project = Project.load(context)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()
@@ -186,7 +186,8 @@ def build(
 
     Requires the Docker Engine and CLI to be installed and running.
     """
-    project = Project._load(context, skip_override)
+    # TODO; Add skip_override back in
+    project = Project.load(context, skip_override)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
@@ -219,7 +220,7 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    project = Project._load(context, skip_override)
+    project = Project.load(context, skip_override)
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:

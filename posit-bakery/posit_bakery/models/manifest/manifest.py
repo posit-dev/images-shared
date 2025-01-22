@@ -346,29 +346,6 @@ class Manifest(GenericTOMLModel):
             results.append(target_build)
         return results
 
-    @classmethod
-    def _load(cls, config: Config, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
-        """Load a Manifest object from a TOML file
-
-        :param config: Config object for the repository
-        :param filepath: Path to the manifest.toml file to load
-        """
-        filepath = Path(filepath)
-        d = cls.read(filepath)
-        image_name = d.get("image_name")
-        if image_name is None:
-            raise BakeryConfigError(f"Manifest at '{filepath}' does not have an 'image_name' field.")
-        target_builds = TargetBuild.load(config, Path(filepath).parent, d)
-        m = cls(
-            filepath=filepath,
-            document=d,
-            context=Path(filepath).parent,
-            image_name=image_name,
-            config=config,
-        )
-        m.target_builds = target_builds
-        return m
-
     @staticmethod
     def guess_image_os_list(p: Path) -> List[str]:
         """Guess the operating systems for an image based on the Containerfile extensions present in the image directory
