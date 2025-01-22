@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ConfigRegistry(BaseModel):
@@ -6,6 +6,8 @@ class ConfigRegistry(BaseModel):
 
     Used for tagging of images and pushing to the registry
     """
+
+    model_config = ConfigDict(frozen=True)
 
     host: str
     namespace: str | None = None

@@ -1,11 +1,13 @@
 from typing import List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from posit_bakery.models.manifest import find_os
 
 
 class ManifestBuild(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     # version is part of the title
     os: List[str]  # Supported OSes, validate with mapping
     latest: bool = False

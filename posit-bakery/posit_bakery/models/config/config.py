@@ -24,7 +24,7 @@ class Config(GenericTOMLModel):
         """
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ConfigDocument(**document.unwrap(), frozen=True)
+        model = ConfigDocument(**document.unwrap())
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
 
