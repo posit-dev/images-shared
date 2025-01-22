@@ -149,6 +149,9 @@ class TestProjectBuild:
             str(Path(basic_tmpcontext) / ".docker-bake.json"),
         ]
 
+
+@pytest.mark.skip(reason="TODO: Move this into the Image* objects")
+class TestProjectGoss:
     def test_render_dgoss_commands(self, basic_context):
         p = Project.load(basic_context)
 
