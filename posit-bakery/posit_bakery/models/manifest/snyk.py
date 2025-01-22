@@ -15,6 +15,12 @@ REGEX_SNYK_MONITOR_TAG_VALUE = re.compile(r"^[a-zA-Z0-9_\-/:?#@&+=%~]+$")
 SNYK_MONITOR_TAG_VALUE_LENGTH = 256
 
 
+class SnykContainerSubcommand(str, Enum):
+    test = "test"
+    monitor = "monitor"
+    sbom = "sbom"
+
+
 class SnykTestOutputFormatEnum(str, Enum):
     """Enum for the supported output formats for snyk container test output."""
     sarif = "sarif"
