@@ -46,7 +46,7 @@ class Manifest(GenericTOMLModel):
 
         if latest:
             for b in existing_builds.values():
-                b.pop("latest")
+                b.pop("latest", None)
             new_build = {"os": os_list, "latest": True}
         else:
             new_build = {"os": os_list}
