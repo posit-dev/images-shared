@@ -191,6 +191,7 @@ def build(
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
         log.error(f"Build failed with exit code {e.exit_code}")
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -223,3 +224,4 @@ def dgoss(
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
         log.error(f"dgoss tests failed with exit code {e.exit_code}")
+        raise typer.Exit(code=1)
