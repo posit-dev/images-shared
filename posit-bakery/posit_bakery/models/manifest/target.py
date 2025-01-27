@@ -22,7 +22,7 @@ class ManifestTarget(BaseModel):
 
     tags: List[str] = []
     latest_tags: List[str] = []
-    goss: ManifestGoss = None
+    goss: ManifestGoss = ManifestGoss()
     # Declare containferfile extension
 
     @classmethod

@@ -9,6 +9,7 @@ from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.build_os import BuildOS
 from posit_bakery.models.manifest.document import ManifestDocument
+from posit_bakery.models.manifest.goss import ManifestGoss
 from posit_bakery.models.manifest.manifest import Manifest
 from posit_bakery.models.manifest.target import ManifestTarget
 
@@ -28,6 +29,39 @@ class ImageLabels(BaseModel):
     oci_prefix: str = "org.opencontainers.image"
 
 
+class ImageGoss(BaseModel):
+    deps: Path
+    tests: Path
+    command: str
+    wait: int
+
+    @classmethod
+    def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
+        deps: Path
+        tests: Path
+
+        # TODO: Handle when paths are over-ridden in ManifestGoss
+        if (context / "deps").is_dir():
+            deps = context / "deps"
+        elif (context.parent / "deps").is_dir():
+            deps = context.parent / "deps"
+        elif (context.parent.parent / "deps").is_dir():
+            deps = context.parent.parent / "deps"
+        else:
+            raise BakeryFileNotFoundError(f"Could not find 'deps' directory for goss files. context: '{context}'.")
+
+        if (context / "test").is_dir():
+            tests = context / "test"
+        elif (context.parent / "test").is_dir():
+            tests = context.parent / "test"
+        elif (context.parent.parent / "test").is_dir():
+            tests = context.parent.parent / "test"
+        else:
+            raise BakeryFileNotFoundError(f"Could not find 'test' directory for goss files. context: '{context}'.")
+
+        return cls(deps=deps, tests=tests, command=goss.command, wait=goss.wait)
+
+
 class ImageVariant(BaseModel):
     latest: bool
     os: str
@@ -35,6 +69,7 @@ class ImageVariant(BaseModel):
     containerfile: Path
     labels: ImageLabels = ImageLabels()
     tags: List[str] = []
+    goss: ImageGoss
 
     @classmethod
     def load(
@@ -44,12 +79,13 @@ class ImageVariant(BaseModel):
         latest: bool,
         _os: str,
         target: str,
+        goss: ManifestGoss = ManifestGoss(),
         labels: ImageLabels | None = None,
     ):
         build_os: BuildOS = find_os(_os)
         containerfile = cls.find_containerfile(context, _os, target)
         if labels is None:
-            labels = ImageLabels()
+            labels = ImageLabels
         labels.posit["os"] = _os
         labels.posit["type"] = target
 
@@ -61,7 +97,15 @@ class ImageVariant(BaseModel):
                 "latest",
             ]
 
-        return cls(latest=latest, os=_os, target=target, containerfile=containerfile, labels=labels, tags=tags)
+        return cls(
+            latest=latest,
+            os=_os,
+            target=target,
+            containerfile=containerfile,
+            labels=labels,
+            tags=tags,
+            goss=ImageGoss.load(context, goss),
+        )
 
     @staticmethod
     def find_containerfile(context: Path, _os: str, target: str):
@@ -102,14 +146,15 @@ class ImageVersion(BaseModel):
         labels.posit["version"] = version
 
         for _os in build.os:
-            for target in targets:
+            for _type, target in targets.items():
                 variants.append(
                     ImageVariant.load(
                         context=version_context,
                         version=version,
                         latest=build.latest,
                         _os=_os,
-                        target=target,
+                        target=_type,
+                        goss=target.goss,
                         labels=deepcopy(labels),
                     )
                 )
@@ -158,6 +203,14 @@ class Images(dict):
             images[name] = Image.load(manifest.context, manifest.model)
 
         return cls(**images)
+
+    @property
+    def variants(self) -> List[ImageVariant]:
+        vars: List[ImageVariant] = []
+        for image in self.values():
+            vars.extend(copy(image.variants))
+
+        return vars
 
     def filter(self, filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
         images: dict[str, Image] = {}

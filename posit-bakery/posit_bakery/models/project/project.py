@@ -243,55 +243,50 @@ class Project(BaseModel):
         goss_bin = util.find_bin(self.context, "goss", "GOSS_PATH")
         dgoss_commands = []
 
-        for manifest in self.manifests.values():
-            if image_name and manifest.image_name != image_name:
-                continue
+        images: Images = self.images.filter(
+            ImageFilter(image_name=image_name, image_version=image_version, target_type=image_type)
+        )
 
-            for target_build in manifest.target_builds:
-                if image_version and target_build.version != image_version:
-                    continue
-                if image_type and target_build.type != image_type:
-                    continue
+        for variant in images.variants:
+            run_env = os.environ.copy()
+            cmd = [dgoss_bin, "run"]
 
-                run_env = os.environ.copy()
-                cmd = [dgoss_bin, "run"]
+            if goss_bin is not None:
+                run_env["GOSS_PATH"] = goss_bin
 
-                if goss_bin is not None:
-                    run_env["GOSS_PATH"] = goss_bin
+            test_path = variant.goss.tests
+            if test_path is None or test_path == "":
+                raise BakeryGossError(
+                    "Path to Goss test directory must be defined or left empty for default. Please check the manifest.toml."
+                )
+            run_env["GOSS_FILES_PATH"] = str(test_path)
 
-                test_path = target_build.goss.test_path
-                if test_path is None or test_path == "":
-                    raise BakeryGossError(
-                        "Path to Goss test directory must be defined or left empty for default. Please check the manifest.toml."
-                    )
-                run_env["GOSS_FILES_PATH"] = str(test_path)
+            deps = variant.goss.deps
+            if deps.is_dir():
+                cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
+            else:
+                log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
 
-                deps = target_build.goss.deps
-                if deps.is_dir():
-                    cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
-                else:
-                    log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
+            if variant.goss.wait is not None and variant.goss.wait > 0:
+                run_env["GOSS_SLEEP"] = str(variant.goss.wait)
 
-                if target_build.goss.wait is not None and target_build.goss.wait > 0:
-                    run_env["GOSS_SLEEP"] = str(target_build.goss.wait)
+            # Check if build type is defined and set the image typez
+            if variant.target is not None:
+                cmd.extend(["-e", f"IMAGE_TYPE={variant.target}"])
 
-                # Check if build type is defined and set the image type
-                if target_build.type is not None:
-                    cmd.extend(["-e", f"IMAGE_TYPE={target_build.type}"])
+            # Add user runtime options if provided
+            if runtime_options:
+                cmd.extend(runtime_options)
 
-                # Add user runtime options if provided
-                if runtime_options:
-                    cmd.extend(runtime_options)
+            # Append the target image tag, assuming the first one is valid to use and no duplications exist
+            cmd.append(variant.tags[0])
 
-                # Append the target image tag, assuming the first one is valid to use and no duplications exist
-                cmd.append(target_build.get_tags()[0])
+            # Append the goss command to run or use the default `sleep infinity`
+            cmd.extend(variant.goss.command.split() or ["sleep", "infinity"])
 
-                # Append the goss command to run or use the default `sleep infinity`
-                cmd.extend(target_build.goss.command.split() or ["sleep", "infinity"])
+            dgoss_commands.append((variant.tags[0], run_env, cmd))
+        # dgoss_commands.sort(key=lambda x: x[0])
 
-                dgoss_commands.append((target_build.get_tags()[0], run_env, cmd))
-
-        dgoss_commands.sort(key=lambda x: x[0])
         return dgoss_commands
 
     def dgoss(

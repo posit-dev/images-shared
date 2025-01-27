@@ -8,6 +8,7 @@ import pytest
 import tomlkit
 
 from posit_bakery.models import Image, Manifest, Project
+from posit_bakery.models.project.image import ImageFilter
 
 pytestmark = [
     pytest.mark.unit,
@@ -150,41 +151,59 @@ class TestProjectBuild:
         ]
 
 
-@pytest.mark.skip(reason="TODO: Move this into the Image* objects")
 class TestProjectGoss:
     def test_render_dgoss_commands(self, basic_context):
         p = Project.load(basic_context)
+        manifest = p.manifests["test-image"].model
 
-        manifest_std = p.manifests["test-image"].filter_target_builds("1.0.0", "std")[0]
-        goss_std = manifest_std.goss
-        manifest_min = p.manifests["test-image"].filter_target_builds("1.0.0", "min")[0]
-        goss_min = manifest_min.goss
+        goss_std = manifest.target["std"].goss
+        img_std = p.images.filter(
+            ImageFilter(image_name="test-image", image_version="1.0.0", target_type="std"),
+        ).variants[0]
+
+        goss_min = manifest.target["min"].goss
+        img_min = p.images.filter(
+            ImageFilter(image_name="test-image", image_version="1.0.0", target_type="min"),
+        ).variants[0]
 
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
 
         assert len(commands) == 2
-        # Ensure tags are different
-        assert commands[0][0] == manifest_std.get_tags()[0]
-        assert commands[1][0] == manifest_min.get_tags()[0]
-        # Ensure run env is there, this is impossible to check for the exact value
-        for run_env in [commands[0][1], commands[1][1]]:
-            assert isinstance(run_env, dict)
-            assert run_env["GOSS_PATH"] == "goss"
-            assert run_env["GOSS_FILES_PATH"].endswith("test-image/1.0.0/test")
-        assert commands[0][1]["GOSS_SLEEP"] == str(goss_std.wait)
-        assert "GOSS_SLEEP" not in commands[1][1]
-        # Ensure commands are correct
-        cmdstr = " ".join(commands[0][2])
+
+        # min should be first
+        cmd = commands[0]
+        assert cmd[0] == img_min.tags[0]
+
+        run_env = cmd[1]
+        assert isinstance(run_env, dict)
+        assert run_env.get("GOSS_PATH") == "goss"
+        assert run_env.get("GOSS_FILES_PATH").endswith("test-image/1.0.0/test")
+        assert run_env.get("GOSS_SLEEP") is None
+
+        cmdstr = " ".join(cmd[2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={manifest_std.type} {manifest_std.get_tags()[0]} {goss_std.command}"
+            f"-e IMAGE_TYPE={img_min.target} {img_min.tags[0]} {goss_min.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
-        cmdstr = " ".join(commands[1][2])
+
+        # std should be second
+        cmd = commands[1]
+        assert cmd[0] == img_std.tags[0]
+
+        # Check environment
+        run_env = cmd[1]
+        assert isinstance(run_env, dict)
+        assert run_env.get("GOSS_PATH") == "goss"
+        assert run_env.get("GOSS_FILES_PATH").endswith("test-image/1.0.0/test")
+        assert run_env.get("GOSS_SLEEP") == str(goss_std.wait)
+
+        # Check command
+        cmdstr = " ".join(cmd[2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={manifest_min.type} {manifest_min.get_tags()[0]} {goss_min.command}"
+            f"-e IMAGE_TYPE={img_std.target} {img_std.tags[0]} {goss_std.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
 
