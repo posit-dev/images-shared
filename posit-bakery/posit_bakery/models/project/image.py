@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import copy, deepcopy
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,7 +9,16 @@ from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.build_os import BuildOS
 from posit_bakery.models.manifest.document import ManifestDocument
+from posit_bakery.models.manifest.manifest import Manifest
 from posit_bakery.models.manifest.target import ManifestTarget
+
+
+class ImageFilter(BaseModel):
+    image_name: str | None = None
+    image_version: str | None = None
+    is_latest: bool | None = None
+    build_os: str | None = None
+    target_type: str | None = None
 
 
 class ImageLabels(BaseModel):
@@ -138,3 +147,51 @@ class Image(BaseModel):
     @property
     def variants(self) -> List[ImageVariant]:
         return [variant for version in self.versions for variant in version.variants]
+
+
+class Images(dict):
+    @classmethod
+    def load(cls, manifests: Dict[str, Manifest]) -> dict[str, Image]:
+        images: dict[str, Image] = {}
+
+        for name, manifest in manifests.items():
+            images[name] = Image.load(manifest.context, manifest.model)
+
+        return cls(**images)
+
+    def filter(self, filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
+        images: dict[str, Image] = {}
+        for image_name, image in self.items():
+            if filter.image_name is not None and filter.image_name != image.name:
+                continue
+
+            versions: List[ImageVersion] = []
+            for version in image.versions:
+                if filter.image_version is not None and filter.image_version != version.version:
+                    continue
+
+                variants: List[ImageVariant] = []
+                for variant in version.variants:
+                    if filter.is_latest is not None and filter.is_latest != variant.latest:
+                        continue
+                    if filter.build_os is not None and filter.build_os != variant.os:
+                        continue
+                    if filter.target_type is not None and filter.target_type != variant.target:
+                        continue
+
+                    variants.append(deepcopy(variant))
+
+                if variants:
+                    ver = copy(version)
+                    ver.variants = variants
+                    versions.append(ver)
+
+            if versions:
+                img = copy(image)
+                img.versions = versions
+                images[image_name] = img
+
+        if not images:
+            raise ValueError("No images found for filter.")
+
+        return Images(**images)

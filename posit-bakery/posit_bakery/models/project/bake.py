@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.repository import ConfigRepository
-from posit_bakery.models.project.image import Image, ImageLabels, ImageVariant
+from posit_bakery.models.project.image import Image, ImageLabels, ImageVariant, Images
 from posit_bakery.templating.filters import condense
 
 
@@ -34,14 +34,6 @@ def image_labels(image_labels: ImageLabels, oci_labels: Dict[str, str]) -> Dict[
     labels.update({f"{image_labels.oci_prefix}.{k}": v for k, v in oci_labels.items()})
 
     return labels
-
-
-class ImageFilter(BaseModel):
-    image_name: str | None = None
-    image_version: str | None = None
-    is_latest: bool | None = None
-    build_os: str | None = None
-    target_type: str | None = None
 
 
 class BakeGroup(BaseModel):
@@ -74,7 +66,7 @@ class BakePlan(BaseModel):
         return groups
 
     @classmethod
-    def create(cls, config: ConfigDocument, images: List[Image], filter: ImageFilter = ImageFilter()) -> "BakePlan":
+    def create(cls, config: ConfigDocument, images: List[Image]) -> "BakePlan":
         created: str = datetime.now(timezone.utc).isoformat()
         oci_labels: Dict[str, str] = config_labels(repository=config.repository, created=created)
         groups: Dict[str, BakeGroup] = {
@@ -83,21 +75,8 @@ class BakePlan(BaseModel):
         targets: Dict[str, BakeTarget] = {}
 
         for image in images:
-            if filter.image_name is not None and filter.image_name != image.name:
-                continue
-
             for version in image.versions:
-                if filter.image_version is not None and filter.image_version != version.version:
-                    continue
-
                 for variant in version.variants:
-                    if filter.is_latest is not None and filter.is_latest != variant.latest:
-                        continue
-                    if filter.build_os is not None and filter.build_os != variant.os:
-                        continue
-                    if filter.target_type is not None and filter.target_type != variant.target:
-                        continue
-
                     uid: str = target_uid(name=image.name, version=version.version, variant=variant)
                     groups = cls.update_groups(groups=groups, uid=uid, name=image.name, target=variant.target)
                     targets[uid] = BakeTarget(

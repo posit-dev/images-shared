@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from posit_bakery.models.project.bake import BakePlan, ImageFilter
-from posit_bakery.models.project.image import Image
+from posit_bakery.models.project.bake import BakePlan
+from posit_bakery.models.project.image import Image, Images, ImageFilter
 
 from .fixtures import (
     config_simple,
@@ -199,21 +199,18 @@ class TestBakePlan:
 
         plan = BakePlan.create(
             config=basic_config_obj.model,
-            images=basic_images_obj.values(),
-            filter=ImageFilter(build_version="1.0.0"),
+            images=basic_images_obj.filter(ImageFilter(build_version="1.0.0")).values(),
         )
         assert len(plan.target) == basic_expected_num_variants
 
         plan = BakePlan.create(
             config=basic_config_obj.model,
-            images=basic_images_obj.values(),
-            filter=ImageFilter(target_type="min"),
+            images=basic_images_obj.filter(ImageFilter(target_type="min")).values(),
         )
         assert len(plan.target) == len(basic_manifest_os_plus_versions)
 
         plan = BakePlan.create(
             config=basic_config_obj.model,
-            images=basic_images_obj.values(),
-            filter=ImageFilter(target_type="std"),
+            images=basic_images_obj.filter(ImageFilter(target_type="std")).values(),
         )
         assert len(plan.target) == len(basic_manifest_os_plus_versions)

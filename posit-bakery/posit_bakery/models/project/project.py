@@ -14,9 +14,9 @@ from posit_bakery.error import (
     BakeryConfigError,
     BakeryTemplatingError,
 )
-from posit_bakery.models import Config, Manifest
-from posit_bakery.models.project.bake import BakePlan, ImageFilter
-from posit_bakery.models.project.image import Image
+from posit_bakery.models import Image, Config, Manifest
+from posit_bakery.models.project.bake import BakePlan
+from posit_bakery.models.project.image import Images, ImageFilter
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 import posit_bakery.util as util
 
@@ -80,13 +80,9 @@ class Project(BaseModel):
         return manifests
 
     @staticmethod
-    def load_images(manifests: Dict[str, Manifest]) -> Dict[str, Image]:
+    def load_images(manifests: Dict[str, Manifest]) -> Images:
         """Loads all images from the context directory"""
-        images: Dict[str, Image] = {}
-        for image_name, manifest in manifests.items():
-            images[image_name] = Image.load(context=manifest.context, manifest=manifest.model)
-
-        return images
+        return Images.load(manifests)
 
     def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
         """Create a new image in the project with associated file structure from templates
@@ -189,7 +185,8 @@ class Project(BaseModel):
             image_version=image_version,
             target_type=image_type,
         )
-        return BakePlan.create(config=self.config.model, images=self.images.values(), filter=filter)
+        selected_images = self.images.filter(filter)
+        return BakePlan.create(config=self.config.model, images=selected_images.values())
 
     def build(
         self,
