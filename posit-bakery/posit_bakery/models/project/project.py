@@ -181,7 +181,7 @@ class Project(BaseModel):
             target_type=image_type,
         )
         selected_images = self.images.filter(filter)
-        return BakePlan.create(config=self.config.model, images=selected_images.values())
+        return BakePlan.create(images=selected_images.values())
 
     def build(
         self,

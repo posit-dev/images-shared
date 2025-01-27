@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from posit_bakery.models.project.bake import BakePlan
-from posit_bakery.models.project.image import Image, Images, ImageFilter
+from posit_bakery.models.config.document import ConfigDocument
+from posit_bakery.models.project.image import Image, ImageFilter
 
 from .fixtures import (
     config_simple,
@@ -44,12 +45,21 @@ def patch_is_dir():
 
 
 class TestBakePlan:
+    @staticmethod
+    def complete_metadata(images: List[Image], config: ConfigDocument):
+        for image in images:
+            for variant in image.variants:
+                variant.complete_metadata(config)
+        return images
+
     def test_bake_plan_simple(self, config_simple, manifest_simple):
         """Test that simple bake plan contains ALL the expected fields"""
         expected_uid = "simple-image-0-1-0-ubuntu2404-min"
 
         images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
-        plan: BakePlan = BakePlan.create(config=config_simple, images=images)
+        images = self.complete_metadata(images, config_simple)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         assert len(plan.group) == 3
         assert expected_uid in plan.group["default"].targets
@@ -81,7 +91,9 @@ class TestBakePlan:
         expected_uid = "latest-image-1-2-3-ubuntu2404-min"
 
         images: List[Image] = [Image.load(Path("latest-image"), manifest_latest)]
-        plan: BakePlan = BakePlan.create(config=config_simple, images=images)
+        images = self.complete_metadata(images, config_simple)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         # We only check tags here since test_bake_plan_simple checks other fields
         tags = plan.target[expected_uid].tags
@@ -98,7 +110,9 @@ class TestBakePlan:
         expected_uid_4 = "multi-build-image-1-2-3-ubuntu2404-std"
 
         images: List[Image] = [Image.load(Path("multi-build-image"), manifest_multi_build)]
-        plan: BakePlan = BakePlan.create(config=config_simple, images=images)
+        images = self.complete_metadata(images, config_simple)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         # Check that we
         assert len(plan.group) == 4
@@ -134,7 +148,9 @@ class TestBakePlan:
         expected_uid_6 = "multi-os-image-2-1-5-rockylinux9-std"
 
         images: List[Image] = [Image.load(Path("multi-os-image"), manifest_multi_os)]
-        plan: BakePlan = BakePlan.create(config=config_simple, images=images)
+        images = self.complete_metadata(images, config_simple)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         assert len(plan.group) == 4
 
@@ -170,9 +186,10 @@ class TestBakePlan:
 
     def test_bake_plan_matrix(self, config_simple, manifest_matrix):
         """Test large matrix of builds and targets"""
-
         images: List[Image] = [Image.load(Path("matrix-image"), manifest_matrix)]
-        plan: BakePlan = BakePlan.create(config=config_simple, images=images)
+        images = self.complete_metadata(images, config_simple)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         assert len(plan.group) == 6
         assert len(plan.group["default"].targets) == 20
@@ -189,7 +206,9 @@ class TestBakePlan:
         expected_uid = "simple-image-0-1-0-ubuntu2404-min"
 
         images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
-        plan: BakePlan = BakePlan.create(config=config_multi_registry, images=images)
+        images = self.complete_metadata(images, config_multi_registry)
+
+        plan: BakePlan = BakePlan.create(images=images)
 
         assert len(plan.group) == 3
         assert len(plan.target) == 1
@@ -211,20 +230,14 @@ class TestBakePlan:
         """Test bake plan filtering"""
         plan: BakePlan
 
-        plan = BakePlan.create(
-            config=basic_config_obj.model,
-            images=basic_images_obj.filter(ImageFilter(build_version="1.0.0")).values(),
-        )
+        images = basic_images_obj.filter(ImageFilter(build_version="1.0.0")).values()
+        plan = BakePlan.create(images=images)
         assert len(plan.target) == basic_expected_num_variants
 
-        plan = BakePlan.create(
-            config=basic_config_obj.model,
-            images=basic_images_obj.filter(ImageFilter(target_type="min")).values(),
-        )
+        images = basic_images_obj.filter(ImageFilter(target_type="min")).values()
+        plan = BakePlan.create(images=images)
         assert len(plan.target) == len(basic_manifest_os_plus_versions)
 
-        plan = BakePlan.create(
-            config=basic_config_obj.model,
-            images=basic_images_obj.filter(ImageFilter(target_type="std")).values(),
-        )
+        images = basic_images_obj.filter(ImageFilter(target_type="std")).values()
+        plan = BakePlan.create(images=images)
         assert len(plan.target) == len(basic_manifest_os_plus_versions)

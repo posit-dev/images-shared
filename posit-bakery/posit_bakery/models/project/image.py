@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from posit_bakery.error import BakeryFileNotFoundError
 from posit_bakery.models.config.config import Config
+from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.build_os import BuildOS
@@ -136,6 +137,23 @@ class ImageVariant(BaseModel):
 
         raise BakeryFileNotFoundError(f"Containerfile not found. context: '{context}',  os: '{_os}', target: {target}.")
 
+    def complete_metadata(self, config: ConfigDocument) -> None:
+        labels: Dict[str, str] = {}
+        labels.update({f"{self.meta.labels.oci_prefix}.{k}": v for k, v in self.meta.labels.oci.items()})
+        labels.update(
+            {
+                f"{self.meta.labels.oci_prefix}.vendor": config.repository.vendor,
+                f"{self.meta.labels.oci_prefix}.maintainer": config.repository.maintainer,
+                f"{self.meta.labels.oci_prefix}.revision": "",  # TODO: Get the commit hash
+                f"{self.meta.labels.oci_prefix}.authors": ", ".join(config.repository.authors),
+                f"{self.meta.labels.oci_prefix}.source": config.repository.url,
+            }
+        )
+        labels.update({f"{self.meta.labels.posit_prefix}.{k}": v for k, v in self.meta.labels.posit.items()})
+
+        self.labels = labels
+        self.tags = [f"{reg.base_url}/{self.meta.name}:{tag}" for reg in config.registries for tag in self.meta.tags]
+
 
 class ImageVersion(BaseModel):
     version: str
@@ -216,7 +234,7 @@ class Images(dict):
             image: Image = Image.load(manifest.context, manifest.model)
             # TODO: Hydrate metadata with config so we don't have to pass it everywhere
             for variant in image.variants:
-                variant.complete_metadata(config)
+                variant.complete_metadata(config.model)
 
             images[name] = image
 
