@@ -23,13 +23,32 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def patch_is_file():
+    """Patch pathlib.Path.is_file to always return True
+
+    We use is_file to find the appropriate Containerfile for each ImageVariant
+    """
+    with patch("pathlib.Path.is_file", return_value=True, autospec=True) as p:
+        yield p
+
+
+@pytest.fixture(autouse=True)
+def patch_is_dir():
+    """Patch pathlib.Path.is_dir to always return True
+
+    We use is_dir to find the test and dependency directories for goss
+    """
+    with patch("pathlib.Path.is_dir", return_value=True, autospec=True) as p:
+        yield p
+
+
 class TestBakePlan:
     def test_bake_plan_simple(self, config_simple, manifest_simple):
         """Test that simple bake plan contains ALL the expected fields"""
         expected_uid = "simple-image-0-1-0-ubuntu2404-min"
 
-        with patch("pathlib.Path.is_file", side_effect=[True]):
-            images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
+        images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
         plan: BakePlan = BakePlan.create(config=config_simple, images=images)
 
         assert len(plan.group) == 3
@@ -61,8 +80,7 @@ class TestBakePlan:
         """Test that bake plan for the latest images sets the latest tags"""
         expected_uid = "latest-image-1-2-3-ubuntu2404-min"
 
-        with patch("pathlib.Path.is_file", side_effect=[True]):
-            images: List[Image] = [Image.load(Path("latest-image"), manifest_latest)]
+        images: List[Image] = [Image.load(Path("latest-image"), manifest_latest)]
         plan: BakePlan = BakePlan.create(config=config_simple, images=images)
 
         # We only check tags here since test_bake_plan_simple checks other fields
@@ -79,8 +97,7 @@ class TestBakePlan:
         expected_uid_3 = "multi-build-image-1-2-3-ubuntu2404-min"
         expected_uid_4 = "multi-build-image-1-2-3-ubuntu2404-std"
 
-        with patch("pathlib.Path.is_file", side_effect=[True] * 4):
-            images: List[Image] = [Image.load(Path("multi-build-image"), manifest_multi_build)]
+        images: List[Image] = [Image.load(Path("multi-build-image"), manifest_multi_build)]
         plan: BakePlan = BakePlan.create(config=config_simple, images=images)
 
         # Check that we
@@ -116,8 +133,7 @@ class TestBakePlan:
         expected_uid_5 = "multi-os-image-2-1-5-rockylinux9-min"
         expected_uid_6 = "multi-os-image-2-1-5-rockylinux9-std"
 
-        with patch("pathlib.Path.is_file", side_effect=[True] * 6):
-            images: List[Image] = [Image.load(Path("multi-os-image"), manifest_multi_os)]
+        images: List[Image] = [Image.load(Path("multi-os-image"), manifest_multi_os)]
         plan: BakePlan = BakePlan.create(config=config_simple, images=images)
 
         assert len(plan.group) == 4
@@ -155,8 +171,7 @@ class TestBakePlan:
     def test_bake_plan_matrix(self, config_simple, manifest_matrix):
         """Test large matrix of builds and targets"""
 
-        with patch("pathlib.Path.is_file", side_effect=[True] * 20):
-            images: List[Image] = [Image.load(Path("matrix-image"), manifest_matrix)]
+        images: List[Image] = [Image.load(Path("matrix-image"), manifest_matrix)]
         plan: BakePlan = BakePlan.create(config=config_simple, images=images)
 
         assert len(plan.group) == 6
@@ -173,8 +188,7 @@ class TestBakePlan:
         """Test bake plan with multiple registries"""
         expected_uid = "simple-image-0-1-0-ubuntu2404-min"
 
-        with patch("pathlib.Path.is_file", side_effect=[True]):
-            images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
+        images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
         plan: BakePlan = BakePlan.create(config=config_multi_registry, images=images)
 
         assert len(plan.group) == 3
