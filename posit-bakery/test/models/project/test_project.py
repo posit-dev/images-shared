@@ -8,7 +8,7 @@ import pytest
 import tomlkit
 
 from posit_bakery.models import Image, Manifest, Project
-from posit_bakery.models.project.image import ImageFilter
+from posit_bakery.models.project.image import Images, ImageFilter
 
 pytestmark = [
     pytest.mark.unit,
@@ -61,11 +61,12 @@ class TestProjectLoad:
         assert "test-image" in m
         assert isinstance(m["test-image"], Manifest)
 
-    def test_load_images(self, basic_config_obj, basic_expected_num_variants):
+    def test_load_images(self, basic_context, basic_expected_num_variants):
         """Test loading imageses using a config object"""
-        m = Project.load_manifests(basic_config_obj)
-        i = Project.load_images(m)
+        p = Project.load(basic_context)
+        i = p.images
 
+        assert isinstance(i, Images)
         assert len(i) == 1
         assert isinstance(i["test-image"], Image)
         assert len(i["test-image"].variants) == basic_expected_num_variants

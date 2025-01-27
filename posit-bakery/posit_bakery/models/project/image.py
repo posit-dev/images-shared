@@ -5,6 +5,7 @@ from typing import Dict, List
 from pydantic import BaseModel
 
 from posit_bakery.error import BakeryFileNotFoundError
+from posit_bakery.models.config.config import Config
 from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.build_os import BuildOS
@@ -27,6 +28,15 @@ class ImageLabels(BaseModel):
     oci: Dict[str, str] = {}
     posit_prefix: str = "co.posit.image"
     oci_prefix: str = "org.opencontainers.image"
+
+
+class ImageMetadata(BaseModel):
+    name: str
+    version: str = None
+    context: Path = None
+    labels: ImageLabels = ImageLabels()
+    tags: List[str] = []
+    goss: ManifestGoss = ManifestGoss()
 
 
 class ImageGoss(BaseModel):
@@ -63,48 +73,48 @@ class ImageGoss(BaseModel):
 
 
 class ImageVariant(BaseModel):
+    meta: ImageMetadata
     latest: bool
     os: str
     target: str
     containerfile: Path
-    labels: ImageLabels = ImageLabels()
+    goss: ImageGoss = None
+    # Labels and tags require combining the Config metadata
+    labels: Dict[str, str] = {}
     tags: List[str] = []
-    goss: ImageGoss
 
     @classmethod
     def load(
         cls,
-        context: Path,
-        version: str,
+        meta: ImageMetadata,
         latest: bool,
         _os: str,
         target: str,
-        goss: ManifestGoss = ManifestGoss(),
-        labels: ImageLabels | None = None,
     ):
         build_os: BuildOS = find_os(_os)
-        containerfile = cls.find_containerfile(context, _os, target)
-        if labels is None:
-            labels = ImageLabels
-        labels.posit["os"] = _os
-        labels.posit["type"] = target
+        containerfile = cls.find_containerfile(meta.context, _os, target)
+
+        meta.labels.posit["os"] = _os
+        meta.labels.posit["type"] = target
 
         # TODO: Handle min vs std
-        tags: List[str] = [f"{version}-{target}", f"{version}-{build_os.image_tag}-{target}"]
+        meta.tags = [
+            f"{meta.version}-{build_os.image_tag}-{target}",
+            f"{meta.version}-{target}",
+        ]
         if latest:
-            tags += [
+            meta.tags += [
                 f"{build_os.image_tag}-{target}",
                 "latest",
             ]
 
         return cls(
+            meta=meta,
             latest=latest,
             os=_os,
             target=target,
             containerfile=containerfile,
-            labels=labels,
-            tags=tags,
-            goss=ImageGoss.load(context, goss),
+            goss=ImageGoss.load(meta.context, meta.goss),
         )
 
     @staticmethod
@@ -135,31 +145,27 @@ class ImageVersion(BaseModel):
     @classmethod
     def load(
         cls,
-        version: str,
-        context: Path,
+        meta: ImageMetadata,
         build: ManifestBuild,
         targets: List[ManifestTarget],
-        labels: ImageLabels,
     ):
-        version_context: Path = context / version
         variants: List[ImageVariant] = []
-        labels.posit["version"] = version
-
         for _os in build.os:
             for _type, target in targets.items():
+                # Unique metadata for each variant
+                meta = deepcopy(meta)
+                meta.goss = target.goss
+
                 variants.append(
                     ImageVariant.load(
-                        context=version_context,
-                        version=version,
+                        meta=meta,
                         latest=build.latest,
                         _os=_os,
                         target=_type,
-                        goss=target.goss,
-                        labels=deepcopy(labels),
                     )
                 )
 
-        return cls(version=version, context=version_context, variants=variants)
+        return cls(version=meta.version, context=meta.context, variants=variants)
 
 
 class Image(BaseModel):
@@ -169,21 +175,28 @@ class Image(BaseModel):
 
     @classmethod
     def load(cls, context: Path, manifest: ManifestDocument):
-        versions: List[ImageVersion] = []
-        labels: ImageLabels = ImageLabels(
-            posit={"name": manifest.image_name},
-            # TODO: Add created time
-            oci={"title": manifest.image_name},
+        meta: ImageMetadata = ImageMetadata(
+            name=manifest.image_name,
+            labels=ImageLabels(
+                posit={"name": manifest.image_name},
+                # TODO: Add created time
+                oci={"title": manifest.image_name},
+            ),
         )
 
+        versions: List[ImageVersion] = []
         for version, build in manifest.build.items():
+            # Set unique metadata for each version
+            meta = deepcopy(meta)
+            meta.version = version
+            meta.context = context / version
+            meta.labels.posit["version"] = version
+
             versions.append(
                 ImageVersion.load(
-                    version=version,
-                    context=context,
+                    meta=meta,
                     build=build,
                     targets=manifest.target,
-                    labels=deepcopy(labels),
                 )
             )
 
@@ -196,11 +209,16 @@ class Image(BaseModel):
 
 class Images(dict):
     @classmethod
-    def load(cls, manifests: Dict[str, Manifest]) -> dict[str, Image]:
+    def load(cls, config: Config, manifests: Dict[str, Manifest]) -> dict[str, Image]:
         images: dict[str, Image] = {}
 
         for name, manifest in manifests.items():
-            images[name] = Image.load(manifest.context, manifest.model)
+            image: Image = Image.load(manifest.context, manifest.model)
+            # TODO: Hydrate metadata with config so we don't have to pass it everywhere
+            for variant in image.variants:
+                variant.complete_metadata(config)
+
+            images[name] = image
 
         return cls(**images)
 

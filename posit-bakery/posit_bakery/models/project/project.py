@@ -44,7 +44,7 @@ class Project(BaseModel):
             raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
         project.config = project.load_config(project.context)
         project.manifests = project.load_manifests(project.config)
-        project.images = project.load_images(project.manifests)
+        project.images = Images.load(config=project.config, manifests=project.manifests)
 
         return project
 
@@ -78,11 +78,6 @@ class Project(BaseModel):
             manifests[m.image_name] = m
 
         return manifests
-
-    @staticmethod
-    def load_images(manifests: Dict[str, Manifest]) -> Images:
-        """Loads all images from the context directory"""
-        return Images.load(manifests)
 
     def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
         """Create a new image in the project with associated file structure from templates
