@@ -187,7 +187,7 @@ def build(
     Requires the Docker Engine and CLI to be installed and running.
     """
     # TODO; Add skip_override back in
-    project = Project.load(context, skip_override)
+    project = Project.load(context)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
@@ -220,7 +220,7 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    project = Project.load(context, skip_override)
+    project = Project.load(context)
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:

@@ -15,6 +15,8 @@ from tomlkit import TOMLDocument
 from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
 from posit_bakery.models import Config
 from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.manifest import SUPPORTED_OS, BuildOS
+from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 
@@ -66,7 +68,12 @@ class Manifest(GenericTOMLModel):
             if match:
                 os_list.append(" ".join(match.groups()).title())
         os_list = list(set(os_list))
-        return os_list
+        build_os_list = []
+        for _os in os_list:
+            for supported_os in SUPPORTED_OS:
+                if _os == supported_os.condensed:
+                    build_os_list.append(supported_os.pretty)
+        return build_os_list
 
     def render_image_template(self, version: str, value_map: Dict[str, str] = None) -> None:
         """Render the image template files for a new version
@@ -83,7 +90,7 @@ class Manifest(GenericTOMLModel):
         if value_map is None:
             value_map = {}
         if "rel_path" not in value_map:
-            value_map["rel_path"] = new_directory.relative_to(self.config.context)
+            value_map["rel_path"] = new_directory.relative_to(self.context.parent)
 
         e = jinja2_env(
             loader=jinja2.FileSystemLoader(template_directory), autoescape=True, undefined=jinja2.StrictUndefined
@@ -133,6 +140,6 @@ class Manifest(GenericTOMLModel):
         else:
             # TODO:
             self.append_build_version(version, mark_latest)
-        self.target_builds = TargetBuild.load(self.config, self.context, self.document)
+        self.document["build"][version] = ManifestBuild(latest=mark_latest, os=self.guess_image_os_list(self.context / version)).model_dump()
         if save:
             self.dump()
