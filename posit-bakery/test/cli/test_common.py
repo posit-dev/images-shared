@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional
 
 import pytest
@@ -9,6 +10,7 @@ from posit_bakery.main import app
 
 scenarios("cli/bakery.feature")
 scenarios("cli/new.feature")
+scenarios("cli/plan.feature")
 
 runner = CliRunner()
 
@@ -45,15 +47,20 @@ def bakery_command():
     return BakeryCommand()
 
 
+# Construct the bakery command and all arguments
 @given("I call bakery")
 def bare_command(bakery_command):
     bakery_command._subcommand = None
 
 
-# Construct the bakery command and all arguments
 @given(parsers.parse('I call bakery "{command}"'))
 def build_command(bakery_command, command):
     bakery_command._subcommand = command
+
+
+@given("with the basic context")
+def basic_context(bakery_command, basic_tmpcontext):
+    bakery_command.add_args(["--context", str(basic_tmpcontext)])
 
 
 @given("with the arguments:")
@@ -94,3 +101,13 @@ def check_error(bakery_command):
 def check_stdout(bakery_command, datatable):
     for row in datatable:
         assert row[0] in bakery_command.result.stdout
+
+
+@then("the output is JSON")
+def check_json(bakery_command):
+    """
+    Check that the output is valid JSON
+
+    An exception will be raised if the output is not valid JSON
+    """
+    json.loads(bakery_command.result.stdout)

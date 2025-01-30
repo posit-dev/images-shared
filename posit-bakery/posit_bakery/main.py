@@ -133,7 +133,7 @@ def render(
 @app.command()
 def plan(
     context: Annotated[
-        Path, typer.Argument(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
     image_version: Annotated[
@@ -187,7 +187,7 @@ def build(
     Requires the Docker Engine and CLI to be installed and running.
     """
     # TODO; Add skip_override back in
-    project = Project.load(context, skip_override)
+    project = Project.load(context)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
@@ -220,7 +220,8 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    project = Project.load(context, skip_override)
+    # TODO: add skip_override back in
+    project = Project.load(context)
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
