@@ -38,6 +38,7 @@ _pytest *ARGS:
     poetry run -- pytest \
         -n auto \
         --cov=posit_bakery \
+        --cov-report=term-missing \
         {{ ARGS }} \
         {{ CWD }}/test/
 
