@@ -1,50 +1,5 @@
-import json
-from typing import List, Optional
-
-import pytest
-from pytest_bdd import scenarios, given, when, then, parsers
-from typer.testing import CliRunner, Result
-
-from posit_bakery.main import app
-
-
-scenarios("cli/bakery.feature")
-scenarios("cli/new.feature")
-scenarios("cli/plan.feature")
-
-runner = CliRunner()
-
-
-class BakeryCommand:
-    """Class representing a bakery command"""
-
-    _subcommand: Optional[str]
-    _args: List[str]
-    result: Result
-
-    def __init__(self):
-        self._args = []
-
-    def __str__(self):
-        return "bakery " + " ".join(self.command)
-
-    @property
-    def command(self):
-        _cmd = [self._subcommand] if self._subcommand else []
-        return _cmd + self._args
-
-    def add_args(self, args: List[str]):
-        # Filter out empty strings
-        args = [a for a in args if a]
-        self._args.extend(args)
-
-    def run(self):
-        self.result = runner.invoke(app, self.command)
-
-
-@pytest.fixture
-def bakery_command():
-    return BakeryCommand()
+# conftest.py loads this file via pytest_plugins
+from pytest_bdd import given, when, then, parsers
 
 
 # Construct the bakery command and all arguments
@@ -54,7 +9,7 @@ def bare_command(bakery_command):
 
 
 @given(parsers.parse('I call bakery "{command}"'))
-def build_command(bakery_command, command):
+def sub_command(bakery_command, command):
     bakery_command._subcommand = command
 
 
@@ -101,13 +56,3 @@ def check_error(bakery_command):
 def check_stdout(bakery_command, datatable):
     for row in datatable:
         assert row[0] in bakery_command.result.stdout
-
-
-@then("the output is JSON")
-def check_json(bakery_command):
-    """
-    Check that the output is valid JSON
-
-    An exception will be raised if the output is not valid JSON
-    """
-    json.loads(bakery_command.result.stdout)

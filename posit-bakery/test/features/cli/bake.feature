@@ -6,4 +6,4 @@ Feature: bakery plan
         * with the basic context
         When I execute the command
         Then The command succeeds
-        * the output is JSON
+        * the output is valid JSON

@@ -7,6 +7,11 @@ import tomlkit
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
+pytest_plugins = [
+    "test.cli.fixtures",
+    "test.cli.common_steps",
+]
+
 
 @pytest.fixture
 def toml_basic_str():
@@ -111,10 +116,12 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
 
 
 @pytest.fixture
-def basic_images_obj(basic_manifest_obj):
+def basic_images_obj(basic_config_obj, basic_manifest_obj):
     """Return a dict of images loaded from the basic test suite manifest.toml file"""
     from posit_bakery.models import Image
     from posit_bakery.models.project.image import Images
+
+    return Images.load(config=basic_config_obj, manifests={basic_manifest_obj.image_name: basic_manifest_obj})
 
     return Images(
         **{
