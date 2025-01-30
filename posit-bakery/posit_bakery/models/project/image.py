@@ -4,7 +4,8 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryFileNotFoundError
+from posit_bakery.error import BakeryError, BakeryFileNotFoundError
+from posit_bakery.util import find_in_context
 from posit_bakery.models.config.config import Config
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.manifest import find_os
@@ -22,6 +23,10 @@ class ImageFilter(BaseModel):
     is_latest: bool | None = None
     build_os: str | None = None
     target_type: str | None = None
+
+    def __bool__(self) -> bool:
+        """ImageFilter is truthy if any of its values are not None"""
+        return any([v is not None for v in self.model_dump().values()])
 
 
 class ImageLabels(BaseModel):
@@ -48,27 +53,9 @@ class ImageGoss(BaseModel):
 
     @classmethod
     def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
-        deps: Path
-        tests: Path
-
         # TODO: Handle when paths are over-ridden in ManifestGoss
-        if (context / "deps").is_dir():
-            deps = context / "deps"
-        elif (context.parent / "deps").is_dir():
-            deps = context.parent / "deps"
-        elif (context.parent.parent / "deps").is_dir():
-            deps = context.parent.parent / "deps"
-        else:
-            raise BakeryFileNotFoundError(f"Could not find 'deps' directory for goss files. context: '{context}'.")
-
-        if (context / "test").is_dir():
-            tests = context / "test"
-        elif (context.parent / "test").is_dir():
-            tests = context.parent / "test"
-        elif (context.parent.parent / "test").is_dir():
-            tests = context.parent.parent / "test"
-        else:
-            raise BakeryFileNotFoundError(f"Could not find 'test' directory for goss files. context: '{context}'.")
+        deps: Path = find_in_context(context=context, name="deps", _type="dir", parents=3)
+        tests: Path = find_in_context(context=context, name="test", _type="dir", parents=3)
 
         return cls(deps=deps, tests=tests, command=goss.command, wait=goss.wait)
 
@@ -125,26 +112,29 @@ class ImageVariant(BaseModel):
             raise ValueError(f"Operating system '{_os}' is not supported.")
 
         # Possible patterns
-        filepaths: List[Path] = [
-            context / f"Containerfile.{build_os.condensed}.{target}",
-            context / f"Containerfile.{target}",
-            context / f"Containerfile.{build_os.condensed}",
-            context / f"Containerfile",
+        filenames: List[str] = [
+            f"Containerfile.{build_os.condensed}.{target}",
+            f"Containerfile.{target}",
+            f"Containerfile.{build_os.condensed}",
+            f"Containerfile",
         ]
-        for filepath in filepaths:
-            if filepath.is_file():
+        for name in filenames:
+            try:
+                filepath = find_in_context(context, name)
                 return filepath
+            except BakeryFileNotFoundError:
+                continue
 
         raise BakeryFileNotFoundError(f"Containerfile not found. context: '{context}',  os: '{_os}', target: {target}.")
 
-    def complete_metadata(self, config: ConfigDocument) -> None:
+    def complete_metadata(self, config: ConfigDocument, commit: str = None) -> None:
         labels: Dict[str, str] = {}
         labels.update({f"{self.meta.labels.oci_prefix}.{k}": v for k, v in self.meta.labels.oci.items()})
         labels.update(
             {
                 f"{self.meta.labels.oci_prefix}.vendor": config.repository.vendor,
                 f"{self.meta.labels.oci_prefix}.maintainer": config.repository.maintainer,
-                f"{self.meta.labels.oci_prefix}.revision": "",  # TODO: Get the commit hash
+                f"{self.meta.labels.oci_prefix}.revision": commit if commit else "",
                 f"{self.meta.labels.oci_prefix}.authors": ", ".join(config.repository.authors),
                 f"{self.meta.labels.oci_prefix}.source": config.repository.url,
             }
@@ -197,7 +187,6 @@ class Image(BaseModel):
             name=manifest.image_name,
             labels=ImageLabels(
                 posit={"name": manifest.image_name},
-                # TODO: Add created time
                 oci={"title": manifest.image_name},
             ),
         )
@@ -232,9 +221,8 @@ class Images(dict):
 
         for name, manifest in manifests.items():
             image: Image = Image.load(manifest.context, manifest.model)
-            # TODO: Hydrate metadata with config so we don't have to pass it everywhere
             for variant in image.variants:
-                variant.complete_metadata(config.model)
+                variant.complete_metadata(config=config.model, commit=config.commit)
 
             images[name] = image
 
@@ -281,6 +269,6 @@ class Images(dict):
                 images[image_name] = img
 
         if not images:
-            raise ValueError("No images found for filter.")
+            raise BakeryError("No images found for filter.")
 
         return Images(**images)

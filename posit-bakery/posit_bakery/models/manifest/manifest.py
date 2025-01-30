@@ -1,19 +1,13 @@
 import logging
 import os
 import re
-from datetime import timezone, datetime
 
 from pathlib import Path
-from typing import Dict, Union, List, Any, Set, Optional
+from typing import Dict, Union, List
 
 import jinja2
-from pydantic import BaseModel, model_validator
-from pydantic.dataclasses import dataclass
-from pydantic_core import ArgsKwargs
-from tomlkit import TOMLDocument
 
-from posit_bakery.error import BakeryConfigError, BakeryFileNotFoundError
-from posit_bakery.models import Config
+from posit_bakery.error import BakeryFileNotFoundError
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
@@ -26,7 +20,7 @@ class Manifest(GenericTOMLModel):
     """Simple wrapper around an image manifest.toml file"""
 
     @classmethod
-    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
+    def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
         """Load a Config object from a TOML file
 
         :param filepath: Path to the config.toml file
@@ -88,6 +82,7 @@ class Manifest(GenericTOMLModel):
         e = jinja2_env(
             loader=jinja2.FileSystemLoader(template_directory), autoescape=True, undefined=jinja2.StrictUndefined
         )
+        # Line failing
         for tpl_rel_path in e.list_templates():
             tpl = e.get_template(tpl_rel_path)
 
@@ -131,7 +126,6 @@ class Manifest(GenericTOMLModel):
                 f"Build version '{version}' already exists in manifest '{self.filepath}'. Please update the manifest.toml manually if necessary."
             )
         else:
-            # TODO:
             self.append_build_version(version, mark_latest)
         self.target_builds = TargetBuild.load(self.config, self.context, self.document)
         if save:

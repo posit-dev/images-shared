@@ -32,7 +32,6 @@ class TestConfig:
         assert c.vendor == "Posit Software, PBC"
         assert c.maintainer == "docker@posit.co"
         assert "docker.io/posit" in c.registry_urls
-        assert c.get_commit_sha() == ""
 
     def test_load_file(self, basic_config_file):
         """Test that the load_file method returns a Config object with expected data"""

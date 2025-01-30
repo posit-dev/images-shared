@@ -13,8 +13,21 @@ from posit_bakery.models.config.repository import ConfigRepository
 log = logging.getLogger("rich")
 
 
+def get_commit_sha(context: Path) -> str | None:
+    """Get the git commit SHA for the current context"""
+    sha = None
+    try:
+        repo = git.Repo(context, search_parent_directories=True)
+        sha = repo.head.object.hexsha
+    except Exception as e:
+        log.warning(f"Unable to get git commit for labels: {e}")
+    return sha
+
+
 class Config(GenericTOMLModel):
     """Simple wrapper around a project config.toml file"""
+
+    commit: str | None = None
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
@@ -25,8 +38,9 @@ class Config(GenericTOMLModel):
         filepath = Path(filepath)
         document = cls.read(filepath)
         model = ConfigDocument(**document.unwrap())
+        commit = get_commit_sha(filepath.parent)
 
-        return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
+        return cls(filepath=filepath, context=filepath.parent, document=document, model=model, commit=commit)
 
     @property
     def registries(self) -> List[ConfigRegistry]:
@@ -57,16 +71,6 @@ class Config(GenericTOMLModel):
     def registry_urls(self) -> List[str]:
         """Get the base URLs for all the ConfigRegistry objects as a list"""
         return [r.base_url for r in self.registries]
-
-    def get_commit_sha(self) -> str:
-        """Get the git commit SHA for the current context"""
-        sha = ""
-        try:
-            repo = git.Repo(self.context)
-            sha = repo.head.object.hexsha
-        except Exception as e:
-            log.error(f"Unable to get git commit for labels: {e}")
-        return sha
 
     def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object

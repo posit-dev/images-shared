@@ -14,7 +14,12 @@ def sub_command(bakery_command, command):
 
 
 @given("with the basic context")
-def basic_context(bakery_command, basic_tmpcontext):
+def basic_context(bakery_command, basic_context):
+    bakery_command.add_args(["--context", str(basic_context)])
+
+
+@given("with a temp basic context")
+def tmp_context(bakery_command, basic_tmpcontext):
     bakery_command.add_args(["--context", str(basic_tmpcontext)])
 
 

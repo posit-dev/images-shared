@@ -180,8 +180,10 @@ class Project(BaseModel):
             image_version=image_version,
             target_type=image_type,
         )
-        selected_images = self.images.filter(filter)
-        return BakePlan.create(images=selected_images.values())
+        if filter:
+            return BakePlan.create(images=self.images.filter(filter).values())
+
+        return BakePlan.create(images=self.images.values())
 
     def build(
         self,
@@ -238,9 +240,12 @@ class Project(BaseModel):
         goss_bin = util.find_bin(self.context, "goss", "GOSS_PATH")
         dgoss_commands = []
 
-        images: Images = self.images.filter(
-            ImageFilter(image_name=image_name, image_version=image_version, target_type=image_type)
+        filter: ImageFilter = ImageFilter(
+            image_name=image_name,
+            image_version=image_version,
+            target_type=image_type,
         )
+        images = self.images.filter(filter) if filter else self.images
 
         for variant in images.variants:
             run_env = os.environ.copy()
