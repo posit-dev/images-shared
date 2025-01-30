@@ -8,6 +8,7 @@ from posit_bakery.models.image import ImageLabels, ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.image.version import ImageVersion
 from posit_bakery.models.manifest.document import ManifestDocument
+from posit_bakery.templating.default import create_image_templates
 
 
 class Image(BaseModel):
@@ -42,6 +43,11 @@ class Image(BaseModel):
             )
 
         return cls(name=manifest.image_name, context=context, versions=versions)
+
+    @classmethod
+    def create(cls, project_context: Path, name: str, base_tag: str):
+        context: Path = project_context / name
+        create_image_templates(context=context, image_name=name, base_tag=base_tag)
 
     @property
     def variants(self) -> List[ImageVariant]:

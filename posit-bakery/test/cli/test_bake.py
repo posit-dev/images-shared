@@ -7,12 +7,22 @@ from pytest_bdd import scenarios, given, when, then, parsers
 scenarios("cli/bake.feature")
 
 
-@then("the output is valid JSON")
+@then("the plan is valid")
 def check_json(bakery_command):
     try:
-        json.loads(bakery_command.result.stdout)
+        plan = json.loads(bakery_command.result.stdout)
     except json.JSONDecodeError:
         pytest.fail("bakery plan output is not valid JSON")
+
+    assert "group" in plan
+    assert isinstance(plan["group"], dict)
+    assert "default" in plan["group"]
+    assert isinstance(plan["group"]["default"], dict)
+    assert "targets" in plan["group"]["default"]
+    assert isinstance(plan["group"]["default"]["targets"], list)
+
+    assert "target" in plan
+    assert isinstance(plan["target"], dict)
 
 
 @then("the targets include the commit hash")

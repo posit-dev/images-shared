@@ -12,7 +12,6 @@ from posit_bakery.error import (
     BakeryBuildError,
     BakeryGossError,
     BakeryConfigError,
-    BakeryTemplatingError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.project.bake import BakePlan
@@ -78,15 +77,7 @@ class Project(BaseModel):
 
         return manifests
 
-    def new_image(self, image_name: str, base_tag: str = "docker.io/library/ubuntu:22.04"):
-        """Create a new image in the project with associated file structure from templates
-
-        :param image_name: The name of the new image
-        :param base_tag: The base tag to use for the new image
-        """
-        if image_name in self.manifests:
-            raise BakeryConfigError(f"Image name {image_name} already exists in this project.")
-
+    def new_config(self) -> None:
         config_file = self.context / "config.toml"
         if not config_file.is_file():
             log.info(f"[bright_black]Creating new project config file [bold]{config_file}")
@@ -95,49 +86,17 @@ class Project(BaseModel):
             with open(config_file, "w") as f:
                 f.write(rendered)
 
-        image_path = self.context / image_name
-        if not image_path.is_dir():
-            log.info(f"[bright_black]Creating new image directory [bold]{image_path}")
-            image_path.mkdir()
+    def new_image(self, image_name: str, base_tag: str):
+        """Create a new image in the project with associated file structure from templates
 
-        manifest_file = image_path / "manifest.toml"
-        if manifest_file.is_file():
-            log.error(f"Manifest file [bold]{manifest_file}[/bold] already exists")
-            raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
-        else:
-            log.info(f"[bright_black]Creating new manifest file [bold]{manifest_file}")
-            tpl = jinja2.Environment().from_string(TPL_MANIFEST_TOML)
-            rendered = tpl.render(image_name=image_name)
-            with open(manifest_file, "w") as f:
-                f.write(rendered)
+        :param image_name: The name of the new image
+        :param base_tag: The base tag to use for the new image
+        """
+        if image_name in self.manifests:
+            raise BakeryConfigError(f"Image '{image_name}' already exists.")
 
-        image_template_path = image_path / "template"
-        if not image_template_path.is_dir():
-            log.info(f"[bright_black]Creating new image templates directory [bold]{image_template_path}")
-            image_template_path.mkdir()
-
-        # Create a new Containerfile template if it doesn't exist
-        containerfile_path = image_template_path / "Containerfile.jinja2"
-        if not containerfile_path.is_file():
-            log.info(f"[bright_black]Creating new Containerfile template [bold]{containerfile_path}")
-            tpl = jinja2.Environment().from_string(TPL_CONTAINERFILE)
-            rendered = tpl.render(image_name=image_name, base_tag=base_tag)
-            with open(containerfile_path, "w") as f:
-                f.write(rendered)
-
-        image_test_path = image_template_path / "test"
-        if not image_test_path.is_dir():
-            log.info(f"[bright_black]Creating new image templates test directory [bold]{image_test_path}")
-            image_test_path.mkdir()
-        image_test_goss_file = image_test_path / "goss.yaml.jinja2"
-        image_test_goss_file.touch(exist_ok=True)
-
-        image_deps_path = image_template_path / "deps"
-        if not image_deps_path.is_dir():
-            log.info(f"[bright_black]Creating new image templates dependencies directory [bold]{image_deps_path}")
-            image_deps_path.mkdir()
-        image_deps_package_file = image_deps_path / "packages.txt.jinja2"
-        image_deps_package_file.touch(exist_ok=True)
+        Image.create(project_context=self.context, name=image_name, base_tag=base_tag)
+        # TODO: Do we update the project with a new manifest, or pick it up when we run bakery again?
 
     def new_image_version(
         self,

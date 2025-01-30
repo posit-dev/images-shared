@@ -3,15 +3,15 @@ Feature: bakery plan
 
     Scenario: bakery plan
         Given I call bakery "plan"
-        * with a temp basic context
+        * in a temp basic context
         When I execute the command
         Then The command succeeds
-        * the output is valid JSON
+        * the plan is valid
 
     Scenario: bakery plan with git commit
         Given I call bakery "plan"
-        * with the basic context
+        * in the basic context
         When I execute the command
         Then The command succeeds
-        * the output is valid JSON
+        * the plan is valid
         * the targets include the commit hash

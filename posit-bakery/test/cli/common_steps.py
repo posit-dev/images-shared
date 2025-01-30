@@ -13,12 +13,12 @@ def sub_command(bakery_command, command):
     bakery_command._subcommand = command
 
 
-@given("with the basic context")
+@given("in the basic context")
 def basic_context(bakery_command, basic_context):
     bakery_command.add_args(["--context", str(basic_context)])
 
 
-@given("with a temp basic context")
+@given("in a temp basic context")
 def tmp_context(bakery_command, basic_tmpcontext):
     bakery_command.add_args(["--context", str(basic_tmpcontext)])
 
@@ -61,3 +61,9 @@ def check_error(bakery_command):
 def check_stdout(bakery_command, datatable):
     for row in datatable:
         assert row[0] in bakery_command.result.stdout
+
+
+@then("the log includes:")
+def check_log(caplog, datatable):
+    # TODO: Check the log output for expected messages
+    pass

@@ -5,7 +5,7 @@ from typing import List
 from pydantic import BaseModel
 
 
-from posit_bakery.models.image.image import ImageMetadata
+from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
@@ -40,3 +40,10 @@ class ImageVersion(BaseModel):
                 )
 
         return cls(version=meta.version, context=meta.context, variants=variants)
+
+    @classmethod
+    def create(cls, image_context: Path, version: str):
+        context: Path = image_context / version
+        context.mkdir(parents=True, exist_ok=True)
+
+        return cls(version=version, context=context)

@@ -15,6 +15,9 @@ from posit_bakery.error import (
 )
 
 
+DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
+
+
 log: logging.Logger  # Global log variable, set in the callback function
 
 app = typer.Typer()
@@ -57,9 +60,7 @@ def new(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_base: Annotated[
-        str, typer.Option(help="The base to use for the new image.")
-    ] = "docker.io/library/ubuntu:22.04",
+    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = DEFAULT_BASE_IMAGE,
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
@@ -82,7 +83,7 @@ def new(
         log.error(f"{e}")
         raise typer.Exit(code=1)
 
-    log.info(f"Successfully generated {image_name} ✅")
+    log.info(f"Successfully created image '{image_name}' ✅")
 
 
 @app.command()
