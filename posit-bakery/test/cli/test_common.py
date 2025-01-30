@@ -17,15 +17,11 @@ class BakeryCommand:
     """Class representing a bakery command"""
 
     _subcommand: Optional[str]
-    _flags: List[str]
     _args: List[str]
-    _opts: List[str]
     result: Result
 
     def __init__(self):
-        self._flags = []
         self._args = []
-        self._opts = []
 
     def __str__(self):
         return "bakery " + " ".join(self.command)
@@ -33,16 +29,12 @@ class BakeryCommand:
     @property
     def command(self):
         _cmd = [self._subcommand] if self._subcommand else []
-        return _cmd + self._flags + self._args + self._opts
+        return _cmd + self._args
 
     def add_args(self, args: List[str]):
+        # Filter out empty strings
+        args = [a for a in args if a]
         self._args.extend(args)
-
-    def add_flag(self, flag: str):
-        self._flags.append(f"--{flag}")
-
-    def add_opt(self, name: str, value: str):
-        self._opts.extend([f"--{name}", f"{value}"])
 
     def run(self):
         self.result = runner.invoke(app, self.command)
@@ -53,30 +45,21 @@ def bakery_command():
     return BakeryCommand()
 
 
-@given("I run bakery")
+@given("I call bakery")
 def bare_command(bakery_command):
     bakery_command._subcommand = None
 
 
 # Construct the bakery command and all arguments
-@given(parsers.parse('I run bakery "{command}"'))
+@given(parsers.parse('I call bakery "{command}"'))
 def build_command(bakery_command, command):
     bakery_command._subcommand = command
 
 
-@given(parsers.parse('with the "{args}" arguments'))
-def add_args(bakery_command, args):
-    bakery_command.add_args(args.split())
-
-
-@given(parsers.parse('with the "{flag}" flag'))
-def add_flag(bakery_command, flag):
-    bakery_command.add_flag(flag)
-
-
-@given(parsers.parse('with the "{opt}" option set to "{value}"'))
-def add_option(bakery_command, opt, value):
-    bakery_command.add_opt(opt, value)
+@given("with the arguments:")
+def add_args_table(bakery_command, datatable):
+    for row in datatable:
+        bakery_command.add_args(row)
 
 
 # Run the command
@@ -96,7 +79,18 @@ def check_failure(bakery_command):
     assert bakery_command.result.exit_code != 0
 
 
-@then("help is shown")
-def check_help(bakery_command):
+@then("usage is shown")
+def check_usage(bakery_command):
     # TODO: Make this check more robust, with options for specific output
     assert "Usage:" in bakery_command.result.stdout
+
+
+@then("an error message is shown")
+def check_error(bakery_command):
+    assert "Error" in bakery_command.result.stdout
+
+
+@then("the output includes:")
+def check_stdout(bakery_command, datatable):
+    for row in datatable:
+        assert row[0] in bakery_command.result.stdout
