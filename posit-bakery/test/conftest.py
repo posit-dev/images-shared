@@ -118,19 +118,9 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
 @pytest.fixture
 def basic_images_obj(basic_config_obj, basic_manifest_obj):
     """Return a dict of images loaded from the basic test suite manifest.toml file"""
-    from posit_bakery.models import Image
-    from posit_bakery.models.project.image import Images
+    from posit_bakery.models import Images
 
     return Images.load(config=basic_config_obj, manifests={basic_manifest_obj.image_name: basic_manifest_obj})
-
-    return Images(
-        **{
-            basic_manifest_obj.image_name: Image.load(
-                context=basic_manifest_obj.context,
-                manifest=basic_manifest_obj.model,
-            )
-        }
-    )
 
 
 @pytest.fixture

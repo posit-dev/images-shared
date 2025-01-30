@@ -14,9 +14,8 @@ from posit_bakery.error import (
     BakeryConfigError,
     BakeryTemplatingError,
 )
-from posit_bakery.models import Image, Config, Manifest
+from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.project.bake import BakePlan
-from posit_bakery.models.project.image import Images, ImageFilter
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 import posit_bakery.util as util
 

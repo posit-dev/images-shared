@@ -5,10 +5,10 @@ from unittest.mock import patch
 import pytest
 
 from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import Image
-from posit_bakery.models.project.image import ImageVariant, ImageMetadata
+from posit_bakery.models.image.image import Image, ImageMetadata
+from posit_bakery.models.image.variant import ImageVariant
 
-from .fixtures import (
+from ..fixtures import (
     manifest_simple,
     manifest_latest,
     manifest_multi_os,

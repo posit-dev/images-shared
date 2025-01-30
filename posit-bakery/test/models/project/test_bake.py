@@ -4,11 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
+from posit_bakery.models import Image, ImageFilter
 from posit_bakery.models.project.bake import BakePlan
 from posit_bakery.models.config.document import ConfigDocument
-from posit_bakery.models.project.image import Image, ImageFilter
 
-from .fixtures import (
+from ..fixtures import (
     config_simple,
     config_multi_registry,
     manifest_simple,

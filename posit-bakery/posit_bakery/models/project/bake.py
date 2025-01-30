@@ -4,9 +4,8 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-from posit_bakery.models.config.document import ConfigDocument
-from posit_bakery.models.config.repository import ConfigRepository
-from posit_bakery.models.project.image import Image, ImageLabels, ImageVariant, Images
+from posit_bakery.models.image.image import Image
+from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.templating.filters import condense
 
 

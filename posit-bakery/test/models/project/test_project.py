@@ -7,8 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import tomlkit
 
-from posit_bakery.models import Image, Manifest, Project
-from posit_bakery.models.project.image import Images, ImageFilter
+from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project
 
 pytestmark = [
     pytest.mark.unit,
