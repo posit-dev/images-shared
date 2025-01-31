@@ -20,13 +20,14 @@ def test_find_bin_by_environ(mocker):
 def test_find_bin_by_which(mocker):
     """Test finding a binary by which"""
     mocker.patch("posit_bakery.util.which", return_value="/usr/bin/goss")
+    mocker.patch("os.environ.get", side_effect=[None, None])
     assert util.find_bin("/tmp", "goss", "GOSS_PATH") is None
 
 
 def test_find_bin_by_context(tmpdir, mocker):
     """Test finding a binary by context tools directory"""
     mocker.patch("posit_bakery.util.which", return_value=None)
-    mocker.patch.dict("posit_bakery.util.os.environ", {})
+    mocker.patch("os.environ.get", side_effect=[None, None])
     tools = Path(tmpdir) / "tools"
     tools.mkdir(parents=True, exist_ok=True)
     b = tools / "goss"
@@ -37,7 +38,7 @@ def test_find_bin_by_context(tmpdir, mocker):
 def test_find_bin_not_found(tmpdir, mocker):
     """Test trying to find a binary that does not exist raises an error"""
     mocker.patch("posit_bakery.util.which", return_value=None)
-    mocker.patch.dict("posit_bakery.util.os.environ", {})
+    mocker.patch("os.environ.get", side_effect=[None, None])
     with pytest.raises(BakeryFileNotFoundError):
         util.find_bin(tmpdir, "goss", "GOSS_PATH")
 

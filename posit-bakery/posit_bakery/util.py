@@ -20,8 +20,9 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
     :param bin_env_var: The environment variable to search for
     """
     context = Path(context)
-    if bin_env_var in os.environ:
-        return os.environ[bin_env_var]
+
+    if os.environ.get(bin_env_var) is not None:
+        return os.environ.get(bin_env_var)
     elif which(bin_name) is not None:
         return None
     elif (context / "tools" / bin_name).is_file():
