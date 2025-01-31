@@ -7,8 +7,6 @@ from pydantic import BaseModel
 from posit_bakery.models.image import ImageLabels, ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.image.version import ImageVersion
-from posit_bakery.models.manifest import guess_os_list
-from posit_bakery.models.manifest.build_os import BuildOS
 from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.templating.default import create_image_templates
 
@@ -51,17 +49,15 @@ class Image(BaseModel):
         context: Path = project_context / name
         create_image_templates(context=context, image_name=name, base_tag=base_tag)
 
-    def create_version(self, manifest: ManifestDocument, version: str, mark_latest: bool):
-        ImageVersion.create(
+    def create_version(self, manifest: ManifestDocument, version: str, mark_latest: bool) -> ImageVersion:
+        new_version: ImageVersion = ImageVersion.create(
             image_context=self.context,
             version=version,
             targets=manifest.target.keys(),
             mark_latest=mark_latest,
         )
 
-        # Get list of OS from the rendered files
-        version_context = self.context / version
-        os_list: List[BuildOS] = guess_os_list(version_context)
+        return new_version
 
     @property
     def variants(self) -> List[ImageVariant]:

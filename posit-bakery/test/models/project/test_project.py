@@ -71,52 +71,6 @@ class TestProjectLoad:
         assert len(i["test-image"].variants) == basic_expected_num_variants
 
 
-@pytest.mark.skip(reason="TODO: Move the render image into Image object")
-class TestProjectUpdate:
-    def test_new_image(self, basic_tmpcontext):
-        """Test creating a new image"""
-        p = Project.load(basic_tmpcontext)
-        p.new_image("new-image")
-        new_image_path = Path(basic_tmpcontext) / "new-image"
-        assert new_image_path.is_dir()
-        assert (new_image_path / "manifest.toml").is_file()
-        assert (new_image_path / "template").is_dir()
-        assert (new_image_path / "template" / "Containerfile.jinja2").is_file()
-        assert (new_image_path / "template" / "test").is_dir()
-        assert (new_image_path / "template" / "test" / "goss.yaml.jinja2").is_file()
-        assert (new_image_path / "template" / "deps").is_dir()
-        assert (new_image_path / "template" / "deps" / "packages.txt.jinja2").is_file()
-
-    def test_new_image_version(self, basic_tmpcontext):
-        """Test creating a new version of an image creates the expected files and updates the manifest"""
-        image_dir = basic_tmpcontext / "test-image"
-        p = Project.load(basic_tmpcontext)
-        p.new_image_version("test-image", "1.0.1")
-        new_version_dir = image_dir / "1.0.1"
-
-        assert new_version_dir.is_dir()
-        assert (new_version_dir / "deps").is_dir()
-        assert (new_version_dir / "deps" / "ubuntu2204_packages.txt").is_file()
-        assert (new_version_dir / "deps" / "ubuntu2204_optional_packages.txt").is_file()
-        assert (new_version_dir / "test").is_dir()
-        assert (new_version_dir / "test" / "goss.yaml").is_file()
-        assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
-        assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
-        assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-
-        assert "1.0.1" in p.manifests["test-image"].versions
-        assert len(p.manifests["test-image"].target_builds) == 4
-
-        with open(image_dir / "manifest.toml", "rb") as f:
-            d = tomlkit.loads(f.read())
-        assert "1.0.1" in d["build"]
-        assert d["build"]["1.0.1"]["latest"] is True
-        assert d["build"]["1.0.1"]["os"] == ["Ubuntu 2204"]
-
-
 class TestProjectBuild:
     def test_render_bake_plan(self, basic_context, basic_expected_num_variants):
         p = Project.load(basic_context)

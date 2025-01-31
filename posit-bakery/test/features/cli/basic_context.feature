@@ -43,14 +43,14 @@ Feature: Basic Context
         * in a temp basic context
         * with the arguments:
             | test-image |
-            | 0.9.9 |
+            | 1.1.0 |
         When I execute the command
         Then The command succeeds
         * the image "test-image" exists
-        * the version "0.9.9" exists
+        * the version "1.1.0" exists
         * the default rendered templates exist
         * the log includes:
-            | Successfully created version 'test-image/0.9.9' |
+            | Successfully created version 'test-image/1.1.0' |
 
     @slow
     Scenario: bakery build dgoss

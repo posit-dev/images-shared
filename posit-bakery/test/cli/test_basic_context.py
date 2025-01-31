@@ -1,4 +1,4 @@
-from pytest_bdd import scenarios, given, when, then, parsers
+from pytest_bdd import scenarios, then, parsers
 
 scenarios("cli/basic_context.feature")
 

@@ -1,6 +1,7 @@
 import logging
 import os
 
+from packaging.version import Version
 from pathlib import Path
 from typing import Union, List
 
@@ -39,3 +40,21 @@ class Manifest(GenericTOMLModel):
     def versions(self) -> List[str]:
         """Get the build versions present in the target builds"""
         return [version for version in self.model.build.keys()]
+
+    def add_version(self, version: str, os_list: List[str], latest: bool):
+        existing_builds = self.document["build"]
+
+        if latest:
+            for b in existing_builds.values():
+                b.pop("latest")
+            new_build = {"os": os_list, "latest": True}
+        else:
+            new_build = {"os": os_list}
+
+        # TODO: Should we sort the manifest by version in descending order?
+        builds = {version: new_build, **existing_builds, version: new_build}
+        # Sort versions in descending order
+        versions = [Version(v) for v in builds.keys()]
+        builds = {str(v): builds[str(v)] for v in sorted(versions, reverse=True)}
+        self.document["build"] = builds
+        self.dump()

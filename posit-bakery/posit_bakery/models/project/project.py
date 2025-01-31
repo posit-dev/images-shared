@@ -4,7 +4,6 @@ import subprocess
 from pathlib import Path
 from typing import Union, List, Dict, Any, Tuple
 
-import jinja2
 from pydantic import BaseModel
 
 from posit_bakery.error import (
@@ -14,8 +13,8 @@ from posit_bakery.error import (
     BakeryConfigError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
+from posit_bakery.models.manifest import guess_os_list
 from posit_bakery.models.project.bake import BakePlan
-from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 import posit_bakery.util as util
 
 
@@ -114,9 +113,10 @@ class Project(BaseModel):
         image: Image = self.images[image_name]
         image.create_version(manifest=manifest.model, version=image_version, mark_latest=mark_latest)
 
-        # TODO: Update the manifest file with the new version.
-        # Write an update method to return a new class? Don't know how frozen models are handled
-        # manifest.new_version(image_version, mark_latest=mark_latest, value_map=value_map, save=save)
+        if save:
+            version_context = image.context / image_version
+            os_list: List[str] = [_os.pretty for _os in guess_os_list(version_context)]
+            manifest.add_version(image_version, os_list, mark_latest)
 
     def render_bake_plan(
         self,

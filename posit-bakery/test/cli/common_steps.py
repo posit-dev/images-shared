@@ -4,6 +4,8 @@ import json
 import pytest
 from pytest_bdd import given, when, then, parsers
 
+from posit_bakery.models import Manifest
+
 
 # Construct the bakery command and all arguments
 @given("I call bakery")
@@ -53,7 +55,6 @@ def check_failure(bakery_command):
 
 @then("usage is shown")
 def check_usage(bakery_command):
-    # TODO: Make this check more robust, with options for specific output
     assert "Usage:" in bakery_command.result.stdout
 
 
@@ -85,8 +86,20 @@ def check_image(basic_tmpcontext, image_name) -> str:
 
 @then(parsers.parse('the version "{version}" exists'), target_fixture="new_version")
 def check_version(basic_tmpcontext, version, new_image_name) -> str:
-    version_dir = basic_tmpcontext / new_image_name / version
+    image_dir = basic_tmpcontext / new_image_name
+    manifest_file = image_dir / "manifest.toml"
+    assert manifest_file.is_file()
+
+    version_dir = image_dir / version
     assert version_dir.is_dir()
+
+    manifest = Manifest.load(manifest_file)
+    assert version in manifest.model.build
+    assert manifest.model.build[version].latest == True
+    assert "Ubuntu 22.04" in manifest.model.build[version].os
+
+    assert "1.0.0" in manifest.model.build
+    assert manifest.model.build["1.0.0"].latest == False
 
     return version
 
