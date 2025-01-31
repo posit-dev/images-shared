@@ -4,12 +4,26 @@ from typing import Any, Dict, List
 
 import jinja2
 
+import posit_bakery.util as util
 from posit_bakery.error import BakeryTemplatingError
-
-from posit_bakery.templating import TPL_MANIFEST_TOML, TPL_CONTAINERFILE
-from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
+from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
+from posit_bakery.templating.filters import jinja2_env
 
 log = logging.getLogger("rich")
+
+
+def create_project_config(context: Path) -> None:
+    if not context.is_dir():
+        log.error(f"Creating new project directory [bold]{context}")
+        raise BakeryTemplatingError(f"Project does not exist '{context}'")
+
+    config_file = context / "config.toml"
+    if not config_file.is_file():
+        log.info(f"Creating new project config file [bold]{config_file}")
+        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(TPL_CONFIG_TOML)
+        rendered = tpl.render(repo_url=util.try_get_repo_url(context))
+        with open(config_file, "w") as f:
+            f.write(rendered)
 
 
 def create_image_templates(context: Path, image_name: str, base_tag: str) -> None:

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import tomlkit
 
@@ -18,7 +20,7 @@ class TestConfigLoad:
 
 
 class TestConfig:
-    def test_create_config(self, basic_context, basic_config_file):
+    def test_config_init(self, basic_context, basic_config_file):
         """Test creating a generic Config object does not raise an exception and test data appears as expected"""
         doc: tomlkit.TOMLDocument = GenericTOMLModel.read(basic_config_file)
         c = Config(
@@ -43,6 +45,19 @@ class TestConfig:
         assert len(c.registries) == 2
         assert "docker.io/posit" in c.registry_urls
         assert "ghcr.io/posit-dev" in c.registry_urls
+
+    def test_create_config(self, tmpdir):
+        """Test that the create method creates a Config object with expected data"""
+        context = Path(tmpdir)
+        c = Config.create(context)
+
+        config_file = context / "config.toml"
+        assert config_file.is_file()
+
+        # Check defaults from template
+        assert c.vendor == "Posit Software, PBC"
+        assert c.maintainer == "docker@posit.co"
+        assert "docker.io/posit" in c.registry_urls
 
     @pytest.mark.skip(reason="TODO: Handle overrides not specifying all fields")
     def test_update(self, basic_context, basic_config_file, basic_config_obj):

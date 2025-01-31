@@ -8,7 +8,7 @@ import git
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
-from posit_bakery.models.config.repository import ConfigRepository
+from posit_bakery.templating.default import create_project_config
 
 log = logging.getLogger("rich")
 
@@ -41,6 +41,15 @@ class Config(GenericTOMLModel):
         commit = get_commit_sha(filepath.parent)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model, commit=commit)
+
+    @classmethod
+    def create(cls, context: Path) -> "Config":
+        """Create a new Config file with default values
+
+        :param context: The context to create the Config object in
+        """
+        create_project_config(context)
+        return cls.load(context / "config.toml")
 
     @property
     def registries(self) -> List[ConfigRegistry]:

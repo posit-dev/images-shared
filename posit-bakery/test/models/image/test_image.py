@@ -4,8 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models.image.image import Image, ImageMetadata
+from posit_bakery.error import BakeryError, BakeryFileNotFoundError
+from posit_bakery.models.image import ImageMetadata
+from posit_bakery.models.image.image import Image
+from posit_bakery.models.image.images import ImageFilter
 from posit_bakery.models.image.variant import ImageVariant
 
 from ..fixtures import (
@@ -41,7 +43,23 @@ def patch_is_dir():
         yield p
 
 
-# TODO: Figure out how to patch Path.is_file for this class
+@pytest.mark.image
+class TestImages:
+    @pytest.mark.parametrize(
+        "filter",
+        [
+            pytest.param(ImageFilter(image_name="non-existent"), id="filter-image-name"),
+            pytest.param(ImageFilter(image_version="non-existent"), id="filter-image-version"),
+            pytest.param(ImageFilter(is_latest=False), id="filter-is-latest"),
+            pytest.param(ImageFilter(build_os="non-existent"), id="filter-build-os"),
+            pytest.param(ImageFilter(target_type="non-existent"), id="filter-target-type"),
+        ],
+    )
+    def test_image_filter_empty(self, basic_images_obj, filter):
+        with pytest.raises(BakeryError):
+            basic_images_obj.filter(filter).values()
+
+
 @pytest.mark.image
 class TestImageMatrix:
     context: Path = Path("fancy-image")

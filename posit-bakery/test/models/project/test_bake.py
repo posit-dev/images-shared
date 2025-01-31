@@ -222,7 +222,6 @@ class TestBakePlan:
 
     def test_bake_plan_filter(
         self,
-        basic_config_obj,
         basic_images_obj,
         basic_manifest_os_plus_versions,
         basic_expected_num_variants,

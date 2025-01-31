@@ -77,15 +77,6 @@ class Project(BaseModel):
 
         return manifests
 
-    def new_config(self) -> None:
-        config_file = self.context / "config.toml"
-        if not config_file.is_file():
-            log.info(f"[bright_black]Creating new project config file [bold]{config_file}")
-            tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(self.context)).from_string(TPL_CONFIG_TOML)
-            rendered = tpl.render(repo_url=util.try_get_repo_url(self.context))
-            with open(config_file, "w") as f:
-                f.write(rendered)
-
     def new_image(self, image_name: str, base_tag: str):
         """Create a new image in the project with associated file structure from templates
 
