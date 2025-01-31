@@ -20,7 +20,7 @@ def get_commit_sha(context: Path) -> str | None:
         repo = git.Repo(context, search_parent_directories=True)
         sha = repo.head.object.hexsha
     except Exception as e:
-        log.warning(f"Unable to get git commit for labels: {e}")
+        log.debug(f"Unable to get git commit for labels: {e}")
     return sha
 
 

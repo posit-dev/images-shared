@@ -15,7 +15,7 @@ class BakeryCommand:
 
     _subcommand: str | None
     _args: List[str]
-    result: Result
+    result: Result | None
 
     def __init__(self):
         self._args = []
@@ -27,6 +27,11 @@ class BakeryCommand:
     def command(self):
         _cmd = [self._subcommand] if self._subcommand else []
         return _cmd + self._args
+
+    def reset(self):
+        self._subcommand = None
+        self._args = []
+        self.result = None
 
     def add_args(self, args: List[str]):
         # Filter out empty strings

@@ -42,6 +42,11 @@ _pytest *ARGS:
         {{ ARGS }} \
         {{ CWD }}/test/
 
-# Test the posit-bakery python project
+# Test the posit-bakery python project, skipping slow tests
+# Note: Both sets of quotes are required
 test *ARGS:
+    just _pytest {{ ARGS }} -m "'not slow'"
+
+# Run all tests
+test-all *ARGS:
     just _pytest {{ ARGS }}

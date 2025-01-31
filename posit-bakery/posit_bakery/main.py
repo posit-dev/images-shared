@@ -83,7 +83,7 @@ def new(
         log.error(f"{e}")
         raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created image [bold]{image_name}[/bold]")
+    log.info(f"✅ Successfully created image '{image_name}'")
 
 
 @app.command()
@@ -133,7 +133,7 @@ def render(
         mark_latest=(not skip_mark_latest),
     )
 
-    log.info(f"✅ Successfully created [bold]{image_name}/{image_version}[/bold]")
+    log.info(f"✅ Successfully created version '{image_name}/{image_version}'")
 
 
 @app.command()

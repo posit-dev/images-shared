@@ -19,6 +19,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install goss and dgoss
+        uses: ./setup-goss
+
       - name: Install dependencies
         working-directory: ./posit-bakery
         run: |
@@ -28,6 +31,8 @@ jobs:
       - name: Run tests
         working-directory: ./posit-bakery
         run: |
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           poetry run pytest -n auto \
             --cov=posit_bakery \
             --cov-report=xml \

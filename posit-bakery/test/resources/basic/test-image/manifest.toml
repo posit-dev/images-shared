@@ -8,5 +8,4 @@ latest = true
 
 [target.std]
 [target.std.goss]
-command = "bash"
 wait = 1

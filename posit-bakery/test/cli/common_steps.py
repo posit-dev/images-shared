@@ -8,11 +8,13 @@ from pytest_bdd import given, when, then, parsers
 # Construct the bakery command and all arguments
 @given("I call bakery")
 def bare_command(bakery_command):
+    bakery_command.reset()
     bakery_command._subcommand = None
 
 
 @given(parsers.parse('I call bakery "{command}"'))
 def sub_command(bakery_command, command):
+    bakery_command.reset()
     bakery_command._subcommand = command
 
 
@@ -68,8 +70,8 @@ def check_stdout(bakery_command, datatable):
 
 @then("the log includes:")
 def check_log(caplog, datatable):
-    # TODO: Check the log output for expected messages
-    pass
+    for row in datatable:
+        assert row[0] in caplog.text
 
 
 @then(parsers.parse('the image "{image_name}" exists'), target_fixture="new_image_name")

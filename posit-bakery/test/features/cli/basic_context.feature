@@ -27,6 +27,8 @@ Feature: Basic Context
         * the image "brand-new-image" exists
         * the default templates exist
         * the default base image is "registry/base-image:1.0.3"
+        * the log includes:
+            | Successfully created image 'brand-new-image' |
 
     Scenario: bakery new image exists
         Given I call bakery "new"
@@ -47,3 +49,19 @@ Feature: Basic Context
         * the image "test-image" exists
         * the version "0.9.9" exists
         * the default rendered templates exist
+        * the log includes:
+            | Successfully created version 'test-image/0.9.9' |
+
+    @slow
+    Scenario: bakery build dgoss
+        Given I call bakery "build"
+        * in a temp basic context
+        * with the arguments:
+            | --load |
+        When I execute the command
+        Then The command succeeds
+
+        Given I call bakery "dgoss"
+        * in a temp basic context
+        When I execute the command
+        Then The command succeeds
