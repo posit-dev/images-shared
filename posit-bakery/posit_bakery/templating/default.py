@@ -1,10 +1,13 @@
 import logging
 from pathlib import Path
+from typing import Any, Dict, List
 
 import jinja2
 
 from posit_bakery.error import BakeryTemplatingError
+
 from posit_bakery.templating import TPL_MANIFEST_TOML, TPL_CONTAINERFILE
+from posit_bakery.templating.filters import render_template, condense, tag_safe, clean_version, jinja2_env
 
 log = logging.getLogger("rich")
 
@@ -53,3 +56,52 @@ def create_image_templates(context: Path, image_name: str, base_tag: str) -> Non
         image_deps_path.mkdir()
     image_deps_package_file = image_deps_path / "packages.txt.jinja2"
     image_deps_package_file.touch(exist_ok=True)
+
+
+def render_image_templates(context: Path, version: str, targets: List[str], latest: bool) -> None:
+    image_context: Path = context.parent
+    project_context: Path = image_context.parent
+
+    image_template_path: Path = image_context / "template"
+    if not image_template_path.is_dir():
+        raise BakeryTemplatingError(f"Image templates to not exist in [bold]{image_template_path}")
+
+    exists: bool = context.is_dir()
+    if not exists:
+        log.debug(f"Creating new image version directory [bold]{context}")
+        context.mkdir()
+
+    # Initialize the value map with relative path
+    value_map: Dict[str, Any] = {}
+    if "rel_path" not in value_map:
+        value_map["rel_path"] = context.relative_to(project_context)
+
+    e = jinja2_env(
+        loader=jinja2.FileSystemLoader(image_template_path), autoescape=True, undefined=jinja2.StrictUndefined
+    )
+    # Line failing
+    for tpl_rel_path in e.list_templates():
+        tpl = e.get_template(tpl_rel_path)
+
+        render_kwargs = {}
+        if tpl_rel_path.startswith("Containerfile"):
+            render_kwargs["trim_blocks"] = True
+
+        # If the template is a Containerfile, render it to both a minimal and standard version
+        if tpl_rel_path.startswith("Containerfile"):
+            containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+            for image_type in targets:
+                containerfile: Path = context / f"{containerfile_base_name}.{image_type}"
+                rendered = tpl.render(image_version=version, **value_map, image_type=image_type, **render_kwargs)
+                with open(containerfile, "w") as f:
+                    log.debug(f"Rendering [bold]{containerfile}")
+                    f.write(rendered)
+                continue
+        else:
+            rendered = tpl.render(image_version=version, **value_map, **render_kwargs)
+            rel_path = tpl_rel_path.removesuffix(".jinja2")
+            output_file = context / rel_path
+            (output_file.parent).mkdir(parents=True, exist_ok=True)
+            with open(context / rel_path, "w") as f:
+                log.debug(f"[bright_black]Rendering [bold]{output_file}")
+                f.write(rendered)

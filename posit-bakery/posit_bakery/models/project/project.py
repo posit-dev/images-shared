@@ -102,7 +102,6 @@ class Project(BaseModel):
         self,
         image_name: str,
         image_version: str,
-        value_map: Dict[str, str] = None,
         mark_latest: bool = True,
         save: bool = True,
     ):
@@ -115,11 +114,18 @@ class Project(BaseModel):
         :param save: If true, save to the manifest.toml after adding the new version
         """
         if image_name not in self.manifests:
-            raise BakeryConfigError(f"Image name {image_name} does not exist in this project.")
-        if value_map is None:
-            value_map = {}
-        manifest = self.manifests[image_name]
-        manifest.new_version(image_version, mark_latest=mark_latest, value_map=value_map, save=save)
+            raise BakeryConfigError(f"Image '{image_name}' does not exist in this project.")
+
+        manifest: Manifest = self.manifests[image_name]
+        if image_version in manifest.model.build:
+            raise BakeryConfigError(f"Version '{image_version}' already exists for image '{image_name}'.")
+
+        image: Image = self.images[image_name]
+        image.create_version(manifest=manifest.model, version=image_version, mark_latest=mark_latest)
+
+        # TODO: Update the manifest file with the new version.
+        # Write an update method to return a new class? Don't know how frozen models are handled
+        # manifest.new_version(image_version, mark_latest=mark_latest, value_map=value_map, save=save)
 
     def render_bake_plan(
         self,

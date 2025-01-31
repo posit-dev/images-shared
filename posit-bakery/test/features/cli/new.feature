@@ -20,3 +20,15 @@ Feature: bakery new
             | test-image |
         When I execute the command
         Then The command fails
+
+    Scenario: bakery render
+        Given I call bakery "render"
+        * in a temp basic context
+        * with the arguments:
+            | test-image |
+            | 0.9.9 |
+        When I execute the command
+        Then The command succeeds
+        * the image "test-image" exists
+        * the version "0.9.9" exists
+        * the default rendered templates exist

@@ -1,16 +1,10 @@
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 import tomlkit
-from pydantic import ValidationError
 
-from posit_bakery.error import BakeryFileNotFoundError
-from posit_bakery.models import Config, Manifest, Image
+from posit_bakery.models import Config, Manifest
 from posit_bakery.models.generic import GenericTOMLModel
-from posit_bakery.models.config.registry import ConfigRegistry
-from posit_bakery.models.config.repository import ConfigRepository
-from ..helpers import toml_file_testcases
 
 pytestmark = [
     pytest.mark.unit,
@@ -54,28 +48,6 @@ class TestManifest:
 
 @pytest.mark.skip("TODO: Move the new actions into the Image* objects")
 class TestManifestUpdate:
-    def test_guess_image_os_list(self, tmpdir):
-        """Test the guess_image_os_list method of a Manifest object returns expected OS list"""
-        files = [
-            "Containerfile.ubuntu2204.min",
-            "Containerfile.ubuntu2204.std",
-            "Containerfile.ubuntu2404.min",
-            "Containerfile.ubuntu2404.std",
-            "Containerfile.centos7.min",
-            "Containerfile.centos7.std",
-            "Containerfile.rockylinux8.min",
-            "Containerfile.rockylinux8.std",
-        ]
-        t = Path(tmpdir)
-        for f in files:
-            (t / f).touch(exist_ok=True)
-        os_list = Manifest.guess_image_os_list(t)
-        assert len(os_list) == 4
-        assert "Ubuntu 2204" in os_list
-        assert "Ubuntu 2404" in os_list
-        assert "Centos 7" in os_list
-        assert "Rockylinux 8" in os_list
-
     def test_append_build_version(self, basic_manifest_obj):
         """Test append_build_version updates the manifest document with a new version"""
         basic_manifest_obj.guess_image_os_list = MagicMock(return_value=["Ubuntu 2204"])
@@ -95,27 +67,6 @@ class TestManifestUpdate:
         assert basic_manifest_obj.document["build"]["1.0.1"]["os"] == ["Ubuntu 2204"]
         assert "1.0.0" in basic_manifest_obj.document["build"]
         assert basic_manifest_obj.document["build"]["1.0.0"]["latest"] is True
-
-    def test_render_image_template(self, basic_tmpcontext):
-        """Test rendering the image template for a new version creates the expected files"""
-        config_file = basic_tmpcontext / "config.toml"
-        c = Config.load(config_file)
-        image_dir = basic_tmpcontext / "test-image"
-        m = Manifest.load(c, image_dir / "manifest.toml")
-        m.render_image_template("1.0.1")
-        new_version_dir = image_dir / "1.0.1"
-        assert new_version_dir.is_dir()
-        assert (new_version_dir / "deps").is_dir()
-        assert (new_version_dir / "deps" / "ubuntu2204_packages.txt").is_file()
-        assert (new_version_dir / "deps" / "ubuntu2204_optional_packages.txt").is_file()
-        assert (new_version_dir / "test").is_dir()
-        assert (new_version_dir / "test" / "goss.yaml").is_file()
-        assert (new_version_dir / "Containerfile.ubuntu2204.min").is_file()
-        assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert "ubuntu2204_optional_packages.txt" not in (new_version_dir / "Containerfile.ubuntu2204.min").read_text()
-        assert (new_version_dir / "Containerfile.ubuntu2204.std").is_file()
-        assert 'ARG IMAGE_VERSION="1.0.1"' in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
-        assert "ubuntu2204_optional_packages.txt" in (new_version_dir / "Containerfile.ubuntu2204.std").read_text()
 
     def test_new_version(self, basic_tmpcontext):
         """Test creating a new version of an image creates the expected files and updates the manifest"""

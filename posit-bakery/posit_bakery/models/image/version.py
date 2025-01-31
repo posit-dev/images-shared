@@ -9,6 +9,7 @@ from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
+from posit_bakery.templating.default import render_image_templates
 
 
 class ImageVersion(BaseModel):
@@ -27,12 +28,12 @@ class ImageVersion(BaseModel):
         for _os in build.os:
             for _type, target in targets.items():
                 # Unique metadata for each variant
-                meta = deepcopy(meta)
-                meta.goss = target.goss
+                meta_var: ImageMetadata = deepcopy(meta)
+                meta_var.goss = target.goss
 
                 variants.append(
                     ImageVariant.load(
-                        meta=meta,
+                        meta=meta_var,
                         latest=build.latest,
                         _os=_os,
                         target=_type,
@@ -42,8 +43,14 @@ class ImageVersion(BaseModel):
         return cls(version=meta.version, context=meta.context, variants=variants)
 
     @classmethod
-    def create(cls, image_context: Path, version: str):
+    def create(cls, image_context: Path, version: str, targets: List[str], mark_latest: bool):
         context: Path = image_context / version
-        context.mkdir(parents=True, exist_ok=True)
+        render_image_templates(
+            context=context,
+            version=version,
+            targets=targets,
+            latest=mark_latest,
+        )
 
+        # TODO: Pull in the variants after render
         return cls(version=version, context=context)
