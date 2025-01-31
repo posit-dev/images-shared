@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from pathlib import Path
@@ -8,12 +7,15 @@ from rich import print_json
 from rich.logging import RichHandler
 import typer
 
-from posit_bakery.models.project import Project
+from posit_bakery.models import Project
 from posit_bakery.error import (
     BakeryBuildError,
     BakeryConfigError,
     BakeryGossError,
 )
+
+
+DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
 
 
 log: logging.Logger  # Global log variable, set in the callback function
@@ -58,9 +60,7 @@ def new(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_base: Annotated[
-        str, typer.Option(help="The base to use for the new image.")
-    ] = "docker.io/library/ubuntu:22.04",
+    image_base: Annotated[str, typer.Option(help="The base to use for the new image.")] = DEFAULT_BASE_IMAGE,
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
@@ -83,7 +83,7 @@ def new(
         log.error(f"{e}")
         raise typer.Exit(code=1)
 
-    log.info(f"Successfully generated {image_name} ✅")
+    log.info(f"✅ Successfully created image '{image_name}'")
 
 
 @app.command()
@@ -116,25 +116,30 @@ def render(
     """
     project = Project.load(context)
 
+    # TODO: Determine whether we still want to support the value map via the CLI or in a file
     # Parse the key=value pairs into a dictionary
     value_map = dict()
     if value is not None:
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                log.error(f"[bright_red bold]ERROR:[/bold] Expected key=value pair, got [bold]'{v}'")
+                log.error(f"❌ Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
-    project.new_image_version(image_name, image_version, value_map, not skip_mark_latest)
+    project.new_image_version(
+        image_name=image_name,
+        image_version=image_version,
+        mark_latest=(not skip_mark_latest),
+    )
 
-    log.info(f"Successfully rendered {image_name}/{image_version} ✅")
+    log.info(f"✅ Successfully created version '{image_name}/{image_version}'")
 
 
 @app.command()
 def plan(
     context: Annotated[
-        Path, typer.Argument(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate plan rendering to.")] = None,
     image_version: Annotated[
@@ -155,11 +160,12 @@ def plan(
     If only an image name is provided, the command will auto-discover that image's bake file and will also load the
     root bake file and any override bake files if they exist.
     """
-    project = Project.load(context, skip_override)
+    # TODO; Add skip_override back in
+    project = Project.load(context)
     bake_plan = project.render_bake_plan(image_name, image_version)
-    print_json(json.dumps(bake_plan), indent=2)
+    print_json(bake_plan.model_dump_json(), indent=2)
     with open(output_file, "w") as f:
-        f.write(json.dumps(bake_plan, indent=2))
+        f.write(bake_plan.model_dump_json(indent=2))
 
 
 @app.command()
@@ -186,11 +192,12 @@ def build(
 
     Requires the Docker Engine and CLI to be installed and running.
     """
-    project = Project.load(context, skip_override)
+    # TODO; Add skip_override back in
+    project = Project.load(context)
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
-        log.error(f"Build failed with exit code {e.exit_code}")
+        log.error(f"❌ Build failed with exit code [bold]{e.exit_code}")
         raise typer.Exit(code=1)
 
 
@@ -219,9 +226,10 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    project = Project.load(context, skip_override)
+    # TODO: add skip_override back in
+    project = Project.load(context)
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
-        log.error(f"dgoss tests failed with exit code {e.exit_code}")
+        log.error(f"❌ dgoss tests failed with exit code [bold]{e.exit_code}")
         raise typer.Exit(code=1)

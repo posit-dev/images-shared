@@ -1,26 +1,4 @@
-# Template for root config.toml file
-TPL_CONFIG_TOML = """#######################################################################################################################
-# BAKERY REPOSITORY CONFIG
-#
-# This file is used to define global properties for builds inside a repo managed by Posit's Bakery tool.
 #######################################################################################################################
-
-# Define properties of the local repository. This information will be used when labeling image builds.
-[repository]
-url = "{{ repo_url }}"
-vendor = "Posit Software, PBC"
-maintainer = "docker@posit.co"
-authors = []
-
-# Define image registries used by builds in this repository. Images will be tagged appropriately for each registry.
-# Logins for private registries should be managed independently of Bakery.
-[[registries]]
-host = "docker.io"
-namespace = "posit"
-"""
-
-# Template for a base image manifest.toml file
-TPL_MANIFEST_TOML = """#######################################################################################################################
 # BAKERY MANIFEST
 #
 # This file is used to define nested image builds inside a repo managed by Posit's Bakery tool.
@@ -68,4 +46,3 @@ image_name = "{{ image_name }}"
 {% endraw %}
 # wait = 0  # Defaults to 0 if not specified.
 # command = "sleep infinity"  # Defaults to sleep infinity to run if not specified.
-"""

@@ -15,10 +15,12 @@ class GenericTOMLModel(BaseModel, abc.ABC):
     :param document: tomlkit.TOMLDocument object
     """
 
-    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
     filepath: Path
     context: Path
     document: tomlkit.TOMLDocument
+    model: BaseModel = None
 
     @staticmethod
     def read(filepath: Union[str, bytes, os.PathLike]) -> tomlkit.TOMLDocument:

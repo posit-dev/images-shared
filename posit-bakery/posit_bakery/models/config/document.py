@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
@@ -35,6 +35,8 @@ class ConfigDocument(BaseModel):
         host = "ghcr.io"
         namespace = "posit-dev"
     """
+
+    model_config = ConfigDict(frozen=True)
 
     repository: ConfigRepository = None
     registries: List[ConfigRegistry]

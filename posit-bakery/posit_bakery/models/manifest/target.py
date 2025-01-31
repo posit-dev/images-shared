@@ -1,7 +1,7 @@
 import re
 from typing import List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from posit_bakery.models.manifest.goss import ManifestGoss
 
@@ -18,9 +18,11 @@ RE_TAG_JINJA: re.Pattern = re.compile("^((?P<jinja>{{.+?}})|" + TAG_STR + ")+$")
 
 
 class ManifestTarget(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     tags: List[str] = []
     latest_tags: List[str] = []
-    goss: ManifestGoss = None
+    goss: ManifestGoss = ManifestGoss()
     # Declare containferfile extension
 
     @classmethod

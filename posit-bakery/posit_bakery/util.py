@@ -2,7 +2,7 @@ import logging
 import os
 from pathlib import Path
 from shutil import which
-from typing import Union
+from typing import List, Union
 
 import git
 
@@ -20,8 +20,9 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
     :param bin_env_var: The environment variable to search for
     """
     context = Path(context)
-    if bin_env_var in os.environ:
-        return os.environ[bin_env_var]
+
+    if os.environ.get(bin_env_var) is not None:
+        return os.environ.get(bin_env_var)
     elif which(bin_name) is not None:
         return None
     elif (context / "tools" / bin_name).is_file():
@@ -31,6 +32,24 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
             f"Could not find {bin_name} in PATH or in project tools directory. "
             f"Either install {bin_name} or set the `{bin_env_var}` environment variable."
         )
+
+
+def find_in_context(context: Union[str, bytes, os.PathLike], name: str, _type: str = "file", parents: int = 0) -> Path:
+    """Depth-first search for a directory of file in a project context"""
+    search = Path(context)
+    search_paths: List[Path] = [search]
+    # Search up the directory tree
+    for _ in range(parents):
+        search = search.parent
+        search_paths.append(search)
+
+    for search in search_paths:
+        if _type == "file" and (search / name).is_file():
+            return search / name
+        elif _type == "dir" and (search / name).is_dir():
+            return search / name
+
+    raise BakeryFileNotFoundError(f"Could not find {name} in context: {context}")
 
 
 def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:

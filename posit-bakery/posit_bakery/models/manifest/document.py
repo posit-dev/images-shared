@@ -1,7 +1,7 @@
 import re
 from typing import Dict
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
@@ -32,6 +32,8 @@ class ManifestDocument(BaseModel):
         command = "bash"
         wait = 1
     """
+
+    model_config = ConfigDict(frozen=True)
 
     image_name: str
     build: Dict[str, ManifestBuild] = {}

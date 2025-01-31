@@ -1,7 +1,7 @@
 import logging
 from typing import List, Set
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 log = logging.getLogger("rich")
@@ -17,6 +17,8 @@ class ConfigRepository(BaseModel):
     :param vendor: Vendor of the images in the repository
     :param maintainer: Maintainer of the images in the repository
     """
+
+    model_config = ConfigDict(frozen=True)
 
     authors: List[str] = []
     url: str | None = None

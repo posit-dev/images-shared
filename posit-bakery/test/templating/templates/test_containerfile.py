@@ -1,7 +1,7 @@
 import pytest
 
 from posit_bakery.templating.filters import render_template
-from posit_bakery.templating.templates.containerfile import TPL_CONTAINERFILE
+from posit_bakery.templating import TPL_CONTAINERFILE
 
 pytestmark = [
     pytest.mark.unit,

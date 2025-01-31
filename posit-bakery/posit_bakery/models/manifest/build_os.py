@@ -1,4 +1,11 @@
-class BuildOS:
+from pydantic import BaseModel, ConfigDict
+
+from posit_bakery.templating.filters import condense
+
+
+class BuildOS(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     distributor_id: str
     name: str
     version: str
@@ -6,6 +13,7 @@ class BuildOS:
     base_image: str
     image_tag: str
     pretty: str
+    condensed: str
 
     """
     Represent the operating systems that are supported for image builds
@@ -30,10 +38,14 @@ class BuildOS:
         image_tag: str,
         codename: str = None,
     ):
-        self.distributor_id = distributor_id
-        self.name = name
-        self.version = version
-        self.base_image = base_image
-        self.image_tag = image_tag
-        self.codename = codename
-        self.pretty = f"{name} {version}"
+        pretty: str = f"{name} {version}"
+        super().__init__(
+            distributor_id=distributor_id,
+            name=name,
+            version=version,
+            base_image=base_image,
+            image_tag=image_tag,
+            codename=codename,
+            pretty=pretty,
+            condensed=condense(pretty),
+        )

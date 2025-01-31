@@ -6,68 +6,28 @@ from typing import Set, Union, List
 import git
 
 from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
-from posit_bakery.models.config.repository import ConfigRepository
+from posit_bakery.templating.default import create_project_config
 
 log = logging.getLogger("rich")
 
 
+def get_commit_sha(context: Path) -> str | None:
+    """Get the git commit SHA for the current context"""
+    sha = None
+    try:
+        repo = git.Repo(context, search_parent_directories=True)
+        sha = repo.head.object.hexsha
+    except Exception as e:
+        log.debug(f"Unable to get git commit for labels: {e}")
+    return sha
+
+
 class Config(GenericTOMLModel):
-    """Models a repository's config.toml file
+    """Simple wrapper around a project config.toml file"""
 
-    :param __registries: One or more image registries to use for tagging and pushing images
-    :param repository: Repository information for labeling purposes
-    """
-
-    __registries: List[ConfigRegistry]
-    repository: ConfigRepository
-
-    @property
-    def registries(self) -> List[ConfigRegistry]:
-        """Get the registries for the Config object"""
-        r = list(self.__registries)
-        r.sort(key=lambda x: x.base_url)
-        return r
-
-    @registries.setter
-    def registries(self, r: List[ConfigRegistry]) -> None:
-        """Set the registries for the Config object"""
-        self.__registries = set(r)
-
-    @property
-    def authors(self) -> Set[str]:
-        """Get the authors for the ConfigRepository object"""
-        return self.repository.authors
-
-    @property
-    def repository_url(self) -> str:
-        """Get the repository URL for the ConfigRepository object"""
-        return self.repository.url
-
-    @property
-    def vendor(self) -> str:
-        """Get the vendor for the ConfigRepository object"""
-        return self.repository.vendor
-
-    @property
-    def maintainer(self) -> str:
-        """Get the maintainer for the ConfigRepository object"""
-        return self.repository.maintainer
-
-    @property
-    def registry_urls(self) -> List[str]:
-        """Get the base URLs for all the ConfigRegistry objects as a list"""
-        return [r.base_url for r in self.registries]
-
-    def get_commit_sha(self) -> str:
-        """Get the git commit SHA for the current context"""
-        sha = ""
-        try:
-            repo = git.Repo(self.context)
-            sha = repo.head.object.hexsha
-        except Exception as e:
-            log.error(f"Unable to get git commit for labels: {e}")
-        return sha
+    commit: str | None = None
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
@@ -76,17 +36,50 @@ class Config(GenericTOMLModel):
         :param filepath: Path to the config.toml file
         """
         filepath = Path(filepath)
-        d = cls.read(filepath)
+        document = cls.read(filepath)
+        model = ConfigDocument(**document.unwrap())
+        commit = get_commit_sha(filepath.parent)
 
-        # Create registry objects for each registry defined in config.toml
-        registries = []
-        for r in d["registries"]:
-            registries.append(ConfigRegistry(**r))
+        return cls(filepath=filepath, context=filepath.parent, document=document, model=model, commit=commit)
 
-        # Create repository object from config.toml
-        repository = ConfigRepository(**d.get("repository", {}))
+    @classmethod
+    def create(cls, context: Path) -> "Config":
+        """Create a new Config file with default values
 
-        return cls(filepath=filepath, context=filepath.parent, document=d, registries=registries, repository=repository)
+        :param context: The context to create the Config object in
+        """
+        create_project_config(context)
+        return cls.load(context / "config.toml")
+
+    @property
+    def registries(self) -> List[ConfigRegistry]:
+        """Get the registries for the Config object"""
+        return self.model.registries
+
+    @property
+    def authors(self) -> Set[str]:
+        """Get the authors for the ConfigRepository object"""
+        return self.model.repository.authors
+
+    @property
+    def repository_url(self) -> str:
+        """Get the repository URL for the ConfigRepository object"""
+        return self.model.repository.url
+
+    @property
+    def vendor(self) -> str:
+        """Get the vendor for the ConfigRepository object"""
+        return self.model.repository.vendor
+
+    @property
+    def maintainer(self) -> str:
+        """Get the maintainer for the ConfigRepository object"""
+        return self.model.repository.maintainer
+
+    @property
+    def registry_urls(self) -> List[str]:
+        """Get the base URLs for all the ConfigRegistry objects as a list"""
+        return [r.base_url for r in self.registries]
 
     def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object

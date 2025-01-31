@@ -4,7 +4,7 @@ import pytest
 import tomlkit
 from pydantic import ValidationError
 
-from posit_bakery.models import ManifestDocument
+from posit_bakery.models.manifest.document import ManifestDocument
 from ..helpers import toml_file_testcases
 
 
