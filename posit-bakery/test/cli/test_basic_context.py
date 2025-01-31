@@ -1,15 +1,6 @@
 from pytest_bdd import scenarios, given, when, then, parsers
 
-scenarios("cli/new.feature")
-
-
-@then(parsers.parse('the image "{image_name}" exists'), target_fixture="new_image_name")
-def check_image(basic_tmpcontext, image_name) -> str:
-    image_dir = basic_tmpcontext / image_name
-    assert image_dir.is_dir()
-    assert (image_dir / "manifest.toml").is_file()
-
-    return image_name
+scenarios("cli/basic_context.feature")
 
 
 @then(parsers.parse("the default templates exist"))
@@ -36,14 +27,6 @@ def check_base_image(basic_tmpcontext, base_image, new_image_name) -> None:
 
     assert len(files) == 1
     assert f"FROM {base_image}" in files[0].read_text()
-
-
-@then(parsers.parse('the version "{version}" exists'), target_fixture="new_version")
-def check_version(basic_tmpcontext, version, new_image_name) -> str:
-    version_dir = basic_tmpcontext / new_image_name / version
-    assert version_dir.is_dir()
-
-    return version
 
 
 @then("the default rendered templates exist")
