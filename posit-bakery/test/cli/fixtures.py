@@ -4,7 +4,7 @@ from typing import List
 import pytest
 from typer.testing import CliRunner, Result
 
-from posit_bakery.main import app
+from posit_bakery.cli import app
 
 
 runner = CliRunner()
