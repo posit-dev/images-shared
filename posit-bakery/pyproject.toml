@@ -2,7 +2,13 @@
 name = "posit-bakery"
 version = "0.0.0"
 description = "Tools for extracting and manipulating bake artifacts for various commands"
-authors = ["Ian H. Pittwood <ian.pittwood@posit.co>", "Ben Schwedler <ben@posit.co"]
+authors = [
+    { name = "Ian H. Pittwood", email = "ian.pittwood@posit.co" },
+    { name = "Ben Schwedler", email = "ben@posit.co" },
+]
+maintainers = [
+    { name = "Posit Container Team", email = "docker@posit.co" },
+]
 license = "MIT"
 readme = "README.md"
 
