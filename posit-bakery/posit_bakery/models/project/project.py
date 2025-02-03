@@ -92,30 +92,37 @@ class Project(BaseModel):
         self,
         image_name: str,
         image_version: str,
+        template_values: Dict[str, Any] = None,
         mark_latest: bool = True,
         save: bool = True,
+        force: bool = False,
     ):
         """Create a new version of an image in the project, render templates, and add it to the manifest
 
         :param image_name: The name of the image to create a new version for
         :param image_version: The new version
+        :param template_values: A dictionary of key/values to use in template rendering
         :param value_map: A dictionary of key/values to use in template rendering
         :param mark_latest: If true, mark the new version as the latest
         :param save: If true, save to the manifest.toml after adding the new version
+        :param force: If true, overwrite an existing version
         """
         if image_name not in self.manifests:
             raise BakeryConfigError(f"Image '{image_name}' does not exist in this project.")
 
+        image: Image = self.images[image_name]
+
         manifest: Manifest = self.manifests[image_name]
         if image_version in manifest.model.build:
-            raise BakeryConfigError(f"Version '{image_version}' already exists for image '{image_name}'.")
+            if not force:
+                raise BakeryConfigError(f"Version '{image_version}' already exists for image '{image_name}'.")
+            else:
+                log.warning(f"Overwriting existing version '{image_version}' for image '{image_name}'.")
 
-        image: Image = self.images[image_name]
-        image.create_version(manifest=manifest.model, version=image_version, mark_latest=mark_latest)
+        new_version = image.create_version(manifest=manifest.model, version=image_version, template_values=template_values)
 
         if save:
-            version_context = image.context / image_version
-            os_list: List[str] = [_os.pretty for _os in guess_os_list(version_context)]
+            os_list: List[str] = [_os.pretty for _os in guess_os_list(new_version.context)]
             manifest.add_version(image_version, os_list, mark_latest)
 
     def render_bake_plan(

@@ -1,4 +1,5 @@
 import logging
+from copy import copy
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -72,7 +73,7 @@ def create_image_templates(context: Path, image_name: str, base_tag: str) -> Non
     image_deps_package_file.touch(exist_ok=True)
 
 
-def render_image_templates(context: Path, version: str, targets: List[str], latest: bool) -> None:
+def render_image_templates(context: Path, version: str, template_values: Dict[str, Any], targets: List[str]) -> None:
     image_context: Path = context.parent
     project_context: Path = image_context.parent
 
@@ -86,7 +87,7 @@ def render_image_templates(context: Path, version: str, targets: List[str], late
         context.mkdir()
 
     # Initialize the value map with relative path
-    value_map: Dict[str, Any] = {}
+    value_map: Dict[str, Any] = copy(template_values)
     if "rel_path" not in value_map:
         value_map["rel_path"] = context.relative_to(project_context)
 
