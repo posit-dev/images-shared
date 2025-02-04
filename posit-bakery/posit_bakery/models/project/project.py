@@ -29,6 +29,24 @@ class Project(BaseModel):
     manifests: Dict[str, Manifest] = {}
     images: Dict[str, Image] = {}
 
+    @classmethod
+    def create(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
+        """Create relevant files for a new project in a context directory
+
+        :param context: The path to the context directory
+        """
+        project = cls()
+        project.context = Path(context)
+
+        if project.context.is_file():
+            raise BakeryBadContextError(f"Given context '{project.context}' is a file.")
+        if not project.context.exists():
+            project.context.mkdir(parents=True)
+
+        project.config = Config.create(project.context)
+
+        return project
+
     # TODO: Add back in support for handling overrides
     @classmethod
     def load(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
