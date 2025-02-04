@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryError
+from posit_bakery.error import BakeryImageNotFoundError
 from posit_bakery.models.config.config import Config
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.variant import ImageVariant
@@ -78,6 +78,6 @@ class Images(dict):
                 images[image_name] = img
 
         if not images:
-            raise BakeryError("No images found for filter.")
+            raise BakeryImageNotFoundError("No images found for filter.")
 
         return Images(**images)

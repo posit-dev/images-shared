@@ -1,19 +1,17 @@
 import logging
-import os
 from pathlib import Path
 from typing import Annotated, Optional, List
 
-from rich import print_json
-from rich.logging import RichHandler
 import typer
 
+from posit_bakery.log import stdout_console, stderr_console, init_logging
 from posit_bakery.models import Project
 from posit_bakery.error import (
     BakeryBuildError,
     BakeryConfigError,
     BakeryGossError,
 )
-
+from posit_bakery.util import auto_path
 
 DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
 
@@ -31,27 +29,12 @@ def __callback_logging(
     """Callback to configure logging based on the debug and quiet flags."""
     global log
 
-    level: str = "INFO"
-    # TODO: Should we warn or error if `--debug` and `--quiet` are both set?
-    if debug:
-        level = "DEBUG"
-    elif quiet:
-        level = "ERROR"
+    if debug and quiet:
+        raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
-    logging.basicConfig(
-        level=level,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[
-            RichHandler(markup=True, rich_tracebacks=True),
-        ],
-    )
-    log = logging.getLogger("rich")
+    init_logging(debug=debug, quiet=quiet)
 
-
-def auto_path() -> Path:
-    context = Path(os.getcwd())
-    return context
+    log = logging.getLogger(__name__)
 
 
 @app.command()
@@ -78,12 +61,13 @@ def new(
     project = Project.load(context)
     # TODO: This will fail on projects with no config.toml, we should build in a full "new project" expectation in that case
     try:
-        project.new_image(image_name, image_base)
+        project.create_image(image_name, image_base)
     except BakeryConfigError as e:
-        log.error(f"{e}")
+        log.exception(e)
+        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
         raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created image '{image_name}'")
+    stderr_console.print(f"[green3]✅ Successfully created image '{image_name}'")
 
 
 @app.command()
@@ -121,11 +105,11 @@ def render(
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                log.error(f"❌ Expected key=value pair, got [bold]'{v}'")
+                stderr_console.print(f"[bright_red]❌ Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
-    project.new_image_version(
+    project.create_image_version(
         image_name=image_name,
         image_version=image_version,
         template_values=value_map,
@@ -133,7 +117,7 @@ def render(
         force=force,
     )
 
-    log.info(f"✅ Successfully created version '{image_name}/{image_version}'")
+    stderr_console.print(f"[green3]✅ Successfully created version '{image_name}/{image_version}'")
 
 
 @app.command()
@@ -163,7 +147,7 @@ def plan(
     # TODO; Add skip_override back in
     project = Project.load(context)
     bake_plan = project.render_bake_plan(image_name, image_version)
-    print_json(bake_plan.model_dump_json(), indent=2)
+    stdout_console.print_json(bake_plan.model_dump_json(), indent=2)
     with open(output_file, "w") as f:
         f.write(bake_plan.model_dump_json(indent=2))
 
@@ -197,8 +181,11 @@ def build(
     try:
         project.build(load, push, image_name, image_version, image_type, option)
     except BakeryBuildError as e:
-        log.error(f"❌ Build failed with exit code [bold]{e.exit_code}")
+        log.error(f"Last 15 lines of stderr: {e.stderr.decode().splitlines()[-15:]}")
+        stderr_console.print(f"[bright_red]❌ Build failed with exit code {e.exit_code}")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"[green3]✅ Build completed")
 
 
 @app.command()
@@ -231,5 +218,8 @@ def dgoss(
     try:
         project.dgoss(image_name, image_version, option)
     except BakeryGossError as e:
-        log.error(f"❌ dgoss tests failed with exit code [bold]{e.exit_code}")
+        log.error(f"Last 15 lines of stderr: {e.stderr.decode().splitlines()[-15:]}")
+        stderr_console.print(f"[bright_red]❌ dgoss tests failed with exit code {e.exit_code}")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"[green3]✅ Tests completed")
