@@ -5,11 +5,13 @@ from shutil import which
 from typing import List, Union
 
 import git
+import typer
+from rich import Console
+from rich.logging import RichHandler
 
 from posit_bakery.error import BakeryFileNotFoundError
 
-
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var: str):
