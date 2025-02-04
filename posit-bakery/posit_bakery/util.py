@@ -5,6 +5,9 @@ from shutil import which
 from typing import List, Union
 
 import git
+import typer
+from rich import Console
+from rich.logging import RichHandler
 
 from posit_bakery.error import BakeryFileError, BakeryToolNotFoundError
 
