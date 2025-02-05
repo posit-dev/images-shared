@@ -23,16 +23,16 @@ app = typer.Typer()
 
 @app.callback()
 def __callback_logging(
-    debug: Annotated[Optional[bool], typer.Option("--debug", "-d", help="Enable debug logging")] = False,
+    verbose: Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")] = False,
     quiet: Annotated[Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
 ) -> None:
     """Callback to configure logging based on the debug and quiet flags."""
     global log
 
-    if debug and quiet:
+    if verbose and quiet:
         raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
-    init_logging(debug=debug, quiet=quiet)
+    init_logging(verbose=verbose, quiet=quiet)
 
     log = logging.getLogger(__name__)
 
