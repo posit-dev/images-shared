@@ -10,7 +10,7 @@ from posit_bakery.error import BakeryTemplatingError, BakeryContextDirectoryNotF
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 from posit_bakery.templating.filters import jinja2_env
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def create_project_config(context: Path) -> None:

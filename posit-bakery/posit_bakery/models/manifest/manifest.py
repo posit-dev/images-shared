@@ -8,7 +8,7 @@ from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.manifest.document import ManifestDocument
 
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 class Manifest(GenericTOMLModel):

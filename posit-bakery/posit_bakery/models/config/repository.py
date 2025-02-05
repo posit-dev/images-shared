@@ -4,7 +4,7 @@ from typing import List, Set
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 class ConfigRepository(BaseModel):

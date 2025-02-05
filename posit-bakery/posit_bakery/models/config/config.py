@@ -10,7 +10,7 @@ from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.templating.default import create_project_config
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def get_commit_sha(context: Path) -> str | None:
