@@ -25,6 +25,12 @@ def init_logging(verbose: bool = False, quiet: bool = False) -> None:
         format="%(message)s",
         datefmt="[%X]",
         handlers=[
-            RichHandler(console=stderr_console, markup=True, rich_tracebacks=True, tracebacks_suppress=[typer]),
+            RichHandler(
+                console=stderr_console,
+                markup=True,
+                rich_tracebacks=True,
+                tracebacks_suppress=[typer],
+                tracebacks_max_frames=5,
+            ),
         ],
     )

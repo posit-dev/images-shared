@@ -1,9 +1,14 @@
 from copy import copy, deepcopy
 from typing import Dict, List
 
+import pydantic
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryImageNotFoundError
+from posit_bakery.error import (
+    BakeryImageNotFoundError,
+    BakeryModelValidationError,
+    BakeryModelValidationErrorGroup,
+)
 from posit_bakery.models.config.config import Config
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.variant import ImageVariant
@@ -27,13 +32,34 @@ class Images(dict):
     @classmethod
     def load(cls, config: Config, manifests: Dict[str, Manifest]) -> dict[str, Image]:
         images: dict[str, Image] = {}
+        error_list = []
 
         for name, manifest in manifests.items():
-            image: Image = Image.load(manifest.context, manifest.model)
+            try:
+                image: Image = Image.load(manifest.context, manifest.model)
+            except pydantic.ValidationError as e:
+                # TODO: Make this less goofy
+                # This was the only obvious way I could find to chain the exception from the pydantic error and still
+                # group it into the error_list for the BakeryModelValidationErrorGroup.
+                try:
+                    raise BakeryModelValidationError(
+                        model_name="Image",
+                        filepath=manifest.filepath,
+                    ) from e
+                except BakeryModelValidationError as e:
+                    error_list.append(e)
+                continue
             for variant in image.variants:
                 variant.complete_metadata(config=config.model, commit=config.commit)
 
             images[name] = image
+
+        if error_list:
+            if len(error_list) == 1:
+                raise error_list[0]
+            raise BakeryModelValidationErrorGroup(
+                "Multiple validation errors occurred while processing Images from manifest.", error_list
+            )
 
         return cls(**images)
 

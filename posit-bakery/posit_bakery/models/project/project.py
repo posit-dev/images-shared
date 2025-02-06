@@ -2,15 +2,20 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Union, List, Dict, Any, Tuple
+from typing import Union, List, Dict, Tuple
 
+import pydantic
 from pydantic import BaseModel
 
 from posit_bakery.error import (
-    BakeryBuildError,
-    BakeryGossError,
-    BakeryBadContextError, BakeryContextDirectoryNotFoundError, BakeryConfigNotFoundError,
-    BakeryBadImageError, BakeryImageNotFoundError, BakeryFileNotFoundError,
+    BakeryContextDirectoryNotFoundError,
+    BakeryConfigNotFoundError,
+    BakeryBadImageError,
+    BakeryImageNotFoundError,
+    BakeryFileNotFoundError,
+    BakeryModelValidationError,
+    BakeryToolRuntimeError,
+    BakeryModelValidationErrorGroup,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.manifest import guess_os_list
@@ -39,6 +44,7 @@ class Project(BaseModel):
         project.context = Path(context)
         if not project.context.is_dir():
             raise BakeryContextDirectoryNotFoundError(f"Directory '{project.context}' does not exist.")
+
         project.config = project.load_config(project.context)
         project.manifests = project.load_manifests(project.config)
         project.images = Images.load(config=project.config, manifests=project.manifests)
@@ -57,7 +63,11 @@ class Project(BaseModel):
         config_filepath = context / "config.toml"
         if not config_filepath.is_file():
             raise BakeryConfigNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config.load(config_filepath)
+
+        try:
+            config = Config.load(config_filepath)
+        except pydantic.ValidationError as e:
+            raise BakeryModelValidationError(model_name="Config", filepath=config_filepath) from e
 
         return config
 
@@ -68,11 +78,29 @@ class Project(BaseModel):
         :param config: The project configuration
         """
         manifests = {}
+        error_list = []
         for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest.load(manifest_file)
+            try:
+                m = Manifest.load(manifest_file)
+            except pydantic.ValidationError as e:
+                # TODO: Make this less goofy
+                # This was the only obvious way I could find to chain the exception from the pydantic error and still
+                # group it into the error_list for the BakeryModelValidationErrorGroup.
+                try:
+                    raise BakeryModelValidationError(model_name="Manifest", filepath=manifest_file) from e
+                except BakeryModelValidationError as e:
+                    error_list.append(e)
+                continue
             if m.image_name in manifests:
                 raise BakeryBadImageError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m
+
+        if error_list:
+            if len(error_list) == 1:
+                raise error_list[0]
+            raise BakeryModelValidationErrorGroup(
+                "Multiple validation errors occurred while loading manifests.", error_list
+            )
 
         return manifests
 
@@ -130,7 +158,7 @@ class Project(BaseModel):
         image_name: str = None,
         image_version: str = None,
         image_type: str = None,
-    ) -> Dict[str, Any]:
+    ) -> BakePlan:
         """Render a bake plan for the project
 
         :param image_name: (Optional) The name of the image to render a bake plan for
@@ -181,11 +209,13 @@ class Project(BaseModel):
         log.info(f"[bright_black]Executing build command: {' '.join(cmd)}")
         p = subprocess.run(cmd, env=run_env, cwd=self.context)
         if p.returncode != 0:
-            raise BakeryBuildError(
+            raise BakeryToolRuntimeError(
                 "Subprocess call to docker buildx bake failed.",
+                "docker",
+                cmd=cmd,
                 stdout=p.stdout,
                 stderr=p.stderr,
-                exit_code=p.returncode
+                exit_code=p.returncode,
             )
         build_file.unlink()
 
@@ -223,9 +253,7 @@ class Project(BaseModel):
 
             test_path = variant.goss.tests
             if test_path is None or test_path == "":
-                raise BakeryFileNotFoundError(
-                    "Path to Goss test directory must be defined or left empty for default."
-                )
+                raise BakeryFileNotFoundError("Path to Goss test directory must be defined or left empty for default.")
             run_env["GOSS_FILES_PATH"] = str(test_path)
 
             deps = variant.goss.deps
@@ -270,16 +298,21 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to run Goss tests for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
+        # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
+        #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
         for tag, env, cmd in dgoss_commands:
             log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
             log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
+            # TODO: Only print stdout and stderr on DEBUG log level, else suppress
             if p.returncode != 0:
-                raise BakeryGossError(
+                raise BakeryToolRuntimeError(
                     f"Subprocess call to dgoss exited with code {p.returncode}",
+                    "dgoss",
+                    cmd=cmd,
                     stdout=p.stdout,
                     stderr=p.stderr,
-                    exit_code=p.returncode
+                    exit_code=p.returncode,
                 )
             log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
