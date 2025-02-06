@@ -5,8 +5,9 @@ from typing import Annotated, List
 
 import typer
 
-from posit_bakery.error import BakeryConfigError, BakeryFileError, BakeryConfigNotFoundError, \
-    BakeryContextDirectoryNotFoundError
+from posit_bakery import error
+from posit_bakery.cli.common import _wrap_project_load
+from posit_bakery.log import stderr_console
 from posit_bakery.models import Project
 from posit_bakery.util import auto_path
 
@@ -19,18 +20,16 @@ log = logging.getLogger(__name__)
 
 @app.command(
     short_help="Initialize a new Bakery project",
-    help=textwrap.dedent(
-        """Creates a new project in the context path
-    
-        This tool will create a new directory in the context path with the following structure:
-        
-        .
-        
-        └── project_name/
-        
-            └── config.toml
-        """
-    )
+    help="""Creates a new project in the context path
+
+This tool will create a new directory in the context path with the following structure:
+
+.
+
+└── project_name/
+
+    └── config.toml
+"""
 )
 def project(
     context: Annotated[
@@ -39,49 +38,60 @@ def project(
 ) -> None:
     """Creates a new project in the context path
 
-    This tool will create a new directory in the context path with the following structure:
-    .
-    └── project_name/
-        └── config.toml
+    :param context: The root path to use. Defaults to the current working directory where invoked.
     """
+    # TODO: The logic here can be improved. We can probably implement a Project.exists() method to check if a project
+    #       exists rather than check exceptions.
     try:
-        p = Project.load(context)
-    except BakeryFileError:
-        p = Project.create(context)
-    except BakeryConfigError as e:
-        log.exception(e)
-        log.error(f"The project already exists, but produced an error when loaded.")
+        Project.load(context)
+        stderr_console.print(f"[green3]✅ Project already exists in '{project.context}'")
+    except error.BakeryFileError as e:
+        log.info(f"No project found, creating a new project in '{context}'")
+        try:
+            Project.create(context)
+            stderr_console.print(f"[green3]✅ Project initialized in '{project.context}'")
+        except error.BakeryError:
+            stderr_console.print_exception(max_frames=5)
+            stderr_console.print(f"[bright_red]❌ Failed to initialize a new project in '{context}")
+            raise typer.Exit(code=1)
+    except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
+        stderr_console.print(e)
+        stderr_console.print(f"[bright_red]❌ The project already exists, but failed to load from '{context}'")
         raise typer.Exit(code=1)
-
-    log.info(f"✅ Successfully initialized Bakery project in '{project.context}'")
+    except error.BakeryError:
+        stderr_console.print_exception(max_frames=5)
+        stderr_console.print(f"[bright_red]❌ The project already exists, but failed to load from '{context}'")
+        raise typer.Exit(code=1)
+    except Exception:
+        stderr_console.print_exception(max_frames=20)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        raise typer.Exit(code=1)
 
 
 @app.command(
     short_help="Create a skeleton for a new image",
-    help=textwrap.dedent(
-        """Creates a quickstart skeleton for a new image with the given name in the context path.
+    help="""Creates a quickstart skeleton for a new image with the given name in the context path.
+
+This tool will create a new directory in the context path with the following structure:
+
+.
+
+└── image_name/
+
+    ├── manifest.toml
     
-        This tool will create a new directory in the context path with the following structure:
+    └── template/
+    
+        ├── deps/
         
-        .
+        │   └── packages.txt.jinja2
         
-        └── image_name/
+        ├── test/
         
-            ├── manifest.toml
-            
-            └── template/
-            
-                ├── deps/
-                
-                │   └── packages.txt.jinja2
-                
-                ├── test/
-                
-                │   └── goss.yaml.jinja2
-                
-                └── Containerfile.jinja2
-        """
-    )
+        │   └── goss.yaml.jinja2
+        
+        └── Containerfile.jinja2
+"""
 )
 def image(
     image_name: Annotated[str, typer.Argument(help="The image name to create a skeleton for.")],
@@ -92,59 +102,46 @@ def image(
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
-    This tool will create a new directory in the context path with the following structure:
-    .
-    └── image_name/
-        ├── manifest.toml
-        └── template/
-            ├── deps/
-            │   └── packages.txt.jinja2
-            ├── test/
-            │   └── goss.yaml.jinja2
-            └── Containerfile.jinja2
+    :param image_name: The image name to create a skeleton for.
+    :param context: The root path to use. Defaults to the current working directory where invoked.
+    :param base_image: The base to use for the new image.
     """
-
-    try:
-        p = Project.load(context)
-    except (BakeryContextDirectoryNotFoundError, BakeryConfigNotFoundError):
-        confirm = typer.prompt(f"No project was found in '{context}'. Would you like to create a new project?")
-        p = Project.create(context)
-    except BakeryConfigError as e:
-        log.exception(e)
-        log.error(f"An error occurred while loading the project!")
-        raise typer.Exit(code=1)
+    p = _wrap_project_load(context)
 
     try:
         p.create_image(image_name, base_image)
-    except BakeryConfigError as e:
-        log.error(f"{e}")
+    except error.BakeryError:
+        stderr_console.print_exception(max_frames=5, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
+        raise typer.Exit(code=1)
+    except Exception:
+        stderr_console.print_exception(max_frames=20)
+        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
         raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created image '{image_name}'")
+    stderr_console.print(f"[green3]✅ Successfully created image '{image_name}'")
 
 
 @app.command(
     short_help="Render templates for an image version",
-    help=textwrap.dedent(
-        """Renders templates for an image to a versioned subdirectory of the image directory.
+    help="""Renders templates for an image to a versioned subdirectory of the image directory.
+
+This tool expects an image directory to use the following structure as generated by `bakery new`:
+
+.
+
+└── image_path/
+
+    └── template/
     
-        This tool expects an image directory to use the following structure as generated by `bakery new`:
+        ├── optional_subdirectories/
         
-        .
+        │   └── *.jinja2
         
-        └── image_path/
+        ├── *.jinja2
         
-            └── template/
-            
-                ├── optional_subdirectories/
-                
-                │   └── *.jinja2
-                
-                ├── *.jinja2
-                
-                └── Containerfile*.jinja2
-        """
-    )
+        └── Containerfile*.jinja2
+"""
 )
 def version(
     image_name: Annotated[
@@ -173,23 +170,27 @@ def version(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    p = Project.load(context)
+    p = _wrap_project_load(context)
 
-    # TODO: Determine whether we still want to support the value map via the CLI or in a file
     # Parse the key=value pairs into a dictionary
     value_map = dict()
     if value is not None:
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                log.error(f"❌ Expected key=value pair, got [bold]'{v}'")
+                stderr_console.print(f"[bright_red]❌ Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
-    p.create_image_version(
-        image_name=image_name,
-        image_version=image_version,
-        mark_latest=(not skip_mark_latest),
-    )
+    try:
+        p.create_image_version(
+            image_name=image_name,
+            image_version=image_version,
+            mark_latest=(not skip_mark_latest),
+        )
+    except error.BakeryConfigError:
+        stderr_console.print_exception(max_frames=5, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to create version '{image_name}/{image_version}'")
+        raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created version '{image_name}/{image_version}'")
+    stderr_console.print(f"[green3]✅ Successfully created version '{image_name}/{image_version}'")

@@ -1,8 +1,11 @@
+from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.log import init_logging, stdout_console
+from posit_bakery import error
+from posit_bakery.log import init_logging, stdout_console, stderr_console
+from posit_bakery.models import Project
 
 
 def __version_callback(value: bool) -> None:
@@ -28,3 +31,32 @@ def __global_flags(
         raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
     init_logging(verbose=verbose, quiet=quiet)
+
+
+def _wrap_project_load(context: Path) -> Project:
+    try:
+        project = Project.load(context)
+    except error.BakeryFileError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please ensure you have a valid project in the specified directory.")
+        raise typer.Exit(code=1)
+    except error.BakeryBadImageError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please correct the above error and try again.")
+        raise typer.Exit(code=1)
+    except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
+        stderr_console.print(e)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please correct the above data validation error(s) and try again.")
+        raise typer.Exit(code=1)
+    except error.BakeryError:
+        stderr_console.print_exception(max_frames=5)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        raise typer.Exit(code=1)
+    except Exception:
+        stderr_console.print_exception(max_frames=20)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        raise typer.Exit(code=1)
+    return project

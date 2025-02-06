@@ -39,11 +39,13 @@ class Project(BaseModel):
         project.context = Path(context)
 
         if project.context.is_file():
-            raise BakeryBadContextError(f"Given context '{project.context}' is a file.")
+            raise BakeryFileError(f"Given context '{project.context}' is a file.", project.context)
         if not project.context.exists():
             project.context.mkdir(parents=True)
 
         project.config = Config.create(project.context)
+
+        # TODO: Consider anything else we should do here (e.g. .gitignore, init git, Justfile, etc.)
 
         return project
 
