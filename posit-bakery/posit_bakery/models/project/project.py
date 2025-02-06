@@ -8,14 +8,11 @@ import pydantic
 from pydantic import BaseModel
 
 from posit_bakery.error import (
-    BakeryContextDirectoryNotFoundError,
-    BakeryConfigNotFoundError,
     BakeryBadImageError,
     BakeryImageNotFoundError,
-    BakeryFileNotFoundError,
     BakeryModelValidationError,
     BakeryToolRuntimeError,
-    BakeryModelValidationErrorGroup,
+    BakeryModelValidationErrorGroup, BakeryFileError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.manifest import guess_os_list
@@ -42,8 +39,10 @@ class Project(BaseModel):
         """
         project = cls()
         project.context = Path(context)
+        if not project.context.exists():
+            raise BakeryFileError(f"Project context does not exist.", project.context)
         if not project.context.is_dir():
-            raise BakeryContextDirectoryNotFoundError(f"Directory '{project.context}' does not exist.")
+            raise BakeryFileError(f"Project context is not a directory.", project.context)
 
         project.config = project.load_config(project.context)
         project.manifests = project.load_manifests(project.config)
@@ -58,11 +57,14 @@ class Project(BaseModel):
         :param context: The path to the context directory
         """
         context = Path(context)
+        if not context.exists():
+            raise BakeryFileError(f"Project context does not exist.", context)
         if not context.is_dir():
-            raise BakeryContextDirectoryNotFoundError(f"Directory {context} does not exist.")
+            raise BakeryFileError(f"Project context is not a directory.", context)
+
         config_filepath = context / "config.toml"
         if not config_filepath.is_file():
-            raise BakeryConfigNotFoundError(f"Config file {config_filepath} does not exist.")
+            raise BakeryFileError(f"Project config.toml file not found.", config_filepath)
 
         try:
             config = Config.load(config_filepath)
@@ -253,7 +255,7 @@ class Project(BaseModel):
 
             test_path = variant.goss.tests
             if test_path is None or test_path == "":
-                raise BakeryFileNotFoundError("Path to Goss test directory must be defined or left empty for default.")
+                raise BakeryFileError("Path to Goss test directory must be defined or left empty for default.")
             run_env["GOSS_FILES_PATH"] = str(test_path)
 
             deps = variant.goss.deps

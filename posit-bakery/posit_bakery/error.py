@@ -91,31 +91,23 @@ class BakeryTemplatingError(BakeryError):
 class BakeryFileError(BakeryError):
     """Generic error for file/directory issues"""
 
-    pass
+    def __init__(
+            self,
+            message: str = None,
+            filepath: Union[str, bytes, os.PathLike] | List[Union[str, bytes, os.PathLike]] = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.filepath = filepath
 
-
-class BakeryFileNotFoundError(BakeryFileError):
-    """Error for an expected file not being found"""
-
-    pass
-
-
-class BakeryContextDirectoryNotFoundError(BakeryFileError):
-    """Error for an expected context directory not being found"""
-
-    pass
-
-
-class BakeryConfigNotFoundError(BakeryFileError):
-    """Error for an expected config file not being found"""
-
-    pass
-
-
-class BakeryContainerfileNotFoundError(BakeryFileError):
-    """Error for an expected Containerfile not being found"""
-
-    pass
+        if filepath:
+            filepath_note = f"Expected filepath(s): "
+            if isinstance(filepath, (str, bytes, os.PathLike)):
+                filepath_note += f"  - {filepath}\n"
+            elif isinstance(filepath, list):
+                for f in filepath:
+                    filepath_note += f"  - {f}\n"
+            self.add_note(filepath_note)
 
 
 class BakeryToolError(BakeryError):

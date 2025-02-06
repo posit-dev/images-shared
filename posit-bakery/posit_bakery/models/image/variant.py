@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryFileError, BakeryContainerfileNotFoundError, BakeryConfigError
+from posit_bakery.error import BakeryFileError
 from posit_bakery.templating.filters import condense
 from posit_bakery.util import find_in_context
 from posit_bakery.models.config.document import ConfigDocument
@@ -102,7 +102,9 @@ class ImageVariant(BaseModel):
             except BakeryFileError:
                 continue
 
-        raise BakeryContainerfileNotFoundError(f"Containerfile not found for os '{_os}', target {target}.")
+        raise BakeryFileError(
+            f"Containerfile not found for os '{_os}', target {target}.", [(context / f) for f in filenames]
+        )
 
     def complete_metadata(self, config: ConfigDocument, commit: str = None) -> None:
         labels: Dict[str, str] = {}
