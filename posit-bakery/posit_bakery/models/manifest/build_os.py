@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from posit_bakery.templating.filters import condense
 
@@ -9,11 +9,9 @@ class BuildOS(BaseModel):
     distributor_id: str
     name: str
     version: str
-    codename: str | None
+    codename: str | None = None
     base_image: str
     image_tag: str
-    pretty: str
-    condensed: str
 
     """
     Represent the operating systems that are supported for image builds
@@ -29,23 +27,12 @@ class BuildOS(BaseModel):
     :param codename: VERSION_CODENAME from os-release
     """
 
-    def __init__(
-        self,
-        distributor_id: str,
-        name: str,
-        version: str,
-        base_image: str,
-        image_tag: str,
-        codename: str = None,
-    ):
-        pretty: str = f"{name} {version}"
-        super().__init__(
-            distributor_id=distributor_id,
-            name=name,
-            version=version,
-            base_image=base_image,
-            image_tag=image_tag,
-            codename=codename,
-            pretty=pretty,
-            condensed=condense(pretty),
-        )
+    @computed_field
+    @property
+    def pretty(self) -> str:
+        return f"{self.name} {self.version}"
+
+    @computed_field
+    @property
+    def condensed(self) -> str:
+        return condense(self.pretty)

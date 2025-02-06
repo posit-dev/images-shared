@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pathlib import Path
-from typing import List
+from typing import List, Any, Dict
 
 from pydantic import BaseModel
 
@@ -43,13 +43,13 @@ class ImageVersion(BaseModel):
         return cls(version=meta.version, context=meta.context, variants=variants)
 
     @classmethod
-    def create(cls, image_context: Path, version: str, targets: List[str], mark_latest: bool):
+    def create(cls, image_context: Path, version: str, template_values: Dict[str, Any], targets: List[str]):
         context: Path = image_context / version
         render_image_templates(
             context=context,
             version=version,
+            template_values=template_values,
             targets=targets,
-            latest=mark_latest,
         )
 
         # TODO: Pull in the variants after render

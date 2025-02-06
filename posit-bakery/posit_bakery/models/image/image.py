@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 from pydantic import BaseModel
 
@@ -49,12 +49,12 @@ class Image(BaseModel):
         context: Path = project_context / name
         create_image_templates(context=context, image_name=name, base_tag=base_tag)
 
-    def create_version(self, manifest: ManifestDocument, version: str, mark_latest: bool) -> ImageVersion:
+    def create_version(self, manifest: ManifestDocument, version: str, template_values: Dict[str, Any]) -> ImageVersion:
         new_version: ImageVersion = ImageVersion.create(
             image_context=self.context,
             version=version,
+            template_values=template_values,
             targets=manifest.target.keys(),
-            mark_latest=mark_latest,
         )
 
         return new_version
