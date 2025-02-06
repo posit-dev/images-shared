@@ -1,8 +1,8 @@
 import typer
 
-from posit_bakery.cli import create
+from posit_bakery.cli import create, common
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, callback=common.__global_flags)
 
 # Import the "create" subcommand
 app.add_typer(create.app, name="create", help="Create new projects, images, and versions (aliases: c, new)")
