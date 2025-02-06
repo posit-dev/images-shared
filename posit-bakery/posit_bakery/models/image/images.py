@@ -71,24 +71,24 @@ class Images(dict):
 
         return vars
 
-    def filter(self, filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
+    def filter(self, _filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
         images: dict[str, Image] = {}
         for image_name, image in self.items():
-            if filter.image_name is not None and filter.image_name != image.name:
+            if _filter.image_name is not None and _filter.image_name != image.name:
                 continue
 
             versions: List[ImageVersion] = []
             for version in image.versions:
-                if filter.image_version is not None and filter.image_version != version.version:
+                if _filter.image_version is not None and _filter.image_version != version.version:
                     continue
 
                 variants: List[ImageVariant] = []
                 for variant in version.variants:
-                    if filter.is_latest is not None and filter.is_latest != variant.latest:
+                    if _filter.is_latest is not None and _filter.is_latest != variant.latest:
                         continue
-                    if filter.build_os is not None and filter.build_os != variant.os:
+                    if _filter.build_os is not None and _filter.build_os != variant.os:
                         continue
-                    if filter.target_type is not None and filter.target_type != variant.target:
+                    if _filter.target_type is not None and _filter.target_type != variant.target:
                         continue
 
                     variants.append(deepcopy(variant))

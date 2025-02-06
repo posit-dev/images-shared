@@ -165,15 +165,15 @@ class Project(BaseModel):
         :param image_version: (Optional) The version of the image to render a bake plan for
         :param image_type: (Optional) The type of the image to render a bake plan for
         """
-        filter: ImageFilter = ImageFilter(
+        _filter: ImageFilter = ImageFilter(
             image_name=image_name,
             image_version=image_version,
             target_type=image_type,
         )
-        if filter:
-            return BakePlan.create(images=self.images.filter(filter).values())
+        if _filter:
+            return BakePlan.create(images=list(self.images.filter(_filter).values()))
 
-        return BakePlan.create(images=self.images.values())
+        return BakePlan.create(images=list(self.images.values()))
 
     def build(
         self,
