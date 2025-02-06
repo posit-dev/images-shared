@@ -44,34 +44,18 @@ class Project(BaseModel):
         if not project.context.is_dir():
             raise BakeryFileError(f"Project context is not a directory.", project.context)
 
-        project.config = project.load_config(project.context)
+        config_filepath = project.context / "config.toml"
+        if not config_filepath.is_file():
+            raise BakeryFileError(f"Project config.toml file not found.", config_filepath)
+        try:
+            project.config = Config.load(config_filepath)
+        except pydantic.ValidationError as e:
+            raise BakeryModelValidationError(model_name="Config", filepath=config_filepath) from e
+
         project.manifests = project.load_manifests(project.config)
         project.images = Images.load(config=project.config, manifests=project.manifests)
 
         return project
-
-    @staticmethod
-    def load_config(context: Union[str, bytes, os.PathLike]) -> Config:
-        """Load the project configuration from a context directory
-
-        :param context: The path to the context directory
-        """
-        context = Path(context)
-        if not context.exists():
-            raise BakeryFileError(f"Project context does not exist.", context)
-        if not context.is_dir():
-            raise BakeryFileError(f"Project context is not a directory.", context)
-
-        config_filepath = context / "config.toml"
-        if not config_filepath.is_file():
-            raise BakeryFileError(f"Project config.toml file not found.", config_filepath)
-
-        try:
-            config = Config.load(config_filepath)
-        except pydantic.ValidationError as e:
-            raise BakeryModelValidationError(model_name="Config", filepath=config_filepath) from e
-
-        return config
 
     @staticmethod
     def load_manifests(config: Config) -> Dict[str, "Manifest"]:
