@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from posit_bakery.error import BakeryError, BakeryFileNotFoundError
+from posit_bakery.error import BakeryError, BakeryFileError
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.images import ImageFilter
@@ -229,7 +229,7 @@ class TestImageVariant:
         target: str = "min"
 
         with patch("pathlib.Path.is_file", side_effect=[False] * 4):
-            with pytest.raises(BakeryFileNotFoundError):
+            with pytest.raises(BakeryFileError):
                 ImageVariant.find_containerfile(self.context, _os, target)
 
     @pytest.mark.parametrize(

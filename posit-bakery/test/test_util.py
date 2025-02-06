@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from posit_bakery import util
-from posit_bakery.error import BakeryFileNotFoundError
+from posit_bakery.error import BakeryFileError
 
 pytestmark = [
     pytest.mark.unit,
@@ -39,7 +39,7 @@ def test_find_bin_not_found(tmpdir, mocker):
     """Test trying to find a binary that does not exist raises an error"""
     mocker.patch("posit_bakery.util.which", return_value=None)
     mocker.patch("os.environ.get", side_effect=[None, None])
-    with pytest.raises(BakeryFileNotFoundError):
+    with pytest.raises(BakeryFileError):
         util.find_bin(tmpdir, "goss", "GOSS_PATH")
 
 
