@@ -63,6 +63,7 @@ class Project(BaseModel):
 
         :param config: The project configuration
         """
+        # TODO: Consider implementing a Manifests dictionary class similar to Images
         manifests = {}
         error_list = []
         for manifest_file in config.context.rglob("manifest.toml"):
