@@ -27,7 +27,7 @@ def __callback_logging(
     global log
 
     if verbose and quiet:
-        raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
+        raise typer.BadParameter("Cannot set both --verbose and --quiet flags.")
 
     init_logging(verbose=verbose, quiet=quiet)
 
