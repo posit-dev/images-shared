@@ -7,7 +7,7 @@ Feature: bakery
             | --help |
         When I execute the command
         Then The command succeeds
-        * usage is shown
+        * help is shown
 
     Scenario: bakery with unknown flag
         Given I call bakery
@@ -26,7 +26,7 @@ Feature: bakery
         Then The command fails
         * an error message is shown
         * usage is shown
-        * the output includes:
+        * the stderr output includes:
             | No such command 'nope' |
 
     Scenario: bakery with unknown option
@@ -37,5 +37,13 @@ Feature: bakery
         Then The command fails
         * an error message is shown
         * usage is shown
-        * the output includes:
+        * the stderr output includes:
             | No such option: --planet |
+
+    Scenario: bakery version
+        Given I call bakery
+        * with the arguments:
+            | --version |
+        When I execute the command
+        Then The command succeeds
+        * the version is shown

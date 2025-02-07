@@ -15,15 +15,31 @@ class BakeryCommand:
 
     def __init__(self):
         self.args: List[str] = []
-        self.subcommand: List[str] | None = None
+        self.subcommand: List[str] = []
         self.result: Result | None = None
 
     def __str__(self):
         return "bakery " + " ".join(self.clirunner_args)
 
+    def __repr__(self):
+        printable_result = None
+        if self.result:
+            if self.result.exception is not None:
+                printable_result = f"Exception: {self.result.exception}"
+            else:
+                printable_result = f"Exit Code: {self.result.exit_code}"
+        return f"<BakeryCommand<args = '{str(self)}', result = '{printable_result}'>"
+
+    def reset(self):
+        self.args = []
+        self.subcommand = []
+        self.result = None
+
     def set_subcommand(self, subcommand: List[str] | str = None):
         if type(subcommand) is str:
             subcommand = [subcommand]
+        elif type(subcommand) is None:
+            subcommand = []
         self.subcommand = subcommand
 
     @property
