@@ -20,12 +20,14 @@ def print_plan(project: Project, image_name: str, image_version: str, image_type
         plan = project.render_bake_plan(image_name, image_version, image_type)
     except error.BakeryError as e:
         stderr_console.print(e)
-        stderr_console.print(f"[bright_red]❌ Failed to render bake plan")
+        stderr_console.print(f"❌ Failed to render bake plan", style="error")
         raise typer.Exit(code=1)
     except pydantic.ValidationError as e:
         stderr_console.print(e)
-        stderr_console.print(f"[bright_red]❌ Failed to render bake plan")
-        stderr_console.print("Please correct the above data validation error(s) and try again.")
+        stderr_console.print(f"❌ Failed to render bake plan", style="error")
+        stderr_console.print(
+            "Please correct the above data validation error(s) and try again.", style="info"
+        )
         raise typer.Exit(code=1)
 
     stdout_console.print_json(plan.model_dump_json(), indent=2)
@@ -70,7 +72,7 @@ def build(
     try:
         p.build(load, push, image_name, image_version, image_type, build_options)
     except error.BakeryToolRuntimeError as e:
-        stderr_console.print(f"[bright_red]❌ Build failed with exit code {e.exit_code}")
+        stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"[green3]✅ Build completed")
+    stderr_console.print(f"✅ Build completed", style="success")

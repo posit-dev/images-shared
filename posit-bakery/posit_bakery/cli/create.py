@@ -37,27 +37,31 @@ def project(
     #       exists rather than check exceptions.
     try:
         p = Project.load(context)
-        stderr_console.print(f"[bright_blue]Project already exists in '{p.context}'")
+        stderr_console.print(f"Project already exists in '{p.context}'", style="info")
     except error.BakeryFileError:
         log.info(f"No project found, creating a new project in '{context}'")
         try:
             p = Project.create(context)
-            stderr_console.print(f"[green3]✅ Project initialized in '{p.context}'")
+            stderr_console.print(f"✅ Project initialized in '{p.context}'", style="success")
         except error.BakeryError:
             stderr_console.print_exception(max_frames=5)
-            stderr_console.print(f"[bright_red]❌ Failed to initialize a new project in '{context}")
+            stderr_console.print(f"❌ Failed to initialize a new project in '{context}", style="error")
             raise typer.Exit(code=1)
     except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
         stderr_console.print(e)
-        stderr_console.print(f"[bright_red]❌ The project already exists, but failed to load from '{context}'")
+        stderr_console.print(
+            f"❌ The project already exists, but failed to load from '{context}'", style="error"
+        )
         raise typer.Exit(code=1)
     except error.BakeryError:
         stderr_console.print_exception(max_frames=5)
-        stderr_console.print(f"[bright_red]❌ The project already exists, but failed to load from '{context}'")
+        stderr_console.print(
+            f"❌ The project already exists, but failed to load from '{context}'", style="error"
+        )
         raise typer.Exit(code=1)
     except Exception:
         stderr_console.print_exception(max_frames=20)
-        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print(f"❌ Failed to load project from '{context}'", style="error")
         raise typer.Exit(code=1)
 
 
@@ -90,14 +94,14 @@ def image(
         p.create_image(image_name, base_image)
     except error.BakeryError:
         stderr_console.print_exception(max_frames=5, show_locals=False)
-        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
+        stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
         raise typer.Exit(code=1)
     except Exception:
         stderr_console.print_exception(max_frames=20)
-        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
+        stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"[green3]✅ Successfully created image '{image_name}'")
+    stderr_console.print(f"✅ Successfully created image '{image_name}'", style="success")
 
 
 @app.command()
@@ -137,7 +141,7 @@ def version(
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                stderr_console.print(f"[bright_red]❌ Expected key=value pair, got [bold]'{v}'")
+                stderr_console.print(f"❌ Expected key=value pair, got [bold]'{v}'", style="error")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
@@ -151,7 +155,7 @@ def version(
         )
     except error.BakeryConfigError:
         stderr_console.print_exception(max_frames=5, show_locals=False)
-        stderr_console.print(f"[bright_red]❌ Failed to create version '{image_name}/{image_version}'")
+        stderr_console.print(f"❌ Failed to create version '{image_name}/{image_version}'", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"[green3]✅ Successfully created version '{image_name}/{image_version}'")
+    stderr_console.print(f"✅ Successfully created version '{image_name}/{image_version}'", style="success")

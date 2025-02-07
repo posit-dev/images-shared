@@ -1,11 +1,23 @@
+import enum
 import logging
 
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.style import Style
+from rich.theme import Theme
 
-stdout_console = Console()
-stderr_console = Console(stderr=True)
+default_theme = Theme(
+    {
+        "info": "bright_blue",
+        "error": "bright_red",
+        "success": "green3",
+        "quiet": "bright_black",
+    }
+)
+
+stdout_console = Console(theme=default_theme)
+stderr_console = Console(stderr=True, theme=default_theme)
 
 
 def init_logging(log_level: str | int = logging.INFO) -> None:
