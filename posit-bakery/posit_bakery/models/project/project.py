@@ -117,7 +117,6 @@ class Project(BaseModel):
         :param image_name: The name of the image to create a new version for
         :param image_version: The new version
         :param template_values: A dictionary of key/values to use in template rendering
-        :param value_map: A dictionary of key/values to use in template rendering
         :param mark_latest: If true, mark the new version as the latest
         :param save: If true, save to the manifest.toml after adding the new version
         :param force: If true, overwrite an existing version
