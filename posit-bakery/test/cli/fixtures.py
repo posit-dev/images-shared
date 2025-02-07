@@ -4,7 +4,7 @@ from typing import List
 import pytest
 from typer.testing import CliRunner, Result
 
-from posit_bakery.cli import app
+from posit_bakery.cli.main import app
 
 
 runner = CliRunner(mix_stderr=False)
@@ -13,33 +13,30 @@ runner = CliRunner(mix_stderr=False)
 class BakeryCommand:
     """Class representing a bakery command"""
 
-    _subcommand: str | None
-    _args: List[str]
-    result: Result | None
-
     def __init__(self):
-        self._args = []
+        self.args: List[str] = []
+        self.subcommand: List[str] | None = None
+        self.result: Result | None = None
 
     def __str__(self):
-        return "bakery " + " ".join(self.command)
+        return "bakery " + " ".join(self.clirunner_args)
+
+    def set_subcommand(self, subcommand: List[str] | str = None):
+        if type(subcommand) is str:
+            subcommand = [subcommand]
+        self.subcommand = subcommand
 
     @property
-    def command(self):
-        _cmd = [self._subcommand] if self._subcommand else []
-        return _cmd + self._args
-
-    def reset(self):
-        self._subcommand = None
-        self._args = []
-        self.result = None
+    def clirunner_args(self):
+        return self.subcommand + self.args
 
     def add_args(self, args: List[str]):
         # Filter out empty strings
         args = [a for a in args if a]
-        self._args.extend(args)
+        self.args.extend(args)
 
     def run(self):
-        self.result = runner.invoke(app, self.command)
+        self.result = runner.invoke(app, self.clirunner_args, catch_exceptions=True)
 
 
 @pytest.fixture

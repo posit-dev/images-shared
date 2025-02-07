@@ -1,27 +1,32 @@
 @functional
 Feature: Basic Context
 
-    Scenario: bakery plan
-        Given I call bakery "plan"
+    Scenario: bakery build --plan
+        Given I call bakery "build"
         * in a temp basic context
+        * with the arguments:
+            | --plan |
         When I execute the command
         Then The command succeeds
         * the bake plan is valid
 
-    Scenario: bakery plan with git commit
-        Given I call bakery "plan"
+    Scenario: bakery build --plan with git commit
+        Given I call bakery "build"
         * in the basic context
+        * with the arguments:
+            | --plan |
         When I execute the command
         Then The command succeeds
         * the bake plan is valid
         * the targets include the commit hash
 
-    Scenario: bakery new
-        Given I call bakery "new"
+    Scenario: bakery create image
+        Given I call bakery "create" "image"
         * in a temp basic context
         * with the arguments:
-            | --image-base | registry/base-image:1.0.3 |
-            | brand-new-image | |
+            | --base-image |
+            | registry/base-image:1.0.3 |
+            | brand-new-image |
         When I execute the command
         Then The command succeeds
         * the image "brand-new-image" exists
@@ -30,16 +35,16 @@ Feature: Basic Context
         * the stderr output includes:
             | Successfully created image 'brand-new-image' |
 
-    Scenario: bakery new image exists
-        Given I call bakery "new"
+    Scenario: bakery create image exists
+        Given I call bakery "create" "image"
         * in a temp basic context
         * with the arguments:
             | test-image |
         When I execute the command
         Then The command fails
 
-    Scenario: bakery render
-        Given I call bakery "render"
+    Scenario: bakery create version
+        Given I call bakery "create" "version"
         * in a temp basic context
         * with the arguments:
             | test-image |
@@ -53,7 +58,7 @@ Feature: Basic Context
             | Successfully created version 'test-image/1.1.0' |
 
     @slow
-    Scenario: bakery build dgoss
+    Scenario: bakery run dgoss
         Given I call bakery "build"
         * in a temp basic context
         * with the arguments:
@@ -61,7 +66,7 @@ Feature: Basic Context
         When I execute the command
         Then The command succeeds
 
-        Given I call bakery "dgoss"
+        Given I call bakery "run" "dgoss"
         * in a temp basic context
         When I execute the command
         Then The command succeeds

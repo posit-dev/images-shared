@@ -10,14 +10,17 @@ from posit_bakery.models import Manifest
 # Construct the bakery command and all arguments
 @given("I call bakery")
 def bare_command(bakery_command):
-    bakery_command.reset()
-    bakery_command._subcommand = None
+    pass
 
 
 @given(parsers.parse('I call bakery "{command}"'))
-def sub_command(bakery_command, command):
-    bakery_command.reset()
-    bakery_command._subcommand = command
+def top_level_command(bakery_command, command):
+    bakery_command.set_subcommand(command)
+    
+
+@given(parsers.parse('I call bakery "{subgroup}" "{subcommand}"'))
+def subgroup_command(bakery_command, subgroup, subcommand):
+    bakery_command.set_subcommand([subgroup, subcommand])
 
 
 @given("in the basic context")
