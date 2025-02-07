@@ -13,4 +13,5 @@ Feature: create version
         * the version "1.1.0" exists
         * the default rendered templates exist
         * the stderr output includes:
-            | Successfully created version 'test-image/1.1.0' |
+            | Successfully created version |
+            | 'test-image/1.1.0' |

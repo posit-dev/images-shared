@@ -7,11 +7,6 @@ import tomlkit
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
-pytest_plugins = [
-    "test.cli.fixtures",
-    "test.cli.common_steps",
-]
-
 
 @pytest.fixture
 def toml_basic_str():

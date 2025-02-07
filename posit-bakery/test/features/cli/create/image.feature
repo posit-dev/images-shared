@@ -12,7 +12,8 @@ Feature: create image
         * the default templates exist
         * the default base image is "docker.io/library/ubuntu:22.04"
         * the stderr output includes:
-            | Successfully created image 'brand-new-image' |
+            | Successfully created image |
+            | 'brand-new-image' |
 
     Scenario: Creating a new image with a custom base image defined
         Given I call bakery "create" "image"
@@ -27,7 +28,8 @@ Feature: create image
         * the default templates exist
         * the default base image is "registry/base-image:1.0.3"
         * the stderr output includes:
-            | Successfully created image 'custom-new-image' |
+            | Successfully created image |
+            | 'custom-new-image' |
 
     Scenario: bakery create image exists
         Given I call bakery "create" "image"
