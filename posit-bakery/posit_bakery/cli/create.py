@@ -1,7 +1,7 @@
 import logging
 import textwrap
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 import typer
 
@@ -112,10 +112,8 @@ def version(
     value: Annotated[
         List[str], typer.Option(help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.")
     ] = None,
-    skip_render_minimal: Annotated[
-        bool, typer.Option(help="Skip rendering the minimal version of the Containerfile.")
-    ] = False,
-    skip_mark_latest: Annotated[bool, typer.Option(help="Skip marking the latest version of the image.")] = False,
+    mark_latest: Annotated[bool, typer.Option(help="Skip marking the latest version of the image.")] = True,
+    force: Annotated[Optional[bool], typer.Option(help="Force overwrite of existing version directory.")] = False,
 ) -> None:
     """Renders templates for an image to a versioned subdirectory of the image directory.
 
@@ -147,7 +145,9 @@ def version(
         p.create_image_version(
             image_name=image_name,
             image_version=image_version,
-            mark_latest=(not skip_mark_latest),
+            template_values=value_map,
+            mark_latest=mark_latest,
+            force=force,
         )
     except error.BakeryConfigError:
         stderr_console.print_exception(max_frames=5, show_locals=False)
