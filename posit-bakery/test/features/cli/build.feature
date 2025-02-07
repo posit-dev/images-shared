@@ -2,7 +2,7 @@
 Feature: build
 
     Scenario: Generating a buildkit bake plan
-        Given I call bakery "build"
+        Given I call bakery build
         * in a temp basic context
         * with the arguments:
             | --plan |
@@ -11,7 +11,7 @@ Feature: build
         * the bake plan is valid
 
     Scenario: Generating a buildkit bake plan with git commit
-        Given I call bakery "build"
+        Given I call bakery build
         * in the basic context
         * with the arguments:
             | --plan |
@@ -22,7 +22,7 @@ Feature: build
 
     @slow
     Scenario: Building images
-        Given I call bakery "build"
+        Given I call bakery build
         * in a temp basic context
         * with the arguments:
             | --load |

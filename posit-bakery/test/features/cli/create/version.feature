@@ -2,7 +2,7 @@
 Feature: create version
 
     Scenario: bakery create version
-        Given I call bakery "create" "version"
+        Given I call bakery create version
         * in a temp basic context
         * with the arguments:
             | test-image |

@@ -1,6 +1,6 @@
 # conftest.py loads this file via pytest_plugins
-import json
 from pathlib import Path
+from typing import List
 
 import pytest
 from pytest_bdd import given, when, then, parsers
@@ -19,16 +19,13 @@ def bare_command(bakery_command):
     bakery_command.reset()
 
 
-@given(parsers.parse('I call bakery "{command}"'))
-def top_level_command(bakery_command, command):
+@given(parsers.cfparse('I call bakery {commands:String*}', extra_types={"String": str}))
+def sub_command(bakery_command, commands: List[str]):
     bakery_command.reset()
-    bakery_command.set_subcommand(command)
-
-
-@given(parsers.parse('I call bakery "{subgroup}" "{subcommand}"'))
-def subgroup_command(bakery_command, subgroup, subcommand):
-    bakery_command.reset()
-    bakery_command.set_subcommand([subgroup, subcommand])
+    parsed_commands = []
+    for command in commands:
+        parsed_commands.extend(command.split())  # FIXME: pytest-bdd is unclear on how to natively autosplit this
+    bakery_command.set_subcommand(parsed_commands)
 
 
 @given("in the basic context")

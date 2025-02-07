@@ -2,7 +2,7 @@
 Feature: create image
 
     Scenario: Creating a new image
-        Given I call bakery "create" "image"
+        Given I call bakery create image
         * in a temp basic context
         * with the arguments:
             | brand-new-image |
@@ -16,7 +16,7 @@ Feature: create image
             | 'brand-new-image' |
 
     Scenario: Creating a new image with a custom base image defined
-        Given I call bakery "create" "image"
+        Given I call bakery create image
         * in a temp basic context
         * with the arguments:
             | --base-image |
@@ -32,7 +32,7 @@ Feature: create image
             | 'custom-new-image' |
 
     Scenario: bakery create image exists
-        Given I call bakery "create" "image"
+        Given I call bakery create image
         * in a temp basic context
         * with the arguments:
             | test-image |
