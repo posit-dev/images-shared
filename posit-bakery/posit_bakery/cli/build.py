@@ -7,7 +7,6 @@ import typer
 
 from posit_bakery import error
 from posit_bakery.cli.common import _wrap_project_load
-from posit_bakery.cli.main import app
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.models import Project
 from posit_bakery.util import auto_path
@@ -33,7 +32,6 @@ def print_plan(project: Project, image_name: str, image_version: str, image_type
     raise typer.Exit()
 
 
-@app.command()
 def build(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
