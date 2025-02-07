@@ -36,13 +36,13 @@ def project(
     # TODO: The logic here can be improved. We can probably implement a Project.exists() method to check if a project
     #       exists rather than check exceptions.
     try:
-        Project.load(context)
-        stderr_console.print(f"[green3]✅ Project already exists in '{project.context}'")
-    except error.BakeryFileError as e:
+        p = Project.load(context)
+        stderr_console.print(f"[bright_blue]Project already exists in '{p.context}'")
+    except error.BakeryFileError:
         log.info(f"No project found, creating a new project in '{context}'")
         try:
-            Project.create(context)
-            stderr_console.print(f"[green3]✅ Project initialized in '{project.context}'")
+            p = Project.create(context)
+            stderr_console.print(f"[green3]✅ Project initialized in '{p.context}'")
         except error.BakeryError:
             stderr_console.print_exception(max_frames=5)
             stderr_console.print(f"[bright_red]❌ Failed to initialize a new project in '{context}")
