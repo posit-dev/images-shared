@@ -21,7 +21,7 @@ Feature: build
         * the targets include the commit hash
 
     @slow
-    Scenario: Building images
+    Scenario: Building images from a project
         Given I call bakery build
         * in a temp basic context
         * with the arguments:

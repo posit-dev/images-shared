@@ -31,7 +31,7 @@ Feature: create image
             | Successfully created image |
             | 'custom-new-image' |
 
-    Scenario: bakery create image exists
+    Scenario: Creating a duplicate image name fails
         Given I call bakery create image
         * in a temp basic context
         * with the arguments:
