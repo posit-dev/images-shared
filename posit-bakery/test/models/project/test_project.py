@@ -4,15 +4,69 @@ from pathlib import Path
 from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
+import jinja2
 import pytest
 import tomlkit
 
+from posit_bakery.error import BakeryFileError
 from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project
+from posit_bakery.templating import TPL_CONFIG_TOML
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.project,
 ]
+
+
+class TestProjectCreate:
+    def test_create(self, tmpdir):
+        """Test creating a Project object from a context path"""
+        p = Project.create(tmpdir)
+        assert Path(tmpdir).absolute() == p.context.absolute()
+        assert (Path(tmpdir) / "config.toml").absolute() == p.config.filepath.absolute()
+        assert (Path(tmpdir) / "config.toml").is_file()
+        contents = (Path(tmpdir) / "config.toml").read_text()
+        expected_contents = jinja2.Environment().from_string(TPL_CONFIG_TOML).render(repo_url="<REPLACE ME>")
+        assert tomlkit.loads(contents) == tomlkit.loads(expected_contents)
+
+    def test_create_context_is_file(self, tmpdir):
+        """Test creating a Project object from a context path that is a file"""
+        with open(tmpdir / "file.txt", "w") as f:
+            f.write("test")
+        with pytest.raises(BakeryFileError):
+            Project.create(tmpdir / "file.txt")
+
+    def test_create_project_directory_is_created(self, tmpdir):
+        assert not (Path(tmpdir) / "new_project").exists()
+        Project.create(tmpdir / "new_project")
+        assert (Path(tmpdir) / "new_project").exists()
+        assert (Path(tmpdir) / "new_project" / "config.toml").exists()
+
+    def test_create_project_exists(self, basic_context):
+        """Test creating a Project object from a context path"""
+        with pytest.raises(BakeryFileError):
+            Project.create(basic_context)
+
+
+class TestProjectExists:
+    def test_exists(self, basic_context):
+        """Test checking if a project exists"""
+        assert Project.exists(basic_context)
+
+    def test_not_exists(self, tmpdir):
+        """Test checking if a project does not exist"""
+        assert not Project.exists(tmpdir)
+
+    def test_directory_does_not_exist(self, tmpdir):
+        """Test checking if a project does not exist"""
+        assert not Project.exists(tmpdir / "test_directory")
+
+    def test_context_is_file(self, tmpdir):
+        """Test checking if a project does not exist"""
+        with open(tmpdir / "file.txt", "w") as f:
+            f.write("test")
+        with pytest.raises(BakeryFileError):
+            Project.exists(tmpdir / "file.txt")
 
 
 class TestProjectLoad:
@@ -63,6 +117,23 @@ class TestProjectLoad:
         assert len(i) == 1
         assert isinstance(i["test-image"], Image)
         assert len(i["test-image"].variants) == basic_expected_num_variants
+
+    def test_load_context_does_not_exist(self, tmpdir):
+        """Test loading a project from a context that does not exist"""
+        with pytest.raises(BakeryFileError, match="Project context does not exist."):
+            Project.load(Path(tmpdir) / "test_directory")
+
+    def test_load_context_is_file(self, tmpdir):
+        """Test loading a project from a context that is a file"""
+        with open(tmpdir / "file.txt", "w") as f:
+            f.write("test")
+        with pytest.raises(BakeryFileError, match="Project context is not a directory."):
+            Project.load(tmpdir / "file.txt")
+
+    def test_load_config_does_not_exist(self, tmpdir):
+        """Test loading a project from a context that does not exist"""
+        with pytest.raises(BakeryFileError, match="Project config.toml file not found."):
+            Project.load(tmpdir)
 
 
 class TestProjectBuild:

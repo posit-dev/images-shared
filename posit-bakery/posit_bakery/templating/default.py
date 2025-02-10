@@ -13,18 +13,12 @@ from posit_bakery.templating.filters import jinja2_env
 log = logging.getLogger(__name__)
 
 
-def create_project_config(context: Path) -> None:
-    if not context.is_dir():
-        log.error(f"Context directory does not exist: [bold]{context}")
-        raise BakeryFileError(f"Project directory does not exist.", context)
-
-    config_file = context / "config.toml"
-    if not config_file.is_file():
-        log.info(f"Creating new project config file [bold]{config_file}")
-        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(TPL_CONFIG_TOML)
-        rendered = tpl.render(repo_url=util.try_get_repo_url(context))
-        with open(config_file, "w") as f:
-            f.write(rendered)
+def create_project_config(config_file: Path) -> None:
+    log.info(f"Creating new project config file [bold]{config_file}")
+    tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_CONFIG_TOML)
+    rendered = tpl.render(repo_url=util.try_get_repo_url(config_file.parent))
+    with open(config_file, "w") as f:
+        f.write(rendered)
 
 
 def create_image_templates(context: Path, image_name: str, base_tag: str) -> None:

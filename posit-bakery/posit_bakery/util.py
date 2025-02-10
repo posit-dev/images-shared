@@ -71,7 +71,7 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
             url = url.removeprefix("https://")
             url = url.split("@")[-1]
     except:  # noqa
-        log.warning("Unable to determine repository name ")
+        log.warning("Unable to determine repository name")
     return url
 
 

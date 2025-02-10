@@ -64,8 +64,8 @@ class Project(BaseModel):
         # Check if the context exists and is a directory
         if not project_context.exists():
             return False
-        if not project_context.is_dir():
-            return False
+        if project_context.is_file():
+            raise BakeryFileError(f"Given context '{project_context}' is a file.", project_context)
 
         # Check if the context contains a config.toml file
         config_file = project_context / "config.toml"
