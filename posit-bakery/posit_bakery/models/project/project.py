@@ -49,6 +49,31 @@ class Project(BaseModel):
 
         return project
 
+    @staticmethod
+    def exists(context: Union[str, bytes, os.PathLike]) -> bool:
+        """Check if a project exists in a context directory
+
+        This checks essentially 2 things at the moment:
+        - Does the given context exist as a directory?
+        - Does the given context contain a config.toml file?
+
+        :param context: The path to the context directory
+        """
+        project_context = Path(context)
+
+        # Check if the context exists and is a directory
+        if not project_context.exists():
+            return False
+        if not project_context.is_dir():
+            return False
+
+        # Check if the context contains a config.toml file
+        config_file = project_context / "config.toml"
+        if not config_file.is_file():
+            return False
+
+        return True
+
     # TODO: Add back in support for handling overrides
     @classmethod
     def load(cls, context: Union[str, bytes, os.PathLike]) -> "Project":

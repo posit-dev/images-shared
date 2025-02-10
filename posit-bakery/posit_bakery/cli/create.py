@@ -1,5 +1,4 @@
 import logging
-import textwrap
 from pathlib import Path
 from typing import Annotated, List, Optional
 
@@ -33,12 +32,7 @@ def project(
     └── project_name/
         └── config.toml.
     """
-    # TODO: The logic here can be improved. We can probably implement a Project.exists() method to check if a project
-    #       exists rather than check exceptions.
-    try:
-        p = Project.load(context)
-        stderr_console.print(f"Project already exists in '{p.context}'", style="info")
-    except error.BakeryFileError:
+    if not Project.exists(context):
         log.info(f"No project found, creating a new project in '{context}'")
         try:
             p = Project.create(context)
@@ -47,22 +41,8 @@ def project(
             stderr_console.print_exception(max_frames=5)
             stderr_console.print(f"❌ Failed to initialize a new project in '{context}", style="error")
             raise typer.Exit(code=1)
-    except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
-        stderr_console.print(e)
-        stderr_console.print(
-            f"❌ The project already exists, but failed to load from '{context}'", style="error"
-        )
-        raise typer.Exit(code=1)
-    except error.BakeryError:
-        stderr_console.print_exception(max_frames=5)
-        stderr_console.print(
-            f"❌ The project already exists, but failed to load from '{context}'", style="error"
-        )
-        raise typer.Exit(code=1)
-    except Exception:
-        stderr_console.print_exception(max_frames=20)
-        stderr_console.print(f"❌ Failed to load project from '{context}'", style="error")
-        raise typer.Exit(code=1)
+    else:
+        stderr_console.print(f"Project already exists in '{context}'", style="info")
 
 
 @app.command()
