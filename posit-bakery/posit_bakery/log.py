@@ -8,20 +8,14 @@ stdout_console = Console()
 stderr_console = Console(stderr=True)
 
 
-def init_logging(verbose: bool = False, quiet: bool = False) -> None:
+def init_logging(log_level: str | int = logging.INFO) -> None:
     """Initialize logging for the Bakery CLI
 
-    :param verbose: Enable debug logging
-    :param quiet: Suppress all output except errors
+    :param log_level: The log level to use
     """
-    level = "INFO"
-    if verbose:
-        level = "DEBUG"
-    elif quiet:
-        level = "ERROR"
 
     logging.basicConfig(
-        level=level,
+        level=log_level,
         format="%(message)s",
         datefmt="[%X]",
         handlers=[
