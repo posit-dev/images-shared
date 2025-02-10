@@ -1,14 +1,22 @@
+import logging
 from copy import copy, deepcopy
 from typing import Dict, List
 
+import pydantic
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryError
+from posit_bakery.error import (
+    BakeryImageNotFoundError,
+    BakeryModelValidationError,
+    BakeryModelValidationErrorGroup,
+)
 from posit_bakery.models.config.config import Config
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.image.version import ImageVersion
 from posit_bakery.models.manifest.manifest import Manifest
+
+log = logging.getLogger(__name__)
 
 
 class ImageFilter(BaseModel):
@@ -27,13 +35,35 @@ class Images(dict):
     @classmethod
     def load(cls, config: Config, manifests: Dict[str, Manifest]) -> dict[str, Image]:
         images: dict[str, Image] = {}
+        error_list = []
 
         for name, manifest in manifests.items():
-            image: Image = Image.load(manifest.context, manifest.model)
+            try:
+                image: Image = Image.load(manifest.context, manifest.model)
+            except pydantic.ValidationError as e:
+                # TODO: Make this less goofy
+                # This was the only obvious way I could find to chain the exception from the pydantic error and still
+                # group it into the error_list for the BakeryModelValidationErrorGroup.
+                log.error(f"Validation error occurred loading image from manifest: {manifest.filepath}")
+                try:
+                    raise BakeryModelValidationError(
+                        model_name="Image",
+                        filepath=manifest.filepath,
+                    ) from e
+                except BakeryModelValidationError as e:
+                    error_list.append(e)
+                continue
             for variant in image.variants:
                 variant.complete_metadata(config=config.model, commit=config.commit)
 
             images[name] = image
+
+        if error_list:
+            if len(error_list) == 1:
+                raise error_list[0]
+            raise BakeryModelValidationErrorGroup(
+                "Multiple validation errors occurred while processing Images from manifest.", error_list
+            )
 
         return cls(**images)
 
@@ -45,24 +75,24 @@ class Images(dict):
 
         return vars
 
-    def filter(self, filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
+    def filter(self, _filter: ImageFilter = ImageFilter()) -> dict[str, Image]:
         images: dict[str, Image] = {}
         for image_name, image in self.items():
-            if filter.image_name is not None and filter.image_name != image.name:
+            if _filter.image_name is not None and _filter.image_name != image.name:
                 continue
 
             versions: List[ImageVersion] = []
             for version in image.versions:
-                if filter.image_version is not None and filter.image_version != version.version:
+                if _filter.image_version is not None and _filter.image_version != version.version:
                     continue
 
                 variants: List[ImageVariant] = []
                 for variant in version.variants:
-                    if filter.is_latest is not None and filter.is_latest != variant.latest:
+                    if _filter.is_latest is not None and _filter.is_latest != variant.latest:
                         continue
-                    if filter.build_os is not None and filter.build_os != variant.os:
+                    if _filter.build_os is not None and _filter.build_os != variant.os:
                         continue
-                    if filter.target_type is not None and filter.target_type != variant.target:
+                    if _filter.target_type is not None and _filter.target_type != variant.target:
                         continue
 
                     variants.append(deepcopy(variant))
@@ -78,6 +108,7 @@ class Images(dict):
                 images[image_name] = img
 
         if not images:
-            raise BakeryError("No images found for filter.")
+            log.error(f"No images found for filter.")
+            raise BakeryImageNotFoundError("No images found for filter.")
 
         return Images(**images)

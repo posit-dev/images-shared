@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from posit_bakery.error import BakeryError, BakeryFileNotFoundError
+from posit_bakery.error import BakeryError, BakeryFileError
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.images import ImageFilter
@@ -195,11 +195,12 @@ class TestImageMetadata:
 class TestImageVariant:
     context: Path = Path("fancy-image/version")
 
-    def test_find_containerfile_os_invalid(self):
-        """Raise an excpetion if the OS is unsupported"""
-        with patch("posit_bakery.models.manifest.find_os", side_effect=[None]):
-            with pytest.raises(ValueError):
-                ImageVariant.find_containerfile(self.context, "unsupported_os", "min")
+    def test_find_containerfile_os_invalid(self, caplog):
+        """Raise an exception if the OS is unsupported"""
+        bad_os_name = "unsupported-os"
+        ImageVariant.find_containerfile(self.context, bad_os_name, "min")
+        assert "WARNING" in caplog.text
+        assert f"Could not match '{bad_os_name}' to a supported OS" in caplog.text
 
     def test_find_containerfile_with_os(self):
         """Find the containerfile including the OS if present"""
@@ -229,7 +230,7 @@ class TestImageVariant:
         target: str = "min"
 
         with patch("pathlib.Path.is_file", side_effect=[False] * 4):
-            with pytest.raises(BakeryFileNotFoundError):
+            with pytest.raises(BakeryFileError):
                 ImageVariant.find_containerfile(self.context, _os, target)
 
     @pytest.mark.parametrize(

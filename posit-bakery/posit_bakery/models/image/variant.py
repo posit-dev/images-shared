@@ -1,15 +1,19 @@
+import logging
 from pathlib import Path
 from typing import Dict, List
 
 from pydantic import BaseModel
 
-from posit_bakery.error import BakeryFileNotFoundError
+from posit_bakery.error import BakeryFileError
+from posit_bakery.templating.filters import condense
 from posit_bakery.util import find_in_context
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.image.image import ImageMetadata
 from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build_os import BuildOS
 from posit_bakery.models.manifest.goss import ManifestGoss
+
+log = logging.getLogger(__name__)
 
 
 class ImageGoss(BaseModel):
@@ -76,23 +80,34 @@ class ImageVariant(BaseModel):
     def find_containerfile(context: Path, _os: str, target: str):
         build_os: BuildOS = find_os(_os)
         if build_os is None:
-            raise ValueError(f"Operating system '{_os}' is not supported.")
+            log.warning(
+                f"Could not match '{_os}' to a supported OS. Bakery will still attempt to find a Containerfile, but "
+                f"unexpected behavior may occur."
+            )
+            condensed_build_os = condense(_os)
+        else:
+            condensed_build_os = build_os.condensed
 
         # Possible patterns
         filenames: List[str] = [
-            f"Containerfile.{build_os.condensed}.{target}",
+            f"Containerfile.{condensed_build_os}.{target}",
             f"Containerfile.{target}",
-            f"Containerfile.{build_os.condensed}",
+            f"Containerfile.{condensed_build_os}",
             f"Containerfile",
         ]
+        log.debug(f"Searching for Containerfile in {context} with patterns: {", ".join(filenames)}")
         for name in filenames:
             try:
                 filepath = find_in_context(context, name)
+                log.debug(f"Found Containerfile: {filepath}")
                 return filepath
-            except BakeryFileNotFoundError:
+            except BakeryFileError:
                 continue
 
-        raise BakeryFileNotFoundError(f"Containerfile not found. context: '{context}',  os: '{_os}', target: {target}.")
+        log.error(f"Could not find a Containerfile for os '{_os}', target {target}.")
+        raise BakeryFileError(
+            f"Containerfile not found for os '{_os}', target {target}.", [(context / f) for f in filenames]
+        )
 
     def complete_metadata(self, config: ConfigDocument, commit: str = None) -> None:
         labels: Dict[str, str] = {}

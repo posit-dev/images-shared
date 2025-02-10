@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
@@ -10,6 +11,8 @@ from posit_bakery.models.image.version import ImageVersion
 from posit_bakery.models.manifest.document import ManifestDocument
 from posit_bakery.templating.default import create_image_templates
 
+log = logging.getLogger(__name__)
+
 
 class Image(BaseModel):
     name: str
@@ -18,6 +21,8 @@ class Image(BaseModel):
 
     @classmethod
     def load(cls, context: Path, manifest: ManifestDocument):
+        log.debug(f"Generating image definitions for {manifest.image_name} from manifest...")
+
         meta: ImageMetadata = ImageMetadata(
             name=manifest.image_name,
             labels=ImageLabels(
@@ -28,6 +33,7 @@ class Image(BaseModel):
 
         versions: List[ImageVersion] = []
         for version, build in manifest.build.items():
+            log.debug(f"Generating image definition for version {version}...")
             # Set unique metadata for each version
             meta_ver: ImageMetadata = deepcopy(meta)
             meta_ver.version = version

@@ -1,4 +1,5 @@
 import abc
+import logging
 import os
 from pathlib import Path
 from typing import Union
@@ -39,6 +40,7 @@ class GenericTOMLModel(BaseModel, abc.ABC):
         if filepath is None:
             filepath = self.filepath
         filepath = Path(filepath)
+        logging.debug(f"Writing TOMLDocument to {filepath}")
         with open(filepath, "w") as f:
             tomlkit.dump(self.document, f)
 

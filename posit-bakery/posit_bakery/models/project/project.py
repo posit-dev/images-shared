@@ -2,15 +2,17 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Union, List, Dict, Any, Tuple
+from typing import Union, List, Dict, Tuple, Any
 
+import pydantic
 from pydantic import BaseModel
 
 from posit_bakery.error import (
-    BakeryFileNotFoundError,
-    BakeryBuildError,
-    BakeryGossError,
-    BakeryConfigError,
+    BakeryImageError,
+    BakeryImageNotFoundError,
+    BakeryModelValidationError,
+    BakeryToolRuntimeError,
+    BakeryModelValidationErrorGroup, BakeryFileError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.manifest import guess_os_list
@@ -18,7 +20,7 @@ from posit_bakery.models.project.bake import BakePlan
 import posit_bakery.util as util
 
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 class Project(BaseModel):
@@ -36,30 +38,34 @@ class Project(BaseModel):
         :param ignore_override: If true, ignores config.override.toml if it exists
         """
         project = cls()
+
+        log.debug("Inspecting project context directory")
         project.context = Path(context)
+        if not project.context.exists():
+            log.error(f"Project context does not exist: {project.context}")
+            raise BakeryFileError(f"Project context does not exist.", project.context)
         if not project.context.is_dir():
-            raise BakeryFileNotFoundError(f"Directory {project.context} does not exist.")
-        project.config = project.load_config(project.context)
+            log.error(f"Project context is not a directory: {project.context}")
+            raise BakeryFileError(f"Project context is not a directory.", project.context)
+
+        config_filepath = project.context / "config.toml"
+        log.debug(f"Loading project config from {config_filepath}")
+        if not config_filepath.is_file():
+            log.error(f"Project config.toml file not found: {config_filepath}")
+            raise BakeryFileError(f"Project config.toml file not found.", config_filepath)
+        try:
+            project.config = Config.load(config_filepath)
+        except pydantic.ValidationError as e:
+            log.error(f"Validation error occurred loading project config: {config_filepath}")
+            raise BakeryModelValidationError(model_name="Config", filepath=config_filepath) from e
+
+        log.debug("Loading project manifests")
         project.manifests = project.load_manifests(project.config)
+        log.debug("Loading project images")
         project.images = Images.load(config=project.config, manifests=project.manifests)
 
+        log.debug("Project loaded successfully")
         return project
-
-    @staticmethod
-    def load_config(context: Union[str, bytes, os.PathLike]) -> Config:
-        """Load the project configuration from a context directory
-
-        :param context: The path to the context directory
-        """
-        context = Path(context)
-        if not context.is_dir():
-            raise BakeryFileNotFoundError(f"Directory {context} does not exist.")
-        config_filepath = context / "config.toml"
-        if not config_filepath.is_file():
-            raise BakeryFileNotFoundError(f"Config file {config_filepath} does not exist.")
-        config = Config.load(config_filepath)
-
-        return config
 
     @staticmethod
     def load_manifests(config: Config) -> Dict[str, "Manifest"]:
@@ -67,28 +73,52 @@ class Project(BaseModel):
 
         :param config: The project configuration
         """
+        # TODO: Consider implementing a Manifests dictionary class similar to Images
         manifests = {}
+        error_list = []
         for manifest_file in config.context.rglob("manifest.toml"):
-            m = Manifest.load(manifest_file)
+            try:
+                log.debug(f"Loading manifest from {manifest_file}")
+                m = Manifest.load(manifest_file)
+            except pydantic.ValidationError as e:
+                # TODO: Make this less goofy
+                # This was the only obvious way I could find to chain the exception from the pydantic error and still
+                # group it into the error_list for the BakeryModelValidationErrorGroup.
+                log.error(f"Validation error occurred loading manifest: {manifest_file}")
+                try:
+                    raise BakeryModelValidationError(model_name="Manifest", filepath=manifest_file) from e
+                except BakeryModelValidationError as e:
+                    error_list.append(e)
+                continue
             if m.image_name in manifests:
-                raise BakeryConfigError(f"Image name {m.name} shadows another image name in this project.")
+                log.error(f"Failed to load image, image name {m.name} shadows another image name in this project.")
+                raise BakeryImageError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m
 
+        if error_list:
+            if len(error_list) == 1:
+                raise error_list[0]
+            raise BakeryModelValidationErrorGroup(
+                "Multiple validation errors occurred while loading manifests.", error_list
+            )
+
+        log.debug(f"Loaded {len(manifests)} manifest(s) successfully")
         return manifests
 
-    def new_image(self, image_name: str, base_tag: str):
+    def create_image(self, image_name: str, base_tag: str):
         """Create a new image in the project with associated file structure from templates
 
         :param image_name: The name of the new image
         :param base_tag: The base tag to use for the new image
         """
         if image_name in self.manifests:
-            raise BakeryConfigError(f"Image '{image_name}' already exists.")
+            log.error(f"Image '{image_name}' already exists in this project.")
+            raise BakeryImageError(f"Image '{image_name}' already exists.")
 
         Image.create(project_context=self.context, name=image_name, base_tag=base_tag)
         # TODO: Do we update the project with a new manifest, or pick it up when we run bakery again?
 
-    def new_image_version(
+    def create_image_version(
         self,
         image_name: str,
         image_version: str,
@@ -102,26 +132,31 @@ class Project(BaseModel):
         :param image_name: The name of the image to create a new version for
         :param image_version: The new version
         :param template_values: A dictionary of key/values to use in template rendering
-        :param value_map: A dictionary of key/values to use in template rendering
         :param mark_latest: If true, mark the new version as the latest
         :param save: If true, save to the manifest.toml after adding the new version
         :param force: If true, overwrite an existing version
         """
+        log.info(f"Creating version '{image_version}' for image '{image_name}'.")
         if image_name not in self.manifests:
-            raise BakeryConfigError(f"Image '{image_name}' does not exist in this project.")
+            log.error(f"Image '{image_name}' does not exist, cannot create version.")
+            raise BakeryImageNotFoundError(f"Image '{image_name}' does not exist in this project.")
 
         image: Image = self.images[image_name]
 
         manifest: Manifest = self.manifests[image_name]
         if image_version in manifest.model.build:
             if not force:
-                raise BakeryConfigError(f"Version '{image_version}' already exists for image '{image_name}'.")
+                log.error(f"Version '{image_version}' already exists for image '{image_name}'.")
+                raise BakeryImageError(f"Version '{image_version}' already exists for image '{image_name}'.")
             else:
                 log.warning(f"Overwriting existing version '{image_version}' for image '{image_name}'.")
 
-        new_version = image.create_version(manifest=manifest.model, version=image_version, template_values=template_values)
+        new_version = image.create_version(
+            manifest=manifest.model, version=image_version, template_values=template_values
+        )
 
         if save:
+            log.info(f"Adding version '{image_version}' to manifest.")
             os_list: List[str] = [_os.pretty for _os in guess_os_list(new_version.context)]
             manifest.add_version(image_version, os_list, mark_latest)
 
@@ -130,22 +165,23 @@ class Project(BaseModel):
         image_name: str = None,
         image_version: str = None,
         image_type: str = None,
-    ) -> Dict[str, Any]:
+    ) -> BakePlan:
         """Render a bake plan for the project
 
         :param image_name: (Optional) The name of the image to render a bake plan for
         :param image_version: (Optional) The version of the image to render a bake plan for
         :param image_type: (Optional) The type of the image to render a bake plan for
         """
-        filter: ImageFilter = ImageFilter(
+        log.info("[bright_blue bold]Rendering bake plan...")
+        _filter: ImageFilter = ImageFilter(
             image_name=image_name,
             image_version=image_version,
             target_type=image_type,
         )
-        if filter:
-            return BakePlan.create(images=self.images.filter(filter).values())
+        if _filter:
+            return BakePlan.create(images=list(self.images.filter(_filter).values()))
 
-        return BakePlan.create(images=self.images.values())
+        return BakePlan.create(images=list(self.images.values()))
 
     def build(
         self,
@@ -178,11 +214,21 @@ class Project(BaseModel):
         if build_options:
             cmd.extend(build_options)
         run_env = os.environ.copy()
-        log.info(f"[bright_black]Executing build command: {' '.join(cmd)}")
+        log.debug(f"[bright_black]Executing build command: {' '.join(cmd)}")
+        log.info("[bright_blue bold]Starting image builds...")
         p = subprocess.run(cmd, env=run_env, cwd=self.context)
         if p.returncode != 0:
-            raise BakeryBuildError(p.returncode)
+            log.error("Subprocess call to docker buildx bake failed.")
+            raise BakeryToolRuntimeError(
+                "Subprocess call to docker buildx bake failed.",
+                "docker",
+                cmd=cmd,
+                stdout=p.stdout,
+                stderr=p.stderr,
+                exit_code=p.returncode,
+            )
         build_file.unlink()
+        log.info("[bright_blue bold]Builds completed.")
 
     def render_dgoss_commands(
         self,
@@ -218,9 +264,7 @@ class Project(BaseModel):
 
             test_path = variant.goss.tests
             if test_path is None or test_path == "":
-                raise BakeryGossError(
-                    "Path to Goss test directory must be defined or left empty for default. Please check the manifest.toml."
-                )
+                raise BakeryFileError("Path to Goss test directory must be defined or left empty for default.")
             run_env["GOSS_FILES_PATH"] = str(test_path)
 
             deps = variant.goss.deps
@@ -265,11 +309,22 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to run Goss tests for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
+        # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
+        #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
         for tag, env, cmd in dgoss_commands:
             log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
             log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
+            # TODO: Only print stdout and stderr on DEBUG log level, else suppress
             if p.returncode != 0:
-                raise BakeryGossError(f"Goss exited with code {p.returncode}", p.returncode)
+                log.error(f"Subprocess call to dgoss exited with code {p.returncode}")
+                raise BakeryToolRuntimeError(
+                    f"Subprocess call to dgoss exited with code {p.returncode}",
+                    "dgoss",
+                    cmd=cmd,
+                    stdout=p.stdout,
+                    stderr=p.stderr,
+                    exit_code=p.returncode,
+                )
             log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")

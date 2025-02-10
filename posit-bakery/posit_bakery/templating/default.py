@@ -6,17 +6,17 @@ from typing import Any, Dict, List
 import jinja2
 
 import posit_bakery.util as util
-from posit_bakery.error import BakeryTemplatingError
+from posit_bakery.error import BakeryTemplatingError, BakeryFileError
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 from posit_bakery.templating.filters import jinja2_env
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def create_project_config(context: Path) -> None:
     if not context.is_dir():
-        log.error(f"Creating new project directory [bold]{context}")
-        raise BakeryTemplatingError(f"Project does not exist '{context}'")
+        log.error(f"Context directory does not exist: [bold]{context}")
+        raise BakeryFileError(f"Project directory does not exist.", context)
 
     config_file = context / "config.toml"
     if not config_file.is_file():

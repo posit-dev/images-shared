@@ -1,19 +1,14 @@
 import logging
-import os
 from pathlib import Path
 from typing import Annotated, Optional, List
 
-from rich import print_json
-from rich.logging import RichHandler
+import pydantic
 import typer
 
+from posit_bakery import error
+from posit_bakery.log import stdout_console, stderr_console, init_logging
 from posit_bakery.models import Project
-from posit_bakery.error import (
-    BakeryBuildError,
-    BakeryConfigError,
-    BakeryGossError,
-)
-
+from posit_bakery.util import auto_path
 
 DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
 
@@ -25,33 +20,58 @@ app = typer.Typer()
 
 @app.callback()
 def __callback_logging(
-    debug: Annotated[Optional[bool], typer.Option("--debug", "-d", help="Enable debug logging")] = False,
+    verbose: Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")] = False,
     quiet: Annotated[Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
 ) -> None:
     """Callback to configure logging based on the debug and quiet flags."""
     global log
 
-    level: str = "INFO"
-    # TODO: Should we warn or error if `--debug` and `--quiet` are both set?
-    if debug:
-        level = "DEBUG"
+    if verbose and quiet:
+        raise typer.BadParameter("Cannot set both --verbose and --quiet flags.")
+
+    log_level: str | int = logging.INFO
+    if verbose:
+        log_level = logging.DEBUG
     elif quiet:
-        level = "ERROR"
+        log_level = logging.ERROR
 
-    logging.basicConfig(
-        level=level,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[
-            RichHandler(markup=True, rich_tracebacks=True),
-        ],
-    )
-    log = logging.getLogger("rich")
+    init_logging(log_level)
+
+    log = logging.getLogger(__name__)
 
 
-def auto_path() -> Path:
-    context = Path(os.getcwd())
-    return context
+def _wrap_project_load(context: Path) -> Project:
+    try:
+        project = Project.load(context)
+    except error.BakeryContextDirectoryNotFoundError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please ensure you are in the correct working directory or specify a path with --context.")
+        raise typer.Exit(code=1)
+    except error.BakeryConfigNotFoundError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please ensure you have a valid project in the specified directory.")
+        raise typer.Exit(code=1)
+    except error.BakeryImageError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please correct the above error and try again.")
+        raise typer.Exit(code=1)
+    except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
+        stderr_console.print(e)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        stderr_console.print("Please correct the above data validation error(s) and try again.")
+        raise typer.Exit(code=1)
+    except error.BakeryError:
+        stderr_console.print_exception(max_frames=5)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        raise typer.Exit(code=1)
+    except Exception:
+        stderr_console.print_exception(max_frames=20)
+        stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
+        raise typer.Exit(code=1)
+    return project
 
 
 @app.command()
@@ -75,15 +95,20 @@ def new(
             │   └── goss.yaml.jinja2
             └── Containerfile.jinja2
     """
-    project = Project.load(context)
+    p = _wrap_project_load(context)
     # TODO: This will fail on projects with no config.toml, we should build in a full "new project" expectation in that case
     try:
-        project.new_image(image_name, image_base)
-    except BakeryConfigError as e:
-        log.error(f"{e}")
+        p.create_image(image_name, image_base)
+    except error.BakeryError:
+        stderr_console.print_exception(max_frames=5, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
+        raise typer.Exit(code=1)
+    except Exception:
+        stderr_console.print_exception(max_frames=20)
+        stderr_console.print(f"[bright_red]❌ Failed to create image '{image_name}'")
         raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created image '{image_name}'")
+    stderr_console.print(f"[green3]✅ Successfully created image '{image_name}'")
 
 
 @app.command()
@@ -112,7 +137,7 @@ def render(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    project = Project.load(context)
+    p = _wrap_project_load(context)
 
     # TODO: Determine whether we still want to support the value map via the CLI or in a file
     # Parse the key=value pairs into a dictionary
@@ -121,19 +146,24 @@ def render(
         for v in value:
             sp = v.split("=")
             if len(sp) != 2:
-                log.error(f"❌ Expected key=value pair, got [bold]'{v}'")
+                stderr_console.print(f"[bright_red]❌ Expected key=value pair, got [bold]'{v}'")
                 raise typer.Exit(code=1)
             value_map[sp[0]] = sp[1]
 
-    project.new_image_version(
-        image_name=image_name,
-        image_version=image_version,
-        template_values=value_map,
-        mark_latest=mark_latest,
-        force=force,
-    )
+    try:
+        p.create_image_version(
+            image_name=image_name,
+            image_version=image_version,
+            template_values=value_map,
+            mark_latest=mark_latest,
+            force=force,
+        )
+    except error.BakeryConfigError:
+        stderr_console.print_exception(max_frames=5, show_locals=False)
+        stderr_console.print(f"[bright_red]❌ Failed to create version '{image_name}/{image_version}'")
+        raise typer.Exit(code=1)
 
-    log.info(f"✅ Successfully created version '{image_name}/{image_version}'")
+    stderr_console.print(f"[green3]✅ Successfully created version '{image_name}/{image_version}'")
 
 
 @app.command()
@@ -161,9 +191,21 @@ def plan(
     root bake file and any override bake files if they exist.
     """
     # TODO; Add skip_override back in
-    project = Project.load(context)
-    bake_plan = project.render_bake_plan(image_name, image_version)
-    print_json(bake_plan.model_dump_json(), indent=2)
+    p = _wrap_project_load(context)
+
+    try:
+        bake_plan = p.render_bake_plan(image_name, image_version)
+    except error.BakeryError as e:
+        log.error(e)
+        stderr_console.print(f"[bright_red]❌ Failed to render bake plan")
+        raise typer.Exit(code=1)
+    except pydantic.ValidationError as e:
+        log.error(e)
+        stderr_console.print(f"[bright_red]❌ Failed to render bake plan")
+        stderr_console.print("Please correct the above data validation error(s) and try again.")
+        raise typer.Exit(code=1)
+
+    stdout_console.print_json(bake_plan.model_dump_json(), indent=2)
     with open(output_file, "w") as f:
         f.write(bake_plan.model_dump_json(indent=2))
 
@@ -193,12 +235,15 @@ def build(
     Requires the Docker Engine and CLI to be installed and running.
     """
     # TODO; Add skip_override back in
-    project = Project.load(context)
+    p = _wrap_project_load(context)
+
     try:
-        project.build(load, push, image_name, image_version, image_type, option)
-    except BakeryBuildError as e:
-        log.error(f"❌ Build failed with exit code [bold]{e.exit_code}")
+        p.build(load, push, image_name, image_version, image_type, option)
+    except error.BakeryToolRuntimeError as e:
+        stderr_console.print(f"[bright_red]❌ Build failed with exit code {e.exit_code}")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"[green3]✅ Build completed")
 
 
 @app.command()
@@ -227,9 +272,12 @@ def dgoss(
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
     # TODO: add skip_override back in
-    project = Project.load(context)
+    p = _wrap_project_load(context)
+
     try:
-        project.dgoss(image_name, image_version, option)
-    except BakeryGossError as e:
-        log.error(f"❌ dgoss tests failed with exit code [bold]{e.exit_code}")
+        p.dgoss(image_name, image_version, option)
+    except error.BakeryToolRuntimeError as e:
+        stderr_console.print(f"[bright_red]❌ dgoss tests failed with exit code {e.exit_code}")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"[green3]✅ Tests completed")

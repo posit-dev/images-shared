@@ -24,12 +24,6 @@ class TestProjectLoad:
         assert "test-image" in p.manifests
         assert len(p.images["test-image"].variants) == basic_expected_num_variants
 
-    def test_load_config(self, basic_context):
-        """Test loading the context config.toml file"""
-        c = Project.load_config(basic_context)
-        assert c.context == basic_context
-        assert len(c.registry_urls) == 2
-
     @pytest.mark.skip(reason="TODO: Handle overrides not specifying all fields")
     def test_load_context_config_with_override(self, basic_tmpcontext):
         """Test loading the context config.toml file"""

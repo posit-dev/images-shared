@@ -6,10 +6,9 @@ from typing import List, Union
 
 import git
 
-from posit_bakery.error import BakeryFileNotFoundError
+from posit_bakery.error import BakeryFileError, BakeryToolNotFoundError
 
-
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var: str):
@@ -28,10 +27,11 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
     elif (context / "tools" / bin_name).is_file():
         return str(context / "tools" / bin_name)
     else:
-        raise BakeryFileNotFoundError(
+        log.error(
             f"Could not find {bin_name} in PATH or in project tools directory. "
             f"Either install {bin_name} or set the `{bin_env_var}` environment variable."
         )
+        raise BakeryToolNotFoundError(f"Could not find tool '{bin_name}'.", bin_name)
 
 
 def find_in_context(context: Union[str, bytes, os.PathLike], name: str, _type: str = "file", parents: int = 0) -> Path:
@@ -49,7 +49,7 @@ def find_in_context(context: Union[str, bytes, os.PathLike], name: str, _type: s
         elif _type == "dir" and (search / name).is_dir():
             return search / name
 
-    raise BakeryFileNotFoundError(f"Could not find {name} in context: {context}")
+    raise BakeryFileError(f"Could not find {name} in context: {context}")
 
 
 def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
@@ -73,3 +73,8 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
     except:  # noqa
         log.warning("Unable to determine repository name ")
     return url
+
+
+def auto_path() -> Path:
+    context = Path(os.getcwd())
+    return context

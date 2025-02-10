@@ -10,7 +10,7 @@ from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.templating.default import create_project_config
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 def get_commit_sha(context: Path) -> str | None:
@@ -35,6 +35,7 @@ class Config(GenericTOMLModel):
 
         :param filepath: Path to the config.toml file
         """
+        log.debug(f"Loading Config from {filepath}")
         filepath = Path(filepath)
         document = cls.read(filepath)
         model = ConfigDocument(**document.unwrap())
@@ -48,6 +49,7 @@ class Config(GenericTOMLModel):
 
         :param context: The context to create the Config object in
         """
+        log.info(f"Creating new project config file in {context}")
         create_project_config(context)
         return cls.load(context / "config.toml")
 

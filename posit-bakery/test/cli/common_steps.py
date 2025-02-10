@@ -69,6 +69,12 @@ def check_stdout(bakery_command, datatable):
         assert row[0] in bakery_command.result.stdout
 
 
+@then("the stderr output includes:")
+def check_stderr(bakery_command, datatable):
+    for row in datatable:
+        assert row[0] in bakery_command.result.stderr
+
+
 @then("the log includes:")
 def check_log(caplog, datatable):
     for row in datatable:

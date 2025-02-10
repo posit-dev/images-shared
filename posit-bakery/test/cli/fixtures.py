@@ -7,7 +7,7 @@ from typer.testing import CliRunner, Result
 from posit_bakery.cli import app
 
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class BakeryCommand:

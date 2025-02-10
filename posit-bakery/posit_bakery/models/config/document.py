@@ -7,7 +7,7 @@ from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
 
 
-log = logging.getLogger("rich")
+log = logging.getLogger(__name__)
 
 
 class ConfigDocument(BaseModel):
