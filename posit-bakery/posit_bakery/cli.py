@@ -47,7 +47,7 @@ def _wrap_project_load(context: Path) -> Project:
         stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
         stderr_console.print("Please ensure you have a valid project in the specified directory.")
         raise typer.Exit(code=1)
-    except error.BakeryBadImageError:
+    except error.BakeryImageError:
         stderr_console.print_exception(max_frames=0, show_locals=False)
         stderr_console.print(f"[bright_red]❌ Failed to load project from '{context}'")
         stderr_console.print("Please correct the above error and try again.")

@@ -76,7 +76,7 @@ class BakeryImageNotFoundError(BakeryConfigError):
     pass
 
 
-class BakeryBadImageError(BakeryConfigError):
+class BakeryImageError(BakeryConfigError):
     """Error for an image being malformed or invalid"""
 
     pass

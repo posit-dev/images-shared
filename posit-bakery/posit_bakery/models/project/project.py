@@ -8,7 +8,7 @@ import pydantic
 from pydantic import BaseModel
 
 from posit_bakery.error import (
-    BakeryBadImageError,
+    BakeryImageError,
     BakeryImageNotFoundError,
     BakeryModelValidationError,
     BakeryToolRuntimeError,
@@ -79,7 +79,7 @@ class Project(BaseModel):
                     error_list.append(e)
                 continue
             if m.image_name in manifests:
-                raise BakeryBadImageError(f"Image name {m.name} shadows another image name in this project.")
+                raise BakeryImageError(f"Image name {m.name} shadows another image name in this project.")
             manifests[m.image_name] = m
 
         if error_list:
@@ -98,7 +98,7 @@ class Project(BaseModel):
         :param base_tag: The base tag to use for the new image
         """
         if image_name in self.manifests:
-            raise BakeryBadImageError(f"Image '{image_name}' already exists.")
+            raise BakeryImageError(f"Image '{image_name}' already exists.")
 
         Image.create(project_context=self.context, name=image_name, base_tag=base_tag)
         # TODO: Do we update the project with a new manifest, or pick it up when we run bakery again?
@@ -129,7 +129,7 @@ class Project(BaseModel):
         manifest: Manifest = self.manifests[image_name]
         if image_version in manifest.model.build:
             if not force:
-                raise BakeryBadImageError(f"Version '{image_version}' already exists for image '{image_name}'.")
+                raise BakeryImageError(f"Version '{image_version}' already exists for image '{image_name}'.")
             else:
                 log.warning(f"Overwriting existing version '{image_version}' for image '{image_name}'.")
 
