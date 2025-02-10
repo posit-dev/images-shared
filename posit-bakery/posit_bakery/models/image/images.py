@@ -1,3 +1,4 @@
+import logging
 from copy import copy, deepcopy
 from typing import Dict, List
 
@@ -14,6 +15,8 @@ from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.image.version import ImageVersion
 from posit_bakery.models.manifest.manifest import Manifest
+
+log = logging.getLogger(__name__)
 
 
 class ImageFilter(BaseModel):
@@ -41,6 +44,7 @@ class Images(dict):
                 # TODO: Make this less goofy
                 # This was the only obvious way I could find to chain the exception from the pydantic error and still
                 # group it into the error_list for the BakeryModelValidationErrorGroup.
+                log.error(f"Validation error occurred loading image from manifest: {manifest.filepath}")
                 try:
                     raise BakeryModelValidationError(
                         model_name="Image",
@@ -104,6 +108,7 @@ class Images(dict):
                 images[image_name] = img
 
         if not images:
+            log.error(f"No images found for filter.")
             raise BakeryImageNotFoundError("No images found for filter.")
 
         return Images(**images)

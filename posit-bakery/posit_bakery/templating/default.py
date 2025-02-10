@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 def create_project_config(context: Path) -> None:
     if not context.is_dir():
-        log.error(f"Creating new project directory [bold]{context}")
+        log.error(f"Context directory does not exist: [bold]{context}")
         raise BakeryFileError(f"Project directory does not exist.", context)
 
     config_file = context / "config.toml"

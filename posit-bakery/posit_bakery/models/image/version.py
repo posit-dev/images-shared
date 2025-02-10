@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Any, Dict
@@ -10,6 +11,8 @@ from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
 from posit_bakery.templating.default import render_image_templates
+
+log = logging.getLogger(__name__)
 
 
 class ImageVersion(BaseModel):
@@ -27,6 +30,7 @@ class ImageVersion(BaseModel):
         variants: List[ImageVariant] = []
         for _os in build.os:
             for _type, target in targets.items():
+                log.debug(f"Generating image variant for version {meta.version}, OS {_os}, and image type {_type}...")
                 # Unique metadata for each variant
                 meta_var: ImageMetadata = deepcopy(meta)
                 meta_var.goss = target.goss

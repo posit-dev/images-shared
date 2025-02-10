@@ -20,6 +20,7 @@ class Manifest(GenericTOMLModel):
 
         :param filepath: Path to the config.toml file
         """
+        log.debug(f"Loading Manifest from {filepath}")
         filepath = Path(filepath)
         document = cls.read(filepath)
         model = ManifestDocument(**document.unwrap())
@@ -42,6 +43,7 @@ class Manifest(GenericTOMLModel):
 
     def add_version(self, version: str, os_list: List[str], latest: bool):
         existing_builds = self.document.get("build", {})
+        log.debug(f"Adding version {version} to manifest {self.filepath}")
 
         if latest:
             for b in existing_builds.values():

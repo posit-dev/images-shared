@@ -95,13 +95,16 @@ class ImageVariant(BaseModel):
             f"Containerfile.{condensed_build_os}",
             f"Containerfile",
         ]
+        log.debug(f"Searching for Containerfile in {context} with patterns: {", ".join(filenames)}")
         for name in filenames:
             try:
                 filepath = find_in_context(context, name)
+                log.debug(f"Found Containerfile: {filepath}")
                 return filepath
             except BakeryFileError:
                 continue
 
+        log.error(f"Could not find a Containerfile for os '{_os}', target {target}.")
         raise BakeryFileError(
             f"Containerfile not found for os '{_os}', target {target}.", [(context / f) for f in filenames]
         )

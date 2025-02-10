@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Dict
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from posit_bakery.models.manifest.build import ManifestBuild
 from posit_bakery.models.manifest.target import ManifestTarget
 
+log = logging.getLogger(__name__)
 
 # To standardize our images, we will only allow a subset of the regexes
 # https://github.com/containers/image/blob/main/docker/reference/regexp.go
@@ -46,6 +48,7 @@ class ManifestDocument(BaseModel):
         image_name: str,
     ) -> str:
         if not RE_IMAGE_NAME.match(image_name):
+            log.error(f"Invalid image name {image_name}.")
             raise ValueError(f"image_name must only contain lowercase letters and hyphens: {image_name}")
 
         return image_name
