@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -30,7 +31,13 @@ def __global_flags(
     if verbose and quiet:
         raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
-    init_logging(verbose=verbose, quiet=quiet)
+    log_level: str | int = logging.INFO
+    if verbose:
+        log_level = logging.DEBUG
+    elif quiet:
+        log_level = logging.ERROR
+
+    init_logging(log_level)
 
 
 def _wrap_project_load(context: Path) -> Project:
