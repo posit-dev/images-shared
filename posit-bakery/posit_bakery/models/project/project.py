@@ -12,7 +12,8 @@ from posit_bakery.error import (
     BakeryImageNotFoundError,
     BakeryModelValidationError,
     BakeryToolRuntimeError,
-    BakeryModelValidationErrorGroup, BakeryFileError,
+    BakeryModelValidationErrorGroup,
+    BakeryFileError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.manifest import guess_os_list
@@ -249,7 +250,7 @@ class Project(BaseModel):
         bake_plan = self.render_bake_plan(image_name, image_version, image_type)
         build_file = self.context / ".docker-bake.json"
         with open(build_file, "w") as f:
-            f.write(bake_plan.model_dump_json(indent=2))
+            f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
         cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
         if load:

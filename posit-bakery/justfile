@@ -7,20 +7,6 @@ CWD := justfile_directory()
 ################
 # Commands
 
-# TODO: remove this once on poetry 2+, replace with pyproject.toml entry per
-#       https://github.com/mtkennerly/poetry-dynamic-versioning?tab=readme-ov-file#installation
-# Install plugins for poetry
-install-plugins:
-    #!/bin/bash
-    if command -v pipx 2>&1 >/dev/null && pipx list | grep poetry 2>&1 >/dev/null; then
-        echo "detected poetry installed via pipx"
-        pipx inject poetry "poetry-dynamic-versioning[plugin]"
-    else
-        echo "detected traditional poetry installation"
-        poetry self add "poetry-dynamic-versioning[plugin]"
-    fi
-    poetry dynamic-versioning enable
-
 # Install the posit-bakery python project
 install:
     poetry install \
