@@ -1,4 +1,5 @@
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from textwrap import dedent
@@ -8,7 +9,7 @@ import jinja2
 import pytest
 import tomlkit
 
-from posit_bakery.error import BakeryFileError
+from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError
 from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project
 from posit_bakery.templating import TPL_CONFIG_TOML
 
@@ -67,6 +68,18 @@ class TestProjectExists:
             f.write("test")
         with pytest.raises(BakeryFileError):
             Project.exists(tmpdir / "file.txt")
+
+
+class TestProjectHasImages:
+    def test_has_images(self, basic_context):
+        """Test returns true if a project has images"""
+        project = Project.load(basic_context)
+        assert project.has_images()
+
+    def test_has_images_false(self, tmpdir):
+        """Test returns false when no images are present"""
+        project = Project.create(tmpdir)
+        assert not project.has_images()
 
 
 class TestProjectLoad:
@@ -155,6 +168,11 @@ class TestProjectBuild:
             assert target_data.labels
             assert target_data.tags
 
+    def test_render_bake_plan_no_images(self, tmpdir):
+        p = Project.create(tmpdir)
+        with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
+            p.render_bake_plan()
+
     def test_build(self, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
@@ -168,6 +186,11 @@ class TestProjectBuild:
             "--file",
             str(Path(basic_tmpcontext) / ".docker-bake.json"),
         ]
+
+    def test_build_no_images(self, tmpdir):
+        p = Project.create(tmpdir)
+        with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
+            p.build()
 
 
 class TestProjectGoss:
@@ -237,3 +260,8 @@ class TestProjectGoss:
         assert subprocess.run.call_count == 2
         assert subprocess.run.call_args_list[0].args[0] == commands[0][2]
         assert subprocess.run.call_args_list[1].args[0] == commands[1][2]
+
+    def test_dgoss_no_images(self, tmpdir):
+        p = Project.create(tmpdir)
+        with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
+            p.dgoss()

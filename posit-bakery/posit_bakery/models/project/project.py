@@ -75,6 +75,9 @@ class Project(BaseModel):
 
         return True
 
+    def has_images(self):
+        return True if len(self.images) > 0 else False
+
     # TODO: Add back in support for handling overrides
     @classmethod
     def load(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
@@ -218,6 +221,9 @@ class Project(BaseModel):
         :param image_version: (Optional) The version of the image to render a bake plan for
         :param image_type: (Optional) The type of the image to render a bake plan for
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         log.info("[bright_blue bold]Rendering bake plan...")
         _filter: ImageFilter = ImageFilter(
             image_name=image_name,
@@ -247,6 +253,9 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to build
         :param build_options: (Optional) Additional build options to pass to `docker buildx bake` command
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         bake_plan = self.render_bake_plan(image_name, image_version, image_type)
         build_file = self.context / ".docker-bake.json"
         with open(build_file, "w") as f:
@@ -355,6 +364,9 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to run Goss tests for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
         #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
