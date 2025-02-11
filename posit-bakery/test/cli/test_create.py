@@ -1,6 +1,47 @@
 from pytest_bdd import scenarios, then, parsers
 
-scenarios("cli/basic_context.feature")
+from posit_bakery.models import Manifest
+
+scenarios(
+    "cli/create/project.feature",
+    "cli/create/image.feature",
+    "cli/create/version.feature",
+)
+
+
+@then("config.toml exists")
+def check_config_file(bakery_command):
+    config_file = bakery_command.context / "config.toml"
+    assert config_file.is_file()
+
+
+@then(parsers.parse('the image "{image_name}" exists'), target_fixture="new_image_name")
+def check_image(basic_tmpcontext, image_name) -> str:
+    image_dir = basic_tmpcontext / image_name
+    assert image_dir.is_dir()
+    assert (image_dir / "manifest.toml").is_file()
+
+    return image_name
+
+
+@then(parsers.parse('the version "{version}" exists'), target_fixture="new_version")
+def check_version(basic_tmpcontext, version, new_image_name) -> str:
+    image_dir = basic_tmpcontext / new_image_name
+    manifest_file = image_dir / "manifest.toml"
+    assert manifest_file.is_file()
+
+    version_dir = image_dir / version
+    assert version_dir.is_dir()
+
+    manifest = Manifest.load(manifest_file)
+    assert version in manifest.model.build
+    assert manifest.model.build[version].latest == True
+    assert "Ubuntu 22.04" in manifest.model.build[version].os
+
+    assert "1.0.0" in manifest.model.build
+    assert manifest.model.build["1.0.0"].latest == False
+
+    return version
 
 
 @then(parsers.parse("the default templates exist"))

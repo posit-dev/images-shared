@@ -6,25 +6,19 @@ from typing import Any, Dict, List
 import jinja2
 
 import posit_bakery.util as util
-from posit_bakery.error import BakeryTemplatingError, BakeryFileError
+from posit_bakery.error import BakeryTemplatingError
 from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
 from posit_bakery.templating.filters import jinja2_env
 
 log = logging.getLogger(__name__)
 
 
-def create_project_config(context: Path) -> None:
-    if not context.is_dir():
-        log.error(f"Context directory does not exist: [bold]{context}")
-        raise BakeryFileError(f"Project directory does not exist.", context)
-
-    config_file = context / "config.toml"
-    if not config_file.is_file():
-        log.info(f"Creating new project config file [bold]{config_file}")
-        tpl = jinja2.Environment(loader=jinja2.FileSystemLoader(context)).from_string(TPL_CONFIG_TOML)
-        rendered = tpl.render(repo_url=util.try_get_repo_url(context))
-        with open(config_file, "w") as f:
-            f.write(rendered)
+def create_project_config(config_file: Path) -> None:
+    log.info(f"Creating new project config file [bold]{config_file}")
+    tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_CONFIG_TOML)
+    rendered = tpl.render(repo_url=util.try_get_repo_url(config_file.parent))
+    with open(config_file, "w") as f:
+        f.write(rendered)
 
 
 def create_image_templates(context: Path, image_name: str, base_tag: str) -> None:
@@ -39,7 +33,7 @@ def create_image_templates(context: Path, image_name: str, base_tag: str) -> Non
         raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
     else:
         log.debug(f"Creating new manifest file [bold]{manifest_file}")
-        tpl = jinja2.Environment().from_string(TPL_MANIFEST_TOML)
+        tpl = jinja2_env().from_string(TPL_MANIFEST_TOML)
         rendered = tpl.render(image_name=image_name)
         with open(manifest_file, "w") as f:
             f.write(rendered)
@@ -53,7 +47,7 @@ def create_image_templates(context: Path, image_name: str, base_tag: str) -> Non
     containerfile_path = image_template_path / "Containerfile.jinja2"
     if not containerfile_path.is_file():
         log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")
-        tpl = jinja2.Environment().from_string(TPL_CONTAINERFILE)
+        tpl = jinja2_env().from_string(TPL_CONTAINERFILE)
         rendered = tpl.render(image_name=image_name, base_tag=base_tag)
         with open(containerfile_path, "w") as f:
             f.write(rendered)

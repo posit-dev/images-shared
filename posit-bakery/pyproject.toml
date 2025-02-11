@@ -24,7 +24,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-bakery = "posit_bakery.cli:app"
+bakery = "posit_bakery.cli.main:app"
 
 [tool.poetry]
 version = "0.0.0"

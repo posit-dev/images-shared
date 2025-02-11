@@ -5,6 +5,7 @@ from typing import Set, Union, List
 
 import git
 
+from posit_bakery.error import BakeryFileError
 from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
@@ -50,8 +51,11 @@ class Config(GenericTOMLModel):
         :param context: The context to create the Config object in
         """
         log.info(f"Creating new project config file in {context}")
-        create_project_config(context)
-        return cls.load(context / "config.toml")
+        config_file = context / "config.toml"
+        if config_file.exists():
+            raise BakeryFileError(f"Config file already exists.", filepath=config_file)
+        create_project_config(config_file)
+        return cls.load(config_file)
 
     @property
     def registries(self) -> List[ConfigRegistry]:

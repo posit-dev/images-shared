@@ -12,7 +12,8 @@ from posit_bakery.error import (
     BakeryImageNotFoundError,
     BakeryModelValidationError,
     BakeryToolRuntimeError,
-    BakeryModelValidationErrorGroup, BakeryFileError,
+    BakeryModelValidationErrorGroup,
+    BakeryFileError,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.manifest import guess_os_list
@@ -28,6 +29,54 @@ class Project(BaseModel):
     config: Config = None
     manifests: Dict[str, Manifest] = {}
     images: Dict[str, Image] = {}
+
+    @classmethod
+    def create(cls, context: Union[str, bytes, os.PathLike]) -> "Project":
+        """Create relevant files for a new project in a context directory
+
+        :param context: The path to the context directory
+        """
+        project = cls()
+        project.context = Path(context)
+
+        if project.context.is_file():
+            raise BakeryFileError(f"Given context '{project.context}' is a file.", project.context)
+        if not project.context.exists():
+            project.context.mkdir(parents=True)
+
+        project.config = Config.create(project.context)
+
+        # TODO: Consider anything else we should do here (e.g. .gitignore, init git, Justfile, etc.)
+
+        return project
+
+    @staticmethod
+    def exists(context: Union[str, bytes, os.PathLike]) -> bool:
+        """Check if a project exists in a context directory
+
+        This checks essentially 2 things at the moment:
+        - Does the given context exist as a directory?
+        - Does the given context contain a config.toml file?
+
+        :param context: The path to the context directory
+        """
+        project_context = Path(context)
+
+        # Check if the context exists and is a directory
+        if not project_context.exists():
+            return False
+        if project_context.is_file():
+            raise BakeryFileError(f"Given context '{project_context}' is a file.", project_context)
+
+        # Check if the context contains a config.toml file
+        config_file = project_context / "config.toml"
+        if not config_file.is_file():
+            return False
+
+        return True
+
+    def has_images(self):
+        return True if len(self.images) > 0 else False
 
     # TODO: Add back in support for handling overrides
     @classmethod
@@ -172,6 +221,9 @@ class Project(BaseModel):
         :param image_version: (Optional) The version of the image to render a bake plan for
         :param image_type: (Optional) The type of the image to render a bake plan for
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         log.info("[bright_blue bold]Rendering bake plan...")
         _filter: ImageFilter = ImageFilter(
             image_name=image_name,
@@ -201,10 +253,13 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to build
         :param build_options: (Optional) Additional build options to pass to `docker buildx bake` command
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         bake_plan = self.render_bake_plan(image_name, image_version, image_type)
         build_file = self.context / ".docker-bake.json"
         with open(build_file, "w") as f:
-            f.write(bake_plan.model_dump_json(indent=2))
+            f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
         cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
         if load:
@@ -309,6 +364,9 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to run Goss tests for
         :param runtime_options: (Optional) Additional runtime options to pass to the dgoss command
         """
+        if not self.has_images():
+            raise BakeryImageNotFoundError("No images found in the project.")
+
         # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
         #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)

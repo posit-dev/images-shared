@@ -1,15 +1,21 @@
 @functional
 Feature: bakery
 
-    Scenario: bakery help
+    Scenario: Bakery shows a help message when --help is passed
         Given I call bakery
         * with the arguments:
             | --help |
         When I execute the command
         Then The command succeeds
-        * usage is shown
+        * help is shown
 
-    Scenario: bakery with unknown flag
+    Scenario: Bakery shows a help message when no commands or arguments are given
+        Given I call bakery
+        When I execute the command
+        Then The command succeeds
+        * help is shown
+
+    Scenario: Bakery shows an error message for a bad flag
         Given I call bakery
         * with the arguments:
             | --fakename |
@@ -18,7 +24,7 @@ Feature: bakery
         * an error message is shown
         * usage is shown
 
-    Scenario: bakery with unknown command
+    Scenario: Bakery shows an error message for a bad command
         Given I call bakery
         * with the arguments:
             | nope |
@@ -26,10 +32,10 @@ Feature: bakery
         Then The command fails
         * an error message is shown
         * usage is shown
-        * the output includes:
+        * the stderr output includes:
             | No such command 'nope' |
 
-    Scenario: bakery with unknown option
+    Scenario: Bakery shows an error message for multiple bad options
         Given I call bakery
         * with the arguments:
             | --planet | mars |
@@ -37,5 +43,13 @@ Feature: bakery
         Then The command fails
         * an error message is shown
         * usage is shown
-        * the output includes:
+        * the stderr output includes:
             | No such option: --planet |
+
+    Scenario: Bakery shows its version for --version and exits
+        Given I call bakery
+        * with the arguments:
+            | --version |
+        When I execute the command
+        Then The command succeeds
+        * the version is shown

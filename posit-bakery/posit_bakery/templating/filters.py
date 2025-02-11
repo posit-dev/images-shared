@@ -25,7 +25,7 @@ def regex_replace(s: str, find: str, replace: str) -> str:
 
 def jinja2_env(**kwargs) -> jinja2.Environment:
     """Creates a Jinja2 environment with custom filters"""
-    env = jinja2.Environment(**kwargs)
+    env = jinja2.Environment(keep_trailing_newline=True, **kwargs)
     env.filters["tag_safe"] = tag_safe
     env.filters["clean_version"] = clean_version
     env.filters["condense"] = condense

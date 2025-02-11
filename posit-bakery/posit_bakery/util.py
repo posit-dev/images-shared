@@ -60,7 +60,7 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
     """
     url = "<REPLACE ME>"
     try:
-        repo = git.Repo(context)
+        repo = git.Repo(context, search_parent_directories=True)
         # Use splitext since remotes should have `.git` as a suffix
         url = os.path.splitext(repo.remotes[0].config_reader.get("url"))[0]
         # If the URL is a git@ SSH URL, convert it to a https:// URL
@@ -71,7 +71,7 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
             url = url.removeprefix("https://")
             url = url.split("@")[-1]
     except:  # noqa
-        log.warning("Unable to determine repository name ")
+        log.warning("Unable to determine repository name")
     return url
 
 
