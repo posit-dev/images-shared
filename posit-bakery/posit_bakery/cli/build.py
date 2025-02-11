@@ -6,7 +6,7 @@ import pydantic
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import _wrap_project_load
+from posit_bakery.cli.common import __wrap_project_load, __global_flags, __version_callback
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.models import Project
 from posit_bakery.util import auto_path
@@ -35,6 +35,48 @@ def print_plan(project: Project, image_name: str, image_version: str, image_type
 
 
 def build(
+    context: Path = auto_path(),
+    image_name: str | None = None,
+    image_version: str | None = None,
+    image_type: str | None = None,
+    plan: bool = False,
+    load: bool = False,
+    push: bool = False,
+    build_options: list[str] | None = None,
+) -> None:
+    """Builds images in the context path using buildx bake
+
+    If no options are provided, the command will auto-discover all images in the current
+    directory and generate a temporary bake plan to execute for all targets.
+
+    Requires the Docker Engine and CLI to be installed and running.
+    """
+    # TODO; Add skip_override back in
+    p: Project = __wrap_project_load(context)
+
+    if plan:
+        print_plan(p, image_name, image_version, image_type)
+
+    try:
+        p.build(load, push, image_name, image_version, image_type, build_options)
+    except error.BakeryToolRuntimeError as e:
+        stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
+        raise typer.Exit(code=1)
+
+    stderr_console.print(f"✅ Build completed", style="success")
+
+
+def __wrap_single_command(
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version", "-V", is_eager=True, callback=__version_callback,
+            help="Display the version of Posit Bakery"
+        ),
+    ] = False,
+    verbose: Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")] = False,
+    quiet: Annotated[
+        Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
@@ -55,24 +97,9 @@ def build(
             help="Additional build options to pass to docker buildx. Multiple can be provided.",
         ),
     ] = None,
-) -> None:
-    """Builds images in the context path using buildx bake
+):
+    __global_flags(version, verbose, quiet)
+    build(context, image_name, image_version, image_type, plan, load, push, build_options)
 
-    If no options are provided, the command will auto-discover all images in the current
-    directory and generate a temporary bake plan to execute for all targets.
 
-    Requires the Docker Engine and CLI to be installed and running.
-    """
-    # TODO; Add skip_override back in
-    p: Project = _wrap_project_load(context)
-
-    if plan:
-        print_plan(p, image_name, image_version, image_type)
-
-    try:
-        p.build(load, push, image_name, image_version, image_type, build_options)
-    except error.BakeryToolRuntimeError as e:
-        stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
-        raise typer.Exit(code=1)
-
-    stderr_console.print(f"✅ Build completed", style="success")
+app = typer.Typer(invoke_without_command=True, callback=__wrap_single_command)

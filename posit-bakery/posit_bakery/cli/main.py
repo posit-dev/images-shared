@@ -20,6 +20,6 @@ app.add_typer(run.app, name="r", hidden=True)
 
 # Import the "build" subcommand
 # Since "build" is a single command, we import the function directly rather than adding it as a typer subgroup
-app.command(name="build", help="Build images using buildkit bake (aliases: b, bake)")(build.build)
-app.command(name="bake", hidden=True)(build.build)
-app.command(name="b", hidden=True)(build.build)
+app.add_typer(build.app, name="build", help="Build images using buildkit bake (aliases: b, bake)")
+app.add_typer(build.app, name="bake", hidden=True)
+app.add_typer(build.app, name="b", hidden=True)

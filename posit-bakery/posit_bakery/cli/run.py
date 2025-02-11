@@ -4,12 +4,12 @@ from typing import Annotated, List
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import _wrap_project_load
+from posit_bakery.cli.common import __wrap_project_load, __global_flags
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
 
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, callback=__global_flags)
 
 
 @app.command()
@@ -37,7 +37,7 @@ def dgoss(
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
     # TODO: add skip_override back in
-    p = _wrap_project_load(context)
+    p = __wrap_project_load(context)
 
     try:
         p.dgoss(image_name, image_version, run_option)

@@ -5,13 +5,13 @@ from typing import Annotated, List, Optional
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import _wrap_project_load
+from posit_bakery.cli.common import __wrap_project_load, __global_flags
 from posit_bakery.log import stderr_console
 from posit_bakery.models import Project
 from posit_bakery.util import auto_path
 
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, callback=__global_flags)
 
 DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
 log = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def image(
             │   └── goss.yaml.jinja2
             └── Containerfile.jinja2
     """
-    p = _wrap_project_load(context)
+    p = __wrap_project_load(context)
 
     try:
         p.create_image(image_name, base_image)
@@ -113,7 +113,7 @@ def version(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    p = _wrap_project_load(context)
+    p = __wrap_project_load(context)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()

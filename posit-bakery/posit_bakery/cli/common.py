@@ -40,7 +40,7 @@ def __global_flags(
     init_logging(log_level)
 
 
-def _wrap_project_load(context: Path) -> Project:
+def __wrap_project_load(context: Path) -> Project:
     try:
         project = Project.load(context)
     except error.BakeryFileError:
