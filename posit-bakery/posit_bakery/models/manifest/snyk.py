@@ -183,8 +183,9 @@ class ManifestSnykMonitor(BaseModel):
             "passed to Snyk."
         )
 
-        # If value is an empty string, use default value
-        if value == "":
+        if value is None:
+            raise PydanticUseDefault()
+        elif value == "":
             log.warning("Invalid value for snyk.monitor.environment, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
@@ -200,8 +201,9 @@ class ManifestSnykMonitor(BaseModel):
             f"{", ".join([e.value for e in SnykLifecycleEnum])}. Lifecycle will not be passed to Snyk."
         )
 
-        # If value is an empty string, use default value
-        if value == "":
+        if value is None:
+            raise PydanticUseDefault()
+        elif value == "":
             log.warning("Invalid value for snyk.monitor.lifecycle, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
@@ -220,7 +222,9 @@ class ManifestSnykMonitor(BaseModel):
             "passed to Snyk."
         )
 
-        if value == "":
+        if value is None:
+            raise PydanticUseDefault()
+        elif value == "":
             log.warning(
                 "Invalid value for snyk.monitor.business_criticality, expected a non-empty string or list of strings."
             )

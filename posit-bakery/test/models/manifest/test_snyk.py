@@ -3,6 +3,49 @@ import pytest
 from posit_bakery.models.manifest import snyk
 
 
+@pytest.mark.parametrize(
+    "given,expected",
+    [
+        ("test", ["test"]),
+        ("test1,test2,test3", ["test1", "test2", "test3"]),
+        ("test1, test2, test3", ["test1", "test2", "test3"]),
+        ("test1, test2, test3, ", ["test1", "test2", "test3"]),
+        (["test1", "test2", "test3"], ["test1", "test2", "test3"]),
+        (["test1", "test2", "test3", ""], ["test1", "test2", "test3"]),
+        ([" test1 ", " test2", "test3 "], ["test1", "test2", "test3"]),
+    ]
+)
+def test_clean(given, expected):
+    """Test clean function inputs"""
+    assert snyk.clean(given) == expected
+
+
+class TestValidateList:
+    @pytest.mark.parametrize(
+        "validator,given,expected,expect_warning",
+        [
+            # Test enum validators
+            (snyk.SnykEnvironmentEnum, ["frontend"], ["frontend"], False),
+            (snyk.SnykEnvironmentEnum, ["frontend", "backend"], ["frontend", "backend"], False),
+            (snyk.SnykEnvironmentEnum, ["frontend", "invalid"], ["frontend"], True),
+            (snyk.REGEX_SNYK_MONITOR_TAG_KEY, ["key"], ["key"], False),
+            (snyk.REGEX_SNYK_MONITOR_TAG_KEY, ["key", "key@"], ["key"], True),
+        ]
+    )
+    def test_valid_input(self, caplog, validator, given, expected, expect_warning):
+        """Test valid inputs for list validators"""
+        assert snyk.validate_list(given, "%s", validator) == expected
+        if expect_warning:
+            assert "WARNING" in caplog.text
+        else:
+            assert "WARNING" not in caplog.text
+
+    def test_invalid_validator(self):
+        """Test invalid validator raises an exception"""
+        with pytest.raises(ValueError):
+            snyk.validate_list(["test"], "%s", "not a validator")
+
+
 @pytest.mark.manifest
 @pytest.mark.schema
 class TestManifestSnykTestOutput:
