@@ -7,9 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from pydantic.functional_validators import field_validator
 from pydantic_core import PydanticUseDefault
 
-
 log = logging.getLogger(__name__)
-
 
 REGEX_SNYK_MONITOR_TAG_KEY = re.compile(r"^[a-zA-Z0-9_-]+$")
 SNYK_MONITOR_TAG_KEY_LENGTH = 30
@@ -71,12 +69,23 @@ class SnykSbomFormatEnum(str, Enum):
     spdx2_3_json = "spdx2.3+json"
 
 
-def validate_list_of_strings_or_string(
-        value: Union[List[str], str], message: str, validator: re.Pattern | EnumType = None
-) -> Union[List[str], str]:
-    """Validate a list of strings or a single string against a regex pattern or EnumType
+def clean(value: List[str] | str) -> List[str]:
+    """Clean a list of strings or a single string
 
-    :param value: The value to validate, can be a list of strings, a single string, or a string list delimited by comma
+    :param value: The value to clean
+    :return: The cleaned value as a list of strings
+    """
+    if isinstance(value, list):
+        return [v.strip() for v in value if v.strip()]
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def validate_list(
+        values: List[str], message: str, validator: re.Pattern | EnumType = None
+) -> Union[List[str], str]:
+    """Validate a list of strings against a regex pattern or EnumType
+
+    :param values: The values to validate as a list of strings
     :param message: The warning message to log if the value is invalid
     :param validator: The regex pattern or enum to validate the value against
     :return: The validated value as a list of strings or a single string
@@ -103,37 +112,15 @@ def validate_list_of_strings_or_string(
             return None
         return _value
 
-    if isinstance(value, str):
-        # If value is a string containing commas, parse and validate it as a list of string input values
-        if "," in value:
-            split_values = value.split(",")
-            return_values = []
-            for split_value in split_values:
-                validated_v = validate(split_value)
-                if validated_v is None:
-                    log.warning(message % split_value)
-                else:
-                    return_values.append(validated_v)
-            if len(return_values) > 0:
-                return return_values
-        # If value is a single string, validate it as a single string input value
+    return_values = []
+    for value in values:
+        validated_value = validate(value)
+        if validated_value is None:
+            log.warning(message % value)
         else:
-            validated_v = validate(value)
-            if validated_v is not None:
-                return validated_v
-            else:
-                log.warning(message % value)
-    # If value is a list of strings, validate each string in the list and return the list of valid strings
-    if isinstance(value, list):
-        return_values = []
-        for v in value:
-            validated_v = validate(v)
-            if validated_v is None:
-                log.warning(message % v)
-            else:
-                return_values.append(validated_v)
-        if len(return_values) > 0:
-            return return_values
+            return_values.append(validated_value)
+    if len(return_values) > 0:
+        return return_values
 
     raise PydanticUseDefault()
 
@@ -182,9 +169,9 @@ class ManifestSnykMonitor(BaseModel):
     include_app_vulns: bool = True
     include_node_modules: bool = True
     output_json: bool = False
-    environment: List[SnykEnvironmentEnum] | SnykEnvironmentEnum | None = None
-    lifecycle: List[SnykLifecycleEnum] | SnykLifecycleEnum | None = None
-    business_criticality: List[SnykBusinessCriticalityEnum] | SnykBusinessCriticalityEnum | None = None
+    environment: List[SnykEnvironmentEnum] | None = None
+    lifecycle: List[SnykLifecycleEnum] | None = None
+    business_criticality: List[SnykBusinessCriticalityEnum] | None = None
     tags: Dict[str, str] | None = None
 
     @field_validator("environment", mode="before")
@@ -201,7 +188,9 @@ class ManifestSnykMonitor(BaseModel):
             log.warning("Invalid value for snyk.monitor.environment, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, warn_message, validator=SnykEnvironmentEnum)
+        values_as_list = clean(value)
+
+        return validate_list(values_as_list, warn_message, validator=SnykEnvironmentEnum)
 
     @field_validator("lifecycle", mode="before")
     @classmethod
@@ -216,7 +205,9 @@ class ManifestSnykMonitor(BaseModel):
             log.warning("Invalid value for snyk.monitor.lifecycle, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, warn_message, validator=SnykLifecycleEnum)
+        values_as_list = clean(value)
+
+        return validate_list(values_as_list, warn_message, validator=SnykLifecycleEnum)
 
     @field_validator("business_criticality", mode="before")
     @classmethod
@@ -235,7 +226,9 @@ class ManifestSnykMonitor(BaseModel):
             )
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, warn_message, validator=SnykBusinessCriticalityEnum)
+        values_as_list = clean(value)
+
+        return validate_list(values_as_list, warn_message, validator=SnykBusinessCriticalityEnum)
 
     @model_validator(mode="after")
     def validate_tags(self) -> Self:

@@ -237,7 +237,7 @@ class TestManifestSnyk:
         assert len(s.monitor.lifecycle) == 2
         assert "development" in s.monitor.lifecycle
         assert "sandbox" in s.monitor.lifecycle
-        assert s.monitor.business_criticality == "high"
+        assert s.monitor.business_criticality == ["high"]
         assert s.monitor.tags == {
             "key-1": "value@1",
             "key_2": "value?2",
