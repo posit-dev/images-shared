@@ -1,59 +1,137 @@
 import logging
 import re
+from enum import Enum, EnumType
 from typing import Annotated, Dict, Self, List, Union
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic.functional_validators import field_validator
 from pydantic_core import PydanticUseDefault
 
-REGEX_SNYK_TEST_OUTPUT_FORMAT = re.compile(r"^(sarif|json|default)$")
-DEFAULT_SNYK_TEST_OUTPUT_FORMAT = "default"
 
-REGEX_SNYK_TEST_SEVERITY_THRESHOLD = re.compile(r"^(low|medium|high|critical)$")
-DEFAULT_SNYK_TEST_SEVERITY_THRESHOLD = "medium"
+log = logging.getLogger(__name__)
 
-REGEX_SNYK_MONITOR_PROJECT_ENVIRONMENT = re.compile(r"^(frontend|backend|internal|external|mobile|saas|onprem|hosted|distributed)$")
-REGEX_SNYK_MONITOR_PROJECT_LIFECYCLE = re.compile(r"^(development|sandbox|production)$")
-REGEX_SNYK_MONITOR_PROJECT_BUSINESS_CRITICALITY = re.compile(r"^(low|medium|high|critical)$")
+
 REGEX_SNYK_MONITOR_TAG_KEY = re.compile(r"^[a-zA-Z0-9_-]+$")
 SNYK_MONITOR_TAG_KEY_LENGTH = 30
 REGEX_SNYK_MONITOR_TAG_VALUE = re.compile(r"^[a-zA-Z0-9_\-/:?#@&+=%~]+$")
 SNYK_MONITOR_TAG_VALUE_LENGTH = 256
 
-REGEX_SNYK_SBOM_FORMAT = re.compile(r"^(cyclonedx1\.[4-6]\+(json|xml)|spdx2\.3\+json)$")
-DEFAULT_SNYK_SBOM_FORMAT = "cyclonedx1.5+json"
+
+class SnykTestOutputFormatEnum(str, Enum):
+    """Enum for the supported output formats for snyk container test output."""
+    sarif = "sarif"
+    json = "json"
+    default = "default"
 
 
-log = logging.getLogger("rich")
+class SnykSeverityThresholdEnum(str, Enum):
+    """Enum for the supported severity thresholds for snyk container test/monitor."""
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
 
 
-def validate_list_of_strings_or_string(value: Union[List[str], str], regex_pat: re.Pattern, message: str) -> Union[List[str], str]:
+class SnykBusinessCriticalityEnum(str, Enum):
+    """Enum for the supported business criticality values for snyk container monitor."""
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
+class SnykEnvironmentEnum(str, Enum):
+    """Enum for the supported environment values for snyk container monitor."""
+    frontend = "frontend"
+    backend = "backend"
+    internal = "internal"
+    external = "external"
+    mobile = "mobile"
+    saas = "saas"
+    onprem = "onprem"
+    hosted = "hosted"
+    distributed = "distributed"
+
+
+class SnykLifecycleEnum(str, Enum):
+    """Enum for the supported lifecycle values for snyk container monitor."""
+    development = "development"
+    sandbox = "sandbox"
+    production = "production"
+
+
+class SnykSbomFormatEnum(str, Enum):
+    """Enum for the supported SBOM formats for snyk container sbom."""
+    cyclonedx1_4_json = "cyclonedx1.4+json"
+    cyclonedx1_5_json = "cyclonedx1.5+json"
+    cyclonedx1_6_json = "cyclonedx1.6+json"
+    cyclonedx1_4_xml = "cyclonedx1.4+xml"
+    cyclonedx1_5_xml = "cyclonedx1.5+xml"
+    cyclonedx1_6_xml = "cyclonedx1.6+xml"
+    spdx2_3_json = "spdx2.3+json"
+
+
+def validate_list_of_strings_or_string(
+        value: Union[List[str], str], message: str, validator: re.Pattern | EnumType = None
+) -> Union[List[str], str]:
+    """Validate a list of strings or a single string against a regex pattern or EnumType
+
+    :param value: The value to validate, can be a list of strings, a single string, or a string list delimited by comma
+    :param message: The warning message to log if the value is invalid
+    :param validator: The regex pattern or enum to validate the value against
+    :return: The validated value as a list of strings or a single string
+    """
+    if not isinstance(validator, EnumType) and not isinstance(validator, re.Pattern):
+        raise ValueError("Validator must be an EnumType or re.Pattern object.")
+
+    def validate(_value: str) -> EnumType | str | None:
+        """Validates a single string against a regex pattern or EnumType
+
+        :param _value: The string to validate
+        :return: The validated string or None if invalid
+        """
+        if isinstance(validator, EnumType):
+            try:
+                _value = validator[_value.lower()]
+            except KeyError:
+                return None
+        elif isinstance(validator, re.Pattern):
+            match = validator.match(_value)
+            if match is None:
+                return None
+        else:
+            return None
+        return _value
+
     if isinstance(value, str):
         # If value is a string containing commas, parse and validate it as a list of string input values
         if "," in value:
             split_values = value.split(",")
             return_values = []
             for split_value in split_values:
-                if not regex_pat.match(split_value):
+                validated_v = validate(split_value)
+                if validated_v is None:
                     log.warning(message % split_value)
                 else:
-                    return_values.append(split_value)
+                    return_values.append(validated_v)
             if len(return_values) > 0:
                 return return_values
         # If value is a single string, validate it as a single string input value
         else:
-            if regex_pat.match(value):
-                return value
+            validated_v = validate(value)
+            if validated_v is not None:
+                return validated_v
             else:
                 log.warning(message % value)
     # If value is a list of strings, validate each string in the list and return the list of valid strings
     if isinstance(value, list):
         return_values = []
-        for val in value:
-            if not regex_pat.match(val):
-                log.warning(message % val)
+        for v in value:
+            validated_v = validate(v)
+            if validated_v is None:
+                log.warning(message % v)
             else:
-                return_values.append(val)
+                return_values.append(validated_v)
         if len(return_values) > 0:
             return return_values
 
@@ -61,7 +139,7 @@ def validate_list_of_strings_or_string(value: Union[List[str], str], regex_pat: 
 
 
 class ManifestSnykTestOutput(BaseModel):
-    format: Annotated[str, Field(pattern=REGEX_SNYK_TEST_OUTPUT_FORMAT)] = DEFAULT_SNYK_TEST_OUTPUT_FORMAT
+    format: SnykTestOutputFormatEnum = SnykTestOutputFormatEnum.default
     json_file: bool = False
     sarif_file: bool = False
 
@@ -72,17 +150,15 @@ class ManifestSnykTestOutput(BaseModel):
             return handler(value)
         except ValueError:
             log.warning(
-                f"Invalid value for snyk.test.output.format, expected '{value}' to match regex pattern "
-                f"'{REGEX_SNYK_TEST_OUTPUT_FORMAT.pattern}'. Using default value "
-                f"'{DEFAULT_SNYK_TEST_OUTPUT_FORMAT}'."
+                f"Invalid value for snyk.test.output.format, expected '{value}' to be one of "
+                f"{", ".join([e.value for e in SnykTestOutputFormatEnum])}. Using default value "
+                f"'{SnykTestOutputFormatEnum.default.value}'."
             )
             raise PydanticUseDefault()
 
 
 class ManifestSnykTest(BaseModel):
-    severity_threshold: Annotated[
-        str, Field(pattern=REGEX_SNYK_TEST_SEVERITY_THRESHOLD)
-    ] = DEFAULT_SNYK_TEST_SEVERITY_THRESHOLD
+    severity_threshold: SnykSeverityThresholdEnum = SnykSeverityThresholdEnum.medium
     include_app_vulns: bool = True
     include_base_image_vulns: bool = False
     include_node_modules: bool = True
@@ -95,9 +171,9 @@ class ManifestSnykTest(BaseModel):
             return handler(value)
         except ValueError:
             log.warning(
-                f"Invalid value for snyk.test.severity_threshold, expected '{value}' to match regex pattern "
-                f"'{REGEX_SNYK_TEST_SEVERITY_THRESHOLD.pattern}'. Using default value "
-                f"'{DEFAULT_SNYK_TEST_SEVERITY_THRESHOLD}'."
+                f"Invalid value for snyk.test.severity_threshold, expected '{value}' to be one of "
+                f"{", ".join([e.value for e in SnykSeverityThresholdEnum])}. Using default value "
+                f"'{SnykSeverityThresholdEnum.medium}'."
             )
             raise PydanticUseDefault()
 
@@ -106,17 +182,17 @@ class ManifestSnykMonitor(BaseModel):
     include_app_vulns: bool = True
     include_node_modules: bool = True
     output_json: bool = False
-    environment: List[str] | str | None = None
-    lifecycle: List[str] | str | None = None
-    business_criticality: List[str] | str | None = None
+    environment: List[SnykEnvironmentEnum] | SnykEnvironmentEnum | None = None
+    lifecycle: List[SnykLifecycleEnum] | SnykLifecycleEnum | None = None
+    business_criticality: List[SnykBusinessCriticalityEnum] | SnykBusinessCriticalityEnum | None = None
     tags: Dict[str, str] | None = None
 
     @field_validator("environment", mode="before")
     @classmethod
     def validate_environment_to_warning(cls, value: Union[List[str], str, None]) -> Union[List[str], str, None]:
         warn_message = (
-            "Invalid value for snyk.monitor.environment, expected '%s' to match regex "
-            f"pattern '{REGEX_SNYK_MONITOR_PROJECT_ENVIRONMENT.pattern}'. Environment will not be "
+            "Invalid value for snyk.monitor.environment, expected '%s' to be one of "
+            f"{", ".join([e.value for e in SnykEnvironmentEnum])}. Environment will not be "
             "passed to Snyk."
         )
 
@@ -125,14 +201,14 @@ class ManifestSnykMonitor(BaseModel):
             log.warning("Invalid value for snyk.monitor.environment, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, REGEX_SNYK_MONITOR_PROJECT_ENVIRONMENT, warn_message)
+        return validate_list_of_strings_or_string(value, warn_message, validator=SnykEnvironmentEnum)
 
     @field_validator("lifecycle", mode="before")
     @classmethod
     def validate_lifecycle_to_warning(cls, value: Union[List[str], str, None]) -> Union[List[str], str, None]:
         warn_message = (
             "Invalid value for snyk.monitor.lifecycle, expected '%s' to match regex pattern "
-            f"'{REGEX_SNYK_MONITOR_PROJECT_LIFECYCLE.pattern}'. Lifecycle will not be passed to Snyk."
+            f"{", ".join([e.value for e in SnykLifecycleEnum])}. Lifecycle will not be passed to Snyk."
         )
 
         # If value is an empty string, use default value
@@ -140,7 +216,7 @@ class ManifestSnykMonitor(BaseModel):
             log.warning("Invalid value for snyk.monitor.lifecycle, expected a non-empty string or list of strings.")
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, REGEX_SNYK_MONITOR_PROJECT_LIFECYCLE, warn_message)
+        return validate_list_of_strings_or_string(value, warn_message, validator=SnykLifecycleEnum)
 
     @field_validator("business_criticality", mode="before")
     @classmethod
@@ -149,7 +225,7 @@ class ManifestSnykMonitor(BaseModel):
     ) -> Union[List[str], str, None]:
         warn_message = (
             "Invalid value for snyk.monitor.business_criticality, expected '%s' to match regex pattern "
-            f"'{REGEX_SNYK_MONITOR_PROJECT_BUSINESS_CRITICALITY.pattern}'. Business criticality will not be "
+            f"{", ".join([e.value for e in SnykBusinessCriticalityEnum])}. Business criticality will not be "
             "passed to Snyk."
         )
 
@@ -159,7 +235,7 @@ class ManifestSnykMonitor(BaseModel):
             )
             raise PydanticUseDefault()
 
-        return validate_list_of_strings_or_string(value, REGEX_SNYK_MONITOR_PROJECT_BUSINESS_CRITICALITY, warn_message)
+        return validate_list_of_strings_or_string(value, warn_message, validator=SnykBusinessCriticalityEnum)
 
     @model_validator(mode="after")
     def validate_tags(self) -> Self:
@@ -187,7 +263,7 @@ class ManifestSnykMonitor(BaseModel):
 
 class ManifestSnykSbom(BaseModel):
     include_app_vulns: bool = True
-    format: Annotated[str, Field(pattern=REGEX_SNYK_SBOM_FORMAT)] = DEFAULT_SNYK_SBOM_FORMAT
+    format: SnykSbomFormatEnum = SnykSbomFormatEnum.cyclonedx1_5_json
 
     @field_validator("format", mode="wrap")
     @classmethod
@@ -196,8 +272,9 @@ class ManifestSnykSbom(BaseModel):
             return handler(value)
         except ValueError:
             log.warning(
-                f"Invalid value for snyk.sbom.format, expected '{value}' to match regex pattern "
-                f"'{REGEX_SNYK_SBOM_FORMAT.pattern}'. Using default value '{DEFAULT_SNYK_SBOM_FORMAT}'."
+                f"Invalid value for snyk.sbom.format, expected '{value}' to be one of "
+                f"'{", ".join([e.value for e in SnykSbomFormatEnum])}'. Using default value "
+                f"'{SnykSbomFormatEnum.cyclonedx1_5_json}'."
             )
             raise PydanticUseDefault()
 
