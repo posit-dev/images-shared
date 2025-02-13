@@ -89,12 +89,15 @@ flowchart TB
     push -.-> docker & ghcr
     results -.-> ghcr
 
-    classDef tooling fill:grey
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
     class pti,createProject,createImage,createVersion tooling
     class buildPlan,buildImage,run tooling
+
+    class lint,bake,dgoss,snyk,openscap external
 
     %% Mark what we are working on and is in flight %%
     class inprogress,snyk progress
@@ -114,24 +117,27 @@ flowchart TB
         inprogress["Work In Progress"]
         planned["Planned Work"]
         bakery[["Bakery Command"]]
+        external["3rd Party Tool"]
         tool["Container Tooling"]
         reg[("Container Registry")]
 
         input -. "input" .-> implemented -. "output" .-> output
-        bakery -- "call" --> inprogress
-        output -. "input" .-> bakery
-
+        input -. "input" .-> inprogress
+        input -. "input" .-> planned
         tool o-- "uses" --o output
-        output -. "input" .-> planned --> reg
+        output -. "input" .-> bakery
+        bakery -- "call" --> external -.-> reg
     end
 
 
-    classDef tooling fill:grey
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
 
     class bakery,tool,pti tooling
+    class external external
     class inprogress progress
     class planned todo
 ```
