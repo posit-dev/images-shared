@@ -6,7 +6,7 @@ import typer
 
 from posit_bakery import error
 from posit_bakery.cli.common import _wrap_project_load
-from posit_bakery.error import BakeryToolError, BakeryToolRuntimeError
+from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.log import stderr_console
 from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
 from posit_bakery.util import auto_path
@@ -83,6 +83,10 @@ def snyk(
 
     try:
         p.snyk(subcommand, image_name=image_name, image_version=image_version)
-    except BakeryToolRuntimeError as e:
-        stderr_console.print(f"❌ snyk command failed with exit code {e.exit_code}", style="error")
+    except (BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup) as e:
+        stderr_console.print("-" * 80)
+        stderr_console.print(e, style="error")
+        stderr_console.print(f"❌ snyk container {subcommand.value} command(s) failed", style="error")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"✅ snyk container {subcommand.value} command(s) completed", style="success")

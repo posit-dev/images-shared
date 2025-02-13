@@ -13,12 +13,12 @@ from posit_bakery.error import (
     BakeryModelValidationError,
     BakeryToolRuntimeError,
     BakeryModelValidationErrorGroup,
-    BakeryFileError, BakeryToolError,
+    BakeryFileError, BakeryToolError, BakeryToolRuntimeErrorGroup,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest import guess_os_list
-from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
+from posit_bakery.models.manifest.snyk import SnykContainerSubcommand, get_exit_code_meaning
 from posit_bakery.models.project.bake import BakePlan, target_uid
 import posit_bakery.util as util
 
@@ -533,17 +533,42 @@ class Project(BaseModel):
             )
 
         snyk_commands = self.render_snyk_commands(subcommand, image_name, image_version, image_type)
+        errors = []
         for tag, env, cmd in snyk_commands:
-            log.info(f"[bright_blue bold]=== Running snyk container {subcommand} for {tag} ===")
-            log.info(f"[bright_black]Executing snyk command: {' '.join(cmd)}")
+            log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
+            log.debug(f"[bright_black]Executing snyk command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
             if p.returncode != 0:
-                raise BakeryToolRuntimeError(
-                    f"snyk command exited with code {p.returncode}",
-                    "snyk",
-                    cmd=cmd,
-                    stdout=p.stdout,
-                    stderr=p.stderr,
-                    exit_code=p.returncode,
+                exit_meaning = get_exit_code_meaning(subcommand, p.returncode)
+                if exit_meaning["completed"]:
+                    log.warning(
+                        f"snyk container {subcommand.value} command for image '{tag}' completed with errors: "
+                        f"{exit_meaning["reason"]}"
+                    )
+                else:
+                    log.error(
+                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"{exit_meaning["reason"]}"
+                    )
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"{exit_meaning["reason"]}",
+                        "snyk",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=p.returncode,
+                    )
                 )
-            log.info(f"[bright_green bold]=== snyk container {subcommand} for {tag} completed ===")
+            else:
+                log.info(
+                    f"[bright_green bold]snyk container {subcommand.value} command "
+                    f"for image '{tag}' completed successfully."
+                )
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            raise BakeryToolRuntimeErrorGroup(
+                f"snyk container {subcommand.value} runtime errors occurred for multiple images.", errors
+            )

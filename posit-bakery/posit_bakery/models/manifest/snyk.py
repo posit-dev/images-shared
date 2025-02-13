@@ -1,6 +1,7 @@
 import logging
 import re
 from enum import Enum, EnumType
+from types import MappingProxyType
 from typing import Annotated, Dict, Self, List, Union
 
 from pydantic import BaseModel, Field, model_validator
@@ -19,6 +20,37 @@ class SnykContainerSubcommand(str, Enum):
     test = "test"
     monitor = "monitor"
     sbom = "sbom"
+
+
+SNYK_EXIT_CODE_REASONS = MappingProxyType(
+    {
+        SnykContainerSubcommand.test: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            1: {"completed": True, "reason": "vulnerabilities found"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+            3: {"completed": False, "reason": "no supported projects detected"},
+        },
+        SnykContainerSubcommand.monitor: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+            3: {"completed": False, "reason": "no supported projects detected"},
+        },
+        SnykContainerSubcommand.sbom: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+        },
+    }
+)
+
+
+def get_exit_code_meaning(subcommand: str, exit_code: int) -> Dict[str, Union[bool, str]]:
+    """Get the exit code reason for a given subcommand and exit code
+
+    :param subcommand: The snyk subcommand
+    :param exit_code: The exit code
+    :return: The exit code reason
+    """
+    return SNYK_EXIT_CODE_REASONS[subcommand].get(exit_code, {"completed": False, "reason": "unknown error"})
 
 
 class SnykTestOutputFormatEnum(str, Enum):

@@ -114,7 +114,8 @@ class BakeryToolError(BakeryError):
     """Generic error for external tool issues"""
 
     def __init__(self, message: str = None, tool_name: str = None) -> None:
-        super().__init__(message, None)
+        super().__init__(message)
+        self.message = message
         self.tool_name = tool_name
 
 
@@ -145,3 +146,18 @@ class BakeryToolRuntimeError(BakeryToolError):
 
     def dump_stderr(self, lines: int = 10) -> str:
         return "\n".join(self.stderr.decode().splitlines()[:lines])
+
+
+class BakeryToolRuntimeErrorGroup(ExceptionGroup):
+    """Group of tool runtime errors"""
+
+    def __str__(self) -> str:
+        s = f""
+        for e in self.exceptions:
+            s += f"{str(e)}\n"
+            s += f"  - Command executed: '{" ".join(e.cmd)}'\n"
+            s += "\n"
+        s += "\n"
+        s += f"{len(self.exceptions)} command(s) returned errors\n"
+
+        return s
