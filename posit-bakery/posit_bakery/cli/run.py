@@ -59,18 +59,24 @@ def snyk(
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     subcommand: Annotated[
-        SnykContainerSubcommand, typer.Option(help="The `snyk container` subcommand to run.")
+        SnykContainerSubcommand, typer.Argument(help="The `snyk container` subcommand to run.")
     ] = SnykContainerSubcommand.test,
     image_name: Annotated[str, typer.Option(help="The image name to isolate snyk testing to.")] = None,
     image_version: Annotated[str, typer.Option(help="The image version to isolate snyk testing to.")] = None,
 ) -> None:
-    """Runs snyk tests against images in the context path
+    """Runs a Snyk CLI command against images in the project
+
     If no options are provided, the command will auto-discover all images in the current
-    directory and generate and execute test commands on all images.
-    Images are expected to be in the local Docker daemon. It is advised to run `build --load` before running
-    snyk tests.
+    directory and generate and execute `snyk container test` commands on all images.
+
+    Images are expected to be in the local image cache. It is advised to run `build --load` before running
+    Snyk commands.
+
     Requires snyk to be installed on the system. Paths to the binaries can be set with the `SNYK_BIN` environment
     variable if not present in the system PATH.
+
+    For more information on the `snyk container` subcommands, see Snyk's documentation:
+    https://docs.snyk.io/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-snyk-container
     """
     # TODO: add skip_override back in
     p = _wrap_project_load(context)
