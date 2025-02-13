@@ -36,6 +36,9 @@ class SnykSeverityThresholdEnum(str, Enum):
     critical = "critical"
 
 
+SNYK_DEFAULT_SEVERITY_THRESHOLD = SnykSeverityThresholdEnum.medium
+
+
 class SnykBusinessCriticalityEnum(str, Enum):
     """Enum for the supported business criticality values for snyk container monitor."""
     low = "low"
@@ -73,6 +76,9 @@ class SnykSbomFormatEnum(str, Enum):
     cyclonedx1_5_xml = "cyclonedx1.5+xml"
     cyclonedx1_6_xml = "cyclonedx1.6+xml"
     spdx2_3_json = "spdx2.3+json"
+
+
+SNYK_DEFAULT_SBOM_FORMAT = SnykSbomFormatEnum.cyclonedx1_5_json
 
 
 def clean(value: List[str] | str) -> List[str]:
@@ -151,7 +157,7 @@ class ManifestSnykTestOutput(BaseModel):
 
 
 class ManifestSnykTest(BaseModel):
-    severity_threshold: SnykSeverityThresholdEnum = SnykSeverityThresholdEnum.medium
+    severity_threshold: SnykSeverityThresholdEnum = SNYK_DEFAULT_SEVERITY_THRESHOLD
     include_app_vulns: bool = True
     include_base_image_vulns: bool = False
     include_node_modules: bool = True
@@ -166,7 +172,7 @@ class ManifestSnykTest(BaseModel):
             log.warning(
                 f"Invalid value for snyk.test.severity_threshold, expected '{value}' to be one of "
                 f"{", ".join([e.value for e in SnykSeverityThresholdEnum])}. Using default value "
-                f"'{SnykSeverityThresholdEnum.medium}'."
+                f"'{SNYK_DEFAULT_SEVERITY_THRESHOLD}'."
             )
             raise PydanticUseDefault()
 
@@ -266,7 +272,7 @@ class ManifestSnykMonitor(BaseModel):
 
 class ManifestSnykSbom(BaseModel):
     include_app_vulns: bool = True
-    format: SnykSbomFormatEnum = SnykSbomFormatEnum.cyclonedx1_5_json
+    format: SnykSbomFormatEnum = SNYK_DEFAULT_SBOM_FORMAT
 
     @field_validator("format", mode="wrap")
     @classmethod
@@ -277,7 +283,7 @@ class ManifestSnykSbom(BaseModel):
             log.warning(
                 f"Invalid value for snyk.sbom.format, expected '{value}' to be one of "
                 f"'{", ".join([e.value for e in SnykSbomFormatEnum])}'. Using default value "
-                f"'{SnykSbomFormatEnum.cyclonedx1_5_json}'."
+                f"'{SNYK_DEFAULT_SBOM_FORMAT}'."
             )
             raise PydanticUseDefault()
 

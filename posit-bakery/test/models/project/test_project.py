@@ -9,9 +9,14 @@ import jinja2
 import pytest
 import tomlkit
 
-from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError
-from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project
+from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError, BakeryToolNotFoundError, BakeryToolError
+from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project, Config
+from posit_bakery.models.image import ImageMetadata
+from posit_bakery.models.image.variant import ImageVariant
+from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
+from posit_bakery.models.project.bake import target_uid
 from posit_bakery.templating import TPL_CONFIG_TOML
+from test.models import helpers
 
 pytestmark = [
     pytest.mark.unit,
@@ -265,3 +270,120 @@ class TestProjectGoss:
         p = Project.create(tmpdir)
         with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
             p.dgoss()
+
+
+class TestProjectSnyk:
+    @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_test_argument_testcases())
+    def test__get_snyk_container_test_arguments(self, basic_tmpcontext, snyk_config, expected_args):
+        project = Project.load(basic_tmpcontext)
+        metadata = ImageMetadata(
+            name="test-image",
+            version="1.0.0",
+            context=basic_tmpcontext,
+            snyk=snyk_config,
+        )
+        variant = ImageVariant(
+            meta=metadata,
+            latest=False,
+            os="Ubuntu 22.04",
+            target="std",
+            containerfile=basic_tmpcontext / metadata.name / metadata.version / "Containerfile.ubuntu2204.std",
+        )
+        expected_args = helpers.try_format_values(
+            expected_args,
+            variant=variant,
+            context=basic_tmpcontext,
+            uid=target_uid(variant.meta.name, variant.meta.version, variant),
+        )
+        result = project._get_snyk_container_test_arguments(variant)
+        assert result == expected_args
+        if variant.meta.snyk.test.output.json_file or variant.meta.snyk.test.output.sarif_file:
+            assert (basic_tmpcontext / "snyk_test").exists()
+
+    @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_monitor_argument_testcases())
+    def test__get_snyk_container_monitor_arguments(self, basic_context, snyk_config, expected_args):
+        mock_meta = MagicMock(spec=ImageMetadata, snyk=snyk_config, name="test-image", context=basic_context)
+        mock_variant = MagicMock(spec=ImageVariant, meta=mock_meta)
+        result = Project._get_snyk_container_monitor_arguments(mock_variant)
+        assert result == expected_args
+
+    @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_sbom_argument_testcases())
+    def test__get_snyk_container_sbom_arguments(self, basic_context, snyk_config, expected_args):
+        mock_meta = MagicMock(spec=ImageMetadata, snyk=snyk_config, name="test-image", context=basic_context)
+        mock_variant = MagicMock(spec=ImageVariant, meta=mock_meta)
+        result = Project._get_snyk_container_sbom_arguments(mock_variant)
+        assert result == expected_args
+
+    @pytest.mark.parametrize("snyk_subcommand,snyk_config,expected_args", helpers.snyk_all_argument_testcases())
+    def test_render_snyk_commands(self, basic_tmpcontext, snyk_subcommand, snyk_config, expected_args):
+        p = Project.load(basic_tmpcontext)
+        for name, image in p.images.items():
+            for variant in image.variants:
+                variant.meta.snyk = snyk_config
+        with patch("posit_bakery.util.find_bin", return_value="snyk"):
+            result = p.render_snyk_commands(subcommand=snyk_subcommand)
+        assert len(result) == len(p.images.variants)
+        for variant in p.images.variants:
+            variant_expected_args = helpers.try_format_values(
+                expected_args,
+                variant=variant,
+                context=basic_tmpcontext,
+                uid=target_uid(variant.meta.name, variant.meta.version, variant),
+            )
+            variant_expected_args.append(variant.tags[0])
+            command_set = [c for c in result if c[0] == variant.tags[0]]
+            assert len(command_set) == 1
+            command_set = command_set[0]
+            assert len(command_set) == 3
+            assert variant_expected_args == command_set[2]
+
+    @pytest.mark.parametrize("snyk_subcommand", [e.value for e in SnykContainerSubcommand])
+    def test_snyk_success(self, caplog, basic_context, snyk_subcommand):
+        p = Project.load(basic_context)
+        process_mock = MagicMock(returncode=0, stdout=b"00000000-0000-0000-0000-000000000000")
+        subprocess.run = MagicMock(return_value=process_mock)
+        with patch("posit_bakery.util.find_bin", return_value="snyk"):
+            p.snyk(subcommand=snyk_subcommand)
+        assert subprocess.run.call_count == len(p.images.variants) + 1
+        assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
+        for i, command in enumerate(subprocess.run.call_args_list[1:]):
+            assert command.args[0][0:3] == ["snyk", "container", snyk_subcommand]
+        assert "ERROR" not in caplog.text
+        assert "WARNING" not in caplog.text
+
+    @patch("posit_bakery.util.find_bin", side_effect=BakeryToolNotFoundError)
+    def test_snyk_no_bin(self, mock_find_bin, basic_context):
+        p = Project.load(basic_context)
+        with pytest.raises(BakeryToolNotFoundError):
+            p.snyk(subcommand="test")
+
+    @patch("posit_bakery.util.find_bin", return_value="snyk")
+    def test_snyk_invalid_subcommand(self, mock_find_bin, basic_context):
+        p = Project.load(basic_context)
+        with pytest.raises(BakeryToolError, match="snyk subcommand must be"):
+            p.snyk(subcommand="invalid")
+
+    @patch("posit_bakery.util.find_bin", return_value="snyk")
+    def test_snyk_no_org_warning(self, mock_find_bin, caplog, basic_context):
+        p = Project.load(basic_context)
+        process_mock = MagicMock(returncode=0, stdout=b"")
+        subprocess.run = MagicMock(return_value=process_mock)
+        p.snyk(subcommand="test")
+        assert subprocess.run.call_count == len(p.images.variants) + 1
+        assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
+        for i, command in enumerate(subprocess.run.call_args_list[1:]):
+            assert command.args[0][0:3] == ["snyk", "container", "test"]
+        assert "WARNING" in caplog.text
+
+    @patch("posit_bakery.util.find_bin", return_value="snyk")
+    def test_snyk_org_environ_no_warning(self, mock_find_bin, caplog, basic_context):
+        p = Project.load(basic_context)
+        process_mock = MagicMock(returncode=0, stdout=b"")
+        subprocess.run = MagicMock(return_value=process_mock)
+        with patch.dict("os.environ", {"SNYK_ORG": "test"}):
+            p.snyk(subcommand="test")
+        assert subprocess.run.call_count == len(p.images.variants) + 1
+        assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
+        for i, command in enumerate(subprocess.run.call_args_list[1:]):
+            assert command.args[0][0:3] == ["snyk", "container", "test"]
+        assert "WARNING" not in caplog.text
