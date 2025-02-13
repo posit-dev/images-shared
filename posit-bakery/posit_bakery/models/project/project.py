@@ -402,13 +402,13 @@ class Project(BaseModel):
         # Add output file options
         if variant.meta.snyk.test.output.json_file:
             result_dir.mkdir(exist_ok=True)
-            opts.extend(["--json-file-output", str(result_dir / f"{uid}.json")])
+            opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
         elif variant.meta.snyk.test.output.sarif_file:
             result_dir.mkdir(exist_ok=True)
-            opts.extend(["--sarif-file-output", str(result_dir / f"{uid}.sarif")])
+            opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
 
         # Add severity threshold
-        opts.extend(["--severity-threshold", variant.meta.snyk.test.severity_threshold.value])
+        opts.append(f"--severity-threshold={variant.meta.snyk.test.severity_threshold.value}")
 
         # Include options
         if variant.meta.snyk.test.include_app_vulns:
@@ -434,23 +434,22 @@ class Project(BaseModel):
         # Add environment
         if variant.meta.snyk.monitor.environment is not None:
             project_environment = ",".join([e.value for e in variant.meta.snyk.monitor.environment])
-            opts.extend(["--project-environment", project_environment])
+            opts.append(f"--project-environment={project_environment}")
 
         # Add lifecycle
         if variant.meta.snyk.monitor.lifecycle is not None:
             project_lifecycle = ",".join([e.value for e in variant.meta.snyk.monitor.lifecycle])
-            opts.extend(["--project-lifecycle", project_lifecycle])
+            opts.append(f"--project-lifecycle={project_lifecycle}")
 
         # Add business criticality
         if variant.meta.snyk.monitor.business_criticality is not None:
             project_business_criticality = ",".join([e.value for e in variant.meta.snyk.monitor.business_criticality])
-            opts.extend(["--project-business-criticality", project_business_criticality])
+            opts.append(f"--project-business-criticality={project_business_criticality}")
 
         # Add tags
         if variant.meta.snyk.monitor.tags:
-            opts.append("--project-tags")
             str_tags = ",".join([f"{tag}={value}" for tag, value in variant.meta.snyk.monitor.tags.items()])
-            opts.append(f"'{str_tags}'")
+            opts.append(f"--project-tags='{str_tags}'")
 
         # Include options
         if not variant.meta.snyk.monitor.include_node_modules:
@@ -486,20 +485,20 @@ class Project(BaseModel):
 
         for variant in images.variants:
             run_env = os.environ.copy()
-            cmd = [snyk_bin, "container", subcommand]
+            cmd = [snyk_bin, "container", subcommand.value]
 
             # Override the `--org` if `SNYK_ORG` is set
             if "SNYK_ORG" in os.environ:
-                cmd.extend(["--org", os.environ["SNYK_ORG"]])
+                cmd.append(f"--org={os.environ['SNYK_ORG']}")
 
-            if subcommand in [SnykContainerSubcommand.test.value, SnykContainerSubcommand.monitor.value]:
+            if subcommand.value in [SnykContainerSubcommand.test.value, SnykContainerSubcommand.monitor.value]:
                 # Set the project name to the image name
-                cmd.extend(["--project-name", variant.meta.name])
+                cmd.append(f"--project-name={variant.meta.name}")
                 # Set Containerfile path
-                cmd.extend(["--file", str(variant.containerfile)])
+                cmd.append(f"--file={str(variant.containerfile)}")
                 # Set the path to the policy file if applicable
                 if variant.snyk_policy_file is not None:
-                    cmd.extend(["--policy-path", str(variant.snyk_policy_file)])
+                    cmd.append(f"--policy-path={str(variant.snyk_policy_file)}")
 
             if subcommand == SnykContainerSubcommand.test.value:
                 cmd.extend(self._get_snyk_container_test_arguments(variant))
@@ -521,12 +520,12 @@ class Project(BaseModel):
             image_version: str = None,
             image_type: str = None,
     ) -> None:
-        snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH")
+        snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
 
         if subcommand not in SnykContainerSubcommand:
             raise BakeryToolError("snyk subcommand must be 'test', 'monitor', or 'sbom'.", "snyk")
 
-        p = subprocess.run([snyk_bin, "config", "get", "org"], cwd=self.context)
+        p = subprocess.run([snyk_bin, "config", "get", "org"], cwd=self.context, capture_output=True)
         if not p.stdout.decode("utf-8") and "SNYK_ORG" not in os.environ:
             log.warning(
                 "Neither `snyk config get org` or `SNYK_ORG` environment variable are set. For best results, set your "
