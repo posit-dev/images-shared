@@ -1,0 +1,245 @@
+# Bakery Architecture
+
+## Process Diagrams
+
+### Legend
+
+```mermaid
+flowchart TB
+
+    subgraph Legend
+        input[/"Input"/]
+        output[/"Output"/]
+        implemented["Implemented"]
+        inprogress["Work In Progress"]
+        planned["Planned Work"]
+        bakery[["bakery command"]]
+        external["3rd Party Tool"]
+        tool["Container Tooling"]
+        reg[("Container Registry")]
+
+        input -. "input" .-> implemented -. "output" .-> output
+        input -. "input" .-> inprogress
+        input -. "input" .-> planned
+        tool o-- "uses" --o output
+        output -. "input" .-> bakery
+        bakery -- "call" --> external -.-> reg
+    end
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class bakery,tool,pti tooling
+    class external external
+    class inprogress progress
+    class planned todo
+```
+
+### Workflow
+
+```mermaid
+flowchart TD
+
+    create[["bakery create"]]
+    project[/Bakery Project/]
+    create -.-> project
+
+    build[["bakery build"]]
+    image[/Container Image/]
+    project -.-> build -.-> image
+
+    run[["bakery run"]]
+    results[/"Test & Scan Results"/]
+    image -.-> run -.-> results
+
+    reg[(Image Registry)]
+    image & results -.-> reg
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class create,build,run tooling
+    class push external
+    class inprogress progress
+    class planned todo
+```
+
+### Create
+
+```mermaid
+flowchart TD
+
+    subgraph "bakery"
+        direction TB
+
+        templatesDefault[/Default Jinja2 Templates/]
+        createProject[[bakery create project]]
+        createImage[[bakery create image]]
+        createVersion[[bakery create version]]
+    end
+
+    subgraph "GitHub Repository"
+        direction TB
+        subgraph "Project"
+            config[/config.toml/]
+
+            subgraph "Image"
+                manifest[/manifest.toml/]
+                templatesImage[/Image Jinja2 Templates/]
+
+                subgraph "Image Version"
+                    containerfile[/Containerfile/]
+
+                    deps[/dependencies/]
+                    tests[/goss.yml/]
+                end
+                deps -.-> containerfile
+            end
+        end
+
+        templatesDefault -.-> createProject -.-> config
+
+        config -.-> createImage -.-> manifest
+        templatesDefault -.-> createImage -.-> templatesImage
+
+        templatesImage -.-> createVersion -.-> tests & deps & containerfile
+        manifest -.-> createVersion
+        createVersion -.-> manifest
+    end
+
+    pti[pti]
+    pti o--o containerfile
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class pti,createProject,createImage,createVersion tooling
+```
+
+### Build
+
+```mermaid
+flowchart TD
+
+    subgraph "Project"
+        direction LR
+
+        config[/config.toml/]
+        manifest[/manifest.toml/]
+        containerfile[/Containerfile/]
+    end
+
+    build[[bakery build]]
+    plan[/.docker-bake.json/]
+    bake[docker buildx bake]
+    image[/Container Image/]
+
+    config & manifest -.-> build -.-> plan
+    plan & containerfile -.-> bake
+    build --> bake -.-> image
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class build tooling
+    class bake external
+```
+
+### Run Tests
+
+```mermaid
+flowchart TD
+
+    containerfile[/Containerfile/]
+    tests[/goss.yml/]
+
+    image[/Container Image/]
+    results[/"Test & Scan results"/]
+
+    lint[hadolint]
+    runLint[[bakery run lint]]
+    runLint --> lint
+    containerfile -.-> lint -.-> results
+
+    dgoss[dgoss]
+    runDgoss[[bakery run dgoss]]
+    runDgoss --> dgoss
+    image & tests -.-> dgoss -.-> results
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class runLint,runDgoss tooling
+    class lint,dgoss external
+
+    %% Mark what we are working on and is in flight %%
+    class inprogress,snyk progress
+    class planned,lint,openscap,results todo
+```
+
+### Run Security Scans
+
+```mermaid
+flowchart TD
+
+    image[/Container Image/]
+    results[/"Test & Scan results"/]
+
+    snyk[Snyk container]
+    runSnyk[[bakery run snyk]]
+    runSnyk --> snyk
+    image -.-> snyk -.-> results
+
+    openscap[openscap]
+    runOpenscap[[bakery run openscap]]
+    runOpenscap --> openscap
+    image -.-> openscap -.-> results
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class runSnyk,runOpenscap tooling
+    class snyk,openscap external
+
+    %% Mark what we are working on and is in flight %%
+    class inprogress,snyk progress
+    class openscap,results todo
+```
+
+### Publish
+
+```mermaid
+flowchart TD
+
+    image[/Container Image/]
+    results[/"Test & Scan results"/]
+
+    sign[Sign Image]
+    push[Push Image]
+    image -.-> sign --> push
+
+    docker[(Docker Hub)]
+    ghcr[(GitHub Container Registry)]
+    push -.-> docker & ghcr
+    results -.-> ghcr
+
+    classDef tooling fill:#7494B1
+    classDef external fill:grey
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    %% Mark what we are working on and is in flight %%
+    class results,sign todo
+```
