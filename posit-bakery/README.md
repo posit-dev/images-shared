@@ -6,25 +6,44 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 
 ### Prerequisites
 
-- [pipx](https://pipx.pypa.io/stable/installation/)
-- [GitHub CLI: `gh`](https://github.com/cli/cli#installation) - Pull artifacts from private repos
+| Tool | Purpose |
+|:-----|:--------|
+| [pipx](https://pipx.pypa.io/stable/installation/) | Installation and environment isolation of `bakery` tool |
+| [GitHub CLI (`gh`)](https://github.com/cli/cli#installation) | Used to fetch artifacts, such as `pti`, from private repositories |
+
+### 3rd Party Tools
+
+Bakery integrates several tools
+
+| Tool | Used By | Purpose |
+|:-----|:--------|:--------|
+| [docker buildx bake](https://github.com/docker/buildx#installing) | `bakery build` | Build containers in parallel |
+| [hadolint](https://github.com/hadolint/hadolint#install) | | Lint Dockerfile/Containerfile |
+| [snyk container](https://docs.snyk.io/snyk-cli/install-or-update-the-snyk-cli) | `bakery run snyk` | Scan container images for security vulnerabilities |
 
 ## Installation
 
 ### CLI Installation
 
 1. Authorize w/ GitHub, since the repository is private
+
     ```bash
     gh auth login
     gh auth setup-git
     ```
 
 2. Install `bakery` using `pipx`
+
     ```bash
     pipx install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
     ```
 
 ## Usage
+
+>[!TIP]
+> See the [architecture diagrams](./ARCHITECTURE.md) for detailed tool behavior.
+
+Show the commands available in `bakery`.
 
 ```shell
 bakery --help
@@ -67,6 +86,7 @@ Bakery also adds the following tags to the latest image version:
 ### Development Prerequisites
 
 - [just](https://just.systems/man/en/)
+
     ```bash
     # Show all the just recipes
     just
@@ -77,6 +97,7 @@ Bakery also adds the following tags to the latest image version:
     ```bash
     pipx install 'poetry>=2'
     ```
+<<<<<<< HEAD
 
 ## Project
 
@@ -87,3 +108,5 @@ Bakery also adds the following tags to the latest image version:
 | [docker buildx bake](https://docs.docker.com/reference/cli/docker/buildx/bake/) | Build containers in parallel |
 | [hadolint](https://github.com/hadolint/hadolint) | Lint Dockerfile/Containerfile |
 | [snyk container](https://docs.snyk.io/scan-with-snyk/snyk-container) | Scan container images for security vulnerabilities |
+=======
+>>>>>>> cc11cc3 (Clean up prereqs/dependencies)
