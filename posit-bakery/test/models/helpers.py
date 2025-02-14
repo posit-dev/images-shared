@@ -48,8 +48,7 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
         pytest.param(
             ManifestSnyk(),
             [
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -57,14 +56,13 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
         ),
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(severity_threshold="high")),
-            ["--severity-threshold", "high", "--app-vulns", "--exclude-base-image-vulns"],
+            ["--severity-threshold=high", "--app-vulns", "--exclude-base-image-vulns"],
             id="override_severity_threshold",
         ),
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(include_app_vulns=False)),
             [
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--exclude-app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -72,14 +70,13 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
         ),
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(include_base_image_vulns=True)),
-            ["--severity-threshold", SNYK_DEFAULT_SEVERITY_THRESHOLD.value, "--app-vulns"],
+            [f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}", "--app-vulns"],
             id="include_base_image_vulns",
         ),
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(include_node_modules=False)),
             [
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
                 "--exclude-node-modules",
@@ -90,8 +87,7 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(format="json"))),
             [
                 "--json",
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -101,8 +97,7 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(format="sarif"))),
             [
                 "--sarif",
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -111,10 +106,8 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(json_file=True))),
             [
-                "--json-file-output",
-                "{context}/snyk_test/{uid}.json",
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                "--json-file-output={context}/snyk_test/{uid}.json",
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -123,10 +116,8 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(sarif_file=True))),
             [
-                "--sarif-file-output",
-                "{context}/snyk_test/{uid}.sarif",
-                "--severity-threshold",
-                SNYK_DEFAULT_SEVERITY_THRESHOLD.value,
+                "--sarif-file-output={context}/snyk_test/{uid}.sarif",
+                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
             ],
@@ -149,42 +140,42 @@ def snyk_monitor_argument_testcases() -> List[pytest.mark.ParameterSet]:
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(environment="internal")),
-            ["--project-environment", "internal"],
+            ["--project-environment=internal"],
             id="environment_single",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(environment=["internal", "distributed", "saas"])),
-            ["--project-environment", "internal,distributed,saas"],
+            ["--project-environment=internal,distributed,saas"],
             id="environment_multi",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(lifecycle="development")),
-            ["--project-lifecycle", "development"],
+            ["--project-lifecycle=development"],
             id="lifecycle_single",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(lifecycle=["development", "sandbox"])),
-            ["--project-lifecycle", "development,sandbox"],
+            ["--project-lifecycle=development,sandbox"],
             id="lifecycle_multi",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(business_criticality="low")),
-            ["--project-business-criticality", "low"],
+            ["--project-business-criticality=low"],
             id="business_criticality_single",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(business_criticality=["low", "medium", "high"])),
-            ["--project-business-criticality", "low,medium,high"],
+            ["--project-business-criticality=low,medium,high"],
             id="business_criticality_multi",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(tags={"key1": "value1"})),
-            ["--project-tags", "'key1=value1'"],
+            ["--project-tags='key1=value1'"],
             id="project_tags_single",
         ),
         pytest.param(
             ManifestSnyk(monitor=ManifestSnykMonitor(tags={"key1": "value1", "key2": "value2"})),
-            ["--project-tags", "'key1=value1,key2=value2'"],
+            ["--project-tags='key1=value1,key2=value2'"],
             id="project_tags_multi",
         ),
         pytest.param(
@@ -199,17 +190,17 @@ def snyk_sbom_argument_testcases() -> List[pytest.mark.ParameterSet]:
     return [
         pytest.param(
             ManifestSnyk(),
-            ["--format", SNYK_DEFAULT_SBOM_FORMAT.value],
+            [f"--format={SNYK_DEFAULT_SBOM_FORMAT.value}"],
             id="default",
         ),
         pytest.param(
             ManifestSnyk(sbom=ManifestSnykSbom(format="cyclonedx1.4+xml")),
-            ["--format", "cyclonedx1.4+xml"],
+            ["--format=cyclonedx1.4+xml"],
             id="alternate_format",
         ),
         pytest.param(
             ManifestSnyk(sbom=ManifestSnykSbom(include_app_vulns=False)),
-            ["--format", SNYK_DEFAULT_SBOM_FORMAT.value, "--exclude-app-vulns"],
+            [f"--format={SNYK_DEFAULT_SBOM_FORMAT.value}", "--exclude-app-vulns"],
             id="exclude_app_vulns",
         ),
     ]
@@ -223,10 +214,8 @@ def snyk_all_argument_testcases() -> List[pytest.mark.ParmeterSet]:
             "snyk",
             "container",
             "test",
-            "--project-name",
-            "{variant.meta.name}",
-            "--file",
-            "{variant.containerfile}",
+            "--project-name={variant.meta.name}",
+            "--file={variant.containerfile}",
             *expected,
         ]
         testcases.append(
@@ -243,10 +232,8 @@ def snyk_all_argument_testcases() -> List[pytest.mark.ParmeterSet]:
             "snyk",
             "container",
             "monitor",
-            "--project-name",
-            "{variant.meta.name}",
-            "--file",
-            "{variant.containerfile}",
+            "--project-name={variant.meta.name}",
+            "--file={variant.containerfile}",
             *expected,
         ]
         testcases.append(

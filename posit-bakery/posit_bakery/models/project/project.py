@@ -459,7 +459,7 @@ class Project(BaseModel):
 
     @staticmethod
     def _get_snyk_container_sbom_arguments(variant: ImageVariant) -> List[str]:
-        opts = ["--format", variant.meta.snyk.sbom.format.value]
+        opts = [f"--format={variant.meta.snyk.sbom.format.value}"]
 
         if not variant.meta.snyk.sbom.include_app_vulns:
             opts.append("--exclude-app-vulns")
@@ -485,13 +485,13 @@ class Project(BaseModel):
 
         for variant in images.variants:
             run_env = os.environ.copy()
-            cmd = [snyk_bin, "container", subcommand.value]
+            cmd = [snyk_bin, "container", subcommand]
 
             # Override the `--org` if `SNYK_ORG` is set
             if "SNYK_ORG" in os.environ:
                 cmd.append(f"--org={os.environ['SNYK_ORG']}")
 
-            if subcommand.value in [SnykContainerSubcommand.test.value, SnykContainerSubcommand.monitor.value]:
+            if subcommand in [SnykContainerSubcommand.test.value, SnykContainerSubcommand.monitor.value]:
                 # Set the project name to the image name
                 cmd.append(f"--project-name={variant.meta.name}")
                 # Set Containerfile path
@@ -535,24 +535,24 @@ class Project(BaseModel):
         snyk_commands = self.render_snyk_commands(subcommand, image_name, image_version, image_type)
         errors = []
         for tag, env, cmd in snyk_commands:
-            log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
+            log.info(f"[bright_blue bold]=== Running snyk container {subcommand} for {tag} ===")
             log.debug(f"[bright_black]Executing snyk command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context)
             if p.returncode != 0:
                 exit_meaning = get_exit_code_meaning(subcommand, p.returncode)
                 if exit_meaning["completed"]:
                     log.warning(
-                        f"snyk container {subcommand.value} command for image '{tag}' completed with errors: "
+                        f"snyk container {subcommand} command for image '{tag}' completed with errors: "
                         f"{exit_meaning["reason"]}"
                     )
                 else:
                     log.error(
-                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"snyk container {subcommand} command for image '{tag}' exited with code {p.returncode}: "
                         f"{exit_meaning["reason"]}"
                     )
                 errors.append(
                     BakeryToolRuntimeError(
-                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"snyk container {subcommand} command for image '{tag}' exited with code {p.returncode}: "
                         f"{exit_meaning["reason"]}",
                         "snyk",
                         cmd=cmd,
@@ -563,12 +563,12 @@ class Project(BaseModel):
                 )
             else:
                 log.info(
-                    f"[bright_green bold]snyk container {subcommand.value} command "
+                    f"[bright_green bold]snyk container {subcommand} command "
                     f"for image '{tag}' completed successfully."
                 )
         if errors:
             if len(errors) == 1:
                 raise errors[0]
             raise BakeryToolRuntimeErrorGroup(
-                f"snyk container {subcommand.value} runtime errors occurred for multiple images.", errors
+                f"snyk container {subcommand} runtime errors occurred for multiple images.", errors
             )
