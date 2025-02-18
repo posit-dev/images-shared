@@ -2,14 +2,13 @@ import os
 import textwrap
 from pathlib import Path
 from typing import List, Tuple
-from unittest.mock import MagicMock
 
 import pytest
 import tomlkit
+from _pytest.mark import ParameterSet
 
-from posit_bakery.models import Manifest, Config
 from posit_bakery.models.manifest.snyk import ManifestSnyk, ManifestSnykTest, \
-    ManifestSnykTestOutput, ManifestSnykMonitor, ManifestSnykSbom, SnykSeverityThresholdEnum, SnykSbomFormatEnum, \
+    ManifestSnykTestOutput, ManifestSnykMonitor, ManifestSnykSbom, \
     SNYK_DEFAULT_SEVERITY_THRESHOLD, SNYK_DEFAULT_SBOM_FORMAT
 
 # Duplicate of entry in conftest.py, but required for this file
@@ -43,7 +42,7 @@ def try_format_values(value_list: List[str], **kwargs):
     return [value.format(**kwargs) for value in value_list]
 
 
-def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
+def snyk_test_argument_testcases() -> List[ParameterSet]:
     return [
         pytest.param(
             ManifestSnyk(),
@@ -126,7 +125,7 @@ def snyk_test_argument_testcases() -> List[pytest.mark.ParameterSet]:
     ]
 
 
-def snyk_monitor_argument_testcases() -> List[pytest.mark.ParameterSet]:
+def snyk_monitor_argument_testcases() -> List[ParameterSet]:
     return [
         pytest.param(
             ManifestSnyk(),
@@ -186,7 +185,7 @@ def snyk_monitor_argument_testcases() -> List[pytest.mark.ParameterSet]:
     ]
 
 
-def snyk_sbom_argument_testcases() -> List[pytest.mark.ParameterSet]:
+def snyk_sbom_argument_testcases() -> List[ParameterSet]:
     return [
         pytest.param(
             ManifestSnyk(),
@@ -206,7 +205,7 @@ def snyk_sbom_argument_testcases() -> List[pytest.mark.ParameterSet]:
     ]
 
 
-def snyk_all_argument_testcases() -> List[pytest.mark.ParmeterSet]:
+def snyk_all_argument_testcases() -> List[ParameterSet]:
     testcases = []
     for test in snyk_test_argument_testcases():
         snyk_config, expected = test.values
