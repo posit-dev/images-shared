@@ -108,3 +108,11 @@ def check_stderr(bakery_command, datatable):
 def check_log(caplog, datatable):
     for row in datatable:
         assert row[0] in caplog.text
+
+
+@then("the context includes file:")
+@then("the context includes files:")
+def check_context(bakery_command, datatable):
+    for row in datatable:
+        test_path = bakery_command.context / row[0]
+        assert test_path.exists()

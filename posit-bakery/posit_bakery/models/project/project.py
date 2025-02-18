@@ -578,13 +578,23 @@ class Project(BaseModel):
             if subcommand == SnykContainerSubcommand.sbom:
                 result_dir = self.context / "snyk_sbom"
                 result_dir.mkdir(exist_ok=True)
-                output = p.stdout.decode("utf-8")
+
+                try:
+                    output = p.stdout.decode("utf-8")
+                except UnicodeDecodeError:
+                    log.warning(f"Unexpected encoding for snyk container sbom output for image '{tag}'.")
+                    output = p.stdout
                 try:
                     output = json.loads(output)
+                    output = json.dumps(output, indent=2)
                 except json.JSONDecodeError:
                     log.warning(f"Failed to parse snyk container sbom output as JSON for image '{tag}'.")
+
                 with open(result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}", "w") as f:
-                    f.write(json.dumps(output, indent=2))
+                    log.info(
+                        f"Writing SBOM to {result_dir / f'{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}'}."
+                    )
+                    f.write(output)
 
         if errors:
             if len(errors) == 1:

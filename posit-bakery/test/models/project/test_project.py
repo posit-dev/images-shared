@@ -1,9 +1,8 @@
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from textwrap import dedent
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import jinja2
 import pytest
@@ -340,7 +339,8 @@ class TestProjectSnyk:
     @pytest.mark.parametrize("snyk_subcommand", [e for e in SnykContainerSubcommand])
     def test_snyk_success(self, caplog, basic_context, snyk_subcommand):
         p = Project.load(basic_context)
-        process_mock = MagicMock(returncode=0, stdout=b"00000000-0000-0000-0000-000000000000")
+        process_mock = MagicMock(returncode=0)
+        type(process_mock).stdout = PropertyMock(side_effect=[b"00000000-0000-0000-0000-000000000000", b"{}", b"{}"])
         subprocess.run = MagicMock(return_value=process_mock)
         with patch("posit_bakery.util.find_bin", return_value="snyk"):
             p.snyk(subcommand=snyk_subcommand)
