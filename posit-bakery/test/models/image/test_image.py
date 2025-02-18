@@ -87,7 +87,7 @@ class TestImageMatrix:
         assert len(image.versions) == 1
         assert image.versions[0].version == "1.2.3"
 
-        assert len(image.versions[0].variants) == 1
+        assert len(image.versions[0].variants) == 2
         assert image.versions[0].variants[0].latest is True
 
     def test_load_multi_os(self, manifest_multi_os):
@@ -164,7 +164,8 @@ class TestImageMetadata:
         """Ensure default tags are being added to the image"""
         expected_tags: List[str] = [
             "0.1.0-ubuntu-24.04-min",
-            "0.1.0-min",
+            # TODO: primary_os
+            # "0.1.0-min",
         ]
 
         image: Image = Image.load(self.context, manifest_simple)
@@ -176,19 +177,33 @@ class TestImageMetadata:
 
     def test_tags_default_latest(self, manifest_latest):
         """Ensure string tags are being added to the image"""
-        expected_tags: List[str] = [
+        expected_tags_min: List[str] = [
             "1.2.3-ubuntu-24.04-min",
-            "1.2.3-min",
             "ubuntu-24.04-min",
-            "latest",
+        ]
+        expected_tags_std: List[str] = [
+            "1.2.3-ubuntu-24.04-std",
+            "1.2.3-ubuntu-24.04",
+            "ubuntu-24.04-std",
+            "ubuntu-24.04",
+            # TODO: primary_os
+            # "1.2.3-std",
+            # "latest",
         ]
 
         image: Image = Image.load(self.context, manifest_latest)
 
-        tags = image.versions[0].variants[0].meta.tags
-        assert len(tags) == len(expected_tags)
-        for tag in expected_tags:
-            assert tag in tags
+        tags_min = image.versions[0].variants[0].meta.tags
+        tags_std = image.versions[0].variants[1].meta.tags
+
+        assert len(tags_min) == len(expected_tags_min)
+        for tag in expected_tags_min:
+            assert tag in tags_min
+        assert "latest" not in tags_min
+
+        assert len(tags_std) == len(expected_tags_std)
+        for tag in expected_tags_std:
+            assert tag in tags_std
 
 
 @pytest.mark.image

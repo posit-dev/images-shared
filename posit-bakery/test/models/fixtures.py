@@ -71,7 +71,10 @@ def manifest_latest():
     return ManifestDocument(
         image_name="latest-image",
         build={"1.2.3": BUILD_LATEST},
-        target={"min": TARGET_MIN},
+        target={
+            "min": TARGET_MIN,
+            "std": TARGET_STD,
+        },
     )
 
 

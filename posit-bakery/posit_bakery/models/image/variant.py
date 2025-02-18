@@ -51,21 +51,31 @@ class ImageVariant(BaseModel):
         target: str,
     ):
         build_os: BuildOS = find_os(_os)
+        # TODO: Ingest the primary_os from the manifest
+        primary_os = find_os("Ubuntu 22.04")
         containerfile = cls.find_containerfile(meta.context, _os, target)
 
         meta.labels.posit["os"] = _os
         meta.labels.posit["type"] = target
 
-        # TODO: Handle min vs std
-        meta.tags = [
-            f"{meta.version}-{build_os.image_tag}-{target}",
-            f"{meta.version}-{target}",
-        ]
+        meta.tags = []
+        meta.tags.append(f"{meta.version}-{build_os.image_tag}-{target}")
+        if target == "std":
+            meta.tags.append(f"{meta.version}-{build_os.image_tag}")
+
+        if build_os == primary_os:
+            meta.tags.append(f"{meta.version}-{target}")
+            if target == "std":
+                meta.tags.append(f"{meta.version}")
+
         if latest:
-            meta.tags += [
-                f"{build_os.image_tag}-{target}",
-                "latest",
-            ]
+            meta.tags.append(f"{build_os.image_tag}-{target}")
+            if target == "std":
+                meta.tags.append(f"{build_os.image_tag}")
+            if build_os == primary_os:
+                meta.tags.append(f"{target}")
+                if target == "std":
+                    meta.tags.append("latest")
 
         return cls(
             meta=meta,
