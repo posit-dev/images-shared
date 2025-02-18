@@ -11,6 +11,10 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
 
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_ORG: ${{ secrets.SNYK_ORG }}
+
     steps:
       - uses: actions/checkout@v4
 
