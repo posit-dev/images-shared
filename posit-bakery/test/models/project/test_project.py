@@ -337,7 +337,7 @@ class TestProjectSnyk:
             assert len(command_set) == 3
             assert variant_expected_args == command_set[2]
 
-    @pytest.mark.parametrize("snyk_subcommand", [e.value for e in SnykContainerSubcommand])
+    @pytest.mark.parametrize("snyk_subcommand", [e for e in SnykContainerSubcommand])
     def test_snyk_success(self, caplog, basic_context, snyk_subcommand):
         p = Project.load(basic_context)
         process_mock = MagicMock(returncode=0, stdout=b"00000000-0000-0000-0000-000000000000")
@@ -368,7 +368,7 @@ class TestProjectSnyk:
         p = Project.load(basic_context)
         process_mock = MagicMock(returncode=0, stdout=b"")
         subprocess.run = MagicMock(return_value=process_mock)
-        p.snyk(subcommand="test")
+        p.snyk(subcommand=SnykContainerSubcommand.test)
         assert subprocess.run.call_count == len(p.images.variants) + 1
         assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
         for i, command in enumerate(subprocess.run.call_args_list[1:]):
@@ -381,7 +381,7 @@ class TestProjectSnyk:
         process_mock = MagicMock(returncode=0, stdout=b"")
         subprocess.run = MagicMock(return_value=process_mock)
         with patch.dict("os.environ", {"SNYK_ORG": "test"}):
-            p.snyk(subcommand="test")
+            p.snyk(subcommand=SnykContainerSubcommand.test)
         assert subprocess.run.call_count == len(p.images.variants) + 1
         assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
         for i, command in enumerate(subprocess.run.call_args_list[1:]):
