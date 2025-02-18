@@ -319,8 +319,9 @@ class TestProjectSnyk:
         for name, image in p.images.items():
             for variant in image.variants:
                 variant.meta.snyk = snyk_config
-        with patch("posit_bakery.util.find_bin", return_value="snyk"):
-            result = p.render_snyk_commands(subcommand=snyk_subcommand)
+        with patch.dict("os.environ", clear=True):
+            with patch("posit_bakery.util.find_bin", return_value="snyk"):
+                result = p.render_snyk_commands(subcommand=snyk_subcommand)
         assert len(result) == len(p.images.variants)
         for variant in p.images.variants:
             variant_expected_args = helpers.try_format_values(
@@ -342,8 +343,9 @@ class TestProjectSnyk:
         process_mock = MagicMock(returncode=0)
         type(process_mock).stdout = PropertyMock(side_effect=[b"00000000-0000-0000-0000-000000000000", b"{}", b"{}"])
         subprocess.run = MagicMock(return_value=process_mock)
-        with patch("posit_bakery.util.find_bin", return_value="snyk"):
-            p.snyk(subcommand=snyk_subcommand)
+        with patch.dict("os.environ", clear=True):
+            with patch("posit_bakery.util.find_bin", return_value="snyk"):
+                p.snyk(subcommand=snyk_subcommand)
         assert subprocess.run.call_count == len(p.images.variants) + 1
         assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
         for i, command in enumerate(subprocess.run.call_args_list[1:]):
@@ -355,7 +357,7 @@ class TestProjectSnyk:
     def test_snyk_no_bin(self, mock_find_bin, basic_context):
         p = Project.load(basic_context)
         with pytest.raises(BakeryToolNotFoundError):
-            p.snyk(subcommand="test")
+            p.snyk(subcommand=SnykContainerSubcommand.test)
 
     @patch("posit_bakery.util.find_bin", return_value="snyk")
     def test_snyk_invalid_subcommand(self, mock_find_bin, basic_context):
@@ -368,7 +370,8 @@ class TestProjectSnyk:
         p = Project.load(basic_context)
         process_mock = MagicMock(returncode=0, stdout=b"")
         subprocess.run = MagicMock(return_value=process_mock)
-        p.snyk(subcommand=SnykContainerSubcommand.test)
+        with patch.dict("os.environ", clear=True):
+            p.snyk(subcommand=SnykContainerSubcommand.test)
         assert subprocess.run.call_count == len(p.images.variants) + 1
         assert subprocess.run.call_args_list[0].args[0] == ["snyk", "config", "get", "org"]
         for i, command in enumerate(subprocess.run.call_args_list[1:]):

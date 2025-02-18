@@ -9,7 +9,7 @@ from _pytest.mark import ParameterSet
 
 from posit_bakery.models.manifest.snyk import ManifestSnyk, ManifestSnykTest, \
     ManifestSnykTestOutput, ManifestSnykMonitor, ManifestSnykSbom, \
-    SNYK_DEFAULT_SEVERITY_THRESHOLD, SNYK_DEFAULT_SBOM_FORMAT
+    SNYK_DEFAULT_SEVERITY_THRESHOLD, SNYK_DEFAULT_SBOM_FORMAT, SnykContainerSubcommand
 
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__))).parent
@@ -219,7 +219,7 @@ def snyk_all_argument_testcases() -> List[ParameterSet]:
         ]
         testcases.append(
             pytest.param(
-                "test",
+                SnykContainerSubcommand.test,
                 snyk_config,
                 expected,
                 id=f"SnykContainerTest_{test.id}",
@@ -237,7 +237,7 @@ def snyk_all_argument_testcases() -> List[ParameterSet]:
         ]
         testcases.append(
             pytest.param(
-                "monitor",
+                SnykContainerSubcommand.monitor,
                 snyk_config,
                 expected,
                 id=f"SnykContainerMonitor_{test.id}",
@@ -253,7 +253,7 @@ def snyk_all_argument_testcases() -> List[ParameterSet]:
         ]
         testcases.append(
             pytest.param(
-                "sbom",
+                SnykContainerSubcommand.sbom,
                 snyk_config,
                 expected,
                 id=f"SnykContainerSbom_{test.id}",
