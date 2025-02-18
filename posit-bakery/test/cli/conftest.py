@@ -29,13 +29,23 @@ def sub_command(bakery_command, commands: List[str]):
 
 
 @given("in the basic context")
-def basic_context(bakery_command, basic_context):
+def cli_basic_context(bakery_command, basic_context):
     bakery_command.context = Path(basic_context)
 
 
 @given("in a temp basic context")
-def tmp_context(bakery_command, basic_tmpcontext):
+def cli_basic_tmpcontext(bakery_command, basic_tmpcontext):
     bakery_command.context = Path(basic_tmpcontext)
+
+
+@given("in the barebones context")
+def cli_barebones_context(bakery_command, barebones_context):
+    bakery_command.context = Path(barebones_context)
+
+
+@given("in a temp barebones context")
+def cli_barebones_tmpcontext(bakery_command, barebones_tmpcontext):
+    bakery_command.context = Path(barebones_tmpcontext)
 
 
 @given("in a temp directory")
