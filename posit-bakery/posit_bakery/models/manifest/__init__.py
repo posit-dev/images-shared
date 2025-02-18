@@ -30,6 +30,13 @@ SUPPORTED_OS: List[BuildOS] = [
         base_image="rockylinux/rockylinux:9",
         image_tag="rockylinux-9",
     ),
+    BuildOS(
+        distributor_id="scratch",
+        name="scratch",
+        version="",
+        base_image="scratch",
+        image_tag="scratch",
+    ),
 ]
 
 
