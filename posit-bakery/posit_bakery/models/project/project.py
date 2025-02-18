@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess
@@ -505,6 +506,8 @@ class Project(BaseModel):
             elif subcommand == SnykContainerSubcommand.monitor.value:
                 cmd.extend(self._get_snyk_container_monitor_arguments(variant))
             elif subcommand == SnykContainerSubcommand.sbom.value:
+                run_env["BAKERY_IMAGE_UID"] = target_uid(variant.meta.name, variant.meta.version, variant)
+                run_env["BAKERY_SBOM_FORMAT"] = variant.meta.snyk.sbom.format.value.split("+")[1]
                 cmd.extend(self._get_snyk_container_sbom_arguments(variant))
 
             cmd.append(variant.tags[0])
@@ -537,7 +540,12 @@ class Project(BaseModel):
         for tag, env, cmd in snyk_commands:
             log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
             log.debug(f"[bright_black]Executing snyk command: {' '.join(cmd)}")
-            p = subprocess.run(cmd, env=env, cwd=self.context)
+
+            kwargs = {"env": env, "cwd": self.context}
+            if subcommand == SnykContainerSubcommand.sbom:
+                kwargs["capture_output"] = True
+            p = subprocess.run(cmd, **kwargs)
+
             if p.returncode != 0:
                 exit_meaning = get_exit_code_meaning(subcommand, p.returncode)
                 if exit_meaning["completed"]:
@@ -566,6 +574,18 @@ class Project(BaseModel):
                     f"[bright_green bold]snyk container {subcommand.value} command "
                     f"for image '{tag}' completed successfully."
                 )
+
+            if subcommand == SnykContainerSubcommand.sbom:
+                result_dir = self.context / "snyk_sbom"
+                result_dir.mkdir(exist_ok=True)
+                output = p.stdout.decode("utf-8")
+                try:
+                    output = json.loads(output)
+                except json.JSONDecodeError:
+                    log.warning(f"Failed to parse snyk container sbom output as JSON for image '{tag}'.")
+                with open(result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}", "w") as f:
+                    f.write(json.dumps(output, indent=2))
+
         if errors:
             if len(errors) == 1:
                 raise errors[0]
