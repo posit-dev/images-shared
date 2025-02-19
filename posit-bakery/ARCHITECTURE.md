@@ -14,7 +14,7 @@ flowchart TB
         inprogress["Work In Progress"]
         planned["Planned Work"]
         bakery[["bakery command"]]
-        external["3rd Party Tool"]
+        external[["3rd Party Tool"]]
         tool["Container Tooling"]
         reg[("Container Registry")]
 
@@ -55,7 +55,10 @@ flowchart TD
     image -.-> run -.-> results
 
     reg[(Image Registry)]
-    image & results -.-> reg
+    sec[(Reporting Platform)]
+
+    image -.-> reg
+    results -.-> sec
 
     classDef tooling fill:#7494B1
     classDef external fill:grey
@@ -130,15 +133,15 @@ flowchart TD
     subgraph "Project"
         direction LR
 
-        config[/config.toml/]
-        manifest[/manifest.toml/]
-        containerfile[/Containerfile/]
+        config[/"config.toml"/]
+        manifest[/"manifest.toml File(s)"/]
+        containerfile[/"Containerfile(s)"/]
     end
 
     build[[bakery build]]
-    plan[/.docker-bake.json/]
-    bake[docker buildx bake]
-    image[/Container Image/]
+    plan[/".docker-bake.json<br/>(temporary file)"/]
+    bake[[docker buildx bake]]
+    image[/"Container Image(s)"/]
 
     config & manifest -.-> build -.-> plan
     plan & containerfile -.-> bake
@@ -158,21 +161,26 @@ flowchart TD
 ```mermaid
 flowchart TD
 
-    containerfile[/Containerfile/]
-    tests[/goss.yml/]
+    subgraph "Container Artifacts"
+        direction LR
+        containerfile[/Containerfile/]
+        tests[/goss.yml/]
+        image[/Container Image/]
+    end
 
-    image[/Container Image/]
-    results[/"Test & Scan results"/]
 
-    lint[hadolint]
+    results[/"Test & Scan Results"/]
+
+    lint[[hadolint]]
     runLint[[bakery run lint]]
     runLint --> lint
     containerfile -.-> lint -.-> results
 
-    dgoss[dgoss]
+    dgoss[[dgoss]]
     runDgoss[[bakery run dgoss]]
+    image & tests -.-> dgoss
     runDgoss --> dgoss
-    image & tests -.-> dgoss -.-> results
+    dgoss -.-> results
 
     classDef tooling fill:#7494B1
     classDef external fill:grey
@@ -192,15 +200,15 @@ flowchart TD
 ```mermaid
 flowchart TD
 
-    image[/Container Image/]
+    image[/"Container Image(s)"/]
     results[/"Test & Scan results"/]
 
-    snyk[Snyk container]
+    snyk[[snyk container]]
     runSnyk[[bakery run snyk]]
     runSnyk --> snyk
     image -.-> snyk -.-> results
 
-    openscap[openscap]
+    openscap[[openscap]]
     runOpenscap[[bakery run openscap]]
     runOpenscap --> openscap
     image -.-> openscap -.-> results
@@ -223,17 +231,17 @@ flowchart TD
 ```mermaid
 flowchart TD
 
-    image[/Container Image/]
-    results[/"Test & Scan results"/]
+    image[/"Container Image(s)"/]
+    results[/"Test & Scan Results"/]
 
-    sign[Sign Image]
-    push[Push Image]
+    sign["Sign Image(s)"]
+    push["Push Image(s) & Results"]
     image -.-> sign --> push
 
-    docker[(Docker Hub)]
-    ghcr[(GitHub Container Registry)]
-    push -.-> docker & ghcr
-    results -.-> ghcr
+    reg[("Image Registries")]
+    sec[("Reporting Platform(s)")]
+    image -.-> push -.-> reg
+    results -.-> push -.-> sec
 
     classDef tooling fill:#7494B1
     classDef external fill:grey
