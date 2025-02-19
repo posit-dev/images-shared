@@ -1,7 +1,7 @@
 import logging
-from typing import List
+from typing import List, Self
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from posit_bakery.models.manifest import find_os
 
@@ -13,6 +13,7 @@ class ManifestBuild(BaseModel):
 
     # version is part of the title
     os: List[str]  # Supported OSes, validate with mapping
+    primary_os: str = None  # Primary OS for the image
     latest: bool = False
     # optional targets, default to "all"
 
@@ -26,3 +27,17 @@ class ManifestBuild(BaseModel):
                 )
 
         return _os
+
+    @model_validator(mode="before")
+    def validate_primary_os(self) -> Self:
+        _os = self.get("os")
+        if self.get("primary_os") is None:
+            if len(_os) == 1:
+                self["primary_os"] = _os[0]
+            if len(_os) > 1:
+                raise ValueError("Primary OS must be specified if multiple OSes are specified")
+        else:
+            if self["primary_os"] not in _os:
+                raise ValueError("Primary OS must be one of the specified OSes")
+
+        return self

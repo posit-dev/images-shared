@@ -100,15 +100,19 @@ class TestBakePlan:
         # Standard Image
         tags_std = plan.target["latest-image-1-2-3-ubuntu2404-std"].tags
         assert "docker.io/posit/latest-image:1.2.3-ubuntu-24.04-std" in tags_std
+        assert "docker.io/posit/latest-image:1.2.3-std" in tags_std
+        assert "docker.io/posit/latest-image:1.2.3" in tags_std
         assert "docker.io/posit/latest-image:ubuntu-24.04-std" in tags_std
         assert "docker.io/posit/latest-image:ubuntu-24.04" in tags_std
-        # TODO: Get working for primary_os
-        # assert "docker.io/posit/latest-image:latest" in tags_std
+        assert "docker.io/posit/latest-image:std" in tags_std
+        assert "docker.io/posit/latest-image:latest" in tags_std
 
         # Minimal Image
         tags_min = plan.target["latest-image-1-2-3-ubuntu2404-min"].tags
         assert "docker.io/posit/latest-image:1.2.3-ubuntu-24.04-min" in tags_min
+        assert "docker.io/posit/latest-image:1.2.3-min" in tags_min
         assert "docker.io/posit/latest-image:ubuntu-24.04-min" in tags_min
+        assert "docker.io/posit/latest-image:min" in tags_min
         # Latest tags should not apply to minimal image
         assert "docker.io/posit/latest-image:latest" not in tags_min
 

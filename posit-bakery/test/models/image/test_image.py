@@ -164,8 +164,7 @@ class TestImageMetadata:
         """Ensure default tags are being added to the image"""
         expected_tags: List[str] = [
             "0.1.0-ubuntu-24.04-min",
-            # TODO: primary_os
-            # "0.1.0-min",
+            "0.1.0-min",
         ]
 
         image: Image = Image.load(self.context, manifest_simple)
@@ -180,15 +179,18 @@ class TestImageMetadata:
         expected_tags_min: List[str] = [
             "1.2.3-ubuntu-24.04-min",
             "ubuntu-24.04-min",
+            "1.2.3-min",
+            "min",
         ]
         expected_tags_std: List[str] = [
             "1.2.3-ubuntu-24.04-std",
             "1.2.3-ubuntu-24.04",
             "ubuntu-24.04-std",
             "ubuntu-24.04",
-            # TODO: primary_os
-            # "1.2.3-std",
-            # "latest",
+            "1.2.3-std",
+            "1.2.3",
+            "std",
+            "latest",
         ]
 
         image: Image = Image.load(self.context, manifest_latest)
@@ -269,6 +271,7 @@ class TestImageVariant:
             ),
             latest=latest,
             _os=_os,
+            _os_primary=_os,
             target=target,
         )
 

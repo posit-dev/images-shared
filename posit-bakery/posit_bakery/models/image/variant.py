@@ -48,11 +48,11 @@ class ImageVariant(BaseModel):
         meta: ImageMetadata,
         latest: bool,
         _os: str,
+        _os_primary: str,
         target: str,
     ):
         build_os: BuildOS = find_os(_os)
-        # TODO: Ingest the primary_os from the manifest
-        primary_os = find_os("Ubuntu 22.04")
+        primary_os: BuildOS = find_os(_os_primary)
         containerfile = cls.find_containerfile(meta.context, _os, target)
 
         meta.labels.posit["os"] = _os

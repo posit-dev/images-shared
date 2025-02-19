@@ -38,7 +38,8 @@ BUILD_MULTI_OS: ManifestBuild = ManifestBuild(
         "Ubuntu 24.04",
         "Ubuntu 22.04",
         "Rocky Linux 9",
-    ]
+    ],
+    primary_os="Ubuntu 24.04",
 )
 
 TARGET_MIN: ManifestTarget = ManifestTarget()
