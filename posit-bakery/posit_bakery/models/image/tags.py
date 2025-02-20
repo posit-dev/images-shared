@@ -1,6 +1,8 @@
 import re
 from typing import List
 
+from posit_bakery.templating.filters import tag_safe
+
 # To standardize our images, we will only allow a subset of the regexes
 # https://github.com/containers/image/blob/main/docker/reference/regexp.go
 
@@ -75,5 +77,8 @@ def default_tags(
             tags.append(f"{target}")
             if target == DEFAULT_TARGET:
                 tags.append("latest")
+
+    # Ensure invalid characters are removed
+    tags = [tag_safe(tag) for tag in tags]
 
     return tags
