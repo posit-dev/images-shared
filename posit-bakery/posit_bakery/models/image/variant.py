@@ -9,6 +9,7 @@ from posit_bakery.templating.filters import condense
 from posit_bakery.util import find_in_context
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.image.image import ImageMetadata
+from posit_bakery.models.image.tags import default_tags
 from posit_bakery.models.manifest import find_os
 from posit_bakery.models.manifest.build_os import BuildOS
 from posit_bakery.models.manifest.goss import ManifestGoss
@@ -58,24 +59,13 @@ class ImageVariant(BaseModel):
         meta.labels.posit["os"] = _os
         meta.labels.posit["type"] = target
 
-        meta.tags = []
-        meta.tags.append(f"{meta.version}-{build_os.image_tag}-{target}")
-        if target == "std":
-            meta.tags.append(f"{meta.version}-{build_os.image_tag}")
-
-        if build_os == primary_os:
-            meta.tags.append(f"{meta.version}-{target}")
-            if target == "std":
-                meta.tags.append(f"{meta.version}")
-
-        if latest:
-            meta.tags.append(f"{build_os.image_tag}-{target}")
-            if target == "std":
-                meta.tags.append(f"{build_os.image_tag}")
-            if build_os == primary_os:
-                meta.tags.append(f"{target}")
-                if target == "std":
-                    meta.tags.append("latest")
+        meta.tags = default_tags(
+            version=meta.version,
+            _os=build_os.image_tag,
+            target=target,
+            is_latest=latest,
+            is_primary_os=(build_os == primary_os),
+        )
 
         return cls(
             meta=meta,

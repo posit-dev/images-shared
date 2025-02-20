@@ -1,4 +1,5 @@
 import re
+from typing import List
 
 # To standardize our images, we will only allow a subset of the regexes
 # https://github.com/containers/image/blob/main/docker/reference/regexp.go
@@ -10,6 +11,9 @@ RE_TAG_STR: re.Pattern = re.compile("^[a-z0-9][a-z0-9-_.]+$")
 # Allow for Jinja2 template in tags
 RE_TAG_JINJA: re.Pattern = re.compile("^([a-z0-9-_.]|(?P<jinja>{{.+?}}))+$")
 RE_FIRST_CHAR: re.Pattern = re.compile("^[a-z0-9{]")
+
+# Default target that will receive vanity tags
+DEFAULT_TARGET: str = "std"
 
 
 def is_tag_valid_str(tag: str) -> bool:
@@ -42,3 +46,34 @@ def is_tag_valid(tag: str) -> bool:
     :param tag: Tag to check
     """
     return is_tag_valid_str(tag) or is_tag_valid_jinja(tag)
+
+
+def default_tags(
+    version: str,
+    _os: str,
+    target: str,
+    is_latest: bool = False,
+    is_primary_os: bool = False,
+) -> List[str]:
+    """Create the default tags for an image"""
+    tags: List[str] = []
+
+    tags.append(f"{version}-{_os}-{target}")
+    if target == DEFAULT_TARGET:
+        tags.append(f"{version}-{_os}")
+
+    if is_primary_os:
+        tags.append(f"{version}-{target}")
+        if target == DEFAULT_TARGET:
+            tags.append(f"{version}")
+
+    if is_latest:
+        tags.append(f"{_os}-{target}")
+        if target == DEFAULT_TARGET:
+            tags.append(f"{_os}")
+        if is_primary_os:
+            tags.append(f"{target}")
+            if target == DEFAULT_TARGET:
+                tags.append("latest")
+
+    return tags
