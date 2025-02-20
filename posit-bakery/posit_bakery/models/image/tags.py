@@ -9,6 +9,7 @@ RE_TAG_STR: re.Pattern = re.compile("^[a-z0-9][a-z0-9-_.]+$")
 
 # Allow for Jinja2 template in tags
 RE_TAG_JINJA: re.Pattern = re.compile("^([a-z0-9-_.]|(?P<jinja>{{.+?}}))+$")
+RE_FIRST_CHAR: re.Pattern = re.compile("^[a-z0-9{]")
 
 
 def is_tag_valid_str(tag: str) -> bool:
@@ -28,7 +29,11 @@ def is_tag_valid_jinja(tag: str) -> bool:
     :param tag: Tag to check
     """
     j2 = RE_TAG_JINJA.match(tag)
-    return bool(j2 and j2.groupdict().get("jinja"))
+    if not j2:
+        return False
+
+    first_char = RE_FIRST_CHAR.match(tag)
+    return bool(j2.groupdict().get("jinja") and first_char)
 
 
 def is_tag_valid(tag: str) -> bool:
