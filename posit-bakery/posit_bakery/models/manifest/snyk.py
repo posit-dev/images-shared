@@ -46,6 +46,9 @@ SNYK_EXIT_CODE_REASONS = MappingProxyType(
 def get_exit_code_meaning(subcommand: str, exit_code: int) -> Dict[str, Union[bool, str]]:
     """Get the exit code reason for a given subcommand and exit code
 
+    Each subcommand has a different set of exit codes and reasons per the Snyk CLI documentation:
+    https://docs.snyk.io/snyk-cli/commands/container
+
     :param subcommand: The snyk subcommand
     :param exit_code: The exit code
     :return: The exit code reason
