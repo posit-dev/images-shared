@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -42,7 +42,7 @@ class ConfigDocument(BaseModel):
     registries: List[ConfigRegistry]
 
     @model_validator(mode="after")
-    def validate_repository(self) -> ConfigRepository:
+    def validate_repository(self) -> Self:
         """Log a warning if repository is undefined
 
         Repository information is used for labeling purposes
