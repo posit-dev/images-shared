@@ -24,7 +24,7 @@ The Posit Tool Installer CLI installs dependencies for Posit products and softwa
 
 ## Issues
 
-If you encounter any issues or have any questions, please [open an issue](https://github.com/posit-dev/posit-sdk-py/issues). We appreciate your feedback.
+If you encounter any issues or have any questions, please [open an issue](https://github.com/posit-dev/images-shared/issues). We appreciate your feedback.
 
 ## Code of Conduct
 
