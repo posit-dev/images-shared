@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 import typer
 
@@ -19,6 +19,7 @@ def dgoss(
     ] = auto_path(),
     image_name: Annotated[str, typer.Option(help="The image name to isolate goss testing to.")] = None,
     image_version: Annotated[str, typer.Option(help="The image version to isolate goss testing to.")] = None,
+    image_type: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
     run_option: Annotated[
         List[str], typer.Option(
             "--run-opt", help="Additional runtime options to pass to dgoss. Multiple can be provided."
@@ -40,7 +41,7 @@ def dgoss(
     p = _wrap_project_load(context)
 
     try:
-        p.dgoss(image_name, image_version, run_option)
+        p.dgoss(image_name, image_version, image_type, run_option)
     except error.BakeryToolRuntimeError as e:
         stderr_console.print(f"❌ dgoss tests failed with exit code {e.exit_code}", style="error")
         raise typer.Exit(code=1)
