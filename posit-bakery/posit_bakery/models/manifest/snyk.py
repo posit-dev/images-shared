@@ -235,9 +235,9 @@ class ManifestSnykMonitor(BaseModel):
         return validate_list(values_as_list, warn_message, validator=SnykBusinessCriticalityEnum)
 
     @model_validator(mode="after")
-    def validate_tags(self) -> Self:
+    def validate_tags(self) -> "ManifestSnykMonitor":
         if self.tags is None:
-            return None
+            return self
 
         for key, value in self.tags.items():
             if len(key) > SNYK_MONITOR_TAG_KEY_LENGTH:
