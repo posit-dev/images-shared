@@ -38,7 +38,7 @@ class ImageVariant(BaseModel):
     os: str
     target: str
     containerfile: Path
-    goss: ImageGoss = None
+    goss: ImageGoss | None = None
     # Labels and tags require combining the Config metadata
     labels: Dict[str, str] = {}
     tags: List[str] = []
