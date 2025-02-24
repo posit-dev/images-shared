@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class ConfigRegistry(BaseModel):
@@ -12,6 +12,7 @@ class ConfigRegistry(BaseModel):
     host: str
     namespace: str | None = None
 
+    @computed_field
     @property
     def base_url(self) -> str:
         """Get the base URL for the registry"""
