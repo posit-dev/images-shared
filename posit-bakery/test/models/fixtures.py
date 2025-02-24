@@ -38,7 +38,8 @@ BUILD_MULTI_OS: ManifestBuild = ManifestBuild(
         "Ubuntu 24.04",
         "Ubuntu 22.04",
         "Rocky Linux 9",
-    ]
+    ],
+    primary_os="Ubuntu 24.04",
 )
 
 TARGET_MIN: ManifestTarget = ManifestTarget()
@@ -71,7 +72,10 @@ def manifest_latest():
     return ManifestDocument(
         image_name="latest-image",
         build={"1.2.3": BUILD_LATEST},
-        target={"min": TARGET_MIN},
+        target={
+            "min": TARGET_MIN,
+            "std": TARGET_STD,
+        },
     )
 
 

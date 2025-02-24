@@ -83,24 +83,38 @@ class TestBakePlan:
         assert labels["org.opencontainers.image.source"] == "github.com/posit-dev/images-fakename"
 
         tags = plan.target[expected_uid].tags
-        assert "docker.io/posit/simple-image:0.1.0-min" in tags
         assert "docker.io/posit/simple-image:0.1.0-ubuntu-24.04-min" in tags
+        # Latest tags should not apply to minimal image
+        assert "docker.io/posit/simple-image:latest" not in tags
 
-    def test_bake_plan_latest_min(self, config_simple, manifest_latest):
-        """Test that bake plan for the latest images sets the latest tags"""
-        expected_uid = "latest-image-1-2-3-ubuntu2404-min"
+    def test_bake_plan_tags_latest(self, config_simple, manifest_latest):
+        """Test that bake plan for the latest images sets the latest tags
 
+        We only check tags here since test_bake_plan_simple checks other fields
+        """
         images: List[Image] = [Image.load(Path("latest-image"), manifest_latest)]
         images = self.complete_metadata(images, config_simple)
 
         plan: BakePlan = BakePlan.create(images=images)
 
-        # We only check tags here since test_bake_plan_simple checks other fields
-        tags = plan.target[expected_uid].tags
-        assert "docker.io/posit/latest-image:1.2.3-min" in tags
-        assert "docker.io/posit/latest-image:1.2.3-ubuntu-24.04-min" in tags
-        assert "docker.io/posit/latest-image:ubuntu-24.04-min" in tags
-        assert "docker.io/posit/latest-image:latest" in tags
+        # Standard Image
+        tags_std = plan.target["latest-image-1-2-3-ubuntu2404-std"].tags
+        assert "docker.io/posit/latest-image:1.2.3-ubuntu-24.04-std" in tags_std
+        assert "docker.io/posit/latest-image:1.2.3-std" in tags_std
+        assert "docker.io/posit/latest-image:1.2.3" in tags_std
+        assert "docker.io/posit/latest-image:ubuntu-24.04-std" in tags_std
+        assert "docker.io/posit/latest-image:ubuntu-24.04" in tags_std
+        assert "docker.io/posit/latest-image:std" in tags_std
+        assert "docker.io/posit/latest-image:latest" in tags_std
+
+        # Minimal Image
+        tags_min = plan.target["latest-image-1-2-3-ubuntu2404-min"].tags
+        assert "docker.io/posit/latest-image:1.2.3-ubuntu-24.04-min" in tags_min
+        assert "docker.io/posit/latest-image:1.2.3-min" in tags_min
+        assert "docker.io/posit/latest-image:ubuntu-24.04-min" in tags_min
+        assert "docker.io/posit/latest-image:min" in tags_min
+        # Latest tags should not apply to minimal image
+        assert "docker.io/posit/latest-image:latest" not in tags_min
 
     def test_bake_plan_multi_build(self, config_simple, manifest_multi_build):
         """Test bake plan with multiple builds and default targets"""
@@ -203,8 +217,6 @@ class TestBakePlan:
 
     def test_bake_plan_multi_registry(self, config_multi_registry, manifest_simple):
         """Test bake plan with multiple registries"""
-        expected_uid = "simple-image-0-1-0-ubuntu2404-min"
-
         images: List[Image] = [Image.load(Path("simple-image"), manifest_simple)]
         images = self.complete_metadata(images, config_multi_registry)
 
@@ -214,10 +226,8 @@ class TestBakePlan:
         assert len(plan.target) == 1
 
         # Ensure both image registries are included in the tags
-        tags = plan.target[expected_uid].tags
-        assert "docker.io/posit/simple-image:0.1.0-min" in tags
+        tags = plan.target["simple-image-0-1-0-ubuntu2404-min"].tags
         assert "docker.io/posit/simple-image:0.1.0-ubuntu-24.04-min" in tags
-        assert "ghcr.io/posit-dev/simple-image:0.1.0-min" in tags
         assert "ghcr.io/posit-dev/simple-image:0.1.0-ubuntu-24.04-min" in tags
 
     def test_bake_plan_filter(

@@ -40,6 +40,7 @@ class ImageVersion(BaseModel):
                         meta=meta_var,
                         latest=build.latest,
                         _os=_os,
+                        _os_primary=build.primary_os,
                         target=_type,
                     )
                 )

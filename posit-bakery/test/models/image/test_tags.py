@@ -1,11 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.models.manifest.target import ManifestTarget
+from posit_bakery.models.image.tags import is_tag_valid
 
 
-@pytest.mark.manifest
-@pytest.mark.schema
+@pytest.mark.image
 class TestManifestTarget:
     @pytest.mark.parametrize(
         "tag",
@@ -31,8 +30,7 @@ class TestManifestTarget:
 
         Ensures that tags match the expected format
         """
-        ManifestTarget(tags=[tag])
-        ManifestTarget(latest_tags=[tag])
+        assert is_tag_valid(tag)
 
     @pytest.mark.parametrize(
         "tag",
@@ -41,6 +39,9 @@ class TestManifestTarget:
             "camelCase",
             "UPPERCASE",
             "with spaces",
+            "-hyphen-first-char",
+            "_underscore-first-char",
+            ".period-first-char",
             "image:latest",
             "repo/image",
             "repo/image:tag",
@@ -48,15 +49,11 @@ class TestManifestTarget:
         ],
     )
     def test_invalid_tags(self, tag: str):
-        """Test invalid tags raise a ValidationError
+        """Test invalid tags
 
         Ensures that tags match the expected format
         """
-        with pytest.raises(ValidationError):
-            ManifestTarget(tags=[tag])
-
-        with pytest.raises(ValidationError):
-            ManifestTarget(latest_tags=[tag])
+        assert not is_tag_valid(tag)
 
     @pytest.mark.parametrize(
         "tag",
@@ -64,16 +61,15 @@ class TestManifestTarget:
             "{{ build.os | condense }}-latest",
             "{{ build.version | tag_safe }}-{{ build.os | condense }}-min",
             "{{ build.version | clean_version }}-{{ build.os | condense }}-min",
+            "tag-{{ build.os | condense }}",
         ],
     )
     def test_valid_tags_jinja(self, tag: str):
-        """Test that tags including valid Jinja2 do not fail validation
+        """Test that tags including valid Jinja2
 
         Also ensures that tags match the expected format
         """
-
-        ManifestTarget(tags=[tag])
-        ManifestTarget(latest_tags=[tag])
+        assert is_tag_valid(tag)
 
     @pytest.mark.parametrize(
         "tag",
@@ -82,15 +78,12 @@ class TestManifestTarget:
             "{ single | brace }",
             "{{ unmatching | braces }",
             "{{ valid }}-{{ invalid",
+            "-test-{{ valid }}",
         ],
     )
     def test_invalid_tags_jinja(self, tag: str):
-        """Test that tags including invalid Jinja2 fail validation
+        """Test tags including invalid Jinja2
 
         Also ensures that tags match the expected format
         """
-        with pytest.raises(ValidationError):
-            ManifestTarget(tags=[tag])
-
-        with pytest.raises(ValidationError):
-            ManifestTarget(latest_tags=[tag])
+        assert not is_tag_valid(tag)
