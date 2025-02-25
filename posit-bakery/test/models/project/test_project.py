@@ -300,6 +300,8 @@ class TestProjectSnyk:
         )
         result = project._get_snyk_container_test_arguments(variant)
         assert result == expected_args
+        if variant.meta.snyk.test.output.json_file or variant.meta.snyk.test.output.sarif_file:
+            assert (basic_tmpcontext / "results" / "snyk" / "test").exists()
 
     @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_monitor_argument_testcases())
     def test__get_snyk_container_monitor_arguments(self, basic_context, snyk_config, expected_args):
