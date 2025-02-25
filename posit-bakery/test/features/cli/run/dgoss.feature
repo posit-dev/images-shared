@@ -16,3 +16,6 @@ Feature: dgoss
         Then The command succeeds
         * the stderr output includes:
             | Tests completed |
+        * the context includes files:
+            | results/dgoss/test-image/test-image-1-0-0-ubuntu2204-min.json |
+            | results/dgoss/test-image/test-image-1-0-0-ubuntu2204-std.json |
