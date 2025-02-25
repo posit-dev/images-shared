@@ -11,6 +11,10 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
 
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_ORG: ${{ secrets.SNYK_ORG }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +25,9 @@ jobs:
 
       - name: Install goss and dgoss
         uses: ./setup-goss
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@0.4.0
 
       - name: Install dependencies
         working-directory: ./posit-bakery

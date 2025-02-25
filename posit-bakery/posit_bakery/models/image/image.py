@@ -29,6 +29,7 @@ class Image(BaseModel):
                 posit={"name": manifest.image_name},
                 oci={"title": manifest.image_name},
             ),
+            snyk=manifest.snyk,
         )
 
         versions: List[ImageVersion] = []

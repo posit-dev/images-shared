@@ -1,6 +1,7 @@
 import logging
 import re
 from enum import Enum, EnumType
+from types import MappingProxyType
 from typing import Annotated, Dict, Self, List, Union
 
 from pydantic import BaseModel, Field, model_validator
@@ -13,6 +14,46 @@ REGEX_SNYK_MONITOR_TAG_KEY = re.compile(r"^[a-zA-Z0-9_-]+$")
 SNYK_MONITOR_TAG_KEY_LENGTH = 30
 REGEX_SNYK_MONITOR_TAG_VALUE = re.compile(r"^[a-zA-Z0-9_\-/:?#@&+=%~]+$")
 SNYK_MONITOR_TAG_VALUE_LENGTH = 256
+
+
+class SnykContainerSubcommand(str, Enum):
+    test = "test"
+    monitor = "monitor"
+    sbom = "sbom"
+
+
+SNYK_EXIT_CODE_REASONS = MappingProxyType(
+    {
+        SnykContainerSubcommand.test: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            1: {"completed": True, "reason": "vulnerabilities found"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+            3: {"completed": False, "reason": "no supported projects detected"},
+        },
+        SnykContainerSubcommand.monitor: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+            3: {"completed": False, "reason": "no supported projects detected"},
+        },
+        SnykContainerSubcommand.sbom: {
+            0: {"completed": True, "reason": "no vulnerabilities"},
+            2: {"completed": False, "reason": "general failure, try to rerun with `-d` for debug logs"},
+        },
+    }
+)
+
+
+def get_exit_code_meaning(subcommand: str, exit_code: int) -> Dict[str, Union[bool, str]]:
+    """Get the exit code reason for a given subcommand and exit code
+
+    Each subcommand has a different set of exit codes and reasons per the Snyk CLI documentation:
+    https://docs.snyk.io/snyk-cli/commands/container
+
+    :param subcommand: The snyk subcommand
+    :param exit_code: The exit code
+    :return: The exit code reason
+    """
+    return SNYK_EXIT_CODE_REASONS[subcommand].get(exit_code, {"completed": False, "reason": "unknown error"})
 
 
 class SnykTestOutputFormatEnum(str, Enum):
@@ -28,6 +69,9 @@ class SnykSeverityThresholdEnum(str, Enum):
     medium = "medium"
     high = "high"
     critical = "critical"
+
+
+SNYK_DEFAULT_SEVERITY_THRESHOLD = SnykSeverityThresholdEnum.medium
 
 
 class SnykBusinessCriticalityEnum(str, Enum):
@@ -67,6 +111,9 @@ class SnykSbomFormatEnum(str, Enum):
     cyclonedx1_5_xml = "cyclonedx1.5+xml"
     cyclonedx1_6_xml = "cyclonedx1.6+xml"
     spdx2_3_json = "spdx2.3+json"
+
+
+SNYK_DEFAULT_SBOM_FORMAT = SnykSbomFormatEnum.cyclonedx1_5_json
 
 
 def clean(value: List[str] | str) -> List[str]:
@@ -145,7 +192,7 @@ class ManifestSnykTestOutput(BaseModel):
 
 
 class ManifestSnykTest(BaseModel):
-    severity_threshold: SnykSeverityThresholdEnum = SnykSeverityThresholdEnum.medium
+    severity_threshold: SnykSeverityThresholdEnum = SNYK_DEFAULT_SEVERITY_THRESHOLD
     include_app_vulns: bool = True
     include_base_image_vulns: bool = False
     include_node_modules: bool = True
@@ -160,7 +207,7 @@ class ManifestSnykTest(BaseModel):
             log.warning(
                 f"Invalid value for snyk.test.severity_threshold, expected '{value}' to be one of "
                 f"{", ".join([e.value for e in SnykSeverityThresholdEnum])}. Using default value "
-                f"'{SnykSeverityThresholdEnum.medium}'."
+                f"'{SNYK_DEFAULT_SEVERITY_THRESHOLD}'."
             )
             raise PydanticUseDefault()
 
@@ -260,7 +307,7 @@ class ManifestSnykMonitor(BaseModel):
 
 class ManifestSnykSbom(BaseModel):
     include_app_vulns: bool = True
-    format: SnykSbomFormatEnum = SnykSbomFormatEnum.cyclonedx1_5_json
+    format: SnykSbomFormatEnum = SNYK_DEFAULT_SBOM_FORMAT
 
     @field_validator("format", mode="wrap")
     @classmethod
@@ -271,7 +318,7 @@ class ManifestSnykSbom(BaseModel):
             log.warning(
                 f"Invalid value for snyk.sbom.format, expected '{value}' to be one of "
                 f"'{", ".join([e.value for e in SnykSbomFormatEnum])}'. Using default value "
-                f"'{SnykSbomFormatEnum.cyclonedx1_5_json}'."
+                f"'{SNYK_DEFAULT_SBOM_FORMAT}'."
             )
             raise PydanticUseDefault()
 

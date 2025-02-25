@@ -39,6 +39,7 @@ class ImageVariant(BaseModel):
     target: str
     containerfile: Path
     goss: ImageGoss | None = None
+    snyk_policy_file: Path | None = None
     # Labels and tags require combining the Config metadata
     labels: Dict[str, str] = {}
     tags: List[str] = []
@@ -67,6 +68,11 @@ class ImageVariant(BaseModel):
             is_primary_os=(build_os == primary_os),
         )
 
+        try:
+            snyk_policy_file: Path = find_in_context(context=meta.context, name=".snyk", _type="file", parents=2)
+        except BakeryFileError:
+            snyk_policy_file = None
+
         return cls(
             meta=meta,
             latest=latest,
@@ -74,6 +80,7 @@ class ImageVariant(BaseModel):
             target=target,
             containerfile=containerfile,
             goss=ImageGoss.load(meta.context, meta.goss),
+            snyk_policy_file=snyk_policy_file,
         )
 
     @staticmethod

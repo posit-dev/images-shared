@@ -114,7 +114,8 @@ class BakeryToolError(BakeryError):
     """Generic error for external tool issues"""
 
     def __init__(self, message: str = None, tool_name: str = None) -> None:
-        super().__init__(message, None)
+        super().__init__(message)
+        self.message = message
         self.tool_name = tool_name
 
 
@@ -130,8 +131,8 @@ class BakeryToolRuntimeError(BakeryToolError):
         message: str = None,
         tool_name: str = None,
         cmd: List[str] = None,
-        stdout: bytes = None,
-        stderr: bytes = None,
+        stdout: str | bytes | None = None,
+        stderr: str | bytes | None = None,
         exit_code: int = 1,
     ) -> None:
         super().__init__(message, tool_name)
@@ -141,7 +142,32 @@ class BakeryToolRuntimeError(BakeryToolError):
         self.stderr = stderr
 
     def dump_stdout(self, lines: int = 10) -> str:
-        return "\n".join(self.stdout.decode().splitlines()[:lines])
+        if not self.stdout:
+            return ""
+        if isinstance(self.stdout, bytes):
+            return "\n".join(self.stdout.decode().splitlines()[:lines])
+        else:
+            return "\n".join(self.stdout.splitlines()[:lines])
 
     def dump_stderr(self, lines: int = 10) -> str:
-        return "\n".join(self.stderr.decode().splitlines()[:lines])
+        if not self.stderr:
+            return ""
+        if isinstance(self.stderr, bytes):
+            return "\n".join(self.stderr.decode().splitlines()[:lines])
+        else:
+            return "\n".join(self.stderr.splitlines()[:lines])
+
+
+class BakeryToolRuntimeErrorGroup(ExceptionGroup):
+    """Group of tool runtime errors"""
+
+    def __str__(self) -> str:
+        s = f""
+        for e in self.exceptions:
+            s += f"{str(e)}\n"
+            s += f"  - Command executed: '{" ".join(e.cmd)}'\n"
+            s += "\n"
+        s += "\n"
+        s += f"{len(self.exceptions)} command(s) returned errors\n"
+
+        return s

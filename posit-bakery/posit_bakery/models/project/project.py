@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess
@@ -13,11 +14,13 @@ from posit_bakery.error import (
     BakeryModelValidationError,
     BakeryToolRuntimeError,
     BakeryModelValidationErrorGroup,
-    BakeryFileError,
+    BakeryFileError, BakeryToolError, BakeryToolRuntimeErrorGroup,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
+from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest import guess_os_list
-from posit_bakery.models.project.bake import BakePlan
+from posit_bakery.models.manifest.snyk import SnykContainerSubcommand, get_exit_code_meaning
+from posit_bakery.models.project.bake import BakePlan, target_uid
 import posit_bakery.util as util
 
 
@@ -386,3 +389,217 @@ class Project(BaseModel):
                     exit_code=p.returncode,
                 )
             log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+
+    def _get_snyk_container_test_arguments(self, variant: ImageVariant) -> List[str]:
+        result_dir = self.context / "snyk_test"
+        uid = target_uid(variant.meta.name, variant.meta.version, variant)
+        opts = []
+        # Add output options
+        if variant.meta.snyk.test.output.format == "json":
+            opts.append("--json")
+        elif variant.meta.snyk.test.output.format == "sarif":
+            opts.append("--sarif")
+
+        # Add output file options
+        if variant.meta.snyk.test.output.json_file:
+            result_dir.mkdir(exist_ok=True)
+            opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
+        elif variant.meta.snyk.test.output.sarif_file:
+            result_dir.mkdir(exist_ok=True)
+            opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
+
+        # Add severity threshold
+        opts.append(f"--severity-threshold={variant.meta.snyk.test.severity_threshold.value}")
+
+        # Include options
+        if variant.meta.snyk.test.include_app_vulns:
+            opts.append("--app-vulns")
+        else:
+            opts.append("--exclude-app-vulns")
+
+        if not variant.meta.snyk.test.include_base_image_vulns:
+            opts.append("--exclude-base-image-vulns")
+
+        if not variant.meta.snyk.test.include_node_modules:
+            opts.append("--exclude-node-modules")
+
+        return opts
+
+    @staticmethod
+    def _get_snyk_container_monitor_arguments(variant: ImageVariant) -> List[str]:
+        opts = []
+        # Add output options
+        if variant.meta.snyk.monitor.output_json:
+            opts.append("--json")
+
+        # Add environment
+        if variant.meta.snyk.monitor.environment is not None:
+            project_environment = ",".join([e.value for e in variant.meta.snyk.monitor.environment])
+            opts.append(f"--project-environment={project_environment}")
+
+        # Add lifecycle
+        if variant.meta.snyk.monitor.lifecycle is not None:
+            project_lifecycle = ",".join([e.value for e in variant.meta.snyk.monitor.lifecycle])
+            opts.append(f"--project-lifecycle={project_lifecycle}")
+
+        # Add business criticality
+        if variant.meta.snyk.monitor.business_criticality is not None:
+            project_business_criticality = ",".join([e.value for e in variant.meta.snyk.monitor.business_criticality])
+            opts.append(f"--project-business-criticality={project_business_criticality}")
+
+        # Add tags
+        if variant.meta.snyk.monitor.tags:
+            str_tags = ",".join([f"{tag}={value}" for tag, value in variant.meta.snyk.monitor.tags.items()])
+            opts.append(f"--project-tags='{str_tags}'")
+
+        # Include options
+        if not variant.meta.snyk.monitor.include_node_modules:
+            opts.append("--exclude-node-modules")
+
+        return opts
+
+    @staticmethod
+    def _get_snyk_container_sbom_arguments(variant: ImageVariant) -> List[str]:
+        opts = [f"--format={variant.meta.snyk.sbom.format.value}"]
+
+        if not variant.meta.snyk.sbom.include_app_vulns:
+            opts.append("--exclude-app-vulns")
+
+        return opts
+
+    def render_snyk_commands(
+            self,
+            subcommand: str,
+            image_name: str = None,
+            image_version: str = None,
+            image_type: str = None,
+    ) -> List[Tuple[str, Dict[str, str], List[str]]]:
+        snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
+        snyk_commands = []
+
+        _filter: ImageFilter = ImageFilter(
+            image_name=image_name,
+            image_version=image_version,
+            target_type=image_type,
+        )
+        images: Images = self.images.filter(_filter) if _filter else self.images
+
+        for variant in images.variants:
+            run_env = os.environ.copy()
+            cmd = [snyk_bin, "container", subcommand]
+
+            # Override the `--org` if `SNYK_ORG` is set
+            if "SNYK_ORG" in os.environ:
+                cmd.append(f"--org={os.environ['SNYK_ORG']}")
+
+            if subcommand in [SnykContainerSubcommand.test.value, SnykContainerSubcommand.monitor.value]:
+                # Set the project name to the image name
+                cmd.append(f"--project-name={variant.meta.name}")
+                # Set Containerfile path
+                cmd.append(f"--file={str(variant.containerfile)}")
+                # Set the path to the policy file if applicable
+                if variant.snyk_policy_file is not None:
+                    cmd.append(f"--policy-path={str(variant.snyk_policy_file)}")
+
+            if subcommand == SnykContainerSubcommand.test.value:
+                cmd.extend(self._get_snyk_container_test_arguments(variant))
+            elif subcommand == SnykContainerSubcommand.monitor.value:
+                cmd.extend(self._get_snyk_container_monitor_arguments(variant))
+            elif subcommand == SnykContainerSubcommand.sbom.value:
+                run_env["BAKERY_IMAGE_UID"] = target_uid(variant.meta.name, variant.meta.version, variant)
+                run_env["BAKERY_SBOM_FORMAT"] = variant.meta.snyk.sbom.format.value.split("+")[1]
+                cmd.extend(self._get_snyk_container_sbom_arguments(variant))
+
+            cmd.append(variant.tags[0])
+
+            snyk_commands.append((variant.tags[0], run_env, cmd))
+
+        return snyk_commands
+
+    def snyk(
+            self,
+            subcommand: str = None,
+            image_name: str = None,
+            image_version: str = None,
+            image_type: str = None,
+    ) -> None:
+        snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
+
+        if subcommand not in SnykContainerSubcommand:
+            raise BakeryToolError("snyk subcommand must be 'test', 'monitor', or 'sbom'.", "snyk")
+
+        p = subprocess.run([snyk_bin, "config", "get", "org"], cwd=self.context, capture_output=True)
+        if not p.stdout.decode("utf-8") and "SNYK_ORG" not in os.environ:
+            log.warning(
+                "Neither `snyk config get org` or `SNYK_ORG` environment variable are set. For best results, set your "
+                "Snyk organization ID in the `snyk config` or in the `SNYK_ORG` environment variable."
+            )
+
+        snyk_commands = self.render_snyk_commands(subcommand, image_name, image_version, image_type)
+        errors = []
+        for tag, env, cmd in snyk_commands:
+            log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
+            log.debug(f"[bright_black]Executing snyk command: {' '.join(cmd)}")
+
+            kwargs = {"env": env, "cwd": self.context}
+            if subcommand == SnykContainerSubcommand.sbom:
+                kwargs["capture_output"] = True
+            p = subprocess.run(cmd, **kwargs)
+
+            if p.returncode != 0:
+                exit_meaning = get_exit_code_meaning(subcommand, p.returncode)
+                if exit_meaning["completed"]:
+                    log.warning(
+                        f"snyk container {subcommand.value} command for image '{tag}' completed with errors: "
+                        f"{exit_meaning["reason"]}"
+                    )
+                else:
+                    log.error(
+                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"{exit_meaning["reason"]}"
+                    )
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
+                        f"{exit_meaning["reason"]}",
+                        "snyk",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=p.returncode,
+                    )
+                )
+            else:
+                log.info(
+                    f"[bright_green bold]snyk container {subcommand.value} command "
+                    f"for image '{tag}' completed successfully."
+                )
+
+            # FIXME: Clean this up as part of #91
+            if subcommand == SnykContainerSubcommand.sbom:
+                result_dir = self.context / "snyk_sbom"
+                result_dir.mkdir(exist_ok=True)
+
+                try:
+                    output = p.stdout.decode("utf-8")
+                except UnicodeDecodeError:
+                    log.warning(f"Unexpected encoding for snyk container sbom output for image '{tag}'.")
+                    output = p.stdout
+                try:
+                    output = json.loads(output)
+                    output = json.dumps(output, indent=2)
+                except json.JSONDecodeError:
+                    log.warning(f"Failed to parse snyk container sbom output as JSON for image '{tag}'.")
+
+                with open(result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}", "w") as f:
+                    log.info(
+                        f"Writing SBOM to {result_dir / f'{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}'}."
+                    )
+                    f.write(output)
+
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            raise BakeryToolRuntimeErrorGroup(
+                f"snyk container {subcommand.value} runtime errors occurred for multiple images.", errors
+            )

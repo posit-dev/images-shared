@@ -3,6 +3,7 @@ from typing import Dict, List, Annotated
 
 from pydantic import BaseModel, Field
 from posit_bakery.models.manifest.goss import ManifestGoss
+from posit_bakery.models.manifest.snyk import ManifestSnyk
 
 
 class ImageLabels(BaseModel):
@@ -19,3 +20,4 @@ class ImageMetadata(BaseModel):
     labels: Annotated[ImageLabels, Field(default_factory=ImageLabels)]
     tags: List[str] = []
     goss: Annotated[ManifestGoss, Field(default_factory=ManifestGoss)]
+    snyk: Annotated[ManifestSnyk, Field(default_factory=ManifestSnyk)]

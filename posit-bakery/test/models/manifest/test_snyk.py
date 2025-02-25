@@ -3,6 +3,12 @@ import pytest
 from posit_bakery.models.manifest import snyk
 
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.snyk,
+]
+
+
 @pytest.mark.parametrize(
     "given,expected",
     [

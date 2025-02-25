@@ -131,3 +131,99 @@ def basic_tmpcontext(tmpdir, basic_context):
     tmpcontext.mkdir(parents=True, exist_ok=True)
     shutil.copytree(basic_context, tmpcontext, dirs_exist_ok=True)
     return tmpcontext
+
+
+@pytest.fixture(scope="session")
+def barebones_context(resource_path):
+    """Return the path to the basic test suite context"""
+    return resource_path / "barebones"
+
+
+@pytest.fixture(scope="session")
+def barebones_config_file(barebones_context):
+    """Return the path to the basic test suite config.toml file"""
+    return barebones_context / "config.toml"
+
+
+@pytest.fixture
+def barebones_config_obj(barebones_config_file):
+    """Return a Config object loaded from basic test suite config.toml file"""
+    from posit_bakery.models import Config
+
+    return Config.load(barebones_config_file)
+
+
+@pytest.fixture
+def barebones_manifest_file(barebones_context):
+    """Return the path to the basic test suite manifest.toml file"""
+    return barebones_context / "test-image" / "manifest.toml"
+
+
+@pytest.fixture
+def barebones_manifest_obj(barebones_manifest_file):
+    """Return a Manifest object loaded from basic test suite manifest.toml file"""
+    from posit_bakery.models import Manifest
+
+    return Manifest.load(barebones_manifest_file)
+
+
+@pytest.fixture
+def barebones_manifest_types(barebones_manifest_file):
+    """Return the target types in the basic manifest.toml file"""
+    with open(barebones_manifest_file, "rb") as f:
+        d = tomlkit.load(f)
+    return d["target"].keys()
+
+
+@pytest.fixture
+def barebones_manifest_versions(barebones_manifest_file):
+    """Return the target types in the basic manifest.toml file"""
+    with open(barebones_manifest_file, "rb") as f:
+        d = tomlkit.load(f)
+    return d["build"].keys()
+
+
+@pytest.fixture
+def barebones_manifest_os_plus_versions(barebones_manifest_file):
+    """Return the versions/os pairs in the basic manifest.toml file"""
+    results = []
+    with open(barebones_manifest_file, "rb") as f:
+        d = tomlkit.load(f).unwrap()
+    for version, data in d["build"].items():
+        if "os" in data and isinstance(data["os"], list):
+            for _os in data["os"]:
+                results.append((version, _os))
+        elif "os" in d.get("const", {}):
+            if isinstance(d["const"]["os"], list):
+                for _os in d["const"]["os"]:
+                    results.append((version, _os))
+            else:
+                results.append((version, d["const"]["os"]))
+        else:
+            results.append((version,))
+    return results
+
+
+@pytest.fixture
+def barebones_images_obj(barebones_config_obj, barebones_manifest_obj):
+    """Return a dict of images loaded from the basic test suite manifest.toml file"""
+    from posit_bakery.models import Images
+
+    return Images.load(
+        config=barebones_config_obj, manifests={barebones_manifest_obj.image_name: barebones_manifest_obj}
+    )
+
+
+@pytest.fixture
+def barebones_expected_num_variants(barebones_manifest_types, barebones_manifest_os_plus_versions):
+    """Returns the expected number of target builds for the basic manifest.toml"""
+    return len(barebones_manifest_types) * len(barebones_manifest_os_plus_versions)
+
+
+@pytest.fixture
+def barebones_tmpcontext(tmpdir, barebones_context):
+    """Return a temporary copy of the basic test suite context"""
+    tmpcontext = Path(tmpdir) / "basic"
+    tmpcontext.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(barebones_context, tmpcontext, dirs_exist_ok=True)
+    return tmpcontext
