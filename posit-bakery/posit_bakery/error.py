@@ -159,6 +159,16 @@ class BakeryToolRuntimeError(BakeryToolError):
         else:
             return "\n".join(self.stderr.splitlines()[:lines])
 
+    def __str__(self) -> str:
+        s = f"{self.message}'\n"
+        s += f"  - Exit code: {self.exit_code}\n"
+        s += f"  - Command executed: {' '.join(self.cmd)}\n"
+        if self.metadata:
+            s += "  - Metadata:\n"
+            for key, value in self.metadata.items():
+                s += f"    - {key}: {value}\n"
+        return s
+
 
 class BakeryToolRuntimeErrorGroup(ExceptionGroup):
     """Group of tool runtime errors"""
@@ -166,7 +176,7 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
     def __str__(self) -> str:
         s = f""
         for e in self.exceptions:
-            s += f"{str(e)}\n"
+            s += f"{e.message}\n"
             s += f"  - Command executed: '{" ".join(e.cmd)}'\n"
             if e.metadata:
                 s += "  - Metadata:\n"
