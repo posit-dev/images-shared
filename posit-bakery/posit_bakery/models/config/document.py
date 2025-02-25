@@ -42,7 +42,7 @@ class ConfigDocument(BaseModel):
     registries: List[ConfigRegistry]
 
     @model_validator(mode="after")
-    def validate_repository(self) -> Self:
+    def validate_repository(self) -> "ConfigDocument":
         """Log a warning if repository is undefined
 
         Repository information is used for labeling purposes

@@ -29,15 +29,17 @@ class ManifestBuild(BaseModel):
         return _os
 
     @model_validator(mode="before")
-    def validate_primary_os(self) -> Self:
-        _os = self.get("os")
-        if self.get("primary_os") is None:
+    @classmethod
+    def validate_primary_os(cls, data: dict) -> dict:
+        _os = data.get("os")
+
+        if data.get("primary_os") is None:
             if len(_os) == 1:
-                self["primary_os"] = _os[0]
+                data["primary_os"] = _os[0]
             if len(_os) > 1:
                 raise ValueError("Primary OS must be specified if multiple OSes are specified")
         else:
-            if self["primary_os"] not in _os:
+            if data["primary_os"] not in _os:
                 raise ValueError("Primary OS must be one of the specified OSes")
 
-        return self
+        return data
