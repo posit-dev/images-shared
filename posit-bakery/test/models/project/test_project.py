@@ -271,6 +271,7 @@ class TestProjectGoss:
             p.dgoss()
 
 
+@pytest.mark.snyk
 class TestProjectSnyk:
     @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_test_argument_testcases())
     def test__get_snyk_container_test_arguments(self, basic_tmpcontext, snyk_config, expected_args):

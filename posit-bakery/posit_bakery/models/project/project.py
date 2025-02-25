@@ -575,6 +575,7 @@ class Project(BaseModel):
                     f"for image '{tag}' completed successfully."
                 )
 
+            # FIXME: Clean this up as part of #91
             if subcommand == SnykContainerSubcommand.sbom:
                 result_dir = self.context / "snyk_sbom"
                 result_dir.mkdir(exist_ok=True)
