@@ -370,25 +370,34 @@ class Project(BaseModel):
         if not self.has_images():
             raise BakeryImageNotFoundError("No images found in the project.")
 
-        # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
-        #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
+        errors = []
         for tag, env, cmd in dgoss_commands:
             log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
             log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
-            p = subprocess.run(cmd, env=env, cwd=self.context)
+            p = subprocess.run(cmd, env=env, cwd=self.context, capture_output=True)
             # TODO: Only print stdout and stderr on DEBUG log level, else suppress
             if p.returncode != 0:
-                log.error(f"Subprocess call to dgoss exited with code {p.returncode}")
-                raise BakeryToolRuntimeError(
-                    f"Subprocess call to dgoss exited with code {p.returncode}",
-                    "dgoss",
-                    cmd=cmd,
-                    stdout=p.stdout,
-                    stderr=p.stderr,
-                    exit_code=p.returncode,
+                log.error(f"dgoss for image '{tag}' exited with code {p.returncode}")
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"Subprocess call to dgoss exited with code {p.returncode}",
+                        "dgoss",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=p.returncode,
+                    )
                 )
-            log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+            else:
+                log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            raise BakeryToolRuntimeErrorGroup(
+                f"dgoss runtime errors occurred for multiple images.", errors
+            )
 
     def _get_snyk_container_test_arguments(self, variant: ImageVariant) -> List[str]:
         result_dir = self.context / "snyk_test"
