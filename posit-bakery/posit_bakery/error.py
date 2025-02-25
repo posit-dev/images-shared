@@ -134,12 +134,14 @@ class BakeryToolRuntimeError(BakeryToolError):
         stdout: str | bytes | None = None,
         stderr: str | bytes | None = None,
         exit_code: int = 1,
+        metadata: dict = None,
     ) -> None:
         super().__init__(message, tool_name)
         self.exit_code = exit_code
         self.cmd = cmd
         self.stdout = stdout
         self.stderr = stderr
+        self.metadata = metadata
 
     def dump_stdout(self, lines: int = 10) -> str:
         if not self.stdout:
@@ -166,6 +168,10 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
         for e in self.exceptions:
             s += f"{str(e)}\n"
             s += f"  - Command executed: '{" ".join(e.cmd)}'\n"
+            if e.metadata:
+                s += "  - Metadata:\n"
+                for key, value in e.metadata.items():
+                    s += f"    - {key}: {value}\n"
             s += "\n"
         s += "\n"
         s += f"{len(self.exceptions)} command(s) returned errors\n"
