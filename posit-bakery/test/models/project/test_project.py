@@ -219,12 +219,14 @@ class TestProjectGoss:
 
         # min should be first
         cmd = commands[0]
-        assert cmd[0] == img_min.tags[0]
+        assert cmd[0].tags[0] == img_min.tags[0]
 
         run_env = cmd[1]
         assert isinstance(run_env, dict)
         assert run_env.get("GOSS_PATH") == "goss"
         assert run_env.get("GOSS_FILES_PATH").endswith("test-image/1.0.0/test")
+        assert "--format json" in run_env.get("GOSS_OPTS")
+        assert "--no-color" in run_env.get("GOSS_OPTS")
         assert run_env.get("GOSS_SLEEP") is None
 
         cmdstr = " ".join(cmd[2])
@@ -236,7 +238,7 @@ class TestProjectGoss:
 
         # std should be second
         cmd = commands[1]
-        assert cmd[0] == img_std.tags[0]
+        assert cmd[0] == img_std
 
         # Check environment
         run_env = cmd[1]
@@ -255,6 +257,7 @@ class TestProjectGoss:
 
     def test_dgoss(self, basic_context):
         process_mock = MagicMock(returncode=0)
+        type(process_mock).stdout = PropertyMock(side_effect=[b"{}", b"{}"])
         subprocess.run = MagicMock(return_value=process_mock)
         p = Project.load(basic_context)
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
@@ -298,7 +301,7 @@ class TestProjectSnyk:
         result = project._get_snyk_container_test_arguments(variant)
         assert result == expected_args
         if variant.meta.snyk.test.output.json_file or variant.meta.snyk.test.output.sarif_file:
-            assert (basic_tmpcontext / "snyk_test").exists()
+            assert (basic_tmpcontext / "results" / "snyk" / "test").exists()
 
     @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_monitor_argument_testcases())
     def test__get_snyk_container_monitor_arguments(self, basic_context, snyk_config, expected_args):

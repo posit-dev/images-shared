@@ -41,5 +41,5 @@ Feature: snyk
             | command |
             | completed |
         * the context includes files:
-            | snyk_sbom/scratch-1-0-0-scratch-min.json |
-            | snyk_sbom/scratch-1-0-0-scratch-std.json |
+            | results/snyk/sbom/scratch-1-0-0-scratch-min.json |
+            | results/snyk/sbom/scratch-1-0-0-scratch-std.json |
