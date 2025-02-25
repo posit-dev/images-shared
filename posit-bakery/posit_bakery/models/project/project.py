@@ -375,10 +375,10 @@ class Project(BaseModel):
 
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
 
-        results_dir = self.context / "dgoss_results"
+        results_dir = self.context / "results" / "dgoss"
         if results_dir.exists():
             shutil.rmtree(results_dir)
-        results_dir.mkdir()
+        results_dir.mkdir(parents=True)
 
         errors = []
         for variant, env, cmd in dgoss_commands:
@@ -429,7 +429,7 @@ class Project(BaseModel):
             )
 
     def _get_snyk_container_test_arguments(self, variant: ImageVariant) -> List[str]:
-        result_dir = self.context / "snyk_test"
+        result_dir = self.context / "results" / "snyk" / "test"
         uid = target_uid(variant.meta.name, variant.meta.version, variant)
         opts = []
         # Add output options
@@ -440,10 +440,8 @@ class Project(BaseModel):
 
         # Add output file options
         if variant.meta.snyk.test.output.json_file:
-            result_dir.mkdir(exist_ok=True)
             opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
         elif variant.meta.snyk.test.output.sarif_file:
-            result_dir.mkdir(exist_ok=True)
             opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
 
         # Add severity threshold
@@ -574,6 +572,14 @@ class Project(BaseModel):
             )
 
         snyk_commands = self.render_snyk_commands(subcommand, image_name, image_version, image_type)
+
+        # Clean and create a results folder for applicable commands
+        if subcommand == SnykContainerSubcommand.test or subcommand == SnykContainerSubcommand.sbom:
+            result_dir = self.context / "results" / "snyk" / subcommand.value
+            if result_dir.exists():
+                shutil.rmtree(result_dir)
+            result_dir.mkdir(parents=True)
+
         errors = []
         for tag, env, cmd in snyk_commands:
             log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
@@ -615,9 +621,6 @@ class Project(BaseModel):
 
             # FIXME: Clean this up as part of #91
             if subcommand == SnykContainerSubcommand.sbom:
-                result_dir = self.context / "snyk_sbom"
-                result_dir.mkdir(exist_ok=True)
-
                 try:
                     output = p.stdout.decode("utf-8")
                 except UnicodeDecodeError:
