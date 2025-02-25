@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Union, List, Dict, Tuple, Any
@@ -294,7 +295,7 @@ class Project(BaseModel):
         image_version: str = None,
         image_type: str = None,
         runtime_options: List[str] = None,
-    ) -> List[Tuple[str, Dict[str, str], List[str]]]:
+    ) -> List[Tuple[ImageVariant, Dict[str, str], List[str]]]:
         """Render dgoss commands for the project
 
         :param image_name: (Optional) The name of the image to render dgoss commands for
@@ -342,14 +343,16 @@ class Project(BaseModel):
             if runtime_options:
                 cmd.extend(runtime_options)
 
+            # Set the output options for Goss
+            run_env["GOSS_OPTS"] = "--format json --no-color"
+
             # Append the target image tag, assuming the first one is valid to use and no duplications exist
             cmd.append(variant.tags[0])
 
             # Append the goss command to run or use the default `sleep infinity`
             cmd.extend(variant.goss.command.split() or ["sleep", "infinity"])
 
-            dgoss_commands.append((variant.tags[0], run_env, cmd))
-        # dgoss_commands.sort(key=lambda x: x[0])
+            dgoss_commands.append((variant, run_env, cmd))
 
         return dgoss_commands
 
@@ -371,14 +374,39 @@ class Project(BaseModel):
             raise BakeryImageNotFoundError("No images found in the project.")
 
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
+
+        results_dir = self.context / "dgoss_results"
+        if results_dir.exists():
+            shutil.rmtree(results_dir)
+        results_dir.mkdir()
+
         errors = []
-        for tag, env, cmd in dgoss_commands:
-            log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
-            log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
+        for variant, env, cmd in dgoss_commands:
+            log.info(f"[bright_blue bold]=== Running Goss tests for {variant.tags[0]} ===")
+            filtered_env_vars = {k: v for k, v in env.items() if "GOSS" in k}
+            log.debug(f"[bright_black]Environment variables: {filtered_env_vars}")
+            log.debug(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
             p = subprocess.run(cmd, env=env, cwd=self.context, capture_output=True)
-            # TODO: Only print stdout and stderr on DEBUG log level, else suppress
+
+            uid = target_uid(variant.meta.name, variant.meta.version, variant)
+            image_subdir = results_dir / variant.meta.name
+            image_subdir.mkdir(exist_ok=True)
+            results_file = image_subdir / f"{uid}.json"
+            with open(results_file, "w") as f:
+                try:
+                    output = p.stdout.decode("utf-8")
+                    output = output.strip()
+                except UnicodeDecodeError:
+                    log.warning(f"Unexpected encoding for dgoss output for image '{variant.tags[0]}'.")
+                    output = p.stdout
+                try:
+                    output = json.dumps(json.loads(output), indent=2)
+                except json.JSONDecodeError as e:
+                    log.warning(f"Failed to decode JSON output from dgoss for image '{variant.tags[0]}': {e}")
+                f.write(output)
+
             if p.returncode != 0:
-                log.error(f"dgoss for image '{tag}' exited with code {p.returncode}")
+                log.error(f"dgoss for image '{variant.tags[0]}' exited with code {p.returncode}")
                 errors.append(
                     BakeryToolRuntimeError(
                         f"Subprocess call to dgoss exited with code {p.returncode}",
@@ -387,10 +415,11 @@ class Project(BaseModel):
                         stdout=p.stdout,
                         stderr=p.stderr,
                         exit_code=p.returncode,
+                        metadata={"results": results_file, "environment_variables": filtered_env_vars},
                     )
                 )
             else:
-                log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+                log.info(f"[bright_green bold]=== Goss tests passed for {variant.tags[0]} ===")
 
         if errors:
             if len(errors) == 1:
