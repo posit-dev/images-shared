@@ -17,7 +17,9 @@ Feature: snyk
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
-            | snyk container test command(s) completed |
+            | snyk container test |
+            | command |
+            | completed |
 
     @slow
     Scenario: Running snyk container sbom on a project
@@ -35,7 +37,9 @@ Feature: snyk
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
-            | snyk container sbom command(s) completed |
+            | snyk container sbom |
+            | command |
+            | completed |
         * the context includes files:
             | snyk_sbom/scratch-1-0-0-scratch-min.json |
             | snyk_sbom/scratch-1-0-0-scratch-std.json |
