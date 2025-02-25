@@ -1,8 +1,28 @@
 #!/usr/bin/env just --justfile
 
+# Fallback to parent justfile(s)
+set fallback
+
 ################
 # Variables
 CWD := justfile_directory()
+
+################
+# Default command, must be first in the file
+[private]
+_default:
+    just --list --unsorted
+
+################
+# Setup commands
+
+# Set up local dev environment
+setup:
+    just _setup-poetry
+
+[private]
+_setup-poetry:
+    poetry --version || just _python-executable poetry
 
 ################
 # Commands
@@ -12,8 +32,8 @@ install:
     poetry install \
         --directory={{ CWD }}
 
-# Build the posit-bakery python project
 alias package := build
+# Build the posit-bakery python project
 build:
     poetry build \
         --directory={{ CWD }} \
@@ -28,8 +48,8 @@ _pytest *ARGS:
         {{ ARGS }} \
         {{ CWD }}/test/
 
-# Test the posit-bakery python project, skipping slow tests
 # Note: Both sets of quotes are required
+# Test the posit-bakery python project, skipping slow tests
 test *ARGS:
     just _pytest {{ ARGS }} -m "'not slow'"
 
