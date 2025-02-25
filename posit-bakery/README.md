@@ -38,38 +38,6 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
     pipx install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
     ```
 
-## Project Structure
-
-Bakery establishes a directory structure, referred to as a **project**.
-The **project** configuration is stored in the `config.toml`.
-
-By default, bakery uses the invocation directory as the project **context**.
-You can use the `--context` flag to override the default behavior.
-
-```shell
-bakery --context /path/to/directory
-```
-
-A bakery **project** can include one or more **image**s.
-Each **image** can include one or more **version**s.
-Each **image**'s configuration is stored in a `manifest.toml` file.
-
-```terminal
-.
-├── config.toml
-├── fancy-image/
-│   ├── manifest.toml
-│   ├── 2024.11.0/
-│   ├── 2025.01.0/
-│   └── template/
-└── more-fancy-image/
-    ├── manifest.toml
-    ├── 2024.12.0/
-    ├── 2024.12.1/
-    ├── 2025.02.0/
-    └── template/
-```
-
 ## Usage
 
 >[!TIP]
@@ -175,15 +143,39 @@ bakery --help
     bakery run dgoss --run-opt '--privileged'
     ```
 
-## Image
+## Bakery Concepts
 
-### Versions
+### Project Structure
 
-### Targets
+Bakery establishes a directory structure, referred to as a **project**.
+The **project** configuration is stored in the `config.toml`.
 
-#### Minimal Image
+By default, bakery uses the invocation directory as the project **context**.
+You can use the `--context` flag to override the default behavior.
 
-#### Standard Image
+```shell
+bakery --context /path/to/directory
+```
+
+A bakery **project** can include one or more **image**s.
+Each **image** can include one or more **version**s.
+Each **image**'s configuration is stored in a `manifest.toml` file.
+
+```terminal
+.
+├── config.toml
+├── fancy-image/
+│   ├── manifest.toml
+│   ├── 2024.11.0/
+│   ├── 2025.01.0/
+│   └── template/
+└── more-fancy-image/
+    ├── manifest.toml
+    ├── 2024.12.0/
+    ├── 2024.12.1/
+    ├── 2025.02.0/
+    └── template/
+```
 
 ### Image Tags
 
