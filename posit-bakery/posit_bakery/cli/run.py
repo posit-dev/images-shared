@@ -44,11 +44,11 @@ def dgoss(
     # TODO: add skip_override back in
     p = _wrap_project_load(context)
 
-    try:
-        p.dgoss(image_name, image_version, image_type, run_option)
-    except (BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup) as e:
+    results, err = p.dgoss(image_name, image_version, image_type, run_option)
+    stderr_console.print(results.aggregate())
+    if err:
         stderr_console.print("-" * 80)
-        stderr_console.print(e, style="error")
+        stderr_console.print(err, style="error")
         stderr_console.print(f"❌ dgoss tests failed", style="error")
         raise typer.Exit(code=1)
 

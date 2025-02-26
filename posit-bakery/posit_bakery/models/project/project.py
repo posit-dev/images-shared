@@ -23,7 +23,7 @@ from posit_bakery.models.manifest import guess_os_list
 from posit_bakery.models.manifest.snyk import SnykContainerSubcommand, get_exit_code_meaning
 from posit_bakery.models.project.bake import BakePlan, target_uid
 import posit_bakery.util as util
-
+from posit_bakery.models.project.goss.json_report import GossJsonReport, GossJsonReportCollection
 
 log = logging.getLogger(__name__)
 
@@ -362,7 +362,7 @@ class Project(BaseModel):
         image_version: str = None,
         image_type: str = None,
         runtime_options: List[str] = None,
-    ) -> None:
+    ) -> (GossJsonReportCollection, None | BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup):
         """Run Goss tests for the project's images using dgoss
 
         :param image_name: (Optional) The name of the image to run Goss tests for
@@ -380,6 +380,7 @@ class Project(BaseModel):
             shutil.rmtree(results_dir)
         results_dir.mkdir(parents=True)
 
+        report_collection = GossJsonReportCollection()
         errors = []
         for variant, env, cmd in dgoss_commands:
             log.info(f"[bright_blue bold]=== Running Goss tests for {variant.tags[0]} ===")
@@ -392,41 +393,57 @@ class Project(BaseModel):
             image_subdir = results_dir / variant.meta.name
             image_subdir.mkdir(exist_ok=True)
             results_file = image_subdir / f"{uid}.json"
+
+            try:
+                output = p.stdout.decode("utf-8")
+                output = output.strip()
+            except UnicodeDecodeError:
+                log.warning(f"Unexpected encoding for dgoss output for image '{variant.tags[0]}'.")
+                output = p.stdout
+            parse_err = None
+            try:
+                result_data = json.loads(output)
+                output = json.dumps(result_data, indent=2)
+                report_collection.add_report(variant, GossJsonReport(filepath=results_file, **result_data))
+            except json.JSONDecodeError as e:
+                log.warning(f"Failed to decode JSON output from dgoss for image '{variant.tags[0]}': {e}")
+                parse_err = e
+            except pydantic.ValidationError as e:
+                log.warning(f"Failed to load result data for summary from dgoss for image '{variant.tags[0]}': {e}")
+                log.warning(f"Test results will be excluded from '{variant.tags[0]}' in final summary.")
+                parse_err = e
+
             with open(results_file, "w") as f:
-                try:
-                    output = p.stdout.decode("utf-8")
-                    output = output.strip()
-                except UnicodeDecodeError:
-                    log.warning(f"Unexpected encoding for dgoss output for image '{variant.tags[0]}'.")
-                    output = p.stdout
-                try:
-                    output = json.dumps(json.loads(output), indent=2)
-                except json.JSONDecodeError as e:
-                    log.warning(f"Failed to decode JSON output from dgoss for image '{variant.tags[0]}': {e}")
+                log.info(f"Writing results to {results_file}")
                 f.write(output)
 
-            if p.returncode != 0:
+            # Goss can exit 1 in multiple scenarios including test failures and incorrect configurations. From Bakery's
+            # perspective, we only want to report an error back if the execution of Goss failed in some way. Our best
+            # method of doing this is to check if both the exit code is non-zero, and we were unable to parse the output
+            # of the command.
+            if p.returncode != 0 and parse_err is not None:
                 log.error(f"dgoss for image '{variant.tags[0]}' exited with code {p.returncode}")
-                errors.append(
-                    BakeryToolRuntimeError(
-                        f"Subprocess call to dgoss exited with code {p.returncode}",
-                        "dgoss",
-                        cmd=cmd,
-                        stdout=p.stdout,
-                        stderr=p.stderr,
-                        exit_code=p.returncode,
-                        metadata={"results": results_file, "environment_variables": filtered_env_vars},
-                    )
-                )
+                errors.append(BakeryToolRuntimeError(
+                    f"Subprocess call to dgoss exited with code {p.returncode}",
+                    "dgoss",
+                    cmd=cmd,
+                    stdout=p.stdout,
+                    stderr=p.stderr,
+                    exit_code=p.returncode,
+                    metadata={"results": results_file, "environment_variables": filtered_env_vars},
+                ))
             else:
                 log.info(f"[bright_green bold]=== Goss tests passed for {variant.tags[0]} ===")
 
         if errors:
             if len(errors) == 1:
-                raise errors[0]
-            raise BakeryToolRuntimeErrorGroup(
+                errors = errors[0]
+            errors = BakeryToolRuntimeErrorGroup(
                 f"dgoss runtime errors occurred for multiple images.", errors
             )
+        else:
+            errors = None
+        return report_collection, errors
 
     def _get_snyk_container_test_arguments(self, variant: ImageVariant) -> List[str]:
         result_dir = self.context / "results" / "snyk" / "test"
