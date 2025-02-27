@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, computed_field
+from rich.table import Table
 
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.models.image.variant import ImageVariant
@@ -150,6 +151,19 @@ class GossJsonReportCollection(dict):
             self[variant.meta.name] = {}
         self[variant.meta.name][target_uid(variant.meta.name, variant.meta.version, variant)] = (variant, report)
 
+    @property
+    def test_failures(self) -> dict[str, list[GossResult]]:
+        failures = {}
+        for image_name, targets in self.items():
+            for uid, (_, report) in targets.items():
+                if not report.test_failures:
+                    continue
+                if uid not in failures:
+                    failures[uid] = []
+                for failure in report.test_failures:
+                    failures[uid].append(failure)
+        return failures
+
     def aggregate(self) -> dict[str, dict]:
         results = {"total": {"success": 0, "failed": 0, "skipped": 0, "duration": 0}}
         for image_name, targets in self.items():
@@ -164,11 +178,51 @@ class GossJsonReportCollection(dict):
                     "success": report.summary.success_count,
                     "failed": report.summary.failed_count,
                     "skipped": report.summary.skipped_count,
-                    "duration": f"{report.summary.total_duration / 1_000_000_000:.2f}s",
+                    "duration": report.summary.total_duration,
                 }
                 results["total"]["success"] += report.summary.success_count
                 results["total"]["failed"] += report.summary.failed_count
                 results["total"]["skipped"] += report.summary.skipped_count
                 results["total"]["duration"] += report.summary.total_duration
-        results["total"]["duration"] = f"{results["total"]["duration"] / 1_000_000_000:.2f}s"
+        results["total"]["duration"] = results["total"]["duration"]
         return results
+
+    def table(self) -> Table:
+        """Generates a rich table of the test results."""
+        aggregated_results = self.aggregate()
+        total_row = aggregated_results.pop("total")
+
+        table = Table(title="Goss Test Results")
+        table.add_column("Image Name", justify="left")
+        table.add_column("Version", justify="left")
+        table.add_column("Target", justify="left")
+        table.add_column("Success", justify="right", style="green3")
+        table.add_column("Failed", justify="right", style="bright_red")
+        table.add_column("Skipped", justify="right", style="yellow")
+        table.add_column("Duration", justify="right")
+
+        for image_name, versions in aggregated_results.items():
+            for version, target_types in versions.items():
+                for target_type, result in target_types.items():
+                    table.add_row(
+                        image_name,
+                        version,
+                        target_type,
+                        str(result["success"]),
+                        str(result["failed"]),
+                        str(result["skipped"]),
+                        f"{result['duration'] / 1_000_000_000:.2f}s",
+                    )
+
+        table.add_section()
+        table.add_row(
+            "Total",
+            "",
+            "",
+            str(total_row["success"]),
+            str(total_row["failed"]),
+            str(total_row["skipped"]),
+            f"{total_row['duration'] / 1_000_000_000:.2f}s",
+        )
+
+        return table
