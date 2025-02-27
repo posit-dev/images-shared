@@ -4,7 +4,6 @@ from typing import Annotated, List, Optional
 
 import typer
 
-from posit_bakery import error
 from posit_bakery.cli.common import _wrap_project_load
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.log import stderr_console
@@ -45,11 +44,19 @@ def dgoss(
     p = _wrap_project_load(context)
 
     results, err = p.dgoss(image_name, image_version, image_type, run_option)
-    stderr_console.print(results.aggregate())
+    stderr_console.print(results.table())
+    if results.test_failures:
+        stderr_console.print("-" * 80)
+        for uid, failures in results.test_failures.items():
+            stderr_console.print(f"{uid} test failures:", style="error")
+            for failed_result in failures:
+                stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
+        stderr_console.print(f"❌ dgoss test(s) failed", style="error")
     if err:
         stderr_console.print("-" * 80)
         stderr_console.print(err, style="error")
-        stderr_console.print(f"❌ dgoss tests failed", style="error")
+        stderr_console.print(f"❌ dgoss command(s) failed to execute", style="error")
+    if results.test_failures or err:
         raise typer.Exit(code=1)
 
     stderr_console.print(f"✅ Tests completed", style="success")
