@@ -432,8 +432,10 @@ class Project(BaseModel):
                     exit_code=p.returncode,
                     metadata={"results": results_file, "environment_variables": filtered_env_vars},
                 ))
+            elif p.returncode == 0:
+                log.info(f"[bright_green bold]Goss tests passed for {variant.tags[0]}")
             else:
-                log.info(f"[bright_green bold]=== Goss tests passed for {variant.tags[0]} ===")
+                log.warning(f"[yellow bold]Goss tests failed for {variant.tags[0]}")
 
         if errors:
             if len(errors) == 1:
