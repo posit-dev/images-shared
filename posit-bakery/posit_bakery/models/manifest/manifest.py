@@ -53,7 +53,7 @@ class Manifest(GenericTOMLModel):
             new_build = {"os": os_list}
 
         # TODO: Should we sort the manifest by version in descending order?
-        builds = {version: new_build, **existing_builds}
+        builds = {**existing_builds, version: new_build}
         # Sort versions in descending order
         versions = builds.keys()
         builds = {str(v): builds[str(v)] for v in sorted(versions, reverse=True)}
