@@ -42,20 +42,20 @@ class Manifest(GenericTOMLModel):
         return [version for version in self.model.build.keys()]
 
     def add_version(self, version: str, os_list: List[str], latest: bool):
-        existing_builds = self.document.get("build", {})
+        # builds references the existing element in the document
+        # Updates are made in-place
+        builds = self.document.get("build", {})
         log.debug(f"Adding version {version} to manifest {self.filepath}")
 
         if latest:
-            for b in existing_builds.values():
+            for b in builds.values():
                 b.pop("latest", None)
             new_build = {"os": os_list, "latest": True}
         else:
             new_build = {"os": os_list}
 
-        # TODO: Should we sort the manifest by version in descending order?
-        builds = {**existing_builds, version: new_build}
+        self.document["build"].update({version: new_build})
         # Sort versions in descending order
-        versions = builds.keys()
-        builds = {str(v): builds[str(v)] for v in sorted(versions, reverse=True)}
-        self.document["build"] = builds
+        # versions = builds.keys()
+        # builds = {str(v): builds[str(v)] for v in sorted(versions, reverse=True)}
         self.dump()
