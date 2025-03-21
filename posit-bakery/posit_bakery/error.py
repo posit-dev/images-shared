@@ -134,7 +134,7 @@ class BakeryToolRuntimeError(BakeryToolError):
         stdout: str | bytes | None = None,
         stderr: str | bytes | None = None,
         exit_code: int = 1,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         super().__init__(message, tool_name)
         self.exit_code = exit_code
