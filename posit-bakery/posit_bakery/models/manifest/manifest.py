@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Union, List
 
-from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.manifest.document import ManifestDocument
+from posit_bakery.models.toml.generic import GenericTOMLModel
 
 
 log = logging.getLogger(__name__)

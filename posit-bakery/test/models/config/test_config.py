@@ -4,10 +4,10 @@ import pytest
 import tomlkit
 
 from posit_bakery.models import Config
-from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
+from posit_bakery.models.toml.generic import GenericTOMLModel
 
 pytestmark = [
     pytest.mark.unit,

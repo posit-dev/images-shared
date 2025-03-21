@@ -6,9 +6,9 @@ from typing import Set, Union, List
 import git
 
 from posit_bakery.error import BakeryFileError
-from posit_bakery.models.generic import GenericTOMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
+from posit_bakery.models.toml.generic import GenericTOMLModel
 from posit_bakery.templating.default import create_project_config
 
 log = logging.getLogger(__name__)

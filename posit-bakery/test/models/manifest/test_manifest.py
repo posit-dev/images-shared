@@ -4,7 +4,7 @@ import pytest
 import tomlkit
 
 from posit_bakery.models import Config, Manifest
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.toml.generic import GenericTOMLModel
 
 pytestmark = [
     pytest.mark.unit,

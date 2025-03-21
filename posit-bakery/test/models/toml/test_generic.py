@@ -2,7 +2,7 @@ import unittest
 
 from tomlkit import TOMLDocument
 
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.toml.generic import GenericTOMLModel
 
 
 class TestGenericTOMLModel:
