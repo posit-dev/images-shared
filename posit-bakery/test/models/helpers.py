@@ -7,16 +7,29 @@ import pytest
 import tomlkit
 from _pytest.mark import ParameterSet
 
-from posit_bakery.models.manifest.snyk import ManifestSnyk, ManifestSnykTest, \
-    ManifestSnykTestOutput, ManifestSnykMonitor, ManifestSnykSbom, \
-    SNYK_DEFAULT_SEVERITY_THRESHOLD, SNYK_DEFAULT_SBOM_FORMAT, SnykContainerSubcommand
+from posit_bakery.models.manifest.snyk import (
+    ManifestSnyk,
+    ManifestSnykTest,
+    ManifestSnykTestOutput,
+    ManifestSnykMonitor,
+    ManifestSnykSbom,
+    SNYK_DEFAULT_SEVERITY_THRESHOLD,
+    SNYK_DEFAULT_SBOM_FORMAT,
+    SnykContainerSubcommand,
+)
 
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 
+def dedent_toml_str(toml_str: str) -> str:
+    """Dedent a TOML string, stripping leading newline characters"""
+    return textwrap.dedent(toml_str.lstrip("\n"))
+
+
 def dedent_toml(toml_str: str) -> tomlkit.TOMLDocument:
-    toml_str = textwrap.dedent(toml_str)
+    """Parse a TOML string, dedenting it first"""
+    toml_str = dedent_toml_str(toml_str)
 
     return tomlkit.parse(toml_str)
 
