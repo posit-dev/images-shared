@@ -2,8 +2,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
+import rich
 from pydantic import BaseModel, Field, computed_field
 from rich.table import Table
+from rich.text import Text
 
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.models.image.variant import ImageVariant
@@ -165,7 +167,7 @@ class GossJsonReportCollection(dict):
         return failures
 
     def aggregate(self) -> dict[str, dict]:
-        results = {"total": {"success": 0, "failed": 0, "skipped": 0, "duration": 0}}
+        results = {"total": {"success": 0, "failed": 0, "skipped": 0, "total_tests": 0, "duration": 0}}
         for image_name, targets in self.items():
             for uid, (variant, report) in targets.items():
                 if variant.meta.name not in results:
@@ -178,11 +180,13 @@ class GossJsonReportCollection(dict):
                     "success": report.summary.success_count,
                     "failed": report.summary.failed_count,
                     "skipped": report.summary.skipped_count,
+                    "total_tests": report.summary.test_count,
                     "duration": report.summary.total_duration,
                 }
                 results["total"]["success"] += report.summary.success_count
                 results["total"]["failed"] += report.summary.failed_count
                 results["total"]["skipped"] += report.summary.skipped_count
+                results["total"]["total_tests"] += report.summary.test_count
                 results["total"]["duration"] += report.summary.total_duration
         results["total"]["duration"] = results["total"]["duration"]
         return results
@@ -196,23 +200,32 @@ class GossJsonReportCollection(dict):
         table.add_column("Image Name", justify="left")
         table.add_column("Version", justify="left")
         table.add_column("Target", justify="left")
-        table.add_column("Success", justify="right", style="green3")
-        table.add_column("Failed", justify="right", style="bright_red")
-        table.add_column("Skipped", justify="right", style="yellow")
+        table.add_column("Success", justify="right", header_style="green3")
+        table.add_column("Failed", justify="right", header_style="bright_red")
+        table.add_column("Skipped", justify="right", header_style="yellow")
+        table.add_column("Total Tests", justify="right")
         table.add_column("Duration", justify="right")
 
         for image_name, versions in aggregated_results.items():
+            p_image_name = image_name
             for version, target_types in versions.items():
+                p_version = version
                 for target_type, result in target_types.items():
+                    success_style = "green3 bold" if result["failed"] == 0 else ""
+                    failed_style = "bright_red bold" if result["failed"] > 0 else "bright_black italic"
+                    skipped_style = "yellow bold" if result["skipped"] > 0 else "bright_black italic"
                     table.add_row(
-                        image_name,
-                        version,
+                        p_image_name,
+                        p_version,
                         target_type,
-                        str(result["success"]),
-                        str(result["failed"]),
-                        str(result["skipped"]),
+                        Text(str(result["success"]), style=success_style),
+                        Text(str(result["failed"]), style=failed_style),
+                        Text(str(result["skipped"]), style=skipped_style),
+                        str(result["total_tests"]),
                         f"{result['duration'] / 1_000_000_000:.2f}s",
                     )
+                    p_image_name = ""
+                    p_version = ""
 
         table.add_section()
         table.add_row(
@@ -222,6 +235,7 @@ class GossJsonReportCollection(dict):
             str(total_row["success"]),
             str(total_row["failed"]),
             str(total_row["skipped"]),
+            str(total_row["total_tests"]),
             f"{total_row['duration'] / 1_000_000_000:.2f}s",
         )
 
