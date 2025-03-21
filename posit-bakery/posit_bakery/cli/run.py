@@ -46,8 +46,10 @@ def dgoss(
 
     try:
         p.dgoss(image_name, image_version, image_type, run_option)
-    except error.BakeryToolRuntimeError as e:
-        stderr_console.print(f"❌ dgoss tests failed with exit code {e.exit_code}", style="error")
+    except (BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup) as e:
+        stderr_console.print("-" * 80)
+        stderr_console.print(e, style="error")
+        stderr_console.print(f"❌ dgoss tests failed", style="error")
         raise typer.Exit(code=1)
 
     stderr_console.print(f"✅ Tests completed", style="success")

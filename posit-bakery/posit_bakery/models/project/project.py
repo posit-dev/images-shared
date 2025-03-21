@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Union, List, Dict, Tuple, Any
@@ -294,7 +295,7 @@ class Project(BaseModel):
         image_version: str = None,
         image_type: str = None,
         runtime_options: List[str] = None,
-    ) -> List[Tuple[str, Dict[str, str], List[str]]]:
+    ) -> List[Tuple[ImageVariant, Dict[str, str], List[str]]]:
         """Render dgoss commands for the project
 
         :param image_name: (Optional) The name of the image to render dgoss commands for
@@ -342,14 +343,16 @@ class Project(BaseModel):
             if runtime_options:
                 cmd.extend(runtime_options)
 
+            # Set the output options for Goss
+            run_env["GOSS_OPTS"] = "--format json --no-color"
+
             # Append the target image tag, assuming the first one is valid to use and no duplications exist
             cmd.append(variant.tags[0])
 
             # Append the goss command to run or use the default `sleep infinity`
             cmd.extend(variant.goss.command.split() or ["sleep", "infinity"])
 
-            dgoss_commands.append((variant.tags[0], run_env, cmd))
-        # dgoss_commands.sort(key=lambda x: x[0])
+            dgoss_commands.append((variant, run_env, cmd))
 
         return dgoss_commands
 
@@ -370,28 +373,63 @@ class Project(BaseModel):
         if not self.has_images():
             raise BakeryImageNotFoundError("No images found in the project.")
 
-        # TODO: implement "fail fast" behavior for dgoss where users can toggle to exit on the first failed test
-        #       (current behavior) or perform all tests and summarize failures at the end.
         dgoss_commands = self.render_dgoss_commands(image_name, image_version, image_type, runtime_options)
-        for tag, env, cmd in dgoss_commands:
-            log.info(f"[bright_blue bold]=== Running Goss tests for {tag} ===")
-            log.info(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
-            p = subprocess.run(cmd, env=env, cwd=self.context)
-            # TODO: Only print stdout and stderr on DEBUG log level, else suppress
+
+        results_dir = self.context / "results" / "dgoss"
+        if results_dir.exists():
+            shutil.rmtree(results_dir)
+        results_dir.mkdir(parents=True)
+
+        errors = []
+        for variant, env, cmd in dgoss_commands:
+            log.info(f"[bright_blue bold]=== Running Goss tests for {variant.tags[0]} ===")
+            filtered_env_vars = {k: v for k, v in env.items() if "GOSS" in k}
+            log.debug(f"[bright_black]Environment variables: {filtered_env_vars}")
+            log.debug(f"[bright_black]Executing dgoss command: {' '.join(cmd)}")
+            p = subprocess.run(cmd, env=env, cwd=self.context, capture_output=True)
+
+            uid = target_uid(variant.meta.name, variant.meta.version, variant)
+            image_subdir = results_dir / variant.meta.name
+            image_subdir.mkdir(exist_ok=True)
+            results_file = image_subdir / f"{uid}.json"
+            with open(results_file, "w") as f:
+                try:
+                    output = p.stdout.decode("utf-8")
+                    output = output.strip()
+                except UnicodeDecodeError:
+                    log.warning(f"Unexpected encoding for dgoss output for image '{variant.tags[0]}'.")
+                    output = p.stdout
+                try:
+                    output = json.dumps(json.loads(output), indent=2)
+                except json.JSONDecodeError as e:
+                    log.warning(f"Failed to decode JSON output from dgoss for image '{variant.tags[0]}': {e}")
+                f.write(output)
+
             if p.returncode != 0:
-                log.error(f"Subprocess call to dgoss exited with code {p.returncode}")
-                raise BakeryToolRuntimeError(
-                    f"Subprocess call to dgoss exited with code {p.returncode}",
-                    "dgoss",
-                    cmd=cmd,
-                    stdout=p.stdout,
-                    stderr=p.stderr,
-                    exit_code=p.returncode,
+                log.error(f"dgoss for image '{variant.tags[0]}' exited with code {p.returncode}")
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"Subprocess call to dgoss exited with code {p.returncode}",
+                        "dgoss",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=p.returncode,
+                        metadata={"results": results_file, "environment_variables": filtered_env_vars},
+                    )
                 )
-            log.info(f"[bright_green bold]=== Goss tests passed for {tag} ===")
+            else:
+                log.info(f"[bright_green bold]=== Goss tests passed for {variant.tags[0]} ===")
+
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            raise BakeryToolRuntimeErrorGroup(
+                f"dgoss runtime errors occurred for multiple images.", errors
+            )
 
     def _get_snyk_container_test_arguments(self, variant: ImageVariant) -> List[str]:
-        result_dir = self.context / "snyk_test"
+        result_dir = self.context / "results" / "snyk" / "test"
         uid = target_uid(variant.meta.name, variant.meta.version, variant)
         opts = []
         # Add output options
@@ -402,10 +440,8 @@ class Project(BaseModel):
 
         # Add output file options
         if variant.meta.snyk.test.output.json_file:
-            result_dir.mkdir(exist_ok=True)
             opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
         elif variant.meta.snyk.test.output.sarif_file:
-            result_dir.mkdir(exist_ok=True)
             opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
 
         # Add severity threshold
@@ -536,6 +572,14 @@ class Project(BaseModel):
             )
 
         snyk_commands = self.render_snyk_commands(subcommand, image_name, image_version, image_type)
+
+        # Clean and create a results folder for applicable commands
+        if subcommand == SnykContainerSubcommand.test or subcommand == SnykContainerSubcommand.sbom:
+            result_dir = self.context / "results" / "snyk" / subcommand.value
+            if result_dir.exists():
+                shutil.rmtree(result_dir)
+            result_dir.mkdir(parents=True)
+
         errors = []
         for tag, env, cmd in snyk_commands:
             log.info(f"[bright_blue bold]=== Running snyk container {subcommand.value} for {tag} ===")
@@ -577,9 +621,6 @@ class Project(BaseModel):
 
             # FIXME: Clean this up as part of #91
             if subcommand == SnykContainerSubcommand.sbom:
-                result_dir = self.context / "snyk_sbom"
-                result_dir.mkdir(exist_ok=True)
-
                 try:
                     output = p.stdout.decode("utf-8")
                 except UnicodeDecodeError:

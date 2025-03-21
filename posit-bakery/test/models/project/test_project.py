@@ -219,12 +219,14 @@ class TestProjectGoss:
 
         # min should be first
         cmd = commands[0]
-        assert cmd[0] == img_min.tags[0]
+        assert cmd[0].tags[0] == img_min.tags[0]
 
         run_env = cmd[1]
         assert isinstance(run_env, dict)
         assert run_env.get("GOSS_PATH") == "goss"
         assert run_env.get("GOSS_FILES_PATH").endswith("test-image/1.0.0/test")
+        assert "--format json" in run_env.get("GOSS_OPTS")
+        assert "--no-color" in run_env.get("GOSS_OPTS")
         assert run_env.get("GOSS_SLEEP") is None
 
         cmdstr = " ".join(cmd[2])
@@ -236,7 +238,7 @@ class TestProjectGoss:
 
         # std should be second
         cmd = commands[1]
-        assert cmd[0] == img_std.tags[0]
+        assert cmd[0] == img_std
 
         # Check environment
         run_env = cmd[1]
@@ -253,10 +255,11 @@ class TestProjectGoss:
         )
         assert re.fullmatch(pat, cmdstr) is not None
 
-    def test_dgoss(self, basic_context):
+    def test_dgoss(self, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
+        type(process_mock).stdout = PropertyMock(side_effect=[b"{}", b"{}"])
         subprocess.run = MagicMock(return_value=process_mock)
-        p = Project.load(basic_context)
+        p = Project.load(basic_tmpcontext)
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
             commands = p.render_dgoss_commands()
         with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
@@ -297,8 +300,6 @@ class TestProjectSnyk:
         )
         result = project._get_snyk_container_test_arguments(variant)
         assert result == expected_args
-        if variant.meta.snyk.test.output.json_file or variant.meta.snyk.test.output.sarif_file:
-            assert (basic_tmpcontext / "snyk_test").exists()
 
     @pytest.mark.parametrize("snyk_config,expected_args", helpers.snyk_monitor_argument_testcases())
     def test__get_snyk_container_monitor_arguments(self, basic_context, snyk_config, expected_args):
@@ -339,8 +340,8 @@ class TestProjectSnyk:
             assert variant_expected_args == command_set[2]
 
     @pytest.mark.parametrize("snyk_subcommand", [e for e in SnykContainerSubcommand])
-    def test_snyk_success(self, caplog, basic_context, snyk_subcommand):
-        p = Project.load(basic_context)
+    def test_snyk_success(self, caplog, basic_tmpcontext, snyk_subcommand):
+        p = Project.load(basic_tmpcontext)
         process_mock = MagicMock(returncode=0)
         type(process_mock).stdout = PropertyMock(side_effect=[b"00000000-0000-0000-0000-000000000000", b"{}", b"{}"])
         subprocess.run = MagicMock(return_value=process_mock)
@@ -367,8 +368,8 @@ class TestProjectSnyk:
             p.snyk(subcommand="invalid")
 
     @patch("posit_bakery.util.find_bin", return_value="snyk")
-    def test_snyk_no_org_warning(self, mock_find_bin, caplog, basic_context):
-        p = Project.load(basic_context)
+    def test_snyk_no_org_warning(self, mock_find_bin, caplog, basic_tmpcontext):
+        p = Project.load(basic_tmpcontext)
         process_mock = MagicMock(returncode=0, stdout=b"")
         subprocess.run = MagicMock(return_value=process_mock)
         with patch.dict("os.environ", clear=True):
@@ -380,8 +381,8 @@ class TestProjectSnyk:
         assert "WARNING" in caplog.text
 
     @patch("posit_bakery.util.find_bin", return_value="snyk")
-    def test_snyk_org_environ_no_warning(self, mock_find_bin, caplog, basic_context):
-        p = Project.load(basic_context)
+    def test_snyk_org_environ_no_warning(self, mock_find_bin, caplog, basic_tmpcontext):
+        p = Project.load(basic_tmpcontext)
         process_mock = MagicMock(returncode=0, stdout=b"")
         subprocess.run = MagicMock(return_value=process_mock)
         with patch.dict("os.environ", {"SNYK_ORG": "test"}):

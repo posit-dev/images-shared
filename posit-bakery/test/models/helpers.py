@@ -105,7 +105,7 @@ def snyk_test_argument_testcases() -> List[ParameterSet]:
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(json_file=True))),
             [
-                "--json-file-output={context}/snyk_test/{uid}.json",
+                "--json-file-output={context}/results/snyk/test/{uid}.json",
                 f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
@@ -115,7 +115,7 @@ def snyk_test_argument_testcases() -> List[ParameterSet]:
         pytest.param(
             ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(sarif_file=True))),
             [
-                "--sarif-file-output={context}/snyk_test/{uid}.sarif",
+                "--sarif-file-output={context}/results/snyk/test/{uid}.sarif",
                 f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
                 "--app-vulns",
                 "--exclude-base-image-vulns",
