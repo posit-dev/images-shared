@@ -335,9 +335,12 @@ class Project(BaseModel):
             if variant.goss.wait is not None and variant.goss.wait > 0:
                 run_env["GOSS_SLEEP"] = str(variant.goss.wait)
 
-            # Check if build type is defined and set the image typez
+            # Check if build type is defined and set the image types
             if variant.target is not None:
                 cmd.extend(["-e", f"IMAGE_TYPE={variant.target}"])
+
+            if variant.goss.entrypoint is not None:
+                cmd.extend(["--entrypoint", variant.goss.entrypoint])
 
             # Add user runtime options if provided
             if runtime_options:

@@ -7,4 +7,5 @@ class ManifestGoss(BaseModel):
     deps: str = None  # defaults to version/deps
     path: str = None  # defaults to version/goss
     wait: int = 0
+    entrypoint: str | None = None
     command: str = "sleep infinity"

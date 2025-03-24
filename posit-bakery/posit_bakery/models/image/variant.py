@@ -21,6 +21,7 @@ class ImageGoss(BaseModel):
     deps: Path
     tests: Path
     command: str
+    entrypoint: str | None = None
     wait: int
 
     @classmethod
@@ -29,7 +30,7 @@ class ImageGoss(BaseModel):
         deps: Path = find_in_context(context=context, name="deps", _type="dir", parents=3)
         tests: Path = find_in_context(context=context, name="test", _type="dir", parents=3)
 
-        return cls(deps=deps, tests=tests, command=goss.command, wait=goss.wait)
+        return cls(deps=deps, tests=tests, command=goss.command, entrypoint=goss.entrypoint, wait=goss.wait)
 
 
 class ImageVariant(BaseModel):
