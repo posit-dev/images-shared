@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List
 
@@ -18,16 +19,45 @@ log = logging.getLogger(__name__)
 
 
 class ImageGoss(BaseModel):
-    deps: Path
+    deps: Path | None
     tests: Path
     command: str
     wait: int
 
+    @staticmethod
+    def _parse_path(context: Path, name: str, value: str | bool | None) -> Path | None:
+        if value is None:
+            return find_in_context(context=context, name=name, _type="dir", parents=3)
+        elif isinstance(value, bool):
+            if value:
+                return find_in_context(context=context, name=name, _type="dir", parents=3)
+            else:
+                return None
+        elif isinstance(value, str):
+            # FIXME: This still has a shortcoming. It cannot process any Jinja2 variables because it lacks additional
+            #        context to resolve them.
+            if os.sep in value:
+                path = context / value
+                if path.exists(follow_symlinks=True) and path.is_dir():
+                    return path
+                else:
+                    raise BakeryFileError(
+                        f"Path '{value}' for Goss path '{name}' does not exist or is not a directory."
+                    )
+            else:
+                return find_in_context(context=context, name=value, _type="dir", parents=3)
+        else:
+            raise BakeryFileError(
+                f"Invalid value '{value}' for Goss path '{name}'. Expected None, bool, or str."
+            )
+
     @classmethod
     def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
-        # TODO: Handle when paths are over-ridden in ManifestGoss
-        deps: Path = find_in_context(context=context, name="deps", _type="dir", parents=3)
-        tests: Path = find_in_context(context=context, name="test", _type="dir", parents=3)
+        deps: Path | None = cls._parse_path(context, "deps", goss.deps)
+        tests: Path | None = cls._parse_path(context, "tests", goss.tests)
+
+        if tests is None:
+            raise BakeryFileError("Goss tests path is required and cannot be None.")
 
         return cls(deps=deps, tests=tests, command=goss.command, wait=goss.wait)
 
