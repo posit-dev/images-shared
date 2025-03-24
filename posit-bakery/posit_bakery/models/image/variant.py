@@ -42,7 +42,7 @@ class ImageGoss(BaseModel):
             #        context to resolve them.
             if os.sep in value:
                 path = context / value
-                if path.exists(follow_symlinks=True) and path.is_dir():
+                if path.is_dir():
                     return path
                 else:
                     raise BakeryFileError(
