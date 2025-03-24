@@ -421,18 +421,19 @@ class Project(BaseModel):
             # perspective, we only want to report an error back if the execution of Goss failed in some way. Our best
             # method of doing this is to check if both the exit code is non-zero, and we were unable to parse the output
             # of the command.
-            if p.returncode != 0 and parse_err is not None:
-                log.error(f"dgoss for image '{variant.tags[0]}' exited with code {p.returncode}")
+            exit_code = p.returncode
+            if exit_code != 0 and parse_err is not None:
+                log.error(f"dgoss for image '{variant.tags[0]}' exited with code {exit_code}")
                 errors.append(BakeryToolRuntimeError(
-                    f"Subprocess call to dgoss exited with code {p.returncode}",
+                    f"Subprocess call to dgoss exited with code {exit_code}",
                     "dgoss",
                     cmd=cmd,
                     stdout=p.stdout,
                     stderr=p.stderr,
-                    exit_code=p.returncode,
+                    exit_code=exit_code,
                     metadata={"results": results_file, "environment_variables": filtered_env_vars},
                 ))
-            elif p.returncode == 0:
+            elif exit_code == 0:
                 log.info(f"[bright_green bold]Goss tests passed for {variant.tags[0]}")
             else:
                 log.warning(f"[yellow bold]Goss tests failed for {variant.tags[0]}")
