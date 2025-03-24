@@ -340,7 +340,7 @@ class Project(BaseModel):
                 cmd.extend(["-e", f"IMAGE_TYPE={variant.target}"])
 
             if variant.goss.entrypoint is not None:
-                cmd.extend(["--entrypoint", "'variant.goss.entrypoint'"])
+                cmd.extend(["--entrypoint", f"'{variant.goss.entrypoint}'"])
 
             # Add user runtime options if provided
             if runtime_options:
