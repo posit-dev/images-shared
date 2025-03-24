@@ -440,9 +440,10 @@ class Project(BaseModel):
         if errors:
             if len(errors) == 1:
                 errors = errors[0]
-            errors = BakeryToolRuntimeErrorGroup(
-                f"dgoss runtime errors occurred for multiple images.", errors
-            )
+            else:
+                errors = BakeryToolRuntimeErrorGroup(
+                    f"dgoss runtime errors occurred for multiple images.", errors
+                )
         else:
             errors = None
         return report_collection, errors
