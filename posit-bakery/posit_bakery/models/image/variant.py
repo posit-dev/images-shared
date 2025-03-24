@@ -54,7 +54,7 @@ class ImageGoss(BaseModel):
     @classmethod
     def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
         deps: Path | None = cls._parse_path(context, "deps", goss.deps)
-        tests: Path | None = cls._parse_path(context, "tests", goss.tests)
+        tests: Path | None = cls._parse_path(context, "test", goss.path)
 
         if tests is None:
             raise BakeryFileError("Goss tests path is required and cannot be None.")
