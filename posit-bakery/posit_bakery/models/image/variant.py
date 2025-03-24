@@ -27,7 +27,11 @@ class ImageGoss(BaseModel):
     @staticmethod
     def _parse_path(context: Path, name: str, value: str | bool | None) -> Path | None:
         if value is None:
-            return find_in_context(context=context, name=name, _type="dir", parents=3)
+            try:
+                return find_in_context(context=context, name=name, _type="dir", parents=3)
+            except BakeryFileError:
+                log.warning(f"Could not resolve default path for Goss '{name}'.")
+                return None
         elif isinstance(value, bool):
             if value:
                 return find_in_context(context=context, name=name, _type="dir", parents=3)
