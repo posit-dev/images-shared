@@ -4,6 +4,8 @@ from typing import Union, List
 
 import pydantic
 
+from posit_bakery import settings
+
 
 class BakeryError(Exception):
     """Base class for all Bakery exceptions"""
@@ -167,6 +169,11 @@ class BakeryToolRuntimeError(BakeryToolError):
             s += "  - Metadata:\n"
             for key, value in self.metadata.items():
                 s += f"    - {key}: {value}\n"
+        if settings.DEBUG_MODE:
+            s += f"  - Stdout:\n"
+            s += f"{self.dump_stdout(10)}\n"
+            s += f"  - Stderr:\n"
+            s += f"{self.dump_stderr(10)}\n"
         return s
 
 
@@ -182,6 +189,11 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
                 s += "  - Metadata:\n"
                 for key, value in e.metadata.items():
                     s += f"    - {key}: {value}\n"
+            if settings.DEBUG_MODE:
+                s += f"  - Stdout:\n"
+                s += f"{e.dump_stdout(10)}\n"
+                s += f"  - Stderr:\n"
+                s += f"{e.dump_stderr(10)}\n"
             s += "\n"
         s += "\n"
         s += f"{len(self.exceptions)} command(s) returned errors\n"

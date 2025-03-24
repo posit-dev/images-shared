@@ -1,10 +1,8 @@
-import enum
 import logging
 
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.style import Style
 from rich.theme import Theme
 
 default_theme = Theme(

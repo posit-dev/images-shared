@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery import error
+from posit_bakery import error, settings
 from posit_bakery.log import init_logging, stdout_console, stderr_console
 from posit_bakery.models import Project
 
@@ -33,6 +33,7 @@ def __global_flags(
 
     log_level: str | int = logging.INFO
     if verbose:
+        settings.DEBUG_MODE = True
         log_level = logging.DEBUG
     elif quiet:
         log_level = logging.ERROR
