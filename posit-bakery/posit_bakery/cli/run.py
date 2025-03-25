@@ -24,7 +24,7 @@ def dgoss(
     image_version: Annotated[str, typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_type: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
     privileged: Annotated[
-        Optional[bool], typer.Option("--privileged", "-P", help="Alias for \"--run-opt='--privileged'\"")
+        Optional[bool], typer.Option("--privileged", help="Alias for \"--run-opt='--privileged'\"")
     ] = False,
     run_option: Annotated[
         List[str], typer.Option(
