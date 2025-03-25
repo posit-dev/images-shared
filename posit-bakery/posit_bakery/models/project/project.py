@@ -343,6 +343,10 @@ class Project(BaseModel):
             if runtime_options:
                 cmd.extend(runtime_options)
 
+            # Add the --init flag to the dgoss command if it is not already present to ensure processes get reaped
+            if "--init" not in cmd:
+                cmd.append("--init")
+
             # Set the output options for Goss
             run_env["GOSS_OPTS"] = "--format json --no-color"
 

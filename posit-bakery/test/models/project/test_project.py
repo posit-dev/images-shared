@@ -232,7 +232,7 @@ class TestProjectGoss:
         cmdstr = " ".join(cmd[2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={img_min.target} {img_min.tags[0]} {goss_min.command}"
+            f"-e IMAGE_TYPE={img_min.target} --init {img_min.tags[0]} {goss_min.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
 
@@ -251,7 +251,7 @@ class TestProjectGoss:
         cmdstr = " ".join(cmd[2])
         pat = re.compile(
             r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={img_std.target} {img_std.tags[0]} {goss_std.command}"
+            f"-e IMAGE_TYPE={img_std.target} --init {img_std.tags[0]} {goss_std.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
 
