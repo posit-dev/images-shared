@@ -23,6 +23,9 @@ def dgoss(
     image_name: Annotated[str, typer.Option(help="The image name to isolate goss testing to.")] = None,
     image_version: Annotated[str, typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_type: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
+    privileged: Annotated[
+        Optional[bool], typer.Option("--privileged", "-P", help="Alias for \"--run-opt='--privileged'\"")
+    ] = False,
     run_option: Annotated[
         List[str], typer.Option(
             "--run-opt", help="Additional runtime options to pass to dgoss. Multiple can be provided."
@@ -42,6 +45,9 @@ def dgoss(
     """
     # TODO: add skip_override back in
     p = _wrap_project_load(context)
+
+    if privileged and "--privileged" not in run_option:
+        run_option.append("--privileged")
 
     results, err = p.dgoss(image_name, image_version, image_type, run_option)
     stderr_console.print(results.table())
