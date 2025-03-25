@@ -8,7 +8,8 @@ import jinja2
 import pytest
 import tomlkit
 
-from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError, BakeryToolNotFoundError, BakeryToolError
+from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError, BakeryToolNotFoundError, BakeryToolError, \
+    BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project, Config
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
@@ -267,6 +268,30 @@ class TestProjectGoss:
         assert subprocess.run.call_count == 2
         assert subprocess.run.call_args_list[0].args[0] == commands[0][2]
         assert subprocess.run.call_args_list[1].args[0] == commands[1][2]
+
+    @pytest.mark.parametrize(
+        "return_code,error_type",
+        [
+            ([0, 1], BakeryToolRuntimeError),
+            ([1, 1], BakeryToolRuntimeErrorGroup),
+        ]
+    )
+    def test_dgoss_error_collection(self, basic_tmpcontext, return_code, error_type):
+        process_mock = MagicMock()
+        type(process_mock).stdout = PropertyMock(return_value=b"{}")
+        type(process_mock).returncode = PropertyMock(side_effect=return_code)
+        subprocess.run = MagicMock(return_value=process_mock)
+        p = Project.load(basic_tmpcontext)
+        with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
+            commands = p.render_dgoss_commands()
+        with patch("posit_bakery.util.find_bin", side_effect=["dgoss", "goss"]):
+            _, err = p.dgoss()
+        assert subprocess.run.call_count == 2
+        assert subprocess.run.call_args_list[0].args[0] == commands[0][2]
+        assert subprocess.run.call_args_list[1].args[0] == commands[1][2]
+        assert isinstance(err, error_type)
+        if error_type == BakeryToolRuntimeErrorGroup:
+            assert len(err.exceptions) == 2
 
     def test_dgoss_no_images(self, tmpdir):
         p = Project.create(tmpdir)
