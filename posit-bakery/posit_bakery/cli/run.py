@@ -28,7 +28,7 @@ def dgoss(
     ] = False,
     run_option: Annotated[
         List[str], typer.Option(
-            "--run-opt", help="Additional runtime options to pass to dgoss. Multiple can be provided."
+            "--run-opt", help="Additional runtime options to pass to dgoss. Multiple can be provided.",
         )
     ] = None,
 ) -> None:
@@ -46,6 +46,8 @@ def dgoss(
     # TODO: add skip_override back in
     p = _wrap_project_load(context)
 
+    if run_option is None:
+        run_option = []
     if privileged and "--privileged" not in run_option:
         run_option.append("--privileged")
 
