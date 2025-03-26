@@ -29,7 +29,7 @@ class ImageGoss(BaseModel):
         """Parses a directory Path based on a multi-type input value."""
 
         # If value is explicitly set to False, return None. This means that the named directory is disabled by the user.
-        if value is False:
+        if isinstance(value, bool) and not value:
             return None
 
         # If value is None or True, attempt to resolve the default path for the named directory. If the default path
