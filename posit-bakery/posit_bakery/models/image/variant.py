@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List
 
@@ -18,16 +19,60 @@ log = logging.getLogger(__name__)
 
 
 class ImageGoss(BaseModel):
-    deps: Path
+    deps: Path | None
     tests: Path
     command: str
     wait: int
 
+    @staticmethod
+    def _parse_path(context: Path, name: str, value: str | bool | None) -> Path | None:
+        """Parses a directory Path based on a multi-type input value."""
+
+        # If value is explicitly set to False, return None. This means that the named directory is disabled by the user.
+        if isinstance(value, bool) and not value:
+            return None
+
+        # If value is None or True, attempt to resolve the default path for the named directory. If the default path
+        # cannot be resolved, log a warning and disable it by returning None. If the named directory is required in
+        # any way, it should be validated further on.
+        if value is None or (isinstance(value, bool) and value):
+            try:
+                return find_in_context(context=context, name=name, _type="dir", parents=3)
+            except BakeryFileError:
+                log.warning(f"Could not resolve default path for Goss '{name}'.")
+                return None
+        # If the value is a string, attempt to resolve it as a path in the context.
+        elif isinstance(value, str):
+            # FIXME: This still has a shortcoming. It cannot process any Jinja2 variables because it lacks additional
+            #        context to resolve them.
+            #
+            # If the value contains a path separator, treat it as a relative path from the context root. If it cannot
+            # be resolved, raise an error.
+            if os.sep in value:
+                path = context / value
+                if path.is_dir():
+                    return path
+                else:
+                    raise BakeryFileError(
+                        f"Path '{value}' for Goss path '{name}' does not exist or is not a directory."
+                    )
+            # If the value does not contain a path separator, treat it as a named directory and attempt to resolve it
+            # using find_in_context. The function will raise an error if it cannot be resolved anywhere in context.
+            else:
+                return find_in_context(context=context, name=value, _type="dir", parents=3)
+        # If the value is not one of the expected types, raise an error.
+        else:
+            raise BakeryFileError(
+                f"Invalid value '{value}' for Goss path '{name}'. Expected None, bool, or str."
+            )
+
     @classmethod
     def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
-        # TODO: Handle when paths are over-ridden in ManifestGoss
-        deps: Path = find_in_context(context=context, name="deps", _type="dir", parents=3)
-        tests: Path = find_in_context(context=context, name="test", _type="dir", parents=3)
+        deps: Path | None = cls._parse_path(context, "deps", goss.deps)
+        tests: Path | None = cls._parse_path(context, "test", goss.path)
+
+        if tests is None:
+            raise BakeryFileError("Goss tests path is required and cannot be None.")
 
         return cls(deps=deps, tests=tests, command=goss.command, wait=goss.wait)
 
@@ -46,12 +91,12 @@ class ImageVariant(BaseModel):
 
     @classmethod
     def load(
-        cls,
-        meta: ImageMetadata,
-        latest: bool,
-        _os: str,
-        _os_primary: str,
-        target: str,
+            cls,
+            meta: ImageMetadata,
+            latest: bool,
+            _os: str,
+            _os_primary: str,
+            target: str,
     ):
         build_os: BuildOS = find_os(_os)
         primary_os: BuildOS = find_os(_os_primary)

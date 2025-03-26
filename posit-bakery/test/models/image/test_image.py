@@ -8,7 +8,7 @@ from posit_bakery.error import BakeryError, BakeryFileError
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.image import Image
 from posit_bakery.models.image.images import ImageFilter
-from posit_bakery.models.image.variant import ImageVariant
+from posit_bakery.models.image.variant import ImageVariant, ImageGoss
 
 from ..fixtures import (
     manifest_simple,
@@ -41,6 +41,25 @@ def patch_is_dir():
     """
     with patch("pathlib.Path.is_dir", return_value=True, autospec=True) as p:
         yield p
+
+
+class TestImageGoss:
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            (None, "deps"),
+            (True, "deps"),
+            (False, None),
+            ("this/dir", "this/dir"),
+            ("this", "this"),
+        ]
+    )
+    def test__parse_path(self, tmpdir, value, expected):
+        result = ImageGoss._parse_path(Path(tmpdir), "deps", value)
+        if expected is None:
+            assert result is None
+        else:
+            assert expected in str(result)
 
 
 @pytest.mark.image

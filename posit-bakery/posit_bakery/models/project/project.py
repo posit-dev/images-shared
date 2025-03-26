@@ -327,10 +327,11 @@ class Project(BaseModel):
             run_env["GOSS_FILES_PATH"] = str(test_path)
 
             deps = variant.goss.deps
-            if deps.is_dir():
-                cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
-            else:
-                log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
+            if deps is not None:
+                if deps.is_dir():
+                    cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
+                else:
+                    log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
 
             if variant.goss.wait is not None and variant.goss.wait > 0:
                 run_env["GOSS_SLEEP"] = str(variant.goss.wait)
