@@ -3,7 +3,7 @@ from typing import Annotated
 
 import typer
 
-from posit_bakery.web.versions import ProductEnum, ReleaseStreamEnum
+from posit_bakery.web.version.product.const import ProductEnum, ReleaseStreamEnum
 
 log = logging.getLogger(__name__)
 
