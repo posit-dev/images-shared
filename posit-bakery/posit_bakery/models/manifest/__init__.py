@@ -2,14 +2,33 @@ import re
 from pathlib import Path
 from typing import List
 
-from posit_bakery.models.manifest.build_os import BuildOS
+from posit_bakery.models.manifest.build_os import BuildOS, OSFamilyEnum
 from posit_bakery.templating.filters import condense
 
 
 SUPPORTED_OS: List[BuildOS] = [
     BuildOS(
+        distributor_id="Debian",
+        name="Debian",
+        family=OSFamilyEnum.DEBIAN_LIKE,
+        version="12",
+        codename="bookworm",
+        base_image="debian:12",
+        image_tag="debian-12",
+    ),
+    BuildOS(
+        distributor_id="Debian",
+        name="Debian",
+        family=OSFamilyEnum.DEBIAN_LIKE,
+        version="11",
+        codename="bullseye",
+        base_image="debian:11",
+        image_tag="debian-11",
+    ),
+    BuildOS(
         distributor_id="Ubuntu",
         name="Ubuntu",
+        family=OSFamilyEnum.DEBIAN_LIKE,
         version="22.04",
         codename="jammy",
         base_image="ubuntu:22.04",
@@ -18,17 +37,43 @@ SUPPORTED_OS: List[BuildOS] = [
     BuildOS(
         distributor_id="Ubuntu",
         name="Ubuntu",
+        family=OSFamilyEnum.DEBIAN_LIKE,
         version="24.04",
         codename="noble",
         base_image="ubuntu:24.04",
         image_tag="ubuntu-24.04",
     ),
     BuildOS(
+        distributor_id="AlmaLinux",
+        name="Alma Linux",
+        family=OSFamilyEnum.REDHAT_LIKE,
+        version="9",
+        base_image="almalinux:9",
+        image_tag="almalinux-9",
+    ),
+    BuildOS(
+        distributor_id="AlmaLinux",
+        name="Alma Linux",
+        family=OSFamilyEnum.REDHAT_LIKE,
+        version="8",
+        base_image="almalinux:8",
+        image_tag="almalinux-8",
+    ),
+    BuildOS(
         distributor_id="Rocky",
         name="Rocky Linux",
+        family=OSFamilyEnum.REDHAT_LIKE,
         version="9",
         base_image="rockylinux/rockylinux:9",
         image_tag="rockylinux-9",
+    ),
+    BuildOS(
+        distributor_id="Rocky",
+        name="Rocky Linux",
+        family=OSFamilyEnum.REDHAT_LIKE,
+        version="8",
+        base_image="rockylinux/rockylinux:8",
+        image_tag="rockylinux-8",
     ),
     BuildOS(
         distributor_id="scratch",
@@ -46,7 +91,7 @@ def find_os(identifier: str) -> BuildOS | None:
     :param identifier: Pretty or Condensed name of the OS
     """
     for _os in SUPPORTED_OS:
-        if identifier in [_os.pretty, _os.condensed]:
+        if identifier in [_os.pretty, _os.condensed, _os.codename]:
             return _os
 
     return None

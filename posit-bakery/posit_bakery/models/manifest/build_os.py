@@ -1,6 +1,14 @@
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from posit_bakery.templating.filters import condense
+
+
+class OSFamilyEnum(str, Enum):
+    DEBIAN_LIKE = "debian"
+    REDHAT_LIKE = "rhel"
+    SUSE_LIKE = "sles"
 
 
 class BuildOS(BaseModel):
@@ -8,6 +16,7 @@ class BuildOS(BaseModel):
 
     distributor_id: str
     name: str
+    family: OSFamilyEnum | None = None
     version: str
     codename: str | None = None
     base_image: str
@@ -36,3 +45,17 @@ class BuildOS(BaseModel):
     @property
     def condensed(self) -> str:
         return condense(self.pretty)
+
+    @computed_field
+    @property
+    def major_version(self) -> str:
+        return self.version.split(".")[0]
+
+    @computed_field
+    @property
+    def package_suffix(self) -> str:
+        if self.family == OSFamilyEnum.DEBIAN_LIKE:
+            return "deb"
+        elif self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
+            return "rpm"
+        return "unknown"
