@@ -1,9 +1,6 @@
 import re
 from enum import Enum
 
-from posit_bakery.web import resolvers
-from posit_bakery.web.version.product.main import ReleaseStreamPath
-
 SEMVER_REGEX_PATTERN = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"

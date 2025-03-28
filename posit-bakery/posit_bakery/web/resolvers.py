@@ -121,7 +121,7 @@ class ChainedResolver(AbstractResolver):
         """Each resolver is expected to perform their own formatting."""
         return
 
-    def resolve(self, data: Dict[Any]) -> Dict[Any] | Any | None:
+    def resolve(self, data: Dict[Any, Any]) -> Dict[Any, Any] | Any | None:
         """Resolve the given data by passing it through each resolver in order.
 
         :param data: The data object to execute resolvers against.

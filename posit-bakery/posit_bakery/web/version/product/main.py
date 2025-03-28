@@ -6,7 +6,7 @@ from pydantic import BaseModel, HttpUrl, Field
 
 from posit_bakery.models.manifest import BuildOS, OSFamilyEnum
 from posit_bakery.web import resolvers
-from posit_bakery.web.resolvers import AbstractResolver, StringMapPathResolver
+from posit_bakery.web.resolvers import AbstractResolver
 from posit_bakery.web.version.product.const import SEMVER_REGEX_PATTERN, ProductEnum, ReleaseStreamEnum
 
 
@@ -46,7 +46,7 @@ class ReleaseStreamPath:
 # This map connects products to their respective release streams. Each release stream has a ReleaseStreamPath object
 # that defines one URL to fetch data from and a map of resolvers that can be used to extract a specified property
 # from the fetched data as it is expected to be formatted.
-PRODUCT_RELEASE_STREAM_URL_MAP = {
+product_release_stream_url_map = {
     ProductEnum.CONNECT: {
         ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
             "https://posit.co/wp-content/uploads/downloads.json",
@@ -129,7 +129,7 @@ PRODUCT_RELEASE_STREAM_URL_MAP = {
             },
         ),
         ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-            "https://www.rstudio.com/products/rstudio/download/preview/",
+            "https://posit.co/wp-content/uploads/downloads.json",
             {
                 "version": resolvers.StringMapPathResolver(
                     ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "version"]
@@ -140,7 +140,7 @@ PRODUCT_RELEASE_STREAM_URL_MAP = {
             },
         ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://dailies.posit.co/rstudio/latest/index.json",
+            "https://dailies.rstudio.com/rstudio/latest/index.json",
             {
                 "version": resolvers.StringMapPathResolver(
                     ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
@@ -164,7 +164,7 @@ PRODUCT_RELEASE_STREAM_URL_MAP = {
             },
         ),
         ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-            "https://www.rstudio.com/products/rstudio/download/preview/",
+            "https://posit.co/wp-content/uploads/downloads.json",
             {
                 "version": resolvers.StringMapPathResolver(
                     ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "version"]
@@ -175,7 +175,7 @@ PRODUCT_RELEASE_STREAM_URL_MAP = {
             },
         ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://dailies.posit.co/rstudio/latest/index.json",
+            "https://dailies.rstudio.com/rstudio/latest/index.json",
             {
                 "version": resolvers.StringMapPathResolver(
                     ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
@@ -225,15 +225,16 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
     return "multi"
 
 
-def _make_resolver_metadata(os: BuildOS, product: ProductEnum):
+def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     """Generates a set of metadata used in string formatting with the given OS and Product."""
+    # FIXME: Eventually we should take into account other architectures as a param.
     arch_identifier = "amd64"
-    if os.family == OSFamilyEnum.REDHAT_LIKE:
+    if _os.family == OSFamilyEnum.REDHAT_LIKE:
         arch_identifier = "x86_64"
 
     return {
-        "os": os,
-        "download_json_os": _parse_download_json_os_identifier(os, product),
+        "os": _os,
+        "download_json_os": _parse_download_json_os_identifier(_os, product),
         "arch_identifier": arch_identifier,
     }
 
@@ -241,4 +242,4 @@ def _make_resolver_metadata(os: BuildOS, product: ProductEnum):
 def get_product_artifact_by_stream(product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS) -> ReleaseStreamResult:
     """Fetches the version and download URL for a given product, release stream, and OS."""
     metadata = _make_resolver_metadata(os, product)
-    return PRODUCT_RELEASE_STREAM_URL_MAP[product][stream].get(metadata)
+    return product_release_stream_url_map[product][stream].get(metadata)
