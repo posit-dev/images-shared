@@ -59,3 +59,17 @@ class BuildOS(BaseModel):
         elif self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
             return "rpm"
         return "unknown"
+
+    @computed_field
+    @property
+    def package_arch_sep(self) -> str:
+        if self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
+            return "."
+        return "_"
+
+    @computed_field
+    @property
+    def package_version_sep(self) -> str:
+        if self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
+            return "-"
+        return "_"

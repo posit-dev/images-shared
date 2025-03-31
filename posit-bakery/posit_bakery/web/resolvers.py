@@ -43,7 +43,7 @@ class TextResolver(AbstractResolver):
         :param data: The data to return.
         :return: The given data.
         """
-        return data
+        return data.strip()
 
 
 class StringMapPathResolver(AbstractResolver):
@@ -52,9 +52,10 @@ class StringMapPathResolver(AbstractResolver):
     def __init__(self, key_path: List[str]):
         super().__init__()
         self.key_path = key_path
+        self._formatted_key_path = None  # Preserves the original key path if we reuse the resolver
 
     def format(self):
-        self.key_path = [element.format(**self.metadata) for element in self.key_path]
+        self._formatted_key_path = [element.format(**self.metadata) for element in self.key_path]
 
     def resolve(self, data: Dict[str, Any]) -> Dict[Any, Any] | Any | None:
         """Resolve the valuea at the given path from the given dictionary.
@@ -64,7 +65,7 @@ class StringMapPathResolver(AbstractResolver):
         :return: The resolved value. None if the path does not exist.
         """
         self.format()
-        for key in self.key_path:
+        for key in self._formatted_key_path:
             data = data.get(key)
             if data is None:
                 break
@@ -85,12 +86,14 @@ class ArrayPropertyResolver(AbstractResolver):
         """
         super().__init__()
         self.prop = prop
+        self._formatted_prop = None  # Preserves the original prop if we reuse the resolver
         self.value = value
+        self._formatted_value = None  # Preserves the original value if we reuse the resolver
 
     def format(self):
         """Format the prop and value strings using metadata."""
-        self.prop.format(**self.metadata)
-        self.value.format(**self.metadata)
+        self._formatted_prop = self.prop.format(**self.metadata)
+        self._formatted_value = self.value.format(**self.metadata)
 
     def resolve(self, data: list[dict]) -> Any | None:
         """Resolve the matching dictionary from the given list of dictionaries.
@@ -100,7 +103,7 @@ class ArrayPropertyResolver(AbstractResolver):
         """
         self.format()
         for item in data:
-            if item.get(self.prop) == self.value:
+            if item.get(self._formatted_prop) == self._formatted_value:
                 return item
         return None
 

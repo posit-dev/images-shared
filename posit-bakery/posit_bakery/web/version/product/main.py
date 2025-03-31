@@ -7,7 +7,8 @@ from pydantic import BaseModel, HttpUrl, Field
 from posit_bakery.models.manifest import BuildOS, OSFamilyEnum
 from posit_bakery.web import resolvers
 from posit_bakery.web.resolvers import AbstractResolver
-from posit_bakery.web.version.product.const import SEMVER_REGEX_PATTERN, ProductEnum, ReleaseStreamEnum
+from posit_bakery.web.version.product.const import SEMVER_REGEX_PATTERN, ProductEnum, ReleaseStreamEnum, \
+    WORKBENCH_DAILY_URL, PACKAGE_MANAGER_DAILY_URL, PACKAGE_MANAGER_PREVIEW_URL, CONNECT_DAILY_URL, DOWNLOADS_JSON_URL
 
 
 class ReleaseStreamResult(BaseModel):
@@ -37,7 +38,8 @@ class ReleaseStreamPath:
         for key, resolver in self.resolver_map.items():
             if isinstance(resolver, str):
                 result[key] = resolver.format(**metadata, **result)
-            else:
+            elif isinstance(resolver, resolvers.AbstractResolver):
+                resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
 
         return ReleaseStreamResult(**result)
@@ -49,22 +51,22 @@ class ReleaseStreamPath:
 product_release_stream_url_map = {
     ProductEnum.CONNECT: {
         ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
+            DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["connect", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(
-                    ["connect", "installer", "{parse_download_json_os_identifier(os)}", "url"]
+                    ["connect", "installer", "{download_json_os}", "url"]
                 ),
             },
         ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://cdn.posit.co/connect/latest-packages.json",
+            CONNECT_DAILY_URL,
             {
                 "version": resolvers.ChainedResolver(
                     [
                         resolvers.StringMapPathResolver(["packages"]),
                         resolvers.ArrayPropertyResolver(
-                            "platform", "{os.name.lower()}{os.major_version}/{arch_identifier}"
+                            "platform", "{connect_daily_os_name}/{arch_identifier}"
                         ),
                         resolvers.StringMapPathResolver(["version"]),
                     ]
@@ -73,7 +75,7 @@ product_release_stream_url_map = {
                     [
                         resolvers.StringMapPathResolver(["packages"]),
                         resolvers.ArrayPropertyResolver(
-                            "platform", "{os.name.lower()}{os.major_version}/{arch_identifier}"
+                            "platform", "{connect_daily_os_name}/{arch_identifier}"
                         ),
                         resolvers.StringMapPathResolver(["url"]),
                     ]
@@ -83,14 +85,14 @@ product_release_stream_url_map = {
     },
     ProductEnum.PACKAGE_MANAGER: {
         ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
+            DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "url"]),
             },
         ),
         ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-            "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-rc-latest.txt",
+            PACKAGE_MANAGER_PREVIEW_URL,
             # This is intentionally stored as an OrderedDict to ensure version is resolved first so it can be passed
             # to the download_url resolver.
             OrderedDict(
@@ -98,19 +100,23 @@ product_release_stream_url_map = {
                     ("version", resolvers.TextResolver()),
                     (
                         "download_url",
-                        "https://cdn.posit.co/package-manager/{os}/{arch_identifier}/rstudio-pm_{version}_amd64.deb",
+                        "https://cdn.posit.co/package-manager/{os.package_suffix}/{arch_identifier}/"
+                        "rstudio-pm{os.package_version_sep}{version}{os.package_arch_sep}"
+                        "{arch_identifier}.{os.package_suffix}",
                     ),
                 ]
             ),
         ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-main-latest.txt",
+            PACKAGE_MANAGER_DAILY_URL,
             OrderedDict(
                 [
                     ("version", resolvers.TextResolver()),
                     (
                         "download_url",
-                        "https://cdn.posit.co/package-manager/{os}/{arch_identifier}/rstudio-pm_{version}_amd64.deb",
+                        "https://cdn.posit.co/package-manager/{os.package_suffix}/{arch_identifier}/"
+                        "rstudio-pm{os.package_version_sep}{version}{os.package_arch_sep}"
+                        "{arch_identifier}.{os.package_suffix}",
                     ),
                 ]
             ),
@@ -118,7 +124,7 @@ product_release_stream_url_map = {
     },
     ProductEnum.WORKBENCH: {
         ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
+            DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
                     ["rstudio", "pro", "stable", "server", "installer", "{download_json_os}", "version"]
@@ -128,19 +134,20 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "url"]
-                ),
-            },
-        ),
+        # FIXME: This stream seems out of date
+        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
+        #     DOWNLOADS_JSON_URL,
+        #     {
+        #         "version": resolvers.StringMapPathResolver(
+        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "version"]
+        #         ),
+        #         "download_url": resolvers.StringMapPathResolver(
+        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "url"]
+        #         ),
+        #     },
+        # ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://dailies.rstudio.com/rstudio/latest/index.json",
+            WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
                     ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
@@ -153,7 +160,7 @@ product_release_stream_url_map = {
     },
     ProductEnum.WORKBENCH_SESSION: {
         ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
+            DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
                     ["rstudio", "pro", "stable", "session", "installer", "{download_json_os}", "version"]
@@ -163,19 +170,20 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-            "https://posit.co/wp-content/uploads/downloads.json",
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "url"]
-                ),
-            },
-        ),
+        # FIXME: This stream seems out of date
+        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
+        #     DOWNLOADS_JSON_URL,
+        #     {
+        #         "version": resolvers.StringMapPathResolver(
+        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "version"]
+        #         ),
+        #         "download_url": resolvers.StringMapPathResolver(
+        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "url"]
+        #         ),
+        #     },
+        # ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
-            "https://dailies.rstudio.com/rstudio/latest/index.json",
+            WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
                     ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
@@ -199,7 +207,12 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
         "buster": "focal",
     }
     if _os.family == OSFamilyEnum.DEBIAN_LIKE:
-        if _os.name.lower() == "ubuntu":
+        if product == ProductEnum.PACKAGE_MANAGER and (
+                (_os.name.lower() == "ubuntu" and int(_os.major_version) > 22)
+                or (_os.name.lower() == "debian" and int(_os.major_version) > 11)
+        ):
+            return "ubuntu64"
+        elif _os.name.lower() == "ubuntu":
             return _os.codename
         elif _os.name.lower() == "debian":
             return debian_to_ubuntu_codename.get(_os.codename)
@@ -232,14 +245,33 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     if _os.family == OSFamilyEnum.REDHAT_LIKE:
         arch_identifier = "x86_64"
 
-    return {
+    meta = {
         "os": _os,
         "download_json_os": _parse_download_json_os_identifier(_os, product),
         "arch_identifier": arch_identifier,
     }
 
+    if product == ProductEnum.CONNECT:
+        connect_daily_os_name = _os.name.lower() + _os.major_version
+        if _os.family == OSFamilyEnum.REDHAT_LIKE:
+            if _os.major_version == "8":
+                connect_daily_os_name = "el8"
+            if _os.major_version == "9":
+                connect_daily_os_name = "el9"
+        if _os.family == OSFamilyEnum.DEBIAN_LIKE and _os.name.lower() == "debian":
+            connect_daily_os_name = "ubuntu" + str(int(_os.major_version)*2)
+        meta["connect_daily_os_name"] = connect_daily_os_name
+
+    return meta
+
 
 def get_product_artifact_by_stream(product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS) -> ReleaseStreamResult:
     """Fetches the version and download URL for a given product, release stream, and OS."""
+    if product not in product_release_stream_url_map:
+        raise ValueError(f"Product {product} is not supported.")
+    if stream not in product_release_stream_url_map[product]:
+        raise ValueError(f"Stream {stream} is not supported for product {product}.")
+
     metadata = _make_resolver_metadata(os, product)
+
     return product_release_stream_url_map[product][stream].get(metadata)
