@@ -1,6 +1,6 @@
 import typer
 
-from posit_bakery.cli import create, common, run, build
+from posit_bakery.cli import create, common, run, build, get
 
 app = typer.Typer(
     name="bakery",
@@ -23,3 +23,6 @@ app.add_typer(run.app, name="r", hidden=True)
 app.command(name="build", help="Build images using buildkit bake (aliases: b, bake)")(build.build)
 app.command(name="bake", hidden=True)(build.build)
 app.command(name="b", hidden=True)(build.build)
+
+# Import the "get" subcommand
+app.add_typer(get.app, name="get", help="Gets results for a variety of queries")
