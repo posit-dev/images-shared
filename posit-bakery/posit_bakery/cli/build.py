@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
 import pydantic
+from python_on_whales import docker
 import typer
 
 from posit_bakery import error
@@ -48,13 +49,9 @@ def build(
     ] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = False,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
-    build_options: Annotated[
-        List[str],
-        typer.Option(
-            "--build-opt",
-            help="Additional build options to pass to docker buildx. Multiple can be provided.",
-        ),
-    ] = None,
+    no_cache: Annotated[Optional[bool], typer.Option(help="Disable caching for build.")] = False,
+    builder: Annotated[Optional[str], typer.Option(help="The buildkit builder to use.")] = None,
+    stream_logs: Annotated[Optional[bool], typer.Option(help="Enable streaming container logs.")] = False,
 ) -> None:
     """Builds images in the context path using buildx bake
 
@@ -70,9 +67,18 @@ def build(
         print_plan(p, image_name, image_version, image_type)
 
     try:
-        p.build(load, push, image_name, image_version, image_type, build_options)
-    except error.BakeryToolRuntimeError as e:
+        p.build(
+            load,
+            push,
+            image_name,
+            image_version,
+            image_type,
+            cache=not no_cache,
+            builder=builder,
+            stream_logs=stream_logs,
+        )
+    except (error.BakeryToolRuntimeError, docker.DockerError) as e:
         stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"✅ Build completed", style="success")
+    stderr_console.print("✅Build completed", style="success")

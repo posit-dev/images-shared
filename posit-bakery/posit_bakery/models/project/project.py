@@ -4,10 +4,11 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Union, List, Dict, Tuple, Any
+from typing import Union, List, Dict, Tuple, Any, Literal
 
 import pydantic
 from pydantic import BaseModel
+from python_on_whales import docker
 
 from posit_bakery.error import (
     BakeryImageError,
@@ -246,7 +247,10 @@ class Project(BaseModel):
         image_name: str = None,
         image_version: str = None,
         image_type: str = None,
-        build_options: List[str] = None,
+        builder: docker.buildx.ValidBuilder = None,
+        cache: bool = True,
+        progress: Literal["auto", "plain", "tty", False] = "auto",
+        stream_logs: bool = False,
     ) -> None:
         """Build images in the project using Buildkit Bake
 
@@ -265,27 +269,8 @@ class Project(BaseModel):
         with open(build_file, "w") as f:
             f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
-        cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
-        if load:
-            cmd.append("--load")
-        if push:
-            cmd.append("--push")
-        if build_options:
-            cmd.extend(build_options)
-        run_env = os.environ.copy()
-        log.debug(f"[bright_black]Executing build command: {' '.join(cmd)}")
         log.info("[bright_blue bold]Starting image builds...")
-        p = subprocess.run(cmd, env=run_env, cwd=self.context)
-        if p.returncode != 0:
-            log.error("Subprocess call to docker buildx bake failed.")
-            raise BakeryToolRuntimeError(
-                "Subprocess call to docker buildx bake failed.",
-                "docker",
-                cmd=cmd,
-                stdout=p.stdout,
-                stderr=p.stderr,
-                exit_code=p.returncode,
-            )
+        docker.buildx.bake(files=[str(build_file)], load=load, push=push)
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")
 
