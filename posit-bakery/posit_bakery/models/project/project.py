@@ -331,7 +331,7 @@ class Project(BaseModel):
             deps = variant.goss.deps
             if deps is not None:
                 if deps.is_dir():
-                    cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
+                    cmd.extend(["-v", f"{str(deps)}:/tmp/deps"])
                 else:
                     log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
 
