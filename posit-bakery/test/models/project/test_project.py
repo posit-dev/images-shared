@@ -196,8 +196,6 @@ class TestProjectBuild:
             push=False,
             builder=None,
             cache=True,
-            progress="auto",
-            stream_logs=False,
         )
 
     def test_build_no_images(self, tmpdir):

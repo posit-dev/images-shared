@@ -252,8 +252,6 @@ class Project(BaseModel):
         image_type: str = None,
         builder: ValidBuilder = None,
         cache: bool = True,
-        progress: Literal["auto", "plain", "tty", False] = "auto",
-        stream_logs: bool = False,
     ) -> None:
         """Build images in the project using Buildkit Bake
 
@@ -264,8 +262,6 @@ class Project(BaseModel):
         :param image_type: (Optional) The type of the image to build
         :param builder: (Optional) The Buildx builder to use for the build
         :param cache: If true, use cache for the build
-        :param progress: The progress output mode to use for the build
-        :param stream_logs: If true, stream logs from the build process
         """
         if not self.has_images():
             raise BakeryImageNotFoundError("No images found in the project.")
@@ -279,14 +275,13 @@ class Project(BaseModel):
         os.chdir(self.context)
 
         log.info("[bright_blue bold]Starting image builds...")
+        # TODO: Disable progress output when --quiet is set
         docker.buildx.bake(
             files=[str(build_file)],
             load=load,
             push=push,
             builder=builder,
             cache=cache,
-            progress=progress,
-            stream_logs=stream_logs,
         )
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")

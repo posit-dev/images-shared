@@ -47,7 +47,6 @@ def build(
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
     no_cache: Annotated[Optional[bool], typer.Option(help="Disable caching for build.")] = False,
     builder: Annotated[Optional[str], typer.Option(help="The buildkit builder to use.")] = None,
-    stream_logs: Annotated[Optional[bool], typer.Option(help="Enable streaming container logs.")] = False,
 ) -> None:
     """Builds images in the context path using buildx bake
 
@@ -71,7 +70,6 @@ def build(
             image_type,
             cache=not no_cache,
             builder=builder,
-            stream_logs=stream_logs,
         )
     except DockerException as e:
         stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
