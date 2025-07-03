@@ -9,6 +9,7 @@ from typing import Union, List, Dict, Tuple, Any, Literal
 import pydantic
 from pydantic import BaseModel
 from python_on_whales import docker
+from python_on_whales.components.buildx.cli_wrapper import ValidBuilder
 
 from posit_bakery.error import (
     BakeryImageError,
@@ -247,7 +248,7 @@ class Project(BaseModel):
         image_name: str = None,
         image_version: str = None,
         image_type: str = None,
-        builder: docker.buildx.ValidBuilder = None,
+        builder: ValidBuilder = None,
         cache: bool = True,
         progress: Literal["auto", "plain", "tty", False] = "auto",
         stream_logs: bool = False,
@@ -259,7 +260,10 @@ class Project(BaseModel):
         :param image_name: (Optional) The name of the image to build
         :param image_version: (Optional) The version of the image to build
         :param image_type: (Optional) The type of the image to build
-        :param build_options: (Optional) Additional build options to pass to `docker buildx bake` command
+        :param builder: (Optional) The Buildx builder to use for the build
+        :param cache: If true, use cache for the build
+        :param progress: The progress output mode to use for the build
+        :param stream_logs: If true, stream logs from the build process
         """
         if not self.has_images():
             raise BakeryImageNotFoundError("No images found in the project.")
@@ -270,7 +274,15 @@ class Project(BaseModel):
             f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
         log.info("[bright_blue bold]Starting image builds...")
-        docker.buildx.bake(files=[str(build_file)], load=load, push=push)
+        docker.buildx.bake(
+            files=[str(build_file)],
+            load=load,
+            push=push,
+            builder=builder,
+            cache=cache,
+            progress=progress,
+            stream_logs=stream_logs
+        )
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")
 

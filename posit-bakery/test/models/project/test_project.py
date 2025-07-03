@@ -178,19 +178,21 @@ class TestProjectBuild:
         with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
             p.render_bake_plan()
 
-    def test_build(self, basic_tmpcontext):
+    @patch("python_on_whales.docker.buildx.bake", return_value=None)
+    def test_build(self, mock_bake, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
         p = Project.load(basic_tmpcontext)
         p.build()
-        subprocess.run.assert_called_once()
-        assert subprocess.run.call_args[0][0] == [
-            "docker",
-            "buildx",
-            "bake",
-            "--file",
-            str(Path(basic_tmpcontext) / ".docker-bake.json"),
-        ]
+        mock_bake.assert_called_once_with(
+            files=[str(p.context / ".docker-bake.json")],
+            load=False,
+            push=False,
+            builder=None,
+            cache=True,
+            progress="auto",
+            stream_logs=False,
+        )
 
     def test_build_no_images(self, tmpdir):
         p = Project.create(tmpdir)
