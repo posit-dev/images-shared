@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import pydantic
-from python_on_whales import docker
+from python_on_whales.exceptions import DockerException
 import typer
 
 from posit_bakery import error
@@ -77,8 +77,8 @@ def build(
             builder=builder,
             stream_logs=stream_logs,
         )
-    except (error.BakeryToolRuntimeError, docker.DockerError) as e:
-        stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
+    except DockerException as e:
+        stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
         raise typer.Exit(code=1)
 
     stderr_console.print("✅Build completed", style="success")
