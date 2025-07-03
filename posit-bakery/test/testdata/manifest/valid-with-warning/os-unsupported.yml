@@ -1,0 +1,5 @@
+image_name: "test-image"
+build:
+  "1.0.0":
+    os:
+    - "Gentoo"

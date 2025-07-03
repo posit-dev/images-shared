@@ -1,0 +1,5 @@
+# repository missing: Validation should log a WARNING
+
+registries:
+  - host: docker.io
+    namespace: posit
