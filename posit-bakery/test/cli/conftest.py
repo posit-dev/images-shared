@@ -19,7 +19,7 @@ def bare_command(bakery_command):
     bakery_command.reset()
 
 
-@given(parsers.cfparse('I call bakery {commands:String*}', extra_types={"String": str}))
+@given(parsers.cfparse("I call bakery {commands:String*}", extra_types={"String": str}))
 def sub_command(bakery_command, commands: List[str]):
     bakery_command.reset()
     parsed_commands = []

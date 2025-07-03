@@ -8,8 +8,14 @@ import jinja2
 import pytest
 import tomlkit
 
-from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError, BakeryToolNotFoundError, BakeryToolError, \
-    BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.error import (
+    BakeryFileError,
+    BakeryImageNotFoundError,
+    BakeryToolNotFoundError,
+    BakeryToolError,
+    BakeryToolRuntimeError,
+    BakeryToolRuntimeErrorGroup,
+)
 from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project, Config
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
@@ -276,7 +282,7 @@ class TestProjectGoss:
         [
             ([0, 1], BakeryToolRuntimeError),
             ([1, 1], BakeryToolRuntimeErrorGroup),
-        ]
+        ],
     )
     def test_dgoss_error_collection(self, basic_tmpcontext, return_code, error_type):
         process_mock = MagicMock()

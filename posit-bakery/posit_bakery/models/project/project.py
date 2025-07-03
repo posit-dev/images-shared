@@ -17,7 +17,9 @@ from posit_bakery.error import (
     BakeryModelValidationError,
     BakeryToolRuntimeError,
     BakeryModelValidationErrorGroup,
-    BakeryFileError, BakeryToolError, BakeryToolRuntimeErrorGroup,
+    BakeryFileError,
+    BakeryToolError,
+    BakeryToolRuntimeErrorGroup,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.image.variant import ImageVariant
@@ -284,7 +286,7 @@ class Project(BaseModel):
             builder=builder,
             cache=cache,
             progress=progress,
-            stream_logs=stream_logs
+            stream_logs=stream_logs,
         )
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")
@@ -431,15 +433,17 @@ class Project(BaseModel):
             exit_code = p.returncode
             if exit_code != 0 and parse_err is not None:
                 log.error(f"dgoss for image '{variant.tags[0]}' exited with code {exit_code}")
-                errors.append(BakeryToolRuntimeError(
-                    f"Subprocess call to dgoss exited with code {exit_code}",
-                    "dgoss",
-                    cmd=cmd,
-                    stdout=p.stdout,
-                    stderr=p.stderr,
-                    exit_code=exit_code,
-                    metadata={"results": results_file, "environment_variables": filtered_env_vars},
-                ))
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"Subprocess call to dgoss exited with code {exit_code}",
+                        "dgoss",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=exit_code,
+                        metadata={"results": results_file, "environment_variables": filtered_env_vars},
+                    )
+                )
             elif exit_code == 0:
                 log.info(f"[bright_green bold]Goss tests passed for {variant.tags[0]}")
             else:
@@ -449,9 +453,7 @@ class Project(BaseModel):
             if len(errors) == 1:
                 errors = errors[0]
             else:
-                errors = BakeryToolRuntimeErrorGroup(
-                    f"dgoss runtime errors occurred for multiple images.", errors
-                )
+                errors = BakeryToolRuntimeErrorGroup(f"dgoss runtime errors occurred for multiple images.", errors)
         else:
             errors = None
         return report_collection, errors
@@ -468,9 +470,9 @@ class Project(BaseModel):
 
         # Add output file options
         if variant.meta.snyk.test.output.json_file:
-            opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
+            opts.append(f"--json-file-output={str(result_dir / f'{uid}.json')}")
         elif variant.meta.snyk.test.output.sarif_file:
-            opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
+            opts.append(f"--sarif-file-output={str(result_dir / f'{uid}.sarif')}")
 
         # Add severity threshold
         opts.append(f"--severity-threshold={variant.meta.snyk.test.severity_threshold.value}")
@@ -532,11 +534,11 @@ class Project(BaseModel):
         return opts
 
     def render_snyk_commands(
-            self,
-            subcommand: str,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
+        self,
+        subcommand: str,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
     ) -> List[Tuple[str, Dict[str, str], List[str]]]:
         snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
         snyk_commands = []
@@ -581,11 +583,11 @@ class Project(BaseModel):
         return snyk_commands
 
     def snyk(
-            self,
-            subcommand: str = None,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
+        self,
+        subcommand: str = None,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
     ) -> None:
         snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
 
@@ -623,17 +625,17 @@ class Project(BaseModel):
                 if exit_meaning["completed"]:
                     log.warning(
                         f"snyk container {subcommand.value} command for image '{tag}' completed with errors: "
-                        f"{exit_meaning["reason"]}"
+                        f"{exit_meaning['reason']}"
                     )
                 else:
                     log.error(
                         f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
-                        f"{exit_meaning["reason"]}"
+                        f"{exit_meaning['reason']}"
                     )
                 errors.append(
                     BakeryToolRuntimeError(
                         f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
-                        f"{exit_meaning["reason"]}",
+                        f"{exit_meaning['reason']}",
                         "snyk",
                         cmd=cmd,
                         stdout=p.stdout,
@@ -660,10 +662,9 @@ class Project(BaseModel):
                 except json.JSONDecodeError:
                     log.warning(f"Failed to parse snyk container sbom output as JSON for image '{tag}'.")
 
-                with open(result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}", "w") as f:
-                    log.info(
-                        f"Writing SBOM to {result_dir / f'{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}'}."
-                    )
+                result_path = result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}"
+                with open(result_path, "w") as f:
+                    log.info(f"Writing SBOM to {result_path}.")
                     f.write(output)
 
         if errors:

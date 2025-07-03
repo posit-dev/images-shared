@@ -14,6 +14,7 @@ from posit_bakery.models.project.bake import target_uid
 
 class GossMatcherResult(BaseModel):
     """Models the matcher result of a Goss test case."""
+
     # Message should be set in all test results, even in skipped tests
     message: Annotated[str, Field(description="Matcher result summary string", default="")]
 
@@ -30,11 +31,12 @@ class GossMatcherResult(BaseModel):
     # (string, number, boolean, array, object) depending on what's being tested. I used "Any" for now since I don't
     # expect type validation to be especially important here.
     extra_elements: Annotated[
-        list[Any] | Any | None, Field(
+        list[Any] | Any | None,
+        Field(
             alias="extra-elements",
             description="Lists extra elements that appeared when using 'consist-of' matcher",
             default=None,
-        )
+        ),
     ]
     found_elements: Annotated[
         list[Any] | Any | None,
@@ -42,7 +44,7 @@ class GossMatcherResult(BaseModel):
             alias="found-elements",
             description="Lists all found elements when using 'consist-of' or 'contain-element(s)' matchers",
             default=None,
-        )
+        ),
     ]
     missing_elements: Annotated[
         list[Any] | Any | None,
@@ -52,7 +54,7 @@ class GossMatcherResult(BaseModel):
                 "Lists all missing elements when using 'consist-of', 'have_patterns', or 'contain-element(s)' matchers"
             ),
             default=None,
-        )
+        ),
     ]
     transform_chain: Annotated[
         Any | None,
@@ -62,7 +64,7 @@ class GossMatcherResult(BaseModel):
                 "Lists any transformations applied to system state (actual) type in attempt to match expected type"
             ),
             default=None,
-        )
+        ),
     ]
     untransformed_value: Annotated[
         Any | None,
@@ -70,12 +72,13 @@ class GossMatcherResult(BaseModel):
             alias="untransformed-value",
             description="Shows raw system state value if transformations were applied",
             default=None,
-        )
+        ),
     ]
 
 
 class GossResult(BaseModel):
     """Models the result of a single Goss test case."""
+
     successful: Annotated[bool, Field(description="Whether the test was successful")]
     skipped: Annotated[bool, Field(description="Whether the test was skipped")]
     err: Annotated[str | None, Field(description="Error message if Goss failed to execute the test", default=None)]
@@ -104,6 +107,7 @@ class GossResult(BaseModel):
 
 class GossSummary(BaseModel):
     """Models the summary section of a Goss JSON report."""
+
     test_count: Annotated[int, Field(alias="test-count", description="Total number of tests")]
     failed_count: Annotated[int, Field(alias="failed-count", description="Number of failed tests")]
     skipped_count: Annotated[int, Field(alias="skipped-count", description="Number of skipped tests")]
@@ -118,6 +122,7 @@ class GossSummary(BaseModel):
 
 class GossJsonReport(BaseModel):
     """Models Goss JSON reports produced by goss tests with `--format json`."""
+
     filepath: Annotated[Path | None, Field(default=None, exclude=True)]
     summary: GossSummary
     results: list[GossResult] | None = None

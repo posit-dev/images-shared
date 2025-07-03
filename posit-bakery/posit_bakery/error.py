@@ -92,9 +92,9 @@ class BakeryFileError(BakeryError):
     """Generic error for file/directory issues"""
 
     def __init__(
-            self,
-            message: str = None,
-            filepath: Union[str, bytes, os.PathLike] | List[Union[str, bytes, os.PathLike]] = None,
+        self,
+        message: str = None,
+        filepath: Union[str, bytes, os.PathLike] | List[Union[str, bytes, os.PathLike]] = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -177,7 +177,7 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
         s = f""
         for e in self.exceptions:
             s += f"{e.message}\n"
-            s += f"  - Command executed: '{" ".join(e.cmd)}'\n"
+            s += f"  - Command executed: '{' '.join(e.cmd)}'\n"
             if e.metadata:
                 s += "  - Metadata:\n"
                 for key, value in e.metadata.items():

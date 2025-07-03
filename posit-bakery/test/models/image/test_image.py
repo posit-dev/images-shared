@@ -52,7 +52,7 @@ class TestImageGoss:
             (False, None),
             ("this/dir", "this/dir"),
             ("this", "this"),
-        ]
+        ],
     )
     def test__parse_path(self, tmpdir, value, expected):
         result = ImageGoss._parse_path(Path(tmpdir), "deps", value)
