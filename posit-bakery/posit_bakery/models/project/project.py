@@ -273,6 +273,9 @@ class Project(BaseModel):
         with open(build_file, "w") as f:
             f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
+        previous_directory = os.getcwd()
+        os.chdir(self.context)
+
         log.info("[bright_blue bold]Starting image builds...")
         docker.buildx.bake(
             files=[str(build_file)],
@@ -285,6 +288,8 @@ class Project(BaseModel):
         )
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")
+
+        os.chdir(previous_directory)
 
     def render_dgoss_commands(
         self,
