@@ -77,7 +77,7 @@ class Project(BaseModel):
             raise BakeryFileError(f"Given context '{project_context}' is a file.", project_context)
 
         # Check if the context contains a config.y[a]ml file
-        config_files = [project_context / "config.yml", project_context / "config.yaml"]
+        config_files = [project_context / "config.yaml", project_context / "config.yaml"]
         if not any(config_file.is_file() for config_file in config_files):
             return False
 
