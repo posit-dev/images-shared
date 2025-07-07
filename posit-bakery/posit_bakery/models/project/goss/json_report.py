@@ -2,12 +2,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-import rich
 from pydantic import BaseModel, Field, computed_field
 from rich.table import Table
 from rich.text import Text
 
-from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.project.bake import target_uid
 

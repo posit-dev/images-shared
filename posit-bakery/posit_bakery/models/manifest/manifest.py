@@ -4,21 +4,21 @@ import os
 from pathlib import Path
 from typing import Union, List
 
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.generic import GenericYAMLModel
 from posit_bakery.models.manifest.document import ManifestDocument
 
 
 log = logging.getLogger(__name__)
 
 
-class Manifest(GenericTOMLModel):
-    """Simple wrapper around an image manifest.toml file"""
+class Manifest(GenericYAMLModel):
+    """Simple wrapper around an image manifest.yaml file"""
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Manifest":
-        """Load a Config object from a TOML file
+        """Load a Config object from a YAML file
 
-        :param filepath: Path to the config.toml file
+        :param filepath: Path to the config.yaml file
         """
         log.debug(f"Loading Manifest from {filepath}")
         filepath = Path(filepath)

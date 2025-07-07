@@ -18,7 +18,7 @@ RE_IMAGE_NAME: re.Pattern = re.compile("^[a-z][a-z-]+$")
 
 
 class ManifestDocument(BaseModel):
-    """Document model for a manifest.toml file
+    """Document model for a manifest.yaml file
 
     Example:
 

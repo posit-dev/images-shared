@@ -30,7 +30,7 @@ def project(
     \b
     .
     └── project_name/
-        └── config.toml.
+        └── config.yaml.
     """
     if not Project.exists(context):
         log.info(f"No project found, creating a new project in '{context}'")
@@ -60,7 +60,7 @@ def image(
     \b
     .
     └── image_name/
-        ├── manifest.toml
+        ├── manifest.yaml
         └── template/
             ├── deps/
             │   └── packages.txt.jinja2
@@ -106,7 +106,7 @@ def version(
     \b
     .
     └── image_path/
-        ├── manifest.toml
+        ├── manifest.yaml
         └── template/
             ├── optional_subdirectories/
             │   └── *.jinja2
