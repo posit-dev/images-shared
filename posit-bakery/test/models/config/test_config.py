@@ -21,10 +21,8 @@ class TestConfigLoad:
 class TestConfig:
     def test_config_init(self, basic_context, basic_config_file):
         """Test creating a generic Config object does not raise an exception and test data appears as expected"""
-        doc= GenericYAMLModel.read(basic_config_file)
-        c = Config(
-            filepath=basic_config_file, context=basic_context, document=doc, model=ConfigDocument(**doc)
-        )
+        doc = GenericYAMLModel.read(basic_config_file)
+        c = Config(filepath=basic_config_file, context=basic_context, document=doc, model=ConfigDocument(**doc))
         assert c.authors == [
             "Author 1 <author1@posit.co>",
             "Author 2 <author2@posit.co>",
