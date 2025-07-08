@@ -1,6 +1,0 @@
-image_name = "test-image"
-
-[snyk.test]
-severity_threshold = "invalid"
-include_app_vulns = true
-include_base_image_vulns = true

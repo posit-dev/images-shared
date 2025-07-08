@@ -88,10 +88,10 @@ flowchart TD
     subgraph "GitHub Repository"
         direction TB
         subgraph "Project"
-            config[/config.toml/]
+            config[/config.yaml/]
 
             subgraph "Image"
-                manifest[/manifest.toml/]
+                manifest[/manifest.yaml/]
                 templatesImage[/Image Jinja2 Templates/]
 
                 subgraph "Image Version"
@@ -133,8 +133,8 @@ flowchart TD
     subgraph "Project"
         direction LR
 
-        config[/"config.toml"/]
-        manifest[/"manifest.toml File(s)"/]
+        config[/"config.yaml"/]
+        manifest[/"manifest.yaml File(s)"/]
         containerfile[/"Containerfile(s)"/]
     end
 
