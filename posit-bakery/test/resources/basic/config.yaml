@@ -8,7 +8,7 @@ repository:
   maintainer: "docker@posit.co"
   authors:
     - "Author 1 <author1@posit.co>"
-    - "Author 2 <author2@posit.co"
+    - "Author 2 <author2@posit.co>"
 registries:
   - host: "docker.io"
     namespace: "posit"

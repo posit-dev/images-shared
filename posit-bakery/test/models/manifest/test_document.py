@@ -49,7 +49,7 @@ class TestManifestDocument:
         Files are stored in test/testdata/manifest/invalid
         """
         y = YAML()
-        doc = y.load(yaml_file)
+        doc = y.load(yaml_file) or {}
 
         with pytest.raises(ValidationError):
             ManifestDocument(**doc)

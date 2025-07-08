@@ -56,7 +56,7 @@ class TestConfigDocument:
         Files are stored in test/testdata/config/invalid
         """
         y = YAML()
-        doc = y.load(yaml_file)
+        doc = y.load(yaml_file) or {}
 
         with pytest.raises(ValidationError):
             ConfigDocument(**doc)

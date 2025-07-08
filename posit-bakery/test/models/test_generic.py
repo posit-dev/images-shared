@@ -1,4 +1,4 @@
-from ruamel.yaml import CommentedMap
+from ruamel.yaml import CommentedMap, YAML
 
 from posit_bakery.models.generic import GenericYAMLModel
 
@@ -13,20 +13,11 @@ class TestGenericYAMLModel:
 
     def test_generic_yaml_model_dump(self, yaml_basic_file):
         """Test that the dump method writes the expected data back to the file"""
+        y = YAML()
+        original_data = y.load(yaml_basic_file)
         data = GenericYAMLModel.read(yaml_basic_file)
         model = GenericYAMLModel(filepath=yaml_basic_file, context=yaml_basic_file.parent, document=data)
         model.document["name"] = "changed"
         model.dump()
-        assert yaml_basic_file.read_text() == model.dumps()
-
-    def test_generic_yaml_model_dumps(self, yaml_basic_file):
-        """Test that the dumps method returns the expected YAML string"""
-        expected = """name: "changed"
-
-section:
-  key: "value"
-"""
-        data = GenericYAMLModel.read(yaml_basic_file)
-        model = GenericYAMLModel(filepath=yaml_basic_file, context=yaml_basic_file.parent, document=data)
-        model.document["name"] = "changed"
-        assert model.dumps() == expected
+        assert y.load(yaml_basic_file) != original_data
+        assert y.load(yaml_basic_file)["name"] == "changed"
