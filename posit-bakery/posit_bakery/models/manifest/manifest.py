@@ -23,7 +23,7 @@ class Manifest(GenericYAMLModel):
         log.debug(f"Loading Manifest from {filepath}")
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ManifestDocument(**document.unwrap())
+        model = ManifestDocument(**document)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model)
 

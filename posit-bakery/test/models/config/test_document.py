@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import pytest
-import tomlkit
 from pydantic import ValidationError
+from ruamel.yaml import YAML
 
 from posit_bakery.models.config.document import ConfigDocument
-from ..helpers import toml_file_testcases
+from ..helpers import yaml_file_testcases
 
 
 @pytest.mark.config
@@ -17,46 +17,46 @@ class TestConfigDocument:
             ConfigDocument()
 
     def test_basic_doc(self, basic_config_file):
-        """Read basic/config.toml and validate the document"""
-        with open(basic_config_file, "r") as f:
-            doc = tomlkit.load(f)
+        """Read basic/config.yaml and validate the document"""
+        y = YAML()
+        doc = y.load(basic_config_file)
 
-            ConfigDocument(**doc.unwrap())
+        ConfigDocument(**doc)
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "valid"))
-    def test_valid(self, caplog, toml_file: Path):
-        """Test valid TOML config files
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("config", "valid"))
+    def test_valid(self, caplog, yaml_file: Path):
+        """Test valid YAML config files
 
         Files are stored in test/testdata/config/valid
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file)
 
-        ConfigDocument(**doc.unwrap())
+        ConfigDocument(**doc)
 
         assert "WARNING" not in caplog.text
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "valid-with-warning"))
-    def test_valid_with_warning(self, caplog, toml_file: Path):
-        """Test valid TOML config files, but raise warnings in the validation
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("config", "valid-with-warning"))
+    def test_valid_with_warning(self, caplog, yaml_file: Path):
+        """Test valid YAML config files, but raise warnings in the validation
 
         Files are stored in test/testdata/config/valid-with-warning
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file)
 
-        ConfigDocument(**doc.unwrap())
+        ConfigDocument(**doc)
 
         assert "WARNING" in caplog.text
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("config", "invalid"))
-    def test_invalid(self, toml_file: Path):
-        """Test invalid TOML config files
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("config", "invalid"))
+    def test_invalid(self, yaml_file: Path):
+        """Test invalid YAML config files
 
         Files are stored in test/testdata/config/invalid
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file)
 
         with pytest.raises(ValidationError):
-            ConfigDocument(**doc.unwrap())
+            ConfigDocument(**doc)

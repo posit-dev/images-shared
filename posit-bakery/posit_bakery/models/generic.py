@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Union, Mapping
+from xml.dom.minidom import Comment
 
 import tomlkit
 from pydantic import BaseModel, ConfigDict
@@ -24,7 +25,7 @@ class GenericYAMLModel(BaseModel, abc.ABC):
     model: BaseModel | None = None
 
     @staticmethod
-    def read(filepath: Union[str, bytes, os.PathLike]) -> tomlkit.TOMLDocument:
+    def read(filepath: Union[str, bytes, os.PathLike]) -> CommentedMap | dict:
         """Load a YAML file at the given filepath into a TOMLDocument object
 
         :param filepath: Path to the YAML file

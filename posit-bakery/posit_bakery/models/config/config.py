@@ -39,7 +39,7 @@ class Config(GenericYAMLModel):
         log.debug(f"Loading Config from {filepath}")
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ConfigDocument(**document.unwrap())
+        model = ConfigDocument(**document)
         commit = get_commit_sha(filepath.parent)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model, commit=commit)

@@ -1,10 +1,7 @@
-from unittest.mock import MagicMock
-
 import pytest
-import tomlkit
 
-from posit_bakery.models import Config, Manifest
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models import Manifest
+from posit_bakery.models.generic import GenericYAMLModel
 
 pytestmark = [
     pytest.mark.unit,
@@ -18,7 +15,7 @@ class TestManifest:
         Manifest(
             filepath=basic_manifest_file,
             context=basic_manifest_file.parent,
-            document=GenericTOMLModel.read(basic_manifest_file),
+            document=GenericYAMLModel.read(basic_manifest_file),
             image_name="test-image",
             config=basic_config_obj,
         )

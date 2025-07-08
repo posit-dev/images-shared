@@ -9,9 +9,9 @@ scenarios(
 )
 
 
-@then("config.toml exists")
+@then("config.yaml exists")
 def check_config_file(bakery_command):
-    config_file = bakery_command.context / "config.toml"
+    config_file = bakery_command.context / "config.yaml"
     assert config_file.is_file()
 
 
@@ -19,7 +19,7 @@ def check_config_file(bakery_command):
 def check_image(basic_tmpcontext, image_name) -> str:
     image_dir = basic_tmpcontext / image_name
     assert image_dir.is_dir()
-    assert (image_dir / "manifest.toml").is_file()
+    assert (image_dir / "manifest.yaml").is_file()
 
     return image_name
 
@@ -27,7 +27,7 @@ def check_image(basic_tmpcontext, image_name) -> str:
 @then(parsers.parse('the version "{version}" exists'), target_fixture="new_version")
 def check_version(basic_tmpcontext, version, new_image_name) -> str:
     image_dir = basic_tmpcontext / new_image_name
-    manifest_file = image_dir / "manifest.toml"
+    manifest_file = image_dir / "manifest.yaml"
     assert manifest_file.is_file()
 
     version_dir = image_dir / version

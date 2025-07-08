@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import jinja2
 import pytest
-import tomlkit
+from ruamel.yaml import YAML
 
 from posit_bakery.error import (
     BakeryFileError,
@@ -21,7 +21,7 @@ from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
 from posit_bakery.models.project.bake import target_uid
-from posit_bakery.templating import TPL_CONFIG_TOML
+from posit_bakery.templating import TPL_CONFIG_YAML
 from test.models import helpers
 
 pytestmark = [
@@ -35,11 +35,12 @@ class TestProjectCreate:
         """Test creating a Project object from a context path"""
         p = Project.create(tmpdir)
         assert Path(tmpdir).absolute() == p.context.absolute()
-        assert (Path(tmpdir) / "config.toml").absolute() == p.config.filepath.absolute()
-        assert (Path(tmpdir) / "config.toml").is_file()
-        contents = (Path(tmpdir) / "config.toml").read_text()
-        expected_contents = jinja2.Environment().from_string(TPL_CONFIG_TOML).render(repo_url="<REPLACE ME>")
-        assert tomlkit.loads(contents) == tomlkit.loads(expected_contents)
+        assert (Path(tmpdir) / "config.yaml").absolute() == p.config.filepath.absolute()
+        assert (Path(tmpdir) / "config.yaml").is_file()
+        y = YAML()
+        config_file = Path(tmpdir) / "config.yaml"
+        expected_contents = jinja2.Environment().from_string(TPL_CONFIG_YAML).render(repo_url="<REPLACE ME>")
+        assert y.load(config_file) == y.load(expected_contents)
 
     def test_create_context_is_file(self, tmpdir):
         """Test creating a Project object from a context path that is a file"""
@@ -52,7 +53,7 @@ class TestProjectCreate:
         assert not (Path(tmpdir) / "new_project").exists()
         Project.create(tmpdir / "new_project")
         assert (Path(tmpdir) / "new_project").exists()
-        assert (Path(tmpdir) / "new_project" / "config.toml").exists()
+        assert (Path(tmpdir) / "new_project" / "config.yaml").exists()
 
     def test_create_project_exists(self, basic_context):
         """Test creating a Project object from a context path"""
@@ -104,7 +105,7 @@ class TestProjectLoad:
 
     @pytest.mark.skip(reason="TODO: Handle overrides not specifying all fields")
     def test_load_context_config_with_override(self, basic_tmpcontext):
-        """Test loading the context config.toml file"""
+        """Test loading the context config.yaml file"""
         override_config_str = dedent(
             """
             [[registries]]
@@ -112,7 +113,7 @@ class TestProjectLoad:
             namespace = "posit-dev"
             """
         )
-        with open(basic_tmpcontext / "config.override.toml", "w") as f:
+        with open(basic_tmpcontext / "config.override.yaml", "w") as f:
             f.write(override_config_str)
 
         c = Project.load_context_config(basic_tmpcontext, ignore_override=True)
@@ -156,7 +157,7 @@ class TestProjectLoad:
 
     def test_load_config_does_not_exist(self, tmpdir):
         """Test loading a project from a context that does not exist"""
-        with pytest.raises(BakeryFileError, match="Project config.toml file not found."):
+        with pytest.raises(BakeryFileError, match="Project config.yaml file not found."):
             Project.load(tmpdir)
 
 

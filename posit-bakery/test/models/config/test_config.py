@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
-import tomlkit
 
 from posit_bakery.models import Config
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.generic import GenericYAMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.models.config.repository import ConfigRepository
@@ -22,9 +21,9 @@ class TestConfigLoad:
 class TestConfig:
     def test_config_init(self, basic_context, basic_config_file):
         """Test creating a generic Config object does not raise an exception and test data appears as expected"""
-        doc: tomlkit.TOMLDocument = GenericTOMLModel.read(basic_config_file)
+        doc= GenericYAMLModel.read(basic_config_file)
         c = Config(
-            filepath=basic_config_file, context=basic_context, document=doc, model=ConfigDocument(**doc.unwrap())
+            filepath=basic_config_file, context=basic_context, document=doc, model=ConfigDocument(**doc)
         )
         assert c.authors == [
             "Author 1 <author1@posit.co>",
@@ -51,7 +50,7 @@ class TestConfig:
         context = Path(tmpdir)
         c = Config.create(context)
 
-        config_file = context / "config.toml"
+        config_file = context / "config.yaml"
         assert config_file.is_file()
 
         # Check defaults from template
@@ -75,7 +74,7 @@ class TestConfig:
         c_override = Config(
             filepath=basic_config_file,
             context=basic_context,
-            document=GenericTOMLModel.read(basic_config_file),
+            document=GenericYAMLModel.read(basic_config_file),
             registries=[],
             repository=ConfigRepository(
                 authors=["Author 3 <author3@posit.co", "Author 4 <author4@posit.co>"],

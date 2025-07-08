@@ -1,34 +1,32 @@
-import unittest
+from ruamel.yaml import CommentedMap
 
-from tomlkit import TOMLDocument
-
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.generic import GenericYAMLModel
 
 
-class TestGenericTOMLModel:
-    def test_generic_toml_model_load_toml_file_data(self, toml_basic_file):
-        """Test that the load_toml_file_data method returns a TOMLDocument with expected data"""
-        data = GenericTOMLModel.read(toml_basic_file)
-        assert isinstance(data, TOMLDocument)
+class TestGenericYAMLModel:
+    def test_generic_yaml_model_load_yaml_file_data(self, yaml_basic_file):
+        """Test that the load_yaml_file_data method returns a YAMLDocument with expected data"""
+        data = GenericYAMLModel.read(yaml_basic_file)
+        assert isinstance(data, CommentedMap)
         assert data["name"] == "basic"
         assert data["section"]["key"] == "value"
 
-    def test_generic_toml_model_dump(self, toml_basic_file):
+    def test_generic_yaml_model_dump(self, yaml_basic_file):
         """Test that the dump method writes the expected data back to the file"""
-        data = GenericTOMLModel.read(toml_basic_file)
-        model = GenericTOMLModel(filepath=toml_basic_file, context=toml_basic_file.parent, document=data)
+        data = GenericYAMLModel.read(yaml_basic_file)
+        model = GenericYAMLModel(filepath=yaml_basic_file, context=yaml_basic_file.parent, document=data)
         model.document["name"] = "changed"
         model.dump()
-        assert toml_basic_file.read_text() == model.dumps()
+        assert yaml_basic_file.read_text() == model.dumps()
 
-    def test_generic_toml_model_dumps(self, toml_basic_file):
-        """Test that the dumps method returns the expected TOML string"""
-        expected = """name = "changed"
+    def test_generic_yaml_model_dumps(self, yaml_basic_file):
+        """Test that the dumps method returns the expected YAML string"""
+        expected = """name: "changed"
 
-[section]
-key = "value"
+section:
+  key: "value"
 """
-        data = GenericTOMLModel.read(toml_basic_file)
-        model = GenericTOMLModel(filepath=toml_basic_file, context=toml_basic_file.parent, document=data)
+        data = GenericYAMLModel.read(yaml_basic_file)
+        model = GenericYAMLModel(filepath=yaml_basic_file, context=yaml_basic_file.parent, document=data)
         model.document["name"] = "changed"
         assert model.dumps() == expected
