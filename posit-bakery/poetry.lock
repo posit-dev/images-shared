@@ -948,18 +948,6 @@ files = [
 ]
 
 [[package]]
-name = "tomlkit"
-version = "0.13.2"
-description = "Style preserving TOML library"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "tomlkit-0.13.2-py3-none-any.whl", hash = "sha256:7a974427f6e119197f670fbbbeae7bef749a6c14e793db934baefc1b5f03efde"},
-    {file = "tomlkit-0.13.2.tar.gz", hash = "sha256:fff5fe59a87295b278abd31bec92c15d9bc4a06885ab12bcea52c71119392e79"},
-]
-
-[[package]]
 name = "typer"
 version = "0.12.5"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
@@ -992,4 +980,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "<4,>=3.10"
-content-hash = "40879d4598e3dcf78c78ad32c84d7421f9ef7bcd29434aec7f431c57c28150ea"
+content-hash = "e26c30640edc437d1528c546f8522bdc551628cd16e70f5e9125ca4f44b3edc0"

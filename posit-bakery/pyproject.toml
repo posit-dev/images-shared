@@ -17,7 +17,6 @@ dependencies = [
     "jinja2~=3.1.4",
     "rich~=13.8.1",
     "gitpython~=3.1.43",
-    "tomlkit~=0.13.2",
     "pydantic~=2.9.2",
     "packaging~=24.2",
     "python-on-whales (>=0.77.0,<0.78.0)",
