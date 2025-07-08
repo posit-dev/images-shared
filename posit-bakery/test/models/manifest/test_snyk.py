@@ -19,7 +19,7 @@ pytestmark = [
         (["test1", "test2", "test3"], ["test1", "test2", "test3"]),
         (["test1", "test2", "test3", ""], ["test1", "test2", "test3"]),
         ([" test1 ", " test2", "test3 "], ["test1", "test2", "test3"]),
-    ]
+    ],
 )
 def test_clean(given, expected):
     """Test clean function inputs"""
@@ -36,7 +36,7 @@ class TestValidateList:
             (snyk.SnykEnvironmentEnum, ["frontend", "invalid"], ["frontend"], True),
             (snyk.REGEX_SNYK_MONITOR_TAG_KEY, ["key"], ["key"], False),
             (snyk.REGEX_SNYK_MONITOR_TAG_KEY, ["key", "key@"], ["key"], True),
-        ]
+        ],
     )
     def test_valid_input(self, caplog, validator, given, expected, expect_warning):
         """Test valid inputs for list validators"""
@@ -197,7 +197,7 @@ class TestManifestSnykMonitor:
             ({"k" * 33: "v"}, True),
             ({"key": "value!"}, True),
             ({"key!": "value"}, True),
-        ]
+        ],
     )
     def test_tags_validation(self, caplog, tags, expect_warning):
         """Test the tags field validation"""

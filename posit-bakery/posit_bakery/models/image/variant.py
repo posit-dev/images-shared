@@ -62,9 +62,7 @@ class ImageGoss(BaseModel):
                 return find_in_context(context=context, name=value, _type="dir", parents=3)
         # If the value is not one of the expected types, raise an error.
         else:
-            raise BakeryFileError(
-                f"Invalid value '{value}' for Goss path '{name}'. Expected None, bool, or str."
-            )
+            raise BakeryFileError(f"Invalid value '{value}' for Goss path '{name}'. Expected None, bool, or str.")
 
     @classmethod
     def load(cls, context: Path, goss: ManifestGoss = ManifestGoss()):
@@ -91,12 +89,12 @@ class ImageVariant(BaseModel):
 
     @classmethod
     def load(
-            cls,
-            meta: ImageMetadata,
-            latest: bool,
-            _os: str,
-            _os_primary: str,
-            target: str,
+        cls,
+        meta: ImageMetadata,
+        latest: bool,
+        _os: str,
+        _os_primary: str,
+        target: str,
     ):
         build_os: BuildOS = find_os(_os)
         primary_os: BuildOS = find_os(_os_primary)
@@ -147,7 +145,7 @@ class ImageVariant(BaseModel):
             f"Containerfile.{condensed_build_os}",
             f"Containerfile",
         ]
-        log.debug(f"Searching for Containerfile in {context} with patterns: {", ".join(filenames)}")
+        log.debug(f"Searching for Containerfile in {context} with patterns: {', '.join(filenames)}")
         for name in filenames:
             try:
                 filepath = find_in_context(context, name)

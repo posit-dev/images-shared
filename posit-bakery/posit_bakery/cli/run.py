@@ -27,9 +27,11 @@ def dgoss(
         Optional[bool], typer.Option("--privileged", help="Alias for \"--run-opt='--privileged'\"")
     ] = False,
     run_option: Annotated[
-        List[str], typer.Option(
-            "--run-opt", help="Additional runtime options to pass to dgoss. Multiple can be provided.",
-        )
+        List[str],
+        typer.Option(
+            "--run-opt",
+            help="Additional runtime options to pass to dgoss. Multiple can be provided.",
+        ),
     ] = None,
 ) -> None:
     """Runs dgoss tests against images in the context path

@@ -8,8 +8,14 @@ import jinja2
 import pytest
 import tomlkit
 
-from posit_bakery.error import BakeryFileError, BakeryImageNotFoundError, BakeryToolNotFoundError, BakeryToolError, \
-    BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.error import (
+    BakeryFileError,
+    BakeryImageNotFoundError,
+    BakeryToolNotFoundError,
+    BakeryToolError,
+    BakeryToolRuntimeError,
+    BakeryToolRuntimeErrorGroup,
+)
 from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project, Config
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
@@ -178,19 +184,19 @@ class TestProjectBuild:
         with pytest.raises(BakeryImageNotFoundError, match="No images found in the project."):
             p.render_bake_plan()
 
-    def test_build(self, basic_tmpcontext):
+    @patch("python_on_whales.docker.buildx.bake", return_value=None)
+    def test_build(self, mock_bake, basic_tmpcontext):
         process_mock = MagicMock(returncode=0)
         subprocess.run = MagicMock(return_value=process_mock)
         p = Project.load(basic_tmpcontext)
         p.build()
-        subprocess.run.assert_called_once()
-        assert subprocess.run.call_args[0][0] == [
-            "docker",
-            "buildx",
-            "bake",
-            "--file",
-            str(Path(basic_tmpcontext) / ".docker-bake.json"),
-        ]
+        mock_bake.assert_called_once_with(
+            files=[str(p.context / ".docker-bake.json")],
+            load=False,
+            push=False,
+            builder=None,
+            cache=True,
+        )
 
     def test_build_no_images(self, tmpdir):
         p = Project.create(tmpdir)
@@ -232,8 +238,8 @@ class TestProjectGoss:
 
         cmdstr = " ".join(cmd[2])
         pat = re.compile(
-            r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
-            f"-e IMAGE_TYPE={img_min.target} --init {img_min.tags[0]} {goss_min.command}"
+            r"dgoss run -v \S*/test-image/1.0.0/deps:/tmp/deps "
+            rf"-e IMAGE_TYPE={img_min.target} --init {img_min.tags[0]} {goss_min.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
 
@@ -251,7 +257,7 @@ class TestProjectGoss:
         # Check command
         cmdstr = " ".join(cmd[2])
         pat = re.compile(
-            r"dgoss run --mount=type=bind,source=.*/test-image/1.0.0/deps,destination=/tmp/deps "
+            r"dgoss run -v \S*/test-image/1.0.0/deps:/tmp/deps "
             f"-e IMAGE_TYPE={img_std.target} --init {img_std.tags[0]} {goss_std.command}"
         )
         assert re.fullmatch(pat, cmdstr) is not None
@@ -274,7 +280,7 @@ class TestProjectGoss:
         [
             ([0, 1], BakeryToolRuntimeError),
             ([1, 1], BakeryToolRuntimeErrorGroup),
-        ]
+        ],
     )
     def test_dgoss_error_collection(self, basic_tmpcontext, return_code, error_type):
         process_mock = MagicMock()

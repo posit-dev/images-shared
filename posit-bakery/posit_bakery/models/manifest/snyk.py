@@ -58,6 +58,7 @@ def get_exit_code_meaning(subcommand: str, exit_code: int) -> Dict[str, Union[bo
 
 class SnykTestOutputFormatEnum(str, Enum):
     """Enum for the supported output formats for snyk container test output."""
+
     sarif = "sarif"
     json = "json"
     default = "default"
@@ -65,6 +66,7 @@ class SnykTestOutputFormatEnum(str, Enum):
 
 class SnykSeverityThresholdEnum(str, Enum):
     """Enum for the supported severity thresholds for snyk container test/monitor."""
+
     low = "low"
     medium = "medium"
     high = "high"
@@ -76,6 +78,7 @@ SNYK_DEFAULT_SEVERITY_THRESHOLD = SnykSeverityThresholdEnum.medium
 
 class SnykBusinessCriticalityEnum(str, Enum):
     """Enum for the supported business criticality values for snyk container monitor."""
+
     low = "low"
     medium = "medium"
     high = "high"
@@ -84,6 +87,7 @@ class SnykBusinessCriticalityEnum(str, Enum):
 
 class SnykEnvironmentEnum(str, Enum):
     """Enum for the supported environment values for snyk container monitor."""
+
     frontend = "frontend"
     backend = "backend"
     internal = "internal"
@@ -97,6 +101,7 @@ class SnykEnvironmentEnum(str, Enum):
 
 class SnykLifecycleEnum(str, Enum):
     """Enum for the supported lifecycle values for snyk container monitor."""
+
     development = "development"
     sandbox = "sandbox"
     production = "production"
@@ -104,6 +109,7 @@ class SnykLifecycleEnum(str, Enum):
 
 class SnykSbomFormatEnum(str, Enum):
     """Enum for the supported SBOM formats for snyk container sbom."""
+
     cyclonedx1_4_json = "cyclonedx1.4+json"
     cyclonedx1_5_json = "cyclonedx1.5+json"
     cyclonedx1_6_json = "cyclonedx1.6+json"
@@ -127,9 +133,7 @@ def clean(value: List[str] | str) -> List[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
-def validate_list(
-        values: List[str], message: str, validator: re.Pattern | EnumType = None
-) -> Union[List[str], str]:
+def validate_list(values: List[str], message: str, validator: re.Pattern | EnumType = None) -> Union[List[str], str]:
     """Validate a list of strings against a regex pattern or EnumType
 
     :param values: The values to validate as a list of strings
@@ -185,7 +189,7 @@ class ManifestSnykTestOutput(BaseModel):
         except ValueError:
             log.warning(
                 f"Invalid value for snyk.test.output.format, expected '{value}' to be one of "
-                f"{", ".join([e.value for e in SnykTestOutputFormatEnum])}. Using default value "
+                f"{', '.join([e.value for e in SnykTestOutputFormatEnum])}. Using default value "
                 f"'{SnykTestOutputFormatEnum.default.value}'."
             )
             raise PydanticUseDefault()
@@ -206,7 +210,7 @@ class ManifestSnykTest(BaseModel):
         except ValueError:
             log.warning(
                 f"Invalid value for snyk.test.severity_threshold, expected '{value}' to be one of "
-                f"{", ".join([e.value for e in SnykSeverityThresholdEnum])}. Using default value "
+                f"{', '.join([e.value for e in SnykSeverityThresholdEnum])}. Using default value "
                 f"'{SNYK_DEFAULT_SEVERITY_THRESHOLD}'."
             )
             raise PydanticUseDefault()
@@ -226,7 +230,7 @@ class ManifestSnykMonitor(BaseModel):
     def validate_environment_to_warning(cls, value: Union[List[str], str, None]) -> Union[List[str], str, None]:
         warn_message = (
             "Invalid value for snyk.monitor.environment, expected '%s' to be one of "
-            f"{", ".join([e.value for e in SnykEnvironmentEnum])}. Environment will not be "
+            f"{', '.join([e.value for e in SnykEnvironmentEnum])}. Environment will not be "
             "passed to Snyk."
         )
 
@@ -245,7 +249,7 @@ class ManifestSnykMonitor(BaseModel):
     def validate_lifecycle_to_warning(cls, value: Union[List[str], str, None]) -> Union[List[str], str, None]:
         warn_message = (
             "Invalid value for snyk.monitor.lifecycle, expected '%s' to match regex pattern "
-            f"{", ".join([e.value for e in SnykLifecycleEnum])}. Lifecycle will not be passed to Snyk."
+            f"{', '.join([e.value for e in SnykLifecycleEnum])}. Lifecycle will not be passed to Snyk."
         )
 
         if value is None:
@@ -261,11 +265,11 @@ class ManifestSnykMonitor(BaseModel):
     @field_validator("business_criticality", mode="before")
     @classmethod
     def validate_business_criticality_to_warning(
-            cls, value: Union[List[str], str, None]
+        cls, value: Union[List[str], str, None]
     ) -> Union[List[str], str, None]:
         warn_message = (
             "Invalid value for snyk.monitor.business_criticality, expected '%s' to match regex pattern "
-            f"{", ".join([e.value for e in SnykBusinessCriticalityEnum])}. Business criticality will not be "
+            f"{', '.join([e.value for e in SnykBusinessCriticalityEnum])}. Business criticality will not be "
             "passed to Snyk."
         )
 
@@ -317,7 +321,7 @@ class ManifestSnykSbom(BaseModel):
         except ValueError:
             log.warning(
                 f"Invalid value for snyk.sbom.format, expected '{value}' to be one of "
-                f"'{", ".join([e.value for e in SnykSbomFormatEnum])}'. Using default value "
+                f"'{', '.join([e.value for e in SnykSbomFormatEnum])}'. Using default value "
                 f"'{SNYK_DEFAULT_SBOM_FORMAT}'."
             )
             raise PydanticUseDefault()

@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
 import pydantic
+from python_on_whales.exceptions import DockerException
 import typer
 
 from posit_bakery import error
@@ -25,9 +26,7 @@ def print_plan(project: Project, image_name: str, image_version: str, image_type
     except pydantic.ValidationError as e:
         stderr_console.print(e)
         stderr_console.print(f"❌ Failed to render bake plan", style="error")
-        stderr_console.print(
-            "Please correct the above data validation error(s) and try again.", style="info"
-        )
+        stderr_console.print("Please correct the above data validation error(s) and try again.", style="info")
         raise typer.Exit(code=1)
 
     stdout_console.print_json(plan.model_dump_json(), indent=2)
@@ -43,18 +42,11 @@ def build(
         Optional[str], typer.Option(help="The image version to isolate plan rendering to.")
     ] = None,
     image_type: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
-    plan: Annotated[
-        Optional[bool], typer.Option("--plan", help="Print the bake plan and exit.")
-    ] = False,
+    plan: Annotated[Optional[bool], typer.Option("--plan", help="Print the bake plan and exit.")] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = False,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
-    build_options: Annotated[
-        List[str],
-        typer.Option(
-            "--build-opt",
-            help="Additional build options to pass to docker buildx. Multiple can be provided.",
-        ),
-    ] = None,
+    no_cache: Annotated[Optional[bool], typer.Option(help="Disable caching for build.")] = False,
+    builder: Annotated[Optional[str], typer.Option(help="The buildkit builder to use.")] = None,
 ) -> None:
     """Builds images in the context path using buildx bake
 
@@ -70,9 +62,17 @@ def build(
         print_plan(p, image_name, image_version, image_type)
 
     try:
-        p.build(load, push, image_name, image_version, image_type, build_options)
-    except error.BakeryToolRuntimeError as e:
-        stderr_console.print(f"❌ Build failed with exit code {e.exit_code}", style="error")
+        p.build(
+            load,
+            push,
+            image_name,
+            image_version,
+            image_type,
+            cache=not no_cache,
+            builder=builder,
+        )
+    except DockerException as e:
+        stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"✅ Build completed", style="success")
+    stderr_console.print("✅ Build completed", style="success")

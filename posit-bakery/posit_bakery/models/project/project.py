@@ -4,10 +4,12 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Union, List, Dict, Tuple, Any
+from typing import Union, List, Dict, Tuple, Any, Literal
 
 import pydantic
 from pydantic import BaseModel
+from python_on_whales import docker
+from python_on_whales.components.buildx.cli_wrapper import ValidBuilder
 
 from posit_bakery.error import (
     BakeryImageError,
@@ -15,7 +17,9 @@ from posit_bakery.error import (
     BakeryModelValidationError,
     BakeryToolRuntimeError,
     BakeryModelValidationErrorGroup,
-    BakeryFileError, BakeryToolError, BakeryToolRuntimeErrorGroup,
+    BakeryFileError,
+    BakeryToolError,
+    BakeryToolRuntimeErrorGroup,
 )
 from posit_bakery.models import Config, Manifest, Image, Images, ImageFilter
 from posit_bakery.models.image.variant import ImageVariant
@@ -246,7 +250,8 @@ class Project(BaseModel):
         image_name: str = None,
         image_version: str = None,
         image_type: str = None,
-        build_options: List[str] = None,
+        builder: ValidBuilder = None,
+        cache: bool = True,
     ) -> None:
         """Build images in the project using Buildkit Bake
 
@@ -255,7 +260,8 @@ class Project(BaseModel):
         :param image_name: (Optional) The name of the image to build
         :param image_version: (Optional) The version of the image to build
         :param image_type: (Optional) The type of the image to build
-        :param build_options: (Optional) Additional build options to pass to `docker buildx bake` command
+        :param builder: (Optional) The Buildx builder to use for the build
+        :param cache: If true, use cache for the build
         """
         if not self.has_images():
             raise BakeryImageNotFoundError("No images found in the project.")
@@ -265,29 +271,22 @@ class Project(BaseModel):
         with open(build_file, "w") as f:
             f.write(bake_plan.model_dump_json(indent=2) + "\n")
 
-        cmd = ["docker", "buildx", "bake", "--file", str(build_file)]
-        if load:
-            cmd.append("--load")
-        if push:
-            cmd.append("--push")
-        if build_options:
-            cmd.extend(build_options)
-        run_env = os.environ.copy()
-        log.debug(f"[bright_black]Executing build command: {' '.join(cmd)}")
+        previous_directory = os.getcwd()
+        os.chdir(self.context)
+
         log.info("[bright_blue bold]Starting image builds...")
-        p = subprocess.run(cmd, env=run_env, cwd=self.context)
-        if p.returncode != 0:
-            log.error("Subprocess call to docker buildx bake failed.")
-            raise BakeryToolRuntimeError(
-                "Subprocess call to docker buildx bake failed.",
-                "docker",
-                cmd=cmd,
-                stdout=p.stdout,
-                stderr=p.stderr,
-                exit_code=p.returncode,
-            )
+        # TODO: Disable progress output when --quiet is set
+        docker.buildx.bake(
+            files=[str(build_file)],
+            load=load,
+            push=push,
+            builder=builder,
+            cache=cache,
+        )
         build_file.unlink()
         log.info("[bright_blue bold]Builds completed.")
+
+        os.chdir(previous_directory)
 
     def render_dgoss_commands(
         self,
@@ -329,7 +328,7 @@ class Project(BaseModel):
             deps = variant.goss.deps
             if deps is not None:
                 if deps.is_dir():
-                    cmd.append(f"--mount=type=bind,source={str(deps)},destination=/tmp/deps")
+                    cmd.extend(["-v", f"{str(deps)}:/tmp/deps"])
                 else:
                     log.warning(f"Skipping mounting of goss deps directory {deps} as it does not exist.")
 
@@ -429,15 +428,17 @@ class Project(BaseModel):
             exit_code = p.returncode
             if exit_code != 0 and parse_err is not None:
                 log.error(f"dgoss for image '{variant.tags[0]}' exited with code {exit_code}")
-                errors.append(BakeryToolRuntimeError(
-                    f"Subprocess call to dgoss exited with code {exit_code}",
-                    "dgoss",
-                    cmd=cmd,
-                    stdout=p.stdout,
-                    stderr=p.stderr,
-                    exit_code=exit_code,
-                    metadata={"results": results_file, "environment_variables": filtered_env_vars},
-                ))
+                errors.append(
+                    BakeryToolRuntimeError(
+                        f"Subprocess call to dgoss exited with code {exit_code}",
+                        "dgoss",
+                        cmd=cmd,
+                        stdout=p.stdout,
+                        stderr=p.stderr,
+                        exit_code=exit_code,
+                        metadata={"results": results_file, "environment_variables": filtered_env_vars},
+                    )
+                )
             elif exit_code == 0:
                 log.info(f"[bright_green bold]Goss tests passed for {variant.tags[0]}")
             else:
@@ -447,9 +448,7 @@ class Project(BaseModel):
             if len(errors) == 1:
                 errors = errors[0]
             else:
-                errors = BakeryToolRuntimeErrorGroup(
-                    f"dgoss runtime errors occurred for multiple images.", errors
-                )
+                errors = BakeryToolRuntimeErrorGroup(f"dgoss runtime errors occurred for multiple images.", errors)
         else:
             errors = None
         return report_collection, errors
@@ -466,9 +465,9 @@ class Project(BaseModel):
 
         # Add output file options
         if variant.meta.snyk.test.output.json_file:
-            opts.append(f"--json-file-output={str(result_dir / f"{uid}.json")}")
+            opts.append(f"--json-file-output={str(result_dir / f'{uid}.json')}")
         elif variant.meta.snyk.test.output.sarif_file:
-            opts.append(f"--sarif-file-output={str(result_dir / f"{uid}.sarif")}")
+            opts.append(f"--sarif-file-output={str(result_dir / f'{uid}.sarif')}")
 
         # Add severity threshold
         opts.append(f"--severity-threshold={variant.meta.snyk.test.severity_threshold.value}")
@@ -530,11 +529,11 @@ class Project(BaseModel):
         return opts
 
     def render_snyk_commands(
-            self,
-            subcommand: str,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
+        self,
+        subcommand: str,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
     ) -> List[Tuple[str, Dict[str, str], List[str]]]:
         snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
         snyk_commands = []
@@ -579,11 +578,11 @@ class Project(BaseModel):
         return snyk_commands
 
     def snyk(
-            self,
-            subcommand: str = None,
-            image_name: str = None,
-            image_version: str = None,
-            image_type: str = None,
+        self,
+        subcommand: str = None,
+        image_name: str = None,
+        image_version: str = None,
+        image_type: str = None,
     ) -> None:
         snyk_bin = util.find_bin(self.context, "snyk", "SNYK_PATH") or "snyk"
 
@@ -621,17 +620,17 @@ class Project(BaseModel):
                 if exit_meaning["completed"]:
                     log.warning(
                         f"snyk container {subcommand.value} command for image '{tag}' completed with errors: "
-                        f"{exit_meaning["reason"]}"
+                        f"{exit_meaning['reason']}"
                     )
                 else:
                     log.error(
                         f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
-                        f"{exit_meaning["reason"]}"
+                        f"{exit_meaning['reason']}"
                     )
                 errors.append(
                     BakeryToolRuntimeError(
                         f"snyk container {subcommand.value} command for image '{tag}' exited with code {p.returncode}: "
-                        f"{exit_meaning["reason"]}",
+                        f"{exit_meaning['reason']}",
                         "snyk",
                         cmd=cmd,
                         stdout=p.stdout,
@@ -658,10 +657,9 @@ class Project(BaseModel):
                 except json.JSONDecodeError:
                     log.warning(f"Failed to parse snyk container sbom output as JSON for image '{tag}'.")
 
-                with open(result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}", "w") as f:
-                    log.info(
-                        f"Writing SBOM to {result_dir / f'{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}'}."
-                    )
+                result_path = result_dir / f"{env['BAKERY_IMAGE_UID']}.{env['BAKERY_SBOM_FORMAT']}"
+                with open(result_path, "w") as f:
+                    log.info(f"Writing SBOM to {result_path}.")
                     f.write(output)
 
         if errors:
