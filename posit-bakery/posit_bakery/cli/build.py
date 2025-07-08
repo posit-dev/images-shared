@@ -75,4 +75,4 @@ def build(
         stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print("✅Build completed", style="success")
+    stderr_console.print("✅ Build completed", style="success")
