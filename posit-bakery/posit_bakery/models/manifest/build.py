@@ -1,5 +1,5 @@
 import logging
-from typing import List, Self
+from typing import List
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 

@@ -2,7 +2,7 @@ import logging
 import re
 from enum import Enum, EnumType
 from types import MappingProxyType
-from typing import Annotated, Dict, Self, List, Union
+from typing import Annotated, Dict, List, Union
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic.functional_validators import field_validator

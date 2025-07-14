@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import pytest
-import tomlkit
 from pydantic import ValidationError
+from ruamel.yaml import YAML
 
 from posit_bakery.models.manifest.document import ManifestDocument
-from ..helpers import toml_file_testcases
+from ..helpers import yaml_file_testcases
 
 
 @pytest.mark.manifest
@@ -16,43 +16,43 @@ class TestManifestDocument:
         with pytest.raises(ValidationError):
             ManifestDocument()
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("manifest", "valid"))
-    def test_valid(self, caplog, toml_file: Path):
-        """Test valid TOML manifest files
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("manifest", "valid"))
+    def test_valid(self, caplog, yaml_file: Path):
+        """Test valid YAML manifest files
 
         Files are stored in test/testdata/manifest/valid
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file)
 
-        ManifestDocument(**doc.unwrap())
+        ManifestDocument(**doc)
 
         assert "WARNING" not in caplog.text
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("manifest", "valid-with-warning"))
-    def test_valid_with_warning(self, caplog, toml_file: Path):
-        """Test valid TOML manifest files, but raise warnings in the validation
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("manifest", "valid-with-warning"))
+    def test_valid_with_warning(self, caplog, yaml_file: Path):
+        """Test valid YAML manifest files, but raise warnings in the validation
 
         Files are stored in test/testdata/manifest/valid-with-warning
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file)
 
-        ManifestDocument(**doc.unwrap())
+        ManifestDocument(**doc)
 
         assert "WARNING" in caplog.text
 
-    @pytest.mark.parametrize("toml_file", toml_file_testcases("manifest", "invalid"))
-    def test_invalid(self, toml_file: Path):
-        """Test invalid TOML manifest files
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases("manifest", "invalid"))
+    def test_invalid(self, yaml_file: Path):
+        """Test invalid YAML manifest files
 
         Files are stored in test/testdata/manifest/invalid
         """
-        with open(toml_file, "r") as f:
-            doc = tomlkit.load(f)
+        y = YAML()
+        doc = y.load(yaml_file) or {}
 
         with pytest.raises(ValidationError):
-            ManifestDocument(**doc.unwrap())
+            ManifestDocument(**doc)
 
     @pytest.mark.parametrize(
         "image_name",

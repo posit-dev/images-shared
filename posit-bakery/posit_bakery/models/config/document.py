@@ -1,5 +1,5 @@
 import logging
-from typing import List, Self
+from typing import List
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class ConfigDocument(BaseModel):
-    """Document model for a config.toml file
+    """Document model for a config.yaml file
 
     :param repository: Repository information for labeling purposes
     :param registries: One or more image registries to use for tagging and pushing images
@@ -48,7 +48,7 @@ class ConfigDocument(BaseModel):
         Repository information is used for labeling purposes
         """
         if self.repository is None:
-            log.warning("Repository not found in config.toml")
+            log.warning("Repository not found in config.yaml")
 
         return self
 
@@ -64,6 +64,6 @@ class ConfigDocument(BaseModel):
         """
         unique_registries = set(registries)
         if len(unique_registries) != len(registries):
-            log.warning("Duplicate registries found in config.toml")
+            log.warning("Duplicate registries found in config.yaml")
 
         return sorted(unique_registries, key=lambda x: x.base_url)

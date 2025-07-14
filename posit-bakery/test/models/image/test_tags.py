@@ -1,5 +1,4 @@
 import pytest
-from pydantic import ValidationError
 
 from posit_bakery.models.image.tags import is_tag_valid
 

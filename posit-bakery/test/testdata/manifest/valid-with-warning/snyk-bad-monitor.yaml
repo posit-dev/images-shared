@@ -1,0 +1,4 @@
+image_name: "test-image"
+snyk:
+  monitor:
+    environment: "invalid"

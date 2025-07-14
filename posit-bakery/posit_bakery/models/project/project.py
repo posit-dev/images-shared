@@ -64,7 +64,7 @@ class Project(BaseModel):
 
         This checks essentially 2 things at the moment:
         - Does the given context exist as a directory?
-        - Does the given context contain a config.toml file?
+        - Does the given context contain a config.y[a]ml file?
 
         :param context: The path to the context directory
         """
@@ -76,9 +76,9 @@ class Project(BaseModel):
         if project_context.is_file():
             raise BakeryFileError(f"Given context '{project_context}' is a file.", project_context)
 
-        # Check if the context contains a config.toml file
-        config_file = project_context / "config.toml"
-        if not config_file.is_file():
+        # Check if the context contains a config.y[a]ml file
+        config_files = [project_context / "config.yaml", project_context / "config.yaml"]
+        if not any(config_file.is_file() for config_file in config_files):
             return False
 
         return True
@@ -92,7 +92,7 @@ class Project(BaseModel):
         """Create a Project object and load config and manifests into it from a context directory
 
         :param context: The path to the context directory
-        :param ignore_override: If true, ignores config.override.toml if it exists
+        :param ignore_override: If true, ignores config.override.yaml if it exists
         """
         project = cls()
 
@@ -105,11 +105,11 @@ class Project(BaseModel):
             log.error(f"Project context is not a directory: {project.context}")
             raise BakeryFileError(f"Project context is not a directory.", project.context)
 
-        config_filepath = project.context / "config.toml"
+        config_filepath = project.context / "config.yaml"
         log.debug(f"Loading project config from {config_filepath}")
         if not config_filepath.is_file():
-            log.error(f"Project config.toml file not found: {config_filepath}")
-            raise BakeryFileError(f"Project config.toml file not found.", config_filepath)
+            log.error(f"Project config.yaml file not found: {config_filepath}")
+            raise BakeryFileError(f"Project config.yaml file not found.", config_filepath)
         try:
             project.config = Config.load(config_filepath)
         except pydantic.ValidationError as e:
@@ -133,7 +133,7 @@ class Project(BaseModel):
         # TODO: Consider implementing a Manifests dictionary class similar to Images
         manifests = {}
         error_list = []
-        for manifest_file in config.context.rglob("manifest.toml"):
+        for manifest_file in config.context.rglob("manifest.y*ml"):
             try:
                 log.debug(f"Loading manifest from {manifest_file}")
                 m = Manifest.load(manifest_file)
@@ -190,7 +190,7 @@ class Project(BaseModel):
         :param image_version: The new version
         :param template_values: A dictionary of key/values to use in template rendering
         :param mark_latest: If true, mark the new version as the latest
-        :param save: If true, save to the manifest.toml after adding the new version
+        :param save: If true, save to the manifest.yaml after adding the new version
         :param force: If true, overwrite an existing version
         """
         log.info(f"Creating version '{image_version}' for image '{image_name}'.")

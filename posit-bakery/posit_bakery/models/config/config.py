@@ -6,7 +6,7 @@ from typing import Set, Union, List
 import git
 
 from posit_bakery.error import BakeryFileError
-from posit_bakery.models.generic import GenericTOMLModel
+from posit_bakery.models.generic import GenericYAMLModel
 from posit_bakery.models.config.document import ConfigDocument
 from posit_bakery.models.config.registry import ConfigRegistry
 from posit_bakery.templating.default import create_project_config
@@ -25,21 +25,21 @@ def get_commit_sha(context: Path) -> str | None:
     return sha
 
 
-class Config(GenericTOMLModel):
-    """Simple wrapper around a project config.toml file"""
+class Config(GenericYAMLModel):
+    """Simple wrapper around a project config.yaml file"""
 
     commit: str | None = None
 
     @classmethod
     def load(cls, filepath: Union[str, bytes, os.PathLike]) -> "Config":
-        """Load a Config object from a TOML file
+        """Load a Config object from a yaml file
 
-        :param filepath: Path to the config.toml file
+        :param filepath: Path to the config.yaml file
         """
         log.debug(f"Loading Config from {filepath}")
         filepath = Path(filepath)
         document = cls.read(filepath)
-        model = ConfigDocument(**document.unwrap())
+        model = ConfigDocument(**document)
         commit = get_commit_sha(filepath.parent)
 
         return cls(filepath=filepath, context=filepath.parent, document=document, model=model, commit=commit)
@@ -51,7 +51,7 @@ class Config(GenericTOMLModel):
         :param context: The context to create the Config object in
         """
         log.info(f"Creating new project config file in {context}")
-        config_file = context / "config.toml"
+        config_file = context / "config.yaml"
         if config_file.exists():
             raise BakeryFileError(f"Config file already exists.", filepath=config_file)
         create_project_config(config_file)
@@ -90,20 +90,20 @@ class Config(GenericTOMLModel):
     def update(self, c: "Config") -> None:
         """Replace data in the current Config object with data from another Config object
 
-        This is used to overlay config.override.toml data on top of config.toml data when applicable
+        This is used to overlay config.override.yaml data on top of config.yaml data when applicable
 
         :param c: Config object to overwrite onto the current object
         """
         # Only replace registries if defined in the provided config
         if len(c.registries) > 0:
-            self.registries = c.registries
+            self.model.registries = c.registries
 
         # Only replace repository data if defined in the provided config
-        if c.repository.authors:
-            self.repository.authors = c.repository.authors
-        if c.repository.url:
-            self.repository.url = c.repository.url
-        if c.repository.vendor:
-            self.repository.vendor = c.repository.vendor
-        if c.repository.maintainer:
-            self.repository.maintainer = c.repository.maintainer
+        if c.model.repository.authors:
+            self.model.repository.authors = c.model.repository.authors
+        if c.model.repository.url:
+            self.model.repository.url = c.model.repository.url
+        if c.model.repository.vendor:
+            self.model.repository.vendor = c.model.repository.vendor
+        if c.model.repository.maintainer:
+            self.model.repository.maintainer = c.model.repository.maintainer

@@ -1,5 +1,0 @@
-image_name = "test-image"
-
-[build."1.0.0"]
-# Gentoo is not supported
-os = ["Gentoo"]

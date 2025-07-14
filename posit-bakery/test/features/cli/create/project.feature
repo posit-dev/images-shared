@@ -14,6 +14,6 @@ Feature: create project
     * in a temp directory
     When I execute the command
     Then The command succeeds
-    * config.toml exists
+    * config.yaml exists
     * the stderr output includes:
         | Project initialized in |

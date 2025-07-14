@@ -7,7 +7,7 @@ import jinja2
 
 import posit_bakery.util as util
 from posit_bakery.error import BakeryTemplatingError
-from posit_bakery.templating import TPL_CONFIG_TOML, TPL_MANIFEST_TOML, TPL_CONTAINERFILE
+from posit_bakery.templating import TPL_CONTAINERFILE, TPL_CONFIG_YAML, TPL_MANIFEST_YAML
 from posit_bakery.templating.filters import jinja2_env
 
 log = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 def create_project_config(config_file: Path) -> None:
     log.info(f"Creating new project config file [bold]{config_file}")
-    tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_CONFIG_TOML)
+    tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_CONFIG_YAML)
     rendered = tpl.render(repo_url=util.try_get_repo_url(config_file.parent))
     with open(config_file, "w") as f:
         f.write(rendered)
@@ -27,13 +27,13 @@ def create_image_templates(context: Path, image_name: str, base_tag: str) -> Non
         log.debug(f"Creating new image directory [bold]{context}")
         context.mkdir()
 
-    manifest_file = context / "manifest.toml"
+    manifest_file = context / "manifest.yaml"
     if manifest_file.is_file():
         log.error(f"Manifest file [bold]{manifest_file}[/bold] already exists")
         raise BakeryTemplatingError(f"Manifest file '{manifest_file}' already exists. Please remove it first.")
     else:
         log.debug(f"Creating new manifest file [bold]{manifest_file}")
-        tpl = jinja2_env().from_string(TPL_MANIFEST_TOML)
+        tpl = jinja2_env().from_string(TPL_MANIFEST_YAML)
         rendered = tpl.render(image_name=image_name)
         with open(manifest_file, "w") as f:
             f.write(rendered)

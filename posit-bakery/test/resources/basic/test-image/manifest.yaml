@@ -1,0 +1,11 @@
+image_name: "test-image"
+build:
+  "1.0.0":
+    latest: true  # Defaults to False if not specified.
+    os:
+    - "Ubuntu 22.04"
+target:
+  min: {}
+  std:
+    goss:
+      wait: 1

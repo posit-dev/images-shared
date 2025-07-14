@@ -1,5 +1,0 @@
-image_name = "test-image"
-
-[target.min]
-
-[target.std]

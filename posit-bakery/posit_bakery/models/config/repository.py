@@ -27,7 +27,7 @@ class ConfigRepository(BaseModel):
 
     @field_validator("authors", mode="after")
     @classmethod
-    def vaidate_authors(
+    def validate_authors(
         cls,
         authors: Set[str],
     ) -> Set[str]:
@@ -37,6 +37,6 @@ class ConfigRepository(BaseModel):
         """
         unique_authors = set(authors)
         if len(unique_authors) != len(authors):
-            log.warning("Duplicate authors found in config.toml")
+            log.warning("Duplicate authors found in config.yaml")
 
         return authors

@@ -59,7 +59,7 @@ bakery --help
 
     This command will create a new project configuration file in the bakery context.
 
-* Make changes to the `config.toml` file
+* Make changes to the `config.yaml` file
 
     Update the contents of the project configuration file.
     A new project configuration file includes a default set of values.
@@ -75,11 +75,11 @@ bakery --help
     This command:
 
     * Creates a directory for the image (`fancy-image` in this example)
-    * Creates a `manifest.toml` file that defines the image
+    * Creates a `manifest.yaml` file that defines the image
     * Creates a `template/` subdirectory
     * Writes a default set of template files
 
-* Make changes to the `manifest.toml` file
+* Make changes to the `manifest.yaml` file
 
 * Make changes to the default Jinja2 templates
 
@@ -102,7 +102,7 @@ bakery --help
     This command
 
     * Creates a subdirectory for the image version (`fancy-image/2025.01.0` in this example)
-    * Updates the `manifest.toml` file with the new image version
+    * Updates the `manifest.yaml` file with the new image version
     * Sets the new image to `latest`
 
       The `--no-mark-latest` flag skips marking the image as the latest
@@ -148,7 +148,7 @@ bakery --help
 ### Project Structure
 
 Bakery establishes a directory structure, referred to as a **project**.
-The **project** configuration is stored in the `config.toml`.
+The **project** configuration is stored in the `config.yaml`.
 
 By default, bakery uses the invocation directory as the project **context**.
 You can use the `--context` flag to override the default behavior.
@@ -159,18 +159,18 @@ bakery --context /path/to/directory
 
 A bakery **project** can include one or more **image**s.
 Each **image** can include one or more **version**s.
-Each **image**'s configuration is stored in a `manifest.toml` file.
+Each **image**'s configuration is stored in a `manifest.yaml` file.
 
 ```terminal
 .
-├── config.toml
+├── config.yaml
 ├── fancy-image/
-│   ├── manifest.toml
+│   ├── manifest.yaml
 │   ├── 2024.11.0/
 │   ├── 2025.01.0/
 │   └── template/
 └── more-fancy-image/
-    ├── manifest.toml
+    ├── manifest.yaml
     ├── 2024.12.0/
     ├── 2024.12.1/
     ├── 2025.02.0/

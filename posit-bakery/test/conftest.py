@@ -3,27 +3,27 @@ import shutil
 from pathlib import Path
 
 import pytest
-import tomlkit
+from ruamel.yaml import YAML
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
 @pytest.fixture
-def toml_basic_str():
-    """Return a basic TOML document as a string"""
-    return """name = "basic"
+def yaml_basic_str():
+    """Return a basic YAML document as a string"""
+    return """name: "basic"
 
-[section]
-key = "value"
+section:
+  key: "value"
 """
 
 
 @pytest.fixture
-def toml_basic_file(tmp_path, toml_basic_str):
-    """Return a basic TOML document as a filepath"""
-    filepath = tmp_path / "basic.toml"
+def yaml_basic_file(tmp_path, yaml_basic_str):
+    """Return a basic YAML document as a filepath"""
+    filepath = tmp_path / "basic.yaml"
     with open(filepath, "w") as f:
-        f.write(toml_basic_str)
+        f.write(yaml_basic_str)
     return filepath
 
 
@@ -47,13 +47,13 @@ def basic_context(resource_path):
 
 @pytest.fixture(scope="session")
 def basic_config_file(basic_context):
-    """Return the path to the basic test suite config.toml file"""
-    return basic_context / "config.toml"
+    """Return the path to the basic test suite config.yaml file"""
+    return basic_context / "config.yaml"
 
 
 @pytest.fixture
 def basic_config_obj(basic_config_file):
-    """Return a Config object loaded from basic test suite config.toml file"""
+    """Return a Config object loaded from basic test suite config.yaml file"""
     from posit_bakery.models import Config
 
     return Config.load(basic_config_file)
@@ -61,13 +61,13 @@ def basic_config_obj(basic_config_file):
 
 @pytest.fixture
 def basic_manifest_file(basic_context):
-    """Return the path to the basic test suite manifest.toml file"""
-    return basic_context / "test-image" / "manifest.toml"
+    """Return the path to the basic test suite manifest.yaml file"""
+    return basic_context / "test-image" / "manifest.yaml"
 
 
 @pytest.fixture
 def basic_manifest_obj(basic_manifest_file):
-    """Return a Manifest object loaded from basic test suite manifest.toml file"""
+    """Return a Manifest object loaded from basic test suite manifest.yaml file"""
     from posit_bakery.models import Manifest
 
     return Manifest.load(basic_manifest_file)
@@ -75,26 +75,26 @@ def basic_manifest_obj(basic_manifest_file):
 
 @pytest.fixture
 def basic_manifest_types(basic_manifest_file):
-    """Return the target types in the basic manifest.toml file"""
-    with open(basic_manifest_file, "rb") as f:
-        d = tomlkit.load(f)
+    """Return the target types in the basic manifest.yaml file"""
+    y = YAML()
+    d = y.load(Path(basic_manifest_file))
     return d["target"].keys()
 
 
 @pytest.fixture
 def basic_manifest_versions(basic_manifest_file):
-    """Return the target types in the basic manifest.toml file"""
-    with open(basic_manifest_file, "rb") as f:
-        d = tomlkit.load(f)
+    """Return the target types in the basic manifest.yaml file"""
+    y = YAML()
+    d = y.load(Path(basic_manifest_file))
     return d["build"].keys()
 
 
 @pytest.fixture
 def basic_manifest_os_plus_versions(basic_manifest_file):
-    """Return the versions/os pairs in the basic manifest.toml file"""
+    """Return the versions/os pairs in the basic manifest.yaml file"""
     results = []
-    with open(basic_manifest_file, "rb") as f:
-        d = tomlkit.load(f).unwrap()
+    y = YAML()
+    d = y.load(Path(basic_manifest_file))
     for version, data in d["build"].items():
         if "os" in data and isinstance(data["os"], list):
             for _os in data["os"]:
@@ -112,7 +112,7 @@ def basic_manifest_os_plus_versions(basic_manifest_file):
 
 @pytest.fixture
 def basic_images_obj(basic_config_obj, basic_manifest_obj):
-    """Return a dict of images loaded from the basic test suite manifest.toml file"""
+    """Return a dict of images loaded from the basic test suite manifest.yaml file"""
     from posit_bakery.models import Images
 
     return Images.load(config=basic_config_obj, manifests={basic_manifest_obj.image_name: basic_manifest_obj})
@@ -120,7 +120,7 @@ def basic_images_obj(basic_config_obj, basic_manifest_obj):
 
 @pytest.fixture
 def basic_expected_num_variants(basic_manifest_types, basic_manifest_os_plus_versions):
-    """Returns the expected number of target builds for the basic manifest.toml"""
+    """Returns the expected number of target builds for the basic manifest.yaml"""
     return len(basic_manifest_types) * len(basic_manifest_os_plus_versions)
 
 
@@ -141,13 +141,13 @@ def barebones_context(resource_path):
 
 @pytest.fixture(scope="session")
 def barebones_config_file(barebones_context):
-    """Return the path to the basic test suite config.toml file"""
-    return barebones_context / "config.toml"
+    """Return the path to the basic test suite config.yaml file"""
+    return barebones_context / "config.yaml"
 
 
 @pytest.fixture
 def barebones_config_obj(barebones_config_file):
-    """Return a Config object loaded from basic test suite config.toml file"""
+    """Return a Config object loaded from basic test suite config.yaml file"""
     from posit_bakery.models import Config
 
     return Config.load(barebones_config_file)
@@ -155,13 +155,13 @@ def barebones_config_obj(barebones_config_file):
 
 @pytest.fixture
 def barebones_manifest_file(barebones_context):
-    """Return the path to the basic test suite manifest.toml file"""
-    return barebones_context / "test-image" / "manifest.toml"
+    """Return the path to the basic test suite manifest.yaml file"""
+    return barebones_context / "test-image" / "manifest.yaml"
 
 
 @pytest.fixture
 def barebones_manifest_obj(barebones_manifest_file):
-    """Return a Manifest object loaded from basic test suite manifest.toml file"""
+    """Return a Manifest object loaded from basic test suite manifest.yaml file"""
     from posit_bakery.models import Manifest
 
     return Manifest.load(barebones_manifest_file)
@@ -169,26 +169,26 @@ def barebones_manifest_obj(barebones_manifest_file):
 
 @pytest.fixture
 def barebones_manifest_types(barebones_manifest_file):
-    """Return the target types in the basic manifest.toml file"""
-    with open(barebones_manifest_file, "rb") as f:
-        d = tomlkit.load(f)
+    """Return the target types in the basic manifest.yaml file"""
+    y = YAML()
+    d = y.load(Path(barebones_manifest_file))
     return d["target"].keys()
 
 
 @pytest.fixture
 def barebones_manifest_versions(barebones_manifest_file):
-    """Return the target types in the basic manifest.toml file"""
-    with open(barebones_manifest_file, "rb") as f:
-        d = tomlkit.load(f)
+    """Return the target types in the basic manifest.yaml file"""
+    y = YAML()
+    d = y.load(Path(barebones_manifest_file))
     return d["build"].keys()
 
 
 @pytest.fixture
 def barebones_manifest_os_plus_versions(barebones_manifest_file):
-    """Return the versions/os pairs in the basic manifest.toml file"""
+    """Return the versions/os pairs in the basic manifest.yaml file"""
     results = []
-    with open(barebones_manifest_file, "rb") as f:
-        d = tomlkit.load(f).unwrap()
+    y = YAML()
+    d = y.load(Path(barebones_manifest_file))
     for version, data in d["build"].items():
         if "os" in data and isinstance(data["os"], list):
             for _os in data["os"]:
@@ -206,7 +206,7 @@ def barebones_manifest_os_plus_versions(barebones_manifest_file):
 
 @pytest.fixture
 def barebones_images_obj(barebones_config_obj, barebones_manifest_obj):
-    """Return a dict of images loaded from the basic test suite manifest.toml file"""
+    """Return a dict of images loaded from the basic test suite manifest.yaml file"""
     from posit_bakery.models import Images
 
     return Images.load(
@@ -216,7 +216,7 @@ def barebones_images_obj(barebones_config_obj, barebones_manifest_obj):
 
 @pytest.fixture
 def barebones_expected_num_variants(barebones_manifest_types, barebones_manifest_os_plus_versions):
-    """Returns the expected number of target builds for the basic manifest.toml"""
+    """Returns the expected number of target builds for the basic manifest.yaml"""
     return len(barebones_manifest_types) * len(barebones_manifest_os_plus_versions)
 
 
