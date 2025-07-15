@@ -1,12 +1,11 @@
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.tag import TagPattern
-from posit_bakery.config.tools import default_tool_options
-from posit_bakery.config.tools.base import ToolOptions
+from posit_bakery.config.tools import ToolTypes, ToolField
 
 
 class ImageVersionOS(BaseModel):
@@ -27,7 +26,7 @@ class ImageVersion(BaseModel):
 class ImageVariant(BaseModel):
     name: str
     tags: list[str | TagPattern]
-    options: Annotated[list[ToolOptions], Field(default_factory=default_tool_options)]
+    options: Annotated[ToolTypes, ToolField()]
 
 
 class Image(BaseModel):
