@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
@@ -9,6 +8,7 @@ from posit_bakery.config.tools import ToolTypes, ToolField
 
 
 class ImageVersionOS(BaseModel):
+    parent: Annotated[BaseModel, Field(exclude=True)]
     name: str
     extension: Annotated[str | None, Field(default=None, pattern=r"^[a-zA-Z0-9_-]+$")]
     tagDisplayName: Annotated[str | None, Field(default=None, pattern=r"^[a-zA-Z0-9_-.]+$")]
@@ -16,6 +16,7 @@ class ImageVersionOS(BaseModel):
 
 
 class ImageVersion(BaseModel):
+    parent: Annotated[BaseModel, Field(exclude=True)]
     name: str
     subpath: str | None
     registries: list[Registry]
@@ -24,12 +25,14 @@ class ImageVersion(BaseModel):
 
 
 class ImageVariant(BaseModel):
+    parent: Annotated[BaseModel, Field(exclude=True)]
     name: str
     tags: list[str | TagPattern]
     options: Annotated[ToolTypes, ToolField()]
 
 
 class Image(BaseModel):
+    parent: Annotated[BaseModel, Field(exclude=True)]
     name: str
     subpath: str | None
     registries: list[Registry]
