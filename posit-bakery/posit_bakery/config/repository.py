@@ -11,7 +11,7 @@ class Repository(BaseModel):
     url: HttpUrl
     vendor: Annotated[str, Field(default="Posit Software, PBC")]
     maintainer: Annotated[NameEmail, Field(default=NameEmail(name="Posit Docker Team", email="docker@posit.co"))]
-    authors: list[NameEmail] = []
+    authors: Annotated[list[NameEmail], Field(default_factory=list)]
 
     @field_validator("authors", mode="after")
     @classmethod
