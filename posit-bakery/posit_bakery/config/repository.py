@@ -29,6 +29,15 @@ class Repository(BaseModel):
     ]
     authors: Annotated[list[HashableNameEmail], Field(default_factory=list)]
 
+    @field_validator("url", mode="before")
+    @classmethod
+    def default_https_url_scheme(cls, value: AnyUrl) -> HttpUrl:
+        """Prepend 'https://' to the URL if it does not already start with it"""
+        if isinstance(value, str):
+            if not value.startswith("https://"):
+                value = f"https://{value}"
+        return value
+
     @field_validator("authors", mode="before")
     @classmethod
     def parse_authors(cls, value: list[Any]) -> list[HashableNameEmail | str]:
