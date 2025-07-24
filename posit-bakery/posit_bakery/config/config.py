@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from pydantic import Field
-from typing import Annotated
+from pydantic import Field, model_validator
+from typing import Annotated, Self
 
 from pydantic import BaseModel
 from ruamel.yaml import YAML
@@ -25,3 +25,9 @@ class BakeryConfigDocument(BaseModel):
     repository: Repository
     registries: Annotated[list[Registry], Field(default_factory=list)]
     images: Annotated[list[Image], Field(default_factory=list)]
+
+    @model_validator(mode="after")
+    def resolve_parentage(self) -> Self:
+        for image in self.images:
+            image.parent = self
+        return self
