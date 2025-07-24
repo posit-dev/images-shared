@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 
+# TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
 class TagPatternFilter(str, Enum):
     ALL = "all"
     LATEST = "latest"
@@ -13,7 +14,19 @@ class TagPatternFilter(str, Enum):
 
 class TagPattern(BaseModel):
     patterns: list[str]
-    only: Annotated[list[TagPatternFilter], Field(default_factory=lambda: list[TagPatternFilter.ALL])]
+    only: Annotated[list[TagPatternFilter], Field(default_factory=lambda: [TagPatternFilter.ALL])]
+
+    def render(self, **kwargs) -> list[str]:
+        """Render the Jinja2 tag patterns with the provided keyword arguments."""
+        from jinja2 import Template
+
+        rendered_tags = []
+        for pattern in self.patterns:
+            template = Template(pattern)
+            tag = template.render(**kwargs)
+
+            rendered_tags.append(tag)
+        return rendered_tags
 
 
 def default_tag_patterns() -> list[TagPattern]:
