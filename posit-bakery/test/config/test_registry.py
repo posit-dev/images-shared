@@ -5,12 +5,12 @@ from posit_bakery.config.registry import Registry
 
 @pytest.mark.config
 @pytest.mark.schema
-class TestConfigRegistry:
-    def test_create_config_registry(self):
+class TestRegistry:
+    def test_create_registry(self):
         """Test creating a generic ConfigRegistry object does not raise an exception"""
         Registry(host="docker.io", namespace="posit")
 
-    def test_create_config_registry_no_namespace(self):
+    def test_create_registry_no_namespace(self):
         """Test creating a generic ConfigRegistry object without a namespace does not raise an exception"""
         Registry(host="docker.io")
 
