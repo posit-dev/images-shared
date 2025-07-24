@@ -1,0 +1,4 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+images:
+  - name: example
