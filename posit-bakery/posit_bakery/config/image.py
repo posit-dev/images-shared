@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
-from posit_bakery.config.tools import ToolTypes, ToolField, default_tool_options, ToolOptions
+from posit_bakery.config.tools import ToolField, default_tool_options
 
 
 class ImageVersionOS(BaseModel):
@@ -38,6 +38,7 @@ class ImageVariant(BaseModel):
     ]
     tags: Annotated[list[TagPattern], Field(default_factory=list)]
     options: Annotated[list[ToolOptions], ToolField(default_factory=default_tool_options)]
+    options: Annotated[list[ToolField], Field(default_factory=default_tool_options)]
 
 
 def default_image_variants(parent: BaseModel) -> list[ImageVariant]:

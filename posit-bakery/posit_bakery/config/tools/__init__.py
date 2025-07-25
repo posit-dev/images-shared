@@ -1,5 +1,4 @@
-from functools import partial
-from typing import Union
+from typing import Union, Annotated
 
 from pydantic import Field
 
@@ -8,7 +7,7 @@ from posit_bakery.config.tools.goss import GossOptions
 
 
 ToolTypes = Union[GossOptions]
-ToolField = partial(Field, discriminator="tool")
+ToolField = Annotated[ToolTypes, Field(discriminator="tool")]
 
 
 def default_tool_options() -> list[ToolOptions]:
