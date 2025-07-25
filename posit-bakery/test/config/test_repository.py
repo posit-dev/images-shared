@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic import ValidationError, NameEmail
 
 from posit_bakery.config.repository import Repository
 
@@ -21,10 +21,8 @@ class TestRepository:
 
         assert str(r.url) == "https://github.com/rstudio/example"  # Tests URL https prepending
         assert len(r.authors) == 2
-        assert r.authors[0].name == "author1"
-        assert r.authors[0].email == "author1@posit.co"
-        assert r.authors[1].name == "author2"
-        assert r.authors[1].email == "author2@posit.co"
+        assert NameEmail(name="author1", email="author1@posit.co") in r.authors
+        assert NameEmail(name="author2", email="author2@posit.co") in r.authors
         assert r.vendor == "Posit Software, PBC"
         assert r.maintainer.name == "Posit Docker Team"
         assert r.maintainer.email == "docker@posit.co"
