@@ -28,6 +28,10 @@ class TagPattern(BaseModel):
             rendered_tags.append(tag)
         return rendered_tags
 
+    def __hash__(self):
+        """Hash the TagPattern based on its patterns and only fields."""
+        return hash((tuple(self.patterns), tuple(self.only)))
+
 
 def default_tag_patterns() -> list[TagPattern]:
     return [

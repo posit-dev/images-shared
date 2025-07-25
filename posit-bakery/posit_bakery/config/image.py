@@ -1,4 +1,7 @@
-from typing import Annotated, Self
+import re
+from copy import deepcopy
+from pathlib import Path
+from typing import Annotated, Self, Union
 
 from pydantic import BaseModel, Field, model_validator, computed_field
 
@@ -11,18 +14,27 @@ from posit_bakery.config.tools import ToolField, default_tool_options
 class ImageVersionOS(BaseModel):
     parent: Annotated[Union[BakeryBaseModel, None] | None, Field(exclude=True, default=None)]
     name: str
-    extension: Annotated[str | None, Field(default=None, pattern=r"^[a-zA-Z0-9_-]+$")]
-    tagDisplayName: Annotated[str | None, Field(default=None, pattern=r"^[a-zA-Z0-9_-.]+$")]
     primary: Annotated[bool, Field(default=False)]
+    # These fields are not set as annotations because it turns off syntax highlighting for the lambda in some editors.
+    extension: str = Field(
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
+        pattern=r"^[a-zA-Z0-9_-]+$",
+        validate_default=True,
+    )
+    tagDisplayName: str = Field(
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data["name"].lower()),
+        pattern=r"^[a-zA-Z0-9_.-]+$",
+        validate_default=True,
+    )
 
 
 class ImageVersion(BakeryBaseModel):
     parent: Annotated[Union[BakeryBaseModel, None], Field(exclude=True, default=None)]
     name: str
-    subpath: str | None
+    subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
     registries: Annotated[list[Registry], Field(default_factory=list)]
     latest: Annotated[bool, Field(default=False)]
-    os: list[ImageVersionOS]
+    os: Annotated[list[ImageVersionOS], Field(default_factory=list)]
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
@@ -38,31 +50,48 @@ class ImageVersion(BakeryBaseModel):
             raise ValueError("Parent image must resolve a valid path.")
         return Path(self.parent.path) / self.subpath
 
+    @computed_field
+    @property
+    def merged_registries(self) -> list[Registry]:
+        """Returns the merged registries for this image version."""
+        all_registries = deepcopy(self.registries)
+        if self.parent is not None and isinstance(self.parent, Image):
+            for registry in self.parent.merged_registries:
+                if registry not in all_registries:
+                    all_registries.append(registry)
+        return all_registries
+
 
 class ImageVariant(BaseModel):
     parent: Annotated[Union[BakeryBaseModel, None] | None, Field(exclude=True, default=None)]
     name: str
-    extension: Annotated[
-        str, Field(default=lambda data: data["name"], validate_default=True, pattern=r"^[a-zA-Z0-9_-]+$")
-    ]
-    tags: Annotated[list[TagPattern], Field(default_factory=list)]
-    options: Annotated[list[ToolOptions], ToolField(default_factory=default_tool_options)]
+    extension: str = Field(
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
+        pattern=r"^[a-zA-Z0-9_-]+$",
+        validate_default=True,
+    )
+    tagDisplayName: str = Field(
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data["name"].lower()),
+        pattern=r"^[a-zA-Z0-9_.-]+$",
+        validate_default=True,
+    )
+    tagPatterns: Annotated[list[TagPattern], Field(default_factory=list)]
     options: Annotated[list[ToolField], Field(default_factory=default_tool_options)]
 
 
-def default_image_variants(parent: BaseModel) -> list[ImageVariant]:
+def default_image_variants() -> list[ImageVariant]:
     return [
-        ImageVariant(name="std"),
-        ImageVariant(name="min"),
+        ImageVariant(name="Standard", extension="std", tagDisplayName="std"),
+        ImageVariant(name="Minimal", extension="min", tagDisplayName="min"),
     ]
 
 
 class Image(BakeryBaseModel):
     parent: Annotated[Union[BakeryBaseModel, None] | None, Field(exclude=True, default=None)]
     name: str
-    subpath: str | None
+    subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
     registries: Annotated[list[Registry], Field(default_factory=list)]
-    tags: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns)]
+    tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns)]
     variants: list[ImageVariant]
     versions: list[ImageVersion]
 
@@ -83,3 +112,14 @@ class Image(BakeryBaseModel):
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent BakeryConfig must resolve a valid path.")
         return Path(self.parent.path) / self.subpath
+
+    @computed_field
+    @property
+    def merged_registries(self) -> list[Registry]:
+        """Returns the merged registries for this image."""
+        all_registries = deepcopy(self.registries)
+        if self.parent is not None:
+            for registry in self.parent.registries:
+                if registry not in all_registries:
+                    all_registries.append(registry)
+        return all_registries
