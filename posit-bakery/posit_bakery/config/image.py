@@ -92,7 +92,7 @@ class Image(BakeryBaseModel):
     subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
     registries: Annotated[list[Registry], Field(default_factory=list)]
     tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns)]
-    variants: list[ImageVariant]
+    variants: Annotated[list[ImageVariant], Field(default_factory=default_image_variants)]
     versions: list[ImageVersion]
 
     @model_validator(mode="after")

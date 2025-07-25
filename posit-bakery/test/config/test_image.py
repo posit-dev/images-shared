@@ -95,14 +95,9 @@ class TestImageVersion:
             Registry(host="registry1.example.com", namespace="namespace1"),
         ]
 
-        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_config_parent.registries = [
-            expected_registries[0],  # docker.io/posit
-            expected_registries[1],  # ghcr.io/posit-dev
-        ]
         mock_image_parent = MagicMock(spec=Image)
-        mock_image_parent.parent = mock_config_parent
-        mock_image_parent.registries = [
+        mock_image_parent.merged_registries = [
+            expected_registries[0],  # docker.io/posit
             expected_registries[1],  # ghcr.io/posit-dev
             expected_registries[2],  # ghcr.io/posit-team
         ]
@@ -129,7 +124,7 @@ class TestImageVariant:
         assert i.name == "Variant 1"
         assert i.extension == "variant1"
         assert i.tagDisplayName == "variant-1"
-        assert len(i.tags) == 0
+        assert len(i.tagPatterns) == 0
         assert len(i.options) == 1
 
     def test_custom_options(self):
@@ -151,3 +146,76 @@ class TestImageVariant:
         """Test that the tagDisplayName field only allows alphanumeric characters, underscores, hyphens, and periods."""
         with pytest.raises(ValidationError):
             ImageVariant(name="Standard", tagDisplayName="invalid tag name!")
+
+
+class TestImage:
+    def test_required_fields(self):
+        """Test creating an Image object with only the name does not raise an exception.
+
+        Test that the default values for subpath, registries, tagPatterns, and variants are set correctly.
+        Test that parentage is set
+        """
+        i = Image(name="my-image", versions=[{"name": "1.0.0"}])
+
+        assert i.parent is None
+        assert i.subpath == "my-image"
+        assert len(i.registries) == 0
+        assert len(i.tagPatterns) == 8
+        assert len(i.variants) == 2
+        for variant in i.variants:
+            assert variant.parent is i
+        assert len(i.versions) == 1
+        for version in i.versions:
+            assert version.parent is i
+
+    def test_valid(self):
+        """Test creating a valid Image object with all fields."""
+        i = Image(
+            name="my-image",
+            subpath="my-image-subpath",
+            registries=[{"host": "registry.example.com", "namespace": "namespace"}],
+            tagPatterns=[{"patterns": ["{{ Version }}-{{ OS }}-{{ Variant }}"]}],
+            variants=[{"name": "Standard"}],
+            versions=[{"name": "1.0.0"}],
+        )
+
+        assert i.name == "my-image"
+        assert i.subpath == "my-image-subpath"
+        assert len(i.registries) == 1
+        assert len(i.tagPatterns) == 1
+        assert len(i.variants) == 1
+        assert len(i.versions) == 1
+
+    def test_path_resolution(self):
+        """Test that the path property resolves correctly based on the parent image's path and subpath."""
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = Path("/tmp/path")
+        i = Image(parent=mock_parent, name="my-image", versions=[{"name": "1.0.0"}])
+        assert i.path == Path("/tmp/path/my-image")
+
+        i.subpath = "my-image-subpath"
+        assert i.path == Path("/tmp/path/my-image-subpath")
+
+    def test_merged_registries(self):
+        """Test that merged_registries returns the correct list of registries for object and parents."""
+        expected_registries = [
+            Registry(host="docker.io", namespace="posit"),
+            Registry(host="ghcr.io", namespace="posit-dev"),
+            Registry(host="ghcr.io", namespace="posit-team"),
+        ]
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.registries = [
+            expected_registries[0],  # docker.io/posit
+            expected_registries[1],  # ghcr.io/posit-dev
+        ]
+        i = Image(
+            parent=mock_config_parent,
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+            registries=[expected_registries[1], expected_registries[2]],  # registry.example.com/namespace
+        )
+
+        assert len(i.merged_registries) == 3
+        for registry in expected_registries:
+            assert registry in i.merged_registries
