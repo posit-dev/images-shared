@@ -1,9 +1,11 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import Field, computed_field
+
+from posit_bakery.config.shared import BakeryYAMLModel
 
 
-class Registry(BaseModel):
+class Registry(BakeryYAMLModel):
     host: str
     namespace: Annotated[str | None, Field(default=None)]
 

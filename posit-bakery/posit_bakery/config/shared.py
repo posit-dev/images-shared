@@ -1,9 +1,13 @@
 import abc
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-class BakeryBaseModel(BaseModel, abc.ABC):
+class BakeryYAMLModel(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class BakeryPathMixin:
     @property
     @abc.abstractmethod
     def path(self) -> str:

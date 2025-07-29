@@ -1,7 +1,7 @@
 import abc
 
-from pydantic import BaseModel
+from posit_bakery.config.shared import BakeryYAMLModel
 
 
-class ToolOptions(BaseModel, abc.ABC):
+class ToolOptions(BakeryYAMLModel, abc.ABC):
     tool: str

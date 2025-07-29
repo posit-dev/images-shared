@@ -1,7 +1,9 @@
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from posit_bakery.config.shared import BakeryYAMLModel
 
 
 # TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
@@ -12,7 +14,7 @@ class TagPatternFilter(str, Enum):
     STD_VARIANT = "stdVariant"
 
 
-class TagPattern(BaseModel):
+class TagPattern(BakeryYAMLModel):
     patterns: list[str]
     only: Annotated[list[TagPatternFilter], Field(default_factory=lambda: [TagPatternFilter.ALL])]
 

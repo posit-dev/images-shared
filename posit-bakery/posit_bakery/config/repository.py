@@ -1,7 +1,9 @@
 import logging
 from typing import Annotated, Any
 
-from pydantic import BaseModel, HttpUrl, NameEmail, Field, field_validator, AnyUrl
+from pydantic import HttpUrl, NameEmail, Field, field_validator, AnyUrl
+
+from posit_bakery.config.shared import BakeryYAMLModel
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ def parse_name_email_from_dict(name_email_dict: dict) -> HashableNameEmail:
     return HashableNameEmail(**name_email_dict)
 
 
-class Repository(BaseModel):
+class Repository(BakeryYAMLModel):
     url: HttpUrl
     vendor: Annotated[str, Field(default="Posit Software, PBC")]
     maintainer: Annotated[
