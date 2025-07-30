@@ -1,14 +1,19 @@
+import logging
 import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Self, Union
 
 from pydantic import BaseModel, Field, model_validator, computed_field, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
 from posit_bakery.config.tools import ToolField, default_tool_options
+
+
+log = logging.getLogger(__name__)
 
 
 class ImageVersionOS(BakeryYAMLModel):
@@ -33,8 +38,31 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     name: str
     subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
     registries: Annotated[list[Registry], Field(default_factory=list)]
+    overrideRegistries: Annotated[list[Registry], Field(default_factory=list)]
     latest: Annotated[bool, Field(default=False)]
     os: Annotated[list[ImageVersionOS], Field(default_factory=list)]
+
+    @field_validator("registries", "overrideRegistries", mode="after")
+    @classmethod
+    def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
+        """Ensures that the registries list is unique and warns on duplicates."""
+        unique_registries = set(registries)
+        for unique_registry in unique_registries:
+            if registries.count(unique_registry) > 1:
+                log.warning(
+                    f"Duplicate registry defined in config for version '{info.data['name']}': "
+                    f"{unique_registry.base_url}"
+                )
+        return list(unique_registries)
+
+    @model_validator(mode="after")
+    def registries_or_override_registries(self) -> Self:
+        """Ensures that only one of registries or overrideRegistries is defined."""
+        if self.registries and self.overrideRegistries:
+            raise ValueError(
+                f"Only one of 'registries' or 'overrideRegistries' can be defined for image version '{self.name}'."
+            )
+        return self
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
@@ -52,19 +80,26 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
 
     @computed_field
     @property
-    def merged_registries(self) -> list[Registry]:
+    def all_registries(self) -> list[Registry]:
         """Returns the merged registries for this image version."""
+        # If overrideRegistries are set, return those directly.
+        if self.overrideRegistries:
+            return deepcopy(self.overrideRegistries)
+
+        # Otherwise, merge the registries from the image version and its parent.
         all_registries = deepcopy(self.registries)
         if self.parent is not None and isinstance(self.parent, Image):
-            for registry in self.parent.merged_registries:
+            for registry in self.parent.all_registries:
                 if registry not in all_registries:
                     all_registries.append(registry)
+
         return all_registries
 
 
 class ImageVariant(BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None] | None, Field(exclude=True, default=None)]
     name: str
+    primary: Annotated[bool, Field(default=False)]
     extension: str = Field(
         default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
         pattern=r"^[a-zA-Z0-9_-]+$",
@@ -78,10 +113,14 @@ class ImageVariant(BakeryYAMLModel):
     tagPatterns: Annotated[list[TagPattern], Field(default_factory=list)]
     options: Annotated[list[ToolField], Field(default_factory=default_tool_options)]
 
+    def __hash__(self):
+        """Unique hash for an ImageVariant object."""
+        return hash((self.name, self.extension, self.tagDisplayName))
+
 
 def default_image_variants() -> list[ImageVariant]:
     return [
-        ImageVariant(name="Standard", extension="std", tagDisplayName="std"),
+        ImageVariant(name="Standard", extension="std", tagDisplayName="std", primary=True),
         ImageVariant(name="Minimal", extension="min", tagDisplayName="min"),
     ]
 
@@ -90,21 +129,53 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None] | None, Field(exclude=True, default=None)]
     name: str
     subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
-    registries: Annotated[list[Registry], Field(default_factory=list)]
-    tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns)]
-    variants: Annotated[list[ImageVariant], Field(default_factory=default_image_variants)]
-    versions: Annotated[list[ImageVersion], Field(default_factory=list)]
+    registries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
+    overrideRegistries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
+    tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns, validate_default=True)]
+    variants: Annotated[list[ImageVariant], Field(default_factory=default_image_variants, validate_default=True)]
+    versions: Annotated[list[ImageVersion], Field(default_factory=list, validate_default=True)]
+
+    @field_validator("registries", "overrideRegistries", mode="after")
+    @classmethod
+    def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
+        """Ensures that the registries list is unique and warns on duplicates."""
+        unique_registries = set(registries)
+        for unique_registry in unique_registries:
+            if registries.count(unique_registry) > 1:
+                log.warning(
+                    f"Duplicate registry defined in config for image '{info.data['name']}': {unique_registry.base_url}"
+                )
+        return list(unique_registries)
+
+    @model_validator(mode="after")
+    def registries_or_override_registries(self) -> Self:
+        """Ensures that only one of registries or overrideRegistries is defined."""
+        if self.registries and self.overrideRegistries:
+            raise ValueError(
+                f"Only one of 'registries' or 'overrideRegistries' can be defined for image '{self.name}'."
+            )
+        return self
 
     @field_validator("versions", mode="after")
     @classmethod
-    def check_version_duplicates(cls, versions: list[ImageVersion]) -> list[ImageVersion]:
+    def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
+        """Ensures that the versions list is not empty."""
+        if not versions:
+            log.warning(
+                f"No versions found in image '{info.data['name']}'. At least one version is required for most commands."
+            )
+        return versions
+
+    @field_validator("versions", mode="after")
+    @classmethod
+    def check_version_duplicates(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
         """Ensures that there are no duplicate version names in the image."""
         error_message = ""
         seen_names = set()
         for version in versions:
             if version.name in seen_names:
                 if not error_message:
-                    error_message = "Duplicate versions found:\n"
+                    error_message = f"Duplicate versions found in image '{info.data['name']}':\n"
                 error_message += f" - {version.name}\n"
             seen_names.add(version.name)
         if error_message:
@@ -113,14 +184,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("variants", mode="after")
     @classmethod
-    def check_variant_duplicates(cls, variants: list[ImageVariant]) -> list[ImageVariant]:
+    def check_variant_duplicates(cls, variants: list[ImageVariant], info: ValidationInfo) -> list[ImageVariant]:
         """Ensures that there are no duplicate variant names in the image."""
         error_message = ""
         seen_names = set()
         for variant in variants:
             if variant.name in seen_names:
                 if not error_message:
-                    error_message = "Duplicate variants found:\n"
+                    error_message = f"Duplicate variants found in image '{info.data['name']}':\n"
                 error_message += f" - {variant.name}\n"
             seen_names.add(variant.name)
         if error_message:
@@ -147,13 +218,19 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @computed_field
     @property
-    def merged_registries(self) -> list[Registry]:
+    def all_registries(self) -> list[Registry]:
         """Returns the merged registries for this image."""
+        # If overrideRegistries are set, return those directly.
+        if self.overrideRegistries:
+            return deepcopy(self.overrideRegistries)
+
+        # Otherwise, merge the registries from the image and its parent.
         all_registries = deepcopy(self.registries)
         if self.parent is not None:
-            for registry in self.parent.registries:
+            for registry in self.parent.all_registries:
                 if registry not in all_registries:
                     all_registries.append(registry)
+
         return all_registries
 
     def get_version(self, name: str) -> ImageVersion | None:

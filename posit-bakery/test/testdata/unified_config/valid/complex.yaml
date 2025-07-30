@@ -12,11 +12,13 @@ repository:
     name: "Maintainer Team"
     email: "maintainer-team@posit.co"
 
+# Global registries
 registries:
   - host: "ghcr.io"
     namespace: "posit-dev"
 
 images:
+  # Not a real image, also testing some random comment insertions
   - name: "package-manager-init"
     registries:
       - host: "cr.posit.it"
@@ -35,7 +37,9 @@ images:
     subpath: "ppm"
     tags:
       - patterns:
+          # Clean version
           - "{{ Version | TrimMetadata }}-{{ OS }}-{{ Variant.Name }}"
+          # Full version
           - "{{ Version }}-{{ OS }}-{{ Variant.Name }}"
     variants:
       - name: "minimal"
@@ -52,7 +56,7 @@ images:
             wait: 10
     versions:
       - name: "2025.04.2-8"
-        subpath: "2025.04.2"
+        subpath: "2025.04.2"  # End of line comment test
         latest: true
         os:
           - name: "Ubuntu 22.04"

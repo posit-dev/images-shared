@@ -11,7 +11,7 @@ class TagPatternFilter(str, Enum):
     ALL = "all"
     LATEST = "latest"
     PRIMARY_OS = "primaryOS"
-    STD_VARIANT = "stdVariant"
+    PRIMARY_VARIANT = "primaryVariant"
 
 
 class TagPattern(BakeryYAMLModel):
@@ -47,11 +47,11 @@ def default_tag_patterns() -> list[TagPattern]:
         ),
         TagPattern(
             patterns=["{{ Version }}-{{ OS }}"],
-            only=[TagPatternFilter.STD_VARIANT],
+            only=[TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
             patterns=["{{ Version }}"],
-            only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.STD_VARIANT],
+            only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
             patterns=["{{ OS }}-{{ Variant }}"],
@@ -59,7 +59,7 @@ def default_tag_patterns() -> list[TagPattern]:
         ),
         TagPattern(
             patterns=["{{ OS }}"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.STD_VARIANT],
+            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
             patterns=["{{ Variant }}"],
@@ -67,6 +67,6 @@ def default_tag_patterns() -> list[TagPattern]:
         ),
         TagPattern(
             patterns=["latest"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.STD_VARIANT],
+            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
     ]

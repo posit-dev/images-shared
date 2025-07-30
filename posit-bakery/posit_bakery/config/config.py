@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -14,12 +15,32 @@ from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.templating.default import create_image_templates, render_image_templates
 
 
+log = logging.getLogger(__name__)
+
+
 class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
-    commented_map: Annotated[CommentedMap | None, Field(exclude=True, default=None)]
     base_path: Annotated[Path, Field(exclude=True)]
     repository: Repository
-    registries: Annotated[list[Registry], Field(default_factory=list)]
-    images: Annotated[list[Image], Field(default_factory=list)]
+    registries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
+    images: Annotated[list[Image], Field(default_factory=list, validate_default=True)]
+
+    @field_validator("registries", mode="after")
+    @classmethod
+    def deduplicate_registries(cls, registries: list[Registry]) -> list[Registry]:
+        """Ensures that the registries list is unique and sorted."""
+        unique_registries = set(registries)
+        for unique_registry in unique_registries:
+            if registries.count(unique_registry) > 1:
+                log.warning(f"Duplicate registry defined in config: {unique_registry.base_url}")
+        return list(unique_registries)
+
+    @field_validator("images", mode="after")
+    @classmethod
+    def check_images_not_empty(cls, images: list[Image]) -> list[Image]:
+        """Ensures that the images list is not empty."""
+        if len(images) == 0:
+            log.warning("No images found in the Bakery config. At least one image is required for most commands.")
+        return images
 
     @field_validator("images", mode="after")
     @classmethod

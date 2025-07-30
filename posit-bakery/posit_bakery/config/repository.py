@@ -80,10 +80,13 @@ class Repository(BakeryYAMLModel):
         De-duplicate authors and log a warning if duplicates are found
         """
         unique_authors = set(authors)
+        warning_message = ""
         if len(unique_authors) != len(authors):
             warning_message = "Duplicate authors found in .bakery.yaml:\n"
             for unique_author in unique_authors:
                 if authors.count(unique_author) > 1:
                     warning_message += f" - {unique_author}\n"
+        if warning_message:
+            log.warning(warning_message.strip())
 
         return list(unique_authors)

@@ -1,3 +1,4 @@
+import enum
 import os
 from pathlib import Path
 from typing import List, Tuple
@@ -16,11 +17,20 @@ from posit_bakery.models.manifest.snyk import (
     SnykContainerSubcommand,
 )
 
+
+class FileTestResultEnum(enum.Enum, str):
+    """Enum for test result types in file tests."""
+
+    VALID = "valid"
+    VALID_WITH_WARNING = "valid-with-warning"
+    INVALID = "invalid"
+
+
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 
-def yaml_file_testcases(schema_type: str, test_result: str) -> List[Tuple[str, Path]]:
+def yaml_file_testcases(schema_type: str, test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
     """Find all YAML files in a directory for use
 
     Example return:
@@ -32,6 +42,23 @@ def yaml_file_testcases(schema_type: str, test_result: str) -> List[Tuple[str, P
     ]
     """
     directory = TEST_DIRECTORY / "testdata" / schema_type / test_result
+    yaml_files = directory.glob("*.yaml")
+
+    return [pytest.param(f, id=f.stem) for f in yaml_files]
+
+
+def yaml_unified_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
+    """Find all unified YAML files in a directory for use
+
+    Example return:
+    [
+        ("name1", "/path/to/name1.yaml"),
+        ("name2", "/path/to/name2.yaml"),
+        ("name3", "/path/to/name3.yaml"),
+        ("name4", "/path/to/name4.yaml"),
+    ]
+    """
+    directory = TEST_DIRECTORY / "testdata" / "unified_config" / test_result
     yaml_files = directory.glob("*.yaml")
 
     return [pytest.param(f, id=f.stem) for f in yaml_files]
