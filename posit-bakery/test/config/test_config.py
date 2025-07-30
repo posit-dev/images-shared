@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfigDocument
+from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig
+from test.models.helpers import yaml_unified_file_testcases, FileTestResultEnum
 
 
 class TestBakeryConfigDocument:
@@ -121,4 +123,31 @@ class TestBakeryConfigDocument:
 
 
 class TestBakeryConfig:
-    pass
+    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.VALID))
+    def test_valid(self, caplog, yaml_file: Path):
+        """Test valid unified YAML config files
+
+        Files are stored in test/testdata/unified_config/valid
+        """
+        config = BakeryConfig(yaml_file)
+        assert config is not None
+        assert "WARNING" not in caplog.text
+
+    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
+    def test_valid_with_warning(self, caplog, yaml_file: Path):
+        """Test valid unified YAML config files with warnings
+
+        Files are stored in test/testdata/unified_config/valid-with-warning
+        """
+        config = BakeryConfig(yaml_file)
+        assert config is not None
+        assert "WARNING" in caplog.text
+
+    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.INVALID))
+    def test_invalid(self, yaml_file: Path):
+        """Test invalid unified YAML config files
+
+        Files are stored in test/testdata/unified_config/invalid
+        """
+        with pytest.raises(ValidationError):
+            BakeryConfig(yaml_file)

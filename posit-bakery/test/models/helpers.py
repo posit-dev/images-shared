@@ -18,7 +18,7 @@ from posit_bakery.models.manifest.snyk import (
 )
 
 
-class FileTestResultEnum(enum.Enum, str):
+class FileTestResultEnum(str, enum.Enum):
     """Enum for test result types in file tests."""
 
     VALID = "valid"

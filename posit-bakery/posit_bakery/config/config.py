@@ -89,7 +89,7 @@ class BakeryConfig:
         self.yaml = YAML()
         self.config_file = Path(config_file)
         self.base_path = self.config_file.parent
-        self._config_yaml = self.yaml.load(self.config_file)
+        self._config_yaml = self.yaml.load(self.config_file) or dict()
         self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
 
     @classmethod

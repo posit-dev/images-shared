@@ -51,7 +51,7 @@ images:
               - "{{ OS }}-{{ Variant.Name }}"
       - name: "std"
         options:
-          - name: goss
+          - tool: goss
             command: "some other command"
             wait: 10
     versions:

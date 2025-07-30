@@ -40,7 +40,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     registries: Annotated[list[Registry], Field(default_factory=list)]
     overrideRegistries: Annotated[list[Registry], Field(default_factory=list)]
     latest: Annotated[bool, Field(default=False)]
-    os: Annotated[list[ImageVersionOS], Field(default_factory=list)]
+    os: Annotated[list[ImageVersionOS], Field(default_factory=list, validate_default=True)]
 
     @field_validator("registries", "overrideRegistries", mode="after")
     @classmethod
@@ -54,6 +54,17 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     f"{unique_registry.base_url}"
                 )
         return list(unique_registries)
+
+    @field_validator("os", mode="after")
+    @classmethod
+    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+        """Ensures that the os list is not empty."""
+        if not os:
+            log.warning(
+                f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
+                f"complete tagging and labeling of images."
+            )
+        return os
 
     @model_validator(mode="after")
     def registries_or_override_registries(self) -> Self:

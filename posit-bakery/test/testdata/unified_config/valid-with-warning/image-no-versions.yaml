@@ -1,0 +1,5 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+images:
+  - name: "image-no-versions"
+    versions: []

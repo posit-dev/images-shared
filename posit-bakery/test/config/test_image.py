@@ -90,6 +90,15 @@ class TestImageVersion:
             "Duplicate registry defined in config for version '1.0.0': registry1.example.com/namespace1" in caplog.text
         )
 
+    def test_check_os_not_empty(self, caplog):
+        """Test that an ImageVersion must have at least one OS defined."""
+        ImageVersion(name="1.0.0", os=[])
+        assert "WARNING" in caplog.text
+        assert (
+            "No OSes defined for image version '1.0.0'. At least one OS should be defined for complete tagging and "
+            "labeling of images." in caplog.text
+        )
+
     def test_registries_or_override_registries(self):
         """Test that only one of registries or overrideRegistries can be defined."""
         with pytest.raises(
