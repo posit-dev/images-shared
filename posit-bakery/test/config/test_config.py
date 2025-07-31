@@ -151,3 +151,8 @@ class TestBakeryConfig:
         """
         with pytest.raises(ValidationError):
             BakeryConfig(yaml_file)
+
+    def test_config_does_not_exist(self):
+        """Test that a FileNotFoundError is raised if the config file does not exist."""
+        with pytest.raises(FileNotFoundError, match="File '.*' does not exist."):
+            BakeryConfig("non_existent_config.yaml")

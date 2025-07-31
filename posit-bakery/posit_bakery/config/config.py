@@ -88,16 +88,11 @@ class BakeryConfig:
     def __init__(self, config_file: str | Path | os.PathLike):
         self.yaml = YAML()
         self.config_file = Path(config_file)
+        if not self.config_file.exists():
+            raise FileNotFoundError(f"File '{self.config_file}' does not exist.")
         self.base_path = self.config_file.parent
         self._config_yaml = self.yaml.load(self.config_file) or dict()
         self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
-
-    @classmethod
-    def read(cls, config_file: str | Path | os.PathLike) -> "BakeryConfig":
-        """Load the bakery config from the current working directory."""
-        if config_file.exists():
-            return cls(config_file)
-        raise FileNotFoundError(f"{config_file} could not be found.")
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
