@@ -36,6 +36,15 @@ class TestImageVersionOS:
         with pytest.raises(ValidationError):
             ImageVersionOS(name="Ubuntu 22.04", tagDisplayName="invalid tag name!")
 
+    def test_hash(self):
+        """Test that the hash method returns a unique hash based on the name."""
+        os1 = ImageVersionOS(name="Ubuntu 22.04")
+        os2 = ImageVersionOS(name="Ubuntu 22.04")
+        os3 = ImageVersionOS(name="Ubuntu 24.04")
+
+        assert hash(os1) == hash(os2)
+        assert hash(os1) != hash(os3)
+
 
 class TestImageVersion:
     def test_name_only(self):
@@ -97,6 +106,57 @@ class TestImageVersion:
         assert (
             "No OSes defined for image version '1.0.0'. At least one OS should be defined for complete tagging and "
             "labeling of images." in caplog.text
+        )
+
+    def test_deduplicate_os(self, caplog):
+        """Test that duplicate OSes are deduplicated."""
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        i = ImageVersion(
+            parent=mock_parent,
+            name="1.0.0",
+            os=[
+                {"name": "Ubuntu 22.04", "primary": True},
+                {"name": "Ubuntu 22.04"},  # Duplicate
+            ],
+        )
+        assert len(i.os) == 1
+        assert i.os[0].name == "Ubuntu 22.04"
+        assert "WARNING" in caplog.text
+        assert "Duplicate OS defined in config for image version '1.0.0': Ubuntu 22.04" in caplog.text
+
+    def test_make_single_os_primary(self, caplog):
+        """Test that if only one OS is defined, it is automatically made primary."""
+        i = ImageVersion(name="1.0.0", os=[{"name": "Ubuntu 22.04"}])
+        assert len(i.os) == 1
+        assert i.os[0].primary is True
+        assert i.os[0].name == "Ubuntu 22.04"
+        assert (
+            "No primary OS defined for image version '1.0.0'. At least one OS should be marked as primary for "
+            "complete tagging and labeling of images."
+        ) not in caplog.text
+
+    def test_max_one_primary_os(self):
+        """Test that an error is raised if multiple primary OSes are defined."""
+        with pytest.raises(
+            ValidationError,
+            match="Only one OS can be marked as primary for image version '1.0.0'. Found 2 OSes marked primary.",
+        ):
+            ImageVersion(
+                name="1.0.0",
+                os=[
+                    {"name": "Ubuntu 22.04", "primary": True},
+                    {"name": "Ubuntu 24.04", "primary": True},  # Multiple primary OSes
+                ],
+            )
+
+    def test_no_primary_os_warning(self, caplog):
+        """Test that a warning is logged if no primary OS is defined."""
+        ImageVersion(name="1.0.0", os=[{"name": "Ubuntu 22.04"}, {"name": "Ubuntu 24.04"}])
+        assert "WARNING" in caplog.text
+        assert (
+            "No OS marked as primary for image version '1.0.0'. At least one OS should be marked as primary for "
+            "complete tagging and labeling of images." in caplog.text
         )
 
     def test_registries_or_override_registries(self):

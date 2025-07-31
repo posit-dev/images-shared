@@ -32,6 +32,16 @@ class ImageVersionOS(BakeryYAMLModel):
         validate_default=True,
     )
 
+    def __hash__(self):
+        """Unique hash for an ImageVersionOS object."""
+        return hash((self.name, self.extension, self.tagDisplayName))
+
+    def __eq__(self, other):
+        """Equality check for ImageVersionOS based on name."""
+        if isinstance(other, ImageVersionOS):
+            return hash(self) == hash(other)
+        return False
+
 
 class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None], Field(exclude=True, default=None)]
@@ -63,6 +73,45 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             log.warning(
                 f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
                 f"complete tagging and labeling of images."
+            )
+        return os
+
+    @field_validator("os", mode="after")
+    @classmethod
+    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+        """Ensures that the os list is unique and warns on duplicates."""
+        unique_oses = set(os)
+        for unique_os in unique_oses:
+            if os.count(unique_os) > 1:
+                log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
+        return list(unique_oses)
+
+    @field_validator("os", mode="after")
+    @classmethod
+    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+        """Ensures that at most one OS is marked as primary."""
+        if len(os) == 1:
+            # If there's only one OS, mark it as primary by default.
+            log.info(
+                f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary OS."
+            )
+            os[0].primary = True
+        return os
+
+    @field_validator("os", mode="after")
+    @classmethod
+    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+        """Ensures that at most one OS is marked as primary."""
+        primary_os_count = sum(1 for o in os if o.primary)
+        if primary_os_count > 1:
+            raise ValueError(
+                f"Only one OS can be marked as primary for image version '{info.data['name']}'. "
+                f"Found {primary_os_count} OSes marked primary."
+            )
+        elif primary_os_count == 0:
+            log.warning(
+                f"No OS marked as primary for image version '{info.data['name']}'. "
+                "At least one OS should be marked as primary for complete tagging and labeling of images."
             )
         return os
 
