@@ -1,0 +1,35 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+  vendor: "Posit Software, PBC"
+  maintainer:
+    name: "Posit Docker Team"
+    email: "docker@posit.co"
+  authors:
+    - name: "Author 1"
+      email: "author1@posit.co"
+    - name: "Author 2"
+      email: "author2@posit.co"
+
+registries:
+  - host: "docker.io"
+    namespace: "posit"
+  - host: "ghcr.io"
+    namespace: "posit-dev"
+
+images:
+  - name: "test-image"
+    versions:
+      - name: "1.0.0"
+        latest: true
+        os:
+          - "Ubuntu 22.04"
+    variants:
+      - name: "Minimal"
+        extension: "min"
+        tagDisplayName: "min"
+      - name: "Standard"
+        extension: "std"
+        tagDisplayName: "std"
+        options:
+          goss:
+              wait: 1

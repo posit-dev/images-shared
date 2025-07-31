@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
+from posit_bakery.config.config import BakeryConfig
+
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
@@ -42,7 +44,13 @@ def testdata_path():
 @pytest.fixture(scope="session")
 def basic_context(resource_path):
     """Return the path to the basic test suite context"""
-    return resource_path / "basic"
+    return resource_path / "multi-config" / "basic"
+
+
+@pytest.fixture(scope="session")
+def basic_unified_config_context(resource_path):
+    """Return the path to the basic test suite context"""
+    return resource_path / "unified-config" / "basic"
 
 
 @pytest.fixture(scope="session")
@@ -51,12 +59,24 @@ def basic_config_file(basic_context):
     return basic_context / "config.yaml"
 
 
+@pytest.fixture(scope="session")
+def basic_unified_config_file(basic_unified_config_context):
+    """Return the path to the basic test suite unified config.yaml file"""
+    return basic_unified_config_context / "bakery.yaml"
+
+
 @pytest.fixture
 def basic_config_obj(basic_config_file):
     """Return a Config object loaded from basic test suite config.yaml file"""
     from posit_bakery.models import Config
 
     return Config.load(basic_config_file)
+
+
+@pytest.fixture
+def basic_unified_config_obj(basic_unified_config_file):
+    """Return a Config object loaded from basic test suite unified config.yaml file"""
+    return BakeryConfig(basic_unified_config_file)
 
 
 @pytest.fixture
@@ -133,10 +153,25 @@ def basic_tmpcontext(tmpdir, basic_context):
     return tmpcontext
 
 
+@pytest.fixture
+def basic_unified_tmpcontext(tmpdir, basic_unified_config_context):
+    """Return a temporary copy of the basic unified test suite context"""
+    tmpcontext = Path(tmpdir) / "basic"
+    tmpcontext.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(basic_unified_config_context, tmpcontext, dirs_exist_ok=True)
+    return tmpcontext
+
+
 @pytest.fixture(scope="session")
 def barebones_context(resource_path):
     """Return the path to the basic test suite context"""
-    return resource_path / "barebones"
+    return resource_path / "multi-config" / "barebones"
+
+
+@pytest.fixture(scope="session")
+def barebones_unified_context(resource_path):
+    """Return the path to the basic test suite unified context"""
+    return resource_path / "unified-config" / "barebones"
 
 
 @pytest.fixture(scope="session")
@@ -145,12 +180,24 @@ def barebones_config_file(barebones_context):
     return barebones_context / "config.yaml"
 
 
+@pytest.fixture(scope="session")
+def barebones_unified_config_file(barebones_unified_context):
+    """Return the path to the basic test suite unified config.yaml file"""
+    return barebones_unified_context / "bakery.yaml"
+
+
 @pytest.fixture
 def barebones_config_obj(barebones_config_file):
     """Return a Config object loaded from basic test suite config.yaml file"""
     from posit_bakery.models import Config
 
     return Config.load(barebones_config_file)
+
+
+@pytest.fixture
+def barebones_unified_config_obj(barebones_unified_config_file):
+    """Return a Config object loaded from basic test suite unified config.yaml file"""
+    return BakeryConfig(barebones_unified_config_file)
 
 
 @pytest.fixture
@@ -226,4 +273,13 @@ def barebones_tmpcontext(tmpdir, barebones_context):
     tmpcontext = Path(tmpdir) / "basic"
     tmpcontext.mkdir(parents=True, exist_ok=True)
     shutil.copytree(barebones_context, tmpcontext, dirs_exist_ok=True)
+    return tmpcontext
+
+
+@pytest.fixture
+def barebones_unified_tmpcontext(tmpdir, barebones_unified_context):
+    """Return a temporary copy of the basic unified test suite context"""
+    tmpcontext = Path(tmpdir) / "barebones"
+    tmpcontext.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(barebones_unified_context, tmpcontext, dirs_exist_ok=True)
     return tmpcontext
