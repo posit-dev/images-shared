@@ -290,7 +290,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         # Otherwise, merge the registries from the image and its parent.
         all_registries = deepcopy(self.registries)
         if self.parent is not None:
-            for registry in self.parent.all_registries:
+            for registry in self.parent.registries:
                 if registry not in all_registries:
                     all_registries.append(registry)
 

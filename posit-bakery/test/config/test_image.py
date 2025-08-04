@@ -400,7 +400,7 @@ class TestImage:
         ]
 
         mock_config_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_config_parent.all_registries = [
+        mock_config_parent.registries = [
             expected_registries[0],  # docker.io/posit
             expected_registries[1],  # ghcr.io/posit-dev
         ]

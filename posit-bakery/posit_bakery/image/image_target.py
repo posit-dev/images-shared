@@ -181,5 +181,5 @@ class ImageTarget(BaseModel):
             image_variant=image_variant,
             image_os=image_os,
             registries=image_version.registries,
-            tag_patterns=list(*image_variant.parent.tagPatterns, *image_variant.tagPatterns),
+            tag_patterns=[*image_variant.parent.tagPatterns, *image_variant.tagPatterns],
         )

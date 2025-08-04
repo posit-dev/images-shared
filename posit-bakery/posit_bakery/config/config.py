@@ -5,13 +5,14 @@ from pathlib import Path
 
 from pydantic import Field, model_validator, computed_field, field_validator
 from typing import Annotated, Self
-from ruamel.yaml import YAML, CommentedMap
+from ruamel.yaml import YAML
 
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
 from posit_bakery.const import DEFAULT_BASE_IMAGE
+from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.templating.default import create_image_templates, render_image_templates
 
 
@@ -94,6 +95,7 @@ class BakeryConfig:
         self.base_path = self.config_file.parent
         self._config_yaml = self.yaml.load(self.config_file) or dict()
         self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
+        self.targets = self.generate_image_targets()
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
@@ -159,3 +161,20 @@ class BakeryConfig:
         image.create_version(version=version, subpath=subpath, latest=latest, update_if_exists=force)
 
         self.write()
+
+    def generate_image_targets(self) -> list[ImageTarget]:
+        targets = []
+        for image in self.model.images:
+            for variant in image.variants:
+                for version in image.versions:
+                    for _os in version.os:
+                        targets.append(
+                            ImageTarget.new_image_target(
+                                repository=self.model.repository,
+                                image_version=version,
+                                image_variant=variant,
+                                image_os=_os,
+                            )
+                        )
+
+        return targets
