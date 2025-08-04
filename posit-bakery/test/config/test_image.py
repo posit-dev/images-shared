@@ -308,6 +308,7 @@ class TestImage:
         )
 
         assert i.name == "my-image"
+        assert i.displayName == "My Image"
         assert i.subpath == "my-image-subpath"
         assert len(i.registries) == 1
         assert len(i.tagPatterns) == 1

@@ -4,7 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Self, Union
 
-from pydantic import BaseModel, Field, model_validator, computed_field, field_validator
+from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
@@ -188,6 +188,9 @@ def default_image_variants() -> list[ImageVariant]:
 class Image(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None] | None, Field(exclude=True, default=None)]
     name: str
+    displayName: Annotated[str, Field(default_factory=lambda data: data["name"].replace("-", " ").title())]
+    description: Annotated[str | None, Field(default=None)]
+    documentationUrl: Annotated[HttpUrl | None, Field(default=None)]
     subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
     registries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
     overrideRegistries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
