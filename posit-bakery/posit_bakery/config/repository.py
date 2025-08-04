@@ -1,7 +1,9 @@
 import logging
+from functools import cached_property
 from typing import Annotated, Any
 
-from pydantic import HttpUrl, NameEmail, Field, field_validator, AnyUrl
+import git
+from pydantic import HttpUrl, NameEmail, Field, field_validator, AnyUrl, computed_field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 
@@ -24,12 +26,27 @@ def parse_name_email_from_dict(name_email_dict: dict) -> HashableNameEmail:
 
 
 class Repository(BakeryYAMLModel):
+    parent: Annotated[BakeryYAMLModel, Field(default=None, exclude=True)]
     url: HttpUrl
     vendor: Annotated[str, Field(default="Posit Software, PBC")]
     maintainer: Annotated[
         HashableNameEmail, Field(default=NameEmail(name="Posit Docker Team", email="docker@posit.co"))
     ]
     authors: Annotated[list[HashableNameEmail], Field(default_factory=list)]
+
+    @computed_field
+    @cached_property
+    def revision(self) -> str | None:
+        """Get the git commit SHA for the current context"""
+        sha = None
+        if self.parent is None:
+            return sha
+        try:
+            repo = git.Repo(self.parent.path, search_parent_directories=True)
+            sha = repo.head.object.hexsha
+        except Exception as e:
+            log.debug(f"Unable to get git commit for labels: {e}")
+        return sha
 
     @field_validator("url", mode="before")
     @classmethod
