@@ -89,6 +89,7 @@ class TestBakeryConfigDocument:
             images=[{"name": "my-image"}],
         )
         assert d.images[0].parent is d
+        assert d.repository.parent is d
 
     def test_path(self):
         """Test that the path property returns the base path."""

@@ -60,6 +60,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
+        self.repository.parent = self
         for image in self.images:
             image.parent = self
         return self
