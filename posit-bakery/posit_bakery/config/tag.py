@@ -1,6 +1,8 @@
+import re
 from enum import Enum
 from typing import Annotated
 
+from jinja2 import Environment
 from pydantic import Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -20,14 +22,20 @@ class TagPattern(BakeryYAMLModel):
 
     def render(self, **kwargs) -> list[str]:
         """Render the Jinja2 tag patterns with the provided keyword arguments."""
-        from jinja2 import Template
-
         rendered_tags = []
         for pattern in self.patterns:
-            template = Template(pattern)
+            env = Environment()
+            env.filters["tagSafe"] = lambda s: re.sub(r"[^a-zA-Z0-9_\-.]", "-", s)
+            env.filters["trimMetadata"] = lambda s: re.sub(r"[+|-].*", "", s)
+            env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
+            env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
+            template = env.from_string(pattern)
             tag = template.render(**kwargs)
+            tag = tag.strip()
+            tag = re.sub(r"[^a-zA-Z0-9_\-.]", "-", tag)  # Ensure tag is safe for use.
 
             rendered_tags.append(tag)
+
         return rendered_tags
 
     def __hash__(self):
