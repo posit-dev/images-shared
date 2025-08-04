@@ -26,7 +26,7 @@ class TagPattern(BakeryYAMLModel):
         for pattern in self.patterns:
             env = Environment()
             env.filters["tagSafe"] = lambda s: re.sub(r"[^a-zA-Z0-9_\-.]", "-", s)
-            env.filters["trimMetadata"] = lambda s: re.sub(r"[+|-].*", "", s)
+            env.filters["stripMetadata"] = lambda s: re.sub(r"[+|-].*", "", s)
             env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
             env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
             template = env.from_string(pattern)
@@ -46,19 +46,19 @@ class TagPattern(BakeryYAMLModel):
 def default_tag_patterns() -> list[TagPattern]:
     return [
         TagPattern(
-            patterns=["{{ Version }}-{{ OS }}-{{ Variant }}"],
+            patterns=["{{ Version }}-{{ OS }}-{{ Variant }}", "{{ Version | stripMetadata }}-{{ OS }}-{{ Variant }}"],
             only=[TagPatternFilter.ALL],
         ),
         TagPattern(
-            patterns=["{{ Version }}-{{ Variant }}"],
+            patterns=["{{ Version }}-{{ Variant }}", "{{ Version | stripMetadata }}-{{ Variant }}"],
             only=[TagPatternFilter.PRIMARY_OS],
         ),
         TagPattern(
-            patterns=["{{ Version }}-{{ OS }}"],
+            patterns=["{{ Version }}-{{ OS }}", "{{ Version | stripMetadata }}-{{ OS }}"],
             only=[TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
-            patterns=["{{ Version }}"],
+            patterns=["{{ Version }}", "{{ Version | stripMetadata }}"],
             only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
