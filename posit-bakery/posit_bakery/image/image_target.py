@@ -1,10 +1,11 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Self
 
+import python_on_whales
 from pydantic import BaseModel, field_validator, computed_field, model_validator
 
-from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS, Image
-from posit_bakery.config.registry import Registry
+from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
@@ -24,6 +25,30 @@ class ImageTarget(BaseModel):
     image_os: ImageVersionOS | None = None
     tag_patterns: list[TagPattern]
 
+    @classmethod
+    def new_image_target(
+        cls,
+        repository: Repository,
+        image_version: ImageVersion,
+        image_variant: ImageVariant | None = None,
+        image_os: ImageVersionOS | None = None,
+    ) -> "ImageTarget":
+        """Create a new ImageTarget instance from a repository, version, variant, and OS combination."""
+        context = ImageTargetContext(
+            base_path=image_version.parent.parent.path,
+            image_path=image_version.parent.path,
+            version_path=image_version.path,
+        )
+        return cls(
+            context=context,
+            repository=repository,
+            image_version=image_version,
+            image_variant=image_variant,
+            image_os=image_os,
+            registries=image_version.registries,
+            tag_patterns=[*image_variant.parent.tagPatterns, *image_variant.tagPatterns],
+        )
+
     def __str__(self):
         s = f"{self.image_version.parent.name} / " f"{self.image_version.name}"
         if self.image_variant:
@@ -31,6 +56,12 @@ class ImageTarget(BaseModel):
         if self.image_os:
             s += f" / {self.image_os.name}"
         return s
+
+    @computed_field
+    @property
+    def image_name(self) -> str:
+        """Return the name of the image."""
+        return self.image_version.parent.name
 
     @computed_field
     @property
@@ -67,6 +98,9 @@ class ImageTarget(BaseModel):
         if not expected_path.is_file():
             raise FileNotFoundError(f"Containerfile '{expected_path}' does not exist for {str(self)}.")
 
+        if expected_path.is_absolute():
+            expected_path = expected_path.relative_to(self.context.base_path)
+
         return expected_path
 
     @computed_field
@@ -77,7 +111,7 @@ class ImageTarget(BaseModel):
             "Version": self.image_version.name,
             "Variant": self.image_variant.tagDisplayName if self.image_variant else "",
             "OS": self.image_os.tagDisplayName if self.image_os else "",
-            "Name": self.image_version.parent.name,
+            "Name": self.image_name,
         }
 
     @field_validator("tag_patterns", mode="after")
@@ -138,15 +172,18 @@ class ImageTarget(BaseModel):
     @property
     def labels(self) -> dict[str, str]:
         """Generate labels for the image based on its properties."""
-        labels = {}
+        labels = {
+            f"{OCI_LABEL_PREFIX}.created": datetime.now().isoformat(),
+            f"{OCI_LABEL_PREFIX}.source": self.repository.url,
+            f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
+            f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
+            f"{OCI_LABEL_PREFIX}.authors": ", ".join([str(author) for author in self.repository.authors]),
+            f"{POSIT_LABEL_PREFIX}.maintainer": self.repository.maintainer,
+            f"{OCI_LABEL_PREFIX}.name": self.image_version.parent.displayName,
+        }
         # Add common labels with both prefixes
         for prefix in [OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX]:
-            labels[f"{prefix}.vendor"] = self.repository.vendor
-            labels[f"{prefix}.authors"] = ", ".join([str(author) for author in self.repository.authors])
-            labels[f"{prefix}.title"] = self.image_version.parent.displayName
-            labels[f"{prefix}.source"] = self.repository.url
-            labels[f"{prefix}.maintainer"] = self.repository.maintainer
-            labels[f"{prefix}.version"] = self.image_version.name if self.image_version else ""
+            labels[f"{prefix}.version"] = self.image_version.name
             if self.repository.revision:
                 labels[f"{prefix}.revision"] = self.repository.revision
             if self.image_version.parent.description:
@@ -161,25 +198,16 @@ class ImageTarget(BaseModel):
 
         return labels
 
-    @classmethod
-    def new_image_target(
-        cls,
-        repository: Repository,
-        image_version: ImageVersion,
-        image_variant: ImageVariant | None = None,
-        image_os: ImageVersionOS | None = None,
-    ) -> "ImageTarget":
-        context = ImageTargetContext(
-            base_path=image_version.parent.parent.path,
-            image_path=image_version.parent.path,
-            version_path=image_version.path,
+    def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
+        """Build the image using the Containerfile and return the built image."""
+        image = python_on_whales.docker.build(
+            context_path=self.context.base_path,
+            file=str(self.containerfile),
+            tags=self.tags,
+            labels=self.labels,
+            load=load,
+            push=push,
+            cache=cache,
         )
-        return cls(
-            context=context,
-            repository=repository,
-            image_version=image_version,
-            image_variant=image_variant,
-            image_os=image_os,
-            registries=image_version.registries,
-            tag_patterns=[*image_variant.parent.tagPatterns, *image_variant.tagPatterns],
-        )
+
+        return image
