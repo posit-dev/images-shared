@@ -17,7 +17,7 @@ class TagPatternFilter(str, Enum):
 
 
 class TagPattern(BakeryYAMLModel):
-    patterns: list[str]
+    patterns: list[Annotated[str, Field(pattern=r"^([a-z0-9-_.]|(?P<jinja>\{{2}.+?}{2}))+$")]]
     only: Annotated[list[TagPatternFilter], Field(default_factory=lambda: [TagPatternFilter.ALL])]
 
     def render(self, **kwargs) -> list[str]:
