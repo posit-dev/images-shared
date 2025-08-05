@@ -1,4 +1,3 @@
-import os
 import re
 from pathlib import Path
 from typing import Dict, List, Annotated
@@ -7,12 +6,6 @@ import python_on_whales
 from pydantic import BaseModel, Field, computed_field
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.models.image.variant import ImageVariant
-from posit_bakery.templating.filters import condense
-
-
-def target_uid(name: str, version: str, variant: ImageVariant) -> str:
-    return re.sub("[.+/]", "-", f"{name}-{version}-{condense(variant.os)}-{variant.target}")
 
 
 class BakeGroup(BaseModel):
@@ -29,17 +22,6 @@ class BakeTarget(BaseModel):
     dockerfile: str
     labels: Dict[str, str]
     tags: List[str]
-
-    @computed_field
-    @property
-    def uid(self):
-        """Generate a unique identifier for the target based on its properties."""
-        u = f"{self.image_name}-{self.image_version}"
-        if self.image_variant:
-            u += f"-{self.image_variant}"
-        if self.image_os:
-            u += f"-{self.image_os}"
-        return re.sub("[.+/]", "-", u)
 
     @classmethod
     def from_image_target(cls, image_target: ImageTarget) -> "BakeTarget":
@@ -92,12 +74,12 @@ class BakePlan(BaseModel):
             bake_target = BakeTarget.from_image_target(image_target)
             groups = cls.update_groups(
                 groups=groups,
-                uid=bake_target.uid,
+                uid=image_target.uid,
                 image_name=bake_target.image_name,
                 image_variant=bake_target.image_variant,
             )
 
-            targets[bake_target.uid] = bake_target
+            targets[image_target.uid] = bake_target
 
         return cls(context=context, group=groups, target=targets)
 

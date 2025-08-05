@@ -10,8 +10,7 @@ from pydantic_core.core_schema import ValidationInfo
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
-from posit_bakery.config.tools import ToolField, default_tool_options
-
+from posit_bakery.config.tools import ToolField, default_tool_options, GossOptions, ToolOptions
 
 log = logging.getLogger(__name__)
 
@@ -177,6 +176,13 @@ class ImageVariant(BakeryYAMLModel):
         """Unique hash for an ImageVariant object."""
         return hash((self.name, self.extension, self.tagDisplayName))
 
+    def get_tool_option(self, tool: str) -> ToolOptions | None:
+        """Returns the Goss options for this image variant."""
+        for option in self.options:
+            if option.tool == tool:
+                return option
+        return None
+
 
 def default_image_variants() -> list[ImageVariant]:
     return [
@@ -197,6 +203,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns, validate_default=True)]
     variants: Annotated[list[ImageVariant], Field(default_factory=default_image_variants, validate_default=True)]
     versions: Annotated[list[ImageVersion], Field(default_factory=list, validate_default=True)]
+    options: Annotated[list[ToolField], Field(default_factory=list)]
 
     @field_validator("registries", "overrideRegistries", mode="after")
     @classmethod
@@ -295,6 +302,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                     all_registries.append(registry)
 
         return all_registries
+
+    def get_tool_option(self, tool: str) -> ToolOptions | None:
+        """Returns the Goss options for this image variant."""
+        for option in self.options:
+            if option.tool == tool:
+                return option
+        return None
 
     def get_version(self, name: str) -> ImageVersion | None:
         """Returns an image version by name, or None if not found."""

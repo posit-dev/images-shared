@@ -59,6 +59,17 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
+    def uid(self):
+        """Generate a unique identifier for the target based on its properties."""
+        u = f"{self.image_name}-{self.image_version}"
+        if self.image_variant:
+            u += f"-{self.image_variant}"
+        if self.image_os:
+            u += f"-{self.image_os}"
+        return re.sub("[.+/]", "-", u)
+
+    @computed_field
+    @property
     def image_name(self) -> str:
         """Return the name of the image."""
         return self.image_version.parent.name
