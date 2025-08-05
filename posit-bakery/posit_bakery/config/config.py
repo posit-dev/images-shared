@@ -12,7 +12,11 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
 from posit_bakery.const import DEFAULT_BASE_IMAGE
-from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.image.goss.dgoss import DGossSuite
+from posit_bakery.image.goss.report import GossJsonReportCollection
+from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
+from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.templating.default import create_image_templates, render_image_templates
 
 
@@ -95,7 +99,8 @@ class BakeryConfig:
         self.base_path = self.config_file.parent
         self._config_yaml = self.yaml.load(self.config_file) or dict()
         self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
-        self.targets = self.generate_image_targets()
+        self.targets = []
+        self.generate_image_targets()
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
@@ -162,7 +167,8 @@ class BakeryConfig:
 
         self.write()
 
-    def generate_image_targets(self) -> list[ImageTarget]:
+    def generate_image_targets(self):
+        # TODO: Support filtering of images here
         targets = []
         for image in self.model.images:
             for variant in image.variants:
@@ -177,4 +183,26 @@ class BakeryConfig:
                             )
                         )
 
-        return targets
+        self.targets = targets
+
+    def build_targets(
+        self,
+        load: bool = True,
+        push: bool = False,
+        cache: bool = True,
+        strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
+    ):
+        """Build image targets using the specified strategy."""
+        if strategy == ImageBuildStrategy.BAKE:
+            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+            bake_plan.build(load=load, push=push, cache=cache)
+        elif strategy == ImageBuildStrategy.BUILD:
+            for target in self.targets:
+                target.build(load=load, push=push, cache=cache)
+
+    def dgoss_targets(
+        self,
+    ) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
+        """Run dgoss tests for all image targets."""
+        suite = DGossSuite(self.base_path, self.targets)
+        return suite.run()

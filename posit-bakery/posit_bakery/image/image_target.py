@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Self
 
@@ -9,6 +10,13 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+
+
+class ImageBuildStrategy(str, Enum):
+    """Enumeration for image build strategies."""
+
+    BUILD = "build"  # Build using sequential build calls to builder
+    BAKE = "bake"  # Build using Docker BuildKit bake
 
 
 class ImageTargetContext(BaseModel):

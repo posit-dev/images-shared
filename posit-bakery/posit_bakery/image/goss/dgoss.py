@@ -151,7 +151,7 @@ class DGossSuite:
         self.image_targets = image_targets
         self.dgoss_commands = [DGossCommand.from_image_target(target) for target in image_targets]
 
-    def run(self):
+    def run(self) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
         results_dir = self.context / "results" / "dgoss"
         if results_dir.exists():
             shutil.rmtree(results_dir)
