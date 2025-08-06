@@ -3,22 +3,24 @@ import os
 import shutil
 from pathlib import Path
 
+import jinja2
 from pydantic import Field, model_validator, computed_field, field_validator
 from typing import Annotated, Self
 from ruamel.yaml import YAML
 
+from posit_bakery import util
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
-from posit_bakery.config.templating.default import create_project_config
+from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
+from posit_bakery.config.templating.filters import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.image.bake.bake import BakePlan
-from posit_bakery.templating.default import create_image_templates
 
 log = logging.getLogger(__name__)
 
@@ -83,10 +85,47 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
                 return image
         return None
 
-    def create_image(self, name: str, subpath: str | None = None, base_tag: str | None = None) -> Image:
+    @staticmethod
+    def create_image_templates(image_path: Path, image_name: str, base_tag: str):
+        exists: bool = image_path.is_dir()
+        if not exists:
+            log.debug(f"Creating new image directory [bold]{image_path}")
+            image_path.mkdir()
+
+        image_template_path = image_path / "template"
+        if not image_template_path.is_dir():
+            log.debug(f"Creating new image templates directory [bold]{image_template_path}")
+            image_template_path.mkdir()
+
+        # Create a new Containerfile template if it doesn't exist
+        containerfile_path = image_template_path / "Containerfile.jinja2"
+        if not containerfile_path.is_file():
+            log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")
+            tpl = jinja2_env().from_string(TPL_CONTAINERFILE)
+            rendered = tpl.render(image_name=image_name, base_tag=base_tag)
+            with open(containerfile_path, "w") as f:
+                f.write(rendered)
+
+        image_test_path = image_template_path / "test"
+        if not image_test_path.is_dir():
+            log.debug(f"Creating new image templates test directory [bold]{image_test_path}")
+            image_test_path.mkdir()
+        image_test_goss_file = image_test_path / "goss.yaml.jinja2"
+        image_test_goss_file.touch(exist_ok=True)
+
+        image_deps_path = image_template_path / "deps"
+        if not image_deps_path.is_dir():
+            log.debug(f"Creating new image templates dependencies directory [bold]{image_deps_path}")
+            image_deps_path.mkdir()
+        image_deps_package_file = image_deps_path / "packages.txt.jinja2"
+        image_deps_package_file.touch(exist_ok=True)
+
+    def create_image(self, name: str, subpath: str | None = None) -> Image:
         """Creates a new image directory and adds it to the config."""
-        new_image = Image(name=name, subpath=subpath, parent=self)
-        create_image_templates(self.base_path / new_image.subpath, new_image.name, base_tag or DEFAULT_BASE_IMAGE)
+        args = {"name": name, "parent": self}
+        if subpath:
+            args["subpath"] = subpath
+        new_image = Image(**args)
         self.images.append(new_image)
         return new_image
 
@@ -104,9 +143,14 @@ class BakeryConfig:
         self.generate_image_targets()
 
     @staticmethod
-    def new(base_path: str | Path | os.PathLike):
+    def new(base_path: str | Path | os.PathLike) -> None:
         """Creates a new bakery.yaml file in the given base path."""
-        create_project_config(Path(base_path) / "bakery.yaml")
+        config_file = Path(base_path) / "bakery.yaml"
+        log.info(f"Creating new project config file [bold]{config_file}")
+        tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_BAKERY_CONFIG_YAML)
+        rendered = tpl.render(repo_url=util.try_get_repo_url(base_path))
+        with open(config_file, "w") as f:
+            f.write(rendered)
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
@@ -116,7 +160,8 @@ class BakeryConfig:
         """Creates a new image directory, adds it to the config, and writes the config to bakery.yaml."""
         if self.model.get_image(image_name):
             raise ValueError(f"Image '{image_name}' already exists in config.")
-        new_image = self.model.create_image(image_name)
+        new_image = self.model.create_image(image_name, subpath)
+        self.model.create_image_templates(new_image.path, new_image.name, base_image or DEFAULT_BASE_IMAGE)
         self._config_yaml.setdefault("images", []).append(
             new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
         )
@@ -159,7 +204,8 @@ class BakeryConfig:
                 shutil.move(existing_version_path, version_path)
 
         # Create the version in the image model.
-        image.create_version(version=version, subpath=subpath, latest=latest, update_if_exists=force)
+        new_version = image.create_version(version_name=version, subpath=subpath, latest=latest, update_if_exists=force)
+        image.render_version_from_template(new_version, image.variants, values)
 
         self.write()
 

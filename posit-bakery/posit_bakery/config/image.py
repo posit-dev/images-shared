@@ -353,28 +353,24 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return values
 
+    @staticmethod
     def render_version_from_template(
-        self,
-        version: str,
+        version: ImageVersion,
         variants: list[ImageVariant] | None = None,
-        subpath: str | None = None,
-        latest: bool = True,
-        update_if_exists: bool = False,
         extra_values: list[str] | None = None,
     ):
         """Render a new image version from the template."""
         # Check that template path exists
-        if not self.template_path.is_dir():
-            raise ValueError(f"Image template path does not exist: {self.template_path}")
+        if not version.parent.template_path.is_dir():
+            raise ValueError(f"Image template path does not exist: {version.parent.template_path}")
 
         # Create new version directory
-        version_path = self.path / (subpath or version)
-        if not version_path.is_dir():
-            log.debug(f"Creating new image version directory [bold]{version_path}")
-            version_path.mkdir()
+        if not version.path.is_dir():
+            log.debug(f"Creating new image version directory [bold]{version.path}")
+            version.path.mkdir()
 
         env = jinja2_env(
-            loader=jinja2.FileSystemLoader(self.template_path),
+            loader=jinja2.FileSystemLoader(version.parent.template_path),
             autoescape=True,
             undefined=jinja2.StrictUndefined,
             keep_trailing_newline=True,
@@ -393,8 +389,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             if tpl_rel_path.startswith("Containerfile") and variants:
                 containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
                 for variant in variants:
-                    template_values = self.generate_template_values(version, variant.name, version_path, extra_values)
-                    containerfile: Path = version_path / f"{containerfile_base_name}.{variant.extension}"
+                    template_values = version.parent.generate_template_values(
+                        version.name, variant.name, version.path, extra_values
+                    )
+                    containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
                     rendered = tpl.render(**template_values, **render_kwargs)
                     with open(containerfile, "w") as f:
                         log.debug(f"Rendering [bold]{containerfile}")
@@ -402,12 +400,12 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
             # Render other templates once
             else:
-                template_values = self.generate_template_values(
-                    version, version_path=version_path, extra_values=extra_values
+                template_values = version.parent.generate_template_values(
+                    version, version_path=version.path, extra_values=extra_values
                 )
                 rendered = tpl.render(**template_values, **render_kwargs)
                 rel_path = tpl_rel_path.removesuffix(".jinja2")
-                output_file = version_path / rel_path
+                output_file = version.path / rel_path
                 output_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(output_file, "w") as f:
                     log.debug(f"[bright_black]Rendering [bold]{output_file}")
@@ -415,7 +413,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     def create_version(
         self,
-        version: str,
+        version_name: str,
         subpath: str | None = None,
         latest: bool = True,
         update_if_exists: bool = False,
@@ -423,23 +421,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     ) -> ImageVersion:
         """Creates a new image version and adds it to the image."""
         # Check if the version already exists
-        existing_version = self.get_version(version)
+        image_version = self.get_version(version_name)
         # If it exists and update_if_exists is False, raise an error.
-        if existing_version and not update_if_exists:
-            raise ValueError(f"Version '{version}' already exists in image '{self.name}'.")
-
-        # Render templates for the new version.
-        self.render_version_from_template(
-            version=version,
-            variants=self.variants,
-            subpath=subpath,
-            latest=latest,
-            update_if_exists=update_if_exists,
-            extra_values=extra_template_values,
-        )
+        if image_version and not update_if_exists:
+            raise ValueError(f"Version '{version_name}' already exists in image '{self.name}'.")
 
         # Logic for creating a new version.
-        if existing_version is None:
+        if image_version is None:
             # Copy the latest OS and registries if they exist and unset latest on all other versions.
             os = None
             registries = None
@@ -452,7 +440,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
-            args = {"name": version, "parent": self}
+            args = {"name": version_name, "parent": self}
             if subpath is not None:
                 args["subpath"] = subpath
             if os is not None:
@@ -460,9 +448,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             if registries is not None:
                 args["registries"] = registries
 
-            new_version = ImageVersion(**args)
-            self.versions.append(new_version)
-            return new_version
+            image_version = ImageVersion(**args)
+            self.versions.append(image_version)
 
         # Logic for updating an existing version.
         else:
@@ -470,7 +457,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 # Unset latest on all other versions and set this one to latest.
                 for v in self.versions:
                     v.latest = False
-                existing_version.latest = True
+                image_version.latest = True
             if subpath:
-                existing_version.subpath = subpath
-            return existing_version
+                image_version.subpath = subpath
+
+        return image_version

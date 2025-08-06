@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -67,7 +68,7 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
-    def uid(self):
+    def uid(self) -> str:
         """Generate a unique identifier for the target based on its properties."""
         u = f"{self.image_name}-{self.image_version}"
         if self.image_variant:
