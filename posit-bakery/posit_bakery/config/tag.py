@@ -2,10 +2,10 @@ import re
 from enum import Enum
 from typing import Annotated
 
-from jinja2 import Environment
 from pydantic import Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
+from posit_bakery.config.templating.filters import jinja2_env
 
 
 # TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
@@ -24,11 +24,7 @@ class TagPattern(BakeryYAMLModel):
         """Render the Jinja2 tag patterns with the provided keyword arguments."""
         rendered_tags = []
         for pattern in self.patterns:
-            env = Environment()
-            env.filters["tagSafe"] = lambda s: re.sub(r"[^a-zA-Z0-9_\-.]", "-", s)
-            env.filters["stripMetadata"] = lambda s: re.sub(r"[+|-].*", "", s)
-            env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
-            env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
+            env = jinja2_env()
             template = env.from_string(pattern)
             tag = template.render(**kwargs)
             tag = tag.strip()

@@ -11,14 +11,14 @@ from posit_bakery.config.registry import Registry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
+from posit_bakery.config.templating.default import create_project_config
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.image.bake.bake import BakePlan
-from posit_bakery.templating.default import create_image_templates, render_image_templates
-
+from posit_bakery.templating.default import create_image_templates
 
 log = logging.getLogger(__name__)
 
@@ -83,9 +83,10 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
                 return image
         return None
 
-    def create_image(self, name: str) -> Image:
+    def create_image(self, name: str, subpath: str | None = None, base_tag: str | None = None) -> Image:
         """Creates a new image directory and adds it to the config."""
-        new_image = Image(name=name, parent=self)
+        new_image = Image(name=name, subpath=subpath, parent=self)
+        create_image_templates(self.base_path / new_image.subpath, new_image.name, base_tag or DEFAULT_BASE_IMAGE)
         self.images.append(new_image)
         return new_image
 
@@ -102,15 +103,19 @@ class BakeryConfig:
         self.targets = []
         self.generate_image_targets()
 
+    @staticmethod
+    def new(base_path: str | Path | os.PathLike):
+        """Creates a new bakery.yaml file in the given base path."""
+        create_project_config(Path(base_path) / "bakery.yaml")
+
     def write(self) -> None:
         """Write the bakery config to the config file."""
         self.yaml.dump(self._config_yaml, self.config_file)
 
-    def create_image(self, image_name: str, base_image: str | None = None) -> None:
+    def create_image(self, image_name: str, subpath: str | None = None, base_image: str | None = None):
         """Creates a new image directory, adds it to the config, and writes the config to bakery.yaml."""
         if self.model.get_image(image_name):
             raise ValueError(f"Image '{image_name}' already exists in config.")
-        create_image_templates(self.base_path / image_name, image_name, base_image or DEFAULT_BASE_IMAGE)
         new_image = self.model.create_image(image_name)
         self._config_yaml.setdefault("images", []).append(
             new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
@@ -152,15 +157,6 @@ class BakeryConfig:
                 # If the subpaths do not match, we move the existing subpath to the new subpath.
                 existing_version_path = self.base_path / image_name / existing_version.subpath
                 shutil.move(existing_version_path, version_path)
-
-        # Render the image templates.
-        variants = [v.extension for v in image.variants]
-        render_image_templates(
-            context=version_path,
-            version=version,
-            template_values=values,
-            targets=variants,
-        )
 
         # Create the version in the image model.
         image.create_version(version=version, subpath=subpath, latest=latest, update_if_exists=force)

@@ -4,13 +4,15 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Self, Union
 
+import jinja2
 from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
-from posit_bakery.config.tools import ToolField, default_tool_options, GossOptions, ToolOptions
+from posit_bakery.config.templating.filters import jinja2_env
+from posit_bakery.config.tools import ToolField, default_tool_options, ToolOptions
 
 log = logging.getLogger(__name__)
 
@@ -288,6 +290,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @computed_field
     @property
+    def template_path(self) -> Path:
+        """Returns the path to the image template directory."""
+        if self.path is None:
+            raise ValueError("Image path must be valid to find template path.")
+        return self.path / "template"
+
+    @computed_field
+    @property
     def all_registries(self) -> list[Registry]:
         """Returns the merged registries for this image."""
         # If overrideRegistries are set, return those directly.
@@ -317,12 +327,99 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 return version
         return None
 
+    def generate_template_values(
+        self,
+        version: str,
+        variant: str | None = None,
+        version_path: str | Path | None = None,
+        extra_values: list[str] | None = None,
+    ) -> dict[str, str]:
+        """Generates the template values for rendering."""
+        values = {
+            "Image": {
+                "Name": self.name,
+                "DisplayName": self.displayName,
+                "Version": version,
+                "Variant": variant or "",
+            },
+            "VersionPath": str(version_path or (self.path / version).relative_to(self.parent.path)),
+            "ImagePath": str(self.path.relative_to(self.parent.path)),
+            "BasePath": ".",
+        }
+        if extra_values:
+            for v in extra_values:
+                key, value = v.split("=", 1)
+                values[key] = value
+
+        return values
+
+    def render_version_from_template(
+        self,
+        version: str,
+        variants: list[ImageVariant] | None = None,
+        subpath: str | None = None,
+        latest: bool = True,
+        update_if_exists: bool = False,
+        extra_values: list[str] | None = None,
+    ):
+        """Render a new image version from the template."""
+        # Check that template path exists
+        if not self.template_path.is_dir():
+            raise ValueError(f"Image template path does not exist: {self.template_path}")
+
+        # Create new version directory
+        version_path = self.path / (subpath or version)
+        if not version_path.is_dir():
+            log.debug(f"Creating new image version directory [bold]{version_path}")
+            version_path.mkdir()
+
+        env = jinja2_env(
+            loader=jinja2.FileSystemLoader(self.template_path),
+            autoescape=True,
+            undefined=jinja2.StrictUndefined,
+            keep_trailing_newline=True,
+        )
+
+        # Render templates to version directory
+        for tpl_rel_path in env.list_templates():
+            tpl = env.get_template(tpl_rel_path)
+
+            # Enable trim_blocks for Containerfile templates
+            render_kwargs = {}
+            if tpl_rel_path.startswith("Containerfile"):
+                render_kwargs["trim_blocks"] = True
+
+            # If variants are specified, render Containerfile for each variant
+            if tpl_rel_path.startswith("Containerfile") and variants:
+                containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+                for variant in variants:
+                    template_values = self.generate_template_values(version, variant.name, version_path, extra_values)
+                    containerfile: Path = version_path / f"{containerfile_base_name}.{variant.extension}"
+                    rendered = tpl.render(**template_values, **render_kwargs)
+                    with open(containerfile, "w") as f:
+                        log.debug(f"Rendering [bold]{containerfile}")
+                        f.write(rendered)
+
+            # Render other templates once
+            else:
+                template_values = self.generate_template_values(
+                    version, version_path=version_path, extra_values=extra_values
+                )
+                rendered = tpl.render(**template_values, **render_kwargs)
+                rel_path = tpl_rel_path.removesuffix(".jinja2")
+                output_file = version_path / rel_path
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_file, "w") as f:
+                    log.debug(f"[bright_black]Rendering [bold]{output_file}")
+                    f.write(rendered)
+
     def create_version(
         self,
         version: str,
         subpath: str | None = None,
         latest: bool = True,
         update_if_exists: bool = False,
+        extra_template_values: list[str] | None = None,
     ) -> ImageVersion:
         """Creates a new image version and adds it to the image."""
         # Check if the version already exists
@@ -330,6 +427,16 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         # If it exists and update_if_exists is False, raise an error.
         if existing_version and not update_if_exists:
             raise ValueError(f"Version '{version}' already exists in image '{self.name}'.")
+
+        # Render templates for the new version.
+        self.render_version_from_template(
+            version=version,
+            variants=self.variants,
+            subpath=subpath,
+            latest=latest,
+            update_if_exists=update_if_exists,
+            extra_values=extra_template_values,
+        )
 
         # Logic for creating a new version.
         if existing_version is None:
