@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, model_validator, computed_field, field_va
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
-from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel, ExtensionField, TagDisplayNameField
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
 from posit_bakery.config.templating.filters import jinja2_env
 from posit_bakery.config.tools import ToolField, default_tool_options, ToolOptions
@@ -21,17 +21,8 @@ class ImageVersionOS(BakeryYAMLModel):
     parent: Annotated[Union[BaseModel, None] | None, Field(exclude=True, default=None)]
     name: str
     primary: Annotated[bool, Field(default=False)]
-    # These fields are not set as annotations because it turns off syntax highlighting for the lambda in some editors.
-    extension: str = Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
-        pattern=r"^[a-zA-Z0-9_-]+$",
-        validate_default=True,
-    )
-    tagDisplayName: str = Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data["name"].lower()),
-        pattern=r"^[a-zA-Z0-9_.-]+$",
-        validate_default=True,
-    )
+    extension: ExtensionField
+    tagDisplayName: TagDisplayNameField
 
     def __hash__(self):
         """Unique hash for an ImageVersionOS object."""
@@ -161,16 +152,8 @@ class ImageVariant(BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None] | None, Field(exclude=True, default=None)]
     name: str
     primary: Annotated[bool, Field(default=False)]
-    extension: str = Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
-        pattern=r"^[a-zA-Z0-9_-]+$",
-        validate_default=True,
-    )
-    tagDisplayName: str = Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data["name"].lower()),
-        pattern=r"^[a-zA-Z0-9_.-]+$",
-        validate_default=True,
-    )
+    extension: ExtensionField
+    tagDisplayName: TagDisplayNameField
     tagPatterns: Annotated[list[TagPattern], Field(default_factory=list)]
     options: Annotated[list[ToolField], Field(default_factory=default_tool_options)]
 
@@ -417,7 +400,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         subpath: str | None = None,
         latest: bool = True,
         update_if_exists: bool = False,
-        extra_template_values: list[str] | None = None,
     ) -> ImageVersion:
         """Creates a new image version and adds it to the image."""
         # Check if the version already exists
