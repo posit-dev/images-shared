@@ -53,7 +53,7 @@ class Repository(BakeryYAMLModel):
     def default_https_url_scheme(cls, value: AnyUrl) -> HttpUrl:
         """Prepend 'https://' to the URL if it does not already start with it"""
         if isinstance(value, str):
-            if not value.startswith("https://"):
+            if not value.startswith("https://") and not value.startswith("http://"):
                 value = f"https://{value}"
         return value
 
@@ -99,7 +99,7 @@ class Repository(BakeryYAMLModel):
         unique_authors = set(authors)
         warning_message = ""
         if len(unique_authors) != len(authors):
-            warning_message = "Duplicate authors found in .bakery.yaml:\n"
+            warning_message = "Duplicate authors found in bakery.yaml:\n"
             for unique_author in unique_authors:
                 if authors.count(unique_author) > 1:
                     warning_message += f" - {unique_author}\n"
