@@ -21,6 +21,7 @@ class ImageBuildStrategy(str, Enum):
 
 
 class ImageTargetContext(BaseModel):
+    # TODO: Freeze?
     base_path: Path
     image_path: Path
     version_path: Path
@@ -54,7 +55,7 @@ class ImageTarget(BaseModel):
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
-            registries=image_version.registries,
+            registries=image_version.all_registries,
             tag_patterns=[*image_variant.parent.tagPatterns, *image_variant.tagPatterns],
         )
 
@@ -91,6 +92,7 @@ class ImageTarget(BaseModel):
     @computed_field
     @property
     def is_primary_os(self) -> bool:
+        # TODO: Make sure returning False makes sense
         if self.image_os is None:
             return False
         return self.image_os.primary
@@ -98,6 +100,7 @@ class ImageTarget(BaseModel):
     @computed_field
     @property
     def is_primary_variant(self) -> bool:
+        # TODO: Make sure returning False makes sense
         if self.image_variant is None:
             return False
         return self.image_variant.primary
@@ -198,7 +201,7 @@ class ImageTarget(BaseModel):
             f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
             f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
             f"{OCI_LABEL_PREFIX}.authors": ", ".join([str(author) for author in self.repository.authors]),
-            f"{POSIT_LABEL_PREFIX}.maintainer": self.repository.maintainer,
+            f"{POSIT_LABEL_PREFIX}.maintainer": str(self.repository.maintainer),
             f"{OCI_LABEL_PREFIX}.name": self.image_version.parent.displayName,
         }
         # Add common labels with both prefixes

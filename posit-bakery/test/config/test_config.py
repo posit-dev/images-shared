@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -112,11 +113,23 @@ class TestBakeryConfigDocument:
         # Test for a non-existent image
         assert d.get_image("non-existent") is None
 
-    def test_create_image(self):
+    def test_create_image_files_template(self, basic_unified_tmpcontext):
+        """Test that create_image_files_template creates the correct directory structure."""
+        assert not (basic_unified_tmpcontext / "new-image").is_dir()
+        d = BakeryConfigDocument(base_path=basic_unified_tmpcontext, repository={"url": "https://example.com/repo"})
+        d.create_image_files_template(basic_unified_tmpcontext / "new-image", "new-image", "ubuntu:22.04")
+        assert (basic_unified_tmpcontext / "new-image").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").exists()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps" / "packages.txt.jinja2").is_file()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "test").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "test" / "goss.yaml.jinja2").is_file()
+
+    def test_create_image_model(self):
         """Test that create_image adds a new image to the config."""
         base_path = Path(os.getcwd())
         d = BakeryConfigDocument(base_path=base_path, repository={"url": "https://example.com/repo"})
-        new_image = d.create_image("new-image")
+        new_image = d.create_image_model("new-image")
         assert new_image.name == "new-image"
         assert len(d.images) == 1
         assert d.images[0] is new_image
@@ -157,3 +170,12 @@ class TestBakeryConfig:
         """Test that a FileNotFoundError is raised if the config file does not exist."""
         with pytest.raises(FileNotFoundError, match="File '.*' does not exist."):
             BakeryConfig("non_existent_config.yaml")
+
+    def test_new(self, tmpdir):
+        """Test creating a new BakeryConfig creates a valid bakery.yaml in a given directory."""
+        with patch("posit_bakery.util.try_get_repo_url") as mock_repo_url:
+            mock_repo_url.return_value = "https://example.com/repo"
+            BakeryConfig.new(Path(tmpdir))
+
+        assert (Path(tmpdir) / "bakery.yaml").is_file()
+        BakeryConfig(Path(tmpdir) / "bakery.yaml")

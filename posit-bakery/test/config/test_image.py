@@ -10,6 +10,11 @@ from posit_bakery.config.registry import Registry
 
 
 class TestImageVersionOS:
+    def test_name_required(self):
+        """Test that an ImageVersionOS object requires a name."""
+        with pytest.raises(ValidationError, match="Field required"):
+            ImageVersionOS()
+
     def test_valid_name_only(self):
         """Test creating an ImageVersionOS object with only the name does not raise an exception.
 
@@ -45,8 +50,24 @@ class TestImageVersionOS:
         assert hash(os1) == hash(os2)
         assert hash(os1) != hash(os3)
 
+    def test_equality(self):
+        """Test that the equality operator compares based on name."""
+        os1 = ImageVersionOS(name="Ubuntu 22.04")
+        os2 = ImageVersionOS(name="Ubuntu 22.04", primary=True)
+        os3 = ImageVersionOS(name="Ubuntu 24.04")
+
+        assert os1 == os2
+        assert os1 != os3
+        assert os2 != os3
+
 
 class TestImageVersion:
+    def test_name_required(self, caplog):
+        """Test that an ImageVersion object requires a name."""
+        with pytest.raises(ValidationError, match="Field required"):
+            ImageVersion()
+        assert "WARNING" not in caplog.text
+
     def test_name_only(self):
         """Test creating an ImageVersion object with only the name does not raise an exception.
 
@@ -238,6 +259,12 @@ class TestImageVersion:
 
 
 class TestImageVariant:
+    def test_name_required(self, caplog):
+        """Test that an ImageVariant object requires a name."""
+        with pytest.raises(ValidationError, match="Field required"):
+            ImageVariant()
+        assert "WARNING" not in caplog.text
+
     def test_valid(self):
         """Test creating a valid ImageVariant object does not raise an exception."""
         i = ImageVariant(name="Variant 1")
@@ -277,6 +304,12 @@ class TestImageVariant:
 
 
 class TestImage:
+    def test_name_required(self, caplog):
+        """Test that an Image object requires a name."""
+        with pytest.raises(ValidationError, match="Field required"):
+            Image()
+        assert "WARNING" not in caplog.text
+
     def test_required_fields(self):
         """Test creating an Image object with only the name does not raise an exception.
 
@@ -427,27 +460,52 @@ class TestImage:
 
         assert i.get_version("non-existent") is None
 
-    def test_create_version(self):
+    def test_create_version_files(self, basic_unified_tmpcontext):
+        """Test that create_version_files creates the correct directory structure."""
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = basic_unified_tmpcontext
+
+        i = Image(name="test-image", versions=[{"name": "1.0.0"}], parent=mock_parent)
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        Image.create_version_files(new_version, i.variants)
+
+        expected_path = basic_unified_tmpcontext / "test-image" / "2.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_create_version_model(self):
         """Test that create_version creates a new version and adds it to the image."""
         i = Image(name="my-image")
-        new_version = i.create_version("1.0.0")
+        new_version = i.create_version_model("1.0.0")
 
         assert new_version.name == "1.0.0"
         assert len(i.versions) == 1
         assert i.versions[0] is new_version
         assert new_version.parent is i
 
-    def test_create_version_existing_version(self):
+    def test_create_version_model_existing_version(self):
         """Test that create_version raises an error if the version already exists."""
         i = Image(name="my-image", versions=[{"name": "1.0.0"}])
 
         with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'my-image'."):
-            i.create_version("1.0.0")
+            i.create_version_model("1.0.0")
 
-    def test_create_version_existing_version_update(self):
+    def test_create_version_model_existing_version_update(self):
         """Test that create_version updates an existing version if it already exists."""
         i = Image(name="my-image", versions=[{"name": "1.0.0"}, {"name": "2.0.0", "latest": True}])
-        updated_version = i.create_version("1.0.0", subpath="updated-subpath", update_if_exists=True)
+        updated_version = i.create_version_model("1.0.0", subpath="updated-subpath", update_if_exists=True)
 
         assert updated_version.name == "1.0.0"
         assert updated_version.subpath == "updated-subpath"

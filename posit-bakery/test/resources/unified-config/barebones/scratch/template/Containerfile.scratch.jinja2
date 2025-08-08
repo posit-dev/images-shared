@@ -1,4 +1,4 @@
 FROM scratch
 
 # Some data must be added or Snyk will call the image invalid
-COPY {{ rel_path }}/deps/packages.txt /tmp/packages.txt
+COPY {{ VersionPath }}/deps/packages.txt /tmp/packages.txt

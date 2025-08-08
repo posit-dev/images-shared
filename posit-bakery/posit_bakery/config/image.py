@@ -1,5 +1,4 @@
 import logging
-import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Self, Union
@@ -38,7 +37,9 @@ class ImageVersionOS(BakeryYAMLModel):
 class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None], Field(exclude=True, default=None)]
     name: str
-    subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
+    subpath: Annotated[
+        str, Field(default_factory=lambda data: data.get("name", "").replace(" ", "-").lower(), min_length=1)
+    ]
     registries: Annotated[list[Registry], Field(default_factory=list)]
     overrideRegistries: Annotated[list[Registry], Field(default_factory=list)]
     latest: Annotated[bool, Field(default=False)]
@@ -52,7 +53,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         for unique_registry in unique_registries:
             if registries.count(unique_registry) > 1:
                 log.warning(
-                    f"Duplicate registry defined in config for version '{info.data['name']}': "
+                    f"Duplicate registry defined in config for version '{info.data.get('name')}': "
                     f"{unique_registry.base_url}"
                 )
         return list(unique_registries)
@@ -61,7 +62,8 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     @classmethod
     def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
         """Ensures that the os list is not empty."""
-        if not os:
+        # Check that name is defined since it will already propagate a validation error if not.
+        if info.data.get("name") and not os:
             log.warning(
                 f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
                 f"complete tagging and labeling of images."
@@ -74,19 +76,23 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         """Ensures that the os list is unique and warns on duplicates."""
         unique_oses = set(os)
         for unique_os in unique_oses:
-            if os.count(unique_os) > 1:
+            if info.data.get("name") and os.count(unique_os) > 1:
                 log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
+
         return list(unique_oses)
 
     @field_validator("os", mode="after")
     @classmethod
     def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
         """Ensures that at most one OS is marked as primary."""
+        # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
-            # If there's only one OS, mark it as primary by default.
-            log.info(
-                f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary OS."
-            )
+            # Skip warning if name already propagates an error.
+            if info.data.get("name"):
+                log.info(
+                    f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
+                    f"OS."
+                )
             os[0].primary = True
         return os
 
@@ -100,7 +106,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                 f"Only one OS can be marked as primary for image version '{info.data['name']}'. "
                 f"Found {primary_os_count} OSes marked primary."
             )
-        elif primary_os_count == 0:
+        elif info.data.get("name") and primary_os_count == 0:
             log.warning(
                 f"No OS marked as primary for image version '{info.data['name']}'. "
                 "At least one OS should be marked as primary for complete tagging and labeling of images."
@@ -179,10 +185,12 @@ def default_image_variants() -> list[ImageVariant]:
 class Image(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[Union[BakeryYAMLModel, None] | None, Field(exclude=True, default=None)]
     name: str
-    displayName: Annotated[str, Field(default_factory=lambda data: data["name"].replace("-", " ").title())]
+    displayName: Annotated[str, Field(default_factory=lambda data: data.get("name", "").replace("-", " ").title())]
     description: Annotated[str | None, Field(default=None)]
     documentationUrl: Annotated[HttpUrl | None, Field(default=None)]
-    subpath: Annotated[str, Field(default_factory=lambda data: data["name"])]
+    subpath: Annotated[
+        str, Field(default_factory=lambda data: data.get("name", "").replace(" ", "-").lower(), min_length=1)
+    ]
     registries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
     overrideRegistries: Annotated[list[Registry], Field(default_factory=list, validate_default=True)]
     tagPatterns: Annotated[list[TagPattern], Field(default_factory=default_tag_patterns, validate_default=True)]
@@ -196,7 +204,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         """Ensures that the registries list is unique and warns on duplicates."""
         unique_registries = set(registries)
         for unique_registry in unique_registries:
-            if registries.count(unique_registry) > 1:
+            if info.data.get("name") and registries.count(unique_registry) > 1:
                 log.warning(
                     f"Duplicate registry defined in config for image '{info.data['name']}': {unique_registry.base_url}"
                 )
@@ -215,7 +223,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     @classmethod
     def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
         """Ensures that the versions list is not empty."""
-        if not versions:
+        if info.data.get("name") and not versions:
             log.warning(
                 f"No versions found in image '{info.data['name']}'. At least one version is required for most commands."
             )
@@ -337,7 +345,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         return values
 
     @staticmethod
-    def render_version_from_template(
+    def create_version_files(
         version: ImageVersion,
         variants: list[ImageVariant] | None = None,
         extra_values: list[str] | None = None,
@@ -394,7 +402,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                     log.debug(f"[bright_black]Rendering [bold]{output_file}")
                     f.write(rendered)
 
-    def create_version(
+    def create_version_model(
         self,
         version_name: str,
         subpath: str | None = None,

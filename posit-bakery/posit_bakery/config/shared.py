@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 ExtensionField = Annotated[
     str,
     Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data["name"].lower()),
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data.get("name", "").lower()),
         pattern=r"^[a-zA-Z0-9_-]+$",
         validate_default=True,
     ),
@@ -19,7 +19,7 @@ ExtensionField = Annotated[
 TagDisplayNameField = Annotated[
     str,
     Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data["name"].lower()),
+        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_\-.]", "-", data.get("name", "").lower()),
         pattern=r"^[a-zA-Z0-9_.-]+$",
         validate_default=True,
     ),
