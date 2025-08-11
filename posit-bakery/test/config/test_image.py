@@ -78,7 +78,7 @@ class TestImageVersion:
         assert i.parent is None
         assert i.subpath == "1.0.0"
         assert not i.latest
-        assert len(i.registries) == 0
+        assert len(i.all_registries) == 0
         assert len(i.os) == 0
 
     def test_valid(self):
@@ -89,7 +89,7 @@ class TestImageVersion:
         i = ImageVersion(
             name="1.0.0",
             subpath="1.0",
-            registries=[
+            extraRegistries=[
                 {"host": "registry1.example.com", "namespace": "namespace1"},
                 {"host": "registry2.example.com", "namespace": "namespace2"},
             ],
@@ -98,7 +98,7 @@ class TestImageVersion:
         )
 
         assert i.latest
-        assert len(i.registries) == 2
+        assert len(i.all_registries) == 2
         assert len(i.os) == 2
         for os in i.os:
             assert os.parent is i
@@ -107,14 +107,14 @@ class TestImageVersion:
         """Test that duplicate registries are deduplicated."""
         i = ImageVersion(
             name="1.0.0",
-            registries=[
+            extraRegistries=[
                 {"host": "registry1.example.com", "namespace": "namespace1"},
                 {"host": "registry1.example.com", "namespace": "namespace1"},  # Duplicate
             ],
         )
-        assert len(i.registries) == 1
-        assert i.registries[0].host == "registry1.example.com"
-        assert i.registries[0].namespace == "namespace1"
+        assert len(i.all_registries) == 1
+        assert i.all_registries[0].host == "registry1.example.com"
+        assert i.all_registries[0].namespace == "namespace1"
         assert "WARNING" in caplog.text
         assert (
             "Duplicate registry defined in config for version '1.0.0': registry1.example.com/namespace1" in caplog.text
@@ -180,15 +180,15 @@ class TestImageVersion:
             "complete tagging and labeling of images." in caplog.text
         )
 
-    def test_registries_or_override_registries(self):
-        """Test that only one of registries or overrideRegistries can be defined."""
+    def test_extra_registries_or_override_registries(self):
+        """Test that only one of extraRegistries or overrideRegistries can be defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one of 'registries' or 'overrideRegistries' can be defined for image version '1.0.0'.",
+            match="Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image version '1.0.0'.",
         ):
             ImageVersion(
                 name="1.0.0",
-                registries=[{"host": "registry.example.com", "namespace": "namespace"}],
+                extraRegistries=[{"host": "registry.example.com", "namespace": "namespace"}],
                 overrideRegistries=[{"host": "another.registry.com", "namespace": "another_namespace"}],
             )
 
@@ -223,7 +223,7 @@ class TestImageVersion:
         i = ImageVersion(
             parent=mock_image_parent,
             name="1.0.0",
-            registries=[
+            extraRegistries=[
                 expected_registries[3],  # registry1.example.com/namespace1
                 expected_registries[0],  # docker.io/posit
             ],
@@ -320,7 +320,7 @@ class TestImage:
 
         assert i.parent is None
         assert i.subpath == "my-image"
-        assert len(i.registries) == 0
+        assert len(i.extraRegistries) == 0
         assert len(i.tagPatterns) == 8
         assert len(i.variants) == 2
         for variant in i.variants:
@@ -334,7 +334,7 @@ class TestImage:
         i = Image(
             name="my-image",
             subpath="my-image-subpath",
-            registries=[{"host": "registry.example.com", "namespace": "namespace"}],
+            extraRegistries=[{"host": "registry.example.com", "namespace": "namespace"}],
             tagPatterns=[{"patterns": ["{{ Version }}-{{ OS }}-{{ Variant }}"]}],
             variants=[{"name": "Standard"}],
             versions=[{"name": "1.0.0"}],
@@ -343,7 +343,7 @@ class TestImage:
         assert i.name == "my-image"
         assert i.displayName == "My Image"
         assert i.subpath == "my-image-subpath"
-        assert len(i.registries) == 1
+        assert len(i.extraRegistries) == 1
         assert len(i.tagPatterns) == 1
         assert len(i.variants) == 1
         assert len(i.versions) == 1
@@ -352,29 +352,29 @@ class TestImage:
         """Test that duplicate registries are deduplicated."""
         i = Image(
             name="my-image",
-            registries=[
+            extraRegistries=[
                 {"host": "registry.example.com", "namespace": "namespace"},
                 {"host": "registry.example.com", "namespace": "namespace"},  # Duplicate
             ],
             versions=[{"name": "1.0.0"}],
         )
-        assert len(i.registries) == 1
-        assert i.registries[0].host == "registry.example.com"
-        assert i.registries[0].namespace == "namespace"
+        assert len(i.extraRegistries) == 1
+        assert i.extraRegistries[0].host == "registry.example.com"
+        assert i.extraRegistries[0].namespace == "namespace"
         assert "WARNING" in caplog.text
         assert (
             "Duplicate registry defined in config for image 'my-image': registry.example.com/namespace" in caplog.text
         )
 
     def test_registries_or_override_registries(self):
-        """Test that only one of registries or overrideRegistries can be defined."""
+        """Test that only one of extraRegistries or overrideRegistries can be defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one of 'registries' or 'overrideRegistries' can be defined for image 'my-image'.",
+            match="Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image 'my-image'.",
         ):
             Image(
                 name="my-image",
-                registries=[{"host": "registry.example.com", "namespace": "namespace"}],
+                extraRegistries=[{"host": "registry.example.com", "namespace": "namespace"}],
                 overrideRegistries=[{"host": "another.registry.com", "namespace": "another_namespace"}],
                 versions=[{"name": "1.0.0"}],
             )
@@ -441,7 +441,7 @@ class TestImage:
             parent=mock_config_parent,
             name="my-image",
             versions=[{"name": "1.0.0"}],
-            registries=[expected_registries[1], expected_registries[2]],  # registry.example.com/namespace
+            extraRegistries=[expected_registries[1], expected_registries[2]],  # registry.example.com/namespace
         )
 
         assert len(i.all_registries) == 3
@@ -464,6 +464,7 @@ class TestImage:
         """Test that create_version_files creates the correct directory structure."""
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = basic_unified_tmpcontext
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
 
         i = Image(name="test-image", versions=[{"name": "1.0.0"}], parent=mock_parent)
         new_version = ImageVersion(
