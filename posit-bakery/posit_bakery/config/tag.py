@@ -10,18 +10,41 @@ from posit_bakery.config.templating.filters import jinja2_env
 
 # TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
 class TagPatternFilter(str, Enum):
-    ALL = "all"
-    LATEST = "latest"
-    PRIMARY_OS = "primaryOS"
-    PRIMARY_VARIANT = "primaryVariant"
+    """Enum representing filters for tag patterns."""
+
+    ALL = "all"  # Matches all image targets.
+    LATEST = "latest"  # Matches the image targets at the latest image version.
+    PRIMARY_OS = "primaryOS"  # Matches image targets using the primary OS.
+    PRIMARY_VARIANT = "primaryVariant"  # Matches image targets of the primary variant.
 
 
 class TagPattern(BakeryYAMLModel):
-    patterns: list[Annotated[str, Field(pattern=r"^([a-z0-9-_.]|(?P<jinja>\{{2}.+?}{2}))+$")]]
-    only: Annotated[list[TagPatternFilter], Field(default_factory=lambda: [TagPatternFilter.ALL])]
+    """Model representing a tag pattern for images in the Bakery configuration."""
+
+    patterns: list[
+        Annotated[
+            str,
+            Field(
+                pattern=r"^([a-z0-9-_.]|(?P<jinja>\{{2}.+?}{2}))+$",
+                description="Tag pattern using Jinja2 syntax.",
+                examples=["{{ Version }}-{{ OS }}-{{ Variant }}", "latest"],
+            ),
+        ]
+    ]
+    only: Annotated[
+        list[TagPatternFilter],
+        Field(
+            default_factory=lambda: [TagPatternFilter.ALL],
+            description="Filters for which image targets should use the tag pattern(s). All filters listed must be "
+            "true for the tag pattern to be applied.",
+        ),
+    ]
 
     def render(self, **kwargs) -> list[str]:
-        """Render the Jinja2 tag patterns with the provided keyword arguments."""
+        """Render the Jinja2 tag patterns with the provided keyword arguments.
+
+        :param kwargs: Key-value pairs to render variables in the Jinja2 tag template.
+        """
         rendered_tags = []
         for pattern in self.patterns:
             env = jinja2_env()
@@ -40,6 +63,13 @@ class TagPattern(BakeryYAMLModel):
 
 
 def default_tag_patterns() -> list[TagPattern]:
+    """Return the default tag patterns for images in the Bakery configuration.
+
+    The default patterns include various combinations of Version, OS, and Variant,
+    allowing for flexible tagging of images based on their attributes.
+
+    :return: A list of TagPattern objects representing the default tag patterns.
+    """
     return [
         TagPattern(
             patterns=["{{ Version }}-{{ OS }}-{{ Variant }}", "{{ Version | stripMetadata }}-{{ OS }}-{{ Variant }}"],

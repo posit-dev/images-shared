@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict
 
 
+# Shared field configuration for file extensions.
 ExtensionField = Annotated[
     str,
     Field(
@@ -16,6 +17,7 @@ ExtensionField = Annotated[
 ]
 
 
+# Shared field configuration for tag display names.
 TagDisplayNameField = Annotated[
     str,
     Field(
@@ -27,10 +29,14 @@ TagDisplayNameField = Annotated[
 
 
 class BakeryYAMLModel(BaseModel):
+    """Base model for Bakery configuration models."""
+
     model_config = ConfigDict(validate_assignment=True)
 
 
 class BakeryPathMixin:
+    """Mixin for models that require a path to their directory."""
+
     @property
     @abc.abstractmethod
     def path(self) -> str:
