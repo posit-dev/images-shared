@@ -2,10 +2,10 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Self
+from typing import Self, Annotated
 
 import python_on_whales
-from pydantic import BaseModel, field_validator, computed_field, model_validator
+from pydantic import BaseModel, field_validator, computed_field, model_validator, ConfigDict, Field
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
@@ -21,19 +21,38 @@ class ImageBuildStrategy(str, Enum):
 
 
 class ImageTargetContext(BaseModel):
-    # TODO: Freeze?
-    base_path: Path
-    image_path: Path
-    version_path: Path
+    """Container for contextual path information related to an image target."""
+
+    model_config = ConfigDict(frozen=True)
+
+    base_path: Path  # Path to the root of the Bakery project
+    image_path: Path  # Path to the image directory
+    version_path: Path  # Path to the image version directory
 
 
 class ImageTarget(BaseModel):
-    context: ImageTargetContext
-    repository: Repository
-    image_version: ImageVersion
-    image_variant: ImageVariant | None = None
-    image_os: ImageVersionOS | None = None
-    tag_patterns: list[TagPattern]
+    """Represents a combination of image variant, image version, and image version OS that make up a target image.
+
+    Image targets represent a unique image specified by configuration elements. Image targets are the functional
+    representation of a bakery.yaml configuration and can be used for various operations such as:
+    - Build
+    - Push
+    - Bake
+    - Goss Test
+    """
+
+    context: Annotated[ImageTargetContext, Field(description="Contextual path information for the image target.")]
+    repository: Annotated[Repository, Field(description="Parent repository of the image target.")]
+    image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
+    image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
+    image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
+    tag_patterns: Annotated[
+        list[TagPattern],
+        Field(
+            description="A list of tag patterns for the image target. Tag patterns are filtered based on the "
+            "properties of the image target.",
+        ),
+    ]
 
     @classmethod
     def new_image_target(
@@ -43,40 +62,54 @@ class ImageTarget(BaseModel):
         image_variant: ImageVariant | None = None,
         image_os: ImageVersionOS | None = None,
     ) -> "ImageTarget":
-        """Create a new ImageTarget instance from a repository, version, variant, and OS combination."""
+        """Create a new ImageTarget instance from a repository, version, variant, and OS combination.
+
+        :param repository: The repository containing the image.
+        :param image_version: The specific version of the image.
+        :param image_variant: The variant of the image, if applicable.
+        :param image_os: The operating system of the image, if applicable.
+
+        :return: A new ImageTarget representing the given combination of configurations.
+        """
         context = ImageTargetContext(
             base_path=image_version.parent.parent.path,
             image_path=image_version.parent.path,
             version_path=image_version.path,
         )
+
+        tag_patterns = image_version.parent.tagPatterns.copy()
+        if image_variant:
+            tag_patterns.extend(image_variant.tagPatterns)
+
         return cls(
             context=context,
             repository=repository,
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
-            registries=image_version.all_registries,
-            tag_patterns=[*image_variant.parent.tagPatterns, *image_variant.tagPatterns],
+            tag_patterns=tag_patterns,
         )
 
     def __str__(self):
-        s = f"{self.image_version.parent.name} / " f"{self.image_version.name}"
+        """Return a string representation of the image target."""
+        s = f"ImageTarget(image='{self.image_name}', version='{self.image_version.name}'"
         if self.image_variant:
-            s += f" / {self.image_variant.name}"
+            s += f", variant='{self.image_variant.name}'"
         if self.image_os:
-            s += f" / {self.image_os.name}"
+            s += f", os='{self.image_os.name}'"
+        s += ")"
         return s
 
     @computed_field
     @property
     def uid(self) -> str:
         """Generate a unique identifier for the target based on its properties."""
-        u = f"{self.image_name}-{self.image_version}"
+        u = f"{self.image_name}-{self.image_version.name}"
         if self.image_variant:
-            u += f"-{self.image_variant}"
+            u += f"-{self.image_variant.name}"
         if self.image_os:
-            u += f"-{self.image_os}"
-        return re.sub("[.+/]", "-", u)
+            u += f"-{self.image_os.name}"
+        return re.sub("[ .+/]", "-", u).lower()
 
     @computed_field
     @property
@@ -87,22 +120,25 @@ class ImageTarget(BaseModel):
     @computed_field
     @property
     def is_latest(self) -> bool:
+        """Check if the image version is marked as latest."""
         return self.image_version.latest
 
     @computed_field
     @property
     def is_primary_os(self) -> bool:
-        # TODO: Make sure returning False makes sense
+        """Check if the image OS is marked as primary."""
+        # If no OS is specified, consider it primary by default.
         if self.image_os is None:
-            return False
+            return True
         return self.image_os.primary
 
     @computed_field
     @property
     def is_primary_variant(self) -> bool:
-        # TODO: Make sure returning False makes sense
+        """Check if the image variant is marked as primary."""
+        # If no variant is specified, consider it primary by default.
         if self.image_variant is None:
-            return False
+            return True
         return self.image_variant.primary
 
     @computed_field
@@ -112,14 +148,12 @@ class ImageTarget(BaseModel):
         if not self.context.version_path:
             raise ValueError("Version path is not set in the context.")
         containerfile_name = "Containerfile"
-        if self.image_os and self.image_os.extension:
+        if self.image_os is not None and self.image_os.extension:
             containerfile_name += f".{self.image_os.extension}"
-        if self.image_variant and self.image_variant.extension:
+        if self.image_variant is not None and self.image_variant.extension:
             containerfile_name += f".{self.image_variant.extension}"
 
         expected_path = self.context.version_path / containerfile_name
-        if not expected_path.is_file():
-            raise FileNotFoundError(f"Containerfile '{expected_path}' does not exist for {str(self)}.")
 
         if expected_path.is_absolute():
             expected_path = expected_path.relative_to(self.context.base_path)
@@ -197,12 +231,12 @@ class ImageTarget(BaseModel):
         """Generate labels for the image based on its properties."""
         labels = {
             f"{OCI_LABEL_PREFIX}.created": datetime.now().isoformat(),
-            f"{OCI_LABEL_PREFIX}.source": self.repository.url,
+            f"{OCI_LABEL_PREFIX}.source": str(self.repository.url),
             f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
             f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
             f"{OCI_LABEL_PREFIX}.authors": ", ".join([str(author) for author in self.repository.authors]),
             f"{POSIT_LABEL_PREFIX}.maintainer": str(self.repository.maintainer),
-            f"{OCI_LABEL_PREFIX}.name": self.image_version.parent.displayName,
+            f"{POSIT_LABEL_PREFIX}.name": self.image_version.parent.displayName,
         }
         # Add common labels with both prefixes
         for prefix in [OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX]:
@@ -223,6 +257,9 @@ class ImageTarget(BaseModel):
 
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
+        if not self.containerfile.is_file():
+            raise FileNotFoundError(f"Containerfile '{self.containerfile}' does not exist for {str(self)}.")
+
         image = python_on_whales.docker.build(
             context_path=self.context.base_path,
             file=str(self.containerfile),
