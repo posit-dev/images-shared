@@ -22,7 +22,7 @@ images:
       - name: "1.0.0"
         latest: true
         os:
-          - "Ubuntu 22.04"
+          - name: "Ubuntu 22.04"
     variants:
       - name: "Minimal"
         extension: "min"
@@ -30,6 +30,7 @@ images:
       - name: "Standard"
         extension: "std"
         tagDisplayName: "std"
+        primary: true
         options:
-          goss:
-              wait: 1
+          - tool: "goss"
+            wait: 1
