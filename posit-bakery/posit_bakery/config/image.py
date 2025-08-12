@@ -530,6 +530,20 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         for option in self.options:
             if option.tool == tool:
                 return option
+
+        return None
+
+    def get_variant(self, name: str) -> ImageVariant | None:
+        """Returns an image variant by name, or None if not found.
+
+        :param name: The name property of the image variant to find.
+
+        :return: The ImageVariant object if found, otherwise None.
+        """
+        for variant in self.variants:
+            if variant.name == name:
+                return variant
+
         return None
 
     def get_version(self, name: str) -> ImageVersion | None:
@@ -542,6 +556,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         for version in self.versions:
             if version.name == name:
                 return version
+
         return None
 
     def generate_version_template_values(

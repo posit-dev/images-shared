@@ -460,6 +460,18 @@ class TestImage:
 
         assert i.get_version("non-existent") is None
 
+    def test_get_variant(self):
+        """Test that get_variant returns the correct variant object by name."""
+        i = Image(name="my-image", variants=[{"name": "Standard"}, {"name": "Minimal"}])
+
+        variant = i.get_variant("Standard")
+        assert variant.name == "Standard"
+
+        variant = i.get_variant("Minimal")
+        assert variant.name == "Minimal"
+
+        assert i.get_variant("non-existent") is None
+
     def test_create_version_files(self, basic_unified_tmpcontext):
         """Test that create_version_files creates the correct directory structure."""
         mock_parent = MagicMock(spec=BakeryConfigDocument)
