@@ -27,7 +27,7 @@ class FileTestResultEnum(str, enum.Enum):
 
 
 # Duplicate of entry in conftest.py, but required for this file
-TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__))).parent
+TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
 
 def yaml_file_testcases(schema_type: str, test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:

@@ -16,13 +16,13 @@ from posit_bakery.error import (
     BakeryToolRuntimeError,
     BakeryToolRuntimeErrorGroup,
 )
-from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project, Config
+from posit_bakery.models import Image, Images, ImageFilter, Manifest, Project
 from posit_bakery.models.image import ImageMetadata
 from posit_bakery.models.image.variant import ImageVariant
 from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
 from posit_bakery.models.project.bake import target_uid
 from posit_bakery.templating import TPL_CONFIG_YAML
-from test.models import helpers
+from test import helpers
 
 pytestmark = [
     pytest.mark.unit,

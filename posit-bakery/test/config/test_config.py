@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig
-from test.models.helpers import yaml_unified_file_testcases, FileTestResultEnum
+from test.helpers import yaml_unified_file_testcases, FileTestResultEnum
 
 
 class TestBakeryConfigDocument:
