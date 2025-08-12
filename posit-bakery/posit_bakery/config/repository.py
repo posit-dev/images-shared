@@ -122,7 +122,7 @@ class Repository(BakeryYAMLModel):
         cls,
         authors: list[NameEmail],
     ) -> list[NameEmail]:
-        """De-duplicate authors and log a warning if duplicates are found.
+        """De-duplicate and sort authors. Logs a warning if duplicates are found.
 
         :param authors: The list of authors to deduplicate.
 
@@ -138,4 +138,4 @@ class Repository(BakeryYAMLModel):
         if warning_message:
             log.warning(warning_message.strip())
 
-        return list(unique_authors)
+        return sorted(list(unique_authors), key=lambda x: str(x).lower())
