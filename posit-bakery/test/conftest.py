@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config import BakeryConfig
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -162,6 +162,12 @@ def basic_unified_tmpcontext(tmpdir, basic_unified_config_context):
     return tmpcontext
 
 
+@pytest.fixture
+def basic_unified_tmpconfig(basic_unified_tmpcontext):
+    """Return a temporary copy of the basic unified test suite config.yaml file"""
+    return BakeryConfig(basic_unified_tmpcontext / "bakery.yaml")
+
+
 @pytest.fixture(scope="session")
 def barebones_context(resource_path):
     """Return the path to the basic test suite context"""
@@ -283,3 +289,9 @@ def barebones_unified_tmpcontext(tmpdir, barebones_unified_context):
     tmpcontext.mkdir(parents=True, exist_ok=True)
     shutil.copytree(barebones_unified_context, tmpcontext, dirs_exist_ok=True)
     return tmpcontext
+
+
+@pytest.fixture
+def barebones_unified_tmpconfig(barebones_unified_tmpcontext):
+    """Return a temporary copy of the basic unified test suite config.yaml file"""
+    return BakeryConfig(barebones_unified_tmpcontext / "bakery.yaml")
