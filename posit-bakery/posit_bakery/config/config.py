@@ -99,7 +99,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
     @computed_field
     @property
-    def path(self) -> Path:
+    def path(self) -> Path | None:
         """Returns the path to the bakery config parent directory."""
         return self.base_path
 

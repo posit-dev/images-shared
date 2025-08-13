@@ -1,5 +1,7 @@
 import abc
 import re
+from pathlib import Path
+
 from pydantic import Field
 from typing import Annotated
 
@@ -39,6 +41,6 @@ class BakeryPathMixin:
 
     @property
     @abc.abstractmethod
-    def path(self) -> str:
+    def path(self) -> Path | None:
         """Returns the path to the model's directory."""
         raise NotImplementedError("Subclasses must implement the 'path' property.")

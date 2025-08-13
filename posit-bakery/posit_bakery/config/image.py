@@ -226,7 +226,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
 
     @computed_field
     @property
-    def path(self) -> Path:
+    def path(self) -> Path | None:
         """Returns the path to the image version directory.
 
         :raises ValueError: If the parent image does not have a valid path.
