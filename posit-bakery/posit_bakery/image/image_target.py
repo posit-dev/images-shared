@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import datetime
 from enum import Enum
@@ -257,17 +258,22 @@ class ImageTarget(BaseModel):
 
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
+        original_cwd = os.getcwd()
+        os.chdir(self.context.base_path)
+
         if not self.containerfile.is_file():
             raise FileNotFoundError(f"Containerfile '{self.containerfile}' does not exist for {str(self)}.")
 
         image = python_on_whales.docker.build(
             context_path=self.context.base_path,
-            file=str(self.containerfile),
+            file=self.containerfile,
             tags=self.tags,
             labels=self.labels,
             load=load,
             push=push,
             cache=cache,
         )
+
+        os.chdir(original_cwd)
 
         return image

@@ -2,9 +2,18 @@ import datetime
 import re
 from unittest.mock import patch, Mock, MagicMock
 
+import pytest
+import python_on_whales
+
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_target import ImageTarget
+
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.image,
+]
 
 
 class TestImageTarget:
@@ -308,3 +317,29 @@ class TestImageTarget:
         for key, value in expected_labels.items():
             assert key in labels
             assert labels[key] == value
+
+    @pytest.mark.build
+    def test_build_args(self, patch_datetime_now, basic_standard_image_target):
+        """Test the build property of an ImageTarget."""
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "tags": basic_standard_image_target.tags,
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "cache": True,
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    @pytest.mark.slow
+    def test_build(self, patch_datetime_now, basic_standard_image_target):
+        """Test the build property of an ImageTarget."""
+        basic_standard_image_target.build()
+        for tag in basic_standard_image_target.tags:
+            assert python_on_whales.docker.image.exists(tag)
