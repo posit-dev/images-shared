@@ -224,7 +224,7 @@ class ImageTarget(BaseModel):
             for suffix in self.tag_suffixes:
                 tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
 
-        return tags
+        return sorted(tags)
 
     @computed_field
     @property
