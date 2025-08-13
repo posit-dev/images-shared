@@ -97,7 +97,6 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
             image.parent = self
         return self
 
-    @computed_field
     @property
     def path(self) -> Path | None:
         """Returns the path to the bakery config parent directory."""

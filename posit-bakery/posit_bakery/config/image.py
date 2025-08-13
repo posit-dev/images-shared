@@ -224,7 +224,6 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             version_os.parent = self
         return self
 
-    @computed_field
     @property
     def path(self) -> Path | None:
         """Returns the path to the image version directory.
@@ -235,7 +234,6 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError("Parent image must resolve a valid path.")
         return Path(self.parent.path) / self.subpath
 
-    @computed_field
     @property
     def all_registries(self) -> list[Registry]:
         """Returns the merged registries for this image version.
@@ -503,7 +501,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError("Image path must be valid to find template path.")
         return self.path / "template"
 
-    @computed_field
     @property
     def all_registries(self) -> list[Registry]:
         """Returns the merged registries for this image."""

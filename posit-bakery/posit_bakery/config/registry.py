@@ -14,7 +14,6 @@ class Registry(BakeryYAMLModel):
         Field(default=None, description="Namespace or organization in the registry.", examples=["posit", "myorg"]),
     ]
 
-    @computed_field
     @property
     def base_url(self) -> str:
         """Get the base URL for the registry.
