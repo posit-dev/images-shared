@@ -18,12 +18,18 @@ log = logging.getLogger(__name__)
 
 
 def find_dgoss_bin(context: ImageTargetContext) -> str | None:
-    """Find the path to the DGoss binary for the given image target's context."""
+    """Find the path to the DGoss binary for the given image target's context.
+
+    :param context: The context of the image target to search for the DGoss binary.
+    """
     return find_bin(context.base_path, "dgoss", "DGOSS_PATH") or "dgoss"
 
 
 def find_goss_bin(context: ImageTargetContext) -> str | None:
-    """Find the path to the Goss binary for the given image target's context."""
+    """Find the path to the Goss binary for the given image target's context.
+
+    :param context: The context of the image target to search for the Goss binary.
+    """
     return find_bin(context.base_path, "goss", "GOSS_PATH")
 
 
@@ -46,7 +52,7 @@ def find_test_path(context: ImageTargetContext) -> Path | None:
 class DGossCommand(BaseModel):
     image_target: ImageTarget
     dgoss_bin: Annotated[str, Field(default_factory=lambda data: find_dgoss_bin(data["image_target"].context))]
-    goss_bin: Annotated[str, Field(default_factory=lambda data: find_goss_bin(data["image_target"].context))]
+    goss_bin: Annotated[str | None, Field(default_factory=lambda data: find_goss_bin(data["image_target"].context))]
     dgoss_command: Annotated[str, Field(default="run")]
     version_mountpoint: Literal["/tmp/version"] = "/tmp/version"
     image_mountpoint: Literal["/tmp/image"] = "/tmp/image"
@@ -56,18 +62,19 @@ class DGossCommand(BaseModel):
     wait: Annotated[int, Field(default=0)]
     image_command: Annotated[str, Field(default="sleep infinity")]
 
-    @computed_field
     @property
     def dgoss_environment(self) -> dict[str, str]:
         """Return the environment variables for the DGoss command."""
-        return {
-            "GOSS_PATH": self.goss_bin,
+        env = {
             "GOSS_FILES_PATH": str(self.test_path),
-            "GOSS_SLEEP": str(self.wait),
             "GOSS_OPTS": "--format json --no-color",
         }
+        if self.goss_bin:
+            env["GOSS_BIN"] = self.goss_bin
+        if self.wait > 0:
+            env["GOSS_SLEEP"] = str(self.wait)
+        return env
 
-    @computed_field
     @property
     def image_environment(self) -> dict[str, str]:
         """Return the environment variables for the DGoss command."""
@@ -80,10 +87,11 @@ class DGossCommand(BaseModel):
         if self.image_target.image_variant:
             e["IMAGE_TYPE"] = self.image_target.image_variant.name
             e["IMAGE_VARIANT"] = self.image_target.image_variant.name
+        if self.image_target.image_os:
+            e["IMAGE_OS"] = self.image_target.image_os.name
 
         return e
 
-    @computed_field
     @property
     def volume_mounts(self) -> list[tuple[str, str]]:
         return [
@@ -115,11 +123,6 @@ class DGossCommand(BaseModel):
         if not self.dgoss_bin:
             raise ValueError(
                 "dgoss binary path must be specified with the `DGOSS_PATH` environment variable if it cannot be "
-                "discovered in the system PATH."
-            )
-        if not self.goss_bin:
-            raise ValueError(
-                "goss binary path must be specified with the `GOSS_PATH` environment variable if it cannot be "
                 "discovered in the system PATH."
             )
         if not self.test_path:

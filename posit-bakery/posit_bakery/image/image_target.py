@@ -112,19 +112,16 @@ class ImageTarget(BaseModel):
             u += f"-{self.image_os.name}"
         return re.sub("[ .+/]", "-", u).lower()
 
-    @computed_field
     @property
     def image_name(self) -> str:
         """Return the name of the image."""
         return self.image_version.parent.name
 
-    @computed_field
     @property
     def is_latest(self) -> bool:
         """Check if the image version is marked as latest."""
         return self.image_version.latest
 
-    @computed_field
     @property
     def is_primary_os(self) -> bool:
         """Check if the image OS is marked as primary."""
@@ -133,7 +130,6 @@ class ImageTarget(BaseModel):
             return True
         return self.image_os.primary
 
-    @computed_field
     @property
     def is_primary_variant(self) -> bool:
         """Check if the image variant is marked as primary."""
@@ -161,7 +157,6 @@ class ImageTarget(BaseModel):
 
         return expected_path
 
-    @computed_field
     @property
     def tag_template_values(self) -> dict[str, str]:
         """Return a dictionary of values for templating tags."""
@@ -201,7 +196,6 @@ class ImageTarget(BaseModel):
 
         return self
 
-    @computed_field
     @property
     def tag_suffixes(self) -> list[str]:
         """Generate tag suffixes from set patterns."""

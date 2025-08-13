@@ -343,4 +343,4 @@ class TestImageTarget:
         basic_standard_image_target.build()
         for tag in basic_standard_image_target.tags:
             assert python_on_whales.docker.image.exists(tag)
-            python_on_whales.docker.image.remove(tag)
+            # python_on_whales.docker.image.remove(tag)

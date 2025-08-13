@@ -217,4 +217,4 @@ class TestBakePlan:
         for bake_target in plan.target.values():
             for tag in bake_target.tags:
                 assert python_on_whales.docker.image.exists(tag)
-                python_on_whales.docker.image.remove(tag)
+                # python_on_whales.docker.image.remove(tag)
