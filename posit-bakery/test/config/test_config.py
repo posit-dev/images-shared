@@ -9,6 +9,12 @@ from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig
 from test.helpers import yaml_unified_file_testcases, FileTestResultEnum
 
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
+
+
 class TestBakeryConfigDocument:
     def test_required_fields(self):
         """Test that a BakeryConfigDocument can be created with only the required fields."""

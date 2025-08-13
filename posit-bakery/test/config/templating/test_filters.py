@@ -1,6 +1,12 @@
 import jinja2
+import pytest
 
 from posit_bakery.config.templating.filters import jinja2_env
+
+
+pytestmark = [
+    pytest.mark.unit,
+]
 
 
 class TestJinja2Env:

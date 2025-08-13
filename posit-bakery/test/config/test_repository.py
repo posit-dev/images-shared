@@ -3,8 +3,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError, NameEmail
 
-from posit_bakery.config.config import BakeryConfig, BakeryConfigDocument
+from posit_bakery.config.config import BakeryConfigDocument
 from posit_bakery.config.repository import Repository
+
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
 
 
 @pytest.mark.config

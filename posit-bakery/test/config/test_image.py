@@ -9,6 +9,12 @@ from posit_bakery.config.image import ImageVersionOS, ImageVersion, Image, Image
 from posit_bakery.config.registry import Registry
 
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
+
+
 class TestImageVersionOS:
     def test_name_required(self):
         """Test that an ImageVersionOS object requires a name."""
