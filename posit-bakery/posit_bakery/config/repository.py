@@ -67,7 +67,7 @@ class Repository(BakeryYAMLModel):
 
     @field_validator("url", mode="before")
     @classmethod
-    def default_https_url_scheme(cls, value: AnyUrl) -> HttpUrl:
+    def default_https_url_scheme(cls, value: Any) -> Any:
         """Prepend 'https://' to the URL if it does not already start with it.
 
         :param value: The URL to validate and possibly modify.
