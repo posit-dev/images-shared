@@ -1,8 +1,10 @@
 import json
+import shutil
 from pathlib import Path
 from unittest.mock import patch, call
 
 import pytest
+from pydantic import ValidationError
 
 from posit_bakery.image import DGossSuite
 from posit_bakery.image.goss.dgoss import DGossCommand
@@ -14,7 +16,7 @@ pytestmark = [
 
 
 class TestDGossCommand:
-    def test_init(self, basic_standard_image_target):
+    def test_from_image_target(self, basic_standard_image_target):
         """Test that DGossCommand initializes with the correct attributes."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
         assert dgoss_command.image_target == basic_standard_image_target
@@ -44,6 +46,61 @@ class TestDGossCommand:
             "IMAGE_OS": basic_standard_image_target.image_os.name,
         }
         assert dgoss_command.image_environment == expected_env
+
+    def test_volume_mounts(self, basic_standard_image_target):
+        """Test that DGossCommand volume_mounts returns the expected volume mounts."""
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        expected_mounts = [
+            (str(basic_standard_image_target.context.version_path.absolute()), "/tmp/version"),
+            (str(basic_standard_image_target.context.image_path.absolute()), "/tmp/image"),
+            (str(basic_standard_image_target.context.base_path.absolute()), "/tmp/project"),
+        ]
+        assert dgoss_command.volume_mounts == expected_mounts
+
+    def test_validate_no_dgoss(self, basic_standard_image_target):
+        """Test that DGossCommand validate checks the test path."""
+        with patch("posit_bakery.image.goss.dgoss.find_dgoss_bin") as mock_find_dgoss_bin:
+            mock_find_dgoss_bin.return_value = None
+            with pytest.raises(ValidationError, match="dgoss binary path must be specified"):
+                DGossCommand.from_image_target(image_target=basic_standard_image_target)
+
+    def test_validate_no_test_path(self, basic_unified_tmpconfig):
+        """Test that DGossCommand validate raises an error if the test path does not exist."""
+        shutil.rmtree(basic_unified_tmpconfig.targets[0].context.version_path / "test")
+        with pytest.raises(ValidationError, match="No test directory was found"):
+            DGossCommand.from_image_target(image_target=basic_unified_tmpconfig.targets[0])
+
+    def test_command(self, basic_standard_image_target):
+        """Test that DGossCommand command returns the expected command."""
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        expected_command = [
+            "dgoss",
+            "run",
+            "-v",
+            f"{str(basic_standard_image_target.context.version_path.absolute())}:/tmp/version",
+            "-v",
+            f"{str(basic_standard_image_target.context.image_path.absolute())}:/tmp/image",
+            "-v",
+            f"{str(basic_standard_image_target.context.base_path.absolute())}:/tmp/project",
+            "-e",
+            'IMAGE_VERSION="1.0.0"',
+            "-e",
+            'IMAGE_VERSION_MOUNT="/tmp/version"',
+            "-e",
+            'IMAGE_MOUNT="/tmp/image"',
+            "-e",
+            'PROJECT_MOUNT="/tmp/project"',
+            "-e",
+            'IMAGE_TYPE="Standard"',
+            "-e",
+            'IMAGE_VARIANT="Standard"',
+            "-e",
+            'IMAGE_OS="Ubuntu 22.04"',
+            "--init",
+            basic_standard_image_target.tags[0],
+            *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
+        ]
+        assert dgoss_command.command == expected_command
 
 
 class TestDGossSuite:

@@ -140,7 +140,7 @@ class DGossCommand(BaseModel):
         for mount in self.volume_mounts:
             cmd.extend(["-v", f"{mount[0]}:{mount[1]}"])
         for env_var, value in self.image_environment.items():
-            cmd.extend(["-e", f"{env_var}={value}"])
+            cmd.extend(["-e", f'{env_var}="{value}"'])
         cmd.append("--init")
         cmd.append(self.image_target.tags[0])
         cmd.extend(self.image_command.split())
