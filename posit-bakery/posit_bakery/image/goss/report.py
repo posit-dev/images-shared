@@ -114,25 +114,32 @@ class GossSummary(BaseModel):
     @computed_field(alias="success-count")
     @property
     def success_count(self) -> int:
+        """Calculate the number of successful tests as it is not a defined field in Goss summaries."""
         return self.test_count - self.failed_count - self.skipped_count
 
 
 class GossJsonReport(BaseModel):
     """Models Goss JSON reports produced by goss tests with `--format json`."""
 
-    filepath: Annotated[Path | None, Field(default=None, exclude=True)]
-    summary: GossSummary
-    results: list[GossResult] | None = None
+    filepath: Annotated[Path | None, Field(default=None, exclude=True, description="Path to the report JSON file.")]
+    summary: Annotated[GossSummary, Field(description="Summary of the test results.")]
+    results: Annotated[list[GossResult] | None, Field(default=None, description="List of test results.")]
 
     @classmethod
     def load(cls, filepath: Path) -> "GossJsonReport":
-        """Load a Goss JSON report from a file."""
+        """Load a Goss JSON report from a file.
+
+        :param filepath: Path to the Goss JSON report file.
+
+        :return: An instance of GossJsonReport populated with data from the file.
+        """
         with filepath.open("r") as file:
             data = cls.model_validate_json(file.read())
         return data
 
     @property
     def test_failures(self) -> list[GossResult]:
+        """Returns a list of test results that failed or were skipped."""
         tests = []
         for result in self.results:
             if not result.successful and not result.skipped:
@@ -141,6 +148,7 @@ class GossJsonReport(BaseModel):
 
     @property
     def test_skips(self) -> list[GossResult]:
+        """Returns a list of test results that were skipped."""
         tests = []
         for result in self.results:
             if result.skipped:
@@ -150,23 +158,27 @@ class GossJsonReport(BaseModel):
 
 class GossJsonReportCollection(dict):
     def add_report(self, image_target: ImageTarget, report: GossJsonReport):
-        """Adds a GossJsonReport to the collection."""
+        """Adds a GossJsonReport to the collection.
+
+        :param image_target: The ImageTarget associated with the report.
+        :param report: The GossJsonReport to add.
+        """
         self.setdefault(image_target.image_name, dict())[image_target.uid] = (image_target, report)
 
     @property
     def test_failures(self) -> dict[str, list[GossResult]]:
+        """Generates a dictionary of test failure lists by UID."""
         failures = {}
         for image_name, targets in self.items():
             for uid, (_, report) in targets.items():
                 if not report.test_failures:
                     continue
-                if uid not in failures:
-                    failures[uid] = []
                 for failure in report.test_failures:
-                    failures[uid].append(failure)
+                    failures.setdefault(uid, list()).append(failure)
         return failures
 
     def aggregate(self) -> dict[str, dict]:
+        """Aggregates the test results into a summary dictionary with the total of each test suite metric."""
         results = {"total": {"success": 0, "failed": 0, "skipped": 0, "total_tests": 0, "duration": 0}}
         for image_name, targets in self.items():
             for uid, (target, report) in targets.items():
