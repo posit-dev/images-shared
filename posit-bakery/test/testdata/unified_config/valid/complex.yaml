@@ -1,0 +1,74 @@
+repository:
+  vendor: "Posit Software, PBC"
+  url: "github.com/posit-dev/images-package-manager"
+  authors:
+    - name: "First Last"
+      email: "firstlast@posit.co"
+    - name: "Last First"
+      email: "lastfirst@posit.co"
+    - name: "Fast Lirst"
+      email: "fastlirst@posit.co"
+  maintainer:
+    name: "Maintainer Team"
+    email: "maintainer-team@posit.co"
+
+# Global registries
+registries:
+  - host: "ghcr.io"
+    namespace: "posit-dev"
+
+images:
+  # Not a real image, also testing some random comment insertions
+  - name: "package-manager-init"
+    registries:
+      - host: "cr.posit.it"
+        namespace: "posit"
+    variants:
+      - name: "std"
+    versions:
+      - name: "2025.04.2-8"
+        latest: true
+        os:
+          - name: "Ubuntu 22.04"
+          - name: "Ubuntu 24.04"
+            primary: true
+
+  - name: "package-manager"
+    subpath: "ppm"
+    tags:
+      - patterns:
+          # Clean version
+          - "{{ Version | TrimMetadata }}-{{ OS }}-{{ Variant.Name }}"
+          # Full version
+          - "{{ Version }}-{{ OS }}-{{ Variant.Name }}"
+    variants:
+      - name: "minimal"
+        extension: "min"
+        tags:
+          - only:
+              - latest
+            patterns:
+              - "{{ OS }}-{{ Variant.Name }}"
+      - name: "std"
+        options:
+          - tool: goss
+            command: "some other command"
+            wait: 10
+    versions:
+      - name: "2025.04.2-8"
+        subpath: "2025.04.2"  # End of line comment test
+        latest: true
+        os:
+          - name: "Ubuntu 22.04"
+          - name: "Ubuntu 24.04"
+            primary: true
+      - name: "2025.04.0-4"
+        subpath: "2025.04.0"
+        os:
+          - name: "Ubuntu 22.04"
+            primary: true
+      - name: "2024.11.0-7"
+        subpath: "2024.11.0"
+        os:
+          - name: "Ubuntu 22.04"
+            primary: true
