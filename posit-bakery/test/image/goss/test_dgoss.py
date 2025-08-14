@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.image import DGossSuite
-from posit_bakery.image.goss.dgoss import DGossCommand
+from posit_bakery.image.goss.dgoss import DGossCommand, find_dgoss_bin
 
 pytestmark = [
     pytest.mark.unit,
@@ -74,7 +74,7 @@ class TestDGossCommand:
         """Test that DGossCommand command returns the expected command."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
         expected_command = [
-            "dgoss",
+            find_dgoss_bin(basic_standard_image_target.context),
             "run",
             "-v",
             f"{str(basic_standard_image_target.context.version_path.absolute())}:/tmp/version",
