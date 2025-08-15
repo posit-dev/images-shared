@@ -3,10 +3,10 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Self, Annotated
+from typing import Annotated
 
 import python_on_whales
-from pydantic import BaseModel, field_validator, computed_field, model_validator, ConfigDict, Field
+from pydantic import BaseModel, computed_field, ConfigDict, Field
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository

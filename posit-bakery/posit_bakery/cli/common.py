@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
+import pydantic
 import typer
 
 from posit_bakery import error
@@ -53,9 +54,8 @@ def _wrap_project_load(context: Path) -> Project:
         stderr_console.print(f"❌ Failed to load project from '{context}'", style="error")
         stderr_console.print("Please correct the above error and try again.", style="info")
         raise typer.Exit(code=1)
-    except (error.BakeryModelValidationError, error.BakeryModelValidationErrorGroup) as e:
-        stderr_console.print(e)
-        stderr_console.print(f"❌ Failed to load project from '{context}'", style="error")
+    except pydantic.ValidationError:
+        stderr_console.print_exception(max_frames=0, show_locals=False)
         stderr_console.print("Please correct the above data validation error(s) and try again.", style="info")
         raise typer.Exit(code=1)
     except error.BakeryError:

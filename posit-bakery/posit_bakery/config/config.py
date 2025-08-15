@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import jinja2
+import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
 from typing import Annotated, Self
 from ruamel.yaml import YAML
@@ -232,9 +233,35 @@ class BakeryConfig:
             raise FileNotFoundError(f"File '{self.config_file}' does not exist.")
         self.base_path = self.config_file.parent
         self._config_yaml = self.yaml.load(self.config_file) or dict()
-        self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
+        try:
+            self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
+        except pydantic.ValidationError as e:
+            log.error(f"Failed to load configuration from {str(self.config_file)}")
+            raise e
         self.targets = []
         self.generate_image_targets(_filter)
+
+    @classmethod
+    def from_context(cls, context: str | Path | os.PathLike, _filter: BakeryConfigFilter) -> "BakeryConfig":
+        """Creates a BakeryConfig instance from a given context path.
+
+        :param context: The path to the bakery.yaml file or its parent directory.
+        :param _filter: Optional BakeryConfigFilter to apply when generating image targets.
+
+        :return: A BakeryConfig instance.
+
+        :raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.
+        """
+        context = Path(context)
+        for file in context.glob("bakery.{yml,yaml}"):
+            if file.is_file():
+                log.info(f"Loading Bakery config from [bold]{file}")
+                return cls(file, _filter)
+
+        raise FileNotFoundError(
+            f"No bakery.yaml file found in the context path '{context}'. Try running `bakery create project` first "
+            f"if this is a new project."
+        )
 
     @staticmethod
     def new(base_path: str | Path | os.PathLike) -> None:
@@ -366,6 +393,11 @@ class BakeryConfig:
                         )
 
         self.targets = targets
+
+    def bake_plan_targets(self) -> str:
+        """Generates a bake plan JSON string for the image targets defined in the config."""
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+        return bake_plan.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
 
     def build_targets(
         self,
