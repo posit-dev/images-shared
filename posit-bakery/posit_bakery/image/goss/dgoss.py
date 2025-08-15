@@ -105,16 +105,16 @@ class DGossCommand(BaseModel):
         args = {
             "image_target": image_target,
         }
-        if image_target.image_version.parent:
-            goss_options = image_target.image_version.parent.get_tool_option("goss")
-            if goss_options:
-                args["wait"] = goss_options.wait
-                args["command"] = goss_options.command
         if image_target.image_variant:
             goss_options = image_target.image_variant.get_tool_option("goss")
             if goss_options:
-                args["wait"] = goss_options.wait
                 args["command"] = goss_options.command
+                args["wait"] = goss_options.wait
+        elif image_target.image_version.parent:
+            goss_options = image_target.image_version.parent.get_tool_option("goss")
+            if goss_options:
+                args["command"] = goss_options.command
+                args["wait"] = goss_options.wait
         return cls(**args)
 
     @model_validator(mode="after")

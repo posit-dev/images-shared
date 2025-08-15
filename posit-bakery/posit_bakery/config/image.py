@@ -293,17 +293,35 @@ class ImageVariant(BakeryYAMLModel):
         """Unique hash for an ImageVariant object."""
         return hash((self.name, self.extension, self.tagDisplayName))
 
-    def get_tool_option(self, tool: str) -> ToolOptions | None:
-        """Returns the Goss options for this image variant.
+    def get_tool_option(self, tool: str, merge_with_parent: bool = True) -> ToolOptions | None:
+        """Returns tool options for this image variant.
+
+        By default, the tool option for the variant will be merged with the parent image's tool options if they exist.
+        Tool options set to non-defaults in the variant will take precedence over those in the parent.
 
         :param tool: The name of the tool to get options for.
 
         :return: The ToolOptions object for the specified tool, or None if not found.
         """
-        for option in self.options:
-            if option.tool == tool:
-                return option
-        return None
+        option = None
+        parent_option = None
+
+        for o in self.options:
+            if o.tool == tool:
+                option = o
+
+        if self.parent is not None and merge_with_parent:
+            # Check parent image for tool options first
+            parent_option = self.parent.get_tool_option(tool)
+            if parent_option is not None and option is None:
+                # If the parent has options, use them if the variant does not have its own
+                return parent_option
+
+        if option and parent_option:
+            # Merge the options if both are found
+            return option.merge(parent_option)
+
+        return option
 
 
 def default_image_variants() -> list[ImageVariant]:

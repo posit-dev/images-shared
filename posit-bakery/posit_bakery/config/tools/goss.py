@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -18,3 +19,25 @@ class GossOptions(ToolOptions):
             "environment variable.",
         ),
     ]
+
+    def merge(self, other: "GossOptions") -> "GossOptions":
+        """Merge another GossOptions instance into this one.
+
+        The merge strategy is to use the values of the other instance if they are not set to defaults and the value is
+        not explicitly set in the current instance.
+        """
+        merged_options = deepcopy(self)
+        if (
+            self.model_fields["command"].default == self.command
+            and self.model_fields["command"].default != other.command
+            and "command" not in self.model_fields_set
+        ):
+            merged_options.command = other.command
+        if (
+            self.model_fields["wait"].default == self.wait
+            and self.model_fields["wait"].default != other.wait
+            and "wait" not in self.model_fields_set
+        ):
+            merged_options.wait = other.wait
+
+        return merged_options
