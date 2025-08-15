@@ -122,7 +122,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     f"Duplicate registry defined in config for version '{info.data.get('name')}': "
                     f"{unique_registry.base_url}"
                 )
-        return list(unique_registries)
+        return sorted(list(unique_registries), key=lambda r: r.base_url)
 
     @field_validator("os", mode="after")
     @classmethod
@@ -157,7 +157,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             if info.data.get("name") and os.count(unique_os) > 1:
                 log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
 
-        return list(unique_oses)
+        return sorted(list(unique_oses), key=lambda o: o.name)
 
     @field_validator("os", mode="after")
     @classmethod
@@ -416,7 +416,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 log.warning(
                     f"Duplicate registry defined in config for image '{info.data['name']}': {unique_registry.base_url}"
                 )
-        return list(unique_registries)
+        return sorted(list(unique_registries), key=lambda r: r.base_url)
 
     @model_validator(mode="after")
     def extra_registries_or_override_registries(self) -> Self:

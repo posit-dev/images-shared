@@ -57,7 +57,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         for unique_registry in unique_registries:
             if registries.count(unique_registry) > 1:
                 log.warning(f"Duplicate registry defined in config: {unique_registry.base_url}")
-        return list(unique_registries)
+        return sorted(list(unique_registries), key=lambda r: r.base_url)
 
     @field_validator("images", mode="after")
     @classmethod
@@ -87,6 +87,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
             seen_names.add(image.name)
         if error_message:
             raise ValueError(error_message.strip())
+
         return images
 
     @model_validator(mode="after")
