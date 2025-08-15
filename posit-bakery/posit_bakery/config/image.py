@@ -10,7 +10,7 @@ from pydantic_core.core_schema import ValidationInfo
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel, ExtensionField, TagDisplayNameField
 from posit_bakery.config.tag import TagPattern, default_tag_patterns
-from posit_bakery.config.templating.filters import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.config.tools import ToolField, default_tool_options, ToolOptions
 
 log = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 import jinja2
 import pytest
 
-from posit_bakery.config.templating.filters import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env
 
 
 pytestmark = [

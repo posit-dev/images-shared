@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 import jinja2
-from pydantic import Field, model_validator, computed_field, field_validator
+from pydantic import Field, model_validator, field_validator
 from typing import Annotated, Self
 from ruamel.yaml import YAML
 
@@ -15,7 +15,7 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
-from posit_bakery.config.templating.filters import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.goss.dgoss import DGossSuite

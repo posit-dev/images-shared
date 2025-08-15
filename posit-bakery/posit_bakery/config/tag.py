@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
-from posit_bakery.config.templating.filters import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env
 
 
 # TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
