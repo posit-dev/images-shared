@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 import jinja2
-from pydantic import Field, model_validator, field_validator
+from pydantic import Field, model_validator, field_validator, BaseModel
 from typing import Annotated, Self
 from ruamel.yaml import YAML
 
@@ -191,6 +191,23 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         return new_image
 
 
+class BakeryConfigFilter(BaseModel):
+    """Container for filtering options when generating image targets from the BakeryConfig."""
+
+    image_name: Annotated[
+        str | None, Field(description="Name or regex pattern of the image to filter by.", default=None)
+    ]
+    image_variant: Annotated[
+        str | None, Field(description="Name or regex pattern of the image variant to filter by.", default=None)
+    ]
+    image_version: Annotated[
+        str | None, Field(description="Name or regex pattern of the image version to filter by.", default=None)
+    ]
+    image_os: Annotated[
+        str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
+    ]
+
+
 class BakeryConfig:
     """Manager for the bakery.yaml configuration file and operations against the configuration.
 
@@ -201,10 +218,13 @@ class BakeryConfig:
     :var targets: List of ImageTarget objects representing the image build targets defined in the config.
     """
 
-    def __init__(self, config_file: str | Path | os.PathLike):
+    def __init__(self, config_file: str | Path | os.PathLike, _filter: BakeryConfigFilter | None = None):
         """Initializes the BakeryConfig with the given config file path.
 
         :param config_file: Path to the target bakery.yaml configuration file.
+        :param _filter: Optional BakeryConfigFilter to apply when generating image targets.
+
+        :raises FileNotFoundError: If the config file does not exist.
         """
         self.yaml = YAML()
         self.config_file = Path(config_file)
@@ -214,7 +234,7 @@ class BakeryConfig:
         self._config_yaml = self.yaml.load(self.config_file) or dict()
         self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
         self.targets = []
-        self.generate_image_targets()
+        self.generate_image_targets(_filter)
 
     @staticmethod
     def new(base_path: str | Path | os.PathLike) -> None:
@@ -301,14 +321,41 @@ class BakeryConfig:
 
         self.write()
 
-    def generate_image_targets(self):
-        """Generates image targets from the images defined in the config."""
-        # TODO: Support filtering of images here
+    def generate_image_targets(self, _filter: BakeryConfigFilter | None = None):
+        """Generates image targets from the images defined in the config.
+
+        :param _filter: Optional filter to apply when generating image targets. If None, all images will be included.
+        """
+        # Create a filter if none is provided. All fields will set to None by default, this just makes it easier.
+        if _filter is None:
+            _filter = BakeryConfigFilter()
+
         targets = []
         for image in self.model.images:
+            if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
+                log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
+                continue
             for variant in image.variants:
+                if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
+                    log.debug(
+                        f"Skipping image variant '{variant.name}' in image '{image.name}' "
+                        f"due to not matching variant filter '{_filter.image_variant}'"
+                    )
+                    continue
                 for version in image.versions:
+                    if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                        log.debug(
+                            f"Skipping image version '{version.name}' in image '{image.name}' "
+                            f"due to not matching version filter '{_filter.image_version}'"
+                        )
+                        continue
                     for _os in version.os:
+                        if _filter.image_os is not None and re.search(_filter.image_os, _os.name) is None:
+                            log.debug(
+                                f"Skipping image OS '{_os.name}' in image '{image.name}' "
+                                f"due to not matching OS filter '{_filter.image_os}'"
+                            )
+                            continue
                         targets.append(
                             ImageTarget.new_image_target(
                                 repository=self.model.repository,
