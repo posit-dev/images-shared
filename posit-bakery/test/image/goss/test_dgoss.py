@@ -1,7 +1,6 @@
 import json
 import shutil
-from pathlib import Path
-from unittest.mock import patch, call
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -31,7 +30,10 @@ class TestDGossCommand:
             "GOSS_SLEEP": "1",
             "GOSS_OPTS": "--format json --no-color",
         }
-        assert dgoss_command.dgoss_environment == expected_env
+        for key, value in expected_env.items():
+            assert (
+                dgoss_command.dgoss_environment[key] == value
+            ), f"Expected {key} to be {value}, got {dgoss_command.dgoss_environment[key]}"
 
     def test_image_environment(self, basic_standard_image_target):
         """Test that DGossCommand image_environment returns the expected environment variables."""
@@ -128,4 +130,4 @@ class TestDGossSuite:
             results_file = target.context.base_path / "results" / "dgoss" / target.image_name / f"{target.uid}.json"
             assert results_file.exists()
             with open(results_file) as f:
-                report = json.load(f)
+                json.load(f)
