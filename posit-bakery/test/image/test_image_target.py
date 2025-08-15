@@ -164,7 +164,7 @@ class TestImageTarget:
         basic_standard_image_target.image_os = None
         assert basic_standard_image_target.tag_template_values == expected_values
 
-    def test_deduplicate_tag_patterns(self, basic_unified_config_obj):
+    def test_tag_patterns_deduplication(self, basic_unified_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
         image = basic_unified_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
@@ -182,7 +182,7 @@ class TestImageTarget:
         # Check that the tag patterns are deduplicated to 8, the default tag patterns length
         assert len(target.tag_patterns) == 8
 
-    def test_filter_tag_patterns(self, basic_unified_config_obj):
+    def test_tag_patterns_filtering(self, basic_unified_config_obj):
         """Test the filter_tag_patterns method of an ImageTarget."""
         # Test latest, primary variant, and primary OS
         image = basic_unified_config_obj.model.get_image("test-image")

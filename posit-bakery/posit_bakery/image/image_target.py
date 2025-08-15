@@ -47,13 +47,6 @@ class ImageTarget(BaseModel):
     image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
     image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
     image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
-    tag_patterns: Annotated[
-        list[TagPattern],
-        Field(
-            description="A list of tag patterns for the image target. Tag patterns are filtered based on the "
-            "properties of the image target.",
-        ),
-    ]
 
     @classmethod
     def new_image_target(
@@ -78,17 +71,12 @@ class ImageTarget(BaseModel):
             version_path=image_version.path,
         )
 
-        tag_patterns = image_version.parent.tagPatterns.copy()
-        if image_variant:
-            tag_patterns.extend(image_variant.tagPatterns)
-
         return cls(
             context=context,
             repository=repository,
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
-            tag_patterns=tag_patterns,
         )
 
     def __str__(self):
@@ -167,17 +155,16 @@ class ImageTarget(BaseModel):
             "Name": self.image_name,
         }
 
-    @field_validator("tag_patterns", mode="after")
-    def deduplicate_tag_patterns(cls, tag_patterns: list[TagPattern]) -> list[TagPattern]:
+    @property
+    def tag_patterns(self) -> list[TagPattern]:
         """Ensure tag patterns are unique."""
-        unique_patterns = set(tag_patterns)
-        return list(unique_patterns)
+        patterns = self.image_version.parent.tagPatterns.copy()
+        if self.image_variant:
+            patterns.extend(self.image_variant.tagPatterns)
+        unique_patterns = list(set(patterns))
 
-    @model_validator(mode="after")
-    def filter_tag_patterns(self) -> Self:
-        """Apply filters to tag patterns based on the image properties."""
         filtered_patterns = []
-        for tag_pattern in self.tag_patterns:
+        for tag_pattern in unique_patterns:
             # Only go through additional filters if ALL is not applied.
             if TagPatternFilter.ALL not in tag_pattern.only:
                 # Skip pattern marked as latest if not latest version.
@@ -192,9 +179,7 @@ class ImageTarget(BaseModel):
 
             filtered_patterns.append(tag_pattern)
 
-        self.tag_patterns = filtered_patterns
-
-        return self
+        return filtered_patterns
 
     @property
     def tag_suffixes(self) -> list[str]:
