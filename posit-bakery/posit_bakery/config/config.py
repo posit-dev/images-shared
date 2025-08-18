@@ -182,20 +182,39 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         image_deps_package_file = image_deps_path / "packages.txt.jinja2"
         image_deps_package_file.touch(exist_ok=True)
 
-    def create_image_model(self, name: str, subpath: str | None = None) -> Image:
+    def create_image_model(
+        self,
+        name: str,
+        subpath: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        documentation_url: str | None = None,
+    ) -> Image:
         """Creates a new image directory and adds it to the config.
 
         This function does **NOT** create the image files template. Use `create_image_files_template` for that.
 
         :param name: The name of the image to create.
         :param subpath: Optional alternate subpath for the image.
+        :param display_name: Optional display name for the image. If not provided, the image name will be used.
+        :param description: Optional description for the image. Used in labels.
+        :param documentation_url: Optional URL for the image documentation. Used in labels.
+
         :return: The newly created Image model.
         """
         args = {"name": name, "parent": self}
         if subpath:
             args["subpath"] = subpath
+        if display_name:
+            args["display_name"] = display_name
+        if description:
+            args["description"] = description
+        if documentation_url:
+            args["documentation_url"] = documentation_url
+
         new_image = Image(**args)
         self.images.append(new_image)
+
         return new_image
 
 
@@ -249,7 +268,9 @@ class BakeryConfig:
         self.generate_image_targets(_filter)
 
     @classmethod
-    def from_context(cls, context: str | Path | os.PathLike, _filter: BakeryConfigFilter) -> "BakeryConfig":
+    def from_context(
+        cls, context: str | Path | os.PathLike, _filter: BakeryConfigFilter | None = None
+    ) -> "BakeryConfig":
         """Creates a BakeryConfig instance from a given context path.
 
         :param context: The path to the bakery.yaml file or its parent directory.
@@ -259,13 +280,16 @@ class BakeryConfig:
 
         :raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.
         """
+        if _filter is None:
+            _filter = BakeryConfigFilter()
+
         context = Path(context)
         for file in context.glob("bakery.{yml,yaml}"):
             if file.is_file():
                 log.info(f"Loading Bakery config from [bold]{file}")
                 return cls(file, _filter)
 
-        raise FileNotFoundError(
+        raise BakeryFileError(
             f"No bakery.yaml file found in the context path '{context}'. Try running `bakery create project` first "
             f"if this is a new project."
         )
@@ -287,19 +311,36 @@ class BakeryConfig:
         """Write the bakery config to the config file."""
         self.yaml.dump(self._config_yaml, self.config_file)
 
-    def create_image(self, image_name: str, subpath: str | None = None, base_image: str | None = None):
+    def create_image(
+        self,
+        image_name: str,
+        base_image: str | None = None,
+        subpath: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        documentation_url: str | None = None,
+    ):
         """Creates a new image.
 
         Creates a new image directory, adds the image to the config, and writes the image back to bakery.yaml.
 
         :param image_name: The name of the image to create.
-        :param subpath: Optional subpath for the image. If not provided, the image name will be used as the subpath.
         :param base_image: Optional base image to use in the Containerfile template. This is used in the `FROM`
             directive.
+        :param subpath: Optional subpath for the image. If not provided, the image name will be used as the subpath.
+        :param display_name: Optional display name for the image. If not provided, the image name will be used.
+        :param description: Optional description for the image. Used in labels.
+        :param documentation_url: Optional URL for the image documentation. Used in labels.
         """
         if self.model.get_image(image_name):
             raise ValueError(f"Image '{image_name}' already exists in config.")
-        new_image = self.model.create_image_model(image_name, subpath)
+        new_image = self.model.create_image_model(
+            image_name,
+            subpath=subpath,
+            display_name=display_name,
+            description=description,
+            documentation_url=documentation_url,
+        )
         self.model.create_image_files_template(new_image.path, new_image.name, base_image or DEFAULT_BASE_IMAGE)
         self._config_yaml.setdefault("images", []).append(
             new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)

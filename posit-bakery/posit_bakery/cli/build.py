@@ -70,8 +70,9 @@ def build(
 
     try:
         config.build_targets(load=load, push=push, cache=not no_cache, strategy=strategy, fail_fast=fail_fast)
-    except DockerException as e:
-        stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
+    except:
+        log.exception("Error building images")
+        stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
     stderr_console.print("✅ Build completed", style="success")

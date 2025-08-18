@@ -5,15 +5,13 @@ from typing import Annotated, List, Optional
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import _wrap_project_load
+from posit_bakery.config import BakeryConfig
+from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.log import stderr_console
-from posit_bakery.models import Project
 from posit_bakery.util import auto_path
 
 
 app = typer.Typer(no_args_is_help=True)
-
-DEFAULT_BASE_IMAGE: str = "docker.io/library/ubuntu:22.04"
 log = logging.getLogger(__name__)
 
 
@@ -32,17 +30,13 @@ def project(
     └── project_name/
         └── config.yaml.
     """
-    if not Project.exists(context):
-        log.info(f"No project found, creating a new project in '{context}'")
-        try:
-            p = Project.create(context)
-            stderr_console.print(f"✅ Project initialized in '{p.context}'", style="success")
-        except error.BakeryError:
-            stderr_console.print_exception(max_frames=5)
-            stderr_console.print(f"❌ Failed to initialize a new project in '{context}", style="error")
-            raise typer.Exit(code=1)
-    else:
+    try:
+        BakeryConfig.from_context(context)
         stderr_console.print(f"Project already exists in '{context}'", style="info")
+    except error.BakeryFileError:
+        log.info(f"No project found, creating a new project in '{context}'")
+        BakeryConfig.new(context)
+        stderr_console.print(f"✅ Project initialized in '{context}'", style="success")
 
 
 @app.command()
@@ -52,6 +46,10 @@ def image(
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     base_image: Annotated[str, typer.Option(help="The base to use for the new image.")] = DEFAULT_BASE_IMAGE,
+    subpath: Annotated[Optional[str], typer.Option(help="The directory name to use for the image. ")] = None,
+    display_name: Annotated[Optional[str], typer.Option(help="The display name for the image.")] = None,
+    description: Annotated[Optional[str], typer.Option(help="The description for the image. Used in labels.")] = None,
+    documentation_url: Annotated[Optional[str], typer.Option(help="The documentation URL for the image.")] = None,
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
@@ -68,18 +66,20 @@ def image(
             │   └── goss.yaml.jinja2
             └── Containerfile.jinja2
     """
-    p = _wrap_project_load(context)
-
     try:
-        p.create_image(image_name, base_image)
-    except error.BakeryError:
-        stderr_console.print_exception(max_frames=5, show_locals=False)
+        c = BakeryConfig.from_context(context)
+        c.create_image(
+            image_name,
+            base_image=base_image,
+            subpath=subpath,
+            display_name=display_name,
+            description=description,
+            documentation_url=documentation_url,
+        )
+    except:
+        log.exception("Error creating image")
         stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
-        raise typer.Exit(code=1)
-    except Exception:
-        stderr_console.print_exception(max_frames=20)
-        stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
-        raise typer.Exit(code=1)
+        typer.Exit(code=1)
 
     stderr_console.print(f"✅ Successfully created image '{image_name}'", style="success")
 
@@ -93,6 +93,9 @@ def version(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
+    subpath: Annotated[
+        Optional[str], typer.Option(help="The subdirectory to use for the version. Defaults to the image version.")
+    ] = None,
     value: Annotated[
         List[str], typer.Option(help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.")
     ] = None,
@@ -113,7 +116,6 @@ def version(
             ├── *.jinja2
             └── Containerfile*.jinja2
     """
-    p = _wrap_project_load(context)
 
     # Parse the key=value pairs into a dictionary
     value_map = dict()
@@ -126,16 +128,16 @@ def version(
             value_map[sp[0]] = sp[1]
 
     try:
-        p.create_image_version(
+        c = BakeryConfig.from_context(context)
+        c.create_version(
             image_name=image_name,
-            image_version=image_version,
-            template_values=value_map,
-            mark_latest=mark_latest,
+            subpath=subpath,
+            version=image_version,
+            values=value_map,
+            latest=mark_latest,
             force=force,
         )
-    except error.BakeryConfigError:
-        stderr_console.print_exception(max_frames=5, show_locals=False)
+    except:
+        log.exception("Error creating version")
         stderr_console.print(f"❌ Failed to create version '{image_name}/{image_version}'", style="error")
-        raise typer.Exit(code=1)
-
-    stderr_console.print(f"✅ Successfully created version '{image_name}/{image_version}'", style="success")
+        typer.Exit(code=1)

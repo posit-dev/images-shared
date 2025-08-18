@@ -2,6 +2,8 @@ import re
 
 import jinja2
 
+from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
+
 
 def jinja2_env(**kwargs) -> jinja2.Environment:
     """Creates a Jinja2 environment with custom filters
@@ -10,7 +12,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     :return: A Jinja2 Environment instance with custom filters added.
     """
     env = jinja2.Environment(**kwargs)
-    env.filters["tagSafe"] = lambda s: re.sub(r"[^a-zA-Z0-9_\-.]", "-", s).strip("-._")
+    env.filters["tagSafe"] = lambda s: re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", s).strip("-._")
     env.filters["stripMetadata"] = lambda s: re.sub(r"[+-](?=[^+-]*$).*", "", s)
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
