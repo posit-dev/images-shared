@@ -25,6 +25,9 @@ def init_logging(log_level: str | int = logging.INFO) -> None:
 
     :param log_level: The log level to use
     """
+    tb_frames = 0
+    if log_level == logging.DEBUG:
+        tb_frames = 20
 
     logging.basicConfig(
         level=log_level,
@@ -36,7 +39,8 @@ def init_logging(log_level: str | int = logging.INFO) -> None:
                 markup=True,
                 rich_tracebacks=True,
                 tracebacks_suppress=[typer],
-                tracebacks_max_frames=5,
+                tracebacks_max_frames=tb_frames,
+                tracebacks_show_locals=True if log_level == logging.DEBUG else False,
             ),
         ],
     )
