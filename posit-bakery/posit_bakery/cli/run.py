@@ -1,13 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import _wrap_project_load
-from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.config import BakeryConfig
+from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
-from posit_bakery.models.manifest.snyk import SnykContainerSubcommand
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
@@ -20,19 +19,10 @@ def dgoss(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
-    image_name: Annotated[str, typer.Option(help="The image name to isolate goss testing to.")] = None,
-    image_version: Annotated[str, typer.Option(help="The image version to isolate goss testing to.")] = None,
-    image_type: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
-    privileged: Annotated[
-        Optional[bool], typer.Option("--privileged", help="Alias for \"--run-opt='--privileged'\"")
-    ] = False,
-    run_option: Annotated[
-        List[str],
-        typer.Option(
-            "--run-opt",
-            help="Additional runtime options to pass to dgoss. Multiple can be provided.",
-        ),
-    ] = None,
+    image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate goss testing to.")] = None,
+    image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
+    image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
+    image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate plan rendering to.")] = None,
 ) -> None:
     """Runs dgoss tests against images in the context path
 
@@ -45,15 +35,15 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    # TODO: add skip_override back in
-    p = _wrap_project_load(context)
+    _filter = BakeryConfigFilter(
+        image_name=image_name,
+        image_version=image_version,
+        image_variant=image_variant,
+        image_os=image_os,
+    )
+    c = BakeryConfig.from_context(context, _filter)
+    results, err = c.dgoss_targets()
 
-    if run_option is None:
-        run_option = []
-    if privileged and "--privileged" not in run_option:
-        run_option.append("--privileged")
-
-    results, err = p.dgoss(image_name, image_version, image_type, run_option)
     stderr_console.print(results.table())
     if results.test_failures:
         stderr_console.print("-" * 80)
