@@ -40,6 +40,7 @@ def build(
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
     no_cache: Annotated[Optional[bool], typer.Option(help="Disable caching for build.")] = False,
+    fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
     """Builds images in the context path using buildx bake
 
@@ -68,7 +69,7 @@ def build(
         stderr_console.print_json(config.bake_plan_targets())
 
     try:
-        config.build_targets(load=load, push=push, cache=not no_cache, strategy=strategy)
+        config.build_targets(load=load, push=push, cache=not no_cache, strategy=strategy, fail_fast=fail_fast)
     except DockerException as e:
         stderr_console.print(f"❌ Build failed with exit code {e.return_code}", style="error")
         raise typer.Exit(code=1)

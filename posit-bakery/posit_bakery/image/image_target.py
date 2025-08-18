@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import re
@@ -13,7 +14,7 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
-
+from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 
 log = logging.getLogger(__name__)
 
@@ -248,22 +249,37 @@ class ImageTarget(BaseModel):
 
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
-        original_cwd = os.getcwd()
-        os.chdir(self.context.base_path)
-
         if not self.containerfile.is_file():
-            raise FileNotFoundError(f"Containerfile '{self.containerfile}' does not exist for {str(self)}.")
+            raise BakeryFileError(
+                f"Containerfile not found for '{str(self)}' at expected path: {self.containerfile}",
+                filepath=self.containerfile,
+            )
 
-        image = python_on_whales.docker.build(
-            context_path=self.context.base_path,
-            file=self.containerfile,
-            tags=self.tags,
-            labels=self.labels,
-            load=load,
-            push=push,
-            cache=cache,
-        )
+        # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
+        # directory change should be managed at a higher level.
+        with contextlib.chdir(self.context.base_path):
+            log.info(f"Building image '{str(self)}'")
+            try:
+                image = python_on_whales.docker.build(
+                    context_path=self.context.base_path,
+                    file=self.containerfile,
+                    tags=self.tags,
+                    labels=self.labels,
+                    load=load,
+                    push=push,
+                    cache=cache,
+                )
+            except python_on_whales.exceptions.DockerException as e:
+                raise BakeryToolRuntimeError(
+                    message=f"Failed to build image '{str(self)}'",
+                    tool_name=python_on_whales.docker.client_type,
+                    cmd=[python_on_whales.docker.client_type, "build", str(self.containerfile)],
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    exit_code=e.return_code,
+                    metadata={"image_target": str(self)},
+                )
 
-        os.chdir(original_cwd)
+        log.info(f"Successfully built image '{str(self)}'")
 
         return image

@@ -187,3 +187,23 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
         s += f"{len(self.exceptions)} command(s) returned errors\n"
 
         return s
+
+
+class BakeryBuildErrorGroup(ExceptionGroup):
+    """Group of tool runtime errors"""
+
+    def __str__(self) -> str:
+        s = f""
+        for e in self.exceptions:
+            s += f"{e.message}\n"
+            if isinstance(e, BakeryToolRuntimeError):
+                s += f"  - Command executed: '{' '.join(e.cmd)}'\n"
+                if e.metadata:
+                    s += "  - Metadata:\n"
+                    for key, value in e.metadata.items():
+                        s += f"    - {key}: {value}\n"
+                s += "\n"
+        s += "\n"
+        s += f"{len(self.exceptions)} build(s) returned errors\n"
+
+        return s

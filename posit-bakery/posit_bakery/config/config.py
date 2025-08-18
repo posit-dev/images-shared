@@ -8,6 +8,8 @@ import jinja2
 import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
 from typing import Annotated, Self
+
+from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
@@ -18,7 +20,12 @@ from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE
-from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.error import (
+    BakeryToolRuntimeError,
+    BakeryToolRuntimeErrorGroup,
+    BakeryFileError,
+    BakeryBuildErrorGroup,
+)
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
@@ -405,6 +412,7 @@ class BakeryConfig:
         push: bool = False,
         cache: bool = True,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
+        fail_fast: bool = False,
     ):
         """Build image targets using the specified strategy.
 
@@ -412,15 +420,26 @@ class BakeryConfig:
         :param push: If True, push the built images to the configured registries.
         :param cache: If True, use the build cache when building images.
         :param strategy: The strategy to use when building images.
+        :param fail_fast: If True, stop building targets on the first failure.
         """
-        # TODO: Implement an "remove after push" option to remove local images after pushing.
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
             bake_plan.build(load=load, push=push, cache=cache)
         elif strategy == ImageBuildStrategy.BUILD:
+            errors: list[Exception] = []
             for target in self.targets:
-                # TODO: Implement error aggregation and add a fail-fast option.
-                target.build(load=load, push=push, cache=cache)
+                try:
+                    target.build(load=load, push=push, cache=cache)
+                except (BakeryFileError, DockerException) as e:
+                    log.error(f"Failed to build image target '{str(target)}'.")
+                    if fail_fast:
+                        log.info("--fail-fast is set, stopping builds...")
+                        raise e
+                    errors.append(e)
+            if errors:
+                if len(errors) == 1:
+                    raise errors[0]
+                raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
 
     def dgoss_targets(
         self,
