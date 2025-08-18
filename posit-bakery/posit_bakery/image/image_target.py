@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from datetime import datetime
@@ -12,6 +13,9 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+
+
+log = logging.getLogger(__name__)
 
 
 class ImageBuildStrategy(str, Enum):
@@ -234,6 +238,13 @@ class ImageTarget(BaseModel):
             labels[f"{POSIT_LABEL_PREFIX}.os"] = self.image_os.name
 
         return labels
+
+    def remove(self, prune: bool = True, force: bool = False):
+        """Remove the image from the local image cache or registry."""
+        for tag in self.tags:
+            if python_on_whales.docker.image.exists(tag):
+                log.info(f"Deleting image '{tag}' from local cache.")
+                python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
