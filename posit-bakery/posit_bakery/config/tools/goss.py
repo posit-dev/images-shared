@@ -10,6 +10,10 @@ class GossOptions(ToolOptions):
     """Configuration options for Goss testing."""
 
     tool: Literal["goss"] = "goss"
+    runtimeOptions: Annotated[
+        str | None,
+        Field(default=None, description="Additional runtime options to pass to dgoss.", examples=["--privileged"]),
+    ] = None
     command: Annotated[str, Field(default="sleep infinity", description="Command to run in the dgoss container.")]
     wait: Annotated[
         int,
@@ -27,17 +31,14 @@ class GossOptions(ToolOptions):
         instance.
         """
         merged_options = deepcopy(self)
-        if (
-            self.__pydantic_fields__["command"].default == self.command
-            and self.__pydantic_fields__["command"].default != other.command
-            and "command" not in self.model_fields_set
-        ):
+        if self.__pydantic_fields__["command"].default == self.command and "command" not in self.model_fields_set:
             merged_options.command = other.command
-        if (
-            self.__pydantic_fields__["wait"].default == self.wait
-            and self.__pydantic_fields__["wait"].default != other.wait
-            and "wait" not in self.model_fields_set
-        ):
+        if self.__pydantic_fields__["wait"].default == self.wait and "wait" not in self.model_fields_set:
             merged_options.wait = other.wait
+        if (
+            self.__pydantic_fields__["runtimeOptions"].default == self.runtimeOptions
+            and "runtimeOptions" not in self.model_fields_set
+        ):
+            merged_options.runtimeOptions = other.runtimeOptions
 
         return merged_options
