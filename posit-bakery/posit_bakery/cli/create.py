@@ -79,7 +79,7 @@ def image(
     except:
         log.exception("Error creating image")
         stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
-        typer.Exit(code=1)
+        raise typer.Exit(code=1)
 
     stderr_console.print(f"✅ Successfully created image '{image_name}'", style="success")
 
@@ -140,4 +140,4 @@ def version(
     except:
         log.exception("Error creating version")
         stderr_console.print(f"❌ Failed to create version '{image_name}/{image_version}'", style="error")
-        typer.Exit(code=1)
+        raise typer.Exit(code=1)

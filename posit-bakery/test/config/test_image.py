@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -532,10 +531,10 @@ class TestImage:
 
         assert i.get_variant("non-existent") is None
 
-    def test_create_version_files(self, basic_unified_tmpcontext):
+    def test_create_version_files(self, basic_tmpcontext):
         """Test that create_version_files creates the correct directory structure."""
         mock_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_parent.path = basic_unified_tmpcontext
+        mock_parent.path = basic_tmpcontext
         mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
 
         i = Image(name="test-image", versions=[{"name": "1.0.0"}], parent=mock_parent)
@@ -548,7 +547,7 @@ class TestImage:
 
         Image.create_version_files(new_version, i.variants)
 
-        expected_path = basic_unified_tmpcontext / "test-image" / "2.0"
+        expected_path = basic_tmpcontext / "test-image" / "2.0"
         assert expected_path.exists() and expected_path.is_dir()
         assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
         assert (expected_path / "Containerfile.ubuntu2204.std").is_file()

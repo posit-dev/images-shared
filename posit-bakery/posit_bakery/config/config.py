@@ -154,7 +154,8 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         containerfile_base_name = "Containerfile"
         containerfile_name = containerfile_base_name
         if base_tag:
-            base_tag_extension = re.sub(r"[^a-zA-Z0-9_-]", "", base_tag.lower())
+            base_tag_suffix = base_tag.split("/")[-1]  # Get the tag part after the colon
+            base_tag_extension = re.sub(r"[^a-zA-Z0-9_-]", "", base_tag_suffix.lower())
             containerfile_name += f".{base_tag_extension}"
         containerfile_name += ".jinja2"
 
@@ -284,7 +285,8 @@ class BakeryConfig:
             _filter = BakeryConfigFilter()
 
         context = Path(context)
-        for file in context.glob("bakery.{yml,yaml}"):
+        search_paths = [context / "bakery.yaml", context / "bakery.yml"]
+        for file in search_paths:
             if file.is_file():
                 log.info(f"Loading Bakery config from [bold]{file}")
                 return cls(file, _filter)

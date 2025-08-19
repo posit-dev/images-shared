@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 from unittest.mock import patch, call
 
 import pytest
@@ -119,8 +118,8 @@ class TestBakePlan:
     @pytest.mark.parametrize(
         "expected_plan,config_obj",
         [
-            pytest.param("barebones_expected_plan", "barebones_unified_config_obj", id="barebones"),
-            pytest.param("basic_expected_plan", "basic_unified_config_obj", id="basic"),
+            pytest.param("barebones_expected_plan", "barebones_config_obj", id="barebones"),
+            pytest.param("basic_expected_plan", "basic_config_obj", id="basic"),
         ],
     )
     def test_from_image_targets(
@@ -138,8 +137,8 @@ class TestBakePlan:
     @pytest.mark.parametrize(
         "expected_plan,config_obj",
         [
-            pytest.param("barebones_expected_plan", "barebones_unified_tmpconfig", id="barebones"),
-            pytest.param("basic_expected_plan", "basic_unified_tmpconfig", id="basic"),
+            pytest.param("barebones_expected_plan", "barebones_tmpconfig", id="barebones"),
+            pytest.param("basic_expected_plan", "basic_tmpconfig", id="basic"),
         ],
     )
     def test_write_remove(self, request, patch_datetime_now, patch_repository_revision, expected_plan, config_obj):
@@ -160,8 +159,8 @@ class TestBakePlan:
     @pytest.mark.parametrize(
         "config_obj",
         [
-            pytest.param("barebones_unified_config_obj", id="barebones"),
-            pytest.param("basic_unified_config_obj", id="basic"),
+            pytest.param("barebones_config_obj", id="barebones"),
+            pytest.param("basic_config_obj", id="basic"),
         ],
     )
     def test_build_args(
@@ -198,8 +197,8 @@ class TestBakePlan:
     @pytest.mark.parametrize(
         "config_obj",
         [
-            pytest.param("barebones_unified_tmpconfig", id="barebones"),
-            pytest.param("basic_unified_tmpconfig", id="basic"),
+            pytest.param("barebones_tmpconfig", id="barebones"),
+            pytest.param("basic_tmpconfig", id="basic"),
         ],
     )
     def test_build(

@@ -1,6 +1,5 @@
-import datetime
 import re
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch
 
 import pytest
 import python_on_whales
@@ -17,46 +16,43 @@ pytestmark = [
 
 
 class TestImageTarget:
-    def test_new_image_target(self, basic_unified_config_obj):
+    def test_new_image_target(self, basic_config_obj):
         """Test creating a new ImageTarget object."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
         )
 
-        assert target.context.base_path == basic_unified_config_obj.model.path
+        assert target.context.base_path == basic_config_obj.model.path
         assert target.context.image_path == image.path
         assert target.context.version_path == version.path
-        assert target.repository == basic_unified_config_obj.model.repository
+        assert target.repository == basic_config_obj.model.repository
         assert target.image_version == version
         assert target.image_variant == variant
         assert target.image_os == os
         assert len(target.tag_patterns) == 8
 
-    def test_str(self, basic_unified_config_obj, basic_standard_image_target):
-        image = basic_unified_config_obj.model.get_image("test-image")
+    def test_str(self, basic_config_obj, basic_standard_image_target):
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         expected_str = (
-            f"ImageTarget(image='{image.name}', "
-            f"version='{version.name}', "
-            f"variant='{variant.name}', "
-            f"os='{os.name}')"
+            f"ImageTarget(image='{image.name}', version='{version.name}', variant='{variant.name}', os='{os.name}')"
         )
         assert str(basic_standard_image_target) == expected_str
 
-    def test_uid(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_uid(self, basic_config_obj, basic_standard_image_target):
         """Test the UID of an ImageTarget."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
@@ -101,37 +97,37 @@ class TestImageTarget:
         basic_standard_image_target.image_variant = None
         assert basic_standard_image_target.is_primary_variant
 
-    def test_containerfile(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile(self, basic_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget."""
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_os.extension}."
             f"{basic_standard_image_target.image_variant.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_variant(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_variant(self, basic_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without a variant."""
         basic_standard_image_target.image_variant = None
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_os.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_os(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_os(self, basic_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without an OS."""
         basic_standard_image_target.image_os = None
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_variant.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_variant_no_os(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_variant_no_os(self, basic_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without an OS."""
         basic_standard_image_target.image_variant = None
         basic_standard_image_target.image_os = None
@@ -139,7 +135,7 @@ class TestImageTarget:
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
     def test_tag_template_values(self, basic_standard_image_target):
@@ -164,9 +160,9 @@ class TestImageTarget:
         basic_standard_image_target.image_os = None
         assert basic_standard_image_target.tag_template_values == expected_values
 
-    def test_tag_patterns_deduplication(self, basic_unified_config_obj):
+    def test_tag_patterns_deduplication(self, basic_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         # Duplicate tag patterns by adding some default patterns that will also be present in Image
@@ -174,7 +170,7 @@ class TestImageTarget:
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -182,16 +178,16 @@ class TestImageTarget:
         # Check that the tag patterns are deduplicated to 8, the default tag patterns length
         assert len(target.tag_patterns) == 8
 
-    def test_tag_patterns_filtering(self, basic_unified_config_obj):
+    def test_tag_patterns_filtering(self, basic_config_obj):
         """Test the filter_tag_patterns method of an ImageTarget."""
         # Test latest, primary variant, and primary OS
-        image = basic_unified_config_obj.model.get_image("test-image")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -202,7 +198,7 @@ class TestImageTarget:
         version.latest = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -215,7 +211,7 @@ class TestImageTarget:
         variant.primary = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -228,7 +224,7 @@ class TestImageTarget:
         os.primary = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,

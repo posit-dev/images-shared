@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
-from test.helpers import yaml_unified_file_testcases, FileTestResultEnum
+from test.helpers import yaml_file_testcases, FileTestResultEnum
 
 
 pytestmark = [
@@ -119,17 +119,17 @@ class TestBakeryConfigDocument:
         # Test for a non-existent image
         assert d.get_image("non-existent") is None
 
-    def test_create_image_files_template(self, basic_unified_tmpcontext):
+    def test_create_image_files_template(self, basic_tmpcontext):
         """Test that create_image_files_template creates the correct directory structure."""
-        assert not (basic_unified_tmpcontext / "new-image").is_dir()
-        d = BakeryConfigDocument(base_path=basic_unified_tmpcontext, repository={"url": "https://example.com/repo"})
-        d.create_image_files_template(basic_unified_tmpcontext / "new-image", "new-image", "ubuntu:22.04")
-        assert (basic_unified_tmpcontext / "new-image").is_dir()
-        assert (basic_unified_tmpcontext / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").exists()
-        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps").is_dir()
-        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps" / "packages.txt.jinja2").is_file()
-        assert (basic_unified_tmpcontext / "new-image" / "template" / "test").is_dir()
-        assert (basic_unified_tmpcontext / "new-image" / "template" / "test" / "goss.yaml.jinja2").is_file()
+        assert not (basic_tmpcontext / "new-image").is_dir()
+        d = BakeryConfigDocument(base_path=basic_tmpcontext, repository={"url": "https://example.com/repo"})
+        d.create_image_files_template(basic_tmpcontext / "new-image", "new-image", "ubuntu:22.04")
+        assert (basic_tmpcontext / "new-image").is_dir()
+        assert (basic_tmpcontext / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").exists()
+        assert (basic_tmpcontext / "new-image" / "template" / "deps").is_dir()
+        assert (basic_tmpcontext / "new-image" / "template" / "deps" / "packages.txt.jinja2").is_file()
+        assert (basic_tmpcontext / "new-image" / "template" / "test").is_dir()
+        assert (basic_tmpcontext / "new-image" / "template" / "test" / "goss.yaml.jinja2").is_file()
 
     def test_create_image_model(self):
         """Test that create_image adds a new image to the config."""
@@ -143,31 +143,31 @@ class TestBakeryConfigDocument:
 
 
 class TestBakeryConfig:
-    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.VALID))
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID))
     def test_valid(self, caplog, yaml_file: Path):
-        """Test valid unified YAML config files
+        """Test valid YAML config files
 
-        Files are stored in test/testdata/unified_config/valid
+        Files are stored in test/testdata/valid
         """
         config = BakeryConfig(yaml_file)
         assert config is not None
         assert "WARNING" not in caplog.text
 
-    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
     def test_valid_with_warning(self, caplog, yaml_file: Path):
-        """Test valid unified YAML config files with warnings
+        """Test valid YAML config files with warnings
 
-        Files are stored in test/testdata/unified_config/valid-with-warning
+        Files are stored in test/testdata/valid-with-warning
         """
         config = BakeryConfig(yaml_file)
         assert config is not None
         assert "WARNING" in caplog.text
 
-    @pytest.mark.parametrize("yaml_file", yaml_unified_file_testcases(FileTestResultEnum.INVALID))
+    @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.INVALID))
     def test_invalid(self, yaml_file: Path):
-        """Test invalid unified YAML config files
+        """Test invalid YAML config files
 
-        Files are stored in test/testdata/unified_config/invalid
+        Files are stored in test/testdata/invalid
         """
         with pytest.raises(ValidationError):
             BakeryConfig(yaml_file)
@@ -187,12 +187,12 @@ class TestBakeryConfig:
         BakeryConfig(Path(tmpdir) / "bakery.yaml")
 
     def test_target_filtering_no_filter(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
         config = BakeryConfig(complex_yaml)
         assert len(config.targets) == 10
 
     def test_target_filtering_filter_image(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         _filter = BakeryConfigFilter(image_name=r"package-manager-init")
         config = BakeryConfig(complex_yaml, _filter=_filter)
@@ -203,28 +203,28 @@ class TestBakeryConfig:
         assert len(config.targets) == 8
 
     def test_target_filtering_filter_variant(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         _filter = BakeryConfigFilter(image_variant="std")
         config = BakeryConfig(complex_yaml, _filter=_filter)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_version(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         _filter = BakeryConfigFilter(image_version="2025.04.2-8")
         config = BakeryConfig(complex_yaml, _filter=_filter)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_os(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         _filter = BakeryConfigFilter(image_os="Ubuntu 24.04")
         config = BakeryConfig(complex_yaml, _filter=_filter)
         assert len(config.targets) == 3
 
     def test_target_filtering_filter_multi(self, testdata_path):
-        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         _filter = BakeryConfigFilter(
             image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"

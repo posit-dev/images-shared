@@ -31,9 +31,9 @@ class TestDGossCommand:
             "GOSS_OPTS": "--format json --no-color",
         }
         for key, value in expected_env.items():
-            assert (
-                dgoss_command.dgoss_environment[key] == value
-            ), f"Expected {key} to be {value}, got {dgoss_command.dgoss_environment[key]}"
+            assert dgoss_command.dgoss_environment[key] == value, (
+                f"Expected {key} to be {value}, got {dgoss_command.dgoss_environment[key]}"
+            )
 
     def test_image_environment(self, basic_standard_image_target):
         """Test that DGossCommand image_environment returns the expected environment variables."""
@@ -66,11 +66,11 @@ class TestDGossCommand:
             with pytest.raises(ValidationError, match="dgoss binary path must be specified"):
                 DGossCommand.from_image_target(image_target=basic_standard_image_target)
 
-    def test_validate_no_test_path(self, basic_unified_tmpconfig):
+    def test_validate_no_test_path(self, basic_tmpconfig):
         """Test that DGossCommand validate raises an error if the test path does not exist."""
-        shutil.rmtree(basic_unified_tmpconfig.targets[0].context.version_path / "test")
+        shutil.rmtree(basic_tmpconfig.targets[0].context.version_path / "test")
         with pytest.raises(ValidationError, match="No test directory was found"):
-            DGossCommand.from_image_target(image_target=basic_unified_tmpconfig.targets[0])
+            DGossCommand.from_image_target(image_target=basic_tmpconfig.targets[0])
 
     def test_command(self, basic_standard_image_target):
         """Test that DGossCommand command returns the expected command."""
@@ -106,20 +106,19 @@ class TestDGossCommand:
 
 
 class TestDGossSuite:
-    def test_init(self, basic_unified_config_obj):
+    def test_init(self, basic_config_obj):
         """Test that DGossSuite initializes with the correct attributes."""
-        dgoss_suite = DGossSuite(basic_unified_config_obj.base_path, basic_unified_config_obj.targets)
-        assert dgoss_suite.context == basic_unified_config_obj.base_path
-        assert dgoss_suite.image_targets == basic_unified_config_obj.targets
+        dgoss_suite = DGossSuite(basic_config_obj.base_path, basic_config_obj.targets)
+        assert dgoss_suite.context == basic_config_obj.base_path
+        assert dgoss_suite.image_targets == basic_config_obj.targets
         assert len(dgoss_suite.dgoss_commands) == 2
 
     @pytest.mark.slow
-    def test_run(self, basic_unified_tmpconfig):
+    def test_run(self, basic_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
-        for target in basic_unified_tmpconfig.targets:
-            target.build()
+        basic_tmpconfig.build_targets()
 
-        dgoss_suite = DGossSuite(basic_unified_tmpconfig.base_path, basic_unified_tmpconfig.targets)
+        dgoss_suite = DGossSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
 
         report_collection, errors = dgoss_suite.run()
 

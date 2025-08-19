@@ -249,9 +249,10 @@ class ImageTarget(BaseModel):
 
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
-        if not self.containerfile.is_file():
+        if not (self.context.base_path / self.containerfile).is_file():
             raise BakeryFileError(
-                f"Containerfile not found for '{str(self)}' at expected path: {self.containerfile}",
+                f"Containerfile not found for '{str(self)}' at expected path: "
+                f"{str(self.context.base_path / self.containerfile)}",
                 filepath=self.containerfile,
             )
 
