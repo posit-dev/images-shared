@@ -186,6 +186,57 @@ class TestBakeryConfig:
         assert (Path(tmpdir) / "bakery.yaml").is_file()
         BakeryConfig(Path(tmpdir) / "bakery.yaml")
 
+    def test_create_image_image_exists(self, barebones_tmpcontext):
+        """Test creating a new image in the BakeryConfig."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        with pytest.raises(ValueError, match="Image 'scratch' already exists"):
+            config.create_image("scratch")
+
+    def test_create_image(self, barebones_tmpcontext):
+        """Test creating a new image in the BakeryConfig."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        config.create_image(
+            "new-image",
+        )
+        assert len(config.model.images) == 2
+        expected_yaml = """
+  - name: new-image
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "new-image").is_dir()
+        assert (barebones_tmpcontext / "new-image" / "template").is_dir()
+        assert (barebones_tmpcontext / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").is_file()
+
+    def test_create_image_customized(self, barebones_tmpcontext):
+        """Test creating a new image in the BakeryConfig."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        config.create_image(
+            "new-image",
+            base_image="docker.io/library/ubuntu:24.04",
+            subpath="image",
+            display_name="Cool New Image",
+            description="This is a new image for testing purposes.",
+            documentation_url="https://example.com/docs/new-image",
+        )
+        assert len(config.model.images) == 2
+        expected_yaml = """
+  - name: new-image
+    displayName: Cool New Image
+    description: This is a new image for testing purposes.
+    documentationUrl: https://example.com/docs/new-image
+    subpath: image
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "image").is_dir()
+        assert (barebones_tmpcontext / "image" / "template").is_dir()
+        assert (barebones_tmpcontext / "image" / "template" / "Containerfile.ubuntu2404.jinja2").is_file()
+        assert (
+            "FROM docker.io/library/ubuntu:24.04"
+            in (barebones_tmpcontext / "image" / "template" / "Containerfile.ubuntu2404.jinja2").read_text()
+        )
+
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
         config = BakeryConfig(complex_yaml)

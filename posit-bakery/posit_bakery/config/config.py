@@ -207,11 +207,11 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         if subpath:
             args["subpath"] = subpath
         if display_name:
-            args["display_name"] = display_name
+            args["displayName"] = display_name
         if description:
             args["description"] = description
         if documentation_url:
-            args["documentation_url"] = documentation_url
+            args["documentationUrl"] = documentation_url
 
         new_image = Image(**args)
         self.images.append(new_image)
@@ -255,6 +255,7 @@ class BakeryConfig:
         :raises FileNotFoundError: If the config file does not exist.
         """
         self.yaml = YAML()
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.config_file = Path(config_file)
         if not self.config_file.exists():
             raise FileNotFoundError(f"File '{self.config_file}' does not exist.")
@@ -344,9 +345,8 @@ class BakeryConfig:
             documentation_url=documentation_url,
         )
         self.model.create_image_files_template(new_image.path, new_image.name, base_image or DEFAULT_BASE_IMAGE)
-        self._config_yaml.setdefault("images", []).append(
-            new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
-        )
+        new_image_dict = new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+        self._config_yaml.setdefault("images", []).append(new_image_dict)
         self.write()
 
     def create_version(

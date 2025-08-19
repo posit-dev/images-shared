@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Self, Union
 
 import jinja2
-from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
@@ -503,7 +503,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.parent = self
         return self
 
-    @computed_field
+    @field_serializer("documentationUrl")
+    def serialize_documentation_url(self, value: HttpUrl | None) -> str | None:
+        """Serializes the documentation URL to a string."""
+        if value is None:
+            return None
+        return str(value)
+
     @property
     def path(self) -> Path | None:
         """Returns the path to the image directory."""
@@ -511,7 +517,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError("Parent BakeryConfig must resolve a valid path.")
         return Path(self.parent.path) / self.subpath
 
-    @computed_field
     @property
     def template_path(self) -> Path:
         """Returns the path to the image template directory."""
