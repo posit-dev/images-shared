@@ -35,8 +35,6 @@ class TestDependencyVersions:
             pytest.param("1.0.0", id="string"),
             pytest.param(1.5, id="float"),
             pytest.param(123, id="integer"),
-            pytest.param(None, id="none"),
-            pytest.param({"version": "1.0.0"}, id="dict"),
             pytest.param([1], id="list_ints"),
             pytest.param([1.0, 2.0], id="list_floats"),
             pytest.param(["1.0.0", 2], id="list_mixed"),
@@ -72,4 +70,24 @@ class TestDependencyVersions:
     def test_version_constraint_latest_invalid(self, count, latest):
         """Test that a version constraint with latest set to True is accepted."""
         with pytest.raises(ValueError):
-            VersionsConstraint(count=count, latest=latest)
+            Dependency(versions={"count": count, "latest": latest})
+
+    @pytest.mark.parametrize(
+        "count,latest,max,min",
+        [
+            pytest.param(None, True, "2.0.0", None, id="latest_max"),
+            pytest.param(None, True, None, "1.0.0", id="latest_min"),
+            pytest.param(5, None, "3.0.0", "2.0.0", id="count_max_min"),
+        ],
+    )
+    def test_version_constraint_mutually_exclusive(self, count, latest, max, min):
+        """Test that a version constraint with latest, max, and min is mutually exclusive."""
+        with pytest.raises(ValueError):
+            Dependency(
+                versions={
+                    "count": count,
+                    "latest": latest,
+                    "max": max,
+                    "min": min,
+                }
+            )
