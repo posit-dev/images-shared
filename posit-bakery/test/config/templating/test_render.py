@@ -49,7 +49,7 @@ class TestJinja2Env:
         env = jinja2_env()
         assert env.from_string("{{ 'hello world' | regexReplace('world', 'there') }}").render() == "hello there"
         assert env.from_string("{{ 'foo-bar-baz' | regexReplace('-', '_') }}").render() == "foo_bar_baz"
-        assert env.from_string("{{ '123-456-789' | regexReplace('\d', 'X') }}").render() == "XXX-XXX-XXX"
+        assert env.from_string(r"{{ '123-456-789' | regexReplace('\d', 'X') }}").render() == "XXX-XXX-XXX"
 
 
 def test_render_template():
