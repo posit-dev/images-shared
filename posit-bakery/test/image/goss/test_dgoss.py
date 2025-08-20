@@ -104,6 +104,40 @@ class TestDGossCommand:
         ]
         assert dgoss_command.command == expected_command
 
+    def test_command_with_runtime_options(self, basic_standard_image_target):
+        """Test that DGossCommand command returns the expected command."""
+        basic_standard_image_target.image_variant.options[0].runtimeOptions = "--privileged"
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        expected_command = [
+            find_dgoss_bin(basic_standard_image_target.context),
+            "run",
+            "-v",
+            f"{str(basic_standard_image_target.context.version_path.absolute())}:/tmp/version",
+            "-v",
+            f"{str(basic_standard_image_target.context.image_path.absolute())}:/tmp/image",
+            "-v",
+            f"{str(basic_standard_image_target.context.base_path.absolute())}:/tmp/project",
+            "-e",
+            "IMAGE_VERSION=1.0.0",
+            "-e",
+            "IMAGE_VERSION_MOUNT=/tmp/version",
+            "-e",
+            "IMAGE_MOUNT=/tmp/image",
+            "-e",
+            "PROJECT_MOUNT=/tmp/project",
+            "-e",
+            "IMAGE_TYPE=Standard",
+            "-e",
+            "IMAGE_VARIANT=Standard",
+            "-e",
+            "IMAGE_OS=Ubuntu 22.04",
+            "--init",
+            "--privileged",
+            basic_standard_image_target.tags[0],
+            *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
+        ]
+        assert dgoss_command.command == expected_command
+
 
 class TestDGossSuite:
     def test_init(self, basic_config_obj):
