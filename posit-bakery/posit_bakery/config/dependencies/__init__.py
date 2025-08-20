@@ -2,7 +2,8 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
-from posit_bakery.config.dependencies._base import Dependency, VersionsConstraint
+from posit_bakery.config.dependencies._base import Dependency
+from posit_bakery.config.dependencies.version import VersionConstraint
 
 
 # DependencyTypes = Union[PythonOptions]
@@ -10,5 +11,5 @@ from posit_bakery.config.dependencies._base import Dependency, VersionsConstrain
 
 __all__ = [
     "Dependency",
-    "VersionsConstraint",
+    "VersionConstraint",
 ]
