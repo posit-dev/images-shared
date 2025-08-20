@@ -22,15 +22,15 @@ class TestTagPattern:
 
     def test_render_tag_pattern_single(self):
         tag_pattern = TagPattern(patterns=["{{ Version }}-{{ OS }}-{{ Variant }}"], only=[TagPatternFilter.ALL])
-        rendered_tags = tag_pattern.render(Version="1.0", OS="ubuntu2204", Variant="min")
-        assert rendered_tags == ["1.0-ubuntu2204-min"]
+        rendered_tags = tag_pattern.render(Version="1.0", OS="ubuntu-22.04", Variant="min")
+        assert rendered_tags == ["1.0-ubuntu-22.04-min"]
 
     def test_render_tag_pattern_multiple(self):
         tag_pattern = TagPattern(
             patterns=["{{ Version }}-{{ OS }}-{{ Variant }}", "{{ Variant }}"], only=[TagPatternFilter.ALL]
         )
-        rendered_tags = tag_pattern.render(Version="1.0", OS="ubuntu2204", Variant="min")
-        assert rendered_tags == ["1.0-ubuntu2204-min", "min"]
+        rendered_tags = tag_pattern.render(Version="1.0", OS="ubuntu-22.04", Variant="min")
+        assert rendered_tags == ["1.0-ubuntu-22.04-min", "min"]
 
     def test_hash_tag_pattern(self):
         tag_pattern1 = TagPattern(patterns=["{{ Version }}-{{ OS }}-{{ Variant }}"], only=[TagPatternFilter.ALL])
@@ -43,7 +43,7 @@ def test_default_tag_patterns():
     """Test that the default tag patterns are created correctly."""
     patterns = default_tag_patterns()
     version = "1.0"
-    os = "ubuntu2204"
+    os = "ubuntu-22.04"
     variant = "min"
     expected_tags = [
         f"{version}-{os}-{variant}",
