@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 
 
@@ -7,7 +9,91 @@ pytestmark = [
     pytest.mark.dependency,
 ]
 
-from posit_bakery.config.dependencies import VersionConstraint
+from posit_bakery.config.dependencies.version import DependencyVersion, VersionConstraint
+
+# Posit python-builds as of 2025-08-20
+PYTHON_VERSIONS: list[str] = list(
+    itertools.chain.from_iterable(
+        [
+            [f"3.9.{p}" for p in range(24)],  # 3.9.0 to 3.9.23
+            [f"3.10.{p}" for p in range(19)],  # 3.10.0 to 3.10.18
+            [f"3.11.{p}" for p in range(14)],  # 3.11.0 to 3.11.13
+            [f"3.12.{p}" for p in range(12)],  # 3.12.0 to 3.12.11
+            [f"3.13.{p}" for p in range(8)],  # 3.13.0 to 3.13.7
+        ]
+    )
+)
+assert len(PYTHON_VERSIONS) == 77
+# Astral python-build-standalone releases only include the most recent patch
+# https://github.com/astral-sh/python-build-standalone/releases/tag/20250818
+ASTRAL_PYTHON_VERSIONS: list[str] = [
+    "3.9.23",
+    "3.10.18",
+    "3.11.13",
+    "3.12.11",
+    "3.13.7",
+]
+# Posit r-builds as of 2025-08-20
+R_VERSIONS: list[str] = list(
+    itertools.chain.from_iterable(
+        [
+            [f"3.0.{p}" for p in range(4)],  # 3.0.0 to 3.0.3
+            [f"3.1.{p}" for p in range(4)],  # 3.1.0 to 3.1.3
+            [f"3.2.{p}" for p in range(6)],  # 3.2.0 to 3.2.5
+            [f"3.3.{p}" for p in range(4)],  # 3.3.0 to 3.3.3
+            [f"3.4.{p}" for p in range(5)],  # 3.4.0 to 3.4.4
+            [f"3.5.{p}" for p in range(4)],  # 3.5.0 to 3.5.3
+            [f"3.6.{p}" for p in range(4)],  # 3.6.0 to 3.6.3
+            [f"4.0.{p}" for p in range(6)],  # 4.0.0 to 4.0.5
+            [f"4.1.{p}" for p in range(4)],  # 4.1.0 to 4.1.3
+            [f"4.2.{p}" for p in range(4)],  # 4.2.0 to 4.2.3
+            [f"4.3.{p}" for p in range(4)],  # 4.3.0 to 4.3.3
+            [f"4.4.{p}" for p in range(4)],  # 4.4.0 to 4.4.3
+            [f"4.5.{p}" for p in range(2)],  # 4.5.0 to 4.5.1
+        ]
+    )
+)
+assert len(R_VERSIONS) == 55
+
+
+class TestDependencyVersion:
+    @pytest.mark.parametrize(
+        "version,has_minor,has_micro",
+        [
+            pytest.param("1.0.0", True, True, id="full_version"),
+            pytest.param("1.0", True, False, id="minor_only"),
+            pytest.param("1", False, False, id="major_only"),
+        ],
+    )
+    def test_dependency_version_valid(self, version, has_minor, has_micro):
+        """Test that a valid dependency version is accepted and sets booleans correctly."""
+        ver = DependencyVersion(version)
+
+        assert ver.base_version == version
+        assert ver.has_minor == has_minor
+        assert ver.has_micro == has_micro
+
+    @pytest.mark.parametrize(
+        "version_list",
+        [
+            pytest.param(PYTHON_VERSIONS, id="python-builds"),
+            pytest.param(ASTRAL_PYTHON_VERSIONS, id="python-build-standalone"),
+            pytest.param(R_VERSIONS, id="r-builds"),
+        ],
+    )
+    def test_dependency_version_upstream(self, version_list):
+        """Test that a list of upstream versions is valid"""
+        for version in version_list:
+            ver = DependencyVersion(version)
+
+            # Base class attrs
+            assert ver.base_version == version
+            assert not ver.is_devrelease
+            assert not ver.is_prerelease
+            assert not ver.is_postrelease
+            # Child class attrs
+            assert ver.has_minor
+            assert ver.has_micro
 
 
 class TestVersionConstraint:

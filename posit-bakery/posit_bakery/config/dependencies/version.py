@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 from posit_bakery.config.shared import BakeryYAMLModel
 
 
-class DepencencyVersion(Version):
+class DependencyVersion(Version):
     """A version class for dependencies that extends packaging's Version.
 
     We require this so we can properly handle versions that are specified that
