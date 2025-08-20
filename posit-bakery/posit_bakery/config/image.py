@@ -319,7 +319,7 @@ class ImageVariant(BakeryYAMLModel):
 
         if option and parent_option:
             # Merge the options if both are found
-            return option.merge(parent_option)
+            return option.update(parent_option)
 
         return option
 

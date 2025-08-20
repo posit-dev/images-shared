@@ -12,6 +12,6 @@ class ToolOptions(BakeryYAMLModel, abc.ABC):
     tool: Annotated[str, Field(description="Name of the tool. Set as a literal in subclasses.")]
 
     @abc.abstractmethod
-    def merge(self, other: "ToolOptions") -> "ToolOptions":
+    def update(self, other: "ToolOptions") -> "ToolOptions":
         """Merge another ToolOptions instance into this one."""
         raise NotImplementedError("Subclasses must implement the merge method.")

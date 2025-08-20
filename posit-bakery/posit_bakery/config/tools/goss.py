@@ -20,22 +20,22 @@ class GossOptions(ToolOptions):
         ),
     ]
 
-    def merge(self, other: "GossOptions") -> "GossOptions":
-        """Merge another GossOptions instance into this one.
+    def update(self, other: "GossOptions") -> "GossOptions":
+        """Update this GossOptions instance with settings from another.
 
-        The merge strategy is to use the values of the other instance if they are not set to defaults and the value is
-        not explicitly set in the current instance.
+        The merge strategy is to use the values of the other instance if the value is not explicitly set in the current
+        instance.
         """
         merged_options = deepcopy(self)
         if (
-            self.model_fields["command"].default == self.command
-            and self.model_fields["command"].default != other.command
+            self.__pydantic_fields__["command"].default == self.command
+            and self.__pydantic_fields__["command"].default != other.command
             and "command" not in self.model_fields_set
         ):
             merged_options.command = other.command
         if (
-            self.model_fields["wait"].default == self.wait
-            and self.model_fields["wait"].default != other.wait
+            self.__pydantic_fields__["wait"].default == self.wait
+            and self.__pydantic_fields__["wait"].default != other.wait
             and "wait" not in self.model_fields_set
         ):
             merged_options.wait = other.wait

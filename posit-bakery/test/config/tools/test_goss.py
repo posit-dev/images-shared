@@ -29,7 +29,7 @@ class TestGoss:
     def test_merge(self, left, right, expected):
         left_options = GossOptions(**left)
         right_options = GossOptions(**right)
-        merged = left_options.merge(right_options)
+        merged = left_options.update(right_options)
 
         for key, value in expected.items():
             assert getattr(merged, key) == value, f"Expected {key} to be {value}, got {getattr(merged, key)}"
