@@ -237,6 +237,164 @@ class TestBakeryConfig:
             in (barebones_tmpcontext / "image" / "template" / "Containerfile.ubuntu2404.jinja2").read_text()
         )
 
+    def test_create_version_exists(self, barebones_tmpcontext):
+        """Test creating an existing version in the BakeryConfig generates an error."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+
+        with pytest.raises(ValueError, match="Version '1.0.0' already exists for image 'scratch'"):
+            config.create_version("scratch", "1.0.0")
+
+    def test_create_version(self, barebones_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+
+        config.create_version("scratch", "2.0.0")
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 2
+        expected_yaml = """
+      - name: 2.0.0
+        latest: true
+        os:
+          - name: Scratch
+            primary: true
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0").is_dir()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "Containerfile.scratch.min").is_file()
+        assert """FROM scratch
+
+COPY scratch/2.0.0/deps/packages.txt /tmp/packages.txt
+""" == (barebones_tmpcontext / "scratch" / "2.0.0" / "Containerfile.scratch.min").read_text()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "Containerfile.scratch.std").is_file()
+        assert """FROM scratch
+
+COPY scratch/2.0.0/deps/packages.txt /tmp/packages.txt
+""" == (barebones_tmpcontext / "scratch" / "2.0.0" / "Containerfile.scratch.std").read_text()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "deps").is_dir()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "deps" / "packages.txt").is_file()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "test").is_dir()
+        assert (barebones_tmpcontext / "scratch" / "2.0.0" / "test" / "goss.yaml").is_file()
+
+    def test_create_version_exists_force(self, barebones_tmpcontext):
+        """Test creating an existing version in the BakeryConfig with force works."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+
+        config.create_version("scratch", "1.0.0", subpath="1", force=True)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        expected_yaml = """
+      - name: 1.0.0
+        subpath: '1'
+        latest: true
+        os:
+          - name: Scratch
+            primary: true
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "scratch" / "1").is_dir()
+        assert (barebones_tmpcontext / "scratch" / "1" / "Containerfile.scratch.min").is_file()
+        assert (barebones_tmpcontext / "scratch" / "1" / "Containerfile.scratch.std").is_file()
+        assert (
+            "COPY scratch/1/deps/packages.txt /tmp/packages.txt"
+            in (barebones_tmpcontext / "scratch" / "1" / "Containerfile.scratch.std").read_text()
+        )
+        assert not (barebones_tmpcontext / "1.0.0").is_dir()
+
+    def test_create_version_not_latest(self, barebones_tmpcontext):
+        """Test creating a version and not marking latest does not change latest flag on existing versions."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+
+        config.create_version("scratch", "2.0.0", latest=False)
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 2
+        expected_yaml = """
+      - name: 2.0.0
+        os:
+          - name: Scratch
+            primary: true
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        expected_yaml = """
+      - name: "1.0.0"
+        latest: true
+        os:
+          - name: "Scratch"
+"""
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+
+    def test_create_version_complex(self, basic_tmpcontext):
+        """Test creating a new version in the BakeryConfig with more complex files and settings."""
+        config = BakeryConfig.from_context(basic_tmpcontext)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+
+        config.create_version("test-image", "2.0.0", subpath="2.0", latest=True)
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 2
+        expected_yaml = """
+      - name: 2.0.0
+        subpath: '2.0'
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+"""
+        assert expected_yaml in (basic_tmpcontext / "bakery.yaml").read_text()
+        assert (basic_tmpcontext / "test-image" / "2.0").is_dir()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "Containerfile.ubuntu2204.min").is_file()
+        assert """FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/local/bin/pti
+
+### ARG declarations ###
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="2.0.0"
+
+### Install Apt Packages ###
+COPY test-image/2.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+
+RUN pti container syspkg upgrade --dist \\
+    && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \\
+    && rm -f /tmp/ubuntu2204_packages.txt \\
+    && pti container syspkg clean
+""" == (basic_tmpcontext / "test-image" / "2.0" / "Containerfile.ubuntu2204.min").read_text()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "Containerfile.ubuntu2204.std").is_file()
+        assert """FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/local/bin/pti
+
+### ARG declarations ###
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="2.0.0"
+
+### Install Apt Packages ###
+COPY test-image/2.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+COPY test-image/2.0/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+RUN pti container syspkg upgrade --dist \\
+    && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \\
+    && rm -f /tmp/ubuntu2204_packages.txt \\
+    && pti container syspkg install -f /tmp/ubuntu2204_optional_packages.txt \\
+    && rm -f /tmp/ubuntu2204_optional_packages.txt \\
+    && pti container syspkg clean
+""" == (basic_tmpcontext / "test-image" / "2.0" / "Containerfile.ubuntu2204.std").read_text()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "deps").is_dir()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "test").is_dir()
+        assert (basic_tmpcontext / "test-image" / "2.0" / "test" / "goss.yaml").is_file()
+
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
         config = BakeryConfig(complex_yaml)

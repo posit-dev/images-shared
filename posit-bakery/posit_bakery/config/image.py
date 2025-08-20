@@ -602,7 +602,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": version,
                 "Variant": variant or "",
             },
-            "VersionPath": str(version_path or (self.path / version).relative_to(self.parent.path)),
+            "VersionPath": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             "ImagePath": str(self.path.relative_to(self.parent.path)),
             "BasePath": ".",
         }
@@ -710,8 +710,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 if v.latest:
                     if v.os:
                         os = deepcopy(v.os)
-                    if v.extraRegistries:
-                        registries = deepcopy(v.extraRegistries)
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
@@ -722,6 +720,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 args["os"] = os
             if registries is not None:
                 args["registries"] = registries
+            if latest:
+                args["latest"] = True
 
             image_version = ImageVersion(**args)
             self.versions.append(image_version)

@@ -255,6 +255,7 @@ class BakeryConfig:
         :raises FileNotFoundError: If the config file does not exist.
         """
         self.yaml = YAML()
+        self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.config_file = Path(config_file)
         if not self.config_file.exists():
@@ -313,6 +314,29 @@ class BakeryConfig:
     def write(self) -> None:
         """Write the bakery config to the config file."""
         self.yaml.dump(self._config_yaml, self.config_file)
+
+    def _get_image_index(self, image_name: str) -> int:
+        """Returns the index of the image with the given name in the config.
+
+        :param image_name: The name of the image to find.
+        :return: The index of the image in the config, or -1 if not found.
+        """
+        for index, image in enumerate(self._config_yaml.get("images", [])):
+            if image.get("name") == image_name:
+                return index
+        return -1
+
+    def _get_version_index(self, image_index: int, version_name: str) -> int:
+        """Returns the index of the version with the given name in the image's versions list.
+
+        :param image_index: The index of the image in the config.
+        :param version_name: The name of the version to find.
+        :return: The index of the version in the image's versions list, or -1 if not found.
+        """
+        for index, version in enumerate(self._config_yaml["images"][image_index].get("versions", [])):
+            if version.get("name") == version_name:
+                return index
+        return -1
 
     def create_image(
         self,
@@ -394,6 +418,27 @@ class BakeryConfig:
         new_version = image.create_version_model(
             version_name=version, subpath=subpath, latest=latest, update_if_exists=force
         )
+
+        # Add version to the YAML config.
+        image_index = self._get_image_index(image_name)
+        if latest:
+            # If this is the latest version, we need to remove the latest flag from any other versions.
+            for v in self._config_yaml["images"][image_index]["versions"]:
+                if v.get("latest", False) and v.get("name") != version:
+                    v.pop("latest", None)
+        if not existing_version:
+            self._config_yaml["images"][image_index]["versions"].append(
+                new_version.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+            )
+        else:
+            version_index = self._get_version_index(image_index, version)
+            self._config_yaml["images"][image_index]["versions"][version_index] = new_version.model_dump(
+                exclude_defaults=True, exclude_none=True, exclude_unset=True
+            )
+        # Sort versions.
+        self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v.get("name", ""), reverse=True)
+
+        # Create the version directory and files.
         image.create_version_files(new_version, image.variants, values)
 
         self.write()

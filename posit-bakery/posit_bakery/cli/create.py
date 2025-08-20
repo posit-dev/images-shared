@@ -141,3 +141,5 @@ def version(
         log.exception("Error creating version")
         stderr_console.print(f"❌ Failed to create version '{image_name}/{image_version}'", style="error")
         raise typer.Exit(code=1)
+
+    stderr_console.print(f"✅ Successfully created version '{image_name}/{image_version}'", style="success")
