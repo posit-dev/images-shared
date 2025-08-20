@@ -71,6 +71,11 @@ def check_success(bakery_command):
     assert bakery_command.result.exit_code == 0
 
 
+@then(parsers.parse("The command exits with code {exit_code:d}"))
+def check_exit_code(bakery_command, exit_code: int):
+    assert bakery_command.result.exit_code == exit_code
+
+
 @then("The command fails")
 def check_failure(bakery_command):
     assert bakery_command.result.exit_code != 0
