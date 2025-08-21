@@ -1,6 +1,6 @@
 import re
 
-from pytest_bdd import scenarios, then, parsers
+from pytest_bdd import scenarios, then
 
 scenarios(
     "cli/bakery.feature",

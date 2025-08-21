@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
 from test.helpers import yaml_file_testcases, FileTestResultEnum
 
-
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import Field, computed_field
+from pydantic import Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 

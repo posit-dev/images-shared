@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Self, Union
 
 import jinja2
-from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl, field_serializer
+from pydantic import BaseModel, Field, model_validator, field_validator, HttpUrl, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry

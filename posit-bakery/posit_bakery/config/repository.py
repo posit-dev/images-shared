@@ -3,7 +3,7 @@ from functools import cached_property
 from typing import Annotated, Any
 
 import git
-from pydantic import HttpUrl, NameEmail, Field, field_validator, AnyUrl, computed_field
+from pydantic import HttpUrl, NameEmail, Field, field_validator, computed_field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 

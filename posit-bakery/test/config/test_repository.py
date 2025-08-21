@@ -6,7 +6,6 @@ from pydantic import ValidationError, NameEmail
 from posit_bakery.config.config import BakeryConfigDocument
 from posit_bakery.config.repository import Repository
 
-
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,
