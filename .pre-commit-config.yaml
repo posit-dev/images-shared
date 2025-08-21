@@ -24,6 +24,7 @@ repos:
     -   id: no-commit-to-branch
         args: [--branch, main]
     -   id: pretty-format-json
+        exclude: "^.*testdata.*plan.json$"
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace
         exclude: "docs/_extensions"

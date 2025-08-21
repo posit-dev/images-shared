@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from ruamel.yaml import YAML
 
 from posit_bakery.models.config.document import ConfigDocument
-from ..helpers import yaml_file_testcases
+from test.helpers import yaml_file_testcases
 
 
 @pytest.mark.config

@@ -1,7 +1,16 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from pydantic import ValidationError, NameEmail
 
+from posit_bakery.config.config import BakeryConfigDocument
 from posit_bakery.config.repository import Repository
+
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
 
 
 @pytest.mark.config
@@ -43,3 +52,25 @@ class TestRepository:
         """Test that Repository requires at least a URL"""
         with pytest.raises(ValidationError):
             Repository()
+
+    def test_revision_no_parent(self):
+        """Test that revision returns None when no parent is set"""
+        r = Repository(url="https://github.com/rstudio/example")
+        assert r.revision is None
+
+    def test_revision_with_parent_non_repo(self, tmpdir):
+        """Test that revision returns None when parent is not a git repository"""
+        parent = MagicMock(spec=BakeryConfigDocument)
+        parent.path = tmpdir
+        r = Repository(parent=parent, url="https://github.com/rstudio/example")
+        assert r.revision is None
+
+    def test_revision_with_parent_repo(self, tmpdir):
+        """Test that revision returns the git commit SHA when parent is a git repository"""
+        parent = MagicMock(spec=BakeryConfigDocument)
+        parent.path = tmpdir
+        with patch("git.Repo") as mock_repo:
+            mock_repo.return_value.head.object.hexsha = "abc123"
+            r = Repository(parent=parent, url="https://github.com/rstudio/example")
+            assert r.revision == "abc123"
+            mock_repo.assert_called_once_with(tmpdir, search_parent_directories=True)

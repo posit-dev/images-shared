@@ -1,11 +1,18 @@
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig
-from test.models.helpers import yaml_unified_file_testcases, FileTestResultEnum
+from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
+from test.helpers import yaml_unified_file_testcases, FileTestResultEnum
+
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
 
 
 class TestBakeryConfigDocument:
@@ -89,6 +96,7 @@ class TestBakeryConfigDocument:
             images=[{"name": "my-image"}],
         )
         assert d.images[0].parent is d
+        assert d.repository.parent is d
 
     def test_path(self):
         """Test that the path property returns the base path."""
@@ -111,11 +119,23 @@ class TestBakeryConfigDocument:
         # Test for a non-existent image
         assert d.get_image("non-existent") is None
 
-    def test_create_image(self):
+    def test_create_image_files_template(self, basic_unified_tmpcontext):
+        """Test that create_image_files_template creates the correct directory structure."""
+        assert not (basic_unified_tmpcontext / "new-image").is_dir()
+        d = BakeryConfigDocument(base_path=basic_unified_tmpcontext, repository={"url": "https://example.com/repo"})
+        d.create_image_files_template(basic_unified_tmpcontext / "new-image", "new-image", "ubuntu:22.04")
+        assert (basic_unified_tmpcontext / "new-image").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").exists()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "deps" / "packages.txt.jinja2").is_file()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "test").is_dir()
+        assert (basic_unified_tmpcontext / "new-image" / "template" / "test" / "goss.yaml.jinja2").is_file()
+
+    def test_create_image_model(self):
         """Test that create_image adds a new image to the config."""
         base_path = Path(os.getcwd())
         d = BakeryConfigDocument(base_path=base_path, repository={"url": "https://example.com/repo"})
-        new_image = d.create_image("new-image")
+        new_image = d.create_image_model("new-image")
         assert new_image.name == "new-image"
         assert len(d.images) == 1
         assert d.images[0] is new_image
@@ -156,3 +176,58 @@ class TestBakeryConfig:
         """Test that a FileNotFoundError is raised if the config file does not exist."""
         with pytest.raises(FileNotFoundError, match="File '.*' does not exist."):
             BakeryConfig("non_existent_config.yaml")
+
+    def test_new(self, tmpdir):
+        """Test creating a new BakeryConfig creates a valid bakery.yaml in a given directory."""
+        with patch("posit_bakery.util.try_get_repo_url") as mock_repo_url:
+            mock_repo_url.return_value = "https://example.com/repo"
+            BakeryConfig.new(Path(tmpdir))
+
+        assert (Path(tmpdir) / "bakery.yaml").is_file()
+        BakeryConfig(Path(tmpdir) / "bakery.yaml")
+
+    def test_target_filtering_no_filter(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+        config = BakeryConfig(complex_yaml)
+        assert len(config.targets) == 10
+
+    def test_target_filtering_filter_image(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+
+        _filter = BakeryConfigFilter(image_name=r"package-manager-init")
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 2
+
+        _filter = BakeryConfigFilter(image_name=r"^package-manager$")
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 8
+
+    def test_target_filtering_filter_variant(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+
+        _filter = BakeryConfigFilter(image_variant="std")
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 6
+
+    def test_target_filtering_filter_version(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+
+        _filter = BakeryConfigFilter(image_version="2025.04.2-8")
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 6
+
+    def test_target_filtering_filter_os(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+
+        _filter = BakeryConfigFilter(image_os="Ubuntu 24.04")
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 3
+
+    def test_target_filtering_filter_multi(self, testdata_path):
+        complex_yaml = testdata_path / "unified_config" / "valid" / "complex.yaml"
+
+        _filter = BakeryConfigFilter(
+            image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"
+        )
+        config = BakeryConfig(complex_yaml, _filter=_filter)
+        assert len(config.targets) == 2

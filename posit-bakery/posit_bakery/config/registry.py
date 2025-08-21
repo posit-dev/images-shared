@@ -6,18 +6,25 @@ from posit_bakery.config.shared import BakeryYAMLModel
 
 
 class Registry(BakeryYAMLModel):
-    host: str
-    namespace: Annotated[str | None, Field(default=None)]
+    """Model representing an image registry in the Bakery configuration."""
 
-    @computed_field
+    host: Annotated[str, Field(description="Hostname of the registry.", examples=["docker.io", "ghcr.io"])]
+    namespace: Annotated[
+        str | None,
+        Field(default=None, description="Namespace or organization in the registry.", examples=["posit", "myorg"]),
+    ]
+
     @property
     def base_url(self) -> str:
-        """Get the base URL for the registry"""
+        """Get the base URL for the registry.
+
+        :return: The base URL of the registry, including the namespace if provided.
+        """
         u: str = f"{self.host}"
         if self.namespace:
             u = f"{u}/{self.namespace}"
         return u
 
     def __hash__(self) -> int:
-        """Unique hash for a ConfigRegistry object"""
+        """Unique hash for a Registry object."""
         return hash(self.base_url)

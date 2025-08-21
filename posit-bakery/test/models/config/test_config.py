@@ -64,7 +64,7 @@ class TestConfig:
         assert basic_config_obj.repository_url == "github.com/posit-dev/images-shared"
         assert basic_config_obj.vendor == "Posit Software, PBC"
         assert basic_config_obj.maintainer == "docker@posit.co"
-        assert len(basic_config_obj.registries) == 2
+        assert len(basic_config_obj.extraRegistries) == 2
         assert "docker.io/posit" in basic_config_obj.registry_urls
         assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
 
@@ -86,12 +86,12 @@ class TestConfig:
         assert basic_config_obj.repository_url == "github.com/rstudio/example"
         assert basic_config_obj.vendor == "Example Company"
         assert basic_config_obj.maintainer == "images@example.com"
-        assert len(basic_config_obj.registries) == 2
+        assert len(basic_config_obj.extraRegistries) == 2
         assert "docker.io/posit" in basic_config_obj.registry_urls
         assert "ghcr.io/posit-dev" in basic_config_obj.registry_urls
 
         # Test overriding registry
         c_override.registries = [ConfigRegistry(host="docker.io", namespace="example")]
         basic_config_obj.update(c_override)
-        assert len(basic_config_obj.registries) == 1
+        assert len(basic_config_obj.extraRegistries) == 1
         assert "docker.io/example" in basic_config_obj.registry_urls
