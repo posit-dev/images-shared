@@ -321,18 +321,20 @@ class BakeryConfig:
         :param image_name: The name of the image to find.
         :return: The index of the image in the config, or -1 if not found.
         """
+
         for index, image in enumerate(self._config_yaml.get("images", [])):
             if image.get("name") == image_name:
                 return index
         return -1
 
-    def _get_version_index(self, image_index: int, version_name: str) -> int:
+    def _get_version_index(self, image_name: str, version_name: str) -> int:
         """Returns the index of the version with the given name in the image's versions list.
 
-        :param image_index: The index of the image in the config.
+        :param image_name: The name of the image in the config to which the version belongs.
         :param version_name: The name of the version to find.
         :return: The index of the version in the image's versions list, or -1 if not found.
         """
+        image_index = self._get_image_index(image_name)
         for index, version in enumerate(self._config_yaml["images"][image_index].get("versions", [])):
             if version.get("name") == version_name:
                 return index
@@ -431,7 +433,7 @@ class BakeryConfig:
                 new_version.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
             )
         else:
-            version_index = self._get_version_index(image_index, version)
+            version_index = self._get_version_index(image_name, version)
             self._config_yaml["images"][image_index]["versions"][version_index] = new_version.model_dump(
                 exclude_defaults=True, exclude_none=True, exclude_unset=True
             )
