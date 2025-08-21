@@ -143,7 +143,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         exists: bool = image_path.is_dir()
         if not exists:
             log.debug(f"Creating new image directory [bold]{image_path}")
-            image_path.mkdir()
+            image_path.mkdir(parents=True)
 
         image_template_path = image_path / "template"
         if not image_template_path.is_dir():
@@ -423,13 +423,13 @@ class BakeryConfig:
 
         # Add version to the YAML config.
         image_index = self._get_image_index(image_name)
-        if latest:
+        if latest and self._config_yaml["images"][image_index].get("versions", []):
             # If this is the latest version, we need to remove the latest flag from any other versions.
             for v in self._config_yaml["images"][image_index]["versions"]:
                 if v.get("latest", False) and v["name"] != version:
                     v.pop("latest", None)
         if not existing_version:
-            self._config_yaml["images"][image_index]["versions"].append(
+            self._config_yaml["images"][image_index].setdefault("versions", []).append(
                 new_version.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
             )
         else:

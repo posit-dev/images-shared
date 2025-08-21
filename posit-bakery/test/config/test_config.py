@@ -7,15 +7,12 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
-from test.helpers import yaml_file_testcases, FileTestResultEnum
+from test.helpers import yaml_file_testcases, FileTestResultEnum, IMAGE_INDENT, VERSION_INDENT
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,
 ]
-
-IMAGE_INDENT = " " * 2
-VERSION_INDENT = " " * 6
 
 
 class TestBakeryConfigDocument:
@@ -246,6 +243,33 @@ class TestBakeryConfig:
             in (barebones_tmpcontext / "image" / "template" / "Containerfile.ubuntu2404.jinja2").read_text()
         )
 
+    def test_create_image_nested_subpath(self, barebones_tmpcontext):
+        """Test creating a new image in the BakeryConfig with a nested subpath."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        config.create_image(
+            "new-image",
+            subpath="new/image",
+        )
+        assert len(config.model.images) == 2
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+        - name: new-image
+          subpath: new/image
+        """),
+            IMAGE_INDENT,
+        )
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "new" / "image").is_dir()
+        assert (barebones_tmpcontext / "new" / "image" / "template").is_dir()
+        assert (barebones_tmpcontext / "new" / "image" / "template" / "Containerfile.ubuntu2204.jinja2").is_file()
+
+        # Check that the path works correctly in the model.
+        image = config.model.get_image("new-image")
+        assert image is not None
+        assert image.subpath == "new/image"
+        assert image.path == (barebones_tmpcontext / "new" / "image")
+
     def test_create_version_exists(self, barebones_tmpcontext):
         """Test creating an existing version in the BakeryConfig generates an error."""
         config = BakeryConfig.from_context(barebones_tmpcontext)
@@ -294,6 +318,45 @@ class TestBakeryConfig:
         assert (barebones_tmpcontext / "scratch" / "2.0.0" / "deps" / "packages.txt").is_file()
         assert (barebones_tmpcontext / "scratch" / "2.0.0" / "test").is_dir()
         assert (barebones_tmpcontext / "scratch" / "2.0.0" / "test" / "goss.yaml").is_file()
+
+    def test_create_version_nested_subpath(self, barebones_tmpcontext):
+        """Test creating a new version in the BakeryConfig with a nested subpath."""
+        config = BakeryConfig.from_context(barebones_tmpcontext)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+
+        config.create_version("scratch", "2.0.0", subpath="2/0/0")
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 2
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+                - name: 2.0.0
+                  subpath: 2/0/0
+                  latest: true
+                  os:
+                    - name: Scratch
+                      primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_yaml in (barebones_tmpcontext / "bakery.yaml").read_text()
+        assert (barebones_tmpcontext / "scratch" / "2" / "0" / "0").is_dir()
+        assert (barebones_tmpcontext / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.min").is_file()
+        expected_containerfile = textwrap.dedent("""\
+        FROM scratch
+
+        COPY scratch/2/0/0/deps/packages.txt /tmp/packages.txt
+        """)
+        assert (
+            expected_containerfile
+            == (barebones_tmpcontext / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.min").read_text()
+        )
+        assert (barebones_tmpcontext / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.std").is_file()
+        assert (
+            expected_containerfile
+            == (barebones_tmpcontext / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.std").read_text()
+        )
 
     def test_create_version_exists_force(self, barebones_tmpcontext):
         """Test creating an existing version in the BakeryConfig with force works."""

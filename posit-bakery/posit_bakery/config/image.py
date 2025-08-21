@@ -632,7 +632,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         # Create new version directory
         if not version.path.is_dir():
             log.debug(f"Creating new image version directory [bold]{version.path}")
-            version.path.mkdir()
+            version.path.mkdir(parents=True)
 
         env = jinja2_env(
             loader=jinja2.FileSystemLoader(version.parent.template_path),

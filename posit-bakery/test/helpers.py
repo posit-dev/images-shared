@@ -37,3 +37,7 @@ def yaml_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path
 
 def try_format_values(value_list: List[str], **kwargs):
     return [value.format(**kwargs) for value in value_list]
+
+
+IMAGE_INDENT = " " * 2
+VERSION_INDENT = " " * 6
