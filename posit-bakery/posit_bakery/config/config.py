@@ -336,7 +336,7 @@ class BakeryConfig:
         """
         image_index = self._get_image_index(image_name)
         for index, version in enumerate(self._config_yaml["images"][image_index].get("versions", [])):
-            if version.get("name") == version_name:
+            if version["name"] == version_name:
                 return index
         return -1
 
@@ -426,7 +426,7 @@ class BakeryConfig:
         if latest:
             # If this is the latest version, we need to remove the latest flag from any other versions.
             for v in self._config_yaml["images"][image_index]["versions"]:
-                if v.get("latest", False) and v.get("name") != version:
+                if v.get("latest", False) and v["name"] != version:
                     v.pop("latest", None)
         if not existing_version:
             self._config_yaml["images"][image_index]["versions"].append(
@@ -438,7 +438,7 @@ class BakeryConfig:
                 exclude_defaults=True, exclude_none=True, exclude_unset=True
             )
         # Sort versions.
-        self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v.get("name", ""), reverse=True)
+        self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v["name"], reverse=True)
 
         # Create the version directory and files.
         image.create_version_files(new_version, image.variants, values)
