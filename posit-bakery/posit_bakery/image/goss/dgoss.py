@@ -140,6 +140,7 @@ class DGossCommand(BaseModel):
             cmd.extend(["-e", f"{env_var}={value}"])
         cmd.append("--init")
         if self.runtime_options:
+            # TODO: We may want to validate this to ensure options are not duplicated.
             cmd.extend(self.runtime_options.split())
         cmd.append(self.image_target.tags[0])
         cmd.extend(self.image_command.split())
