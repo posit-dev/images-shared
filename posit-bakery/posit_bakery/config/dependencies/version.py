@@ -40,17 +40,43 @@ class VersionConstraint(BakeryYAMLModel):
     min: Annotated[str | None, Field(default=None, description="Minimum version to include.")]
 
     @model_validator(mode="after")
+    def validate_minimum_required_fields(self) -> Self:
+        """Ensure we have enough fields to calculate a list of versions."""
+
+        if self.latest and all([f is None for f in [self.count, self.max, self.min]]):
+            # Default to 1 version if latest is True and no other fields are set.
+            self.count = 1
+            return self
+
+        if all([f is None for f in [self.latest, self.max]]):
+            raise ValueError("Version constraint must specify 'latest' or 'max'.")
+
+        return self
+
+    @model_validator(mode="after")
     def validate_versions_constraint_mutually_exclusive(self) -> Self:
         """Ensure that the versions constraint is valid."""
 
         if self.latest is not None:
             if self.max is not None:
                 raise ValueError("Cannot specify both 'latest' and 'max' in versions constraint.")
-            if self.min is not None:
-                raise ValueError("Cannot specify both 'latest' and 'min' in versions constraint.")
 
         if self.count is not None:
+            if self.latest is not None and self.min is not None:
+                raise ValueError("Cannot specify 'count' with both 'latest' and 'min' in versions constraint.")
             if self.max is not None and self.min is not None:
                 raise ValueError("Cannot specify 'count' with both 'max' and 'min' in versions constraint.")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_max_min(self) -> Self:
+        """Ensure that the versions constraint has valid value combinations."""
+
+        if self.max is not None and self.min is not None:
+            max_version = DependencyVersion(self.max)
+            min_version = DependencyVersion(self.min)
+            if min_version > max_version:
+                raise ValueError("Cannot specify 'min' that is greater than 'max' in version constraint.")
 
         return self

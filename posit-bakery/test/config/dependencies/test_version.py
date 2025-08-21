@@ -100,40 +100,69 @@ class TestVersionConstraint:
     @pytest.mark.parametrize(
         "count,latest",
         [
-            pytest.param(None, True, id="latest_only"),
-            pytest.param(1, None, id="count_only"),
-        ],
-    )
-    def test_version_constraint_latest_valid(self, count, latest):
-        """Test that a version constraint with latest set to True is accepted."""
-        ver = VersionConstraint(count=count, latest=latest)
-
-        assert ver.count == count
-        assert ver.latest == latest
-
-    @pytest.mark.parametrize(
-        "count,latest",
-        [
             pytest.param(0, None, id="count_zero"),
             pytest.param(-15, None, id="count_negative"),
             pytest.param(None, 67, id="latest_int"),
             pytest.param(None, 3.14, id="latest_float"),
         ],
     )
-    def test_version_constraint_latest_invalid(self, count, latest):
-        """Test that a version constraint with latest set to True is accepted."""
+    def test_version_constraint_invalid_values(self, count, latest):
+        """Test that a version constraint with latest or count set passes validation."""
         with pytest.raises(ValueError):
             VersionConstraint(count=count, latest=latest)
 
     @pytest.mark.parametrize(
         "count,latest,max,min",
         [
-            pytest.param(None, True, "2.0.0", None, id="latest_max"),
-            pytest.param(None, True, None, "1.0.0", id="latest_min"),
+            pytest.param(None, True, None, None, id="latest_only"),
+            pytest.param(None, None, "2.0.0", None, id="max_only"),
+            pytest.param(5, True, None, None, id="count_latest"),
+            pytest.param(5, None, "3.0.0", None, id="count_max"),
+            pytest.param(None, None, "3.0.0", "2.0.0", id="max_min"),
+        ],
+    )
+    def test_version_constraint_minimal_definition(self, count, latest, max, min):
+        """Test that a version constraint with latest, max, and min is mutually exclusive."""
+        ver = VersionConstraint(count=count, latest=latest, max=max, min=min)
+
+        # We exclude testing count because it may be computed from latest, max, and min.
+        assert ver.latest == latest
+        assert ver.max == max
+        assert ver.min == min
+
+    @pytest.mark.parametrize(
+        "count,latest,max,min",
+        [
+            pytest.param(None, None, None, None, id="all_none"),
+            pytest.param(5, None, None, None, id="count_only"),
+            pytest.param(None, None, None, "2.0.0", id="min_only"),
+        ],
+    )
+    def test_version_constraint_incomplete_definition(self, count, latest, max, min):
+        """Test that an incomplete version constraint fails validation."""
+        with pytest.raises(ValueError):
+            VersionConstraint(count=count, latest=latest, max=max, min=min)
+
+    @pytest.mark.parametrize(
+        "count,latest,max,min",
+        [
+            pytest.param(None, True, "3.0.0", None, id="latest_max"),
+            pytest.param(5, True, None, "2.0.0", id="latest_max_min"),
             pytest.param(5, None, "3.0.0", "2.0.0", id="count_max_min"),
         ],
     )
     def test_version_constraint_mutually_exclusive(self, count, latest, max, min):
-        """Test that a version constraint with latest, max, and min is mutually exclusive."""
+        """Test that mutually exclusive fields in a version constraint raise ValueError."""
+        with pytest.raises(ValueError):
+            VersionConstraint(count=count, latest=latest, max=max, min=min)
+
+    @pytest.mark.parametrize(
+        "count,latest,max,min",
+        [
+            pytest.param(None, None, "2.0.0", "3.0.0", id="max-min-inverted"),
+        ],
+    )
+    def test_version_constraint_combo_invalid(self, count, latest, max, min):
+        """Test that a version constraint with an invalid combination raises ValueError."""
         with pytest.raises(ValueError):
             VersionConstraint(count=count, latest=latest, max=max, min=min)
