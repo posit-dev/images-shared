@@ -232,7 +232,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         """
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / self.subpath
+        return Path(self.parent.path) / Path(self.subpath)
 
     @property
     def all_registries(self) -> list[Registry]:
@@ -515,7 +515,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         """Returns the path to the image directory."""
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent BakeryConfig must resolve a valid path.")
-        return Path(self.parent.path) / self.subpath
+        return Path(self.parent.path) / Path(self.subpath)
 
     @property
     def template_path(self) -> Path:
