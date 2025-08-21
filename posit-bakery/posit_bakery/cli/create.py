@@ -33,6 +33,7 @@ def project(
     try:
         BakeryConfig.from_context(context)
         stderr_console.print(f"Project already exists in '{context}'", style="info")
+        typer.Exit(code=1)
     except error.BakeryFileError:
         log.info(f"No project found, creating a new project in '{context}'")
         BakeryConfig.new(context)
