@@ -28,6 +28,7 @@ Feature: build
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
+        * the basic test suite is built
 
     @slow
     Scenario: Building images from a project using sequential build
@@ -39,3 +40,4 @@ Feature: build
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
+        * the basic test suite is built
