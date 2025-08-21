@@ -38,7 +38,7 @@ def build(
     plan: Annotated[Optional[bool], typer.Option(help="Print the bake plan and exit.")] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
-    no_cache: Annotated[Optional[bool], typer.Option(help="Disable caching for build.")] = False,
+    cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
     """Builds images in the context path using buildx bake
@@ -69,7 +69,7 @@ def build(
         raise typer.Exit(code=0)
 
     try:
-        config.build_targets(load=load, push=push, cache=not no_cache, strategy=strategy, fail_fast=fail_fast)
+        config.build_targets(load=load, push=push, cache=cache, strategy=strategy, fail_fast=fail_fast)
     except:
         log.exception("Error building images")
         stderr_console.print(f"❌ Build failed", style="error")
