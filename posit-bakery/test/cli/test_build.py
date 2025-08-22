@@ -2,10 +2,7 @@ import json
 
 import pytest
 import python_on_whales
-from pytest_bdd import scenarios, then, parsers, scenario
-
-from posit_bakery.config import BakeryConfig
-from test.helpers import remove_images
+from pytest_bdd import scenarios, then, parsers
 
 scenarios(
     "cli/build.feature",
@@ -41,11 +38,15 @@ def check_revision_label(bakery_command):
 
 
 @then(parsers.parse("the {suite_name} test suite is built"))
-def check_build_artifacts(resource_path, bakery_command, suite_name):
+def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_obj):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
-    config = BakeryConfig.from_context(suite_path)
+    config = get_config_obj(suite_name)
     for target in config.targets:
         for tag in target.tags:
             python_on_whales.docker.image.exists(tag)
+            for label, value in target.labels.items():
+                image = python_on_whales.docker.image.inspect(tag)
+                assert label in image.config.labels
+                assert image.config.labels[label] == value

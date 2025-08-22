@@ -67,8 +67,9 @@ class TestDGossCommand:
             with pytest.raises(ValidationError, match="dgoss binary path must be specified"):
                 DGossCommand.from_image_target(image_target=basic_standard_image_target)
 
-    def test_validate_no_test_path(self, basic_tmpconfig):
+    def test_validate_no_test_path(self, get_tmpconfig):
         """Test that DGossCommand validate raises an error if the test path does not exist."""
+        basic_tmpconfig = get_tmpconfig("basic")
         shutil.rmtree(basic_tmpconfig.targets[0].context.version_path / "test")
         with pytest.raises(ValidationError, match="No test directory was found"):
             DGossCommand.from_image_target(image_target=basic_tmpconfig.targets[0])
@@ -141,8 +142,9 @@ class TestDGossCommand:
 
 
 class TestDGossSuite:
-    def test_init(self, basic_config_obj):
+    def test_init(self, get_config_obj):
         """Test that DGossSuite initializes with the correct attributes."""
+        basic_config_obj = get_config_obj("basic")
         dgoss_suite = DGossSuite(basic_config_obj.base_path, basic_config_obj.targets)
         assert dgoss_suite.context == basic_config_obj.base_path
         assert dgoss_suite.image_targets == basic_config_obj.targets
@@ -150,8 +152,9 @@ class TestDGossSuite:
 
     @pytest.mark.slow
     @pytest.mark.xdist_group(name="build")
-    def test_run(self, basic_tmpconfig):
+    def test_run(self, get_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
+        basic_tmpconfig = get_tmpconfig("basic")
         basic_tmpconfig.build_targets()
 
         dgoss_suite = DGossSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
@@ -167,4 +170,4 @@ class TestDGossSuite:
             with open(results_file) as f:
                 json.load(f)
 
-        remove_images(config_obj=basic_tmpconfig)
+        remove_images(basic_tmpconfig)

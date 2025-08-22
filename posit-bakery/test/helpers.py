@@ -24,6 +24,8 @@ class FileTestResultEnum(str, enum.Enum):
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
+SUCCESS_SUITES = ["basic", "barebones"]
+
 
 def yaml_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
     """Find all YAML files in a directory for use
@@ -46,14 +48,14 @@ def try_format_values(value_list: List[str], **kwargs):
     return [value.format(**kwargs) for value in value_list]
 
 
-def remove_images(config_obj: BakeryConfig | None = None, target: ImageTarget | None = None):
+def remove_images(obj: BakeryConfig | ImageTarget | None = None):
     """Remove any images created during testing."""
-    if config_obj:
-        for target in config_obj.targets:
+    if isinstance(obj, BakeryConfig):
+        for target in obj.targets:
             for tag in target.tags:
                 python_on_whales.docker.image.remove(tag)
-    elif target:
-        for tag in target.tags:
+    elif isinstance(obj, ImageTarget):
+        for tag in obj.tags:
             python_on_whales.docker.image.remove(tag)
     else:
         raise ValueError("Either config_obj or target must be provided.")

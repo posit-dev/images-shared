@@ -52,11 +52,13 @@ class TestRepository:
         with pytest.raises(ValidationError):
             Repository()
 
+    @pytest.mark.disable_patch_revision
     def test_revision_no_parent(self):
         """Test that revision returns None when no parent is set"""
         r = Repository(url="https://github.com/rstudio/example")
         assert r.revision is None
 
+    @pytest.mark.disable_patch_revision
     def test_revision_with_parent_non_repo(self, tmpdir):
         """Test that revision returns None when parent is not a git repository"""
         parent = MagicMock(spec=BakeryConfigDocument)
@@ -64,6 +66,7 @@ class TestRepository:
         r = Repository(parent=parent, url="https://github.com/rstudio/example")
         assert r.revision is None
 
+    @pytest.mark.disable_patch_revision
     def test_revision_with_parent_repo(self, tmpdir):
         """Test that revision returns the git commit SHA when parent is a git repository"""
         parent = MagicMock(spec=BakeryConfigDocument)
