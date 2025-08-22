@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from posit_bakery.image import DGossSuite
 from posit_bakery.image.goss.dgoss import DGossCommand, find_dgoss_bin
+from test.helpers import remove_images
 
 pytestmark = [
     pytest.mark.unit,
@@ -148,6 +149,7 @@ class TestDGossSuite:
         assert len(dgoss_suite.dgoss_commands) == 2
 
     @pytest.mark.slow
+    @pytest.mark.xdist_group(name="build")
     def test_run(self, basic_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
         basic_tmpconfig.build_targets()
@@ -164,3 +166,5 @@ class TestDGossSuite:
             assert results_file.exists()
             with open(results_file) as f:
                 json.load(f)
+
+        remove_images(config_obj=basic_tmpconfig)

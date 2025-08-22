@@ -7,6 +7,7 @@ from pytest_mock import MockFixture
 
 from posit_bakery.image.bake import BakePlan
 from posit_bakery.image.bake.bake import BakeTarget, BakeGroup
+from test.helpers import remove_images
 
 pytestmark = [
     pytest.mark.unit,
@@ -201,6 +202,7 @@ class TestBakePlan:
             pytest.param("basic_tmpconfig", id="basic"),
         ],
     )
+    @pytest.mark.xdist_group(name="build")
     def test_build(
         self,
         request,
@@ -216,4 +218,9 @@ class TestBakePlan:
         for bake_target in plan.target.values():
             for tag in bake_target.tags:
                 assert python_on_whales.docker.image.exists(tag)
-                # python_on_whales.docker.image.remove(tag)
+                for key, value in bake_target.labels.items():
+                    meta = python_on_whales.docker.image.inspect(tag)
+                    assert key in meta.config.labels
+                    assert value == meta.config.labels[key]
+
+        remove_images(config_obj=config_obj)

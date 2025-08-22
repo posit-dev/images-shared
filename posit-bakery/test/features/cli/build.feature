@@ -21,6 +21,7 @@ Feature: build
         * the targets include the commit hash
 
     @slow
+    @xdist-build
     Scenario: Building images from a project using bake
         Given I call bakery build
         * in a temp basic context
@@ -29,8 +30,10 @@ Feature: build
         * the stderr output includes:
             | Build completed |
         * the basic test suite is built
+        * the basic images are removed
 
     @slow
+    @xdist-build
     Scenario: Building images from a project using sequential build
         Given I call bakery build
         * in a temp basic context
@@ -41,3 +44,4 @@ Feature: build
         * the stderr output includes:
             | Build completed |
         * the basic test suite is built
+        * the basic images are removed

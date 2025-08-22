@@ -2,7 +2,8 @@
 Feature: dgoss
 
     @slow
-    Scenario: bakery run dgoss
+    @xdist-build
+    Scenario: Running dgoss tests against basic images
         Given I call bakery build
         * in a temp basic context
         When I execute the command

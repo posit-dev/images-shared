@@ -6,6 +6,17 @@ import pytest
 from pytest_bdd import given, when, then, parsers
 
 from test.cli.bakery_command import BakeryCommand
+from test.helpers import remove_images
+
+
+def pytest_bdd_apply_tag(tag, function):
+    """Modify scenario tags to be pytest-compatible."""
+    if tag == "xdist-build":
+        marker = pytest.mark.xdist_group("build")
+        marker(function)
+        return True
+    else:
+        return None
 
 
 @pytest.fixture
@@ -121,3 +132,9 @@ def check_context(bakery_command, datatable):
     for row in datatable:
         test_path = bakery_command.context / row[0]
         assert test_path.exists()
+
+
+@then(parsers.parse("the {suite_name} images are removed"))
+def remove_build_artifacts(request, resource_path, bakery_command, suite_name):
+    config_obj = request.getfixturevalue(f"{suite_name}_config_obj")
+    remove_images(config_obj=config_obj)

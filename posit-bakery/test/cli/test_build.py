@@ -2,9 +2,10 @@ import json
 
 import pytest
 import python_on_whales
-from pytest_bdd import scenarios, then, parsers
+from pytest_bdd import scenarios, then, parsers, scenario
 
 from posit_bakery.config import BakeryConfig
+from test.helpers import remove_images
 
 scenarios(
     "cli/build.feature",

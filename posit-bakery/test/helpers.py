@@ -4,6 +4,13 @@ from pathlib import Path
 from typing import List, Tuple
 
 import pytest
+import python_on_whales
+
+from posit_bakery.config import BakeryConfig
+from posit_bakery.image import ImageTarget
+
+IMAGE_INDENT = " " * 2
+VERSION_INDENT = " " * 6
 
 
 class FileTestResultEnum(str, enum.Enum):
@@ -39,5 +46,14 @@ def try_format_values(value_list: List[str], **kwargs):
     return [value.format(**kwargs) for value in value_list]
 
 
-IMAGE_INDENT = " " * 2
-VERSION_INDENT = " " * 6
+def remove_images(config_obj: BakeryConfig | None = None, target: ImageTarget | None = None):
+    """Remove any images created during testing."""
+    if config_obj:
+        for target in config_obj.targets:
+            for tag in target.tags:
+                python_on_whales.docker.image.remove(tag)
+    elif target:
+        for tag in target.tags:
+            python_on_whales.docker.image.remove(tag)
+    else:
+        raise ValueError("Either config_obj or target must be provided.")

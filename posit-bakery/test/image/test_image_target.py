@@ -7,7 +7,7 @@ import python_on_whales
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_target import ImageTarget
-
+from test.helpers import remove_images
 
 pytestmark = [
     pytest.mark.unit,
@@ -334,9 +334,15 @@ class TestImageTarget:
 
     @pytest.mark.build
     @pytest.mark.slow
+    @pytest.mark.xdist_group(name="build")
     def test_build(self, patch_datetime_now, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
         basic_standard_image_target.build()
         for tag in basic_standard_image_target.tags:
             assert python_on_whales.docker.image.exists(tag)
-            # python_on_whales.docker.image.remove(tag)
+            for key, value in basic_standard_image_target.labels.items():
+                meta = python_on_whales.docker.image.inspect(tag)
+                assert key in meta.config.labels
+                assert value == meta.config.labels[key]
+
+        remove_images(target=basic_standard_image_target)
