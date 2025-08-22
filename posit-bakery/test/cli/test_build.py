@@ -50,3 +50,14 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
                 image = python_on_whales.docker.image.inspect(tag)
                 assert label in image.config.labels
                 assert image.config.labels[label] == value
+
+
+@then(parsers.parse("the {suite_name} test suite is not built"))
+def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_obj):
+    suite_path = resource_path / suite_name
+    assert suite_path.is_dir()
+
+    config = get_config_obj(suite_name)
+    for target in config.targets:
+        for tag in target.tags:
+            assert not python_on_whales.docker.image.exists(tag)

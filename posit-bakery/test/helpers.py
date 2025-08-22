@@ -54,9 +54,15 @@ def remove_images(obj: BakeryConfig | ImageTarget | None = None):
     if isinstance(obj, BakeryConfig):
         for target in obj.targets:
             for tag in target.tags:
-                python_on_whales.docker.image.remove(tag)
+                try:
+                    python_on_whales.docker.image.remove(tag)
+                except python_on_whales.exceptions.DockerException:
+                    pass
     elif isinstance(obj, ImageTarget):
         for tag in obj.tags:
-            python_on_whales.docker.image.remove(tag)
+            try:
+                python_on_whales.docker.image.remove(tag)
+            except python_on_whales.exceptions.DockerException:
+                pass
     else:
         raise ValueError("Either config_obj or target must be provided.")

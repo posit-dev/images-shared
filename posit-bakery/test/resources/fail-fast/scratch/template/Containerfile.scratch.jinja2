@@ -2,6 +2,6 @@ FROM scratch
 
 COPY {{ VersionPath }}/deps/packages.txt /tmp/packages.txt
 
-{%- if Image.Variant == "Standard" %}
+{%- if Image.Variant == "Minimal" %}
 RUN exit 1
 {%- endif %}
