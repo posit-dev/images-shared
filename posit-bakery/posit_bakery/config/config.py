@@ -489,6 +489,7 @@ class BakeryConfig:
                             )
                         )
 
+        targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
 
     def bake_plan_targets(self) -> str:
