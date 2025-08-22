@@ -25,6 +25,7 @@ class FileTestResultEnum(str, enum.Enum):
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
 SUCCESS_SUITES = ["basic", "barebones"]
+FAIL_SUITES = ["fail-fast"]
 
 
 def yaml_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:

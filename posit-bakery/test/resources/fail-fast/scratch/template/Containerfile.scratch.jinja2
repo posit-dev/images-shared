@@ -1,0 +1,7 @@
+FROM scratch
+
+COPY {{ VersionPath }}/deps/packages.txt /tmp/packages.txt
+
+{%- if Image.Variant == "Standard" %}
+RUN exit 1
+{%- endif %}

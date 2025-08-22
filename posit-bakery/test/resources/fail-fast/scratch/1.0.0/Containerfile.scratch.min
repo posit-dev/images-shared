@@ -1,0 +1,3 @@
+FROM scratch
+
+COPY scratch/1.0.0/deps/packages.txt /tmp/packages.txt
