@@ -3,9 +3,9 @@ Feature: create project
 
   Scenario: Creating a new project when the project already exists
     Given I call bakery create project
-    * in a temp basic context
+    * in the basic context
     When I execute the command
-    Then The command succeeds
+    Then The command exits with code 1
     * the stderr output includes:
         | Project already exists |
 
@@ -14,6 +14,6 @@ Feature: create project
     * in a temp directory
     When I execute the command
     Then The command succeeds
-    * config.yaml exists
+    * bakery.yaml exists
     * the stderr output includes:
         | Project initialized in |

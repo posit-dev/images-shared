@@ -59,6 +59,7 @@ class DGossCommand(BaseModel):
     project_mountpoint: Literal["/tmp/project"] = "/tmp/project"
 
     test_path: Annotated[Path | None, Field(default_factory=lambda data: find_test_path(data["image_target"].context))]
+    runtime_options: Annotated[str | None, Field(default=None, description="Additional runtime options for dgoss.")]
     wait: Annotated[int, Field(default=0)]
     image_command: Annotated[str, Field(default="sleep infinity")]
 
@@ -108,11 +109,7 @@ class DGossCommand(BaseModel):
         if image_target.image_variant:
             goss_options = image_target.image_variant.get_tool_option("goss")
             if goss_options:
-                args["command"] = goss_options.command
-                args["wait"] = goss_options.wait
-        elif image_target.image_version.parent:
-            goss_options = image_target.image_version.parent.get_tool_option("goss")
-            if goss_options:
+                args["runtime_options"] = goss_options.runtimeOptions
                 args["command"] = goss_options.command
                 args["wait"] = goss_options.wait
         return cls(**args)
@@ -142,6 +139,9 @@ class DGossCommand(BaseModel):
         for env_var, value in self.image_environment.items():
             cmd.extend(["-e", f"{env_var}={value}"])
         cmd.append("--init")
+        if self.runtime_options:
+            # TODO: We may want to validate this to ensure options are not duplicated.
+            cmd.extend(self.runtime_options.split())
         cmd.append(self.image_target.tags[0])
         cmd.extend(self.image_command.split())
 

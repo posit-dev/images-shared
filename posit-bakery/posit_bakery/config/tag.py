@@ -6,6 +6,7 @@ from pydantic import Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.config.templating.render import jinja2_env
+from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 
 
 # TODO: Consider how to implement filter logic either as part of TagPattern or as part of images
@@ -47,11 +48,19 @@ class TagPattern(BakeryYAMLModel):
         """
         rendered_tags = []
         for pattern in self.patterns:
+            if "{{ OS }}" in pattern and not kwargs.get("OS"):
+                continue
+            if "{{ Variant }}" in pattern and not kwargs.get("Variant"):
+                continue
+
             env = jinja2_env()
             template = env.from_string(pattern)
             tag = template.render(**kwargs)
             tag = tag.strip()
-            tag = re.sub(r"[^a-zA-Z0-9_\-.]", "-", tag)  # Ensure tag is safe for use.
+            tag = tag.strip("-._")  # Ensure no leading or trailing separators.
+
+            # Ensure tag is safe for use.
+            tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag)
 
             rendered_tags.append(tag)
 

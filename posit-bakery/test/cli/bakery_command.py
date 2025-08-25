@@ -2,13 +2,12 @@
 from pathlib import Path
 from typing import List
 
-import pytest
 from typer.testing import CliRunner, Result
 
 from posit_bakery.cli.main import app
 
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class BakeryCommand:

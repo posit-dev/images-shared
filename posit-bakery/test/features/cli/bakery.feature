@@ -9,10 +9,11 @@ Feature: bakery
         Then The command succeeds
         * help is shown
 
+    # Exit code is expected to be 2 going forward per https://github.com/fastapi/typer/pull/1240
     Scenario: Bakery shows a help message when no commands or arguments are given
         Given I call bakery
         When I execute the command
-        Then The command succeeds
+        Then The command exits with code 2
         * help is shown
 
     Scenario: Bakery shows an error message for a bad flag

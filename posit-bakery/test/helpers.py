@@ -4,18 +4,13 @@ from pathlib import Path
 from typing import List, Tuple
 
 import pytest
-from _pytest.mark import ParameterSet
+import python_on_whales
 
-from posit_bakery.models.manifest.snyk import (
-    ManifestSnyk,
-    ManifestSnykTest,
-    ManifestSnykTestOutput,
-    ManifestSnykMonitor,
-    ManifestSnykSbom,
-    SNYK_DEFAULT_SEVERITY_THRESHOLD,
-    SNYK_DEFAULT_SBOM_FORMAT,
-    SnykContainerSubcommand,
-)
+from posit_bakery.config import BakeryConfig
+from posit_bakery.image import ImageTarget
+
+IMAGE_INDENT = " " * 2
+VERSION_INDENT = " " * 6
 
 
 class FileTestResultEnum(str, enum.Enum):
@@ -29,8 +24,11 @@ class FileTestResultEnum(str, enum.Enum):
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
+SUCCESS_SUITES = ["basic", "barebones"]
+FAIL_SUITES = ["fail-fast"]
 
-def yaml_file_testcases(schema_type: str, test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
+
+def yaml_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
     """Find all YAML files in a directory for use
 
     Example return:
@@ -41,24 +39,7 @@ def yaml_file_testcases(schema_type: str, test_result: FileTestResultEnum) -> Li
         ("name4", "/path/to/name4.yaml"),
     ]
     """
-    directory = TEST_DIRECTORY / "testdata" / schema_type / test_result
-    yaml_files = directory.glob("*.yaml")
-
-    return [pytest.param(f, id=f.stem) for f in yaml_files]
-
-
-def yaml_unified_file_testcases(test_result: FileTestResultEnum) -> List[Tuple[str, Path]]:
-    """Find all unified YAML files in a directory for use
-
-    Example return:
-    [
-        ("name1", "/path/to/name1.yaml"),
-        ("name2", "/path/to/name2.yaml"),
-        ("name3", "/path/to/name3.yaml"),
-        ("name4", "/path/to/name4.yaml"),
-    ]
-    """
-    directory = TEST_DIRECTORY / "testdata" / "unified_config" / test_result
+    directory = TEST_DIRECTORY / "testdata" / test_result
     yaml_files = directory.glob("*.yaml")
 
     return [pytest.param(f, id=f.stem) for f in yaml_files]
@@ -68,221 +49,20 @@ def try_format_values(value_list: List[str], **kwargs):
     return [value.format(**kwargs) for value in value_list]
 
 
-def snyk_test_argument_testcases() -> List[ParameterSet]:
-    return [
-        pytest.param(
-            ManifestSnyk(),
-            [
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="default",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(severity_threshold="high")),
-            ["--severity-threshold=high", "--app-vulns", "--exclude-base-image-vulns"],
-            id="override_severity_threshold",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(include_app_vulns=False)),
-            [
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--exclude-app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="exclude_app_vulns",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(include_base_image_vulns=True)),
-            [f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}", "--app-vulns"],
-            id="include_base_image_vulns",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(include_node_modules=False)),
-            [
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-                "--exclude-node-modules",
-            ],
-            id="exclude_node_modules",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(format="json"))),
-            [
-                "--json",
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="output_json",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(format="sarif"))),
-            [
-                "--sarif",
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="output_sarif",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(json_file=True))),
-            [
-                "--json-file-output={context}/results/snyk/test/{uid}.json",
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="output_json_file",
-        ),
-        pytest.param(
-            ManifestSnyk(test=ManifestSnykTest(output=ManifestSnykTestOutput(sarif_file=True))),
-            [
-                "--sarif-file-output={context}/results/snyk/test/{uid}.sarif",
-                f"--severity-threshold={SNYK_DEFAULT_SEVERITY_THRESHOLD.value}",
-                "--app-vulns",
-                "--exclude-base-image-vulns",
-            ],
-            id="output_sarif_file",
-        ),
-    ]
-
-
-def snyk_monitor_argument_testcases() -> List[ParameterSet]:
-    return [
-        pytest.param(
-            ManifestSnyk(),
-            [],
-            id="default",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(output_json=True)),
-            ["--json"],
-            id="output_json",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(environment="internal")),
-            ["--project-environment=internal"],
-            id="environment_single",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(environment=["internal", "distributed", "saas"])),
-            ["--project-environment=internal,distributed,saas"],
-            id="environment_multi",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(lifecycle="development")),
-            ["--project-lifecycle=development"],
-            id="lifecycle_single",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(lifecycle=["development", "sandbox"])),
-            ["--project-lifecycle=development,sandbox"],
-            id="lifecycle_multi",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(business_criticality="low")),
-            ["--project-business-criticality=low"],
-            id="business_criticality_single",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(business_criticality=["low", "medium", "high"])),
-            ["--project-business-criticality=low,medium,high"],
-            id="business_criticality_multi",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(tags={"key1": "value1"})),
-            ["--project-tags='key1=value1'"],
-            id="project_tags_single",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(tags={"key1": "value1", "key2": "value2"})),
-            ["--project-tags='key1=value1,key2=value2'"],
-            id="project_tags_multi",
-        ),
-        pytest.param(
-            ManifestSnyk(monitor=ManifestSnykMonitor(include_node_modules=False)),
-            ["--exclude-node-modules"],
-            id="exclude_node_modules",
-        ),
-    ]
-
-
-def snyk_sbom_argument_testcases() -> List[ParameterSet]:
-    return [
-        pytest.param(
-            ManifestSnyk(),
-            [f"--format={SNYK_DEFAULT_SBOM_FORMAT.value}"],
-            id="default",
-        ),
-        pytest.param(
-            ManifestSnyk(sbom=ManifestSnykSbom(format="cyclonedx1.4+xml")),
-            ["--format=cyclonedx1.4+xml"],
-            id="alternate_format",
-        ),
-        pytest.param(
-            ManifestSnyk(sbom=ManifestSnykSbom(include_app_vulns=False)),
-            [f"--format={SNYK_DEFAULT_SBOM_FORMAT.value}", "--exclude-app-vulns"],
-            id="exclude_app_vulns",
-        ),
-    ]
-
-
-def snyk_all_argument_testcases() -> List[ParameterSet]:
-    testcases = []
-    for test in snyk_test_argument_testcases():
-        snyk_config, expected = test.values
-        expected = [
-            "snyk",
-            "container",
-            "test",
-            "--project-name={variant.meta.name}",
-            "--file={variant.containerfile}",
-            *expected,
-        ]
-        testcases.append(
-            pytest.param(
-                SnykContainerSubcommand.test,
-                snyk_config,
-                expected,
-                id=f"SnykContainerTest_{test.id}",
-            )
-        )
-    for test in snyk_monitor_argument_testcases():
-        snyk_config, expected = test.values
-        expected = [
-            "snyk",
-            "container",
-            "monitor",
-            "--project-name={variant.meta.name}",
-            "--file={variant.containerfile}",
-            *expected,
-        ]
-        testcases.append(
-            pytest.param(
-                SnykContainerSubcommand.monitor,
-                snyk_config,
-                expected,
-                id=f"SnykContainerMonitor_{test.id}",
-            )
-        )
-    for test in snyk_sbom_argument_testcases():
-        snyk_config, expected = test.values
-        expected = [
-            "snyk",
-            "container",
-            "sbom",
-            *expected,
-        ]
-        testcases.append(
-            pytest.param(
-                SnykContainerSubcommand.sbom,
-                snyk_config,
-                expected,
-                id=f"SnykContainerSbom_{test.id}",
-            )
-        )
-    return testcases
+def remove_images(obj: BakeryConfig | ImageTarget | None = None):
+    """Remove any images created during testing."""
+    if isinstance(obj, BakeryConfig):
+        for target in obj.targets:
+            for tag in target.tags:
+                try:
+                    python_on_whales.docker.image.remove(tag)
+                except python_on_whales.exceptions.DockerException:
+                    pass
+    elif isinstance(obj, ImageTarget):
+        for tag in obj.tags:
+            try:
+                python_on_whales.docker.image.remove(tag)
+            except python_on_whales.exceptions.DockerException:
+                pass
+    else:
+        raise ValueError("Either config_obj or target must be provided.")

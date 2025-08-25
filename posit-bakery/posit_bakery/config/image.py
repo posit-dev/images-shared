@@ -1,10 +1,10 @@
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Self, Union
+from typing import Annotated, Self, Union, Any
 
 import jinja2
-from pydantic import BaseModel, Field, model_validator, computed_field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, model_validator, field_validator, HttpUrl, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
@@ -232,7 +232,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         """
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / self.subpath
+        return Path(self.parent.path) / Path(self.subpath)
 
     @property
     def all_registries(self) -> list[Registry]:
@@ -400,6 +400,18 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
+    @field_validator("documentationUrl", mode="before")
+    @classmethod
+    def default_https_url_scheme(cls, value: Any) -> Any:
+        """Prepend 'https://' to the URL if it does not already start with it.
+
+        :param value: The URL to validate and possibly modify.
+        """
+        if isinstance(value, str):
+            if not value.startswith("https://") and not value.startswith("http://"):
+                value = f"https://{value}"
+        return value
+
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
     def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
@@ -503,15 +515,20 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.parent = self
         return self
 
-    @computed_field
+    @field_serializer("documentationUrl")
+    def serialize_documentation_url(self, value: HttpUrl | None) -> str | None:
+        """Serializes the documentation URL to a string."""
+        if value is None:
+            return None
+        return str(value)
+
     @property
     def path(self) -> Path | None:
         """Returns the path to the image directory."""
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent BakeryConfig must resolve a valid path.")
-        return Path(self.parent.path) / self.subpath
+        return Path(self.parent.path) / Path(self.subpath)
 
-    @computed_field
     @property
     def template_path(self) -> Path:
         """Returns the path to the image template directory."""
@@ -597,7 +614,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": version,
                 "Variant": variant or "",
             },
-            "VersionPath": str(version_path or (self.path / version).relative_to(self.parent.path)),
+            "VersionPath": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             "ImagePath": str(self.path.relative_to(self.parent.path)),
             "BasePath": ".",
         }
@@ -627,7 +644,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         # Create new version directory
         if not version.path.is_dir():
             log.debug(f"Creating new image version directory [bold]{version.path}")
-            version.path.mkdir()
+            version.path.mkdir(parents=True)
 
         env = jinja2_env(
             loader=jinja2.FileSystemLoader(version.parent.template_path),
@@ -705,8 +722,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 if v.latest:
                     if v.os:
                         os = deepcopy(v.os)
-                    if v.extraRegistries:
-                        registries = deepcopy(v.extraRegistries)
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
@@ -717,6 +732,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 args["os"] = os
             if registries is not None:
                 args["registries"] = registries
+            if latest:
+                args["latest"] = True
 
             image_version = ImageVersion(**args)
             self.versions.append(image_version)

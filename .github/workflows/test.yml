@@ -41,6 +41,7 @@ jobs:
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           poetry run pytest -n auto \
+            --dist loadgroup \
             --cov=posit_bakery \
             --cov-report=xml \
             --junit-xml=results.xml \

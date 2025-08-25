@@ -1,4 +1,0 @@
-FROM scratch
-
-# Some data must be added or Snyk will call the image invalid
-COPY scratch/1.0.0/deps/packages.txt /tmp/packages.txt

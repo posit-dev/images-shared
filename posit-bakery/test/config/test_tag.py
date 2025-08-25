@@ -2,7 +2,6 @@ import pytest
 
 from posit_bakery.config.tag import TagPattern, TagPatternFilter, default_tag_patterns
 
-
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,

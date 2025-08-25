@@ -2,7 +2,6 @@ import pytest
 
 from posit_bakery.config.registry import Registry
 
-
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,

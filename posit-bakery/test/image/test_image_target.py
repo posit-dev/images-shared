@@ -1,6 +1,5 @@
-import datetime
 import re
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch
 
 import pytest
 import python_on_whales
@@ -8,7 +7,7 @@ import python_on_whales
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_target import ImageTarget
-
+from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
     pytest.mark.unit,
@@ -17,46 +16,47 @@ pytestmark = [
 
 
 class TestImageTarget:
-    def test_new_image_target(self, basic_unified_config_obj):
+    def test_new_image_target(self, get_config_obj):
         """Test creating a new ImageTarget object."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
         )
 
-        assert target.context.base_path == basic_unified_config_obj.model.path
+        assert target.context.base_path == basic_config_obj.model.path
         assert target.context.image_path == image.path
         assert target.context.version_path == version.path
-        assert target.repository == basic_unified_config_obj.model.repository
+        assert target.repository == basic_config_obj.model.repository
         assert target.image_version == version
         assert target.image_variant == variant
         assert target.image_os == os
         assert len(target.tag_patterns) == 8
 
-    def test_str(self, basic_unified_config_obj, basic_standard_image_target):
-        image = basic_unified_config_obj.model.get_image("test-image")
+    def test_str(self, get_config_obj, basic_standard_image_target):
+        """Test the string representation of an ImageTarget."""
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         expected_str = (
-            f"ImageTarget(image='{image.name}', "
-            f"version='{version.name}', "
-            f"variant='{variant.name}', "
-            f"os='{os.name}')"
+            f"ImageTarget(image='{image.name}', version='{version.name}', variant='{variant.name}', os='{os.name}')"
         )
         assert str(basic_standard_image_target) == expected_str
 
-    def test_uid(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_uid(self, get_config_obj, basic_standard_image_target):
         """Test the UID of an ImageTarget."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
@@ -101,45 +101,49 @@ class TestImageTarget:
         basic_standard_image_target.image_variant = None
         assert basic_standard_image_target.is_primary_variant
 
-    def test_containerfile(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile(self, get_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget."""
+        basic_config_obj = get_config_obj("basic")
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_os.extension}."
             f"{basic_standard_image_target.image_variant.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_variant(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_variant(self, get_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without a variant."""
+        basic_config_obj = get_config_obj("basic")
         basic_standard_image_target.image_variant = None
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_os.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_os(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_os(self, get_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without an OS."""
+        basic_config_obj = get_config_obj("basic")
         basic_standard_image_target.image_os = None
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile.{basic_standard_image_target.image_variant.extension}"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
-    def test_containerfile_no_variant_no_os(self, basic_unified_config_obj, basic_standard_image_target):
+    def test_containerfile_no_variant_no_os(self, get_config_obj, basic_standard_image_target):
         """Test the containerfile property of an ImageTarget without an OS."""
+        basic_config_obj = get_config_obj("basic")
         basic_standard_image_target.image_variant = None
         basic_standard_image_target.image_os = None
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
             / f"Containerfile"
-        ).relative_to(basic_unified_config_obj.model.path)
+        ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
     def test_tag_template_values(self, basic_standard_image_target):
@@ -164,9 +168,10 @@ class TestImageTarget:
         basic_standard_image_target.image_os = None
         assert basic_standard_image_target.tag_template_values == expected_values
 
-    def test_tag_patterns_deduplication(self, basic_unified_config_obj):
+    def test_tag_patterns_deduplication(self, get_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
-        image = basic_unified_config_obj.model.get_image("test-image")
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         # Duplicate tag patterns by adding some default patterns that will also be present in Image
@@ -174,7 +179,7 @@ class TestImageTarget:
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -182,16 +187,17 @@ class TestImageTarget:
         # Check that the tag patterns are deduplicated to 8, the default tag patterns length
         assert len(target.tag_patterns) == 8
 
-    def test_tag_patterns_filtering(self, basic_unified_config_obj):
+    def test_tag_patterns_filtering(self, get_config_obj):
         """Test the filter_tag_patterns method of an ImageTarget."""
+        basic_config_obj = get_config_obj("basic")
         # Test latest, primary variant, and primary OS
-        image = basic_unified_config_obj.model.get_image("test-image")
+        image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
         variant = image.get_variant("Standard")
         os = version.os[0]
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -202,7 +208,7 @@ class TestImageTarget:
         version.latest = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -215,7 +221,7 @@ class TestImageTarget:
         variant.primary = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -228,7 +234,7 @@ class TestImageTarget:
         os.primary = False
 
         target = ImageTarget.new_image_target(
-            repository=basic_unified_config_obj.model.repository,
+            repository=basic_config_obj.model.repository,
             image_version=version,
             image_variant=variant,
             image_os=os,
@@ -236,67 +242,80 @@ class TestImageTarget:
         assert len(target.tag_patterns) == 4
         assert not any(TagPatternFilter.PRIMARY_OS in pattern.only for pattern in target.tag_patterns)
 
-    def test_tag_suffixes(self, basic_standard_image_target, basic_minimal_image_target):
+    @pytest.mark.parametrize(
+        "target_name,expected_tag_suffixes",
+        [
+            (
+                "basic_standard_image_target",
+                [
+                    "1.0.0-ubuntu-22.04-std",
+                    "1.0.0-std",
+                    "1.0.0-ubuntu-22.04",
+                    "1.0.0",
+                    "ubuntu-22.04-std",
+                    "ubuntu-22.04",
+                    "std",
+                    "latest",
+                ],
+            ),
+            (
+                "basic_minimal_image_target",
+                [
+                    "1.0.0-ubuntu-22.04-min",
+                    "1.0.0-min",
+                    "ubuntu-22.04-min",
+                    "min",
+                ],
+            ),
+        ],
+    )
+    def test_tag_suffixes(self, request, target_name, expected_tag_suffixes):
         """Test the tag_suffixes property of an ImageTarget."""
-        expected_std_tag_suffixes = [
-            "1.0.0-ubuntu-22.04-std",
-            "1.0.0-std",
-            "1.0.0-ubuntu-22.04",
-            "1.0.0",
-            "ubuntu-22.04-std",
-            "ubuntu-22.04",
-            "std",
-            "latest",
-        ]
-        assert len(expected_std_tag_suffixes) == len(basic_standard_image_target.tag_suffixes)
-        assert all(tag_suffix in basic_standard_image_target.tag_suffixes for tag_suffix in expected_std_tag_suffixes)
+        target = request.getfixturevalue(target_name)
 
-        expected_min_tag_suffixes = [
-            "1.0.0-ubuntu-22.04-min",
-            "1.0.0-min",
-            "ubuntu-22.04-min",
-            "min",
-        ]
-        assert len(expected_min_tag_suffixes) == len(basic_minimal_image_target.tag_suffixes)
-        assert all(tag_suffix in basic_minimal_image_target.tag_suffixes for tag_suffix in expected_min_tag_suffixes)
+        assert len(expected_tag_suffixes) == len(target.tag_suffixes)
+        assert all(tag_suffix in target.tag_suffixes for tag_suffix in expected_tag_suffixes)
 
-    def test_tags(self, basic_standard_image_target, basic_minimal_image_target):
+    @pytest.mark.parametrize(
+        "target_name,expected_tag_suffixes",
+        [
+            (
+                "basic_standard_image_target",
+                [
+                    "1.0.0-ubuntu-22.04-std",
+                    "1.0.0-std",
+                    "1.0.0-ubuntu-22.04",
+                    "1.0.0",
+                    "ubuntu-22.04-std",
+                    "ubuntu-22.04",
+                    "std",
+                    "latest",
+                ],
+            ),
+            (
+                "basic_minimal_image_target",
+                [
+                    "1.0.0-ubuntu-22.04-min",
+                    "1.0.0-min",
+                    "ubuntu-22.04-min",
+                    "min",
+                ],
+            ),
+        ],
+    )
+    def test_tags(self, request, target_name, expected_tag_suffixes, get_config_obj):
         """Test the tag_suffixes property of an ImageTarget."""
-        expected_std_tags = [
-            "docker.io/posit/test-image:1.0.0-ubuntu-22.04-std",
-            "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04-std",
-            "docker.io/posit/test-image:1.0.0-std",
-            "ghcr.io/posit-dev/test-image:1.0.0-std",
-            "docker.io/posit/test-image:1.0.0-ubuntu-22.04",
-            "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04",
-            "docker.io/posit/test-image:1.0.0",
-            "ghcr.io/posit-dev/test-image:1.0.0",
-            "docker.io/posit/test-image:ubuntu-22.04-std",
-            "ghcr.io/posit-dev/test-image:ubuntu-22.04-std",
-            "docker.io/posit/test-image:ubuntu-22.04",
-            "ghcr.io/posit-dev/test-image:ubuntu-22.04",
-            "docker.io/posit/test-image:std",
-            "ghcr.io/posit-dev/test-image:std",
-            "docker.io/posit/test-image:latest",
-            "ghcr.io/posit-dev/test-image:latest",
+        target = request.getfixturevalue(target_name)
+        basic_config_obj = get_config_obj("basic")
+        registry_urls = [u.base_url for u in basic_config_obj.model.registries]
+        expected_tags = [
+            f"{url}/{target.image_name}:{suffix}" for url in registry_urls for suffix in expected_tag_suffixes
         ]
-        assert len(expected_std_tags) == len(basic_standard_image_target.tags)
-        assert all(tag_suffix in basic_standard_image_target.tags for tag_suffix in expected_std_tags)
 
-        expected_min_tags = [
-            "docker.io/posit/test-image:1.0.0-ubuntu-22.04-min",
-            "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04-min",
-            "docker.io/posit/test-image:1.0.0-min",
-            "ghcr.io/posit-dev/test-image:1.0.0-min",
-            "docker.io/posit/test-image:ubuntu-22.04-min",
-            "ghcr.io/posit-dev/test-image:ubuntu-22.04-min",
-            "docker.io/posit/test-image:min",
-            "ghcr.io/posit-dev/test-image:min",
-        ]
-        assert len(expected_min_tags) == len(basic_minimal_image_target.tags)
-        assert all(tag_suffix in basic_minimal_image_target.tags for tag_suffix in expected_min_tags)
+        assert len(expected_tags) == len(target.tags)
+        assert all(tag in target.tags for tag in expected_tags)
 
-    def test_labels(self, patch_datetime_now, datetime_now_value, basic_standard_image_target):
+    def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
         expected_labels = {
             f"{OCI_LABEL_PREFIX}.created": datetime_now_value.isoformat(),
@@ -319,7 +338,7 @@ class TestImageTarget:
             assert labels[key] == value
 
     @pytest.mark.build
-    def test_build_args(self, patch_datetime_now, basic_standard_image_target):
+    def test_build_args(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
@@ -338,9 +357,18 @@ class TestImageTarget:
 
     @pytest.mark.build
     @pytest.mark.slow
-    def test_build(self, patch_datetime_now, basic_standard_image_target):
+    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_build(self, suite, get_targets):
         """Test the build property of an ImageTarget."""
-        basic_standard_image_target.build()
-        for tag in basic_standard_image_target.tags:
-            assert python_on_whales.docker.image.exists(tag)
-            # python_on_whales.docker.image.remove(tag)
+        image_targets = get_targets(suite)
+        for target in image_targets:
+            target.build()
+            for tag in target.tags:
+                assert python_on_whales.docker.image.exists(tag)
+                for key, value in target.labels.items():
+                    meta = python_on_whales.docker.image.inspect(tag)
+                    assert key in meta.config.labels
+                    assert value == meta.config.labels[key]
+
+            remove_images(target)

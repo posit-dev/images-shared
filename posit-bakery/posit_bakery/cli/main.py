@@ -1,6 +1,7 @@
 import typer
 
 from posit_bakery.cli import create, common, run, build
+from posit_bakery.log import stderr_console
 
 app = typer.Typer(
     name="bakery",
@@ -23,3 +24,11 @@ app.add_typer(run.app, name="r", hidden=True)
 app.command(name="build", help="Build images using buildkit bake (aliases: b, bake)")(build.build)
 app.command(name="bake", hidden=True)(build.build)
 app.command(name="b", hidden=True)(build.build)
+
+
+@app.command(name="help")
+@run.app.command(name="help")
+@create.app.command(name="help")
+def _help(ctx: typer.Context) -> None:
+    """Show this message and exit."""
+    stderr_console.print(ctx.parent.get_help())

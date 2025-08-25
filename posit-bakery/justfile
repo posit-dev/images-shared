@@ -43,6 +43,7 @@ build:
 _pytest *ARGS:
     poetry run -- pytest \
         -n auto \
+        --dist loadgroup \
         --cov=posit_bakery \
         --cov-report=term-missing \
         {{ ARGS }} \

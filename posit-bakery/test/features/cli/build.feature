@@ -21,12 +21,41 @@ Feature: build
         * the targets include the commit hash
 
     @slow
-    Scenario: Building images from a project
+    @xdist-build
+    Scenario: Building images from a project using bake
         Given I call bakery build
         * in a temp basic context
-        * with the arguments:
-            | --load |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
+        * the basic test suite is built
+        * the basic images are removed
+
+    @slow
+    @xdist-build
+    Scenario: Building images from a project using sequential build
+        Given I call bakery build
+        * in a temp basic context
+        * with the arguments:
+            | --strategy | build |
+        When I execute the command
+        Then The command succeeds
+        * the stderr output includes:
+            | Build completed |
+        * the basic test suite is built
+        * the basic images are removed
+
+    @slow
+    @xdist-build
+    Scenario: Building images from a project using sequential build with --fail-fast
+        Given I call bakery build
+        * in a temp fail-fast context
+        * with the arguments:
+            | --strategy | build | --fail-fast |
+        When I execute the command
+        Then The command exits with code 1
+        * the stderr output includes:
+            | Build failed |
+        * the fail-fast test suite is not built
+        * the fail-fast images are removed

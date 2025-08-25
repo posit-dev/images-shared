@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -408,6 +407,17 @@ class TestImage:
         assert len(i.variants) == 1
         assert len(i.versions) == 1
 
+    def test_documentation_url_https_prepend(self):
+        """Test that the documentation URL is correctly prepended with https:// if missing."""
+        i = Image(name="my-image", documentationUrl="docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "https://docs.example.com/"
+
+        i = Image(name="my-image", documentationUrl="http://docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "http://docs.example.com/"
+
+        i = Image(name="my-image", documentationUrl="https://docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "https://docs.example.com/"
+
     def test_deduplicate_registries(self, caplog):
         """Test that duplicate registries are deduplicated."""
         i = Image(
@@ -532,10 +542,11 @@ class TestImage:
 
         assert i.get_variant("non-existent") is None
 
-    def test_create_version_files(self, basic_unified_tmpcontext):
+    def test_create_version_files(self, get_tmpcontext):
         """Test that create_version_files creates the correct directory structure."""
+        context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_parent.path = basic_unified_tmpcontext
+        mock_parent.path = context
         mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
 
         i = Image(name="test-image", versions=[{"name": "1.0.0"}], parent=mock_parent)
@@ -548,7 +559,7 @@ class TestImage:
 
         Image.create_version_files(new_version, i.variants)
 
-        expected_path = basic_unified_tmpcontext / "test-image" / "2.0"
+        expected_path = context / "test-image" / "2.0"
         assert expected_path.exists() and expected_path.is_dir()
         assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
         assert (expected_path / "Containerfile.ubuntu2204.std").is_file()

@@ -3,6 +3,11 @@ from _pytest.mark import ParameterSet
 
 from posit_bakery.config.tools import GossOptions
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.config,
+]
+
 
 class TestGoss:
     @staticmethod

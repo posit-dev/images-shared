@@ -2,11 +2,11 @@ import logging
 import os
 from pathlib import Path
 from shutil import which
-from typing import List, Union
+from typing import Union
 
 import git
 
-from posit_bakery.error import BakeryFileError, BakeryToolNotFoundError
+from posit_bakery.error import BakeryToolNotFoundError
 
 log = logging.getLogger(__name__)
 
@@ -32,24 +32,6 @@ def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var
             f"Either install {bin_name} or set the `{bin_env_var}` environment variable."
         )
         raise BakeryToolNotFoundError(f"Could not find tool '{bin_name}'.", bin_name)
-
-
-def find_in_context(context: Union[str, bytes, os.PathLike], name: str, _type: str = "file", parents: int = 0) -> Path:
-    """Depth-first search for a directory of file in a project context"""
-    search = Path(context)
-    search_paths: List[Path] = [search]
-    # Search up the directory tree
-    for _ in range(parents):
-        search = search.parent
-        search_paths.append(search)
-
-    for search in search_paths:
-        if _type == "file" and (search / name).is_file():
-            return search / name
-        elif _type == "dir" and (search / name).is_dir():
-            return search / name
-
-    raise BakeryFileError(f"Could not find {name} in context: {context}")
 
 
 def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:

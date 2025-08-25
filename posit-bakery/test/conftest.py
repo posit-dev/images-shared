@@ -1,32 +1,57 @@
+import datetime
 import os
 import shutil
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
-from ruamel.yaml import YAML
+from pytest_mock import MockFixture
 
 from posit_bakery.config import BakeryConfig
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
-
-@pytest.fixture
-def yaml_basic_str():
-    """Return a basic YAML document as a string"""
-    return """name: "basic"
-
-section:
-  key: "value"
-"""
+CONST_DATETIME_NOW = datetime.datetime(2025, 1, 1, 0, 0, 0)
 
 
 @pytest.fixture
-def yaml_basic_file(tmp_path, yaml_basic_str):
-    """Return a basic YAML document as a filepath"""
-    filepath = tmp_path / "basic.yaml"
-    with open(filepath, "w") as f:
-        f.write(yaml_basic_str)
-    return filepath
+def datetime_now_value():
+    """Return a fixed datetime for testing."""
+    return CONST_DATETIME_NOW
+
+
+@pytest.fixture(autouse=True)
+def patch_datetime_now(request, mocker: MockFixture, datetime_now_value):
+    """Mock datetime.now() to return a fixed datetime for testing."""
+    if "disable_patch_datetime_now" not in request.keywords:
+        import posit_bakery.image.image_target
+
+        mocked_datetime = mocker.patch(
+            "posit_bakery.image.image_target.datetime",
+        )
+        mock_datetime_now = MagicMock(spec=datetime_now_value)
+        mocked_datetime.now = mock_datetime_now
+        mock_datetime_now.return_value = datetime_now_value
+        mock_datetime_now.isoformat.return_value = datetime_now_value.isoformat()
+
+
+@pytest.fixture
+def revision_value():
+    """Return a fixed revision string for testing."""
+    return "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+
+@pytest.fixture(autouse=True)
+def patch_repository_revision(request, mocker: MockFixture, revision_value):
+    """Patch the repository revision to return a fixed value."""
+    if "disable_patch_revision" not in request.keywords:
+        import posit_bakery.config.repository
+
+        mocker.patch.object(
+            posit_bakery.config.repository.Repository,
+            "revision",
+            revision_value,
+        )
 
 
 @pytest.fixture(scope="session")
@@ -41,257 +66,74 @@ def testdata_path():
     return TEST_DIRECTORY / "testdata"
 
 
-@pytest.fixture(scope="session")
-def basic_context(resource_path):
-    """Return the path to the basic test suite context"""
-    return resource_path / "multi-config" / "basic"
+@pytest.fixture
+def get_context(resource_path):
+    """Return a function that can get the path to a test suite context by name"""
 
+    def _get_context(suite_name: str) -> Path:
+        return resource_path / suite_name
 
-@pytest.fixture(scope="session")
-def basic_unified_config_context(resource_path):
-    """Return the path to the basic test suite context"""
-    return resource_path / "unified-config" / "basic"
-
-
-@pytest.fixture(scope="session")
-def basic_config_file(basic_context):
-    """Return the path to the basic test suite config.yaml file"""
-    return basic_context / "config.yaml"
-
-
-@pytest.fixture(scope="session")
-def basic_unified_config_file(basic_unified_config_context):
-    """Return the path to the basic test suite unified config.yaml file"""
-    return basic_unified_config_context / "bakery.yaml"
+    return _get_context
 
 
 @pytest.fixture
-def basic_config_obj(basic_config_file):
-    """Return a Config object loaded from basic test suite config.yaml file"""
-    from posit_bakery.models import Config
+def get_config_file(get_context):
+    """Return a function that can get the path to a test suite bakery.yaml file by name"""
 
-    return Config.load(basic_config_file)
+    def _get_config_file(suite_name: str) -> Path:
+        return get_context(suite_name) / "bakery.yaml"
 
-
-@pytest.fixture
-def basic_unified_config_obj(basic_unified_config_file):
-    """Return a Config object loaded from basic test suite unified config.yaml file"""
-    return BakeryConfig(basic_unified_config_file)
+    return _get_config_file
 
 
 @pytest.fixture
-def basic_manifest_file(basic_context):
-    """Return the path to the basic test suite manifest.yaml file"""
-    return basic_context / "test-image" / "manifest.yaml"
+def get_config_obj(get_config_file):
+    """Return a function that can get a BakeryConfig object by test suite name"""
+
+    def _get_config_obj(suite_name: str) -> BakeryConfig:
+        return BakeryConfig(get_config_file(suite_name))
+
+    return _get_config_obj
 
 
 @pytest.fixture
-def basic_manifest_obj(basic_manifest_file):
-    """Return a Manifest object loaded from basic test suite manifest.yaml file"""
-    from posit_bakery.models import Manifest
+def get_tmpcontext(tmpdir, get_context):
+    """Return a function that can get a temporary copy of a test suite context by name"""
 
-    return Manifest.load(basic_manifest_file)
+    def _get_tmpcontext(suite_name: str) -> Path:
+        tmpcontext = Path(tmpdir) / suite_name
+        tmpcontext.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(get_context(suite_name), tmpcontext, dirs_exist_ok=True)
+        return tmpcontext
 
-
-@pytest.fixture
-def basic_manifest_types(basic_manifest_file):
-    """Return the target types in the basic manifest.yaml file"""
-    y = YAML()
-    d = y.load(Path(basic_manifest_file))
-    return d["target"].keys()
+    return _get_tmpcontext
 
 
 @pytest.fixture
-def basic_manifest_versions(basic_manifest_file):
-    """Return the target types in the basic manifest.yaml file"""
-    y = YAML()
-    d = y.load(Path(basic_manifest_file))
-    return d["build"].keys()
+def get_tmpconfig(get_tmpcontext):
+    """Return a function that can get a temporary copy of a test suite bakery.yaml file by name"""
+
+    def _get_tmpconfig(suite_name: str) -> BakeryConfig:
+        return BakeryConfig(get_tmpcontext(suite_name) / "bakery.yaml")
+
+    return _get_tmpconfig
 
 
 @pytest.fixture
-def basic_manifest_os_plus_versions(basic_manifest_file):
-    """Return the versions/os pairs in the basic manifest.yaml file"""
-    results = []
-    y = YAML()
-    d = y.load(Path(basic_manifest_file))
-    for version, data in d["build"].items():
-        if "os" in data and isinstance(data["os"], list):
-            for _os in data["os"]:
-                results.append((version, _os))
-        elif "os" in d.get("const", {}):
-            if isinstance(d["const"]["os"], list):
-                for _os in d["const"]["os"]:
-                    results.append((version, _os))
-            else:
-                results.append((version, d["const"]["os"]))
-        else:
-            results.append((version,))
-    return results
+def get_targets(get_config_obj):
+    """Return a function that can get the list of ImageTarget objects for a test suite by name"""
+
+    def _get_targets(suite_name: str):
+        return get_config_obj(suite_name).targets
+
+    return _get_targets
 
 
 @pytest.fixture
-def basic_images_obj(basic_config_obj, basic_manifest_obj):
-    """Return a dict of images loaded from the basic test suite manifest.yaml file"""
-    from posit_bakery.models import Images
+def get_target_variant(get_config_obj):
+    """Return a function that can get an ImageTarget object for a specific variant of a test suite by name"""
 
-    return Images.load(config=basic_config_obj, manifests={basic_manifest_obj.image_name: basic_manifest_obj})
+    def _get_target_variant(suite_name: str, variant_name: str):
+        return [t for t in get_config_obj(suite_name).targets if t.image_variant.name == variant_name]
 
-
-@pytest.fixture
-def basic_expected_num_variants(basic_manifest_types, basic_manifest_os_plus_versions):
-    """Returns the expected number of target builds for the basic manifest.yaml"""
-    return len(basic_manifest_types) * len(basic_manifest_os_plus_versions)
-
-
-@pytest.fixture
-def basic_tmpcontext(tmpdir, basic_context):
-    """Return a temporary copy of the basic test suite context"""
-    tmpcontext = Path(tmpdir) / "basic"
-    tmpcontext.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(basic_context, tmpcontext, dirs_exist_ok=True)
-    return tmpcontext
-
-
-@pytest.fixture
-def basic_unified_tmpcontext(tmpdir, basic_unified_config_context):
-    """Return a temporary copy of the basic unified test suite context"""
-    tmpcontext = Path(tmpdir) / "basic"
-    tmpcontext.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(basic_unified_config_context, tmpcontext, dirs_exist_ok=True)
-    return tmpcontext
-
-
-@pytest.fixture
-def basic_unified_tmpconfig(basic_unified_tmpcontext):
-    """Return a temporary copy of the basic unified test suite config.yaml file"""
-    return BakeryConfig(basic_unified_tmpcontext / "bakery.yaml")
-
-
-@pytest.fixture(scope="session")
-def barebones_context(resource_path):
-    """Return the path to the basic test suite context"""
-    return resource_path / "multi-config" / "barebones"
-
-
-@pytest.fixture(scope="session")
-def barebones_unified_context(resource_path):
-    """Return the path to the basic test suite unified context"""
-    return resource_path / "unified-config" / "barebones"
-
-
-@pytest.fixture(scope="session")
-def barebones_config_file(barebones_context):
-    """Return the path to the basic test suite config.yaml file"""
-    return barebones_context / "config.yaml"
-
-
-@pytest.fixture(scope="session")
-def barebones_unified_config_file(barebones_unified_context):
-    """Return the path to the basic test suite unified config.yaml file"""
-    return barebones_unified_context / "bakery.yaml"
-
-
-@pytest.fixture
-def barebones_config_obj(barebones_config_file):
-    """Return a Config object loaded from basic test suite config.yaml file"""
-    from posit_bakery.models import Config
-
-    return Config.load(barebones_config_file)
-
-
-@pytest.fixture
-def barebones_unified_config_obj(barebones_unified_config_file):
-    """Return a Config object loaded from basic test suite unified config.yaml file"""
-    return BakeryConfig(barebones_unified_config_file)
-
-
-@pytest.fixture
-def barebones_manifest_file(barebones_context):
-    """Return the path to the basic test suite manifest.yaml file"""
-    return barebones_context / "test-image" / "manifest.yaml"
-
-
-@pytest.fixture
-def barebones_manifest_obj(barebones_manifest_file):
-    """Return a Manifest object loaded from basic test suite manifest.yaml file"""
-    from posit_bakery.models import Manifest
-
-    return Manifest.load(barebones_manifest_file)
-
-
-@pytest.fixture
-def barebones_manifest_types(barebones_manifest_file):
-    """Return the target types in the basic manifest.yaml file"""
-    y = YAML()
-    d = y.load(Path(barebones_manifest_file))
-    return d["target"].keys()
-
-
-@pytest.fixture
-def barebones_manifest_versions(barebones_manifest_file):
-    """Return the target types in the basic manifest.yaml file"""
-    y = YAML()
-    d = y.load(Path(barebones_manifest_file))
-    return d["build"].keys()
-
-
-@pytest.fixture
-def barebones_manifest_os_plus_versions(barebones_manifest_file):
-    """Return the versions/os pairs in the basic manifest.yaml file"""
-    results = []
-    y = YAML()
-    d = y.load(Path(barebones_manifest_file))
-    for version, data in d["build"].items():
-        if "os" in data and isinstance(data["os"], list):
-            for _os in data["os"]:
-                results.append((version, _os))
-        elif "os" in d.get("const", {}):
-            if isinstance(d["const"]["os"], list):
-                for _os in d["const"]["os"]:
-                    results.append((version, _os))
-            else:
-                results.append((version, d["const"]["os"]))
-        else:
-            results.append((version,))
-    return results
-
-
-@pytest.fixture
-def barebones_images_obj(barebones_config_obj, barebones_manifest_obj):
-    """Return a dict of images loaded from the basic test suite manifest.yaml file"""
-    from posit_bakery.models import Images
-
-    return Images.load(
-        config=barebones_config_obj, manifests={barebones_manifest_obj.image_name: barebones_manifest_obj}
-    )
-
-
-@pytest.fixture
-def barebones_expected_num_variants(barebones_manifest_types, barebones_manifest_os_plus_versions):
-    """Returns the expected number of target builds for the basic manifest.yaml"""
-    return len(barebones_manifest_types) * len(barebones_manifest_os_plus_versions)
-
-
-@pytest.fixture
-def barebones_tmpcontext(tmpdir, barebones_context):
-    """Return a temporary copy of the basic test suite context"""
-    tmpcontext = Path(tmpdir) / "basic"
-    tmpcontext.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(barebones_context, tmpcontext, dirs_exist_ok=True)
-    return tmpcontext
-
-
-@pytest.fixture
-def barebones_unified_tmpcontext(tmpdir, barebones_unified_context):
-    """Return a temporary copy of the basic unified test suite context"""
-    tmpcontext = Path(tmpdir) / "barebones"
-    tmpcontext.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(barebones_unified_context, tmpcontext, dirs_exist_ok=True)
-    return tmpcontext
-
-
-@pytest.fixture
-def barebones_unified_tmpconfig(barebones_unified_tmpcontext):
-    """Return a temporary copy of the basic unified test suite config.yaml file"""
-    return BakeryConfig(barebones_unified_tmpcontext / "bakery.yaml")
+    return _get_target_variant

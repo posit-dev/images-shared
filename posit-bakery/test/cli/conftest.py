@@ -6,6 +6,17 @@ import pytest
 from pytest_bdd import given, when, then, parsers
 
 from test.cli.bakery_command import BakeryCommand
+from test.helpers import remove_images
+
+
+def pytest_bdd_apply_tag(tag, function):
+    """Modify scenario tags to be pytest-compatible."""
+    if tag == "xdist-build":
+        marker = pytest.mark.xdist_group("build")
+        marker(function)
+        return True
+    else:
+        return None
 
 
 @pytest.fixture
@@ -28,24 +39,16 @@ def sub_command(bakery_command, commands: List[str]):
     bakery_command.set_subcommand(parsed_commands)
 
 
-@given("in the basic context")
-def cli_basic_context(bakery_command, basic_context):
-    bakery_command.context = Path(basic_context)
+@given(parsers.parse("in the {suite_name} context"))
+def cli_context(bakery_command, suite_name, get_context):
+    bakery_command.context = Path(get_context(suite_name))
 
 
-@given("in a temp basic context")
-def cli_basic_tmpcontext(bakery_command, basic_tmpcontext):
-    bakery_command.context = Path(basic_tmpcontext)
+@given(parsers.parse("in a temp {suite_name} context"), target_fixture="cli_test_tmpcontext")
+def cli_tmpcontext(bakery_command, suite_name, get_tmpcontext):
+    bakery_command.context = Path(get_tmpcontext(suite_name))
 
-
-@given("in the barebones context")
-def cli_barebones_context(bakery_command, barebones_context):
-    bakery_command.context = Path(barebones_context)
-
-
-@given("in a temp barebones context")
-def cli_barebones_tmpcontext(bakery_command, barebones_tmpcontext):
-    bakery_command.context = Path(barebones_tmpcontext)
+    return Path(get_tmpcontext(suite_name))
 
 
 @given("in a temp directory")
@@ -69,6 +72,11 @@ def run(bakery_command):
 @then("The command succeeds")
 def check_success(bakery_command):
     assert bakery_command.result.exit_code == 0
+
+
+@then(parsers.parse("The command exits with code {exit_code:d}"))
+def check_exit_code(bakery_command, exit_code: int):
+    assert bakery_command.result.exit_code == exit_code
 
 
 @then("The command fails")
@@ -116,3 +124,9 @@ def check_context(bakery_command, datatable):
     for row in datatable:
         test_path = bakery_command.context / row[0]
         assert test_path.exists()
+
+
+@then(parsers.parse("the {suite_name} images are removed"))
+def remove_build_artifacts(request, resource_path, bakery_command, suite_name, get_config_obj):
+    config_obj = get_config_obj(suite_name)
+    remove_images(config_obj)

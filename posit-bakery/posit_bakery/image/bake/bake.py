@@ -47,8 +47,7 @@ class BakeTarget(BaseModel):
     labels: Annotated[dict[str, str], Field(description="Labels to apply to the image.")]
     tags: Annotated[list[str], Field(description="Tags to apply to the image.")]
 
-    @field_serializer("dockerfile", when_used="json")
-    @field_serializer("context", when_used="json")
+    @field_serializer("dockerfile", "context", when_used="json")
     @staticmethod
     def serialize_path(value: Path | str) -> str:
         """Serialize Path or str to a string for JSON output.

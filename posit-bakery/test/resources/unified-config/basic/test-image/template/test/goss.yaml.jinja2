@@ -1,7 +1,0 @@
-package:
-  ca-certificates:
-    installed: true
-  curl:
-    installed: true
-  cmake:
-    installed: {% raw %}{{ if eq .Env.IMAGE_TYPE "min" }}false{{ else }}true{{ end }}{% endraw %}

@@ -1,17 +1,21 @@
-import os
+import contextlib
+import logging
 import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Self, Annotated
+from typing import Annotated
 
 import python_on_whales
-from pydantic import BaseModel, field_validator, computed_field, model_validator, ConfigDict, Field
+from pydantic import BaseModel, computed_field, ConfigDict, Field
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
+
+log = logging.getLogger(__name__)
 
 
 class ImageBuildStrategy(str, Enum):
@@ -199,9 +203,13 @@ class ImageTarget(BaseModel):
     def tags(self) -> list[str]:
         """Generate tags for the image based on tag patterns."""
         tags = []
-        for registry in self.image_version.all_registries:
+        if self.image_version.all_registries:
+            for registry in self.image_version.all_registries:
+                for suffix in self.tag_suffixes:
+                    tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+        else:
             for suffix in self.tag_suffixes:
-                tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+                tags.append(f"{self.image_version.parent.name}:{suffix}")
 
         return sorted(tags)
 
@@ -214,10 +222,12 @@ class ImageTarget(BaseModel):
             f"{OCI_LABEL_PREFIX}.source": str(self.repository.url),
             f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
             f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
-            f"{OCI_LABEL_PREFIX}.authors": ", ".join([str(author) for author in self.repository.authors]),
             f"{POSIT_LABEL_PREFIX}.maintainer": str(self.repository.maintainer),
             f"{POSIT_LABEL_PREFIX}.name": self.image_version.parent.displayName,
         }
+        if len(self.repository.authors) > 0:
+            labels[f"{OCI_LABEL_PREFIX}.authors"] = ", ".join([str(author) for author in self.repository.authors])
+
         # Add common labels with both prefixes
         for prefix in [OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX]:
             labels[f"{prefix}.version"] = self.image_version.name
@@ -226,7 +236,7 @@ class ImageTarget(BaseModel):
             if self.image_version.parent.description:
                 labels[f"{prefix}.description"] = self.image_version.parent.description
             if self.image_version.parent.documentationUrl:
-                labels[f"{prefix}.documentation"] = self.image_version.parent.documentationUrl
+                labels[f"{prefix}.documentation"] = str(self.image_version.parent.documentationUrl)
 
         if self.image_variant:
             labels[f"{POSIT_LABEL_PREFIX}.variant"] = self.image_variant.name
@@ -235,24 +245,47 @@ class ImageTarget(BaseModel):
 
         return labels
 
+    def remove(self, prune: bool = True, force: bool = False):
+        """Remove the image from the local image cache or registry."""
+        for tag in self.tags:
+            if python_on_whales.docker.image.exists(tag):
+                log.info(f"Deleting image '{tag}' from local cache.")
+                python_on_whales.docker.image.remove(tag, prune=prune, force=force)
+
     def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
-        original_cwd = os.getcwd()
-        os.chdir(self.context.base_path)
+        if not (self.context.base_path / self.containerfile).is_file():
+            raise BakeryFileError(
+                f"Containerfile not found for '{str(self)}' at expected path: "
+                f"{str(self.context.base_path / self.containerfile)}",
+                filepath=self.containerfile,
+            )
 
-        if not self.containerfile.is_file():
-            raise FileNotFoundError(f"Containerfile '{self.containerfile}' does not exist for {str(self)}.")
+        # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
+        # directory change should be managed at a higher level.
+        with contextlib.chdir(self.context.base_path):
+            log.info(f"Building image '{str(self)}'")
+            try:
+                image = python_on_whales.docker.build(
+                    context_path=self.context.base_path,
+                    file=self.containerfile,
+                    tags=self.tags,
+                    labels=self.labels,
+                    load=load,
+                    push=push,
+                    cache=cache,
+                )
+            except python_on_whales.exceptions.DockerException as e:
+                raise BakeryToolRuntimeError(
+                    message=f"Failed to build image '{str(self)}'",
+                    tool_name=python_on_whales.docker.client_type,
+                    cmd=[python_on_whales.docker.client_type, "build", str(self.containerfile)],
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    exit_code=e.return_code,
+                    metadata={"image_target": str(self)},
+                )
 
-        image = python_on_whales.docker.build(
-            context_path=self.context.base_path,
-            file=self.containerfile,
-            tags=self.tags,
-            labels=self.labels,
-            load=load,
-            push=push,
-            cache=cache,
-        )
-
-        os.chdir(original_cwd)
+        log.info(f"Successfully built image '{str(self)}'")
 
         return image

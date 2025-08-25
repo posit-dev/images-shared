@@ -5,8 +5,11 @@ import shutil
 from pathlib import Path
 
 import jinja2
+import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
 from typing import Annotated, Self
+
+from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
@@ -17,7 +20,12 @@ from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE
-from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.error import (
+    BakeryToolRuntimeError,
+    BakeryToolRuntimeErrorGroup,
+    BakeryFileError,
+    BakeryBuildErrorGroup,
+)
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
@@ -135,23 +143,16 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         exists: bool = image_path.is_dir()
         if not exists:
             log.debug(f"Creating new image directory [bold]{image_path}")
-            image_path.mkdir()
+            image_path.mkdir(parents=True)
 
         image_template_path = image_path / "template"
         if not image_template_path.is_dir():
             log.debug(f"Creating new image templates directory [bold]{image_template_path}")
             image_template_path.mkdir()
 
-        # Best guess a good name for the Containerfile template.
-        containerfile_base_name = "Containerfile"
-        containerfile_name = containerfile_base_name
-        if base_tag:
-            base_tag_extension = re.sub(r"[^a-zA-Z0-9_-]", "", base_tag.lower())
-            containerfile_name += f".{base_tag_extension}"
-        containerfile_name += ".jinja2"
-
         # Create a new Containerfile template if it doesn't exist
-        containerfile_glob = image_template_path.glob(f"{containerfile_base_name}*.jinja2")
+        containerfile_name = "Containerfile.jinja2"
+        containerfile_glob = image_template_path.glob(f"Containerfile*.jinja2")
         if not any(containerfile_path.is_file() for containerfile_path in containerfile_glob):
             containerfile_path = image_template_path / containerfile_name
             log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")
@@ -174,20 +175,39 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         image_deps_package_file = image_deps_path / "packages.txt.jinja2"
         image_deps_package_file.touch(exist_ok=True)
 
-    def create_image_model(self, name: str, subpath: str | None = None) -> Image:
+    def create_image_model(
+        self,
+        name: str,
+        subpath: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        documentation_url: str | None = None,
+    ) -> Image:
         """Creates a new image directory and adds it to the config.
 
         This function does **NOT** create the image files template. Use `create_image_files_template` for that.
 
         :param name: The name of the image to create.
         :param subpath: Optional alternate subpath for the image.
+        :param display_name: Optional display name for the image. If not provided, the image name will be used.
+        :param description: Optional description for the image. Used in labels.
+        :param documentation_url: Optional URL for the image documentation. Used in labels.
+
         :return: The newly created Image model.
         """
         args = {"name": name, "parent": self}
         if subpath:
             args["subpath"] = subpath
+        if display_name:
+            args["displayName"] = display_name
+        if description:
+            args["description"] = description
+        if documentation_url:
+            args["documentationUrl"] = documentation_url
+
         new_image = Image(**args)
         self.images.append(new_image)
+
         return new_image
 
 
@@ -227,14 +247,48 @@ class BakeryConfig:
         :raises FileNotFoundError: If the config file does not exist.
         """
         self.yaml = YAML()
+        self.yaml.preserve_quotes = True
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.config_file = Path(config_file)
         if not self.config_file.exists():
             raise FileNotFoundError(f"File '{self.config_file}' does not exist.")
         self.base_path = self.config_file.parent
         self._config_yaml = self.yaml.load(self.config_file) or dict()
-        self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
+        try:
+            self.model = BakeryConfigDocument(base_path=self.base_path, **self._config_yaml)
+        except pydantic.ValidationError as e:
+            log.error(f"Failed to load configuration from {str(self.config_file)}")
+            raise e
         self.targets = []
         self.generate_image_targets(_filter)
+
+    @classmethod
+    def from_context(
+        cls, context: str | Path | os.PathLike, _filter: BakeryConfigFilter | None = None
+    ) -> "BakeryConfig":
+        """Creates a BakeryConfig instance from a given context path.
+
+        :param context: The path to the bakery.yaml file or its parent directory.
+        :param _filter: Optional BakeryConfigFilter to apply when generating image targets.
+
+        :return: A BakeryConfig instance.
+
+        :raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.
+        """
+        if _filter is None:
+            _filter = BakeryConfigFilter()
+
+        context = Path(context)
+        search_paths = [context / "bakery.yaml", context / "bakery.yml"]
+        for file in search_paths:
+            if file.is_file():
+                log.info(f"Loading Bakery config from [bold]{file}")
+                return cls(file, _filter)
+
+        raise BakeryFileError(
+            f"No bakery.yaml file found in the context path '{context}'. Try running `bakery create project` first "
+            f"if this is a new project."
+        )
 
     @staticmethod
     def new(base_path: str | Path | os.PathLike) -> None:
@@ -253,23 +307,64 @@ class BakeryConfig:
         """Write the bakery config to the config file."""
         self.yaml.dump(self._config_yaml, self.config_file)
 
-    def create_image(self, image_name: str, subpath: str | None = None, base_image: str | None = None):
+    def _get_image_index(self, image_name: str) -> int:
+        """Returns the index of the image with the given name in the config.
+
+        :param image_name: The name of the image to find.
+        :return: The index of the image in the config, or -1 if not found.
+        """
+
+        for index, image in enumerate(self._config_yaml.get("images", [])):
+            if image.get("name") == image_name:
+                return index
+        return -1
+
+    def _get_version_index(self, image_name: str, version_name: str) -> int:
+        """Returns the index of the version with the given name in the image's versions list.
+
+        :param image_name: The name of the image in the config to which the version belongs.
+        :param version_name: The name of the version to find.
+        :return: The index of the version in the image's versions list, or -1 if not found.
+        """
+        image_index = self._get_image_index(image_name)
+        for index, version in enumerate(self._config_yaml["images"][image_index].get("versions", [])):
+            if version["name"] == version_name:
+                return index
+        return -1
+
+    def create_image(
+        self,
+        image_name: str,
+        base_image: str | None = None,
+        subpath: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
+        documentation_url: str | None = None,
+    ):
         """Creates a new image.
 
         Creates a new image directory, adds the image to the config, and writes the image back to bakery.yaml.
 
         :param image_name: The name of the image to create.
-        :param subpath: Optional subpath for the image. If not provided, the image name will be used as the subpath.
         :param base_image: Optional base image to use in the Containerfile template. This is used in the `FROM`
             directive.
+        :param subpath: Optional subpath for the image. If not provided, the image name will be used as the subpath.
+        :param display_name: Optional display name for the image. If not provided, the image name will be used.
+        :param description: Optional description for the image. Used in labels.
+        :param documentation_url: Optional URL for the image documentation. Used in labels.
         """
         if self.model.get_image(image_name):
             raise ValueError(f"Image '{image_name}' already exists in config.")
-        new_image = self.model.create_image_model(image_name, subpath)
-        self.model.create_image_files_template(new_image.path, new_image.name, base_image or DEFAULT_BASE_IMAGE)
-        self._config_yaml.setdefault("images", []).append(
-            new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+        new_image = self.model.create_image_model(
+            image_name,
+            subpath=subpath,
+            display_name=display_name,
+            description=description,
+            documentation_url=documentation_url,
         )
+        self.model.create_image_files_template(new_image.path, new_image.name, base_image or DEFAULT_BASE_IMAGE)
+        new_image_dict = new_image.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+        self._config_yaml.setdefault("images", []).append(new_image_dict)
         self.write()
 
     def create_version(
@@ -317,6 +412,27 @@ class BakeryConfig:
         new_version = image.create_version_model(
             version_name=version, subpath=subpath, latest=latest, update_if_exists=force
         )
+
+        # Add version to the YAML config.
+        image_index = self._get_image_index(image_name)
+        if latest and self._config_yaml["images"][image_index].get("versions", []):
+            # If this is the latest version, we need to remove the latest flag from any other versions.
+            for v in self._config_yaml["images"][image_index]["versions"]:
+                if v.get("latest", False) and v["name"] != version:
+                    v.pop("latest", None)
+        if not existing_version:
+            self._config_yaml["images"][image_index].setdefault("versions", []).append(
+                new_version.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+            )
+        else:
+            version_index = self._get_version_index(image_name, version)
+            self._config_yaml["images"][image_index]["versions"][version_index] = new_version.model_dump(
+                exclude_defaults=True, exclude_none=True, exclude_unset=True
+            )
+        # Sort versions.
+        self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v["name"], reverse=True)
+
+        # Create the version directory and files.
         image.create_version_files(new_version, image.variants, values)
 
         self.write()
@@ -335,21 +451,21 @@ class BakeryConfig:
             if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
                 log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
                 continue
-            for variant in image.variants:
-                if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
+            for version in image.versions:
+                if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
                     log.debug(
-                        f"Skipping image variant '{variant.name}' in image '{image.name}' "
-                        f"due to not matching variant filter '{_filter.image_variant}'"
+                        f"Skipping image version '{version.name}' in image '{image.name}' "
+                        f"due to not matching version filter '{_filter.image_version}'"
                     )
                     continue
-                for version in image.versions:
-                    if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                for variant in image.variants or [None]:
+                    if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
                         log.debug(
-                            f"Skipping image version '{version.name}' in image '{image.name}' "
-                            f"due to not matching version filter '{_filter.image_version}'"
+                            f"Skipping image variant '{variant.name}' in image '{image.name}' "
+                            f"due to not matching variant filter '{_filter.image_variant}'"
                         )
                         continue
-                    for _os in version.os:
+                    for _os in version.os or [None]:
                         if _filter.image_os is not None and re.search(_filter.image_os, _os.name) is None:
                             log.debug(
                                 f"Skipping image OS '{_os.name}' in image '{image.name}' "
@@ -365,7 +481,13 @@ class BakeryConfig:
                             )
                         )
 
+        targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
+
+    def bake_plan_targets(self) -> str:
+        """Generates a bake plan JSON string for the image targets defined in the config."""
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+        return bake_plan.model_dump_json(indent=2, exclude_none=True)
 
     def build_targets(
         self,
@@ -373,6 +495,7 @@ class BakeryConfig:
         push: bool = False,
         cache: bool = True,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
+        fail_fast: bool = False,
     ):
         """Build image targets using the specified strategy.
 
@@ -380,15 +503,26 @@ class BakeryConfig:
         :param push: If True, push the built images to the configured registries.
         :param cache: If True, use the build cache when building images.
         :param strategy: The strategy to use when building images.
+        :param fail_fast: If True, stop building targets on the first failure.
         """
-        # TODO: Implement an "remove after push" option to remove local images after pushing.
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
             bake_plan.build(load=load, push=push, cache=cache)
         elif strategy == ImageBuildStrategy.BUILD:
+            errors: list[Exception] = []
             for target in self.targets:
-                # TODO: Implement error aggregation and add a fail-fast option.
-                target.build(load=load, push=push, cache=cache)
+                try:
+                    target.build(load=load, push=push, cache=cache)
+                except (BakeryFileError, DockerException) as e:
+                    log.error(f"Failed to build image target '{str(target)}'.")
+                    if fail_fast:
+                        log.info("--fail-fast is set, stopping builds...")
+                        raise e
+                    errors.append(e)
+            if errors:
+                if len(errors) == 1:
+                    raise errors[0]
+                raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
 
     def dgoss_targets(
         self,
