@@ -9,7 +9,6 @@ pytestmark = [
 
 
 @pytest.mark.config
-@pytest.mark.schema
 class TestRegistry:
     def test_create_registry(self):
         """Test creating a generic ConfigRegistry object does not raise an exception"""

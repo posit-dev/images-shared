@@ -13,7 +13,6 @@ pytestmark = [
 
 
 @pytest.mark.config
-@pytest.mark.schema
 class TestRepository:
     def test_create_repository(self):
         """Test creating a generic ConfigRepository object does not raise an exception"""
