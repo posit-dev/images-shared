@@ -127,7 +127,7 @@ class TestBakeryConfigDocument:
         d = BakeryConfigDocument(base_path=context, repository={"url": "https://example.com/repo"})
         d.create_image_files_template(context / "new-image", "new-image", "ubuntu:22.04")
         assert (context / "new-image").is_dir()
-        assert (context / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").exists()
+        assert (context / "new-image" / "template" / "Containerfile.jinja2").exists()
         assert (context / "new-image" / "template" / "deps").is_dir()
         assert (context / "new-image" / "template" / "deps" / "packages.txt.jinja2").is_file()
         assert (context / "new-image" / "template" / "test").is_dir()
@@ -215,7 +215,7 @@ class TestBakeryConfig:
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "new-image").is_dir()
         assert (context / "new-image" / "template").is_dir()
-        assert (context / "new-image" / "template" / "Containerfile.ubuntu2204.jinja2").is_file()
+        assert (context / "new-image" / "template" / "Containerfile.jinja2").is_file()
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_create_image_customized(self, suite, get_tmpcontext):
@@ -245,10 +245,10 @@ class TestBakeryConfig:
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "image").is_dir()
         assert (context / "image" / "template").is_dir()
-        assert (context / "image" / "template" / "Containerfile.ubuntu2404.jinja2").is_file()
+        assert (context / "image" / "template" / "Containerfile.jinja2").is_file()
         assert (
             "FROM docker.io/library/ubuntu:24.04"
-            in (context / "image" / "template" / "Containerfile.ubuntu2404.jinja2").read_text()
+            in (context / "image" / "template" / "Containerfile.jinja2").read_text()
         )
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
@@ -272,7 +272,7 @@ class TestBakeryConfig:
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "new" / "image").is_dir()
         assert (context / "new" / "image" / "template").is_dir()
-        assert (context / "new" / "image" / "template" / "Containerfile.ubuntu2204.jinja2").is_file()
+        assert (context / "new" / "image" / "template" / "Containerfile.jinja2").is_file()
 
         # Check that the path works correctly in the model.
         image = config.model.get_image("new-image")

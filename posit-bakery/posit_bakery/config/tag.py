@@ -48,10 +48,16 @@ class TagPattern(BakeryYAMLModel):
         """
         rendered_tags = []
         for pattern in self.patterns:
+            if "{{ OS }}" in pattern and not kwargs.get("OS"):
+                continue
+            if "{{ Variant }}" in pattern and not kwargs.get("Variant"):
+                continue
+
             env = jinja2_env()
             template = env.from_string(pattern)
             tag = template.render(**kwargs)
             tag = tag.strip()
+            tag = tag.strip("-._")  # Ensure no leading or trailing separators.
 
             # Ensure tag is safe for use.
             tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag)

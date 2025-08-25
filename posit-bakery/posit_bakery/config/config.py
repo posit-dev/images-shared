@@ -150,17 +150,9 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
             log.debug(f"Creating new image templates directory [bold]{image_template_path}")
             image_template_path.mkdir()
 
-        # Best guess a good name for the Containerfile template.
-        containerfile_base_name = "Containerfile"
-        containerfile_name = containerfile_base_name
-        if base_tag:
-            base_tag_suffix = base_tag.split("/")[-1]  # Get the tag part after the colon
-            base_tag_extension = re.sub(r"[^a-zA-Z0-9_-]", "", base_tag_suffix.lower())
-            containerfile_name += f".{base_tag_extension}"
-        containerfile_name += ".jinja2"
-
         # Create a new Containerfile template if it doesn't exist
-        containerfile_glob = image_template_path.glob(f"{containerfile_base_name}*.jinja2")
+        containerfile_name = "Containerfile.jinja2"
+        containerfile_glob = image_template_path.glob(f"Containerfile*.jinja2")
         if not any(containerfile_path.is_file() for containerfile_path in containerfile_glob):
             containerfile_path = image_template_path / containerfile_name
             log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")
@@ -459,21 +451,21 @@ class BakeryConfig:
             if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
                 log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
                 continue
-            for variant in image.variants:
-                if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
+            for version in image.versions:
+                if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
                     log.debug(
-                        f"Skipping image variant '{variant.name}' in image '{image.name}' "
-                        f"due to not matching variant filter '{_filter.image_variant}'"
+                        f"Skipping image version '{version.name}' in image '{image.name}' "
+                        f"due to not matching version filter '{_filter.image_version}'"
                     )
                     continue
-                for version in image.versions:
-                    if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                for variant in image.variants or [None]:
+                    if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
                         log.debug(
-                            f"Skipping image version '{version.name}' in image '{image.name}' "
-                            f"due to not matching version filter '{_filter.image_version}'"
+                            f"Skipping image variant '{variant.name}' in image '{image.name}' "
+                            f"due to not matching variant filter '{_filter.image_variant}'"
                         )
                         continue
-                    for _os in version.os:
+                    for _os in version.os or [None]:
                         if _filter.image_os is not None and re.search(_filter.image_os, _os.name) is None:
                             log.debug(
                                 f"Skipping image OS '{_os.name}' in image '{image.name}' "
@@ -495,7 +487,7 @@ class BakeryConfig:
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
         bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
-        return bake_plan.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
+        return bake_plan.model_dump_json(indent=2, exclude_none=True)
 
     def build_targets(
         self,

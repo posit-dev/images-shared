@@ -203,9 +203,13 @@ class ImageTarget(BaseModel):
     def tags(self) -> list[str]:
         """Generate tags for the image based on tag patterns."""
         tags = []
-        for registry in self.image_version.all_registries:
+        if self.image_version.all_registries:
+            for registry in self.image_version.all_registries:
+                for suffix in self.tag_suffixes:
+                    tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+        else:
             for suffix in self.tag_suffixes:
-                tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+                tags.append(f"{self.image_version.parent.name}:{suffix}")
 
         return sorted(tags)
 
@@ -218,10 +222,12 @@ class ImageTarget(BaseModel):
             f"{OCI_LABEL_PREFIX}.source": str(self.repository.url),
             f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
             f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
-            f"{OCI_LABEL_PREFIX}.authors": ", ".join([str(author) for author in self.repository.authors]),
             f"{POSIT_LABEL_PREFIX}.maintainer": str(self.repository.maintainer),
             f"{POSIT_LABEL_PREFIX}.name": self.image_version.parent.displayName,
         }
+        if len(self.repository.authors) > 0:
+            labels[f"{OCI_LABEL_PREFIX}.authors"] = ", ".join([str(author) for author in self.repository.authors])
+
         # Add common labels with both prefixes
         for prefix in [OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX]:
             labels[f"{prefix}.version"] = self.image_version.name
@@ -230,7 +236,7 @@ class ImageTarget(BaseModel):
             if self.image_version.parent.description:
                 labels[f"{prefix}.description"] = self.image_version.parent.description
             if self.image_version.parent.documentationUrl:
-                labels[f"{prefix}.documentation"] = self.image_version.parent.documentationUrl
+                labels[f"{prefix}.documentation"] = str(self.image_version.parent.documentationUrl)
 
         if self.image_variant:
             labels[f"{POSIT_LABEL_PREFIX}.variant"] = self.image_variant.name
