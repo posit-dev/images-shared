@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Self, Union
+from typing import Annotated, Self, Union, Any
 
 import jinja2
 from pydantic import BaseModel, Field, model_validator, field_validator, HttpUrl, field_serializer
@@ -399,6 +399,18 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         Field(default_factory=list, validate_default=True, description="List of image versions for this image."),
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
+
+    @field_validator("documentationUrl", mode="before")
+    @classmethod
+    def default_https_url_scheme(cls, value: Any) -> Any:
+        """Prepend 'https://' to the URL if it does not already start with it.
+
+        :param value: The URL to validate and possibly modify.
+        """
+        if isinstance(value, str):
+            if not value.startswith("https://") and not value.startswith("http://"):
+                value = f"https://{value}"
+        return value
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod

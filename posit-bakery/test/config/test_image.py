@@ -407,6 +407,17 @@ class TestImage:
         assert len(i.variants) == 1
         assert len(i.versions) == 1
 
+    def test_documentation_url_https_prepend(self):
+        """Test that the documentation URL is correctly prepended with https:// if missing."""
+        i = Image(name="my-image", documentationUrl="docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "https://docs.example.com/"
+
+        i = Image(name="my-image", documentationUrl="http://docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "http://docs.example.com/"
+
+        i = Image(name="my-image", documentationUrl="https://docs.example.com", versions=[{"name": "1.0.0"}])
+        assert str(i.documentationUrl) == "https://docs.example.com/"
+
     def test_deduplicate_registries(self, caplog):
         """Test that duplicate registries are deduplicated."""
         i = Image(
