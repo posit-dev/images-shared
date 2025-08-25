@@ -80,3 +80,78 @@ class VersionConstraint(BakeryYAMLModel):
                 raise ValueError("Cannot specify 'min' that is greater than 'max' in version constraint.")
 
         return self
+
+    def _filter_range(self, versions: list[DependencyVersion]) -> list[DependencyVersion]:
+        """Filter the versions based on the min and max constraints.
+
+        Since the python packaging library treats "1.4" as "1.4.0", we need to
+        handle filtering differently based on how the min and max were specified.
+
+        For max, we want to retain all the patch versions that match a given
+        minor version if it does not have a micro version if the max was
+        specified without a micro version. Similarly if, only a major version
+        was specified, we want to retain all minor and patch versions that
+        match the major version.
+
+        :param versions: List of versions to filter.
+
+        :return: List of versions that match the min and max constraints.
+        """
+
+        filtered_versions = versions
+
+        if self.max is not None:
+            max_ = DependencyVersion(self.max)
+            filtered_versions = [
+                v
+                for v in filtered_versions
+                if (not max_.has_minor and v.major == max_.major)
+                or (not max_.has_micro and v.major == max_.major and v.minor == max_.minor)
+                or v <= max_
+            ]
+
+        if self.min is not None:
+            min_ = DependencyVersion(self.min)
+            filtered_versions = [v for v in filtered_versions if v >= min_]
+
+        return filtered_versions
+
+    def _filter_minor(self, versions: list[DependencyVersion]) -> list[DependencyVersion]:
+        """Filter the versions to only include the latest patch version for each minor version.
+
+        :param versions: List of versions to filter.
+
+        :return: List of versions that only include the latest patch version for each minor version.
+        """
+
+        # Ensure versions are sorted in descending order
+        versions = sorted(versions, reverse=True)
+        found = set()
+
+        filtered_versions = []
+        for v in versions:
+            minor_id = (v.major, v.minor)
+            if minor_id not in found:
+                filtered_versions.append(v)
+                found.add(minor_id)
+
+        return filtered_versions
+
+    def resolve_versions(self, available_versions: list[DependencyVersion]) -> list[DependencyVersion]:
+        """Resolve the versions based on the constraint and available versions.
+
+        :param available_versions: List of available versions to filter.
+
+        :return: List of versions that match the constraint.
+        """
+
+        versions = sorted(available_versions, reverse=True)
+        # Filter based on min and max
+        versions = self._filter_range(versions)
+        # Filter to the most recent patch version for each minor version
+        versions = self._filter_minor(versions)
+
+        if self.count is not None:
+            versions = versions[: self.count]
+
+        return versions

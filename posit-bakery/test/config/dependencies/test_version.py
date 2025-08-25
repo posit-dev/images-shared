@@ -166,3 +166,117 @@ class TestVersionConstraint:
         """Test that a version constraint with an invalid combination raises ValueError."""
         with pytest.raises(ValueError):
             VersionConstraint(count=count, latest=latest, max=max, min=min)
+
+
+class TestDepencencyConstraintResolution:
+    @pytest.mark.parametrize(
+        "available_versions,expected_version",
+        [
+            pytest.param(["4.5.1"], "4.5.1", id="r-single"),
+            pytest.param(["4.3.3", "4.4.3", "4.5.1"], "4.5.1", id="r-multiple"),
+            pytest.param(["4.4.3", "3.6.1", "4.2.1"], "4.4.3", id="r-unsorted"),
+            pytest.param(["3.13.7"], "3.13.7", id="python-single"),
+            pytest.param(["3.11.13", "3.12.11", "3.13.7"], "3.13.7", id="python-multiple"),
+        ],
+    )
+    def test_resolve_latest(self, available_versions: list[str], expected_version: str):
+        """Test resolving a version constraint with latest=True."""
+        constraint = VersionConstraint(latest=True)
+        versions = constraint.resolve_versions([DependencyVersion(v) for v in available_versions])
+
+        assert len(versions) == 1
+        assert versions[0] == DependencyVersion(expected_version)
+
+    @pytest.mark.parametrize(
+        "count,available_versions,expected_versions",
+        [
+            # These test cases have a single patch version per minor version
+            pytest.param(1, ["4.5.1"], ["4.5.1"], id="r-single-1"),
+            pytest.param(2, ["4.3.3", "4.4.3", "4.5.1"], ["4.5.1", "4.4.3"], id="r-multiple-2"),
+            pytest.param(3, ["4.3.3", "4.4.3", "4.5.1"], ["4.5.1", "4.4.3", "4.3.3"], id="r-multiple-3"),
+            pytest.param(1, ["3.13.7"], ["3.13.7"], id="python-single-1"),
+            pytest.param(2, ["3.11.13", "3.12.11", "3.13.7"], ["3.13.7", "3.12.11"], id="python-multiple-2"),
+            pytest.param(3, ["3.11.13", "3.12.11", "3.13.7"], ["3.13.7", "3.12.11", "3.11.13"], id="python-multiple-3"),
+            # These tests cases have multiple patch versions with the same minor version
+            # Use the contant versions that were retreived from upstream on 2025-08-20
+            pytest.param(1, R_VERSIONS, ["4.5.1"], id="r-upstream-1"),
+            pytest.param(2, R_VERSIONS, ["4.5.1", "4.4.3"], id="r-upstream-2"),
+            pytest.param(
+                7, R_VERSIONS, ["4.5.1", "4.4.3", "4.3.3", "4.2.3", "4.1.3", "4.0.5", "3.6.3"], id="r-upstream-1"
+            ),
+            pytest.param(1, PYTHON_VERSIONS, ["3.13.7"], id="python-upstream-1"),
+            pytest.param(2, PYTHON_VERSIONS, ["3.13.7", "3.12.11"], id="python-upstream-2"),
+            pytest.param(
+                5, PYTHON_VERSIONS, ["3.13.7", "3.12.11", "3.11.13", "3.10.18", "3.9.23"], id="python-upstream-5"
+            ),
+            pytest.param(1, ASTRAL_PYTHON_VERSIONS, ["3.13.7"], id="astral-python-upstream-1"),
+            pytest.param(3, ASTRAL_PYTHON_VERSIONS, ["3.13.7", "3.12.11", "3.11.13"], id="astral-python-upstream-3"),
+        ],
+    )
+    def test_resolve_latest_count(self, count: int, available_versions: list[str], expected_versions: list[str]):
+        """Test resolving a version constraint with latest=True and count set."""
+        constraint = VersionConstraint(count=count, latest=True)
+        versions = constraint.resolve_versions([DependencyVersion(v) for v in available_versions])
+
+        assert len(versions) == len(expected_versions)
+        assert versions == [DependencyVersion(v) for v in expected_versions]
+
+    @pytest.mark.parametrize(
+        "max,available_versions,expected_version,expected_count",
+        [
+            # Test constrainst specifying a full version
+            pytest.param("1.1.0", ["1.0.0", "1.0.1", "1.1.0"], "1.1.0", 2, id="full-exact"),
+            pytest.param("1.0.0", ["1.0.0", "1.0.1", "1.1.0"], "1.0.0", 1, id="full-low-filter"),
+            pytest.param("1.0.1", ["1.0.0", "1.0.1", "1.1.0"], "1.0.1", 1, id="full-mid-filter"),
+            pytest.param("2.0.0", ["1.1.0", "1.0.1", "1.1.0"], "1.1.0", 2, id="full-major-filter"),
+            pytest.param(
+                "1.0.0", ["0.9.1", "0.9.0", "0.8.1", "0.8.0", "0.7.2", "0.7.1"], "0.9.1", 3, id="full-multi-patch"
+            ),
+            pytest.param(
+                "0.9.0", ["0.9.1", "0.9.0", "0.8.1", "0.8.0", "0.7.2", "0.7.1"], "0.9.0", 3, id="full-multi-patch"
+            ),
+            # Test constraints that specify a minor version
+            pytest.param("2.5", ["2.4.0", "2.5.0", "2.6.0"], "2.5.0", 2, id="minor-exact"),
+            pytest.param("2.5", ["2.4.0", "2.4.1", "2.5.0", "2.5.1", "2.6.0"], "2.5.1", 2, id="minor-multiple"),
+            pytest.param(
+                "3.1", ["3.0.0", "3.0.1", "3.1.0", "3.1.1", "3.1.2", "3.1.3", "3.1.4"], "3.1.4", 2, id="minor-many"
+            ),
+            # Test constraints that specify only a major version
+            pytest.param("3", ["2.9.0", "3.0.0", "3.1.0", "3.2.0", "4.0.0"], "3.2.0", 4, id="major-exact"),
+            pytest.param(
+                "3",
+                ["2.9.0", "2.9.1", "3.0.0", "3.0.1", "3.1.0", "3.1.1", "3.2.0", "3.2.1"],
+                "3.2.1",
+                4,
+                id="major-many",
+            ),
+        ],
+    )
+    def test_resolve_max(self, max: str, available_versions: list[str], expected_version: str, expected_count: int):
+        """Test resolving a version constraint with max set."""
+        # Set count very high
+        constraint = VersionConstraint(max=max)
+        versions = constraint.resolve_versions([DependencyVersion(v) for v in available_versions])
+
+        assert len(versions) == expected_count
+        # Max should be listed first
+        assert versions[0] == DependencyVersion(expected_version)
+
+    @pytest.mark.parametrize(
+        "min,available_versions,expected_version,expected_count",
+        [
+            pytest.param("1.0.0", ["1.0.0", "1.1.0"], "1.0.0", 2, id="exact"),
+            pytest.param("1.0.0", ["0.9.0", "1.0.0", "1.1.1", "1.1.2", "1.1.0"], "1.0.0", 2, id="major-filter"),
+            pytest.param("1.0.1", ["1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.2.1"], "1.0.1", 3, id="patch-filter"),
+            pytest.param("1.1.0", ["1.0.0", "1.0.1", "1.1.0"], "1.1.0", 1, id="minor-filter"),
+        ],
+    )
+    def test_resolve_min(self, min: str, available_versions: list[str], expected_version: str, expected_count: int):
+        """Test resolving a version constraint with min set."""
+        # Set count very high
+        constraint = VersionConstraint(latest=True, min=min)
+        versions = constraint.resolve_versions([DependencyVersion(v) for v in available_versions])
+
+        assert len(versions) == expected_count
+        # Min should be listed last
+        assert versions[-1] == DependencyVersion(expected_version)
