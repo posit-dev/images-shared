@@ -88,17 +88,16 @@ flowchart TD
     subgraph "GitHub Repository"
         direction TB
         subgraph "Project"
-            config[/config.yaml/]
+            config[/bakery.yaml/]
 
             subgraph "Image"
-                manifest[/manifest.yaml/]
                 templatesImage[/Image Jinja2 Templates/]
 
                 subgraph "Image Version"
                     containerfile[/Containerfile/]
 
                     deps[/dependencies/]
-                    tests[/goss.yml/]
+                    tests[/goss.yaml/]
                 end
                 deps -.-> containerfile
             end
@@ -106,12 +105,11 @@ flowchart TD
 
         templatesDefault -.-> createProject -.-> config
 
-        config -.-> createImage -.-> manifest
+        config <-.-> createImage
         templatesDefault -.-> createImage -.-> templatesImage
 
         templatesImage -.-> createVersion -.-> tests & deps & containerfile
-        manifest -.-> createVersion
-        createVersion -.-> manifest
+        createVersion <-.-> config
     end
 
     pti[pti]
@@ -133,8 +131,7 @@ flowchart TD
     subgraph "Project"
         direction LR
 
-        config[/"config.yaml"/]
-        manifest[/"manifest.yaml File(s)"/]
+        config[/"bakery.yaml"/]
         containerfile[/"Containerfile(s)"/]
     end
 
@@ -143,7 +140,7 @@ flowchart TD
     bake[[docker buildx bake]]
     image[/"Container Image(s)"/]
 
-    config & manifest -.-> build -.-> plan
+    config -.-> build -.-> plan
     plan & containerfile -.-> bake
     build --> bake -.-> image
 
@@ -164,7 +161,7 @@ flowchart TD
     subgraph "Container Artifacts"
         direction LR
         containerfile[/Containerfile/]
-        tests[/goss.yml/]
+        tests[/goss.yaml/]
         image[/Container Image/]
     end
 
@@ -203,10 +200,10 @@ flowchart TD
     image[/"Container Image(s)"/]
     results[/"Test & Scan results"/]
 
-    snyk[[snyk container]]
-    runSnyk[[bakery run snyk]]
-    runSnyk --> snyk
-    image -.-> snyk -.-> results
+    trivy[[trivy]]
+    runTrivy[[bakery run trivy]]
+    runTrivy --> trivy
+    image -.-> trivy -.-> results
 
     openscap[[openscap]]
     runOpenscap[[bakery run openscap]]
@@ -222,7 +219,7 @@ flowchart TD
     class snyk,openscap external
 
     %% Mark what we are working on and is in flight %%
-    class inprogress,snyk progress
+    class inprogress,trivy todo
     class openscap,results todo
 ```
 

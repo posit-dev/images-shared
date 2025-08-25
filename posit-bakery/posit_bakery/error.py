@@ -1,18 +1,9 @@
 import os
-import textwrap
 from typing import Union, List
-
-import pydantic
 
 
 class BakeryError(Exception):
     """Base class for all Bakery exceptions"""
-
-    pass
-
-
-class BakeryConfigError(BakeryError):
-    """Error for config/manifest issues"""
 
     pass
 
