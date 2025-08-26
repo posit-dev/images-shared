@@ -8,11 +8,11 @@ Fields marked as "*Required*" must be provided in the configuration file.
 
 The top-level Bakery configuration, `bakery.yaml`, is represented in the table below.
 
-| Field                                         | Description                                                |
-|-----------------------------------------------|------------------------------------------------------------|
-| `repository`<br/>*[Repository](#repository)*  | *(Required)* The project's repository metadata.            |
-| `registries`<br/>*[Registry](#registry) list* | The global-level registries to push all project images to. |
-| `images`<br/>*[Image](#image) list*           | The list of images managed by the project.                 |
+| Field                                           | Description                                                |
+|-------------------------------------------------|------------------------------------------------------------|
+| `repository`<br/>*[Repository](#repository)*    | *(Required)* The project's repository metadata.            |
+| `registries`<br/>*[Registry](#registry) arrray* | The global-level registries to push all project images to. |
+| `images`<br/>*[Image](#image) arrray*           | The list of images managed by the project.                 |
 
 ## Metadata Types
 
@@ -21,12 +21,12 @@ The top-level Bakery configuration, `bakery.yaml`, is represented in the table b
 A Repository stores the metadata of the parent repository of the project. It is primarily used
 for labeling images.
 
-| Field                                                         | Description                                                                                           | Default Value                         | Example                                                        |
-|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|---------------------------------------|----------------------------------------------------------------|
-| `url`<br/>*HttpUrl*                                           | *(Required)* The URL of the repository. If a protocol is not specified, `https://` will be prepended. |                                       | "https://github.com/posit-dev/images-shared"                   |
-| `vendor`<br/>*string*                                         | The vendor or organization name.                                                                      | `Posit Software, PBC`                 | `Example Organiztion, LLC`                                     |
-| `maintainer`<br/>*[NameEmail](#nameemail)* or *string*        | The maintainer of the repository/project.                                                             | `Posit Docker Team <docker@posit.co>` | `Jane Doe <jane.doe@example.com>`                              |
-| `authors`<br/>*[NameEmail](#nameemail) list* or *string list* | The credited authors of the repository/project.                                                       |                                       | <pre>- name: Author One<br/>  email: author1@example.com</pre> |
+| Field                                                             | Description                                                                                           | Default Value                         | Example                                                        |
+|-------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|---------------------------------------|----------------------------------------------------------------|
+| `url`<br/>*HttpUrl*                                               | *(Required)* The URL of the repository. If a protocol is not specified, `https://` will be prepended. |                                       | "https://github.com/posit-dev/images-shared"                   |
+| `vendor`<br/>*string*                                             | The vendor or organization name.                                                                      | `Posit Software, PBC`                 | `Example Organiztion, LLC`                                     |
+| `maintainer`<br/>*[NameEmail](#nameemail)* or *string*            | The maintainer of the repository/project.                                                             | `Posit Docker Team <docker@posit.co>` | `Jane Doe <jane.doe@example.com>`                              |
+| `authors`<br/>*[NameEmail](#nameemail) arrray* or *string arrray* | The credited authors of the repository/project.                                                       |                                       | <pre>- name: Author One<br/>  email: author1@example.com</pre> |
 
 ### Registry
 
@@ -41,21 +41,72 @@ A Registry represents a container image registry.
 
 ### Image
 
-An Image represents a container image managed by the project. Each image has one or more versions and optionally can have one or more variants and operating systems.
+An Image represents a container image managed by the project. Each image has one or more versions and optionally can have one or more variants and operating systems. New images can be created using the `bakery create image` command.
 
-| Field                                                 | Description                                                                                                                         | Default Value                               | Example                                                                                               |
-|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `name`<br/>*string*                                   | The name of the image. Used as the image name in tags.                                                                              |                                             | `my-image`, `workbench`                                                                               |
-| `displayName`<br/>*string*                            | A human-friendly name for the image. Used in labeling.                                                                              | `<name>.replace("-", " ").title()`          | `My Image`                                                                                            |
-| `description`<br/>*string*                            | A description of the image. Used in labeling.                                                                                       |                                             | `An example image.`                                                                                   |
-| `documentationUrl`<br/>*HttpUrl*                      | A URL to additional image or product documentation. Used in labeling.                                                               |                                             | `https://docs.example.com/my-image`                                                                   |
-| `subpath`<br/>*string*                                | The subpath relative from the project root directory where the image's versions and templates are stored.                           | `<name>`                                    | `my_image`, `my/image`                                                                                |
-| `extraRegistries`<br/>*[Registry](#registry) list*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         |                                             |                                                                                                       |
-| `overrideRegistries`<br/>*[Registry](#registry) list* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. |                                             |                                                                                                       |
-| `tagPatterns`<br/>*[TagPattern](#tagpattern) list*    | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns)   | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
-| `variants`<br/>*[ImageVariant](#imagevariant) list*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | [Default Variants](#default-image-variants) |                                                                                                       |
-| `versions`<br/>*[ImageVersion](#imageversion) list*   | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            |                                             |                                                                                                       |
-| `options`<br/>*[ToolOptions](#tooloptions) list*      | A list of options to pass to a supported tool when performing an action against the image.                                          |                                             |                                                                                                       |
+| Field                                                   | Description                                                                                                                         | Default Value                               | Example                                                                                               |
+|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `name`<br/>*string*                                     | The name of the image. Used as the image name in tags.                                                                              |                                             | `my-image`, `workbench`                                                                               |
+| `displayName`<br/>*string*                              | A human-friendly name for the image. Used in labeling.                                                                              | `<name>.replace("-", " ").title()`          | `My Image`                                                                                            |
+| `description`<br/>*string*                              | A description of the image. Used in labeling.                                                                                       |                                             | `An example image.`                                                                                   |
+| `documentationUrl`<br/>*HttpUrl*                        | A URL to additional image or product documentation. Used in labeling.                                                               |                                             | `https://docs.example.com/my-image`                                                                   |
+| `subpath`<br/>*string*                                  | The subpath relative from the project root directory where the image's versions and templates are stored.                           | `<name>`                                    | `my_image`, `my/image`                                                                                |
+| `extraRegistries`<br/>*[Registry](#registry) arrray*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         |                                             |                                                                                                       |
+| `overrideRegistries`<br/>*[Registry](#registry) arrray* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. |                                             |                                                                                                       |
+| `tagPatterns`<br/>*[TagPattern](#tagpattern) arrray*    | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns)   | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
+| `variants`<br/>*[ImageVariant](#imagevariant) arrray*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | [Default Variants](#default-image-variants) |                                                                                                       |
+| `versions`<br/>*[ImageVersion](#imageversion) arrray*   | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            |                                             |                                                                                                       |
+| `options`<br/>*[ToolOptions](#tooloptions) arrray*      | A list of options to pass to a supported tool when performing an action against the image.                                          |                                             |                                                                                                       |
+
+### ImageVariant
+
+An ImageVariant represents a variant of an image, such as standard or minimal builds. Each variant is expected have its
+own `Containerfile.<os>.<variant>`.
+
+| Field                                 | Description                                                                                                                                                          | Default Value                                                         | Example                                                                                 |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `name`<br/>*string*                   | *(Required)* The full human-readable name of the image variant. Used in labeling.                                                                                    |                                                                       | `Standard`, `Minimal`                                                                   |
+| `primary`<br/>*bool*                  | Indicates if this is the primary variant of the image. Only one variant should be marked as primary.                                                                 | `false`                                                               | `true`                                                                                  |
+| `extension`<br/>*string*              | The file extension for the `Containerfile` for this variant.                                                                                                         | `name` with special characters removed and lower-cased.               | `min`, `minimal`                                                                        |
+| `tagDisplayName`<br/>*string*         | The display name of the variant to be used in tags. This value is passed in as the `{{ Variant }}` variable in Jinja2 when rendering [TagPatterns](#tagpattern).     | `name` with disallowed tag characters changed to "-" and lower-cased. | `min`, `minimal`                                                                        |
+| `tagPatterns`<br/>*TagPattern arrray* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                  | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
+| `options`<br/>*ToolOptions arrray*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre>   | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
+
+#### Default Image Variants
+By default, the following image variants will be used for an [Image](#image) if no `variants` are otherwise specified for the [Image](#image).
+
+```yaml
+- name: Standard
+  extension: std
+  tagDisplayName: std
+  primary: true
+- name: Minimal
+  extension: min
+  tagDisplayName: min
+```
+
+### ImageVersion
+
+An ImageVersion represents a specific version of an image. Each version should be rendered from templates using the `bakery create version` command.
+
+| Field                                                   | Description                                                                                                                                                                                                                    | Default Value                                                                                                   | Example                                          |
+|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
+| `name`<br/>*string*                                     | *(Required)* The full name of the version.                                                                                                                                                                                     |                                                                                                                 | `2025.05.1+513.pro3`, `2025.04.2-8`, `2025.07.0` |
+| `subpath`<br/>*string*                                  | The subpath relative from the image's `subpath` where this version's files are stored.                                                                                                                                         | `name` with spaces replaced by "-" and lower-cased.                                                             | `2025.05.1`, `2025.04.2`, `2025.07.0`            |
+| `extraRegistries`<br/>*[Registry](#registry) arrray*    | Additional registries to push this image version to in addition to the global `registries` in [bakery.yaml](#bakery-configuration) and `extraRegistries` or `overrideRegistries` if set in the parent [Image](#image).         |                                                                                                                 |                                                  |
+| `overrideRegistries`<br/>*[Registry](#registry) arrray* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) and `extraRegistries` or `overrideRegistries` if set in the parent [Image](#image) for this image version with the given list of registries. |                                                                                                                 |                                                  |
+| `latest`<br/>*bool*                                     | Indicates if this is the latest version of the image. Only one version should be marked as latest.                                                                                                                             | `false`                                                                                                         | `true`                                           |
+| `os`<br/>*[ImageVersionOS](#imageversionos) arrray*     | The list of operating systems supported by this image version. Each operating system should have its own `Containerfile.<os>.<variant>`.                                                                                       | If another image was previously marked as `latest`, `bakery create version` will copy its `os` list by default. |                                                  |
+
+### ImageVersionOS
+
+An ImageVersionOS represents an operating system supported by an image version.
+
+| Field                         | Description                                                                                                                                                          | Default Value                                                         | Example                     |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|-----------------------------|
+| `name`<br/>*string*           | *(Required)* The name and version of the image's base operating system.                                                                                              |                                                                       | `Ubuntu 22.04`, `Debian 11` |
+| `primary`<br/>*bool*          | Indicates if this is the primary operating system of the image version.                                                                                              | `true` if only one OS is defined, otherwise `false`.                  | `true`                      |
+| `extension`<br/>*string*      | The file extension for the `Containerfile.<os>.<variant>` for this operating system.                                                                                 | `name` with special characters removed and lower-cased.               | `ubuntu2204`, `debian11`    |
+| `tagDisplayName`<br/>*string* | The display name of the operating system to be used in tags. This value is passed in as the `{{ OS }}` variable in Jinja2 when rendering [TagPatterns](#tagpattern). | `name` with disallowed tag characters changed to "-" and lower-cased. | `ubuntu-22.04`, `debian-11` |
 
 ## Other Types
 
@@ -72,10 +123,10 @@ A NameEmail represents a name and email address pair.
 
 A TagPattern represents a pattern for tagging images. It can include placeholders that are replaced with actual values when generating tags.
 
-| Field                                                   | Description                                                                                                                                           |
-|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `patterns`<br/>*string list*                            | *(Required)* The list of Jinja2 patterns for the tag.                                                                                                 |
-| `only`<br/>*[TagPatternFilter](#tagpatternfilter) list* | *(Optional)* A list of conditionals to restrict what image targets the tag `patterns` apply to. By default, patterns will apply to all image targets. |
+| Field                                                     | Description                                                                                                                                           |
+|-----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `patterns`<br/>*string arrray*                            | *(Required)* The list of Jinja2 patterns for the tag.                                                                                                 |
+| `only`<br/>*[TagPatternFilter](#tagpatternfilter) arrray* | *(Optional)* A list of conditionals to restrict what image targets the tag `patterns` apply to. By default, patterns will apply to all image targets. |
 
 #### Pattern Templating
 
