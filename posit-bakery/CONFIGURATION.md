@@ -14,6 +14,87 @@ The top-level Bakery configuration, `bakery.yaml`, is represented in the table b
 | `registries`<br/>*[Registry](#registry) array* | The global-level registries to push all project images to. |
 | `images`<br/>*[Image](#image) array*           | The list of images managed by the project.                 |
 
+### Example Configuration
+
+```yaml
+repository:
+  url: https://github.com/posit-dev/images-shared
+  vendor: Posit Software, PBC
+  maintainer: Posit Docker Team <docker@posit.co>
+  authors:
+    - name: Ben Schwedler
+      email: ben@posit.co
+    - name: Ian Pittwood
+      email: ian.pittwood@posit.co
+
+registries:
+  - host: ghcr.io
+    namespace: posit-dev
+  - host: docker.io
+    namespace: posit
+
+images:
+  - name: workbench
+    displayName: Posit Workbench
+    description: A containerized image of Posit Workbench, a remote development environment for data scientists.
+    documentationUrl: https://docs.posit.co/ide/
+    variants:
+      - name: Standard
+        extension: std
+        tagDisplayName: std
+        primary: true
+        options:
+          - tool: goss
+            wait: 15
+            command: "/usr/bin/supervisord -c /etc/supervisor/supervisord.conf"
+      - name: Minimal
+        extension: min
+        tagDisplayName: min
+    versions:
+      - name: "2025.05.1+513.pro3"
+        subpath: "2025.05"
+        latest: true
+        os:
+        - name: Ubuntu 24.04
+          primary: true
+          extension: ubuntu2404
+          tagDisplayName: ubuntu24.04
+        - name: Ubuntu 22.04
+          extension: ubuntu2204
+          tagDisplayName: ubuntu22.04
+      - name: "2024.12.1+563.pro2"
+        subpath: "2024.12"
+        os:
+        - name: Ubuntu 22.04
+          primary: true
+          extension: ubuntu2204
+          tagDisplayName: ubuntu22.04
+  - name: workbench-session
+    subpath: session
+    displayName: Posit Workbench Session
+    description: A minimal containerized image for running sessions for Posit Workbench in distributed environments.
+    documentationUrl: https://docs.posit.co/ide/server-pro/admin/job_launcher/kubernetes_plugin.html
+    versions:
+      - name: "2025.05.1+513.pro3"
+        subpath: "2025.05"
+        latest: true
+        os:
+        - name: Ubuntu 24.04
+          primary: true
+          extension: ubuntu2404
+          tagDisplayName: ubuntu24.04
+        - name: Ubuntu 22.04
+          extension: ubuntu2204
+          tagDisplayName: ubuntu22.04
+      - name: "2024.12.1+563.pro2"
+        subpath: "2024.12"
+        os:
+        - name: Ubuntu 22.04
+          primary: true
+          extension: ubuntu2204
+          tagDisplayName: ubuntu22.04
+```
+
 ## Metadata Types
 
 ### Repository
