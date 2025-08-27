@@ -60,40 +60,41 @@ An Image represents a container image managed by the project. Each image has one
 #### Example Image
 
 ```yaml
-name: workbench
-displayName: Posit Workbench
-description: A containerized image of Posit Workbench, a remote development environment for data scientists.
-documentationUrl: https://docs.posit.co/ide/
-variants:
-  - name: Standard
-    extension: std
-    tagDisplayName: std
-    primary: true
-    options:
-      - tool: goss
-        wait: 20
-        command: rserver start
-  - name: Minimal
-    extension: min
-    tagDisplayName: min
-versions:
-  - name: "2025.05.1+513.pro3"
-    subpath: "2025.05.1"
-    latest: true
-    os:
-      - name: Ubuntu 24.04
+images:
+  - name: workbench
+    displayName: Posit Workbench
+    description: A containerized image of Posit Workbench, a remote development environment for data scientists.
+    documentationUrl: https://docs.posit.co/ide/
+    variants:
+      - name: Standard
+        extension: std
+        tagDisplayName: std
         primary: true
-        extension: ubuntu2404
-        tagDisplayName: ubuntu24.04
-      - name: Ubuntu 22.04
-        extension: ubuntu2204
-        tagDisplayName: ubuntu22.04
-  - name: "2024.12.1+563.pro2"
-    subpath: "2024.12.1"
-    os:
-      - name: Ubuntu 22.04
-        extension: ubuntu2204
-        tagDisplayName: ubuntu22.04
+        options:
+          - tool: goss
+            wait: 20
+            command: rserver start
+      - name: Minimal
+        extension: min
+        tagDisplayName: min
+    versions:
+      - name: "2025.05.1+513.pro3"
+        subpath: "2025.05.1"
+        latest: true
+        os:
+          - name: Ubuntu 24.04
+            primary: true
+            extension: ubuntu2404
+            tagDisplayName: ubuntu24.04
+          - name: Ubuntu 22.04
+            extension: ubuntu2204
+            tagDisplayName: ubuntu22.04
+      - name: "2024.12.1+563.pro2"
+        subpath: "2024.12.1"
+        os:
+          - name: Ubuntu 22.04
+            extension: ubuntu2204
+            tagDisplayName: ubuntu22.04
 ```
 
 ### ImageVariant
@@ -114,13 +115,14 @@ own `Containerfile.<os>.<variant>`.
 By default, the following image variants will be used for an [Image](#image) if no `variants` are otherwise specified for the [Image](#image).
 
 ```yaml
-- name: Standard
-  extension: std
-  tagDisplayName: std
-  primary: true
-- name: Minimal
-  extension: min
-  tagDisplayName: min
+variants:
+  - name: Standard
+    extension: std
+    tagDisplayName: std
+    primary: true
+  - name: Minimal
+    extension: min
+    tagDisplayName: min
 ```
 
 ### ImageVersion
@@ -139,11 +141,12 @@ An ImageVersion represents a specific version of an image. Each version should b
 #### Example Image Version
 
 ```yaml
-name: "2025.05.1+513.pro3"
-subpath: "2025.05.1"
-latest: true
-os:
-  - name: Ubuntu 22.04
+versions:
+  - name: "2025.05.1+513.pro3"
+    subpath: "2025.05.1"
+    latest: true
+    os:
+      - name: Ubuntu 22.04
 ```
 
 ### ImageVersionOS
@@ -160,10 +163,11 @@ An ImageVersionOS represents an operating system supported by an image version.
 #### Example Image Version OS
 
 ```yaml
-name: Ubuntu 22.04
-primary: true
-extension: ubuntu2204
-tagDisplayName: ubuntu22.04
+os:
+  - name: Ubuntu 22.04
+    primary: true
+    extension: ubuntu2204
+    tagDisplayName: ubuntu22.04
 ```
 
 ## Other Types
