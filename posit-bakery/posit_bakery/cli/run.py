@@ -29,7 +29,7 @@ def dgoss(
     If no options are provided, the command will auto-discover all images in the current
     directory and generate and execute test commands on all images.
 
-    Images are expected to be in the local Docker daemon. It is advised to run `build` before running
+    Images are expected to be available to the local Docker daemon. It is advised to run `build` before running
     dgoss tests.
 
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
