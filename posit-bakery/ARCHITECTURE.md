@@ -207,6 +207,11 @@ flowchart TD
     runTrivy --> trivy
     image -.-> trivy -.-> results
 
+    wizcli[[wizcli]]
+    runWizcli[[bakery run wiz]]
+    runWizcli --> wizcli
+    image -.-> wizcli -.-> results
+
     openscap[[openscap]]
     runOpenscap[[bakery run openscap]]
     runOpenscap --> openscap
@@ -217,11 +222,11 @@ flowchart TD
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
-    class runSnyk,runOpenscap tooling
-    class snyk,openscap external
+    class runTrivy,runOpenscap,runWizcli tooling
+    class trivy,openscap,wizcli external
 
     %% Mark what we are working on and is in flight %%
-    class inprogress,trivy todo
+    class inprogress,trivy,wizcli todo
     class openscap,results todo
 ```
 
