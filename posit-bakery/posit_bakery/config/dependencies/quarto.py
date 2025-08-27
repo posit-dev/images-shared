@@ -5,7 +5,7 @@ from posit_bakery.config.dependencies.version import DependencyVersion
 
 
 class QuartoDependency(Dependency):
-    """Python depencency definition for bakery configuration."""
+    """Quarto depencency definition for bakery configuration."""
 
     dependency: Literal["quarto"] = "quarto"
 

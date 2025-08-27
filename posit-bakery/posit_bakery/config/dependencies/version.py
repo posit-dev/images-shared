@@ -12,6 +12,9 @@ class DependencyVersion(Version):
     We require this so we can properly handle versions that are specified that
     only include a major and minor version, such as "1.4".
     The packaging library treats this a "1.4.0".
+
+    :attr has_minor: Whether the version was specified with a minor version.
+    :attr has_micro: Whether the version was specified with a micro version.
     """
 
     has_minor: bool
@@ -30,7 +33,13 @@ class DependencyVersion(Version):
 
 
 class VersionConstraint(BakeryYAMLModel):
-    """Define versions using a constraint."""
+    """Define versions using a constraint.
+
+    :param latest: Whether to include the latest version.
+    :param count: Number of versions to include.
+    :param max: Maximum version to include.
+    :param min: Minimum version to include.
+    """
 
     count: Annotated[
         int | None, Field(default=None, gt=0, description="Number of versions to include. Must be greater than 0.")

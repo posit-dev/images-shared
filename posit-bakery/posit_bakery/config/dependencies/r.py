@@ -5,7 +5,7 @@ from posit_bakery.config.dependencies.version import DependencyVersion
 
 
 class RDependency(Dependency):
-    """Python depencency definition for bakery configuration."""
+    """R depencency definition for bakery configuration."""
 
     dependency: Literal["R"] = "R"
 
