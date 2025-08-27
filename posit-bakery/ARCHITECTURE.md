@@ -105,11 +105,13 @@ flowchart TD
 
         templatesDefault -.-> createProject -.-> config
 
-        config <-.-> createImage
+        config -.-> createImage
+        createImage -.-> config
         templatesDefault -.-> createImage -.-> templatesImage
 
         templatesImage -.-> createVersion -.-> tests & deps & containerfile
-        createVersion <-.-> config
+        createVersion -.-> config
+        config -.-> createVersion
     end
 
     pti[pti]
