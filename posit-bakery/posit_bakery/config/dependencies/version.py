@@ -13,12 +13,12 @@ class DependencyVersion(Version):
     only include a major and minor version, such as "1.4".
     The packaging library treats this a "1.4.0".
 
-    :attr has_minor: Whether the version was specified with a minor version.
-    :attr has_micro: Whether the version was specified with a micro version.
+    This class overrides the minor and micro properties to return None if
+    they were not specified in the original version string.
     """
 
-    has_minor: bool
-    has_micro: bool
+    _has_minor: bool
+    _has_micro: bool
 
     def __init__(self, version: str):
         """Initialize the DepencencyVersion with a version string."""
@@ -28,8 +28,32 @@ class DependencyVersion(Version):
 
         # Track how the version was specified
         parts = version.split(".")
-        self.has_minor = len(parts) > 1
-        self.has_micro = len(parts) > 2
+        self._has_minor = len(parts) > 1
+        self._has_micro = len(parts) > 2
+
+    @property
+    def minor(self) -> int | None:
+        """Return the minor version, or None if not specified.
+
+        This overrides the parent class to return 0 if the minor is unspecified.
+        """
+
+        if self._has_minor:
+            return super().minor
+
+        return None
+
+    @property
+    def micro(self) -> int | None:
+        """Return the micro version, or None if not specified.
+
+        This overrides the parent class to return 0 if the micro is unspecified.
+        """
+
+        if self._has_micro:
+            return super().micro
+
+        return None
 
 
 class VersionConstraint(BakeryYAMLModel):
@@ -145,8 +169,8 @@ class VersionConstraint(BakeryYAMLModel):
             filtered_versions = [
                 v
                 for v in filtered_versions
-                if (not max_.has_minor and v.major == max_.major)
-                or (not max_.has_micro and v.major == max_.major and v.minor == max_.minor)
+                if (max_.minor is None and v.major == max_.major)
+                or (max_.micro is None and v.major == max_.major and v.minor == max_.minor)
                 or v <= max_
             ]
 

@@ -70,8 +70,8 @@ class TestDependencyVersion:
         ver = DependencyVersion(version)
 
         assert ver.base_version == version
-        assert ver.has_minor == has_minor
-        assert ver.has_micro == has_micro
+        assert (ver.minor is not None) == has_minor
+        assert (ver.micro is not None) == has_micro
 
     @pytest.mark.parametrize(
         "version_list",
@@ -92,8 +92,8 @@ class TestDependencyVersion:
             assert not ver.is_prerelease
             assert not ver.is_postrelease
             # Child class attrs
-            assert ver.has_minor
-            assert ver.has_micro
+            assert ver.minor is not None
+            assert ver.major is not None
 
 
 class TestVersionConstraint:
