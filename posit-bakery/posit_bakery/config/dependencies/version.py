@@ -39,6 +39,37 @@ class VersionConstraint(BakeryYAMLModel):
     :param count: Number of versions to include.
     :param max: Maximum version to include.
     :param min: Minimum version to include.
+
+    At least one of `latest` or `max` must be specified.
+
+    If `latest` is True and no other fields are set, `count` defaults to 1.
+
+    Examples:
+    ---------
+
+    Include the 2 most recent minor versions of R, using the latest patch
+    version for each minor version:
+
+    ```yaml
+    latest: true
+    count: 2
+    ```
+
+    Include the latest patch version of Python 3.12:
+
+    ```
+    max: "3.12"
+    count: 1
+    ```
+
+    Include all minor versions of R starting from 4.0, using the latest
+    patch version for each minor version:
+
+    ```yaml
+    latest: true
+    min: "4.0"
+    ```
+
     """
 
     count: Annotated[
