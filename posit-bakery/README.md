@@ -13,13 +13,15 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 
 ### 3rd Party Tools
 
-| Tool | Used By | Purpose |
-|:-----|:--------|:--------|
-| [docker buildx bake](https://github.com/docker/buildx#installing) | `bakery build` | Build containers in parallel |
-| [dgoss](https://github.com/goss-org/goss#installation) | `bakery run dgoss` | Test container images for expected content & behavior |
-| [hadolint](https://github.com/hadolint/hadolint#install) | to be implemented | Lint Dockerfile/Containerfile |
-| [openscap](https://static.open-scap.org/) | to be implemented | Scan container images for secure configuration and vulnerabilities |
-| [snyk container](https://docs.snyk.io/snyk-cli/install-or-update-the-snyk-cli) | `bakery run snyk` | Scan container images for vulnerabilities |
+| Tool                                                                                                                                                                      | Used By                         | Purpose                                                            |
+|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------|:-------------------------------------------------------------------|
+| [docker buildx bake](https://github.com/docker/buildx#installing)                                                                                                         | `bakery build --strategy bake`  | Build containers in parallel                                       |
+| [docker](https://github.com/docker/buildx#installing), [podman](https://podman-desktop.io/docs/installation), or [nerdctl](https://github.com/containerd/nerdctl#install) | `bakery build --strategy build` | Build containers in series                                         |
+| [dgoss](https://github.com/goss-org/goss#installation)                                                                                                                    | `bakery run dgoss`              | Test container images for expected content & behavior              |
+| [hadolint](https://github.com/hadolint/hadolint#install)                                                                                                                  | to be implemented               | Lint Dockerfile/Containerfile                                      |
+| [openscap](https://static.open-scap.org/)                                                                                                                                 | to be implemented               | Scan container images for secure configuration and vulnerabilities |
+| [trivy](https://trivy.dev/dev/getting-started/installation/)                                                                                                              | to be implemented               | Scan container images for vulnerabilities                          |
+| [wizcli](https://github.com/bshandley/wizcli_install)                                                                                                                     | to be implemented               | Scan container images for vulnerabilities                          |
 
 ## Installation
 
@@ -47,6 +49,10 @@ Show the commands available in `bakery`.
 
 ```shell
 bakery --help
+
+# or
+
+bakery help
 ```
 
 ### Step 1. Create a project
@@ -59,7 +65,7 @@ bakery --help
 
     This command will create a new project configuration file in the bakery context.
 
-* Make changes to the `config.yaml` file
+* Make changes to the `bakery.yaml` file
 
     Update the contents of the project configuration file.
     A new project configuration file includes a default set of values.
@@ -75,15 +81,27 @@ bakery --help
     This command:
 
     * Creates a directory for the image (`fancy-image` in this example)
-    * Creates a `manifest.yaml` file that defines the image
     * Creates a `template/` subdirectory
     * Writes a default set of template files
+    * Adds the image to the `images` section of the `bakery.yaml` file
 
-* Make changes to the `manifest.yaml` file
+* Make changes to the `bakery.yaml` file
 
 * Make changes to the default Jinja2 templates
 
   The default set of templates provide only a basic skeleton of what is required to define and build an image; you will need to modify these generic templates.
+
+  The following variables are available by default during rendering of Jinja2 templates:
+
+  | Variable            | Description                                                                                                                                                                         |
+  |:--------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  | `Image.Name`        | The `name` of the image as specified in the `bakery.yaml`.                                                                                                                          |
+  | `Image.DisplayName` | The `displayName` of the image.                                                                                                                                                     |
+  | `Image.Version`     | The `name` of the version being rendered.                                                                                                                                           |
+  | `Image.Variant`     | The `name` of the variant being rendered. A separate `Containerfile` is rendered for each variant. This value can be used for branching logic between the `Containerfile` variants. |
+  | `VersionPath`       | The path to the image version's directory as resolved from the base path of the project.                                                                                            |
+  | `ImagePath`         | The path to the image directory as resolved from the base path of the project.                                                                                                      |
+  | `BasePath`          | The root context.                                                                                                                                                                   |
 
 * Add additional templates that will be rendered for each image version
 
@@ -102,12 +120,17 @@ bakery --help
     This command
 
     * Creates a subdirectory for the image version (`fancy-image/2025.01.0` in this example)
-    * Updates the `manifest.yaml` file with the new image version
+
+      The `--subpath` flag can be used to create the version directory in a different location
+
+    * Updates the `bakery.yaml` file with the new image version
     * Sets the new image to `latest`
 
       The `--no-mark-latest` flag skips marking the image as the latest
 
     * Renders the templates created in [Step 2](#step-2-create-an-image), replacing the values
+
+      Custom template variables can be specified using `--value key=value` flag
 
 ### Step 4. Build the image(s)
 
@@ -117,16 +140,13 @@ bakery --help
     bakery build --plan
     ```
 
-    The `build` command creates an intermediate `.docker-bake.json` file that is passed to `docker buildx bake`.
+    The `build --strategy bake` command creates a temporary JSON file that is passed to `docker buildx bake`.
 
 * Build the container images
 
     ```shell
-    bakery build --load
+    bakery build
     ```
-
-    Passing the `--load` flag will load the container images into the local docker daemon.
-    This ensures the image is available for use when running tests and security scans.
 
 ### Step 5. Run the tests
 
@@ -136,19 +156,14 @@ bakery --help
     bakery run dgoss
     ```
 
-    If the container needs to be run in privileged mode, you can pass this flag as a runtime option.
-    The `--privileged` flag must be quoted so it is passed to `dgoss` and is not interpreted as `bakery` flag.
-
-    ```shell
-    bakery run dgoss --run-opt '--privileged'
-    ```
+    Additional run options can be specified using Goss options in `bakery.yaml` on a per image or per variant basis
 
 ## Bakery Concepts
 
 ### Project Structure
 
 Bakery establishes a directory structure, referred to as a **project**.
-The **project** configuration is stored in the `config.yaml`.
+The **project** configuration is stored in the `bakery.yaml`.
 
 By default, bakery uses the invocation directory as the project **context**.
 You can use the `--context` flag to override the default behavior.
@@ -158,19 +173,18 @@ bakery --context /path/to/directory
 ```
 
 A bakery **project** can include one or more **image**s.
-Each **image** can include one or more **version**s.
-Each **image**'s configuration is stored in a `manifest.yaml` file.
+Each **image** can optionally have one or more **variant**s. By default, there are two variants: Standard and Minimal.
+Each **image** should have one or more **version**s.
+Each **version** can have one or more **OS**es.
 
 ```terminal
 .
-├── config.yaml
+├── bakery.yaml
 ├── fancy-image/
-│   ├── manifest.yaml
 │   ├── 2024.11.0/
 │   ├── 2025.01.0/
 │   └── template/
 └── more-fancy-image/
-    ├── manifest.yaml
     ├── 2024.12.0/
     ├── 2024.12.1/
     ├── 2025.02.0/

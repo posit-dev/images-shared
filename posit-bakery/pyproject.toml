@@ -1,6 +1,6 @@
 [project]
 name = "posit-bakery"
-description = "Tools for extracting and manipulating bake artifacts for various commands"
+description = "Tools for extracting and manipulating image build artifacts for various commands"
 authors = [
     { name = "Ian H. Pittwood", email = "ian.pittwood@posit.co" },
     { name = "Ben Schwedler", email = "ben@posit.co" },

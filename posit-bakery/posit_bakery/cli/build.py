@@ -41,12 +41,14 @@ def build(
     cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
-    """Builds images in the context path using buildx bake
+    """Builds images in the context path
 
     If no options are provided, the command will auto-discover all images in the current
     directory and generate a temporary bake plan to execute for all targets.
 
-    Requires the Docker Engine and CLI to be installed and running.
+    Requires the Docker Engine and CLI to be installed and running for `--strategy bake`.
+
+    Requires Docker, Podman, or nerdctl to be installed and running for `--strategy build`.
     """
     _filter: BakeryConfigFilter = BakeryConfigFilter(
         image_name=image_name,
