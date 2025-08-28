@@ -11,7 +11,6 @@ from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.image,
 ]
 
 
