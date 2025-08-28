@@ -23,6 +23,10 @@ class DependencyVersion(Version):
     def __init__(self, version: str):
         """Initialize the DepencencyVersion with a version string."""
 
+        # Strip off leading "v" if present. Common for GitHub tags/releases.
+        if version.startswith("v"):
+            version = version[1:]
+
         # Initialize the parent class to catch any version parsing errors.
         super().__init__(version)
 
