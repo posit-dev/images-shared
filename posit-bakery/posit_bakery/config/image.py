@@ -172,12 +172,12 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("name"):
+            if info.data.get("name") and not os[0].primary:
                 log.info(
                     f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
                     f"OS."
                 )
-            os[0].primary = True
+                os[0].primary = True
         return os
 
     @field_validator("os", mode="after")
@@ -619,9 +619,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             "BasePath": ".",
         }
         if extra_values:
-            for v in extra_values:
-                key, value = v.split("=", 1)
-                values[key] = value
+            values.update(extra_values)
 
         return values
 
