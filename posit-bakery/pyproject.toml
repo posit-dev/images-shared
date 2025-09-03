@@ -20,6 +20,8 @@ dependencies = [
     "pydantic[email]~=2.11.7",
     "python-on-whales (>=0.77.0,<0.78.0)",
     "ruamel-yaml (>=0.18.14,<0.19.0)",
+    "requests (>=2.32.5,<3.0.0)",
+    "requests-cache (>=1.2.1,<2.0.0)",
 ]
 dynamic = ["version"]
 

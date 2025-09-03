@@ -1,5 +1,6 @@
 import abc
 import re
+from enum import Enum
 from pathlib import Path
 
 from pydantic import Field
@@ -31,6 +32,13 @@ TagDisplayNameField = Annotated[
         validate_default=True,
     ),
 ]
+
+
+class OSFamilyEnum(str, Enum):
+    DEBIAN_LIKE = "debian"
+    REDHAT_LIKE = "rhel"
+    SUSE_LIKE = "sles"
+    UNKNOWN = "unknown"
 
 
 class BakeryYAMLModel(BaseModel):
