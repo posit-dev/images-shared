@@ -86,7 +86,6 @@ class DGossCommand(BaseModel):
             "PROJECT_MOUNT": str(self.project_mountpoint),
         }
         if self.image_target.image_variant:
-            e["IMAGE_TYPE"] = self.image_target.image_variant.name
             e["IMAGE_VARIANT"] = self.image_target.image_variant.name
         if self.image_target.image_os:
             e["IMAGE_OS"] = self.image_target.image_os.name
