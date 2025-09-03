@@ -99,9 +99,9 @@ bakery help
   | `Image.DisplayName` | The `displayName` of the image.                                                                                                                                                     |
   | `Image.Version`     | The `name` of the version being rendered.                                                                                                                                           |
   | `Image.Variant`     | The `name` of the variant being rendered. A separate `Containerfile` is rendered for each variant. This value can be used for branching logic between the `Containerfile` variants. |
-  | `VersionPath`       | The path to the image version's directory as resolved from the base path of the project.                                                                                            |
-  | `ImagePath`         | The path to the image directory as resolved from the base path of the project.                                                                                                      |
-  | `BasePath`          | The root context.                                                                                                                                                                   |
+  | `Path.Base`         | The root context.                                                                                                                                                                   |
+  | `Path.Image`        | The path to the image directory as resolved from the base path of the project.                                                                                                      |
+  | `Path.Version`      | The path to the image version's directory as resolved from the base path of the project.                                                                                            |
 
 * Add additional templates that will be rendered for each image version
 

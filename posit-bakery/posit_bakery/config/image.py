@@ -596,7 +596,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         version: str,
         variant: str | None = None,
         version_path: str | Path | None = None,
-        extra_values: list[str] | None = None,
+        extra_values: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """Generates the template values for rendering.
 
@@ -614,9 +614,11 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": version,
                 "Variant": variant or "",
             },
-            "VersionPath": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
-            "ImagePath": str(self.path.relative_to(self.parent.path)),
-            "BasePath": ".",
+            "Path": {
+                "Base": ".",
+                "Image": str(self.path.relative_to(self.parent.path)),
+                "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
+            },
         }
         if extra_values:
             values.update(extra_values)
@@ -676,7 +678,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # Render other templates once
             else:
                 template_values = version.parent.generate_version_template_values(
-                    version, version_path=version.path, extra_values=extra_values
+                    version.name, version_path=version.path, extra_values=extra_values
                 )
                 rendered = tpl.render(**template_values, **render_kwargs)
                 rel_path = tpl_rel_path.removesuffix(".jinja2")

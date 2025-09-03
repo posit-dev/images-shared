@@ -1,6 +1,6 @@
 FROM scratch
 
-COPY {{ VersionPath }}/deps/packages.txt /tmp/packages.txt
+COPY {{ Path.Version }}/deps/packages.txt /tmp/packages.txt
 
 {%- if Image.Variant == "Minimal" %}
 RUN exit 1
