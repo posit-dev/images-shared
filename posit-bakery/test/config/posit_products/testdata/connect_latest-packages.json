@@ -1,0 +1,47 @@
+{
+  "generated": "2025-03-28T14:54:35.900911",
+  "packages": [
+    {
+      "platform": "amazonlinux2/x86_64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.amazonlinux2.x86_64.rpm",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "el8/x86_64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el8.x86_64.rpm",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "el9/x86_64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el9.x86_64.rpm",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "sles15/x86_64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.sles15.x86_64.rpm",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "ubuntu20/amd64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~ubuntu20_amd64.deb",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "ubuntu22/amd64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~ubuntu22_amd64.deb",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    },
+    {
+      "platform": "ubuntu24/amd64",
+      "primary_version": "2025.04",
+      "url": "https://cdn.posit.co/connect/2025.04/rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~ubuntu24_amd64.deb",
+      "version": "2025.04.0-dev+10-gbe0a4a3d31"
+    }
+  ]
+}
