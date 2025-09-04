@@ -8,9 +8,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG IMAGE_VERSION="{{ Image.Version }}"
 
 ### Install Apt Packages ###
-COPY {{ VersionPath }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+COPY {{ Path.Version }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
 {% if Image.Variant != "Minimal" -%}
-COPY {{ VersionPath }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+COPY {{ Path.Version }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
 {%- endif %}
 RUN pti container syspkg upgrade --dist \
     && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \

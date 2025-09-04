@@ -4,4 +4,4 @@ package:
   curl:
     installed: true
   cmake:
-    installed: {% raw %}{{ if eq .Env.IMAGE_TYPE "min" }}false{{ else }}true{{ end }}{% endraw %}
+    installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}

@@ -86,7 +86,6 @@ class DGossCommand(BaseModel):
             "PROJECT_MOUNT": str(self.project_mountpoint),
         }
         if self.image_target.image_variant:
-            e["IMAGE_TYPE"] = self.image_target.image_variant.name
             e["IMAGE_VARIANT"] = self.image_target.image_variant.name
         if self.image_target.image_os:
             e["IMAGE_OS"] = self.image_target.image_os.name
@@ -108,9 +107,9 @@ class DGossCommand(BaseModel):
         }
         if image_target.image_variant:
             goss_options = image_target.image_variant.get_tool_option("goss")
-            if goss_options:
+            if goss_options is not None:
                 args["runtime_options"] = goss_options.runtimeOptions
-                args["command"] = goss_options.command
+                args["image_command"] = goss_options.command
                 args["wait"] = goss_options.wait
         return cls(**args)
 

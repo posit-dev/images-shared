@@ -172,12 +172,12 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("name"):
+            if info.data.get("name") and not os[0].primary:
                 log.info(
                     f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
                     f"OS."
                 )
-            os[0].primary = True
+                os[0].primary = True
         return os
 
     @field_validator("os", mode="after")
@@ -596,7 +596,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         version: str,
         variant: str | None = None,
         version_path: str | Path | None = None,
-        extra_values: list[str] | None = None,
+        extra_values: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """Generates the template values for rendering.
 
@@ -614,14 +614,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": version,
                 "Variant": variant or "",
             },
-            "VersionPath": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
-            "ImagePath": str(self.path.relative_to(self.parent.path)),
-            "BasePath": ".",
+            "Path": {
+                "Base": ".",
+                "Image": str(self.path.relative_to(self.parent.path)),
+                "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
+            },
         }
         if extra_values:
-            for v in extra_values:
-                key, value = v.split("=", 1)
-                values[key] = value
+            values.update(extra_values)
 
         return values
 
@@ -678,7 +678,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # Render other templates once
             else:
                 template_values = version.parent.generate_version_template_values(
-                    version, version_path=version.path, extra_values=extra_values
+                    version.name, version_path=version.path, extra_values=extra_values
                 )
                 rendered = tpl.render(**template_values, **render_kwargs)
                 rel_path = tpl_rel_path.removesuffix(".jinja2")

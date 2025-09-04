@@ -4,4 +4,4 @@ package:
   curl:
     installed: true
   cmake:
-    installed: {{ if eq .Env.IMAGE_TYPE "Minimal" }}false{{ else }}true{{ end }}
+    installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
