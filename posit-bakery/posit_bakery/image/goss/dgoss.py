@@ -181,6 +181,14 @@ class DGossSuite:
             except UnicodeDecodeError:
                 log.warning(f"Unexpected encoding for dgoss output for image '{str(dgoss_command.image_target)}'.")
                 output = p.stdout
+            try:
+                error = p.stderr.decode("utf-8")
+                error = error.strip()
+            except UnicodeDecodeError:
+                log.warning(
+                    f"Unexpected encoding for dgoss error output for image '{str(dgoss_command.image_target)}'."
+                )
+                error = p.stderr
             parse_err = None
 
             try:
@@ -193,6 +201,10 @@ class DGossSuite:
                 log.warning(
                     f"Failed to decode JSON output from dgoss for image '{str(dgoss_command.image_target)}': {e}"
                 )
+                if output:
+                    log.warning(output)
+                if error:
+                    log.error(error)
                 parse_err = e
             except pydantic.ValidationError as e:
                 log.warning(
