@@ -107,9 +107,9 @@ class DGossCommand(BaseModel):
         }
         if image_target.image_variant:
             goss_options = image_target.image_variant.get_tool_option("goss")
-            if goss_options:
+            if goss_options is not None:
                 args["runtime_options"] = goss_options.runtimeOptions
-                args["command"] = goss_options.command
+                args["image_command"] = goss_options.command
                 args["wait"] = goss_options.wait
         return cls(**args)
 
