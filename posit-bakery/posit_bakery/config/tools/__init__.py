@@ -2,8 +2,8 @@ from typing import Union, Annotated
 
 from pydantic import Field
 
-from posit_bakery.config.tools.base import ToolOptions
-from posit_bakery.config.tools.goss import GossOptions
+from .base import ToolOptions
+from .goss import GossOptions
 
 
 ToolTypes = Union[GossOptions]

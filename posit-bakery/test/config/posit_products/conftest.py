@@ -1,13 +1,12 @@
 import json
 import os
-import unittest.mock
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 import requests
 
-from posit_bakery.config.posit_product import const
+from posit_bakery.config.image.posit_product import const
 
 TESTDATA_DIR = Path(os.path.dirname(__file__)) / "testdata"
 DOWNLOADS_JSON = TESTDATA_DIR / "downloads.json"
@@ -43,7 +42,7 @@ def patch_testdata_response(url: str):
 
 @pytest.fixture(scope="function")
 def disable_requests_caching(mocker):
-    return mocker.patch("posit_bakery.config.posit_product.main.CachedSession", spec=requests.Session)
+    return mocker.patch("posit_bakery.config.image.posit_product.main.CachedSession", spec=requests.Session)
 
 
 @pytest.fixture(scope="function")
