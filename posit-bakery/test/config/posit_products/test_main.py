@@ -1,8 +1,8 @@
 import pytest
 
-from posit_bakery.config.build_os import SUPPORTED_OS, BuildOS
-from posit_bakery.config.posit_product.const import ProductEnum, ReleaseStreamEnum
-from posit_bakery.config.posit_product.main import (
+from posit_bakery.config.image.build_os import SUPPORTED_OS, BuildOS
+from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
     get_product_artifact_by_stream,
