@@ -7,6 +7,7 @@ from typing import Annotated, Self
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from posit_bakery.config import ImageVersion
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -213,3 +214,19 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         :return: A map of OS names to their corresponding URL strings.
         """
         raise NotImplementedError("Subclasses must implement get_url method.")
+
+    def as_image_version(self):
+        """Convert this development version to a standard image version."""
+        os_urls = self.get_url_by_os()
+        for _os in self.os:
+            _os.downloadURL = os_urls.get(_os.name, "")
+        return ImageVersion(
+            name=self.get_version(),
+            subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
+            parent=self.parent,
+            extraRegistries=self.extraRegistries,
+            overrideRegistries=self.overrideRegistries,
+            os=self.os,
+            latest=False,
+            ephemeral=True,
+        )

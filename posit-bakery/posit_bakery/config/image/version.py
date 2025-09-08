@@ -46,6 +46,9 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     latest: Annotated[
         bool, Field(default=False, description="Flag to indicate if this is the latest version of the image.")
     ]
+    ephemeral: Annotated[
+        bool, Field(default=False, description="Flag to indicate if this is an ephemeral image version rendering.")
+    ]
     os: Annotated[
         list[ImageVersionOS],
         Field(

@@ -7,6 +7,7 @@ import jinja2
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
+from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.registry import Registry
@@ -80,6 +81,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     versions: Annotated[
         list[ImageVersion],
         Field(default_factory=list, validate_default=True, description="List of image versions for this image."),
+    ]
+    devVersions: Annotated[
+        list[DevelopmentVersionField],
+        Field(default_factory=list, description="List of development versions for this image."),
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
@@ -196,6 +201,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             variant.parent = self
         for version in self.versions:
             version.parent = self
+        for dev_version in self.devVersions:
+            dev_version.parent = self
         return self
 
     @field_serializer("documentationUrl")
@@ -276,15 +283,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     def generate_version_template_values(
         self,
-        version: str,
-        variant: str | None = None,
+        version: "ImageVersion",
+        variant: Union["ImageVariant", None] = None,
+        version_os: Union["ImageVersionOS", None] = None,
         version_path: str | Path | None = None,
         extra_values: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """Generates the template values for rendering.
 
-        :param version: The version's string representation (name).
-        :param variant: The variant's string representation (name).
+        :param version: The ImageVersion object.
+        :param variant: The ImageVariant object.
+        :param version_os: The ImageVersionOS object, if applicable.
         :param version_path: The subpath to the version directory, if different from the default.
         :param extra_values: Additional key-value pairs to include in the template values.
 
@@ -294,8 +303,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             "Image": {
                 "Name": self.name,
                 "DisplayName": self.displayName,
-                "Version": version,
-                "Variant": variant or "",
+                "Version": version.name,
             },
             "Path": {
                 "Base": ".",
@@ -303,6 +311,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             },
         }
+        if variant:
+            values["Image"]["Variant"] = variant.name
+        if version_os:
+            values["Image"]["OS"] = {
+                "Name": version_os.buildOS.name,
+                "Family": version_os.buildOS.family,
+                "Version": version_os.buildOS.version,
+                "Codename": version_os.buildOS.codename,
+            }
+            if version_os.downloadURL is not None:
+                values["Image"]["DownloadURL"] = version_os.downloadURL
         if extra_values:
             values.update(extra_values)
 
@@ -348,9 +367,18 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # If variants are specified, render Containerfile for each variant
             if tpl_rel_path.startswith("Containerfile") and variants:
                 containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+
+                # Attempt to match the OS from the Containerfile name
+                os_ext = containerfile_base_name.split(".")[-1]
+                containerfile_os = None
+                for _os in version.os:
+                    if _os.extension == os_ext:
+                        containerfile_os = _os
+                        break
+
                 for variant in variants:
                     template_values = version.parent.generate_version_template_values(
-                        version.name, variant.name, version.path, extra_values
+                        version, variant, containerfile_os, version.path, extra_values
                     )
                     containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
                     rendered = tpl.render(**template_values, **render_kwargs)
