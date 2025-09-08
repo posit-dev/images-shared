@@ -219,14 +219,14 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
     }
     if _os.family == OSFamilyEnum.DEBIAN_LIKE:
         if product == ProductEnum.PACKAGE_MANAGER and (
-            (_os.name.lower() == "ubuntu" and int(_os.major_version) > 22)
-            or (_os.name.lower() == "debian" and int(_os.major_version) > 11)
+            (_os.name.lower() == "ubuntu" and int(_os.majorVersion) > 22)
+            or (_os.name.lower() == "debian" and int(_os.majorVersion) > 11)
         ):
             return "ubuntu64"
         elif _os.name.lower() == "ubuntu":
-            return _os.code_name
+            return _os.codename
         elif _os.name.lower() == "debian":
-            return debian_to_ubuntu_codename.get(_os.code_name)
+            return debian_to_ubuntu_codename.get(_os.codename)
     elif _os.family == OSFamilyEnum.SUSE_LIKE:
         return "opensuse" + _os.version
     elif _os.family == OSFamilyEnum.REDHAT_LIKE:
@@ -263,14 +263,14 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     }
 
     if product == ProductEnum.CONNECT:
-        connect_daily_os_name = _os.name.lower() + _os.major_version
+        connect_daily_os_name = _os.name.lower() + _os.majorVersion
         if _os.family == OSFamilyEnum.REDHAT_LIKE:
-            if _os.major_version == "8":
+            if _os.majorVersion == "8":
                 connect_daily_os_name = "el8"
-            if _os.major_version == "9":
+            if _os.majorVersion == "9":
                 connect_daily_os_name = "el9"
         if _os.family == OSFamilyEnum.DEBIAN_LIKE and _os.name.lower() == "debian":
-            connect_daily_os_name = "ubuntu" + str(int(_os.major_version) * 2)
+            connect_daily_os_name = "ubuntu" + str(int(_os.majorVersion) * 2)
         meta["connect_daily_os_name"] = connect_daily_os_name
 
     return meta
