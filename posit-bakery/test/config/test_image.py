@@ -84,14 +84,18 @@ class TestImageVersionOS:
             ("Ubuntu", SUPPORTED_OS["ubuntu"]["24"]),
             ("Debian 11", SUPPORTED_OS["debian"]["11"]),
             ("Debian 11.0", SUPPORTED_OS["debian"]["11"]),
+            ("Debian", SUPPORTED_OS["debian"]["13"]),
             ("RHEL 10", SUPPORTED_OS["rhel"]["10"]),
             ("Red Hat 10", SUPPORTED_OS["rhel"]["10"]),
+            ("RHEL", SUPPORTED_OS["rhel"]["10"]),
             ("RH 9", SUPPORTED_OS["rhel"]["9"]),
             ("EL8", SUPPORTED_OS["rhel"]["8"]),
             ("Alma 9", SUPPORTED_OS["alma"]["9"]),
             ("AlmaLinux 8", SUPPORTED_OS["alma"]["8"]),
+            ("Alma Linux", SUPPORTED_OS["alma"]["10"]),
             ("Rocky Linux 10", SUPPORTED_OS["rocky"]["10"]),
             ("Rocky 9", SUPPORTED_OS["rocky"]["9"]),
+            ("Rocky", SUPPORTED_OS["rocky"]["10"]),
         ],
     )
     def test_populate_build_os(self, input_name, expected_build_os):
