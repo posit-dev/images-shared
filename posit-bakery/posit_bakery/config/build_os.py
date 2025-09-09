@@ -36,10 +36,13 @@ class BuildOS(BaseModel):
 
 ALTERNATE_NAMES = {
     "redhat": "rhel",
+    "red hat": "rhel",
     "rh": "rhel",
     "el": "rhel",
     "almalinux": "alma",
+    "alma linux": "alma",
     "rockylinux": "rocky",
+    "rocky linux": "rocky",
 }
 
 
@@ -69,4 +72,5 @@ SUPPORTED_OS = {
         "8": BuildOS(family=OSFamilyEnum.REDHAT_LIKE, name="rocky", version="8"),
     },
     "scratch": BuildOS(family=OSFamilyEnum.UNKNOWN, name="scratch", version=""),
+    "unknown": BuildOS(family=OSFamilyEnum.UNKNOWN, name="unknown", version=""),
 }
