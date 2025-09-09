@@ -101,7 +101,9 @@ class ImageVersionOS(BakeryYAMLModel):
                     return SUPPORTED_OS[match_dict["name"]]
                 # Otherwise, use the latest version of the matching OS name if possible.
                 else:
-                    latest = max(SUPPORTED_OS[match_dict["name"]].keys())
+                    # This line converts each version of the OS from a string to an int, finds the max, then converts it
+                    # back to a string. This ensures that we get the latest version numerically, not lexically.
+                    latest = str(max([int(x) for x in SUPPORTED_OS[match_dict["name"]].keys()]))
                     return SUPPORTED_OS[match_dict["name"]][latest]
         # Otherwise, assume a two-part name and version in the name field.
         else:
