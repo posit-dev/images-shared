@@ -1,7 +1,7 @@
 import re
 from enum import Enum
 
-SEMVER_REGEX_PATTERN = re.compile(
+CALVER_REGEX_PATTERN = re.compile(
     r"(0|[1-9]\d*)\.([0-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
     r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"

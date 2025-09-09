@@ -8,7 +8,7 @@ from requests_cache import CachedSession
 from posit_bakery.config.build_os import BuildOS
 from posit_bakery.config.posit_product import resolvers
 from posit_bakery.config.posit_product.const import (
-    SEMVER_REGEX_PATTERN,
+    CALVER_REGEX_PATTERN,
     ProductEnum,
     ReleaseStreamEnum,
     WORKBENCH_DAILY_URL,
@@ -23,7 +23,7 @@ from posit_bakery.config.shared import OSFamilyEnum
 class ReleaseStreamResult(BaseModel):
     """Represents a resulting artifact found in a release stream. This provides an easy validation for data we get."""
 
-    version: Annotated[str, Field(pattern=SEMVER_REGEX_PATTERN)]
+    version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
     download_url: HttpUrl
 
 
