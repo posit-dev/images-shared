@@ -47,7 +47,19 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         bool, Field(default=False, description="Flag to indicate if this is the latest version of the image.")
     ]
     ephemeral: Annotated[
-        bool, Field(default=False, description="Flag to indicate if this is an ephemeral image version rendering.")
+        bool,
+        Field(
+            default=False,
+            description="Flag to indicate if this is an ephemeral image version rendering. If enabled, the version "
+            "will be rendered and deleted after each operation.",
+        ),
+    ]
+    isDevelopmentVersion: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Flag to indicate if this is a development version.",
+        ),
     ]
     os: Annotated[
         list[ImageVersionOS],

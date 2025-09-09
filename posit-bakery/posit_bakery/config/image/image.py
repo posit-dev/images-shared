@@ -1,4 +1,5 @@
 import logging
+import shutil
 from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Union, Any, Self
@@ -460,3 +461,23 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 image_version.subpath = subpath
 
         return image_version
+
+    def load_dev_versions(self):
+        """Load the development versions for this image."""
+        for dev_version in self.devVersions:
+            image_version = dev_version.as_image_version()
+            self.versions.append(image_version)
+
+    def create_ephemeral_version_files(self):
+        """Create the files for all ephemeral image versions."""
+        for version in self.versions:
+            if version.ephemeral:
+                log.debug(f"Creating ephemeral image version directory [bold]{version.path}")
+                self.create_version_files(version, self.variants)
+
+    def remove_ephemeral_version_files(self):
+        """Remove the files for all ephemeral image versions."""
+        for version in self.versions:
+            if version.ephemeral and version.path.is_dir():
+                log.debug(f"Removing ephemeral image version directory [bold]{version.path}")
+                shutil.rmtree(version.path)
