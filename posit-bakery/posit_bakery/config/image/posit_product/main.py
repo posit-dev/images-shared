@@ -111,9 +111,9 @@ product_release_stream_url_map = {
                     ("version", resolvers.TextResolver()),
                     (
                         "download_url",
-                        "https://cdn.posit.co/package-manager/{os.package_suffix}/{arch_identifier}/"
-                        "rstudio-pm{os.package_version_sep}{version}{os.package_arch_sep}"
-                        "{arch_identifier}.{os.package_suffix}",
+                        "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
+                        "rstudio-pm{os.packageVersionSeparator}{version}{os.packageArchSeparator}"
+                        "{arch_identifier}.{os.packageSuffix}",
                     ),
                 ]
             ),
@@ -125,9 +125,9 @@ product_release_stream_url_map = {
                     ("version", resolvers.TextResolver()),
                     (
                         "download_url",
-                        "https://cdn.posit.co/package-manager/{os.package_suffix}/{arch_identifier}/"
-                        "rstudio-pm{os.package_version_sep}{version}{os.package_arch_sep}"
-                        "{arch_identifier}.{os.package_suffix}",
+                        "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
+                        "rstudio-pm{os.packageVersionSeparator}{version}{os.packageArchSeparator}"
+                        "{arch_identifier}.{os.packageSuffix}",
                     ),
                 ]
             ),
