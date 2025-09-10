@@ -103,9 +103,10 @@ class BakePlan(BaseModel):
             groups[image_name] = BakeGroup(targets=[])
         groups[image_name].targets.append(uid)
 
-        if image_variant not in groups:
-            groups[image_variant] = BakeGroup(targets=[])
-        groups[image_variant].targets.append(uid)
+        if image_variant is not None:
+            if image_variant not in groups:
+                groups[image_variant] = BakeGroup(targets=[])
+            groups[image_variant].targets.append(uid)
 
         return groups
 

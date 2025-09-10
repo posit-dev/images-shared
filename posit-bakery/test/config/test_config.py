@@ -26,14 +26,14 @@ class TestBakeryConfigDocument:
         assert len(d.registries) == 0
         assert len(d.images) == 0
 
-    def test_valid(self):
+    def test_valid(self, common_image_variants):
         """Test creating a valid BakeryConfigDocument with all fields."""
         base_path = Path(os.getcwd())
         d = BakeryConfigDocument(
             base_path=base_path,
             repository={"url": "https://example.com/repo"},
             registries=[{"host": "registry.example.com", "namespace": "namespace"}],
-            images=[{"name": "my-image", "versions": [{"name": "1.0.0"}]}],
+            images=[{"name": "my-image", "variants": common_image_variants, "versions": [{"name": "1.0.0"}]}],
         )
 
         assert d.base_path == base_path
@@ -317,15 +317,14 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / image.name / new_version).is_dir()
-        assert (context / image.name / new_version / f"Containerfile.{previous_os.extension}.min").is_file()
+        assert (context / image.name / new_version / f"Containerfile.{previous_os.extension}").is_file()
         expected_containerfile = textwrap.dedent("""\
         FROM scratch
 
         COPY scratch/2.0.0/deps/packages.txt /tmp/packages.txt
         """)
-        assert expected_containerfile == (context / image.name / new_version / "Containerfile.scratch.min").read_text()
-        assert (context / image.name / new_version / "Containerfile.scratch.std").is_file()
-        assert expected_containerfile == (context / image.name / new_version / "Containerfile.scratch.std").read_text()
+        assert expected_containerfile == (context / image.name / new_version / "Containerfile.scratch").read_text()
+        assert (context / image.name / new_version / "Containerfile.scratch").is_file()
         assert (context / image.name / new_version / "deps").is_dir()
         assert (context / image.name / new_version / "deps" / "packages.txt").is_file()
         assert (context / image.name / new_version / "test").is_dir()
@@ -355,19 +354,13 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "scratch" / "2" / "0" / "0").is_dir()
-        assert (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.min").is_file()
+        assert (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch").is_file()
         expected_containerfile = textwrap.dedent("""\
         FROM scratch
 
         COPY scratch/2/0/0/deps/packages.txt /tmp/packages.txt
         """)
-        assert (
-            expected_containerfile == (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.min").read_text()
-        )
-        assert (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.std").is_file()
-        assert (
-            expected_containerfile == (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch.std").read_text()
-        )
+        assert expected_containerfile == (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch").read_text()
 
     def test_create_version_exists_force(self, get_tmpcontext):
         """Test creating an existing version in the BakeryConfig with force works."""
@@ -394,11 +387,10 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "scratch" / "1").is_dir()
-        assert (context / "scratch" / "1" / "Containerfile.scratch.min").is_file()
-        assert (context / "scratch" / "1" / "Containerfile.scratch.std").is_file()
+        assert (context / "scratch" / "1" / "Containerfile.scratch").is_file()
         assert (
             "COPY scratch/1/deps/packages.txt /tmp/packages.txt"
-            in (context / "scratch" / "1" / "Containerfile.scratch.std").read_text()
+            in (context / "scratch" / "1" / "Containerfile.scratch").read_text()
         )
         assert not (context / "1.0.0").is_dir()
 

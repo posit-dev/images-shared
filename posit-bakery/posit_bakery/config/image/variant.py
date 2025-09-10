@@ -77,14 +77,3 @@ class ImageVariant(BakeryYAMLModel):
             return option.update(parent_option)
 
         return option
-
-
-def default_image_variants() -> list[ImageVariant]:
-    """Return the default image variants for the bakery configuration.
-
-    :return: A list of default image variants.
-    """
-    return [
-        ImageVariant(name="Standard", extension="std", tagDisplayName="std", primary=True),
-        ImageVariant(name="Minimal", extension="min", tagDisplayName="min"),
-    ]
