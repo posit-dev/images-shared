@@ -5,9 +5,9 @@ import requests
 from pydantic import BaseModel, HttpUrl, Field
 from requests_cache import CachedSession
 
-from posit_bakery.config.build_os import BuildOS
-from posit_bakery.config.posit_product import resolvers
-from posit_bakery.config.posit_product.const import (
+from posit_bakery.config.image.build_os import BuildOS
+from posit_bakery.config.image.posit_product import resolvers
+from posit_bakery.config.image.posit_product.const import (
     CALVER_REGEX_PATTERN,
     ProductEnum,
     ReleaseStreamEnum,
