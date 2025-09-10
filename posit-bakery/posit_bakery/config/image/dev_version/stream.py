@@ -9,23 +9,6 @@ from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseSt
 from posit_bakery.config.image.posit_product.main import get_product_artifact_by_stream
 
 
-def _get_stream_version(data: dict) -> str:
-    """Retrieve the version from the product stream data.
-
-    :param data: The data dictionary containing product and stream information.
-
-    :return: The version string from the product stream.
-    """
-    product = data.get("product")
-    stream = data.get("stream")
-    if not product or not stream:
-        raise ValueError("Both 'product' and 'stream' must be set to retrieve the version.")
-
-    get_product_artifact_by_stream(product, stream)  # Validate product and stream
-
-    return f"{product}-{stream}-latest"
-
-
 class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
     """Image development version sourced from a product stream."""
 
