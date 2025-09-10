@@ -71,10 +71,10 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
             rendered_url = template.render(
                 **{
                     "OS": {
-                        "name": _os.buildOS.name,
-                        "version": _os.buildOS.version,
-                        "family": _os.buildOS.family,
-                        "codename": _os.buildOS.codename,
+                        "Name": _os.buildOS.name,
+                        "Version": _os.buildOS.version,
+                        "Family": _os.buildOS.family,
+                        "Codename": _os.buildOS.codename,
                     }
                 }
             )

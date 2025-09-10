@@ -24,8 +24,8 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         list[Registry],
         Field(
             default_factory=list,
-            description="List of additional registries to use for this image version with registries defined "
-            "globally or for the image.",
+            description="List of additional registries to use for this image development version with registries "
+            "defined globally or for the image.",
         ),
     ]
     overrideRegistries: Annotated[
@@ -58,8 +58,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         for unique_registry in unique_registries:
             if registries.count(unique_registry) > 1:
                 log.warning(
-                    f"Duplicate registry defined in config for version '{info.data.get('_name')}': "
-                    f"{unique_registry.base_url}"
+                    f"Duplicate registry defined in config for image development version: {unique_registry.base_url}"
                 )
         return sorted(list(unique_registries), key=lambda r: r.base_url)
 
@@ -74,9 +73,9 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         :return: The unmodified list of ImageVersionOS objects.
         """
         # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("_name") and not os:
+        if not os:
             log.warning(
-                f"No OSes defined for image development version '{info.data['_name']}'. At least one OS should be "
+                f"No OSes defined for image development version. At least one OS should be "
                 "defined for complete tagging and labeling of images."
             )
         return os
@@ -93,11 +92,8 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         unique_oses = set(os)
         for unique_os in unique_oses:
-            if info.data.get("_name") and os.count(unique_os) > 1:
-                log.warning(
-                    f"Duplicate OS defined in config for image development version '{info.data['_name']}': "
-                    f"{unique_os.name}"
-                )
+            if os.count(unique_os) > 1:
+                log.warning(f"Duplicate OS defined in config for image development version: {unique_os.name}")
 
         return sorted(list(unique_oses), key=lambda o: o.name)
 
@@ -114,11 +110,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("_name") and not os[0].primary:
-                log.info(
-                    f"Only one OS, {os[0].name}, defined for image version {info.data['_name']}. Marking it as primary "
-                    f"OS."
-                )
+            if not os[0].primary:
                 os[0].primary = True
 
         return os
@@ -138,12 +130,12 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         primary_os_count = sum(1 for o in os if o.primary)
         if primary_os_count > 1:
             raise ValueError(
-                f"Only one OS can be marked as primary for image version '{info.data['_name']}'. "
+                f"Only one OS can be marked as primary for image development version. "
                 f"Found {primary_os_count} OSes marked primary."
             )
-        elif info.data.get("_name") and primary_os_count == 0:
+        elif primary_os_count == 0:
             log.warning(
-                f"No OS marked as primary for image version '{info.data['_name']}'. "
+                f"No OS marked as primary for image development version. "
                 "At least one OS should be marked as primary for complete tagging and labeling of images."
             )
 
@@ -157,8 +149,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         if self.extraRegistries and self.overrideRegistries:
             raise ValueError(
-                "Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image version "
-                f"'{self._name}'."
+                "Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image development version."
             )
         return self
 
@@ -168,16 +159,6 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         for version_os in self.os:
             version_os.parent = self
         return self
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
 
     @property
     def all_registries(self) -> list[Registry]:
@@ -229,13 +210,14 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     def as_image_version(self):
         """Convert this development version to a standard image version."""
+        os_copies = [deepcopy(os) for os in self.os]
         return ImageVersion(
             name=self.get_version(),
             subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
             parent=self.parent,
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
-            os=self.os,
+            os=os_copies,
             latest=False,
             ephemeral=True,
             isDevelopmentVersion=True,
