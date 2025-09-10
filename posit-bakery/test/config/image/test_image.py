@@ -31,9 +31,7 @@ class TestImage:
         assert i.subpath == "my-image"
         assert len(i.extraRegistries) == 0
         assert len(i.tagPatterns) == 8
-        assert len(i.variants) == 2
-        for variant in i.variants:
-            assert variant.parent is i
+        assert len(i.variants) == 0
         assert len(i.versions) == 1
         for version in i.versions:
             assert version.parent is i
@@ -211,8 +209,7 @@ class TestImage:
 
         expected_path = context / "test-image" / "2.0"
         assert expected_path.exists() and expected_path.is_dir()
-        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
-        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204").is_file()
         assert (expected_path / "deps").is_dir()
         assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
         assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()

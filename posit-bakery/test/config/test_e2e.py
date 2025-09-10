@@ -16,7 +16,7 @@ pytestmark = [
 ]
 
 
-def test_create_from_scratch(tmpdir):
+def test_create_from_scratch(tmpdir, common_image_variants):
     """Test creating a new project, image, and version from scratch."""
     context = Path(tmpdir) / "test_project"
     context.mkdir()
@@ -71,14 +71,12 @@ def test_create_from_scratch(tmpdir):
     assert expected_version_yaml in config_file.read_text()
     version_path = image_path / "1.0.0"
     assert version_path.is_dir()
-    assert (version_path / "Containerfile.min").is_file()
-    assert (version_path / "Containerfile.std").is_file()
+    assert (version_path / "Containerfile").is_file()
     expected_containerfile = f"FROM {DEFAULT_BASE_IMAGE}\n"
-    assert expected_containerfile in (version_path / "Containerfile.min").read_text()
-    assert expected_containerfile in (version_path / "Containerfile.std").read_text()
+    assert expected_containerfile in (version_path / "Containerfile").read_text()
 
 
-def test_create_from_scratch_bake_plan(tmpdir):
+def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
     """Test rendering a bake plan with a new project, image, and version from scratch."""
     context = Path(tmpdir) / "test_project"
     context.mkdir()
@@ -94,6 +92,8 @@ def test_create_from_scratch_bake_plan(tmpdir):
 
     # Create a new image.
     config.create_image("image-one")
+    # Add the Standard and Minimal Variants to the image.
+    config.model.images[0].variants = common_image_variants_objects
 
     # Create a second empty image to ensure it does not render without versions.
     config.create_image("image-two")

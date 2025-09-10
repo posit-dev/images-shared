@@ -134,7 +134,7 @@ An Image represents a container image managed by the project. Each image has one
 | `extraRegistries`<br/>*[Registry](#registry) array*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `overrideRegistries`<br/>*[Registry](#registry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*    | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns)   | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
-| `variants`<br/>*[ImageVariant](#imagevariant) array*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | [Default Variants](#default-image-variants) | `- name: Minimal`                                                                                                                        |
+| `variants`<br/>*[ImageVariant](#imagevariant) array*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | `[]` | `- name: Minimal`                                                                                                                        |
 | `versions`<br/>*[ImageVersion](#imageversion) array*   | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            | `[]`                                        | `- name: 2025.07.0`                                                                                                                      |
 | `options`<br/>*[ToolOptions](#tooloptions) array*      | A list of options to pass to a supported tool when performing an action against the image.                                          | `[]`                                        | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
 
@@ -192,8 +192,11 @@ own `Containerfile.<os>.<variant>`.
 | `tagPatterns`<br/>*TagPattern array* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                                                   | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
 | `options`<br/>*ToolOptions array*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre> | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
 
-#### Default Image Variants
-By default, the following image variants will be used for an [Image](#image) if no `variants` are otherwise specified for the [Image](#image).
+#### Common Image Variants
+
+By default, the image variants for an [Image](#image) will be set to an empty list `[]` f no `variants` are otherwise specified for the [Image](#image).
+
+A common pattern is to build a minimal image containing fewer dependencies, and a standard image that builds dependencies into the container.
 
 ```yaml
 variants:

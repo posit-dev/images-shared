@@ -7,7 +7,7 @@ import jinja2
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from .variant import ImageVariant, default_image_variants
+from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -72,7 +72,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     variants: Annotated[
         list[ImageVariant],
         Field(
-            default_factory=default_image_variants,
+            default_factory=list,
             validate_default=True,
             description="List of image variants.",
         ),
