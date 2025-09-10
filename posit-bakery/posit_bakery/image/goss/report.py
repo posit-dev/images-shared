@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
+import sys
 
 from pydantic import BaseModel, Field, computed_field
 from rich.table import Table
@@ -182,6 +183,10 @@ class GossJsonReportCollection(dict):
         results = {"total": {"success": 0, "failed": 0, "skipped": 0, "total_tests": 0, "duration": 0}}
         for image_name, targets in self.items():
             for uid, (target, report) in targets.items():
+                # If the image has no variant, show an empty string in the table
+                if target.image_variant is None:
+                    target.image_variant = type("ImageVariant", (), {"name": ""})
+
                 results.setdefault(image_name, dict())
                 results[image_name].setdefault(target.image_version.name, dict())
                 results[image_name][target.image_version.name].setdefault(target.image_variant.name, dict())
@@ -208,7 +213,7 @@ class GossJsonReportCollection(dict):
         table = Table(title="Goss Test Results")
         table.add_column("Image Name", justify="left")
         table.add_column("Version", justify="left")
-        table.add_column("Target", justify="left")
+        table.add_column("Variant", justify="left")
         table.add_column("Success", justify="right", header_style="green3")
         table.add_column("Failed", justify="right", header_style="bright_red")
         table.add_column("Skipped", justify="right", header_style="yellow")
