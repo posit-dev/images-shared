@@ -251,6 +251,66 @@ os:
     tagDisplayName: ubuntu22.04
 ```
 
+### Dependency
+
+Dependencies represents a list software dependencies that is installed in a specific image version.
+
+Each Dependency defines the dependency type, as well as the versions of the dependency that will be installed.
+The versions can be defined explicitly as an array of strings, or in terms of a version constraint.
+
+| Field | Description | Default Value | Example |
+|-------|-------------|---------------|---------|
+| `dependency`<br/>*string* | *(Required)* The name of the dependency. | | `R`, `python`, `quarto` |
+| `versions`<br/>*array* or *map* | *(Required)* An array of explicit, exact versions, or a `VersionConstraint` map.  | | <pre>- "4.5.1"<br/>- "4.4.2.3"</pre> |
+
+#### VersionConstraint
+
+| Field | Description | Default Value | Example |
+|-------|-------------|---------------|---------|
+| `latest`<br/>*bool* | Include the latest version. | | `true`, `false` |
+| `count`<br/>*int* | Number of minor versions to include. | | `2`, `4` |
+| `max`<br/>*string* | Maximum version to include. | | `3.13.7`, `3.11`, `3` |
+| `min`<br/>*string* | Minimum version to include. | | `4.2.1`, `4.3`, `4` |
+
+At least one of `latest` or `max` must be specified.
+
+If `latest` is `true` and no other fields are set, `count` defaults to `1`.
+
+#### Example Dependency Version List
+
+```yaml
+# Install specific versions of Python and R
+dependencies:
+  - dependency: python
+    versions:
+      - "3.13.7"
+      - "3.12.5"
+  - dependency: R
+    versions: ["4.5.1", "4.4.2", "3.6.3"]
+```
+
+#### Example Dependency Version Constraint
+
+```yaml
+dependencies:
+  # Install the latest patch of python minor versions from 3.9 to 3.11, inclusive
+  - depencency: python
+    versions:
+      max: "3.11"
+      min: "3.9"
+  # Pin the maximum R version to 4.4.2, and install 3 minor versions
+  - dependency: R
+    versions:
+      max: "4.4.2"
+      count: 3
+  # Install the 2 most recent minor versions of quarto, including the pre-release version
+  - dependency: quarto
+    prerelease: true
+    versions:
+      latest: true
+      count: 2
+```
+
 ## Other Types
 
 ### NameEmail
