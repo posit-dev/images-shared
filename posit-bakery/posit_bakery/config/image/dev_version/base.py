@@ -1,7 +1,6 @@
 import abc
 import logging
 from copy import deepcopy
-from pathlib import Path
 from typing import Annotated, Self
 
 from pydantic import Field, field_validator, model_validator
@@ -46,7 +45,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
-    def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
+    def deduplicate_registries(cls, registries: list[Registry]) -> list[Registry]:
         """Ensures that the registries list is unique and warns on duplicates.
 
         :param registries: List of registries to deduplicate.
@@ -64,7 +63,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("os", mode="after")
     @classmethod
-    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def check_os_not_empty(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that the os list is not empty.
 
         :param os: List of ImageVersionOS objects to check.
@@ -82,7 +81,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("os", mode="after")
     @classmethod
-    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def deduplicate_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that the os list is unique and warns on duplicates.
 
         :param os: List of ImageVersionOS objects to deduplicate.
@@ -99,7 +98,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("os", mode="after")
     @classmethod
-    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def make_single_os_primary(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that at most one OS is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.
@@ -117,7 +116,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("os", mode="after")
     @classmethod
-    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def max_one_primary_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that at most one OS is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.

@@ -289,7 +289,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         version_os: Union["ImageVersionOS", None] = None,
         version_path: str | Path | None = None,
         extra_values: dict[str, str] | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Generates the template values for rendering.
 
         :param version: The ImageVersion object.
@@ -312,7 +312,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             },
         }
-        if variant:
+        if variant is not None:
             values["Image"]["Variant"] = variant.name
         if version_os:
             values["Image"]["OS"] = {
@@ -468,12 +468,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             image_version = dev_version.as_image_version()
             self.versions.append(image_version)
 
-    def create_ephemeral_version_files(self):
+    def create_ephemeral_version_files(self, extra_values: dict[str, str] | None = None):
         """Create the files for all ephemeral image versions."""
+        # TODO: Replace the extra_values parameter with Ben's dependency constraints resolution.
         for version in self.versions:
             if version.ephemeral:
                 log.debug(f"Creating ephemeral image version directory [bold]{version.path}")
-                self.create_version_files(version, self.variants)
+                self.create_version_files(version, self.variants, extra_values=extra_values)
 
     def remove_ephemeral_version_files(self):
         """Remove the files for all ephemeral image versions."""
