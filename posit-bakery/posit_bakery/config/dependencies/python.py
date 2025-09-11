@@ -1,6 +1,7 @@
 import abc
 from typing import Literal
 
+from pydantic import ConfigDict
 from requests_cache import CachedSession
 
 from .dependency import Dependency, DependencyVersions, DependencyConstraint
@@ -56,10 +57,14 @@ class PythonDependency(abc.ABC):
 class PythonDependencyVersions(DependencyVersions, PythonDependency):
     """Class for specifying a list of Python versions."""
 
+    model_config = ConfigDict(extra="forbid")
+
     dependency: Literal["python"] = "python"
 
 
 class PythonDependencyConstraint(DependencyConstraint, PythonDependency):
     """Class for specifying a list of Python version constraints."""
+
+    model_config = ConfigDict(extra="forbid")
 
     dependency: Literal["python"] = "python"

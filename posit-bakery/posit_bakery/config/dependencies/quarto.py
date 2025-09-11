@@ -1,6 +1,7 @@
 import abc
 from typing import Literal
 
+from pydantic import ConfigDict
 from requests_cache import CachedSession
 from ruamel.yaml import YAML
 
@@ -65,10 +66,14 @@ class QuartoDependency(abc.ABC):
 class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
     """Class for specifying a list of Quarto version constraints."""
 
+    model_config = ConfigDict(extra="forbid")
+
     dependency: Literal["quarto"] = "quarto"
 
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
     """Class for specifying a list of Quarto versions."""
+
+    model_config = ConfigDict(extra="forbid")
 
     dependency: Literal["quarto"] = "quarto"

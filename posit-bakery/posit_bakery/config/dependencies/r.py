@@ -1,6 +1,7 @@
 import abc
 from typing import Literal
 
+from pydantic import ConfigDict
 from requests_cache import CachedSession
 
 from .dependency import DependencyVersions, DependencyConstraint
@@ -44,10 +45,14 @@ class RDependency(abc.ABC):
 class RDependencyConstraint(DependencyConstraint, RDependency):
     """Class for specifying an R version constraint."""
 
+    model_config = ConfigDict(extra="forbid")
+
     dependency: Literal["R"] = "R"
 
 
 class RDependencyVersions(DependencyVersions, RDependency):
     """Class for specifying a list of R versions."""
+
+    model_config = ConfigDict(extra="forbid")
 
     dependency: Literal["R"] = "R"

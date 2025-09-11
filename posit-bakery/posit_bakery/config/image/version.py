@@ -8,6 +8,7 @@ from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.registry import Registry
 from .version_os import ImageVersionOS
+from posit_bakery.config.dependencies import DependencyVersionsField
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             default_factory=list,
             validate_default=True,
             description="List of supported ImageVersionOS objects for this image version.",
+        ),
+    ]
+    dependencies: Annotated[
+        list[DependencyVersionsField],
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="Dependency to install, pinned to a list of versions.",
         ),
     ]
 
