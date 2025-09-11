@@ -1,10 +1,11 @@
+import abc
 from typing import Literal
 
 from requests_cache import CachedSession
 from ruamel.yaml import YAML
 
-from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.version import DependencyVersion
+from .dependency import Dependency, DependencyConstraint, DependencyVersions
+from .version import DependencyVersion
 
 QUARTO_DOWNLOAD_URL = "https://quarto.org/docs/download/_download.json"
 QUARTO_PRERELEASE_URL = "https://quarto.org/docs/download/_prerelease.json"
@@ -13,12 +14,11 @@ QUARTO_PREVIOUS_VERSIONS_URL = (
 )
 
 
-class QuartoDependency(Dependency):
+class QuartoDependency(abc.ABC):
     """Quarto depencency definition for bakery configuration.
 
     :param prerelease: Whether to include prerelease versions. (default: False)"""
 
-    dependency: Literal["quarto"] = "quarto"
     prerelease: bool = False
 
     def _fetch_versions(self) -> list[DependencyVersion]:
@@ -60,3 +60,15 @@ class QuartoDependency(Dependency):
         :return: A sorted list of available Quarto versions.
         """
         return self._fetch_versions()
+
+
+class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
+    """Class for specifying a list of Quarto version constraints."""
+
+    dependency: Literal["quarto"] = "quarto"
+
+
+class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
+    """Class for specifying a list of Quarto versions."""
+
+    dependency: Literal["quarto"] = "quarto"

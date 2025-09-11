@@ -1,18 +1,17 @@
+import abc
 from typing import Literal
 
 from requests_cache import CachedSession
 
-from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.version import DependencyVersion
+from .dependency import DependencyVersions, DependencyConstraint
+from .version import DependencyVersion
 
 # All available R versions from Posit
 R_VERSIONS_URL = "https://cdn.posit.co/r/versions.json"
 
 
-class RDependency(Dependency):
+class RDependency(abc.ABC):
     """R depencency definition for bakery configuration."""
-
-    dependency: Literal["R"] = "R"
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available R versions from Posit.
@@ -40,3 +39,15 @@ class RDependency(Dependency):
         :return: A sorted list of available R versions.
         """
         return self._fetch_versions()
+
+
+class RDependencyConstraint(DependencyConstraint, RDependency):
+    """Class for specifying an R version constraint."""
+
+    dependency: Literal["R"] = "R"
+
+
+class RDependencyVersions(DependencyVersions, RDependency):
+    """Class for specifying a list of R versions."""
+
+    dependency: Literal["R"] = "R"

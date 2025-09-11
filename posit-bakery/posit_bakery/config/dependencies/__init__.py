@@ -2,23 +2,23 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
-from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.python import PythonDependency
-from posit_bakery.config.dependencies.quarto import QuartoDependency
-from posit_bakery.config.dependencies.r import RDependency
-from posit_bakery.config.dependencies.version import DependencyVersion, VersionConstraint
+from .dependency import DependencyVersion
+from .python import PythonDependencyConstraint, PythonDependencyVersions
+from .quarto import QuartoDependencyConstraint, QuartoDependencyVersions
+from .r import RDependencyConstraint, RDependencyVersions
 
 
-DependencyTypes = Union[PythonDependency, RDependency, QuartoDependency]
-DependencyField = Annotated[DependencyTypes, Field(discriminator="dependency")]
+DependencyConstraintField = Annotated[
+    Union[PythonDependencyConstraint, RDependencyConstraint, QuartoDependencyConstraint],
+    Field(discriminator="dependency"),
+]
+DependencyVersionsField = Annotated[
+    Union[PythonDependencyVersions, RDependencyVersions, QuartoDependencyVersions],
+    Field(discriminator="dependency"),
+]
 
 __all__ = [
-    "Dependency",
-    "DependencyField",
-    "DependencyTypes",
-    "PythonDependency",
-    "RDependency",
-    "QuartoDependency",
     "DependencyVersion",
-    "VersionConstraint",
+    "DependencyConstraintField",
+    "DependencyVersionsField",
 ]
