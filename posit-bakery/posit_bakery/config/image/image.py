@@ -390,7 +390,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # Render other templates once
             else:
                 template_values = version.parent.generate_version_template_values(
-                    version.name, version_path=version.path, extra_values=extra_values
+                    version, version_path=version.path, extra_values=extra_values
                 )
                 rendered = tpl.render(**template_values, **render_kwargs)
                 rel_path = tpl_rel_path.removesuffix(".jinja2")

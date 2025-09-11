@@ -49,6 +49,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     ephemeral: Annotated[
         bool,
         Field(
+            exclude=True,
             default=False,
             description="Flag to indicate if this is an ephemeral image version rendering. If enabled, the version "
             "will be rendered and deleted after each operation.",
@@ -57,6 +58,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     isDevelopmentVersion: Annotated[
         bool,
         Field(
+            exclude=True,
             default=False,
             description="Flag to indicate if this is a development version.",
         ),
