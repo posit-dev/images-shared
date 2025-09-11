@@ -1,10 +1,11 @@
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel
 import pytest
 
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField
-from posit_bakery.config.dependencies.dependency import DependencyConstraint, DependencyVersions
+from posit_bakery.config.dependencies.dependency import Dependency, DependencyConstraint, DependencyVersions
 from posit_bakery.config.dependencies.python import PythonDependencyConstraint, PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyConstraint, QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyConstraint, RDependencyVersions
@@ -18,6 +19,13 @@ pytestmark = [
     pytest.mark.config,
     pytest.mark.dependency,
 ]
+
+
+class TestDependency:
+    def test_init_error(self):
+        """Test that instantiating the base class raises an error."""
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
+            Dependency()
 
 
 class FakeDependencyConstraint(BaseModel):

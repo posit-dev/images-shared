@@ -15,7 +15,6 @@ class Dependency(BakeryYAMLModel, abc.ABC):
     @abc.abstractmethod
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available versions for the dependency."""
-        raise NotImplementedError("Subclasses must implement the available_versions method.")
 
 
 class DependencyConstraint(BakeryYAMLModel):
