@@ -29,6 +29,13 @@ class DependencyConstraint(BakeryYAMLModel):
         ),
     ]
 
+    def resolve_versions(self) -> list[str]:
+        """Return a list of versions that satisfy the constraints.
+
+        Each subclass must implement `available_versions`
+        """
+        return [str(v) for v in self.constraint.resolve_versions(self.available_versions())]
+
 
 class DependencyVersions(BakeryYAMLModel):
     """Class for specifying a list of dependency versions."""
