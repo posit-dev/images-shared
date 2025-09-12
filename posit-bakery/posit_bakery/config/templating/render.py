@@ -16,6 +16,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env.filters["stripMetadata"] = lambda s: re.sub(r"[+-](?=[^+-]*$).*", "", s)
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
+    env.filters["quote"] = lambda s: '"' + s + '"'
     return env
 
 

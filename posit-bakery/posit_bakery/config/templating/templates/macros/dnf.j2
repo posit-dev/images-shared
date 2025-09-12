@@ -1,0 +1,24 @@
+{% macro update_upgrade() -%}
+RUN dnf upgrade -yq && \
+    dnf clean all -yq
+{%- endmacro %}
+
+{% macro install_packages_from_list(packages) -%}
+RUN dnf install -yq {{ packages | join(' ') }} && \
+    dnf clean all -yq
+{%- endmacro %}
+
+{% macro install_packages_from_file(file) -%}
+RUN xargs -a {{ file }} dnf install -yq && \
+    dnf clean all -yq
+{%- endmacro %}
+
+{% macro setup() -%}
+RUN dnf upgrade -yq && \
+    dnf install -yq \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    dnf clean all -yq
+{%- endmacro %}

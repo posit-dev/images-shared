@@ -1,0 +1,25 @@
+{% macro build(versions) -%}
+FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+
+ENV UV_PYTHON_PREFERENCE=only-managed
+
+RUN uv python install {{ versions | join(' ') }}
+{%- endmacro %}
+
+{% macro get_version_directory(version) -%}
+/opt/python/cpython-{{ version }}-linux-x86_64-gnu
+{%- endmacro %}
+
+{% macro install_from_build_stage() -%}
+COPY --from=python-builder /opt/python /opt/python
+{%- endmacro %}
+
+{% macro install_packages(versions, packages = None, requirements_file = None) -%}
+RUN {% for version in versions -%}
+    {{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade {% if packages %}{{ packages | join(' ') }} {% endif %}{% if requirements_file %}-r {{ requirements_file }}{% endif %}{% if not loop.last %} && \
+    {% endif %}
+    {%- endfor %}
+{%- endmacro %}

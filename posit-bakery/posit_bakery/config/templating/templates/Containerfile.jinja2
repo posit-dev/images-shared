@@ -1,3 +1,14 @@
+{% raw -%}
+{#-
+Below are imports for Bakery's macros. If any are unneeded, they can be removed.
+Bakery handles bootstrapping the files into template rendering.
+-#}
+{%- import "macros/apt.j2" as apt -%}
+{%- import "macros/dnf.j2" as dnf -%}
+{%- import "macros/python.j2" as python -%}
+{%- import "macros/quarto.j2" as quarto -%}
+{%- import "macros/r.j2" as r -%}
+{%- endraw %}
 FROM {{ base_tag }}
 
 ### ARG declarations ###
