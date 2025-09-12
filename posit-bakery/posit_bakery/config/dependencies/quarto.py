@@ -5,14 +5,9 @@ from pydantic import ConfigDict
 from requests_cache import CachedSession
 from ruamel.yaml import YAML
 
+from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL
 from .dependency import Dependency, DependencyConstraint, DependencyVersions
 from .version import DependencyVersion
-
-QUARTO_DOWNLOAD_URL = "https://quarto.org/docs/download/_download.json"
-QUARTO_PRERELEASE_URL = "https://quarto.org/docs/download/_prerelease.json"
-QUARTO_PREVIOUS_VERSIONS_URL = (
-    "https://raw.githubusercontent.com/quarto-dev/quarto-web/refs/heads/main/docs/download/_download-older.yml"
-)
 
 
 class QuartoDependency(abc.ABC):

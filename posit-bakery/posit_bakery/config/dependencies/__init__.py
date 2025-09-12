@@ -2,6 +2,7 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
+from . import const
 from .dependency import DependencyVersion
 from .python import PythonDependencyConstraint, PythonDependencyVersions
 from .quarto import QuartoDependencyConstraint, QuartoDependencyVersions
@@ -18,6 +19,7 @@ DependencyVersionsField = Annotated[
 ]
 
 __all__ = [
+    "const",
     "DependencyVersion",
     "DependencyConstraintField",
     "DependencyVersionsField",

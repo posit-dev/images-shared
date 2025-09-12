@@ -4,11 +4,9 @@ from typing import Literal
 from pydantic import ConfigDict
 from requests_cache import CachedSession
 
+from .const import R_VERSIONS_URL
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
-
-# All available R versions from Posit
-R_VERSIONS_URL = "https://cdn.posit.co/r/versions.json"
 
 
 class RDependency(abc.ABC):

@@ -4,14 +4,9 @@ from typing import Literal
 from pydantic import ConfigDict
 from requests_cache import CachedSession
 
-from .dependency import Dependency, DependencyVersions, DependencyConstraint
+from .const import UV_PYTHON_DOWNLOADS_JSON_URL
+from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
-
-
-# All available python versions from astral-sh/python-build-standalone
-UV_PYTHON_DOWNLOADS_JSON_URL = (
-    "https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json"
-)
 
 
 class PythonDependency(abc.ABC):
