@@ -359,7 +359,12 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.path.mkdir(parents=True)
 
         env = jinja2_env(
-            loader=jinja2.FileSystemLoader(version.parent.template_path),
+            loader=jinja2.ChoiceLoader(
+                [
+                    jinja2.FileSystemLoader(version.parent.template_path),
+                    jinja2.PackageLoader("posit_bakery.config.templates", "templating"),
+                ]
+            ),
             autoescape=True,
             undefined=jinja2.StrictUndefined,
             keep_trailing_newline=True,
