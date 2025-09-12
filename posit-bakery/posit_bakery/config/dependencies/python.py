@@ -2,11 +2,11 @@ import abc
 from typing import Literal
 
 from pydantic import ConfigDict
-from requests_cache import CachedSession
 
 from .const import UV_PYTHON_DOWNLOADS_JSON_URL
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
+from posit_bakery.util import cached_session
 
 
 class PythonDependency(abc.ABC):
@@ -24,9 +24,7 @@ class PythonDependency(abc.ABC):
 
         :return: A sorted list of available Python versions.
         """
-        session = CachedSession(
-            cache_name="bakery_cache", expire_after=3600, backend="filesystem", use_temp=True, allowable_methods=["GET"]
-        )
+        session = cached_session()
         response = session.get(UV_PYTHON_DOWNLOADS_JSON_URL)
         response.raise_for_status()
 

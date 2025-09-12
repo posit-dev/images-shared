@@ -84,7 +84,7 @@ def patch_testdata_response(url: str):
 
 @pytest.fixture(scope="function")
 def disable_requests_caching(mocker):
-    return mocker.patch("posit_bakery.config.image.posit_product.main.CachedSession", spec=requests.Session)
+    return mocker.patch("posit_bakery.util.CachedSession", spec=requests.Session)
 
 
 @pytest.fixture(scope="function")

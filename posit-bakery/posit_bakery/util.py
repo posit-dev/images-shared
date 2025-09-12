@@ -5,6 +5,7 @@ from shutil import which
 from typing import Union
 
 import git
+from requests_cache import CachedSession
 
 from posit_bakery.error import BakeryToolNotFoundError
 
@@ -60,3 +61,17 @@ def try_get_repo_url(context: Union[str, bytes, os.PathLike]) -> str:
 def auto_path() -> Path:
     context = Path(os.getcwd())
     return context
+
+
+def cached_session(**kwargs) -> CachedSession:
+    """Create a cached requests session with default settings."""
+    session_kwargs = {
+        "cache_name": "bakery_cache",
+        "expire_after": 3600,
+        "backend": "filesystem",
+        "use_temp": True,
+        "allowable_methods": ["GET"],
+    }
+    session_kwargs.update(kwargs)
+
+    return CachedSession(**session_kwargs)

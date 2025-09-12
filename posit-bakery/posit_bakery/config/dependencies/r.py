@@ -2,11 +2,11 @@ import abc
 from typing import Literal
 
 from pydantic import ConfigDict
-from requests_cache import CachedSession
 
 from .const import R_VERSIONS_URL
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
+from posit_bakery.util import cached_session
 
 
 class RDependency(abc.ABC):
@@ -21,9 +21,7 @@ class RDependency(abc.ABC):
 
         :return: A sorted list of available R versions.
         """
-        session = CachedSession(
-            cache_name="bakery_cache", expire_after=3600, backend="filesystem", use_temp=True, allowable_methods=["GET"]
-        )
+        session = cached_session()
         response = session.get(R_VERSIONS_URL)
         response.raise_for_status()
 

@@ -2,12 +2,12 @@ import abc
 from typing import Literal
 
 from pydantic import ConfigDict
-from requests_cache import CachedSession
 from ruamel.yaml import YAML
 
 from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL
 from .dependency import Dependency, DependencyConstraint, DependencyVersions
 from .version import DependencyVersion
+from posit_bakery.util import cached_session
 
 
 class QuartoDependency(abc.ABC):
@@ -25,9 +25,7 @@ class QuartoDependency(abc.ABC):
 
         :return: A sorted list of available Quarto versions.
         """
-        session = CachedSession(
-            cache_name="bakery_cache", expire_after=3600, backend="filesystem", use_temp=True, allowable_methods=["GET"]
-        )
+        session = cached_session()
 
         versions = []
         # Fetch stable release
