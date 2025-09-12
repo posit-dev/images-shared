@@ -1,21 +1,32 @@
 import abc
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from ruamel.yaml import YAML
 
 from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL
-from .dependency import Dependency, DependencyConstraint, DependencyVersions
+from .dependency import DependencyConstraint, DependencyVersions
 from .version import DependencyVersion
+from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
 
 
-class QuartoDependency(abc.ABC):
+class QuartoDependency(BakeryYAMLModel, abc.ABC):
     """Quarto depencency definition for bakery configuration.
 
     :param prerelease: Whether to include prerelease versions. (default: False)"""
 
-    prerelease: bool = False
+    model_config = ConfigDict(extra="forbid")
+
+    dependency: Literal["quarto"] = "quarto"
+
+    prerelease: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Whether to include prerelease versions.",
+        ),
+    ]
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available Quarto versions.
@@ -59,14 +70,6 @@ class QuartoDependency(abc.ABC):
 class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
     """Class for specifying a list of Quarto version constraints."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    dependency: Literal["quarto"] = "quarto"
-
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
     """Class for specifying a list of Quarto versions."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    dependency: Literal["quarto"] = "quarto"

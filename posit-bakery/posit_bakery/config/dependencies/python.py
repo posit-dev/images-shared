@@ -6,11 +6,16 @@ from pydantic import ConfigDict
 from .const import UV_PYTHON_DOWNLOADS_JSON_URL
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
+from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
 
 
-class PythonDependency(abc.ABC):
+class PythonDependency(BakeryYAMLModel, abc.ABC):
     """Python depencency definition for bakery configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dependency: Literal["python"] = "python"
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available Python versions from astral-sh/python-build-standalone.
@@ -50,14 +55,6 @@ class PythonDependency(abc.ABC):
 class PythonDependencyVersions(DependencyVersions, PythonDependency):
     """Class for specifying a list of Python versions."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    dependency: Literal["python"] = "python"
-
 
 class PythonDependencyConstraint(DependencyConstraint, PythonDependency):
     """Class for specifying a list of Python version constraints."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    dependency: Literal["python"] = "python"
