@@ -1,0 +1,15 @@
+{% macro build(versions) %}
+FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+
+ENV UV_PYTHON_PREFERENCE=only-managed
+
+RUN uv python install {% for version in versions | join(' ') %}
+{% endmacro %}
+
+
+{% macro install() %}
+COPY --from=python-builder /opt/python /opt/python
+{% endmacro %}

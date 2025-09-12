@@ -1,0 +1,37 @@
+{% macro update_upgrade() %}
+RUN apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+{% endmacro %}
+
+{% macro install_packages_from_list(packages) %}
+RUN apt-get update -yqq && \
+    apt-get install -yqq --no-install-recommends {{ packages | join(' ') }} && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+{% endmacro %}
+
+{% macro install_packages_from_file(file) %}
+RUN apt-get update -yqq && \
+    xargs -a {{ file }} apt-get install -yqq --no-install-recommends && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+{% endmacro %}
+
+{% macro setup() %}
+RUN apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        epel-release \
+        gnupg \
+        tar && \
+    apt-get autoremove -yqq --purge && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+{% endmacro %}

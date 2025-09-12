@@ -1,0 +1,6 @@
+{% macro install(versions) %}
+{% for version in versions -%}
+RUN \
+    RUN_UNATTENDED=1 R_VERSION={{ version }} bash -c "$(curl -L https://rstd.io/r-install)"{% if not loop.last %} && \{% endif %}
+{%- endfor %}
+{% endmacro %}

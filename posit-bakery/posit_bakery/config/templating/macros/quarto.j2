@@ -1,0 +1,4 @@
+{% macro install(version, with_tinytex = False) -%}
+RUN curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version }}/quarto-{{ version }}-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/{{ version }}" --strip-components=1{% if with_tinytex %} && \
+    /opt/quarto/{{ version }}/bin/quarto install tinytex{% endif %}
+{%- endmacro %}
