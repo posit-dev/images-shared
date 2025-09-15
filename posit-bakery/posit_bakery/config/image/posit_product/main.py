@@ -3,7 +3,6 @@ from typing import Annotated
 
 import requests
 from pydantic import BaseModel, HttpUrl, Field
-from requests_cache import CachedSession
 
 from posit_bakery.config.image.build_os import BuildOS
 from posit_bakery.config.image.posit_product import resolvers
@@ -18,6 +17,7 @@ from posit_bakery.config.image.posit_product.const import (
     DOWNLOADS_JSON_URL,
 )
 from posit_bakery.config.shared import OSFamilyEnum
+from posit_bakery.util import cached_session
 
 
 class ReleaseStreamResult(BaseModel):
@@ -36,12 +36,7 @@ class ReleaseStreamPath:
 
     def get(self, metadata: dict) -> ReleaseStreamResult:
         """Fetches data from the stream URL and resolves the data using the given resolvers."""
-        session = CachedSession(
-            cache_name="bakery_cache",
-            backend="filesystem",
-            use_temp=True,
-            expire_after=3600,
-            allowable_methods=["GET"],
+        session = cached_session(
             allowable_codes=[200],
         )
         response = session.get(self.stream_url)

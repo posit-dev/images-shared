@@ -1,25 +1,32 @@
-from typing import Literal
+import abc
+from typing import Annotated, Literal
 
-from requests_cache import CachedSession
+from pydantic import ConfigDict, Field
 from ruamel.yaml import YAML
 
-from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.version import DependencyVersion
-
-QUARTO_DOWNLOAD_URL = "https://quarto.org/docs/download/_download.json"
-QUARTO_PRERELEASE_URL = "https://quarto.org/docs/download/_prerelease.json"
-QUARTO_PREVIOUS_VERSIONS_URL = (
-    "https://raw.githubusercontent.com/quarto-dev/quarto-web/refs/heads/main/docs/download/_download-older.yml"
-)
+from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL
+from .dependency import DependencyConstraint, DependencyVersions
+from .version import DependencyVersion
+from posit_bakery.config.shared import BakeryYAMLModel
+from posit_bakery.util import cached_session
 
 
-class QuartoDependency(Dependency):
+class QuartoDependency(BakeryYAMLModel, abc.ABC):
     """Quarto depencency definition for bakery configuration.
 
     :param prerelease: Whether to include prerelease versions. (default: False)"""
 
+    model_config = ConfigDict(extra="forbid")
+
     dependency: Literal["quarto"] = "quarto"
-    prerelease: bool = False
+
+    prerelease: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Whether to include prerelease versions.",
+        ),
+    ]
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available Quarto versions.
@@ -29,9 +36,7 @@ class QuartoDependency(Dependency):
 
         :return: A sorted list of available Quarto versions.
         """
-        session = CachedSession(
-            cache_name="bakery_cache", expire_after=3600, backend="filesystem", use_temp=True, allowable_methods=["GET"]
-        )
+        session = cached_session()
 
         versions = []
         # Fetch stable release
@@ -60,3 +65,11 @@ class QuartoDependency(Dependency):
         :return: A sorted list of available Quarto versions.
         """
         return self._fetch_versions()
+
+
+class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
+    """Class for specifying a list of Quarto version constraints."""
+
+
+class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
+    """Class for specifying a list of Quarto versions."""

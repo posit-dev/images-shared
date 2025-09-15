@@ -38,6 +38,14 @@ images:
     displayName: Posit Workbench
     description: A containerized image of Posit Workbench, a remote development environment for data scientists.
     documentationUrl: https://docs.posit.co/ide/
+    dependencyConstraints:
+      - dependency: python
+        constraint:
+          latest: true
+      - dependency: R
+        constraint:
+          max: "4.4"
+          count: 1
     variants:
       - name: Standard
         extension: std
@@ -54,6 +62,11 @@ images:
       - name: "2025.05.1+513.pro3"
         subpath: "2025.05"
         latest: true
+        dependencies:
+          - dependency: python
+            version: "3.12.11"
+          - dependency: R
+            version: "4.4.3"
         os:
         - name: Ubuntu 24.04
           primary: true
@@ -64,6 +77,11 @@ images:
           tagDisplayName: ubuntu22.04
       - name: "2024.12.1+563.pro2"
         subpath: "2024.12"
+        dependencies:
+          - dependency: python
+            version: "3.12.9"
+          - dependency: R
+            version: "4.4.2"
         os:
         - name: Ubuntu 22.04
           primary: true
@@ -134,6 +152,7 @@ An Image represents a container image managed by the project. Each image has one
 | `extraRegistries`<br/>*[Registry](#registry) array*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `overrideRegistries`<br/>*[Registry](#registry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*    | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns)   | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
+| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array* | List of dependencies to install in the image. Versions are are calcuated from a [VersionConstraint](#versionconstraint)   | `[]` | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre> |
 | `variants`<br/>*[ImageVariant](#imagevariant) array*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | `[]` | `- name: Minimal`                                                                                                                        |
 | `versions`<br/>*[ImageVersion](#imageversion) array*   | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            | `[]`                                        | `- name: 2025.07.0`                                                                                                                      |
 | `options`<br/>*[ToolOptions](#tooloptions) array*      | A list of options to pass to a supported tool when performing an action against the image.                                          | `[]`                                        | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
@@ -146,6 +165,14 @@ images:
     displayName: Posit Workbench
     description: A containerized image of Posit Workbench, a remote development environment for data scientists.
     documentationUrl: https://docs.posit.co/ide/
+    dependencyConstraints:
+      - dependency: python
+        constraint:
+          latest: true
+      - dependency: R
+        constraint:
+          max: "4.4"
+          count: 2
     variants:
       - name: Standard
         extension: std
@@ -162,6 +189,11 @@ images:
       - name: "2025.05.1+513.pro3"
         subpath: "2025.05.1"
         latest: true
+        dependencies:
+          - dependency: python
+            version: "3.12.11"
+          - dependency: R
+            version: "4.4.3"
         os:
           - name: Ubuntu 24.04
             primary: true
@@ -172,6 +204,11 @@ images:
             tagDisplayName: ubuntu22.04
       - name: "2024.12.1+563.pro2"
         subpath: "2024.12.1"
+        dependencies:
+          - dependency: python
+            version: "3.12.9"
+          - dependency: R
+            version: "4.4.2"
         os:
           - name: Ubuntu 22.04
             extension: ubuntu2204
@@ -209,6 +246,55 @@ variants:
     tagDisplayName: min
 ```
 
+### DependencyConstraint
+
+Dependencies represents a list software dependencies that is installed in a specific image.
+
+At the image level, these are specified through a VersionConstraint.
+
+| Field | Description | Default Value | Example |
+|-------|-------------|---------------|---------|
+| `dependency`<br/>*string* | *(Required)* The name of the dependency. | | `R`, `python`, `quarto` |
+| `constraint`<br/>*[VersionConstraint](#versionconstraint)* | *(Required)* Constraints to apply to calculate versions. | | <pre>latest: true<br/>count: 2</pre> |
+
+Each Dependency defines the dependency type, as well as the versions of the dependency that will be installed.
+The versions can be defined explicitly as an array of strings, or in terms of a version constraint.
+
+#### VersionConstraint
+
+| Field | Description | Default Value | Example |
+|-------|-------------|---------------|---------|
+| `latest`<br/>*bool* | Include the latest version. | | `true`, `false` |
+| `count`<br/>*int* | Number of minor versions to include. | | `2`, `4` |
+| `max`<br/>*string* | Maximum version to include. | | `3.13.7`, `3.11`, `3` |
+| `min`<br/>*string* | Minimum version to include. | | `4.2.1`, `4.3`, `4` |
+
+At least one of `latest` or `max` must be specified.
+
+If `latest` is `true` and no other fields are set, `count` defaults to `1`.
+
+#### Example Dependency Version Constraint
+
+```yaml
+dependencyConstraints:
+  # Install the latest patch of python minor versions from 3.9 to 3.11, inclusive
+  - depencency: python
+    constraint:
+      max: "3.11"
+      min: "3.9"
+  # Pin the maximum R version to 4.4.2, and install 3 minor versions
+  - dependency: R
+    constraint:
+      max: "4.4.2"
+      count: 3
+  # Install the 2 most recent minor versions of quarto, including the pre-release version
+  - dependency: quarto
+    prerelease: true
+    constraint:
+      latest: true
+      count: 2
+```
+
 ### ImageVersion
 
 An ImageVersion represents a specific version of an image. Each version should be rendered from templates using the `bakery create version` command.
@@ -217,6 +303,7 @@ An ImageVersion represents a specific version of an image. Each version should b
 |--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | `name`<br/>*string*                                    | *(Required)* The full name of the version.                                                                                                                                                                                                                           |                                                                                                                                 | `2025.05.1+513.pro3`, `2025.04.2-8`, `2025.07.0`                                       |
 | `subpath`<br/>*string*                                 | The subpath relative from the image's `subpath` where this version's files are stored.                                                                                                                                                                               | `name` with spaces replaced by "-" and lower-cased.                                                                             | `2025.05.1`, `2025.04.2`, `2025.07.0`                                                  |
+| `dependencies`<br/>*[DependencyVersions](#dependencyversions) array* | Dependencies to install in this image version. Versions are explicitly defined as strings.                          | `[]` | <pre>- dependency: R<br/>  versions:<br/>    - "4.4.3"<br/>    - "4.2.1"</pre> |
 | `extraRegistries`<br/>*[Registry](#registry) array*    | Additional registries to push this image version to in addition to the global `registries` in [bakery.yaml](#bakery-configuration) and `extraRegistries` or `overrideRegistries` if set in the parent [Image](#image). Cannot be set with `overrideRegistries`.      | `[]`                                                                                                                            | <pre>- host: docker.io<br/>  namespace: posit</pre> |
 | `overrideRegistries`<br/>*[Registry](#registry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) and `extraRegistries` or `overrideRegistries` if set in the parent [Image](#image) for this image version with the given list of registries. Cannot be set with `extraRegistries`. | `[]`                                                                                                                            | <pre>- host: docker.io<br/>  namespace: posit</pre> |
 | `latest`<br/>*bool*                                    | Indicates if this is the latest version of the image. Only one version should be marked as latest.                                                                                                                                                                   | `false`                                                                                                                         | `true`                                                                                 |
@@ -229,6 +316,11 @@ versions:
   - name: "2025.05.1+513.pro3"
     subpath: "2025.05.1"
     latest: true
+    dependencies:
+      - dependency: python
+        version: "3.12.11"
+      - dependency: R
+        version: "4.4.3"
     os:
       - name: Ubuntu 22.04
 ```
@@ -254,30 +346,19 @@ os:
     tagDisplayName: ubuntu22.04
 ```
 
-### Dependency
+### DependencyVersions
 
-Dependencies represents a list software dependencies that is installed in a specific image version.
+Dependencies represents a list software dependencies that is installed in a specific image.
 
-Each Dependency defines the dependency type, as well as the versions of the dependency that will be installed.
-The versions can be defined explicitly as an array of strings, or in terms of a version constraint.
+At the image level, these are specified by an array of strings.
 
 | Field | Description | Default Value | Example |
 |-------|-------------|---------------|---------|
 | `dependency`<br/>*string* | *(Required)* The name of the dependency. | | `R`, `python`, `quarto` |
-| `versions`<br/>*array* or *map* | *(Required)* An array of explicit, exact versions, or a `VersionConstraint` map.  | | <pre>- "4.5.1"<br/>- "4.4.2.3"</pre> |
+| `version`<br/>*string* | Single exact version | | `3.13.7` |
+| `versions`<br/>*string array* | An array of explicit, exact versions | | <pre>- "4.5.1"<br/>- "4.4.3"</pre> |
 
-#### VersionConstraint
-
-| Field | Description | Default Value | Example |
-|-------|-------------|---------------|---------|
-| `latest`<br/>*bool* | Include the latest version. | | `true`, `false` |
-| `count`<br/>*int* | Number of minor versions to include. | | `2`, `4` |
-| `max`<br/>*string* | Maximum version to include. | | `3.13.7`, `3.11`, `3` |
-| `min`<br/>*string* | Minimum version to include. | | `4.2.1`, `4.3`, `4` |
-
-At least one of `latest` or `max` must be specified.
-
-If `latest` is `true` and no other fields are set, `count` defaults to `1`.
+You must specify either `version` or `versions`.
 
 #### Example Dependency Version List
 
@@ -290,28 +371,8 @@ dependencies:
       - "3.12.5"
   - dependency: R
     versions: ["4.5.1", "4.4.2", "3.6.3"]
-```
-
-#### Example Dependency Version Constraint
-
-```yaml
-dependencies:
-  # Install the latest patch of python minor versions from 3.9 to 3.11, inclusive
-  - depencency: python
-    versions:
-      max: "3.11"
-      min: "3.9"
-  # Pin the maximum R version to 4.4.2, and install 3 minor versions
-  - dependency: R
-    versions:
-      max: "4.4.2"
-      count: 3
-  # Install the 2 most recent minor versions of quarto, including the pre-release version
   - dependency: quarto
-    prerelease: true
-    versions:
-      latest: true
-      count: 2
+    version: "1.7.34"
 ```
 
 ## Other Types

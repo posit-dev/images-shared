@@ -9,6 +9,7 @@ from pydantic_core.core_schema import ValidationInfo
 
 from .variant import ImageVariant
 from .version import ImageVersion
+from posit_bakery.config.dependencies import DependencyConstraintField
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
@@ -67,6 +68,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             default_factory=default_tag_patterns,
             validate_default=True,
             description="List of tag patterns for this image.",
+        ),
+    ]
+    dependencyConstraints: Annotated[
+        list[DependencyConstraintField],
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="Dependencies to install, specified by a version constraint.",
         ),
     ]
     variants: Annotated[

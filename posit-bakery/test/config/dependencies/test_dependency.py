@@ -1,17 +1,16 @@
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel
 import pytest
 
-from posit_bakery.config.dependencies import (
-    Dependency,
-    DependencyField,
-    DependencyVersion,
-    RDependency,
-    PythonDependency,
-    QuartoDependency,
-    VersionConstraint,
-)
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField
+from posit_bakery.config.dependencies.dependency import Dependency, DependencyConstraint, DependencyVersions
+from posit_bakery.config.dependencies.python import PythonDependencyConstraint, PythonDependencyVersions
+from posit_bakery.config.dependencies.quarto import QuartoDependencyConstraint, QuartoDependencyVersions
+from posit_bakery.config.dependencies.r import RDependencyConstraint, RDependencyVersions
+
+
 from test.config.dependencies.test_version import R_VERSIONS, PYTHON_VERSIONS
 
 
@@ -22,12 +21,28 @@ pytestmark = [
 ]
 
 
-class FakeDependency(BaseModel):
-    """A fake model to test the DependencyField discriminator."""
+class TestDependency:
+    def test_init_error(self):
+        """Test that instantiating the base class raises an error."""
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
+            Dependency()
 
-    dependency: DependencyField
 
-    def available_versions(self) -> list[DependencyVersion]:
+class FakeDependencyConstraint(BaseModel):
+    """A fake model to test the DependencyConstraintField discriminator."""
+
+    dependency: DependencyConstraintField
+
+    def available_versions(self) -> list:
+        return []
+
+
+class FakeDependencyVersions(BaseModel):
+    """A fake model to test the DependencyVersionsField discriminator."""
+
+    dependency: DependencyVersionsField
+
+    def available_versions(self) -> list:
         return []
 
 
@@ -42,7 +57,7 @@ class TestDependencyVersions:
     )
     def test_version_list_valid(self, versions):
         """Test that a valid version list is accepted."""
-        dep = FakeDependency(
+        dep = FakeDependencyVersions(
             dependency={
                 "dependency": "R",
                 "versions": versions,
@@ -54,7 +69,7 @@ class TestDependencyVersions:
     def test_version_list_empty(self):
         """Test that empty list fails validation.."""
         with pytest.raises(ValueError, match="cannot be empty"):
-            FakeDependency(
+            FakeDependencyVersions(
                 dependency={
                     "dependency": "python",
                     "versions": [],
@@ -75,7 +90,7 @@ class TestDependencyVersions:
     def test_version_list_invalid_type(self, versions):
         """Test that invalid types for version list fail validation."""
         with pytest.raises(ValueError):
-            FakeDependency(
+            FakeDependencyVersions(
                 dependency={
                     "dependency": "quarto",
                     "versions": versions,
@@ -85,14 +100,14 @@ class TestDependencyVersions:
     @pytest.mark.parametrize(
         "discriminator,expected_type",
         [
-            pytest.param("python", PythonDependency, id="python"),
-            pytest.param("R", RDependency, id="R"),
-            pytest.param("quarto", QuartoDependency, id="quarto"),
+            pytest.param("python", PythonDependencyVersions, id="python"),
+            pytest.param("R", RDependencyVersions, id="R"),
+            pytest.param("quarto", QuartoDependencyVersions, id="quarto"),
         ],
     )
-    def test_dependency_discriminator(self, discriminator: str, expected_type: type[Dependency]):
+    def test_dependency_discriminator(self, discriminator: str, expected_type: type[DependencyVersions]):
         """Test that the discriminator field correctly identifies the dependency type."""
-        dep = FakeDependency(
+        dep = FakeDependencyVersions(
             dependency={
                 "dependency": discriminator,
                 "versions": ["1.0.0"],

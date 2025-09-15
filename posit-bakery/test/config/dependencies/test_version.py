@@ -73,6 +73,15 @@ class TestDependencyVersion:
         assert (ver.minor is not None) == has_minor
         assert (ver.micro is not None) == has_micro
 
+    def test_dependency_version_prefix(self):
+        """Test that a version with a prefix is accepted."""
+        ver = DependencyVersion("v1.2.3")
+
+        assert ver.base_version == "1.2.3"
+        assert ver.minor == 2
+        assert ver.major == 1
+        assert ver.micro == 3
+
     @pytest.mark.parametrize(
         "version_list",
         [

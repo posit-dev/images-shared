@@ -1,16 +1,19 @@
+import abc
 from typing import Literal
 
-from requests_cache import CachedSession
+from pydantic import ConfigDict
 
-from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.version import DependencyVersion
+from .const import R_VERSIONS_URL
+from .dependency import DependencyVersions, DependencyConstraint
+from .version import DependencyVersion
+from posit_bakery.config.shared import BakeryYAMLModel
+from posit_bakery.util import cached_session
 
-# All available R versions from Posit
-R_VERSIONS_URL = "https://cdn.posit.co/r/versions.json"
 
-
-class RDependency(Dependency):
+class RDependency(BakeryYAMLModel, abc.ABC):
     """R depencency definition for bakery configuration."""
+
+    model_config = ConfigDict(extra="forbid")
 
     dependency: Literal["R"] = "R"
 
@@ -23,9 +26,7 @@ class RDependency(Dependency):
 
         :return: A sorted list of available R versions.
         """
-        session = CachedSession(
-            cache_name="bakery_cache", expire_after=3600, backend="filesystem", use_temp=True, allowable_methods=["GET"]
-        )
+        session = cached_session()
         response = session.get(R_VERSIONS_URL)
         response.raise_for_status()
 
@@ -40,3 +41,11 @@ class RDependency(Dependency):
         :return: A sorted list of available R versions.
         """
         return self._fetch_versions()
+
+
+class RDependencyConstraint(DependencyConstraint, RDependency):
+    """Class for specifying an R version constraint."""
+
+
+class RDependencyVersions(DependencyVersions, RDependency):
+    """Class for specifying a list of R versions."""
