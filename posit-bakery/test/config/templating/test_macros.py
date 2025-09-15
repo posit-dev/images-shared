@@ -1,7 +1,7 @@
 import textwrap
 
 import pytest
-from jinja2 import Environment, PackageLoader, StrictUndefined
+from jinja2 import PackageLoader, StrictUndefined
 
 from posit_bakery.config.templating import jinja2_env
 
@@ -9,7 +9,7 @@ from posit_bakery.config.templating import jinja2_env
 @pytest.fixture
 def environment_with_macros():
     return jinja2_env(
-        loader=PackageLoader("posit_bakery.config.templating", "templates"),
+        loader=PackageLoader("posit_bakery.config.templating", "macros"),
         autoescape=True,
         undefined=StrictUndefined,
         keep_trailing_newline=True,
@@ -20,11 +20,11 @@ def test_import_all_macros_no_errors(environment_with_macros):
     """Test that all macro files can be imported without errors."""
     template = textwrap.dedent(
         """\
-        {%- import "macros/apt.j2" as apt -%}
-        {%- import "macros/dnf.j2" as dnf -%}
-        {%- import "macros/python.j2" as python -%}
-        {%- import "macros/quarto.j2" as quarto -%}
-        {%- import "macros/r.j2" as r -%}
+        {%- import "apt.j2" as apt -%}
+        {%- import "dnf.j2" as dnf -%}
+        {%- import "python.j2" as python -%}
+        {%- import "quarto.j2" as quarto -%}
+        {%- import "r.j2" as r -%}
         """
     )
     environment_with_macros.from_string(template).render()
@@ -34,7 +34,7 @@ class TestAptMacros:
     def test_apt_update_upgrade(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/apt.j2" as apt -%}
+            {%- import "apt.j2" as apt -%}
             {{ apt.update_upgrade() }}
             """
         )
@@ -54,7 +54,7 @@ class TestAptMacros:
     def test_install_packages_from_list(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/apt.j2" as apt -%}
+            {%- import "apt.j2" as apt -%}
             {{ apt.install_packages_from_list(["ca-certificates", "git", "g++"]) }}
             """
         )
@@ -72,7 +72,7 @@ class TestAptMacros:
     def test_install_packages_from_file(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/apt.j2" as apt -%}
+            {%- import "apt.j2" as apt -%}
             {{ apt.install_packages_from_file(package_file) }}
             """
         )
@@ -90,7 +90,7 @@ class TestAptMacros:
     def test_setup(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/apt.j2" as apt -%}
+            {%- import "apt.j2" as apt -%}
             {{ apt.setup() }}
             """
         )
@@ -118,7 +118,7 @@ class TestDnfMacros:
     def test_dnf_update_upgrade(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/dnf.j2" as dnf -%}
+            {%- import "dnf.j2" as dnf -%}
             {{ dnf.update_upgrade() }}
             """
         )
@@ -134,7 +134,7 @@ class TestDnfMacros:
     def test_dnf_install_packages_from_list(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/dnf.j2" as dnf -%}
+            {%- import "dnf.j2" as dnf -%}
             {{ dnf.install_packages_from_list(["ca-certificates", "git", "g++"]) }}
             """
         )
@@ -150,7 +150,7 @@ class TestDnfMacros:
     def test_dnf_install_packages_from_file(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/dnf.j2" as dnf -%}
+            {%- import "dnf.j2" as dnf -%}
             {{ dnf.install_packages_from_file(package_file) }}
             """
         )
@@ -166,7 +166,7 @@ class TestDnfMacros:
     def test_setup(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/dnf.j2" as dnf -%}
+            {%- import "dnf.j2" as dnf -%}
             {{ dnf.setup() }}
             """
         )
@@ -189,7 +189,7 @@ class TestPythonMacros:
     def test_build(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/python.j2" as python -%}
+            {%- import "python.j2" as python -%}
             {{ python.build(["3.13.7", "3.12.11"]) }}
             """
         )
@@ -211,7 +211,7 @@ class TestPythonMacros:
     def test_install_from_build_stage(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/python.j2" as python -%}
+            {%- import "python.j2" as python -%}
             {{ python.install_from_build_stage() }}
             """
         )
@@ -226,7 +226,7 @@ class TestPythonMacros:
     def test_install_packages(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/python.j2" as python -%}
+            {%- import "python.j2" as python -%}
             {{ python.install_packages(["3.13.7", "3.12.11"], ["numpy", "pandas"], "/tmp/requirements.txt") }}
             """
         )
@@ -244,7 +244,7 @@ class TestQuartoMacros:
     def test_install(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/quarto.j2" as quarto -%}
+            {%- import "quarto.j2" as quarto -%}
             {{ quarto.install("1.8.24") }}
             """
         )
@@ -259,7 +259,7 @@ class TestQuartoMacros:
     def test_install_with_tinytex(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/quarto.j2" as quarto -%}
+            {%- import "quarto.j2" as quarto -%}
             {{ quarto.install("1.8.24", True) }}
             """
         )
@@ -277,7 +277,7 @@ class TestRMacros:
     def test_install(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/r.j2" as r -%}
+            {%- import "r.j2" as r -%}
             {{ r.install(["4.4.3", "4.3.3"]) }}
             """
         )
@@ -293,7 +293,7 @@ class TestRMacros:
     def test_install_packages(self, environment_with_macros):
         template = textwrap.dedent(
             """\
-            {%- import "macros/r.j2" as r -%}
+            {%- import "r.j2" as r -%}
             {{ r.install_packages(["4.4.3", "4.3.3"], ["dplyr", "ggplot2"], "/tmp/packages.txt") }}
             """
         )

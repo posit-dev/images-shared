@@ -362,7 +362,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             loader=jinja2.ChoiceLoader(
                 [
                     jinja2.FileSystemLoader(version.parent.template_path),
-                    jinja2.PackageLoader("posit_bakery.config.templates", "templating"),
+                    jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
                 ]
             ),
             autoescape=True,
