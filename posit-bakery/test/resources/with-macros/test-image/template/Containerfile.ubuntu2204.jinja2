@@ -1,0 +1,41 @@
+{#-
+Below are imports for Bakery's macros. If any are unneeded, they can be removed.
+Bakery handles bootstrapping the files into template rendering.
+-#}
+{%- import "apt.j2" as apt -%}
+{%- import "python.j2" as python -%}
+{%- import "quarto.j2" as quarto -%}
+{%- import "r.j2" as r -%}
+
+{%- if Image.Variant != "Minimal" -%}
+# Build Python using uv in a separate stage
+{{ python.build([python_version]) }}
+
+{% endif -%}
+
+FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+### ARG declarations ###
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="{{ Image.Version }}"
+
+### Install Apt Packages ###
+{{ apt.setup() }}
+
+COPY {{ Path.Version }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+{{ apt.install_packages_from_file('/tmp/ubuntu2204_packages.txt') }}
+
+{% if Image.Variant != "Minimal" -%}
+COPY {{ Path.Version }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+{{ apt.install_packages_from_file('/tmp/ubuntu2204_optional_packages.txt') }}
+
+# Install Python from previous stage
+{{ python.install_from_build_stage() }}
+
+# Install R
+{{ r.install([r_version]) }}
+
+# Install Quarto
+{{ quarto.install(quarto_version, True) }}
+{%- endif %}

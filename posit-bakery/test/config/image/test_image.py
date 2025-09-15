@@ -221,6 +221,42 @@ class TestImage:
         assert (expected_path / "test").is_dir()
         assert (expected_path / "test" / "goss.yaml").is_file()
 
+    def test_create_version_files_with_macros(self, get_tmpcontext):
+        """Test that create_version_files works with templates utilizing macros."""
+        context = get_tmpcontext("with-macros")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0"}],
+            variants=[{"name": "Minimal", "extension": "min"}, {"name": "Standard", "extension": "std"}],
+            parent=mock_parent,
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        Image.create_version_files(
+            new_version,
+            i.variants,
+            extra_values={"python_version": "3.12.11", "r_version": "4.4.3", "quarto_version": "1.7.34"},
+        )
+
+        expected_path = context / "test-image" / "2.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
     def test_create_version_model(self):
         """Test that create_version creates a new version and adds it to the image."""
         i = Image(name="my-image")

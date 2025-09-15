@@ -102,7 +102,6 @@ class TestAptMacros:
                 apt-get install -yqq --no-install-recommends \\
                     curl \\
                     ca-certificates \\
-                    epel-release \\
                     gnupg \\
                     tar && \\
                 apt-get autoremove -yqq --purge && \\
@@ -250,7 +249,8 @@ class TestQuartoMacros:
         )
         expected = textwrap.dedent(
             """\
-            RUN curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
+            RUN mkdir -p /opt/quarto/1.8.24 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
             """
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -265,7 +265,8 @@ class TestQuartoMacros:
         )
         expected = textwrap.dedent(
             """\
-            RUN curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+            RUN mkdir -p /opt/quarto/1.8.24 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                 /opt/quarto/1.8.24/bin/quarto install tinytex
             """
         )

@@ -1,0 +1,52 @@
+# Build Python using uv in a separate stage
+FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+
+ENV UV_PYTHON_PREFERENCE=only-managed
+
+RUN uv python install 3.13.7
+
+FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+### ARG declarations ###
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_VERSION="1.0.0"
+
+### Install Apt Packages ###
+RUN apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    apt-get autoremove -yqq --purge && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY test-image/1.0.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+RUN apt-get update -yqq && \
+    xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY test-image/1.0.0/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+RUN apt-get update -yqq && \
+    xargs -a /tmp/ubuntu2204_optional_packages.txt apt-get install -yqq --no-install-recommends && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python from previous stage
+COPY --from=python-builder /opt/python /opt/python
+
+# Install R
+RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -L https://rstd.io/r-install)"
+
+# Install Quarto
+RUN mkdir -p /opt/quarto/1.8.24 && \
+    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \
+    /opt/quarto/1.8.24/bin/quarto install tinytex
