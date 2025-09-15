@@ -26,7 +26,8 @@ ARG IMAGE_VERSION="{{ Image.Version }}"
 COPY {{ Path.Version }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
 {{ apt.install_packages_from_file('/tmp/ubuntu2204_packages.txt') }}
 
-{% if Image.Variant != "Minimal" -%}
+{%- if Image.Variant != "Minimal" %}
+
 COPY {{ Path.Version }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
 {{ apt.install_packages_from_file('/tmp/ubuntu2204_optional_packages.txt') }}
 
