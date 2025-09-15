@@ -209,7 +209,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         url_by_os = self.get_url_by_os()
         for os_version in self.os:
-            os_version.downloadURL = url_by_os.get(os_version.name, "")
+            os_version.artifactDownloadURL = url_by_os.get(os_version.name, "")
 
         return self
 

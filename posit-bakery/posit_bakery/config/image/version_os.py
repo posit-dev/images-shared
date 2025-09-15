@@ -53,7 +53,7 @@ class ImageVersionOS(BakeryYAMLModel):
             validate_default=True,
         ),
     ]
-    downloadURL: Annotated[
+    artifactDownloadURL: Annotated[
         HttpUrl | None,
         Field(default=None, description="Optional URL for artifact retrieval. Passed to version template rendering."),
     ]

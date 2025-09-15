@@ -299,7 +299,7 @@ class TestImage:
         assert i.get_version(env_version).isDevelopmentVersion
         assert len(i.get_version(env_version).os) == 1
         assert i.get_version(env_version).os[0].name == "Ubuntu 22.04"
-        assert str(i.get_version(env_version).os[0].downloadURL) == env_url
+        assert str(i.get_version(env_version).os[0].artifactDownloadURL) == env_url
 
         assert i.get_version(stream_version) is not None
         assert not i.get_version(stream_version).latest
@@ -308,7 +308,7 @@ class TestImage:
         assert i.get_version(stream_version).isDevelopmentVersion
         assert len(i.get_version(stream_version).os) == 1
         assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
-        assert str(i.get_version(stream_version).os[0].downloadURL) == stream_url
+        assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
 
     def test_create_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that create_ephemeral_version_files creates the correct directory structure for an ephemeral version."""

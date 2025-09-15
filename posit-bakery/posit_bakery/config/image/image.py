@@ -321,7 +321,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": version_os.buildOS.version,
                 "Codename": version_os.buildOS.codename,
             }
-            if version_os.downloadURL is not None:
+            if version_os.artifactDownloadURL is not None:
                 values["Image"]["DownloadURL"] = version_os.downloadURL
         if extra_values:
             values.update(extra_values)
