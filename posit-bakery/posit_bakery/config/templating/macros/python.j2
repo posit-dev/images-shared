@@ -27,10 +27,10 @@ COPY --from=python-builder /opt/python /opt/python
 {% for version in versions -%}
 RUN {{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade \
     {% for package in packages -%}
-        {{ package }} \
+        {{ package | trim }} \
     {% endfor -%}
     {% if requirements_file -%}
-        -r {{ requirements_file }}
+        -r {{ requirements_file | trim }}
     {%- endif %}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
