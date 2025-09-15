@@ -2,8 +2,12 @@
 /opt/quarto/{{ version }}
 {%- endmacro %}
 
+{% macro install_tinytex_command(quarto_binary) -%}
+{{ quarto_binary }} install tinytex
+{%- endmacro %}
+
 {% macro install(version, with_tinytex = False) -%}
 RUN mkdir -p {{ get_version_directory(version) }} && \
     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version }}/quarto-{{ version }}-linux-amd64.tar.gz" | tar xzf - -C "{{ get_version_directory(version) }}" --strip-components=1{% if with_tinytex %} && \
-    /opt/quarto/{{ version }}/bin/quarto install tinytex{% endif %}
+    {{ install_tinytex_command(get_version_directory(version) + "/bin/quarto") }}{% endif %}
 {%- endmacro %}
