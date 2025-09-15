@@ -18,7 +18,13 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
     """Base class for tool options in the bakery configuration."""
 
     parent: Annotated[BakeryYAMLModel | None, Field(exclude=True, default=None, description="Parent Image object.")]
-    sourceType: Annotated[str, Field(description="Type of source used to retrieve the version.")]
+    sourceType: Annotated[
+        str,
+        Field(
+            description="Type of source used to retrieve the primary artifact version and download URL. "
+            "Overridden in subclasses as a unique discriminator field."
+        ),
+    ]
     extraRegistries: Annotated[
         list[Registry],
         Field(
