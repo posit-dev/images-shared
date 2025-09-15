@@ -1,4 +1,5 @@
 import logging
+import shutil
 from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Union, Any, Self
@@ -7,6 +8,7 @@ import jinja2
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
+from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.dependencies import DependencyConstraintField
@@ -89,6 +91,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     versions: Annotated[
         list[ImageVersion],
         Field(default_factory=list, validate_default=True, description="List of image versions for this image."),
+    ]
+    devVersions: Annotated[
+        list[DevelopmentVersionField],
+        Field(default_factory=list, description="List of development versions for this image."),
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
@@ -205,6 +211,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             variant.parent = self
         for version in self.versions:
             version.parent = self
+        for dev_version in self.devVersions:
+            dev_version.parent = self
         return self
 
     @field_serializer("documentationUrl")
@@ -285,15 +293,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     def generate_version_template_values(
         self,
-        version: str,
-        variant: str | None = None,
+        version: "ImageVersion",
+        variant: Union["ImageVariant", None] = None,
+        version_os: Union["ImageVersionOS", None] = None,
         version_path: str | Path | None = None,
         extra_values: dict[str, str] | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Generates the template values for rendering.
 
-        :param version: The version's string representation (name).
-        :param variant: The variant's string representation (name).
+        :param version: The ImageVersion object.
+        :param variant: The ImageVariant object.
+        :param version_os: The ImageVersionOS object, if applicable.
         :param version_path: The subpath to the version directory, if different from the default.
         :param extra_values: Additional key-value pairs to include in the template values.
 
@@ -303,8 +313,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             "Image": {
                 "Name": self.name,
                 "DisplayName": self.displayName,
-                "Version": version,
-                "Variant": variant or "",
+                "Version": version.name,
             },
             "Path": {
                 "Base": ".",
@@ -312,6 +321,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             },
         }
+        if variant is not None:
+            values["Image"]["Variant"] = variant.name
+        if version_os:
+            values["Image"]["OS"] = {
+                "Name": version_os.buildOS.name,
+                "Family": version_os.buildOS.family,
+                "Version": version_os.buildOS.version,
+                "Codename": version_os.buildOS.codename,
+            }
+            if version_os.artifactDownloadURL is not None:
+                values["Image"]["DownloadURL"] = version_os.downloadURL
         if extra_values:
             values.update(extra_values)
 
@@ -357,9 +377,18 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # If variants are specified, render Containerfile for each variant
             if tpl_rel_path.startswith("Containerfile") and variants:
                 containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+
+                # Attempt to match the OS from the Containerfile name
+                os_ext = containerfile_base_name.split(".")[-1]
+                containerfile_os = None
+                for _os in version.os:
+                    if _os.extension == os_ext:
+                        containerfile_os = _os
+                        break
+
                 for variant in variants:
                     template_values = version.parent.generate_version_template_values(
-                        version.name, variant.name, version.path, extra_values
+                        version, variant, containerfile_os, version.path, extra_values
                     )
                     containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
                     rendered = tpl.render(**template_values, **render_kwargs)
@@ -370,7 +399,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             # Render other templates once
             else:
                 template_values = version.parent.generate_version_template_values(
-                    version.name, version_path=version.path, extra_values=extra_values
+                    version, version_path=version.path, extra_values=extra_values
                 )
                 rendered = tpl.render(**template_values, **render_kwargs)
                 rel_path = tpl_rel_path.removesuffix(".jinja2")
@@ -441,3 +470,24 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 image_version.subpath = subpath
 
         return image_version
+
+    def load_dev_versions(self):
+        """Load the development versions for this image."""
+        for dev_version in self.devVersions:
+            image_version = dev_version.as_image_version()
+            self.versions.append(image_version)
+
+    def create_ephemeral_version_files(self, extra_values: dict[str, str] | None = None):
+        """Create the files for all ephemeral image versions."""
+        # TODO: Replace the extra_values parameter with Ben's dependency constraints resolution.
+        for version in self.versions:
+            if version.ephemeral:
+                log.debug(f"Creating ephemeral image version directory [bold]{version.path}")
+                self.create_version_files(version, self.variants, extra_values=extra_values)
+
+    def remove_ephemeral_version_files(self):
+        """Remove the files for all ephemeral image versions."""
+        for version in self.versions:
+            if version.ephemeral and version.path.is_dir():
+                log.debug(f"Removing ephemeral image version directory [bold]{version.path}")
+                shutil.rmtree(version.path)

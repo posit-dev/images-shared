@@ -7,14 +7,14 @@ class BuildOS(BaseModel):
     family: OSFamilyEnum
     name: str
     version: str
-    code_name: str | None = None
+    codename: str | None = None
 
     @property
-    def major_version(self) -> str:
+    def majorVersion(self) -> str:
         return self.version.split(".")[0]
 
     @property
-    def package_suffix(self) -> str:
+    def packageSuffix(self) -> str:
         if self.family == OSFamilyEnum.DEBIAN_LIKE:
             return "deb"
         elif self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
@@ -22,13 +22,13 @@ class BuildOS(BaseModel):
         return ""
 
     @property
-    def package_arch_sep(self) -> str:
+    def packageArchSeparator(self) -> str:
         if self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
             return "."
         return "_"
 
     @property
-    def package_version_sep(self) -> str:
+    def packageVersionSeparator(self) -> str:
         if self.family == OSFamilyEnum.REDHAT_LIKE or self.family == OSFamilyEnum.SUSE_LIKE:
             return "-"
         return "_"
@@ -48,13 +48,13 @@ ALTERNATE_NAMES = {
 
 SUPPORTED_OS = {
     "ubuntu": {
-        "24": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="24.04", code_name="noble"),
-        "22": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="22.04", code_name="jammy"),
+        "24": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="24.04", codename="noble"),
+        "22": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="22.04", codename="jammy"),
     },
     "debian": {
-        "13": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="13", code_name="trixie"),
-        "12": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="12", code_name="bookworm"),
-        "11": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="11", code_name="bullseye"),
+        "13": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="13", codename="trixie"),
+        "12": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="12", codename="bookworm"),
+        "11": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="debian", version="11", codename="bullseye"),
     },
     "rhel": {
         "10": BuildOS(family=OSFamilyEnum.REDHAT_LIKE, name="rhel", version="10"),
@@ -74,3 +74,5 @@ SUPPORTED_OS = {
     "scratch": BuildOS(family=OSFamilyEnum.UNKNOWN, name="scratch", version=""),
     "unknown": BuildOS(family=OSFamilyEnum.UNKNOWN, name="unknown", version=""),
 }
+
+DEFAULT_OS = SUPPORTED_OS["ubuntu"]["22"]

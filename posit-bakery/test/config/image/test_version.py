@@ -22,7 +22,8 @@ class TestImageVersion:
     def test_name_only(self):
         """Test creating an ImageVersion object with only the name does not raise an exception.
 
-        Test that the default values for subpath, latest, registries, and os are set correctly.
+        Test that the default values for subpath, latest, registries, ephemeral, isDevelopmentVersion, and os are set
+        correctly.
         """
         i = ImageVersion(name="1.0.0")
 
@@ -30,6 +31,8 @@ class TestImageVersion:
         assert i.subpath == "1.0.0"
         assert not i.latest
         assert len(i.all_registries) == 0
+        assert not i.ephemeral
+        assert not i.isDevelopmentVersion
         assert len(i.os) == 0
 
     def test_valid(self):

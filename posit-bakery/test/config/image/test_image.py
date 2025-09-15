@@ -1,10 +1,12 @@
+import os
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config import Image, BakeryConfigDocument, Registry, ImageVersion
+from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
 
 pytestmark = [
     pytest.mark.unit,
@@ -190,14 +192,16 @@ class TestImage:
 
         assert i.get_variant("non-existent") is None
 
-    def test_create_version_files(self, get_tmpcontext):
+    def test_create_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that create_version_files creates the correct directory structure."""
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
         mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
 
-        i = Image(name="test-image", versions=[{"name": "1.0.0"}], parent=mock_parent)
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
         new_version = ImageVersion(
             parent=i,
             name="2.0.0",
@@ -209,7 +213,8 @@ class TestImage:
 
         expected_path = context / "test-image" / "2.0"
         assert expected_path.exists() and expected_path.is_dir()
-        assert (expected_path / "Containerfile.ubuntu2204").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
         assert (expected_path / "deps").is_dir()
         assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
         assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
@@ -245,3 +250,133 @@ class TestImage:
         assert i.versions[0] is updated_version
         assert not i.versions[1].latest
         assert updated_version.parent is i
+
+    def test_load_dev_versions(self):
+        """Test that load_dev_versions correctly loads development versions from configured devVersions."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        env_version = "1.0.1"
+        env_url = "https://example.com/image.tar.gz"
+        stream_version = "1.1.0"
+        stream_url = "https://example.com/image-daily.tar.gz"
+        with patch.dict(os.environ, {"VERSION_ENV_VAR": env_version, "URL_ENV_VAR": env_url}, clear=True):
+            with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+                mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+                i = Image(
+                    name="my-image",
+                    parent=mock_parent,
+                    devVersions=[
+                        {
+                            "sourceType": "env",
+                            "versionEnvVar": "VERSION_ENV_VAR",
+                            "urlEnvVar": "URL_ENV_VAR",
+                            "os": [
+                                {"name": "Ubuntu 22.04", "primary": True},
+                            ],
+                        },
+                        {
+                            "sourceType": "stream",
+                            "product": "workbench",
+                            "stream": "daily",
+                            "os": [
+                                {"name": "Ubuntu 22.04", "primary": True},
+                            ],
+                        },
+                    ],
+                    versions=[{"name": "1.0.0"}],
+                )
+                i.load_dev_versions()
+
+        assert len(i.versions) == 3
+        assert i.get_version("1.0.0") is not None
+
+        assert i.get_version(env_version) is not None
+        assert not i.get_version(env_version).latest
+        assert i.get_version(env_version).subpath == f".dev-{env_version}"
+        assert i.get_version(env_version).ephemeral
+        assert i.get_version(env_version).isDevelopmentVersion
+        assert len(i.get_version(env_version).os) == 1
+        assert i.get_version(env_version).os[0].name == "Ubuntu 22.04"
+        assert str(i.get_version(env_version).os[0].artifactDownloadURL) == env_url
+
+        assert i.get_version(stream_version) is not None
+        assert not i.get_version(stream_version).latest
+        assert i.get_version(stream_version).subpath == f".dev-{stream_version}"
+        assert i.get_version(stream_version).ephemeral
+        assert i.get_version(stream_version).isDevelopmentVersion
+        assert len(i.get_version(stream_version).os) == 1
+        assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
+        assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
+
+    def test_create_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that create_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        new_version = ImageVersion(
+            name="2.0.0",
+            subpath=".dev-2.0.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            ephemeral=True,
+            isDevelopmentVersion=True,
+        )
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0"}, new_version],
+            variants=common_image_variants_objects,
+            parent=mock_parent,
+        )
+
+        i.create_ephemeral_version_files()
+
+        expected_path = context / "test-image" / ".dev-2.0.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_remove_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that create_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        new_version = ImageVersion(
+            name="2.0.0",
+            subpath=".dev-2.0.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            ephemeral=True,
+            isDevelopmentVersion=True,
+        )
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0"}, new_version],
+            variants=common_image_variants_objects,
+            parent=mock_parent,
+        )
+
+        i.create_ephemeral_version_files()
+
+        expected_path = context / "test-image" / ".dev-2.0.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+        i.remove_ephemeral_version_files()
+        assert not expected_path.exists()
+        assert (context / "test-image").exists()
+        assert (context / "test-image" / "1.0.0").exists()

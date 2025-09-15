@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Annotated, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, HttpUrl
 from pydantic_core.core_schema import ValidationInfo
 
 from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES
@@ -52,6 +52,10 @@ class ImageVersionOS(BakeryYAMLModel):
             exclude=True,
             validate_default=True,
         ),
+    ]
+    artifactDownloadURL: Annotated[
+        HttpUrl | None,
+        Field(default=None, description="Optional URL for artifact retrieval. Passed to version template rendering."),
     ]
 
     def __hash__(self):

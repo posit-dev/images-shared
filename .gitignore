@@ -1,3 +1,6 @@
+# Exclude ephemeral version directories and files
+.dev-*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

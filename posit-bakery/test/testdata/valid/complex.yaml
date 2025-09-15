@@ -54,6 +54,21 @@ images:
           - tool: goss
             command: "some other command"
             wait: 10
+    devVersions:
+      - sourceType: "stream"
+        product: "package-manager"
+        stream: "preview"
+        os:
+          - name: "Ubuntu 22.04"
+          - name: "Ubuntu 24.04"
+            primary: true
+      - sourceType: "stream"
+        product: "package-manager"
+        stream: "daily"
+        os:
+          - name: "Ubuntu 22.04"
+          - name: "Ubuntu 24.04"
+            primary: true
     versions:
       - name: "2025.04.2-8"
         subpath: "2025.04.2"  # End of line comment test

@@ -1,40 +1,36 @@
+import abc
 import logging
 from copy import deepcopy
-from pathlib import Path
-from typing import Annotated, Union, Self
+from typing import Annotated, Self
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.config.registry import Registry
-from .version_os import ImageVersionOS
-from posit_bakery.config.dependencies import DependencyVersionsField
-from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.config.image.version_os import ImageVersionOS
+from posit_bakery.config.shared import BakeryYAMLModel
 
 log = logging.getLogger(__name__)
 
 
-class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
-    """Model representing a version of an image."""
+class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
+    """Base class for tool options in the bakery configuration."""
 
-    parent: Annotated[
-        Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
-    ]
-    name: Annotated[str, Field(description="The full image version.")]
-    subpath: Annotated[
+    parent: Annotated[BakeryYAMLModel | None, Field(exclude=True, default=None, description="Parent Image object.")]
+    sourceType: Annotated[
         str,
         Field(
-            default_factory=lambda data: data.get("name", "").replace(" ", "-").lower(),
-            min_length=1,
-            description="Subpath under the image to use for the image version.",
+            description="Type of source used to retrieve the primary artifact version and download URL. "
+            "Overridden in subclasses as a unique discriminator field."
         ),
     ]
     extraRegistries: Annotated[
         list[Registry],
         Field(
             default_factory=list,
-            description="List of additional registries to use for this image version with registries defined "
-            "globally or for the image.",
+            description="List of additional registries to use for this image development version with registries "
+            "defined globally or for the image.",
         ),
     ]
     overrideRegistries: Annotated[
@@ -44,46 +40,18 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="List of registries to use in place of registries defined globally or for the image.",
         ),
     ]
-    latest: Annotated[
-        bool, Field(default=False, description="Flag to indicate if this is the latest version of the image.")
-    ]
-    ephemeral: Annotated[
-        bool,
-        Field(
-            exclude=True,
-            default=False,
-            description="Flag to indicate if this is an ephemeral image version rendering. If enabled, the version "
-            "will be rendered and deleted after each operation.",
-        ),
-    ]
-    isDevelopmentVersion: Annotated[
-        bool,
-        Field(
-            exclude=True,
-            default=False,
-            description="Flag to indicate if this is a development version.",
-        ),
-    ]
     os: Annotated[
         list[ImageVersionOS],
         Field(
             default_factory=list,
             validate_default=True,
-            description="List of supported ImageVersionOS objects for this image version.",
-        ),
-    ]
-    dependencies: Annotated[
-        list[DependencyVersionsField],
-        Field(
-            default_factory=list,
-            validate_default=True,
-            description="Dependency to install, pinned to a list of versions.",
+            description="List of supported ImageVersionOS objects for this image development version.",
         ),
     ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
-    def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
+    def deduplicate_registries(cls, registries: list[Registry]) -> list[Registry]:
         """Ensures that the registries list is unique and warns on duplicates.
 
         :param registries: List of registries to deduplicate.
@@ -95,14 +63,13 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         for unique_registry in unique_registries:
             if registries.count(unique_registry) > 1:
                 log.warning(
-                    f"Duplicate registry defined in config for version '{info.data.get('name')}': "
-                    f"{unique_registry.base_url}"
+                    f"Duplicate registry defined in config for image development version: {unique_registry.base_url}"
                 )
         return sorted(list(unique_registries), key=lambda r: r.base_url)
 
     @field_validator("os", mode="after")
     @classmethod
-    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def check_os_not_empty(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that the os list is not empty.
 
         :param os: List of ImageVersionOS objects to check.
@@ -111,16 +78,16 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         :return: The unmodified list of ImageVersionOS objects.
         """
         # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("name") and not os:
+        if not os:
             log.warning(
-                f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
-                f"complete tagging and labeling of images."
+                f"No OSes defined for image development version. At least one OS should be "
+                "defined for complete tagging and labeling of images."
             )
         return os
 
     @field_validator("os", mode="after")
     @classmethod
-    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def deduplicate_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that the os list is unique and warns on duplicates.
 
         :param os: List of ImageVersionOS objects to deduplicate.
@@ -130,14 +97,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         """
         unique_oses = set(os)
         for unique_os in unique_oses:
-            if info.data.get("name") and os.count(unique_os) > 1:
-                log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
+            if os.count(unique_os) > 1:
+                log.warning(f"Duplicate OS defined in config for image development version: {unique_os.name}")
 
         return sorted(list(unique_oses), key=lambda o: o.name)
 
     @field_validator("os", mode="after")
     @classmethod
-    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def make_single_os_primary(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that at most one OS is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.
@@ -148,17 +115,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("name"):
-                log.info(
-                    f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
-                    f"OS."
-                )
-            os[0].primary = True
+            if not os[0].primary:
+                os[0].primary = True
+
         return os
 
     @field_validator("os", mode="after")
     @classmethod
-    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
+    def max_one_primary_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
         """Ensures that at most one OS is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.
@@ -171,14 +135,15 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         primary_os_count = sum(1 for o in os if o.primary)
         if primary_os_count > 1:
             raise ValueError(
-                f"Only one OS can be marked as primary for image version '{info.data['name']}'. "
+                f"Only one OS can be marked as primary for image development version. "
                 f"Found {primary_os_count} OSes marked primary."
             )
-        elif info.data.get("name") and primary_os_count == 0:
+        elif primary_os_count == 0:
             log.warning(
-                f"No OS marked as primary for image version '{info.data['name']}'. "
+                f"No OS marked as primary for image development version. "
                 "At least one OS should be marked as primary for complete tagging and labeling of images."
             )
+
         return os
 
     @model_validator(mode="after")
@@ -189,7 +154,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         """
         if self.extraRegistries and self.overrideRegistries:
             raise ValueError(
-                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image version '{self.name}'."
+                "Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image development version."
             )
         return self
 
@@ -199,16 +164,6 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         for version_os in self.os:
             version_os.parent = self
         return self
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
 
     @property
     def all_registries(self) -> list[Registry]:
@@ -229,3 +184,46 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     all_registries.append(registry)
 
         return all_registries
+
+    @abc.abstractmethod
+    def get_version(self) -> str:
+        """Retrieve the version string for this image development version.
+
+        :return: The version string.
+        """
+        raise NotImplementedError("Subclasses must implement get_version method.")
+
+    @abc.abstractmethod
+    def get_url_by_os(self) -> dict[str, str]:
+        """Retrieve the URLs for each OS for this image development version.
+
+        :return: A map of OS names to their corresponding URL strings.
+        """
+        raise NotImplementedError("Subclasses must implement get_url method.")
+
+    @model_validator(mode="after")
+    def add_os_url(self) -> "BaseImageDevelopmentVersion":
+        """Add the URL to each OS in the os list.
+
+        :return: The modified BaseImageDevelopmentVersion object.
+        """
+        url_by_os = self.get_url_by_os()
+        for os_version in self.os:
+            os_version.artifactDownloadURL = url_by_os.get(os_version.name, "")
+
+        return self
+
+    def as_image_version(self):
+        """Convert this development version to a standard image version."""
+        os_copies = [deepcopy(os) for os in self.os]
+        return ImageVersion(
+            name=self.get_version(),
+            subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
+            parent=self.parent,
+            extraRegistries=self.extraRegistries,
+            overrideRegistries=self.overrideRegistries,
+            os=os_copies,
+            latest=False,
+            ephemeral=True,
+            isDevelopmentVersion=True,
+        )

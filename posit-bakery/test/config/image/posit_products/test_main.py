@@ -1,5 +1,3 @@
-import itertools
-
 import pytest
 
 from posit_bakery.config.image.build_os import SUPPORTED_OS, BuildOS
