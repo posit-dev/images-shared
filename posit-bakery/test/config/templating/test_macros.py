@@ -313,8 +313,14 @@ class TestPythonMacros:
         )
         expected = textwrap.dedent(
             """\
-            RUN /opt/python/cpython-3.13.7-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade numpy pandas -r /tmp/requirements.txt && \\
-                /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade numpy pandas -r /tmp/requirements.txt
+            RUN /opt/python/cpython-3.13.7-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                numpy \\
+                pandas \\
+                -r /tmp/requirements.txt
+            RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                numpy \\
+                pandas \\
+                -r /tmp/requirements.txt
             """
         )
         rendered = environment_with_macros.from_string(template).render()
