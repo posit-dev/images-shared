@@ -114,10 +114,7 @@ class TestImageDevelopmentVersionFromEnv:
             )
 
         assert "WARNING" in caplog.text
-        assert (
-            "No OSes defined for image development version. At least one OS should be defined "
-            "for complete tagging and labeling of images." in caplog.text
-        )
+        assert "No OSes defined for image development version." in caplog.text
 
     def test_deduplicate_os(self, caplog):
         """Test that duplicate OSes are deduplicated."""
@@ -155,10 +152,7 @@ class TestImageDevelopmentVersionFromEnv:
         assert len(i.os) == 1
         assert i.os[0].primary is True
         assert i.os[0].name == "Ubuntu 22.04"
-        assert (
-            "No primary OS defined for image version. At least one OS should be marked as "
-            "primary for complete tagging and labeling of images."
-        ) not in caplog.text
+        assert "No primary OS defined for image version." not in caplog.text
 
     def test_max_one_primary_os(self):
         """Test that an error is raised if multiple primary OSes are defined."""
@@ -192,10 +186,7 @@ class TestImageDevelopmentVersionFromEnv:
             )
 
         assert "WARNING" in caplog.text
-        assert (
-            "No OS marked as primary for image development version. At least one OS should be "
-            "marked as primary for complete tagging and labeling of images." in caplog.text
-        )
+        assert "No OS marked as primary for image development version." in caplog.text
 
     def test_extra_registries_or_override_registries(self):
         """Test that only one of extraRegistries or overrideRegistries can be defined."""
