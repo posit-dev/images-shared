@@ -70,12 +70,12 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             description="List of tag patterns for this image.",
         ),
     ]
-    dependencies: Annotated[
+    dependencyConstraints: Annotated[
         list[DependencyConstraintField],
         Field(
             default_factory=list,
             validate_default=True,
-            description="Dependencies to install, specified by a version contsraint.",
+            description="Dependencies to install, specified by a version constraint.",
         ),
     ]
     variants: Annotated[

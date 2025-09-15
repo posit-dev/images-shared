@@ -7,16 +7,16 @@ from posit_bakery.config.image import Image, ImageVersion
 
 class TestImageDependencyConstraints:
     @pytest.mark.parametrize(
-        "dependencies",
+        "constraints",
         [
             [{"dependency": "R", "constraint": {"latest": True}}],
         ],
     )
-    def test_dependency_constraint_valid(self, dependencies):
+    def test_dependency_constraint_valid(self, constraints):
         img = Image(
             **{
                 "name": "test-image",
-                "dependencies": dependencies,
+                "dependencyConstraints": constraints,
             }
         )
 
@@ -26,7 +26,7 @@ class TestImageDependencyConstraints:
             Image(
                 **{
                     "name": "test-image",
-                    "dependencies": [{"dependency": "R", "versions": ["4.5.1"]}],
+                    "dependencyConstraints": [{"dependency": "R", "versions": ["4.5.1"]}],
                 }
             )
 

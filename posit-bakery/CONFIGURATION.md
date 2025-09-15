@@ -38,7 +38,7 @@ images:
     displayName: Posit Workbench
     description: A containerized image of Posit Workbench, a remote development environment for data scientists.
     documentationUrl: https://docs.posit.co/ide/
-    dependencies:
+    dependencyConstraints:
       - dependency: python
         constraint:
           latest: true
@@ -152,7 +152,7 @@ An Image represents a container image managed by the project. Each image has one
 | `extraRegistries`<br/>*[Registry](#registry) array*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `overrideRegistries`<br/>*[Registry](#registry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. | `[]`                                        | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*    | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns)   | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
-| `dependencies`<br/>*[DependencyConstraint](#dependencyConstraint) array* | List of dependencies to install in the image. Versions are are calcuated from a [VersionConstraint](#versionconstraint)   | `[]` | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre> |
+| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array* | List of dependencies to install in the image. Versions are are calcuated from a [VersionConstraint](#versionconstraint)   | `[]` | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre> |
 | `variants`<br/>*[ImageVariant](#imagevariant) array*   | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | `[]` | `- name: Minimal`                                                                                                                        |
 | `versions`<br/>*[ImageVersion](#imageversion) array*   | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            | `[]`                                        | `- name: 2025.07.0`                                                                                                                      |
 | `options`<br/>*[ToolOptions](#tooloptions) array*      | A list of options to pass to a supported tool when performing an action against the image.                                          | `[]`                                        | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
@@ -165,7 +165,7 @@ images:
     displayName: Posit Workbench
     description: A containerized image of Posit Workbench, a remote development environment for data scientists.
     documentationUrl: https://docs.posit.co/ide/
-    dependencies:
+    dependencyConstraints:
       - dependency: python
         constraint:
           latest: true
@@ -276,7 +276,7 @@ If `latest` is `true` and no other fields are set, `count` defaults to `1`.
 #### Example Dependency Version Constraint
 
 ```yaml
-dependencies:
+dependencyConstraints:
   # Install the latest patch of python minor versions from 3.9 to 3.11, inclusive
   - depencency: python
     constraint:
