@@ -1,24 +1,36 @@
+{%- set global_options = "-yq" -%}
+
+{% macro clean_command() -%}
+dnf clean all {{ global_options }}
+{%- endmacro %}
+
 {% macro update_upgrade() -%}
-RUN dnf upgrade -yq && \
-    dnf clean all -yq
+RUN dnf upgrade {{ global_options }} && \
+    {{ clean_command() | indent(4) }}
 {%- endmacro %}
 
 {% macro install_packages_from_list(packages) -%}
-RUN dnf install -yq {{ packages | join(' ') }} && \
-    dnf clean all -yq
+{%- if packages is string -%}
+{%- set packages = packages | split(",") -%}
+{%- endif -%}
+RUN dnf install {{ global_options }} \
+    {%- for package in packages %}
+        {{ package | trim }}{% if loop.last %} &&{% endif %} \
+    {%- endfor %}
+    {{ clean_command() | indent(4) }}
 {%- endmacro %}
 
 {% macro install_packages_from_file(file) -%}
-RUN xargs -a {{ file }} dnf install -yq && \
-    dnf clean all -yq
+RUN xargs -a {{ file }} dnf install {{ global_options }} && \
+    {{ clean_command() | indent(4) }}
 {%- endmacro %}
 
 {% macro setup() -%}
-RUN dnf upgrade -yq && \
-    dnf install -yq \
+RUN dnf upgrade {{ global_options }} && \
+    dnf install {{ global_options }} \
         curl \
         ca-certificates \
         gnupg \
         tar && \
-    dnf clean all -yq
+    {{ clean_command() | indent(4) }}
 {%- endmacro %}

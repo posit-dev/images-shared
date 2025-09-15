@@ -51,7 +51,47 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_packages_from_list(self, environment_with_macros):
+    def test_install_packages_from_list_single_string_input(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "apt.j2" as apt -%}
+            {{ apt.install_packages_from_list("ca-certificates") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN apt-get update -yqq && \\
+                apt-get install -yqq --no-install-recommends \\
+                    ca-certificates && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_packages_from_list_multi_string_input(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "apt.j2" as apt -%}
+            {{ apt.install_packages_from_list("ca-certificates, git, g++") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN apt-get update -yqq && \\
+                apt-get install -yqq --no-install-recommends \\
+                    ca-certificates \\
+                    git \\
+                    g++ && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_packages_from_list_list_input(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "apt.j2" as apt -%}
@@ -61,7 +101,10 @@ class TestAptMacros:
         expected = textwrap.dedent(
             """\
             RUN apt-get update -yqq && \\
-                apt-get install -yqq --no-install-recommends ca-certificates git g++ && \\
+                apt-get install -yqq --no-install-recommends \\
+                    ca-certificates \\
+                    git \\
+                    g++ && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             """
@@ -130,7 +173,43 @@ class TestDnfMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_dnf_install_packages_from_list(self, environment_with_macros):
+    def test_dnf_install_packages_from_list_single_string_input(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "dnf.j2" as dnf -%}
+            {{ dnf.install_packages_from_list("ca-certificates") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN dnf install -yq \\
+                    ca-certificates && \\
+                dnf clean all -yq
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_dnf_install_packages_from_list_multi_string_input(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "dnf.j2" as dnf -%}
+            {{ dnf.install_packages_from_list("ca-certificates, git, g++") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN dnf install -yq \\
+                    ca-certificates \\
+                    git \\
+                    g++ && \\
+                dnf clean all -yq
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_dnf_install_packages_from_list_list_input(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "dnf.j2" as dnf -%}
@@ -139,7 +218,10 @@ class TestDnfMacros:
         )
         expected = textwrap.dedent(
             """\
-            RUN dnf install -yq ca-certificates git g++ && \\
+            RUN dnf install -yq \\
+                    ca-certificates \\
+                    git \\
+                    g++ && \\
                 dnf clean all -yq
             """
         )
