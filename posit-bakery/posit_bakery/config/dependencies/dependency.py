@@ -1,7 +1,8 @@
 import abc
+import typing
 from typing import Annotated, ClassVar
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_serializer
 
 from .version import DependencyVersion, VersionConstraint
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -36,6 +37,14 @@ class DependencyVersions(BakeryYAMLModel):
             raise ValueError("Versions list cannot be empty.")
 
         return versions
+
+    @model_serializer(mode="wrap")
+    def include_literals(self, next_serializer):
+        dumped = next_serializer(self)
+        for name, field_info in self.model_fields.items():
+            if typing.get_origin(field_info.annotation) == typing.Literal:
+                dumped[name] = getattr(self, name)
+        return dumped
 
 
 class DependencyConstraint(BakeryYAMLModel):
