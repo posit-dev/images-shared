@@ -12,6 +12,7 @@ from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.dependencies import DependencyConstraintField
+from posit_bakery.config.dependencies.dependency import DependencyVersions
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
@@ -353,6 +354,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Image": str(self.path.relative_to(self.parent.path)),
                 "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
             },
+            "Dependencies": {d.dependency: d.versions for d in self.resolve_dependency_versions()},
         }
         if variant is not None:
             values["Image"]["Variant"] = variant.name
@@ -487,7 +489,11 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
-            args = {"name": version_name, "parent": self}
+            args = {
+                "name": version_name,
+                "parent": self,
+                "dependencies": self.resolve_dependency_versions(),
+            }
             if subpath is not None:
                 args["subpath"] = subpath
             if os is not None:
