@@ -278,6 +278,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return all_registries
 
+    def resolve_dependency_versions(self) -> list[DependencyVersions]:
+        """Resolves the dependency versions for this image.
+
+        :return: A list of DependencyVersions objects with resolved versions.
+        """
+        return [dc.resolve_versions() for dc in self.dependencyConstraints]
+
     def get_tool_option(self, tool: str) -> ToolOptions | None:
         """Returns the Goss options for this image variant.
 
