@@ -2,14 +2,14 @@ import itertools
 
 import pytest
 
+from posit_bakery.config.dependencies.version import DependencyVersion, VersionConstraint
+
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.config,
     pytest.mark.dependency,
 ]
-
-from posit_bakery.config.dependencies.version import DependencyVersion, VersionConstraint
 
 # Posit python-builds as of 2025-08-20
 PYTHON_VERSIONS: list[str] = list(

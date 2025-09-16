@@ -1,14 +1,11 @@
-from typing import Literal
-from unittest.mock import MagicMock, patch
-
 from pydantic import BaseModel
 import pytest
 
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField
-from posit_bakery.config.dependencies.dependency import Dependency, DependencyConstraint, DependencyVersions
-from posit_bakery.config.dependencies.python import PythonDependencyConstraint, PythonDependencyVersions
-from posit_bakery.config.dependencies.quarto import QuartoDependencyConstraint, QuartoDependencyVersions
-from posit_bakery.config.dependencies.r import RDependencyConstraint, RDependencyVersions
+from posit_bakery.config.dependencies.dependency import Dependency, DependencyVersions
+from posit_bakery.config.dependencies.python import PythonDependencyVersions
+from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
+from posit_bakery.config.dependencies.r import RDependencyVersions
 
 
 from test.config.dependencies.test_version import R_VERSIONS, PYTHON_VERSIONS
