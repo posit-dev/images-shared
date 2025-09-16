@@ -39,12 +39,6 @@ Feature: create version
         * with the arguments:
             | test-image |
             | 1.1.0 |
-            | --value |
-            | python_version=3.12.11 |
-            | --value                |
-            | r_version=4.4.3       |
-            | --value                |
-            | quarto_version=1.7.24 |
         When I execute the command
         Then The command succeeds
         * the image "test-image" exists
