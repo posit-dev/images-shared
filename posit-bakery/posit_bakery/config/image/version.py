@@ -183,7 +183,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("dependencies", mode="after")
     @classmethod
-    def deduplicate_dependencies(
+    def check_duplicate_dependencies(
         cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
     ) -> list[DependencyVersionsField]:
         """Ensures that the dependencies list is unique and errors on duplicates.

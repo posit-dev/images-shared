@@ -134,6 +134,20 @@ class TestImageVersion:
             "complete tagging and labeling of images." in caplog.text
         )
 
+    def test_check_duplicate_dependencies(self):
+        """Test an error is raised if duplicate dependencies are defined."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependencies found in image",
+        ):
+            ImageVersion(
+                name="1.0.0",
+                dependencies=[
+                    {"dependency": "R", "versions": ["4.2.3", "4.3.3"]},
+                    {"dependency": "R", "versions": ["4.3.0"]},  # Duplicate dependency
+                ],
+            )
+
     def test_extra_registries_or_override_registries(self):
         """Test that only one of extraRegistries or overrideRegistries can be defined."""
         with pytest.raises(

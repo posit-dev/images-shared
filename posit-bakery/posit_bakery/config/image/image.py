@@ -143,7 +143,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("dependencyConstraints", mode="after")
     @classmethod
-    def check_dependency_duplicates(
+    def check_duplicate_dependency_constraints(
         cls, dependency_constraints: list[DependencyConstraintField], info: ValidationInfo
     ) -> list[DependencyConstraintField]:
         """Ensures that there are no duplicate dependencies in the image.

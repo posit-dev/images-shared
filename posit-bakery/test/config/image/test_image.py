@@ -86,7 +86,7 @@ class TestImage:
             "Duplicate registry defined in config for image 'my-image': registry.example.com/namespace" in caplog.text
         )
 
-    def test_registries_or_override_registries(self):
+    def test_extra_registries_or_override_registries(self):
         """Test that only one of extraRegistries or overrideRegistries can be defined."""
         with pytest.raises(
             ValidationError,
@@ -96,6 +96,21 @@ class TestImage:
                 name="my-image",
                 extraRegistries=[{"host": "registry.example.com", "namespace": "namespace"}],
                 overrideRegistries=[{"host": "another.registry.com", "namespace": "another_namespace"}],
+                versions=[{"name": "1.0.0"}],
+            )
+
+    def test_check_duplicate_dependency_constraints(self):
+        """Test that a ValidationError is raised if multiple dependencyConstraints of the same type are defined."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependency constraints found in image",
+        ):
+            Image(
+                name="my-image",
+                dependencyConstraints=[
+                    {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                    {"dependency": "R", "constraint": {"max": "4.3", "count": 1}},  # Duplicate
+                ],
                 versions=[{"name": "1.0.0"}],
             )
 
