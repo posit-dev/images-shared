@@ -140,6 +140,32 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             )
         return self
 
+    @field_validator("dependencyConstraints", mode="after")
+    @classmethod
+    def check_dependency_duplicates(
+        cls, dependency_constraints: list[DependencyConstraintField], info: ValidationInfo
+    ) -> list[DependencyConstraintField]:
+        """Ensures that there are no duplicate dependencies in the image.
+
+        :param dependency_constraints: List of DependencyConstraintField objects to check for duplicates.
+        :param info: ValidationInfo containing the data being validated.
+
+        :return: The unmodified list of DependencyConstraintField objects if no duplicates are found.
+
+        :raises ValueError: If duplicate dependencies are found.
+        """
+        error_message = ""
+        seen_dependencies = set()
+        for dc in dependency_constraints:
+            if dc.dependency in seen_dependencies:
+                if not error_message:
+                    error_message = f"Duplicate dependency constraints found in image '{info.data['name']}':\n"
+                error_message += f" - {dc.dependency}\n"
+            seen_dependencies.add(dc.dependency)
+        if error_message:
+            raise ValueError(error_message.strip())
+        return dependency_constraints
+
     @field_validator("versions", mode="after")
     @classmethod
     def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
