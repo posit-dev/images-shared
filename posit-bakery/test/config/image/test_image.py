@@ -47,6 +47,11 @@ class TestImage:
             tagPatterns=[{"patterns": ["{{ Version }}-{{ OS }}-{{ Variant }}"]}],
             variants=[{"name": "Standard"}],
             versions=[{"name": "1.0.0"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 1}},
+                {"dependency": "python", "constraint": {"latest": True, "count": 1}},
+                {"dependency": "quarto", "constraint": {"latest": True, "count": 1}},
+            ],
         )
 
         assert i.name == "my-image"

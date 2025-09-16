@@ -49,6 +49,11 @@ class TestImageVersion:
             ],
             latest=True,
             os=[{"name": "Ubuntu 22.04", "primary": True}, {"name": "Ubuntu 24.04"}],
+            dependencies=[
+                {"dependency": "R", "versions": ["4.5.1", "4.4.3"]},
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "quarto", "versions": ["1.8.24"]},
+            ],
         )
 
         assert i.latest
