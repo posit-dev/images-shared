@@ -1,5 +1,5 @@
 import abc
-from typing import Literal
+from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
 
@@ -58,3 +58,5 @@ class PythonDependencyVersions(DependencyVersions, PythonDependency):
 
 class PythonDependencyConstraint(DependencyConstraint, PythonDependency):
     """Class for specifying a list of Python version constraints."""
+
+    VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = PythonDependencyVersions

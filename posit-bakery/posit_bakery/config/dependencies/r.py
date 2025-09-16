@@ -1,5 +1,5 @@
 import abc
-from typing import Literal
+from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
 
@@ -43,9 +43,11 @@ class RDependency(BakeryYAMLModel, abc.ABC):
         return self._fetch_versions()
 
 
+class RDependencyVersions(DependencyVersions, RDependency):
+    """Class for specifying a list of R versions."""
+
+
 class RDependencyConstraint(DependencyConstraint, RDependency):
     """Class for specifying an R version constraint."""
 
-
-class RDependencyVersions(DependencyVersions, RDependency):
-    """Class for specifying a list of R versions."""
+    VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = RDependencyVersions

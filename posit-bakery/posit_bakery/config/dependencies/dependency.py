@@ -1,5 +1,5 @@
 import abc
-from typing import Annotated, Union
+from typing import Annotated, ClassVar
 
 from pydantic import Field, field_validator
 
@@ -15,26 +15,6 @@ class Dependency(BakeryYAMLModel, abc.ABC):
     @abc.abstractmethod
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available versions for the dependency."""
-
-
-class DependencyConstraint(BakeryYAMLModel):
-    """Class for specifying a list of dependency version constraints."""
-
-    constraint: Annotated[
-        VersionConstraint,
-        Field(
-            default_factory=list,
-            validate_default=True,
-            description="Version constraints to apply for the dependency.",
-        ),
-    ]
-
-    def resolve_versions(self) -> list[str]:
-        """Return a list of versions that satisfy the constraints.
-
-        Each subclass must implement `available_versions`
-        """
-        return [str(v) for v in self.constraint.resolve_versions(self.available_versions())]
 
 
 class DependencyVersions(BakeryYAMLModel):
@@ -56,3 +36,26 @@ class DependencyVersions(BakeryYAMLModel):
             raise ValueError("Versions list cannot be empty.")
 
         return versions
+
+
+class DependencyConstraint(BakeryYAMLModel):
+    """Class for specifying a list of dependency version constraints."""
+
+    VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = DependencyVersions
+    constraint: Annotated[
+        VersionConstraint,
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="Version constraints to apply for the dependency.",
+        ),
+    ]
+
+    def resolve_versions(self) -> DependencyVersions:
+        """Return a list of versions that satisfy the constraints.
+
+        Each subclass must implement `available_versions`
+        """
+        return self.VERSIONS_CLASS(
+            versions=[str(v) for v in self.constraint.resolve_versions(self.available_versions())]
+        )

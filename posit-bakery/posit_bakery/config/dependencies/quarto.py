@@ -1,5 +1,5 @@
 import abc
-from typing import Annotated, Literal
+from typing import Annotated, Literal, ClassVar
 
 from pydantic import ConfigDict, Field
 from ruamel.yaml import YAML
@@ -67,9 +67,11 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         return self._fetch_versions()
 
 
+class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
+    """Class for specifying a list of Quarto versions."""
+
+
 class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
     """Class for specifying a list of Quarto version constraints."""
 
-
-class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
-    """Class for specifying a list of Quarto versions."""
+    VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = QuartoDependencyVersions
