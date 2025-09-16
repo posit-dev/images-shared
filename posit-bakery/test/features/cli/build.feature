@@ -59,3 +59,15 @@ Feature: build
             | Build failed |
         * the fail-fast test suite is not built
         * the fail-fast images are removed
+
+    @slow
+    @xdist-build
+    Scenario: Building images that utilize Bakery's macros
+        Given I call bakery build
+        * in a temp with-macros context
+        When I execute the command
+        Then The command succeeds
+        * the stderr output includes:
+            | Build completed |
+        * the with-macros test suite is built
+        * the with-macros images are removed

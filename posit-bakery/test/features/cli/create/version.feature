@@ -33,6 +33,27 @@ Feature: create version
             | Successfully created version |
             | 'test-image/1.1.0' |
 
+    Scenario: Creating a new version from templates with macros
+        Given I call bakery create version
+        * in a temp with-macros context
+        * with the arguments:
+            | test-image |
+            | 1.1.0 |
+            | --value |
+            | python_version=3.12.11 |
+            | --value                |
+            | r_version=4.4.3       |
+            | --value                |
+            | quarto_version=1.7.24 |
+        When I execute the command
+        Then The command succeeds
+        * the image "test-image" exists
+        * the version "1.1.0" exists
+        * the default rendered templates exist
+        * the stderr output includes:
+            | Successfully created version |
+            | 'test-image/1.1.0' |
+
     Scenario: Creating a duplicate version fails without --force
         Given I call bakery create version
         * in a temp basic context

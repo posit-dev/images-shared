@@ -1,0 +1,45 @@
+{%- set global_options = "-yqq" -%}
+
+{% macro clean_command() -%}
+apt-get clean {{ global_options }} && \
+rm -rf /var/lib/apt/lists/*
+{%- endmacro %}
+
+{% macro update_upgrade() -%}
+RUN apt-get update {{ global_options }} --fix-missing && \
+    apt-get upgrade {{ global_options }} && \
+    apt-get dist-upgrade {{ global_options }} && \
+    apt-get autoremove {{ global_options }} --purge && \
+    {{ clean_command() | indent(4) }}
+{%- endmacro %}
+
+{% macro install_packages_from_list(packages) -%}
+{%- if packages is string -%}
+{%- set packages = packages | split(",") -%}
+{%- endif -%}
+RUN apt-get update {{ global_options }} && \
+    apt-get install {{ global_options }} --no-install-recommends \
+    {%- for package in packages %}
+        {{ package | trim }}{% if loop.last %} &&{% endif %} \
+    {%- endfor %}
+    {{ clean_command() | indent(4) }}
+{%- endmacro %}
+
+{% macro install_packages_from_file(file) -%}
+RUN apt-get update {{ global_options }} && \
+    xargs -a {{ file }} apt-get install {{ global_options }} --no-install-recommends && \
+    {{ clean_command() | indent(4) }}
+{%- endmacro %}
+
+{% macro setup() -%}
+RUN apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    apt-get autoremove -yqq --purge && \
+    {{ clean_command() | indent(4) }}
+{%- endmacro %}

@@ -1,0 +1,24 @@
+{%- import "python.j2" as python -%}
+{%- import "quarto.j2" as quarto -%}
+{%- import "r.j2" as r -%}
+
+package:
+  ca-certificates:
+    installed: true
+  curl:
+    installed: true
+  git:
+    installed: true
+  cmake:
+    installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+
+file:
+  python-{{ python_version }}:
+    exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+    path: {{ python.get_version_directory(python_version) }}
+  r-{{ r_version }}:
+    exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+    path: {{ r.get_version_directory(r_version) }}
+  quarto-{{ quarto_version }}:
+    exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+    path: {{ quarto.get_version_directory(quarto_version) }}

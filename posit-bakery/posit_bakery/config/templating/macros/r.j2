@@ -1,0 +1,42 @@
+{% macro install(versions) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") -%}
+{%- endif -%}
+{% for version in versions -%}
+RUN RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -L https://rstd.io/r-install)"
+{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
+{% endif %}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro get_version_directory(version) -%}
+/opt/R/{{ version | trim }}
+{%- endmacro %}
+
+{% macro get_p3m_cran_repo(_os) -%}
+{%- if _os == None -%}
+https://p3m.dev/cran/latest
+{%- else %}
+{%- if _os.Name == "ubuntu" or _os.Name == "debian" -%}
+https://p3m.dev/cran/__linux__/{{ _os.Codename }}/latest
+{%- elif _os.Name in ["rhel", "rocky", "alma"] -%}
+https://p3m.dev/cran/__linux__/rhel{{ _os.Version }}/latest
+{%- else -%}
+https://p3m.dev/cran/latest
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro install_packages(versions, packages = None, package_list_file = None, _os = None) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") -%}
+{%- endif -%}
+{%- if packages is string -%}
+{%- set packages = packages | split(",") -%}
+{%- endif -%}
+{% for version in versions -%}
+RUN {{ get_version_directory(version | trim) }}/bin/R --vanilla -e 'install.packages(c({% if packages %}{{ packages | map('trim') | map('quote') | join(', ') | safe }}{% endif %}{% if packages and package_list_file %}, {% endif %}{% if package_list_file %}readLines("{{ package_list_file | trim }}"){% endif %}), repos="{{ get_p3m_cran_repo(_os) | trim }}", clean = TRUE)'
+{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
+{% endif %}
+{%- endfor %}
+{%- endmacro %}

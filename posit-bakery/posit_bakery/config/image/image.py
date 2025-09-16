@@ -359,55 +359,63 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.path.mkdir(parents=True)
 
         env = jinja2_env(
-            loader=jinja2.FileSystemLoader(version.parent.template_path),
+            loader=jinja2.ChoiceLoader(
+                [
+                    jinja2.FileSystemLoader(version.parent.template_path),
+                    jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
+                ]
+            ),
             autoescape=True,
             undefined=jinja2.StrictUndefined,
             keep_trailing_newline=True,
         )
 
         # Render templates to version directory
-        for tpl_rel_path in env.list_templates():
-            tpl = env.get_template(tpl_rel_path)
+        # This is using walk instead of list_templates to ensure that the macro files are not rendered into the version.
+        for root, dirs, files in version.parent.template_path.walk():
+            for file in files:
+                tpl_rel_path = str((Path(root) / file).relative_to(version.parent.template_path))
+                tpl = env.get_template(tpl_rel_path)
 
-            # Enable trim_blocks for Containerfile templates
-            render_kwargs = {}
-            if tpl_rel_path.startswith("Containerfile"):
-                render_kwargs["trim_blocks"] = True
+                # Enable trim_blocks for Containerfile templates
+                render_kwargs = {}
+                if tpl_rel_path.startswith("Containerfile"):
+                    render_kwargs["trim_blocks"] = True
 
-            # If variants are specified, render Containerfile for each variant
-            if tpl_rel_path.startswith("Containerfile") and variants:
-                containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+                # If variants are specified, render Containerfile for each variant
+                if tpl_rel_path.startswith("Containerfile") and variants:
+                    containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
 
-                # Attempt to match the OS from the Containerfile name
-                os_ext = containerfile_base_name.split(".")[-1]
-                containerfile_os = None
-                for _os in version.os:
-                    if _os.extension == os_ext:
-                        containerfile_os = _os
-                        break
+                    # Attempt to match the OS from the Containerfile name
+                    os_ext = containerfile_base_name.split(".")[-1]
+                    containerfile_os = None
+                    for _os in version.os:
+                        if _os.extension == os_ext:
+                            containerfile_os = _os
+                            break
 
-                for variant in variants:
+                    for variant in variants:
+                        template_values = version.parent.generate_version_template_values(
+                            version, variant, containerfile_os, version.path, extra_values
+                        )
+                        containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
+                        rendered = tpl.render(**template_values, **render_kwargs)
+                        with open(containerfile, "w") as f:
+                            log.debug(f"Rendering [bold]{containerfile}")
+                            f.write(rendered)
+
+                # Render other templates once
+                else:
                     template_values = version.parent.generate_version_template_values(
-                        version, variant, containerfile_os, version.path, extra_values
+                        version, version_path=version.path, extra_values=extra_values
                     )
-                    containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
                     rendered = tpl.render(**template_values, **render_kwargs)
-                    with open(containerfile, "w") as f:
-                        log.debug(f"Rendering [bold]{containerfile}")
+                    rel_path = tpl_rel_path.removesuffix(".jinja2")
+                    output_file = version.path / rel_path
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_file, "w") as f:
+                        log.debug(f"[bright_black]Rendering [bold]{output_file}")
                         f.write(rendered)
-
-            # Render other templates once
-            else:
-                template_values = version.parent.generate_version_template_values(
-                    version, version_path=version.path, extra_values=extra_values
-                )
-                rendered = tpl.render(**template_values, **render_kwargs)
-                rel_path = tpl_rel_path.removesuffix(".jinja2")
-                output_file = version.path / rel_path
-                output_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(output_file, "w") as f:
-                    log.debug(f"[bright_black]Rendering [bold]{output_file}")
-                    f.write(rendered)
 
     def create_version_model(
         self,
