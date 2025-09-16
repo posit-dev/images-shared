@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 import pytest
 
-from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField
-from posit_bakery.config.dependencies.dependency import Dependency, DependencyVersions
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField, DependencyVersions
+from posit_bakery.config.dependencies.dependency import Dependency
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions

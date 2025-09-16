@@ -11,8 +11,7 @@ from pydantic_core.core_schema import ValidationInfo
 from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
-from posit_bakery.config.dependencies import DependencyConstraintField
-from posit_bakery.config.dependencies.dependency import DependencyVersions
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
