@@ -352,7 +352,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             "Path": {
                 "Base": ".",
                 "Image": str(self.path.relative_to(self.parent.path)),
-                "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
+                "Version": str(Path(version_path or self.path / version.subpath).relative_to(self.parent.path)),
             },
             "Dependencies": {d.dependency: d.versions for d in self.resolve_dependency_versions()},
         }
