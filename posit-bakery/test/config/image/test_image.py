@@ -312,7 +312,7 @@ class TestImage:
         assert (expected_path / "test").is_dir()
         assert (expected_path / "test" / "goss.yaml").is_file()
 
-    def test_create_version_files_with_macros(self, get_tmpcontext):
+    def test_create_version_files_with_macros(self, get_tmpcontext, patch_requests_get):
         """Test that create_version_files works with templates utilizing macros."""
         context = get_tmpcontext("with-macros")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
@@ -323,6 +323,11 @@ class TestImage:
             name="test-image",
             versions=[{"name": "1.0.0"}],
             variants=[{"name": "Minimal", "extension": "min"}, {"name": "Standard", "extension": "std"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True}},
+                {"dependency": "python", "constraint": {"latest": True}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
             parent=mock_parent,
         )
         new_version = ImageVersion(
@@ -330,12 +335,12 @@ class TestImage:
             name="2.0.0",
             subpath="2.0",
             os=[{"name": "Ubuntu 22.04", "primary": True}],
+            dependencies=i.resolve_dependency_versions(),
         )
 
         Image.create_version_files(
             new_version,
             i.variants,
-            extra_values={"python_version": "3.12.11", "r_version": "4.4.3", "quarto_version": "1.7.34"},
         )
 
         expected_path = context / "test-image" / "2.0"
@@ -357,6 +362,27 @@ class TestImage:
         assert len(i.versions) == 1
         assert i.versions[0] is new_version
         assert new_version.parent is i
+
+    def test_create_version_model_with_dependencies(self, patch_requests_get):
+        """Test that create_version creates a new version with dependencies when dependency constraints are defined."""
+        i = Image(
+            name="my-image",
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True}},
+                {"dependency": "python", "constraint": {"latest": True}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+        )
+        new_version = i.create_version_model("1.0.0")
+
+        assert new_version.name == "1.0.0"
+        assert len(i.versions) == 1
+        assert i.versions[0] is new_version
+        assert new_version.parent is i
+        assert len(new_version.dependencies) == 3
+        assert new_version.dependencies[0] == RDependencyVersions(versions=["4.5.1"])
+        assert new_version.dependencies[1] == PythonDependencyVersions(versions=["3.13.7"])
+        assert new_version.dependencies[2] == QuartoDependencyVersions(versions=["1.7.34"])
 
     def test_create_version_model_existing_version(self):
         """Test that create_version raises an error if the version already exists."""
