@@ -18,6 +18,16 @@ registries:
 
 images:
   - name: "test-image"
+    dependencyConstraints:
+      - dependency: R
+        constraint:
+          latest: true
+      - dependency: python
+        constraint:
+          latest: true
+      - dependency: quarto
+        constraint:
+          latest: true
     variants:
       - name: "Minimal"
         extension: "min"
@@ -32,3 +42,10 @@ images:
         os:
           - name: Ubuntu 22.04
             primary: true
+        dependencies:
+          - dependency: R
+            versions: ["4.5.1"]
+          - dependency: python
+            versions: ["3.13.7"]
+          - dependency: quarto
+            versions: ["1.8.24"]

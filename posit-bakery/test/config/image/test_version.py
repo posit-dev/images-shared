@@ -49,6 +49,11 @@ class TestImageVersion:
             ],
             latest=True,
             os=[{"name": "Ubuntu 22.04", "primary": True}, {"name": "Ubuntu 24.04"}],
+            dependencies=[
+                {"dependency": "R", "versions": ["4.5.1", "4.4.3"]},
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "quarto", "versions": ["1.8.24"]},
+            ],
         )
 
         assert i.latest
@@ -133,6 +138,20 @@ class TestImageVersion:
             "No OS marked as primary for image version '1.0.0'. At least one OS should be marked as primary for "
             "complete tagging and labeling of images." in caplog.text
         )
+
+    def test_check_duplicate_dependencies(self):
+        """Test an error is raised if duplicate dependencies are defined."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependencies found in image",
+        ):
+            ImageVersion(
+                name="1.0.0",
+                dependencies=[
+                    {"dependency": "R", "versions": ["4.2.3", "4.3.3"]},
+                    {"dependency": "R", "versions": ["4.3.0"]},  # Duplicate dependency
+                ],
+            )
 
     def test_extra_registries_or_override_registries(self):
         """Test that only one of extraRegistries or overrideRegistries can be defined."""

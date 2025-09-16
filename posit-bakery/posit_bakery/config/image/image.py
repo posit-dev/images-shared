@@ -11,7 +11,7 @@ from pydantic_core.core_schema import ValidationInfo
 from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
-from posit_bakery.config.dependencies import DependencyConstraintField
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
@@ -140,6 +140,32 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             )
         return self
 
+    @field_validator("dependencyConstraints", mode="after")
+    @classmethod
+    def check_duplicate_dependency_constraints(
+        cls, dependency_constraints: list[DependencyConstraintField], info: ValidationInfo
+    ) -> list[DependencyConstraintField]:
+        """Ensures that there are no duplicate dependencies in the image.
+
+        :param dependency_constraints: List of DependencyConstraintField objects to check for duplicates.
+        :param info: ValidationInfo containing the data being validated.
+
+        :return: The unmodified list of DependencyConstraintField objects if no duplicates are found.
+
+        :raises ValueError: If duplicate dependencies are found.
+        """
+        error_message = ""
+        seen_dependencies = set()
+        for dc in dependency_constraints:
+            if dc.dependency in seen_dependencies:
+                if not error_message:
+                    error_message = f"Duplicate dependency constraints found in image '{info.data['name']}':\n"
+                error_message += f" - {dc.dependency}\n"
+            seen_dependencies.add(dc.dependency)
+        if error_message:
+            raise ValueError(error_message.strip())
+        return dependency_constraints
+
     @field_validator("versions", mode="after")
     @classmethod
     def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
@@ -252,6 +278,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return all_registries
 
+    def resolve_dependency_versions(self) -> list[DependencyVersions]:
+        """Resolves the dependency versions for this image.
+
+        :return: A list of DependencyVersions objects with resolved versions.
+        """
+        return [dc.resolve_versions() for dc in self.dependencyConstraints]
+
     def get_tool_option(self, tool: str) -> ToolOptions | None:
         """Returns the Goss options for this image variant.
 
@@ -318,8 +351,9 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             "Path": {
                 "Base": ".",
                 "Image": str(self.path.relative_to(self.parent.path)),
-                "Version": str((Path(version_path) or self.path / version).relative_to(self.parent.path)),
+                "Version": str(Path(version_path or self.path / version.subpath).relative_to(self.parent.path)),
             },
+            "Dependencies": {d.dependency: d.versions for d in version.dependencies},
         }
         if variant is not None:
             values["Image"]["Variant"] = variant.name
@@ -454,7 +488,11 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
-            args = {"name": version_name, "parent": self}
+            args = {
+                "name": version_name,
+                "parent": self,
+                "dependencies": self.resolve_dependency_versions(),
+            }
             if subpath is not None:
                 args["subpath"] = subpath
             if os is not None:

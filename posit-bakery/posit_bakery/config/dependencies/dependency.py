@@ -1,7 +1,8 @@
 import abc
-from typing import Annotated, Union
+import typing
+from typing import Annotated, ClassVar
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_serializer
 
 from .version import DependencyVersion, VersionConstraint
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -15,26 +16,6 @@ class Dependency(BakeryYAMLModel, abc.ABC):
     @abc.abstractmethod
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available versions for the dependency."""
-
-
-class DependencyConstraint(BakeryYAMLModel):
-    """Class for specifying a list of dependency version constraints."""
-
-    constraint: Annotated[
-        VersionConstraint,
-        Field(
-            default_factory=list,
-            validate_default=True,
-            description="Version constraints to apply for the dependency.",
-        ),
-    ]
-
-    def resolve_versions(self) -> list[str]:
-        """Return a list of versions that satisfy the constraints.
-
-        Each subclass must implement `available_versions`
-        """
-        return [str(v) for v in self.constraint.resolve_versions(self.available_versions())]
 
 
 class DependencyVersions(BakeryYAMLModel):
@@ -56,3 +37,34 @@ class DependencyVersions(BakeryYAMLModel):
             raise ValueError("Versions list cannot be empty.")
 
         return versions
+
+    @model_serializer(mode="wrap")
+    def include_literals(self, next_serializer):
+        dumped = next_serializer(self)
+        for name, field_info in self.model_fields.items():
+            if typing.get_origin(field_info.annotation) == typing.Literal:
+                dumped[name] = getattr(self, name)
+        return dumped
+
+
+class DependencyConstraint(BakeryYAMLModel):
+    """Class for specifying a list of dependency version constraints."""
+
+    VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = DependencyVersions
+    constraint: Annotated[
+        VersionConstraint,
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="Version constraints to apply for the dependency.",
+        ),
+    ]
+
+    def resolve_versions(self) -> DependencyVersions:
+        """Return a list of versions that satisfy the constraints.
+
+        Each subclass must implement `available_versions`
+        """
+        return self.VERSIONS_CLASS(
+            versions=[str(v) for v in self.constraint.resolve_versions(self.available_versions())]
+        )

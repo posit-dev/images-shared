@@ -181,6 +181,32 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             )
         return os
 
+    @field_validator("dependencies", mode="after")
+    @classmethod
+    def check_duplicate_dependencies(
+        cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
+    ) -> list[DependencyVersionsField]:
+        """Ensures that the dependencies list is unique and errors on duplicates.
+
+        :param dependencies: List of dependencies to deduplicate.
+        :param info: ValidationInfo containing the data being validated.
+
+        :return: A list of unique dependencies.
+
+        :raises ValueError: If duplicate dependencies are found.
+        """
+        error_message = ""
+        seen_dependencies = set()
+        for d in dependencies:
+            if d.dependency in seen_dependencies:
+                if not error_message:
+                    error_message = f"Duplicate dependencies found in image '{info.data['name']}':\n"
+                error_message += f" - {d.dependency}\n"
+            seen_dependencies.add(d.dependency)
+        if error_message:
+            raise ValueError(error_message.strip())
+        return dependencies
+
     @model_validator(mode="after")
     def extra_registries_or_override_registries(self) -> Self:
         """Ensures that only one of extraRegistries or overrideRegistries is defined.
