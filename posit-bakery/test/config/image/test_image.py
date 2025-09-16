@@ -5,7 +5,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import Image, BakeryConfigDocument, Registry, ImageVersion
+from posit_bakery.config import Image, BakeryConfigDocument, Registry, ImageVersion, ImageVariant
+from posit_bakery.config.dependencies.python import PythonDependencyVersions
+from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
+from posit_bakery.config.dependencies.r import RDependencyVersions
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
 
 pytestmark = [
@@ -188,6 +191,25 @@ class TestImage:
         for registry in expected_registries:
             assert registry in i.all_registries
 
+    def test_resolve_dependency_versions(self, patch_requests_get):
+        """Test that dependency constraints are correctly resolved to specific versions."""
+        i = Image(
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "python", "constraint": {"max": "3.12", "count": 2}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+        )
+
+        resolved = i.resolve_dependency_versions()
+
+        assert len(resolved) == 3
+        assert resolved[0] == RDependencyVersions(versions=["4.5.1", "4.4.3"])
+        assert resolved[1] == PythonDependencyVersions(versions=["3.12.11", "3.11.13"])
+        assert resolved[2] == QuartoDependencyVersions(versions=["1.7.34"])
+
     def test_get_version(self):
         """Test that get_version returns the correct version object by name."""
         i = Image(name="my-image", versions=[{"name": "1.0.0"}, {"name": "2.0.0"}])
@@ -211,6 +233,55 @@ class TestImage:
         assert variant.name == "Minimal"
 
         assert i.get_variant("non-existent") is None
+
+    def test_generate_version_template_values(self, patch_requests_get):
+        """Test that generate_version_template_values returns the correct template values."""
+        expected_values = {
+            "Image": {
+                "Name": "my-image",
+                "DisplayName": "My Image",
+                "Version": "2.0.0",
+                "Variant": "Standard",
+                "OS": {
+                    "Name": "ubuntu",
+                    "Family": "debian",
+                    "Version": "22.04",
+                    "Codename": "jammy",
+                },
+            },
+            "Path": {
+                "Base": ".",
+                "Image": "my-image",
+                "Version": "my-image/2.0",
+            },
+            "Dependencies": {
+                "R": ["4.5.1", "4.4.3"],
+                "python": ["3.12.11", "3.11.13"],
+                "quarto": ["1.7.34"],
+            },
+        }
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        i = Image(
+            parent=mock_config_parent,
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "python", "constraint": {"max": "3.12", "count": 2}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+        )
+        variant = ImageVariant(name="Standard", extension="std", primary=True, parent=i)
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            dependencies=i.resolve_dependency_versions(),
+        )
+        assert i.generate_version_template_values(new_version, variant, new_version.os[0]) == expected_values
 
     def test_create_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that create_version_files creates the correct directory structure."""
