@@ -20,6 +20,13 @@ registries:
 images:
   # Not a real image, also testing some random comment insertions
   - name: "package-manager-init"
+    dependencyConstraints:
+      - dependency: R
+        constraint:
+          latest: true
+      - dependency: python
+        constraint:
+          latest: true
     registries:
       - host: "cr.posit.it"
         namespace: "posit"
@@ -32,6 +39,11 @@ images:
           - name: "Ubuntu 22.04"
           - name: "Ubuntu 24.04"
             primary: true
+        dependencies:
+          - dependency: R
+            versions: ["4.5.1"]
+          - dependency: python
+            versions: ["3.13.7"]
 
   - name: "package-manager"
     subpath: "ppm"
@@ -41,6 +53,13 @@ images:
           - "{{ Version | TrimMetadata }}-{{ OS }}-{{ Variant.Name }}"
           # Full version
           - "{{ Version }}-{{ OS }}-{{ Variant.Name }}"
+    dependencyConstraints:
+      - dependency: R
+        constraint:
+          latest: true
+      - dependency: python
+        constraint:
+          latest: true
     variants:
       - name: "minimal"
         extension: "min"
@@ -77,13 +96,28 @@ images:
           - name: "Ubuntu 22.04"
           - name: "Ubuntu 24.04"
             primary: true
+        dependencies:
+          - dependency: R
+            versions: ["4.5.1"]
+          - dependency: python
+            versions: ["3.13.5"]
       - name: "2025.04.0-4"
         subpath: "2025.04.0"
         os:
           - name: "Ubuntu 22.04"
             primary: true
+        dependencies:
+          - dependency: R
+            versions: ["4.4.3"]
+          - dependency: python
+            versions: ["3.12.11"]
       - name: "2024.11.0-7"
         subpath: "2024.11.0"
         os:
           - name: "Ubuntu 22.04"
             primary: true
+        dependencies:
+          - dependency: R
+            versions: ["4.4.2"]
+          - dependency: python
+            versions: ["3.12.7"]

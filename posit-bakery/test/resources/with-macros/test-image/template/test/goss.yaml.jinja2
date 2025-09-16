@@ -13,12 +13,18 @@ package:
     installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
 
 file:
+  {% for python_version in Dependencies.python -%}
   python-{{ python_version }}:
     exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
     path: {{ python.get_version_directory(python_version) }}
+  {%- endfor %}
+  {% for r_version in Dependencies.R -%}
   r-{{ r_version }}:
     exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
     path: {{ r.get_version_directory(r_version) }}
+  {%- endfor %}
+  {% for quarto_version in Dependencies.quarto -%}
   quarto-{{ quarto_version }}:
     exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
     path: {{ quarto.get_version_directory(quarto_version) }}
+  {%- endfor %}
