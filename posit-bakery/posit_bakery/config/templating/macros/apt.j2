@@ -2,13 +2,13 @@
 {%- set global_options = "-yqq" -%}
 
 {# Setup command for Posit Cloudsmith apt repositories #}
-{% macro setup_cloudsmith() -%}
+{% macro setup_posit_cloudsmith() -%}
 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
 {%- endmacro %}
 
-{# The setup_cloudsmith() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup_cloudsmith() -%}
-RUN {{ setup_cloudsmith() | indent(4) }}
+{# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup_posit_cloudsmith() -%}
+RUN {{ setup_posit_cloudsmith() | indent(4) }}
 {%- endmacro %}
 
 {# Commands for cleaning and removing the apt cache between layers #}
@@ -26,8 +26,8 @@ and cleaning the apt cache.
 apt-get update {{ global_options }} --fix-missing && \
 apt-get upgrade {{ global_options }} && \
 apt-get dist-upgrade {{ global_options }} && \
-apt-get autoremove {{ global_options }} --purge {% if clean %}&& \
-{{ clean_command() }}
+apt-get autoremove {{ global_options }} --purge{% if clean %} && \
+{{ clean_command() -}}
 {%- endif %}
 {%- endmacro %}
 
@@ -42,17 +42,20 @@ RUN {{ update_upgrade() | indent(4) }}
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 #}
 {% macro install_packages_from_list(packages, update = True, clean = True) -%}
+{%- if not packages -%}
+{{- raise("No packages provided to apt.install_packages_from_list().") -}}
+{%- endif -%}
 {%- if packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
-{% if update -%}
+{%- if update -%}
 apt-get update {{ global_options }} && \
-{%- endif %}
+{% endif -%}
 apt-get install {{ global_options }} --no-install-recommends \
 {%- for package in packages %}
-    {{ package | trim }}{% if loop.last and clean %} &&{% endif %} {% if (not loop.last) or clean %}\{% endif %}
+    {{ package | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
 {%- endfor %}
-{% if clean -%}
+{%- if clean %}
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
@@ -65,39 +68,47 @@ apt-get install {{ global_options }} --no-install-recommends \
 {% macro install_packages_from_file(file, update = True, clean = True) -%}
 {% if update -%}
 apt-get update {{ global_options }} && \
-{%- endif %}
-xargs -a {{ file }} apt-get install {{ global_options }} --no-install-recommends {% if clean %}&& \
+{% endif -%}
+xargs -a {{ file | trim }} apt-get install {{ global_options }} --no-install-recommends{% if clean %} && \{% endif %}
+{%- if clean %}
 {{ clean_command() }}
-{%- endif %}
+{%- endif -%}
 {%- endmacro %}
 
 {# Commands to install one or more packages from a list of packages or a file containing a line separated list of
 packages.
+
+TODO: There's some dumb whitespace that can be created if clean is disabled.
 
 :param packages: A list of packages or a comma separated string of packages to install. Optional if files is provided.
 :param files: A list of files or a comma separated string of files containing line separated lists of packages to
     install. Optional if packages is provided.
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 #}
-{% macro install(packages = None, files = None, clean = True) -%}
+{% macro install(packages = None, files = None, update = True, clean = True) -%}
 {%- if not packages and not files -%}
-{%- raise "One of packages or files must be provided to apt.install()." -%}
+{{- raise("One of packages or files must be provided to apt.install().") -}}
+{%- endif -%}
+{%- if packages is string -%}
+{%- set packages = packages | split(",") -%}
 {%- endif -%}
 {%- if files is string -%}
 {%- set files = files | split(",") -%}
 {%- endif -%}
+{%- if update -%}
 apt-get update {{ global_options }} && \
-{%- if packages %}
-{{ install_packages_from_list(packages, False, False) }}{% if files or clean %} && \ {% endif %}
-{%- endif %}
-{%- if files %}
-{% for file in files -%}
-{{ install_packages_from_file(files, False, False) }}{% if (not loop.last) or clean %} && \ {% endif %}
-{%- endfor %}
-{%- endif %}
-{%- if clean %}
+{% endif -%}
+{%- if packages -%}
+{{ install_packages_from_list(packages, False, False) }}{% if files or clean %} && \{% endif %}
+{% endif -%}
+{%- if files -%}
+{%- for file in files -%}
+{{ install_packages_from_file(file, False, False) }}{% if (not loop.last) or clean %} && \{% endif %}
+{% endfor -%}
+{%- endif -%}
+{%- if clean -%}
 {{ clean_command() }}
-{%- endif %}
+{%- endif -%}
 {%- endmacro %}
 
 {# Install one or more packages and/or files containing line separated lists of packages as separate RUN statements
@@ -106,11 +117,11 @@ apt-get update {{ global_options }} && \
 :param files: A list of files or a comma separated string of files containing line separated lists of packages to
     install. Optional if packages is provided.
 #}
-{% macro run_install(packages = None, files = None) %}
+{% macro run_install(packages = None, files = None) -%}
 RUN {{ install(packages, files) | indent(4) }}
 {%- endmacro %}
 
-{# Commands for update_upgrade(), setup_cloudsmith(), and installation of curl, ca-certificates, gnupg, and tar.
+{# Commands for update_upgrade(), setup_posit_cloudsmith(), and installation of curl, ca-certificates, gnupg, and tar.
 
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 #}
@@ -121,7 +132,7 @@ apt-get install -yqq --no-install-recommends \
     ca-certificates \
     gnupg \
     tar && \
-{{ setup_cloudsmith() }} {% if clean %}&& \
+{{ setup_posit_cloudsmith() }}{% if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}

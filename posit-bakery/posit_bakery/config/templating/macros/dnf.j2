@@ -70,7 +70,7 @@ xargs -a {{ file }} dnf install {{ global_options }} {% if clean %}&& \{%- endif
 #}
 {% macro install(packages = None, files = None, clean = True) -%}
 {%- if not packages and not files -%}
-{%- raise "One of packages or files must be provided to dnf.install()." -%}
+{{- raise("One of packages or files must be provided to dnf.install().") -}}
 {%- endif -%}
 {%- if files is string -%}
 {%- set files = files | split(",") -%}
