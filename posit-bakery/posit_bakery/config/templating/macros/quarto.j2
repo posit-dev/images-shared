@@ -1,13 +1,60 @@
+{# The directory for an installed version of Quarto
+
+:param version: The Quarto version, e.g. "1.8.24"
+#}
 {% macro get_version_directory(version) -%}
 /opt/quarto/{{ version }}
 {%- endmacro %}
 
+{# Command to install TinyTeX using the Quarto CLI
+
+:param quarto_binary: The path to the Quarto binary
+#}
 {% macro install_tinytex_command(quarto_binary) -%}
 {{ quarto_binary }} install tinytex
 {%- endmacro %}
 
+{# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well
+
+:param version: The Quarto version to install, e.g. "1.8.24"
+:param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
+#}
 {% macro install(version, with_tinytex = False) -%}
-RUN mkdir -p {{ get_version_directory(version) }} && \
-    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-amd64.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
-    {{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto") }}{% endif %}
+mkdir -p {{ get_version_directory(version) }} && \
+curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-amd64.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
+{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto") }}{% endif %}
+{%- endmacro %}
+
+{# Installs one or more versions of Quarto as separate RUN statements
+
+:param versions: A list of Quarto versions or a comma separated string of Quarto versions to install
+:param with_tinytex: Whether to install TinyTeX along with each Quarto version. Defaults to False.
+#}
+{% macro run_install(versions, with_tinytex = False) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") -%}
+{%- endif -%}
+{% for version in versions -%}
+RUN {{ install(version, with_tinytex) | indent(4) }}
+{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
+{% endif %}
+{%- endfor %}
+
+{# Symlinks a Quarto install to the target directory
+
+:param version: The Quarto version to symlink, e.g. "1.8.24"
+:param target: The target path for the symlink, e.g. "/opt/quarto/default"
+#}
+{% macro symlink_version(version, target) -%}
+ln -s {{ get_version_directory(version) }} {{ target }}
+{%- endmacro %}
+
+{# Symlinks a specific Quarto binary to the target path
+
+:param version: The Quarto version to symlink the binary from, e.g. "1.8.24"
+:param bin_name: The name of the binary to symlink, e.g. "quarto"
+:param target: The target path for the symlink, e.g. "/usr/local/bin/quarto"
+#}
+{% macro symlink_binary(version, bin_name, target) -%}
+ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {%- endmacro %}

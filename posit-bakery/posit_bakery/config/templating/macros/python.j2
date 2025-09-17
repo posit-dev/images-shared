@@ -1,4 +1,8 @@
-{% macro build(versions) -%}
+{# Adds a build stage to build one ore more Python versions using uv
+
+:param versions: A list of Python versions to build, e.g. ["3.11", "3.12"].
+#}
+{% macro build_stage(versions) -%}
 FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
@@ -9,30 +13,97 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 RUN uv python install {{ versions | join(' ') }}
 {%- endmacro %}
 
+{# Retrieve the expected version directory for a version of Python built and installed using uv
+
+:param version: The full Python version, e.g. "3.12.11"
+:return: The expected installation directory for that version
+#}
 {% macro get_version_directory(version) -%}
 /opt/python/cpython-{{ version }}-linux-x86_64-gnu
 {%- endmacro %}
 
-{% macro install_from_build_stage() -%}
+{# Arguments to copy Python installations from a uv build stage to the current build stage
+
+**REQUIRES** python.build_stage() to be called first
+
+:return: A COPY command to copy the installations to the current build stage
+#}
+{% macro copy_from_build_stage() -%}
 COPY --from=python-builder /opt/python /opt/python
 {%- endmacro %}
 
-{% macro install_packages(versions, packages = None, requirements_file = None) -%}
-{%- if versions is string -%}
-{%- set versions = versions | split(",") -%}
-{%- endif -%}
-{%- if packages is string -%}
+{# Root command and common arguments for a pip install command #}
+{% macro pip_install_command(version) -%}
+{{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade
+{%- endmacro %}
+
+{# Generates a command to install one ore more packages or a requirements.txt file into a version of Python
+
+:param version: The Python version to install packages to, e.g. "3.11".
+:param packages: A list of packages or a comma separated string of packages to install. Optional if requirements_files
+    is provided.
+:param requirements_files: A list of requirements.txt files or a comma separated string of requirements.txt files to
+    install packages from. Optional if packages is provided.
+:param clean: Whether to remove the requirements.txt file(s) after installation. Defaults to True.
+#}
+{% macro install_packages(version, packages = None, requirements_files = None, clean = True) -%}
+{%- if packages is none -%}
+{%- set packages = [] -%}
+{%- elif packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
-{% for version in versions -%}
-RUN {{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade \
+{%- if requirements_files is none -%}
+{%- set requirements_files = [] -%}
+{%- elif requirements_files is string -%}
+{%- set requirements_files = requirements_files | split(",") -%}
+{%- endif -%}
+{{ pip_install_command(version) }} \
     {% for package in packages -%}
         {{ package | trim }} \
     {% endfor -%}
-    {% if requirements_file -%}
-        -r {{ requirements_file | trim }}
+    {% if requirements_files -%}
+    {% for requirements_file in requirements_files -%}
+        -r {{ requirements_file | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
+    {% endfor -%}
+    {% if clean -%}
+    rm -f {{ requirements_files | map('trim') | join(' ') }}
     {%- endif %}
+    {%- endif %}
+{%- endmacro %}
+
+{# Install one or more packages to one or more Python versions from a list of packages or requirements.txt file
+
+:param versions: A list of Python versions to install packages to, e.g. ["3.11", "3.12"]
+:param packages: A list of packages to install, e.g. ["numpy", "pandas"]. Optional if requirements_file is provided.
+:param requirements_file: A requirements.txt file to install packages from. Optional if packages is provided.
+:param clean: Whether to remove the requirements.txt file after installation. Defaults to True.
+#}
+{% macro run_install_packages(versions, packages = None, requirements_file = None, clean = True) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") -%}
+{%- endif -%}
+{% for version in versions -%}
+RUN {{ install_packages(version | trim, packages, requirements_file, clean) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
+{%- endmacro %}
+
+{# Create a symlink to a specific Python version installation directory
+
+:param version: The Python version to symlink, e.g. "3.12.11"
+:param target: The target path for the symlink, e.g. "/opt/python/default"
+#}
+{% macro symlink_version(version, target) -%}
+ln -s {{ get_version_directory(version) }} {{ target }}
+{%- endmacro %}
+
+{# Create a symlink to a specific Python version's binary by name
+
+:param version: The Python version to symlink the binary from, e.g. "3.12.11"
+:param bin_name: The name of the binary to symlink, e.g. "python"
+:param target: The target path for the symlink, e.g. "/usr/local/bin/python3.12"
+#}
+{% macro symlink_binary(version, bin_name, target) -%}
+ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {%- endmacro %}
