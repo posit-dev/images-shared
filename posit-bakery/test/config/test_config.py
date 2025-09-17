@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
+from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from test.helpers import yaml_file_testcases, FileTestResultEnum, IMAGE_INDENT, VERSION_INDENT, SUCCESS_SUITES
 
 pytestmark = [
@@ -509,40 +509,42 @@ class TestBakeryConfig:
     def test_target_filtering_filter_image(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_name=r"package-manager-init")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"package-manager-init"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 2
 
-        _filter = BakeryConfigFilter(image_name=r"^package-manager$")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"^package-manager$"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 8
 
     def test_target_filtering_filter_variant(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_variant="std")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_variant="std"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_version(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_version="2025.04.2-8")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_version="2025.04.2-8"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_os(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_os="Ubuntu 24.04")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_os="Ubuntu 24.04"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 3
 
     def test_target_filtering_filter_multi(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(
-            image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"
+        settings = BakerySettings(
+            filter=BakeryConfigFilter(
+                image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"
+            )
         )
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 2
