@@ -1,26 +1,33 @@
 # Posit Images Shared Tools
 
-## Bakery
+Repository for common tooling and GitHub Actions to support defining and building Posit Container Images.
 
-The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to managed a matrix of container image builds
+## Container Images
 
->![NOTE]
+| Repository | Description |
+|:-----------|:------------|
+| [posit-dev/images](https://github.com/posit-dev/images) | Posit Container Image Meta Repository |
+| [posit-dev/images-connect](https://github.com/posit-dev/images-connect) | Posit Connect Container Images |
+| [posit-dev/images-package-manager](https://github.com/posit-dev/images-package-manager) | Posit Package Manager Container Images |
+| [posit-dev/images-workbench](https://github.com/posit-dev/images-workbench) | Posit Workbench Container Images |
+| [posit-dev/images-examples](https://github.com/posit-dev/images-examples | Examples for using and extending Posit Container Images |
+
+## Tools
+
+### Bakery
+
+The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to managed a matrix of container image builds.
+
+>[!NOTE]
 > [Get started with `bakery`](./posit-bakery/README.md#getting-started)
 
-## Posit Tool Installer
+## GitHub Actions
 
-The Posit Tool Installer CLI installs dependencies for Posit products and software in an opinionated manner.
+### setup-goss
 
->![NOTE]
-> [Get started with`pti`](https://github.com/posit-dev/pti)
+Bakery uses [goss](https://github.com/goss-org/goss) and [dgoss](https://github.com/goss-org/goss/tree/master/extras/dgoss) to define and execute tests that ensure that the container image was built properly.
 
-- Install system packages on `apt` and `dnf` based systems
-- Install utilities and scripts
-- Install Posit Software & Builds
-  - [R](https://github.com/rstudio/r-builds) & R packages
-  - [Python](https://github.com/rstudio/python-builds) & Python packages
-  - [Quarto](https://github.com/quarto-dev/quarto)
-  - [Professional Drivers](https://github.com/rstudio/pro-drivers)
+You can include the [setup-goss](./setup-goss) action in a [GitHub Actions Workflow](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) to automatically install the latest versions of `goss` and `dgoss` in the `tools` directory at the top level of the repository.
 
 ## Issues
 
