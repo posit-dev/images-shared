@@ -2,7 +2,7 @@ import abc
 import typing
 from typing import Annotated, ClassVar
 
-from pydantic import Field, field_validator, model_serializer
+from pydantic import Field, field_validator, model_serializer, field_serializer, AliasChoices
 
 from .version import DependencyVersion, VersionConstraint
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -24,11 +24,21 @@ class DependencyVersions(BakeryYAMLModel):
     versions: Annotated[
         list[str],
         Field(
+            validation_alias=AliasChoices("versions", "version"),
             default_factory=list,
             validate_default=True,
             description="List of specific versions to include for the dependency.",
         ),
     ]
+
+    @field_validator("versions", mode="before")
+    def single_string_to_list(cls, v: str | list[str]) -> list[str]:
+        """Convert a single string to a list."""
+        if isinstance(v, str):
+            # Allow comma-separated strings as well. A single version will convert to a single-item list this way too.
+            return [x.strip() for x in v.split(",")]
+
+        return v
 
     @field_validator("versions", mode="after")
     def validate_versions_list(cls, versions: list[str]) -> list[str]:
@@ -39,11 +49,16 @@ class DependencyVersions(BakeryYAMLModel):
         return versions
 
     @model_serializer(mode="wrap")
-    def include_literals(self, next_serializer):
+    def serialize_versions(self, next_serializer):
         dumped = next_serializer(self)
         for name, field_info in self.model_fields.items():
+            # Ensure Literal fields are always included since exclude_unset=True is used in serialization.
             if typing.get_origin(field_info.annotation) == typing.Literal:
                 dumped[name] = getattr(self, name)
+            # If there's only one version, serialize as a single string as "version" for convenience.
+            if name == "versions" and len(self.versions) == 1:
+                dumped["version"] = self.versions[0]
+                dumped.pop("versions")
         return dumped
 
 
