@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import re
@@ -19,7 +20,7 @@ from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
-from posit_bakery.const import DEFAULT_BASE_IMAGE
+from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
 from posit_bakery.error import (
     BakeryToolRuntimeError,
     BakeryToolRuntimeErrorGroup,
@@ -228,6 +229,24 @@ class BakeryConfigFilter(BaseModel):
     ]
 
 
+class BakerySettings(BaseModel):
+    """Container for global settings that can be applied to the BakeryConfig."""
+
+    filter: BakeryConfigFilter = Field(
+        default_factory=BakeryConfigFilter, description="Filter(s) to apply when generating image targets."
+    )
+    dev_versions: Annotated[
+        DevVersionInclusionEnum,
+        Field(
+            description="Include or exclude development versions defined in config.",
+            default=DevVersionInclusionEnum.EXCLUDE,
+        ),
+    ]
+    clean_temporary: Annotated[
+        bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
+    ]
+
+
 class BakeryConfig:
     """Manager for the bakery.yaml configuration file and operations against the configuration.
 
@@ -238,14 +257,18 @@ class BakeryConfig:
     :var targets: List of ImageTarget objects representing the image build targets defined in the config.
     """
 
-    def __init__(self, config_file: str | Path | os.PathLike, _filter: BakeryConfigFilter | None = None):
+    def __init__(self, config_file: str | Path | os.PathLike, settings: BakerySettings | None = None):
         """Initializes the BakeryConfig with the given config file path.
 
         :param config_file: Path to the target bakery.yaml configuration file.
-        :param _filter: Optional BakeryConfigFilter to apply when generating image targets.
+        :param settings: Optional BakeryConfigFilter to apply when generating image targets.
 
         :raises FileNotFoundError: If the config file does not exist.
         """
+        if settings is None:
+            settings = BakerySettings()
+        self.settings = settings
+
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
@@ -259,31 +282,40 @@ class BakeryConfig:
         except pydantic.ValidationError as e:
             log.error(f"Failed to load configuration from {str(self.config_file)}")
             raise e
+
+        if self.settings and (
+            self.settings.dev_versions == DevVersionInclusionEnum.ONLY
+            or self.settings.dev_versions == DevVersionInclusionEnum.INCLUDE
+        ):
+            for image in self.model.images:
+                image.load_dev_versions()
+                image.create_ephemeral_version_files()
+                if self.settings.clean_temporary:
+                    atexit.register(image.remove_ephemeral_version_files)
+
         self.targets = []
-        self.generate_image_targets(_filter)
+        self.generate_image_targets(self.settings.filter)
 
     @classmethod
-    def from_context(
-        cls, context: str | Path | os.PathLike, _filter: BakeryConfigFilter | None = None
-    ) -> "BakeryConfig":
+    def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
         """Creates a BakeryConfig instance from a given context path.
 
         :param context: The path to the bakery.yaml file or its parent directory.
-        :param _filter: Optional BakeryConfigFilter to apply when generating image targets.
+        :param settings: Optional BakerySettings to apply when generating image targets.
 
         :return: A BakeryConfig instance.
 
         :raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.
         """
-        if _filter is None:
-            _filter = BakeryConfigFilter()
+        if settings is None:
+            settings = BakerySettings()
 
         context = Path(context)
         search_paths = [context / "bakery.yaml", context / "bakery.yml"]
         for file in search_paths:
             if file.is_file():
                 log.info(f"Loading Bakery config from [bold]{file}")
-                return cls(file, _filter)
+                return cls(file, settings)
 
         raise BakeryFileError(
             f"No bakery.yaml file found in the context path '{context}'. Try running `bakery create project` first "
@@ -507,7 +539,7 @@ class BakeryConfig:
         """
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
-            bake_plan.build(load=load, push=push, cache=cache)
+            bake_plan.build(load=load, push=push, cache=cache, clean_bakefile=self.settings.clean_temporary)
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
