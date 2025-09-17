@@ -283,10 +283,7 @@ class BakeryConfig:
             log.error(f"Failed to load configuration from {str(self.config_file)}")
             raise e
 
-        if self.settings and (
-            self.settings.dev_versions == DevVersionInclusionEnum.ONLY
-            or self.settings.dev_versions == DevVersionInclusionEnum.INCLUDE
-        ):
+        if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
                 image.load_dev_versions()
                 image.create_ephemeral_version_files()
@@ -294,7 +291,7 @@ class BakeryConfig:
                     atexit.register(image.remove_ephemeral_version_files)
 
         self.targets = []
-        self.generate_image_targets(self.settings.filter)
+        self.generate_image_targets(self.settings)
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
@@ -469,39 +466,56 @@ class BakeryConfig:
 
         self.write()
 
-    def generate_image_targets(self, _filter: BakeryConfigFilter | None = None):
+    def generate_image_targets(self, settings: BakerySettings | None = None):
         """Generates image targets from the images defined in the config.
 
-        :param _filter: Optional filter to apply when generating image targets. If None, all images will be included.
+        :param settings: Optional settings to apply when generating image targets. If None, all images will be included.
         """
         # Create a filter if none is provided. All fields will set to None by default, this just makes it easier.
-        if _filter is None:
-            _filter = BakeryConfigFilter()
+        if settings is None:
+            settings = BakerySettings()
 
         targets = []
         for image in self.model.images:
-            if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
-                log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
+            if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
+                log.debug(
+                    f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'"
+                )
                 continue
             for version in image.versions:
-                if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                if settings.dev_versions == DevVersionInclusionEnum.ONLY and not version.isDevelopmentVersion:
+                    log.debug(
+                        f"Skipping image version '{version.name}' in image '{image.name}' due to not being a "
+                        f"development version."
+                    )
+                    continue
+                if (
+                    settings.filter.image_version is not None
+                    and re.search(settings.filter.image_version, version.name) is None
+                ):
                     log.debug(
                         f"Skipping image version '{version.name}' in image '{image.name}' "
-                        f"due to not matching version filter '{_filter.image_version}'"
+                        f"due to not matching version filter '{settings.filter.image_version}'"
                     )
                     continue
                 for variant in image.variants or [None]:
-                    if _filter.image_variant is not None and re.search(_filter.image_variant, variant.name) is None:
+                    if (
+                        settings.filter.image_variant is not None
+                        and re.search(settings.filter.image_variant, variant.name) is None
+                    ):
                         log.debug(
                             f"Skipping image variant '{variant.name}' in image '{image.name}' "
-                            f"due to not matching variant filter '{_filter.image_variant}'"
+                            f"due to not matching variant filter '{settings.filter.image_variant}'"
                         )
                         continue
                     for _os in version.os or [None]:
-                        if _filter.image_os is not None and re.search(_filter.image_os, _os.name) is None:
+                        if (
+                            settings.filter.image_os is not None
+                            and re.search(settings.filter.image_os, _os.name) is None
+                        ):
                             log.debug(
                                 f"Skipping image OS '{_os.name}' in image '{image.name}' "
-                                f"due to not matching OS filter '{_filter.image_os}'"
+                                f"due to not matching OS filter '{settings.filter.image_os}'"
                             )
                             continue
                         targets.append(
