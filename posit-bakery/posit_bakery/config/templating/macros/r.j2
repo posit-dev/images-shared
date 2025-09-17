@@ -18,7 +18,7 @@ find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
 #}
 {% macro run_install(versions) -%}
 {%- if versions is string -%}
-{%- set versions = versions | split(",") -%}
+{%- set versions = versions | split(",") | map('trim') -%}
 {%- endif -%}
 {% for version in versions -%}
 RUN {{ install(version) | indent(4) }}
@@ -107,13 +107,13 @@ version of R
 {%- endif -%}
 {%- if packages -%}
 {{ install_packages_from_list(version, packages, _os) }}{% if package_list_files or clean %} && \{% endif %}
-{%- endif -%}
-{%- if package_list_files -%}
-{%- for package_list_file in package_list_files -%}
+{%- endif %}
+{%- if package_list_files %}
+{%- for package_list_file in package_list_files %}
 {{ install_packages_from_file(version, package_list_file | trim, _os) }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
-{%- endfor -%}
-{%- endif -%}
-{%- if clean -%}
+{%- endfor %}
+{%- endif %}
+{%- if clean %}
 rm -f {{ package_list_files | map('trim') | join(' ') }}
 {%- endif -%}
 {%- endmacro %}
@@ -136,7 +136,8 @@ more versions of R as separate RUN statements
 {% for version in versions -%}
 RUN {{ install_packages((version | trim), packages, package_list_files, _os) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
-{% endif %}
+{%- endif %}
+{%- endfor %}
 {%- endmacro %}
 
 {# Create a symlink to a specific R version installation directory

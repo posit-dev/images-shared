@@ -1438,73 +1438,142 @@ class TestQuartoMacros:
 
 
 class TestRMacros:
-    @pytest.mark.parametrize(
-        "r_versions",
-        [
-            "['4.4.3', '4.3.3']",
-            "'4.4.3, 4.3.3'",
-        ],
-    )
-    def test_install(self, environment_with_macros, r_versions):
-        template = '{%- import "r.j2" as r -%}\n' + "{{ r.install(" + r_versions + ") }}\n"
-        expected = textwrap.dedent(
+    def test_get_version_directory(self, environment_with_macros):
+        template = textwrap.dedent(
             """\
-            RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -L https://rstd.io/r-install)"
-            RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -L https://rstd.io/r-install)"
-            """
+            {%- import "r.j2" as r -%}
+            {{ r.get_version_directory("4.4.3") }}"""
         )
+        expected = "/opt/R/4.4.3"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
     @pytest.mark.parametrize(
-        "r_versions",
+        "input,expected",
         [
-            "['4.4.3', '4.3.3']",
-            "'4.4.3, 4.3.3'",
+            pytest.param(
+                ["4.4.3"],
+                textwrap.dedent(
+                    """\
+                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                ),
+                id="single-version",
+            ),
+            pytest.param(
+                ["4.4.3", "4.3.3"],
+                textwrap.dedent(
+                    """\
+                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+                    RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                ),
+                id="multiple-versions",
+            ),
+            pytest.param(
+                "'4.4.3,4.3.3'",
+                textwrap.dedent(
+                    """\
+                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+                    RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                ),
+                id="string-versions",
+            ),
         ],
     )
-    def test_install_packages(self, environment_with_macros, r_versions):
+    def test_run_install(self, environment_with_macros, input, expected):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + str(input) + ") }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                ("4.4.3", ["dplyr", "ggplot2"], None),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="single-version-packages-list",
+            ),
+            pytest.param(
+                ("4.4.3", "dplyr,ggplot2", None),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="single-version-packages-string",
+            ),
+            pytest.param(
+                ("4.4.3", None, "/tmp/packages.txt"),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c(readLines("/tmp/packages.txt")), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="single-version-file",
+            ),
+            pytest.param(
+                ("4.4.3", ["dplyr", "ggplot2"], "/tmp/packages.txt"),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="single-version-packages-and-file",
+            ),
+            pytest.param(
+                (["4.4.3", "4.3.3"], ["dplyr", "ggplot2"], None),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="multi-version-packages",
+            ),
+            pytest.param(
+                (["4.4.3", "4.3.3"], None, "/tmp/packages.txt"),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    """
+                ),
+                id="multi-version-file",
+            ),
+        ],
+    )
+    def test_run_install_packages(self, environment_with_macros, input, expected):
         template = (
-            '{%- import "r.j2" as r -%}\n'
-            + "{{ r.install_packages("
-            + r_versions
-            + ", ['dplyr', 'ggplot2'], '/tmp/packages.txt') }}\n"
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c(\"dplyr\", \"ggplot2\", readLines(\"/tmp/packages.txt\")), repos=\"https://p3m.dev/cran/latest\", clean = TRUE)'
-            RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(c(\"dplyr\", \"ggplot2\", readLines(\"/tmp/packages.txt\")), repos=\"https://p3m.dev/cran/latest\", clean = TRUE)'
-            """
+            '{%- import "r.j2" as r -%}\n{{ r.run_install_packages(' + ", ".join([repr(i) for i in input]) + ") }}"
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_packages_from_string(self, environment_with_macros):
+    def test_symlink_version(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "r.j2" as r -%}
-            {{ r.install_packages("4.4.3", "dplyr, ggplot2") }}
-            """
+            {{ r.symlink_version("4.4.3", "/opt/R/default") }}"""
         )
-        expected = textwrap.dedent(
-            """\
-            RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c(\"dplyr\", \"ggplot2\"), repos=\"https://p3m.dev/cran/latest\", clean = TRUE)'
-            """
-        )
+        expected = "ln -s /opt/R/4.4.3 /opt/R/default"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_packages_from_file(self, environment_with_macros):
+    def test_symlink_binary(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "r.j2" as r -%}
-            {{ r.install_packages("4.4.3", package_list_file="/tmp/packages.txt") }}
-            """
+            {{ r.symlink_binary("4.4.3", "R", "/usr/local/bin/R") }}"""
         )
-        expected = textwrap.dedent(
-            """\
-            RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c(readLines(\"/tmp/packages.txt\")), repos=\"https://p3m.dev/cran/latest\", clean = TRUE)'
-            """
-        )
+        expected = "ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
