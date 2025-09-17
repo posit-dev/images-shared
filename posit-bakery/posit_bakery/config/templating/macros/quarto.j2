@@ -39,6 +39,7 @@ RUN {{ install(version, with_tinytex) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
+{%- endmacro %}
 
 {# Symlinks a Quarto install to the target directory
 

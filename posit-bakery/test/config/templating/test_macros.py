@@ -1300,36 +1300,139 @@ class TestPythonMacros:
 
 
 class TestQuartoMacros:
-    def test_install(self, environment_with_macros):
+    def test_get_version_directory(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
-            {{ quarto.install("1.8.24") }}
-            """
+            {{ quarto.get_version_directory("1.8.24") }}"""
         )
-        expected = textwrap.dedent(
+        expected = "/opt/quarto/1.8.24"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_tinytex_command(self, environment_with_macros):
+        template = textwrap.dedent(
             """\
-            RUN mkdir -p /opt/quarto/1.8.24 && \\
-                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
-            """
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.install_tinytex_command("/opt/quarto/1.8.24/bin/quarto") }}"""
+        )
+        expected = "/opt/quarto/1.8.24/bin/quarto install tinytex"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "with_tinytex,expected",
+        [
+            pytest.param(
+                False,
+                textwrap.dedent(
+                    """\
+                    mkdir -p /opt/quarto/1.8.24 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                ),
+                id="without-tinytex",
+            ),
+            pytest.param(
+                True,
+                textwrap.dedent(
+                    """\
+                    mkdir -p /opt/quarto/1.8.24 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                    /opt/quarto/1.8.24/bin/quarto install tinytex"""
+                ),
+                id="with-tinytex",
+            ),
+        ],
+    )
+    def test_install(self, environment_with_macros, with_tinytex, expected):
+        template = "{%- import \"quarto.j2\" as quarto -%}\n{{ quarto.install('1.8.24', " + str(with_tinytex) + ") }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                (["1.8.24"], False),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                ),
+                id="single-version-no-tinytex",
+            ),
+            pytest.param(
+                (["1.8.24", "1.7.8"], False),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
+                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
+                ),
+                id="multiple-versions-no-tinytex",
+            ),
+            pytest.param(
+                ("1.8.24,1.7.8", False),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
+                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
+                ),
+                id="string-versions-no-tinytex",
+            ),
+            pytest.param(
+                (["1.8.24"], True),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        /opt/quarto/1.8.24/bin/quarto install tinytex"""
+                ),
+                id="single-version-with-tinytex",
+            ),
+            pytest.param(
+                (["1.8.24", "1.7.8"], True),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        /opt/quarto/1.8.24/bin/quarto install tinytex
+                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
+                        /opt/quarto/1.7.8/bin/quarto install tinytex"""
+                ),
+                id="multiple-versions-with-tinytex",
+            ),
+        ],
+    )
+    def test_run_install(self, environment_with_macros, input, expected):
+        template = (
+            '{%- import "quarto.j2" as quarto -%}\n'
+            "{{ quarto.run_install(" + ", ".join([repr(i) for i in input]) + ") }}"
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_with_tinytex(self, environment_with_macros):
+    def test_symlink_version(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
-            {{ quarto.install("1.8.24", True) }}
-            """
+            {{ quarto.symlink_version("1.8.24", "/opt/quarto/default") }}"""
         )
-        expected = textwrap.dedent(
+        expected = "ln -s /opt/quarto/1.8.24 /opt/quarto/default"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_symlink_binary(self, environment_with_macros):
+        template = textwrap.dedent(
             """\
-            RUN mkdir -p /opt/quarto/1.8.24 && \\
-                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                /opt/quarto/1.8.24/bin/quarto install tinytex
-            """
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.symlink_binary("1.8.24", "quarto", "/usr/local/bin/quarto") }}"""
         )
+        expected = "ln -s /opt/quarto/1.8.24/bin/quarto /usr/local/bin/quarto"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
