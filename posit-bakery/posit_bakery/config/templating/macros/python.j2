@@ -3,6 +3,9 @@
 :param versions: A list of Python versions to build, e.g. ["3.11", "3.12"].
 #}
 {% macro build_stage(versions) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") | map('trim') -%}
+{%- endif -%}
 FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
@@ -58,17 +61,17 @@ COPY --from=python-builder /opt/python /opt/python
 {%- set requirements_files = requirements_files | split(",") -%}
 {%- endif -%}
 {{ pip_install_command(version) }} \
-    {% for package in packages -%}
-        {{ package | trim }} \
-    {% endfor -%}
-    {% if requirements_files -%}
-    {% for requirements_file in requirements_files -%}
-        -r {{ requirements_file | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
-    {% endfor -%}
-    {% if clean -%}
-    rm -f {{ requirements_files | map('trim') | join(' ') }}
-    {%- endif %}
-    {%- endif %}
+    {%- for package in packages %}
+    {{ package | trim }}{% if (not loop.last) or requirements_files %} \{% endif %}
+    {%- endfor %}
+    {%- if requirements_files %}
+    {%- for requirements_file in requirements_files %}
+    -r {{ requirements_file | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
+    {%- endfor %}
+{%- if clean %}
+rm -f {{ requirements_files | map('trim') | join(' ') }}
+{%- endif -%}
+{%- endif -%}
 {%- endmacro %}
 
 {# Install one or more packages to one or more Python versions from a list of packages or requirements.txt file

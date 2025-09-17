@@ -1003,11 +1003,11 @@ class TestDnfMacros:
 
 
 class TestPythonMacros:
-    def test_build(self, environment_with_macros):
+    def test_build_stage(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "python.j2" as python -%}
-            {{ python.build(["3.13.7", "3.12.11"]) }}
+            {{ python.build_stage(["3.12.11", "3.11.9"]) }}
             """
         )
         expected = textwrap.dedent(
@@ -1019,44 +1019,280 @@ class TestPythonMacros:
 
             ENV UV_PYTHON_PREFERENCE=only-managed
 
-            RUN uv python install 3.13.7 3.12.11
+            RUN uv python install 3.12.11 3.11.9
             """
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_from_build_stage(self, environment_with_macros):
+    def test_build_stage_string_input(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "python.j2" as python -%}
-            {{ python.install_from_build_stage() }}
+            {{ python.build_stage("3.12.11, 3.11.9") }}
             """
         )
         expected = textwrap.dedent(
             """\
-            COPY --from=python-builder /opt/python /opt/python
+            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+            ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+            ENV UV_PYTHON_INSTALL_DIR=/opt/python
+
+            ENV UV_PYTHON_PREFERENCE=only-managed
+
+            RUN uv python install 3.12.11 3.11.9
             """
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_packages(self, environment_with_macros):
+    def test_get_version_directory(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "python.j2" as python -%}
-            {{ python.install_packages(["3.13.7", "3.12.11"], ["numpy", "pandas"], "/tmp/requirements.txt") }}
+            {{ python.get_version_directory("3.12.11") }}"""
+        )
+        expected = "/opt/python/cpython-3.12.11-linux-x86_64-gnu"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_copy_from_build_stage(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.copy_from_build_stage() }}"""
+        )
+        expected = "COPY --from=python-builder /opt/python /opt/python"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_pip_install_command(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.pip_install_command("3.12.11") }}"""
+        )
+        expected = "/opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                ("'3.12.11'", ["numpy", "pandas"], None, True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        numpy \\
+                        pandas"""
+                ),
+                id="only-packages-list",
+            ),
+            pytest.param(
+                ("'3.12.11'", "'numpy,pandas'", None, True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        numpy \\
+                        pandas"""
+                ),
+                id="only-packages-string",
+            ),
+            pytest.param(
+                ("'3.12.11'", None, ["/tmp/requirements.txt"], True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        -r /tmp/requirements.txt && \\
+                    rm -f /tmp/requirements.txt"""
+                ),
+                id="only-requirements-list-clean",
+            ),
+            pytest.param(
+                ("'3.12.11'", None, "'/tmp/requirements.txt'", True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        -r /tmp/requirements.txt && \\
+                    rm -f /tmp/requirements.txt"""
+                ),
+                id="only-requirements-string-clean",
+            ),
+            pytest.param(
+                ("'3.12.11'", None, ["/tmp/requirements.txt"], False),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        -r /tmp/requirements.txt"""
+                ),
+                id="only-requirements-list-noclean",
+            ),
+            pytest.param(
+                ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        numpy \\
+                        pandas \\
+                        -r /tmp/requirements.txt && \\
+                    rm -f /tmp/requirements.txt"""
+                ),
+                id="packages-and-requirements-clean",
+            ),
+            pytest.param(
+                ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt", "/tmp/dev-requirements.txt"], True),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        numpy \\
+                        pandas \\
+                        -r /tmp/requirements.txt \\
+                        -r /tmp/dev-requirements.txt && \\
+                    rm -f /tmp/requirements.txt /tmp/dev-requirements.txt"""
+                ),
+                id="packages-and-multiple-requirements-clean",
+            ),
+            pytest.param(
+                ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], False),
+                textwrap.dedent(
+                    """\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                        numpy \\
+                        pandas \\
+                        -r /tmp/requirements.txt"""
+                ),
+                id="packages-and-requirements-noclean",
+            ),
+        ],
+    )
+    def test_install_packages(self, environment_with_macros, input, expected):
+        template = (
+            '{%- import "python.j2" as python -%}\n'
+            "{{ python.install_packages(" + ", ".join([str(i) for i in input]) + ") }}"
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                (["3.12.11", "3.11.9"], ["numpy", "pandas"], None, True),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas"""
+                ),
+                id="multi-version-packages",
+            ),
+            pytest.param(
+                ("'3.12.11,3.11.9'", ["numpy", "pandas"], None, True),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas"""
+                ),
+                id="string-version-packages",
+            ),
+            pytest.param(
+                (["3.12.11", "3.11.9"], None, "'/tmp/requirements.txt'", True),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            -r /tmp/requirements.txt && \\
+                        rm -f /tmp/requirements.txt
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            -r /tmp/requirements.txt && \\
+                        rm -f /tmp/requirements.txt"""
+                ),
+                id="multi-version-requirements-clean",
+            ),
+            pytest.param(
+                (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", True),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas \\
+                            -r /tmp/requirements.txt && \\
+                        rm -f /tmp/requirements.txt
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas \\
+                            -r /tmp/requirements.txt && \\
+                        rm -f /tmp/requirements.txt"""
+                ),
+                id="multi-version-packages-requirements-clean",
+            ),
+            pytest.param(
+                (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", False),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas \\
+                            -r /tmp/requirements.txt
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                            numpy \\
+                            pandas \\
+                            -r /tmp/requirements.txt"""
+                ),
+                id="multi-version-packages-requirements-noclean",
+            ),
+        ],
+    )
+    def test_run_install_packages(self, environment_with_macros, input, expected):
+        template = (
+            '{%- import "python.j2" as python -%}\n'
+            "{{ python.run_install_packages(" + ", ".join([str(i) for i in input]) + ") }}"
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_symlink_version(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.symlink_version("3.12.11", "/opt/python/default") }}"""
+        )
+        expected = "ln -s /opt/python/cpython-3.12.11-linux-x86_64-gnu /opt/python/default"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_symlink_binary(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.symlink_binary("3.12.11", "python", "/usr/local/bin/python3.12") }}"""
+        )
+        expected = "ln -s /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/python /usr/local/bin/python3.12"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_symlink_binaries(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            RUN {{ python.symlink_version("3.12.11", "/opt/python/default") }} && \\
+                {{ python.symlink_binary("3.12.11", "python", "/usr/local/bin/python3.12") }} && \\
+                {{ python.symlink_binary("3.12.11", "pip", "/usr/local/bin/pip3.12") }}
             """
         )
         expected = textwrap.dedent(
             """\
-            RUN /opt/python/cpython-3.13.7-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
-                numpy \\
-                pandas \\
-                -r /tmp/requirements.txt
-            RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
-                numpy \\
-                pandas \\
-                -r /tmp/requirements.txt
+            RUN ln -s /opt/python/cpython-3.12.11-linux-x86_64-gnu /opt/python/default && \\
+                ln -s /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/python /usr/local/bin/python3.12 && \\
+                ln -s /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip /usr/local/bin/pip3.12
             """
         )
         rendered = environment_with_macros.from_string(template).render()
