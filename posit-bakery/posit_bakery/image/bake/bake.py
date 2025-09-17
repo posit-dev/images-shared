@@ -146,7 +146,7 @@ class BakePlan(BaseModel):
         """Delete the bake plan file if it exists."""
         self.bake_file.unlink(missing_ok=True)
 
-    def build(self, load: bool = True, push: bool = False, cache: bool = True):
+    def build(self, load: bool = True, push: bool = False, cache: bool = True, clean_bakefile: bool = True):
         """Run the bake plan to build all targets."""
         original_cwd = os.getcwd()
         os.chdir(self.context)
@@ -158,6 +158,7 @@ class BakePlan(BaseModel):
             push=push,
             cache=cache,
         )
-        self.remove()
+        if clean_bakefile:
+            self.remove()
 
         os.chdir(original_cwd)
