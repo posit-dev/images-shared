@@ -6,6 +6,16 @@
 dnf clean all {{ global_options }}
 {%- endmacro %}
 
+{# Setup command for Posit Cloudsmith apt repositories #}
+{% macro setup_cloudsmith() -%}
+bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
+{%- endmacro %}
+
+{# The setup_cloudsmith() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup_cloudsmith() -%}
+RUN {{ setup_cloudsmith() | indent(4) }}
+{%- endmacro %}
+
 {# Commands for updating and upgrading dnf system packages
 
 :param clean: Whether to clean the dnf cache after upgrades. Defaults to True.
@@ -102,7 +112,8 @@ dnf install {{ global_options }} \
     curl \
     ca-certificates \
     gnupg \
-    tar {% if clean %}&& \
+    tar && \
+{{ setup_cloudsmith() }} {% if clean %}&& \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}

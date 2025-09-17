@@ -1,6 +1,16 @@
 {# Global options for apt-get commands #}
 {%- set global_options = "-yqq" -%}
 
+{# Setup command for Posit Cloudsmith apt repositories #}
+{% macro setup_cloudsmith() -%}
+bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
+{%- endmacro %}
+
+{# The setup_cloudsmith() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup_cloudsmith() -%}
+RUN {{ setup_cloudsmith() | indent(4) }}
+{%- endmacro %}
+
 {# Commands for cleaning and removing the apt cache between layers #}
 {% macro clean_command() -%}
 apt-get clean {{ global_options }} && \
@@ -100,7 +110,7 @@ apt-get update {{ global_options }} && \
 RUN {{ install(packages, files) | indent(4) }}
 {%- endmacro %}
 
-{# Commands for update_upgrade() and to install curl, ca-certificates, gnupg, and tar.
+{# Commands for update_upgrade(), setup_cloudsmith(), and installation of curl, ca-certificates, gnupg, and tar.
 
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 #}
@@ -110,7 +120,8 @@ apt-get install -yqq --no-install-recommends \
     curl \
     ca-certificates \
     gnupg \
-    tar {% if clean %}&& \
+    tar && \
+{{ setup_cloudsmith() }} {% if clean %}&& \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
