@@ -1448,6 +1448,17 @@ class TestRMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_install(self, environment_with_macros, input, expected):
+        template = '{%- import "r.j2" as r -%}\n{{ r.install("4.4.3") }}'
+        expected = textwrap.dedent(
+            """\
+            RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+            find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     @pytest.mark.parametrize(
         "input,expected",
         [
@@ -1487,6 +1498,45 @@ class TestRMacros:
     def test_run_install(self, environment_with_macros, input, expected):
         template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + str(input) + ") }}"
         rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "_os,expected",
+        [
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "jammy"},
+                "https://p3m.dev/cran/__linux__/jammy/latest",
+                id="ubuntu-jammy",
+            ),
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "noble"},
+                "https://p3m.dev/cran/__linux__/noble/latest",
+                id="ubuntu-noble",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "bookworm"},
+                "https://p3m.dev/cran/__linux__/jammy/latest",
+                id="debian-bookworm",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "trixie"},
+                "https://p3m.dev/cran/__linux__/trixie/latest",
+                id="debian-trixie",
+            ),
+            pytest.param(
+                {"Name": "rhel", "Version": "8"},
+                "https://p3m.dev/cran/__linux__/rhel8/latest",
+                id="rhel-8",
+            ),
+        ]
+    )
+    def test_get_p3m_cran_repo(self, environment_with_macros, _os, expected):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.get_p3m_cran_repo(os_release) }}"""
+        )
+        rendered = environment_with_macros.from_string(template).render(os_release=_os)
         assert rendered == expected
 
     @pytest.mark.parametrize(
