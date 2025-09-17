@@ -7,13 +7,13 @@ dnf clean all {{ global_options }}
 {%- endmacro %}
 
 {# Setup command for Posit Cloudsmith apt repositories #}
-{% macro setup_cloudsmith() -%}
+{% macro setup_posit_cloudsmith() -%}
 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
 {%- endmacro %}
 
-{# The setup_cloudsmith() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup_cloudsmith() -%}
-RUN {{ setup_cloudsmith() | indent(4) }}
+{# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup_posit_cloudsmith() -%}
+RUN {{ setup_posit_cloudsmith() | indent(4) }}
 {%- endmacro %}
 
 {# Commands for updating and upgrading dnf system packages
@@ -21,7 +21,7 @@ RUN {{ setup_cloudsmith() | indent(4) }}
 :param clean: Whether to clean the dnf cache after upgrades. Defaults to True.
 #}
 {% macro update_upgrade(clean = True) -%}
-dnf upgrade {{ global_options }} {% if clean -%}&& \
+dnf upgrade {{ global_options }}{% if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
@@ -44,7 +44,7 @@ dnf install {{ global_options }} \
 {%- for package in packages %}
     {{ package | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
 {%- endfor %}
-{% if clean -%}
+{%- if clean %}
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
@@ -55,13 +55,15 @@ dnf install {{ global_options }} \
 :param clean: Whether to clean the dnf cache after installation. Defaults to True.
 #}
 {% macro install_packages_from_file(file, clean = True) -%}
-xargs -a {{ file }} dnf install {{ global_options }} {% if clean %}&& \{%- endif %}
-{% if clean -%}
+xargs -a {{ file }} dnf install {{ global_options }}{% if clean %} && \{%- endif %}
+{%- if clean %}
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
 
 {# Installs one or more system packages or text files containing line separated lists of packages using dnf.
+
+TODO: Weird whitespace issue around files here too.
 
 :param packages: A list of packages or a comma separated string of packages to install. Optional if files is provided.
 :param files: A list of files or a comma separated string of files containing line separated lists of packages to
@@ -72,24 +74,24 @@ xargs -a {{ file }} dnf install {{ global_options }} {% if clean %}&& \{%- endif
 {%- if not packages and not files -%}
 {{- raise("One of packages or files must be provided to dnf.install().") -}}
 {%- endif -%}
-{%- if files is string -%}
-{%- set files = files | split(",") -%}
-{%- endif -%}
 {%- if packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
+{%- if files is string -%}
+{%- set files = files | split(",") -%}
+{%- endif -%}
 {%- if packages -%}
 {{ install_packages_from_list(packages, False) }}{% if files or clean %} && \{% endif %}
-{%- endif -%}
+{% endif -%}
 {%- if files -%}
 {%- for file in files -%}
-{{ install_packages_from_file(file | trim, clean) }}{% if (not loop.last) or clean %} && \{% endif %}
-{%- endfor -%}
+{{ install_packages_from_file(file | trim, False) }}{% if (not loop.last) or clean %} && \{%- endif %}
+{% endfor -%}
 {%- endif -%}
 {%- if clean -%}
 {{ clean_command() }}
-{%- endif %}
-{%- endmacro  %}
+{%- endif -%}
+{%- endmacro %}
 
 {# Wraps install commands in a Docker RUN statement
 
@@ -97,7 +99,7 @@ xargs -a {{ file }} dnf install {{ global_options }} {% if clean %}&& \{%- endif
 :param files: A list of files or a comma separated string of files containing line separated lists of packages to
     install. Optional if packages is provided.
 #}
-{% macro run_install(packages = None, files = None) %}
+{% macro run_install(packages = None, files = None) -%}
 RUN {{ install(packages, files) | indent(4) }}
 {%- endmacro %}
 
@@ -113,7 +115,7 @@ dnf install {{ global_options }} \
     ca-certificates \
     gnupg \
     tar && \
-{{ setup_cloudsmith() }} {% if clean %}&& \
+{{ setup_posit_cloudsmith() }}{% if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}

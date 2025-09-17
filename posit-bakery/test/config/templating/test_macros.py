@@ -605,11 +605,85 @@ class TestAptMacros:
 
 
 class TestDnfMacros:
-    def test_dnf_update_upgrade(self, environment_with_macros):
+    def test_clean_command(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "dnf.j2" as dnf -%}
-            {{ dnf.update_upgrade() }}
+            {{ dnf.clean_command() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            dnf clean all -yq
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_setup_posit_cloudsmith(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "dnf.j2" as dnf -%}
+            {{ dnf.setup_posit_cloudsmith() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_setup_posit_cloudsmith(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "dnf.j2" as dnf -%}
+            {{ dnf.run_setup_posit_cloudsmith() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "clean,expected",
+        [
+            pytest.param(
+                True,
+                textwrap.dedent(
+                    """\
+                    dnf upgrade -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="clean-true",
+            ),
+            pytest.param(
+                False,
+                textwrap.dedent(
+                    """\
+                    dnf upgrade -yq
+                    """
+                ),
+                id="clean-false",
+            ),
+        ],
+    )
+    def test_update_upgrade(self, environment_with_macros, clean, expected):
+        template = '{%- import "dnf.j2" as dnf -%}\n{{ dnf.update_upgrade(' + str(clean) + ") }}\n"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_update_upgrade(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "dnf.j2" as dnf -%}
+            {{ dnf.run_update_upgrade() }}
             """
         )
         expected = textwrap.dedent(
@@ -621,84 +695,298 @@ class TestDnfMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_dnf_install_packages_from_list_single_string_input(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.install_packages_from_list("ca-certificates") }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN dnf install -yq \\
-                    ca-certificates && \\
-                dnf clean all -yq
-            """
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                ("'ca-certificates'", True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        ca-certificates && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="single-string-clean",
+            ),
+            pytest.param(
+                ("'ca-certificates,git,g++'", True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        ca-certificates \\
+                        git \\
+                        g++ && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="delimited-string-clean",
+            ),
+            pytest.param(
+                (["ca-certificates"], True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        ca-certificates && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="single-array-clean",
+            ),
+            pytest.param(
+                (["ca-certificates", "git", "g++"], True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        ca-certificates \\
+                        git \\
+                        g++ && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="multi-array-clean",
+            ),
+            pytest.param(
+                ("'ca-certificates'", False),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        ca-certificates
+                    """
+                ),
+                id="single-string-noclean",
+            ),
+        ],
+    )
+    def test_install_packages_from_list(self, environment_with_macros, input, expected):
+        template = (
+            '{%- import "dnf.j2" as dnf -%}\n'
+            "{{ dnf.install_packages_from_list(" + ", ".join([str(i) for i in input]) + ") }}\n"
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_dnf_install_packages_from_list_multi_string_input(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.install_packages_from_list("ca-certificates, git, g++") }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN dnf install -yq \\
-                    ca-certificates \\
-                    git \\
-                    g++ && \\
-                dnf clean all -yq
-            """
-        )
-        rendered = environment_with_macros.from_string(template).render()
-        assert rendered == expected
-
-    def test_dnf_install_packages_from_list_list_input(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.install_packages_from_list(["ca-certificates", "git", "g++"]) }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN dnf install -yq \\
-                    ca-certificates \\
-                    git \\
-                    g++ && \\
-                dnf clean all -yq
-            """
-        )
-        rendered = environment_with_macros.from_string(template).render()
-        assert rendered == expected
-
-    def test_dnf_install_packages_from_file(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.install_packages_from_file(package_file) }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN xargs -a /tmp/packages.txt dnf install -yq && \\
-                dnf clean all -yq
-            """
+    @pytest.mark.parametrize(
+        "clean,expected",
+        [
+            pytest.param(
+                True,
+                textwrap.dedent(
+                    """\
+                    xargs -a /tmp/packages.txt dnf install -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="clean",
+            ),
+            pytest.param(
+                False,
+                textwrap.dedent(
+                    """\
+                    xargs -a /tmp/packages.txt dnf install -yq
+                    """
+                ),
+                id="noclean",
+            ),
+        ],
+    )
+    def test_install_packages_from_file(self, environment_with_macros, clean, expected):
+        template = (
+            '{%- import "dnf.j2" as dnf -%}\n'
+            "{{ dnf.install_packages_from_file(package_file, " + f"{str(clean)}" + ") }}\n"
         )
         rendered = environment_with_macros.from_string(template).render(package_file="/tmp/packages.txt")
         assert rendered == expected
 
-    def test_setup(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.setup() }}
-            """
-        )
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], "'/tmp/packages.txt'", True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    xargs -a /tmp/packages.txt dnf install -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="packages-singlefile-clean",
+            ),
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], "'/tmp/packages.txt, /tmp/optional.txt'", True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    xargs -a /tmp/packages.txt dnf install -yq && \\
+                    xargs -a /tmp/optional.txt dnf install -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="packages-multistringfile-clean",
+            ),
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], ["/tmp/packages.txt", "/tmp/optional.txt"], True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    xargs -a /tmp/packages.txt dnf install -yq && \\
+                    xargs -a /tmp/optional.txt dnf install -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="packages-multilistfile-clean",
+            ),
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], None, True),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="packages-nofile-clean",
+            ),
+            pytest.param(
+                (None, "'/tmp/packages.txt'", True),
+                textwrap.dedent(
+                    """\
+                    xargs -a /tmp/packages.txt dnf install -yq && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="nopackages-file-clean",
+            ),
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], "'/tmp/packages.txt'", False),
+                textwrap.dedent(
+                    """\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    xargs -a /tmp/packages.txt dnf install -yq
+
+                    """
+                ),
+                id="packages-singlefile-noclean",
+            ),
+        ],
+    )
+    def test_install(self, environment_with_macros, input, expected):
+        template = '{%- import "dnf.j2" as dnf -%}\n{{ dnf.install(' + ", ".join([str(i) for i in input]) + ") }}\n"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], "'/tmp/packages.txt'"),
+                textwrap.dedent(
+                    """\
+                    RUN dnf install -yq \\
+                            curl \\
+                            ca-certificates \\
+                            gnupg \\
+                            tar && \\
+                        xargs -a /tmp/packages.txt dnf install -yq && \\
+                        dnf clean all -yq
+                    """
+                ),
+                id="packages-singlefile",
+            ),
+            pytest.param(
+                (["curl", "ca-certificates", "gnupg", "tar"], None),
+                textwrap.dedent(
+                    """\
+                    RUN dnf install -yq \\
+                            curl \\
+                            ca-certificates \\
+                            gnupg \\
+                            tar && \\
+                        dnf clean all -yq
+                    """
+                ),
+                id="packages-nofile",
+            ),
+            pytest.param(
+                (None, "'/tmp/packages.txt'"),
+                textwrap.dedent(
+                    """\
+                    RUN xargs -a /tmp/packages.txt dnf install -yq && \\
+                        dnf clean all -yq
+                    """
+                ),
+                id="nopackages-file",
+            ),
+        ],
+    )
+    def test_run_install(self, environment_with_macros, input, expected):
+        template = '{%- import "dnf.j2" as dnf -%}\n{{ dnf.run_install(' + ", ".join([str(i) for i in input]) + ") }}\n"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "clean,expected",
+        [
+            pytest.param(
+                True,
+                textwrap.dedent(
+                    """\
+                    dnf upgrade -yq && \\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \\
+                    dnf clean all -yq
+                    """
+                ),
+                id="clean",
+            ),
+            pytest.param(
+                False,
+                textwrap.dedent(
+                    """\
+                    dnf upgrade -yq && \\
+                    dnf install -yq \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
+                    """
+                ),
+                id="noclean",
+            ),
+        ],
+    )
+    def test_setup(self, environment_with_macros, clean, expected):
+        template = '{%- import "dnf.j2" as dnf -%}\n' + "{{ dnf.setup(" + str(clean) + ") }}\n"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_setup(self, environment_with_macros):
+        template = '{%- import "dnf.j2" as dnf -%}\n{{ dnf.run_setup() }}\n'
+        rendered = environment_with_macros.from_string(template).render()
         expected = textwrap.dedent(
             """\
             RUN dnf upgrade -yq && \\
@@ -707,10 +995,10 @@ class TestDnfMacros:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \\
                 dnf clean all -yq
             """
         )
-        rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
 
