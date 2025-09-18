@@ -9,7 +9,7 @@ Bakery handles bootstrapping the files into template rendering.
 
 {%- if Image.Variant != "Minimal" -%}
 # Build Python using uv in a separate stage
-{{ python.build(Dependencies.python) }}
+{{ python.build_stage(Dependencies.python) }}
 
 {% endif -%}
 
@@ -21,22 +21,22 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG IMAGE_VERSION="{{ Image.Version }}"
 
 ### Install Apt Packages ###
-{{ apt.setup() }}
+{{ apt.run_setup() }}
 
 COPY {{ Path.Version }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
-{{ apt.install_packages_from_file('/tmp/ubuntu2204_packages.txt') }}
+{{ apt.run_install(files = '/tmp/ubuntu2204_packages.txt') }}
 
 {%- if Image.Variant != "Minimal" %}
 
 COPY {{ Path.Version }}/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
-{{ apt.install_packages_from_file('/tmp/ubuntu2204_optional_packages.txt') }}
+{{ apt.run_install(files = '/tmp/ubuntu2204_optional_packages.txt') }}
 
 # Install Python from previous stage
-{{ python.install_from_build_stage() }}
+{{ python.copy_from_build_stage() }}
 
 # Install R
-{{ r.install(Dependencies.R) }}
+{{ r.run_install(Dependencies.R) }}
 
 # Install Quarto
-{{ quarto.install(Dependencies.quarto, True) }}
+{{ quarto.run_install(Dependencies.quarto, True) }}
 {%- endif %}

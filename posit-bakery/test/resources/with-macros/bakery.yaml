@@ -44,8 +44,8 @@ images:
             primary: true
         dependencies:
           - dependency: R
-            versions: ["4.5.1"]
+            version: 4.5.1
           - dependency: python
-            versions: ["3.13.7"]
+            version: 3.13.7
           - dependency: quarto
-            versions: ["1.8.24"]
+            version: 1.8.24
