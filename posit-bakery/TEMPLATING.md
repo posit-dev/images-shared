@@ -55,8 +55,25 @@ To use the APT macros, import the `apt` module in your Jinja2 template:
 {%- import "apt.j2" as apt -%}
 ```
 
+#### Apt Setup
+Performs initial setup, including update, upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, purging removed packages, and cleaning the apt cache.
+
+Essential packages include `ca-certificates`, `curl`, `gnupg`, and `tar`.
+
+```jinja2
+{{ apt.setup() }}
+```
+
+To wrap `setup()` in a Docker RUN statement, use:
+
+```jinja2
+{{ apt.run_setup() }}
+```
+
 #### Setup Posit Cloudsmith Apt Repositories
 Renders commands to set up Posit Cloudsmith apt repositories. Requires `curl` to be installed prior to execution.
+
+**NOTE:** This macro is included in `apt.setup()` or `apt.run_setup()`, so it does not need to be called separately unless `apt.setup()` is not used.
 
 ```jinja2
 {{ apt.setup_posit_cloudsmith() }}
@@ -78,6 +95,8 @@ statement that modifies packages, but it is implicitly included in most other ma
 
 #### Apt Update and Upgrade
 Renders commands to update the apt cache, upgrade packages, run dist-upgrade, and remove unneeded packages. Pass `False` to the `clean` argument to skip cleaning the cache if you want to append additional commands. Clean is `True` by default.
+
+**NOTE:** This macro is called by `apt.setup()` and `apt.run_setup()`, so it does not need to be called separately unless `apt.setup()` is not used.
 
 ```jinja2
 {{ apt.update_upgrade(clean = True) }}
@@ -107,19 +126,6 @@ To wrap `install()` in a Docker RUN statement, use:
 {{ apt.run_install(packages="git,curl", files="/tmp/packages.txt") }}
 ```
 
-#### Apt Setup
-Performs initial setup, including update, upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, purging removed packages, and cleaning the apt cache.
-
-```jinja2
-{{ apt.setup() }}
-```
-
-To wrap `setup()` in a Docker RUN statement, use:
-
-```jinja2
-{{ apt.run_setup() }}
-```
-
 ### DNF Package Management
 
 #### Importing
@@ -129,8 +135,25 @@ To use the DNF macros, import the `dnf` module in your Jinja2 template:
 {%- import "dnf.j2" as dnf -%}
 ```
 
+#### DNF Setup
+Performs initial setup, including upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, removal of unneeded packages, and cleaning the dnf cache.
+
+Essential packages include `ca-certificates`, `curl`, `gnupg`, and `tar`.
+
+```jinja2
+{{ dnf.setup() }}
+```
+
+To wrap `setup()` in a Docker RUN statement, use:
+
+```jinja2
+{{ dnf.run_setup() }}
+```
+
 #### Setup Posit Cloudsmith DNF Repositories
 Renders commands to set up Posit Cloudsmith DNF repositories. Requires `curl` to be installed prior to execution.
+
+**NOTE:** This macro is included in `dnf.setup()` or `dnf.run_setup()`, so it does not need to be called separately unless `dnf.setup()` is not used.
 
 ```jinja2
 {{ dnf.setup_posit_cloudsmith() }}
@@ -152,6 +175,8 @@ statement that modifies packages, but it is implicitly included in most other ma
 
 #### DNF Update and Upgrade
 Renders commands to upgrade packages, remove unneeded packages, and clean the cache. Pass `False` to the `clean` argument to skip cleaning the cache if you want to append additional commands. Clean is `True` by default.
+
+**NOTE:** This macro is called by `dnf.setup()` and `dnf.run_setup()`, so it does not need to be called separately unless `dnf.setup()` is not used.
 
 ```jinja2
 {{ dnf.update_upgrade(clean = True) }}
@@ -178,19 +203,6 @@ To wrap `install()` in a Docker RUN statement, use:
 
 ```jinja2
 {{ dnf.run_install(packages="git,curl", files="/tmp/packages.txt") }}
-```
-
-#### DNF Setup
-Performs initial setup, including upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, removal of unneeded packages, and cleaning the dnf cache.
-
-```jinja2
-{{ dnf.setup() }}
-```
-
-To wrap `setup()` in a Docker RUN statement, use:
-
-```jinja2
-{{ dnf.run_setup() }}
 ```
 
 ### Python Installation and Package Management
