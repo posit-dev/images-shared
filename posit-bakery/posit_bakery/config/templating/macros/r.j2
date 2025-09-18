@@ -53,7 +53,7 @@ https://p3m.dev/cran/latest
 :param expression: The R expression to run, e.g. 'install.packages("ggplot2")'
 #}
 {% macro r_expression(version, expression) -%}
-{{ get_version_directory(version | trim) }}/bin/R --vanilla -e '{{ expression | trim }}'
+{{ get_version_directory(version | trim) }}/bin/R --vanilla -e '{{ expression | trim | safe }}'
 {%- endmacro %}
 
 {# Installs one or more R packages from a list of packages or a comma separated string of packages
@@ -68,9 +68,10 @@ https://p3m.dev/cran/latest
 {%- if packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
-{%- set package_string_list = packages | map('trim') | map('quote') | join(', ') | safe -%}
-{%- set package_array = 'c(' + package_string_list + ')' -%}
-{%- set expr = 'install.packages(' + package_array + ', repos="' + get_p3m_cran_repo(_os) + '", clean = TRUE)' -%}
+{%- set package_string_list = packages | map('trim') | map('quote') | join(', ') -%}
+{%- set package_array = 'c(' + package_string_list | safe + ')' -%}
+{%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
+{%- set expr = 'install.packages(' + package_array + ', repos=' + repo_url + ', clean = TRUE)' -%}
 {{ r_expression(version, expr) }}
 {%- endmacro %}
 
@@ -82,11 +83,14 @@ https://p3m.dev/cran/latest
 :param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
     Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
     will be used.
+:param clean: Whether to remove the package list file after installation. Defaults to True.
 #}
 {% macro install_packages_from_file(version, package_list_file, _os = None) -%}
-{%- set file_readlines = 'readLines("' + package_list_file + '")' -%}
-{%- set expr = 'install.packages(' + file_readlines + ', repos="' + get_p3m_cran_repo(_os) + '", clean = TRUE)' -%}
-{{ r_expression(version, expr) }}
+{%- set package_list_file = package_list_file | quote | safe %}
+{%- set file_readlines = 'readLines(' + package_list_file + ')' -%}
+{%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
+{%- set expr = 'install.packages(' + file_readlines + ', repos=' + repo_url + ', clean = TRUE)' -%}
+{{ r_expression(version, expr | safe) }}
 {%- endmacro %}
 
 {# Installs one or more R packages and/or text files containing line separated lists of R packages to install to a
@@ -102,20 +106,23 @@ version of R
 :param clean: Whether to remove the package list file(s) after installation. Defaults to True.
 #}
 {% macro install_packages(version, packages = None, package_list_files = None, _os = None, clean = True) -%}
+{%- set expressions = [] -%}
 {%- if package_list_files is string -%}
 {%- set package_list_files = package_list_files | split(",") -%}
 {%- endif -%}
 {%- if packages -%}
-{{ install_packages_from_list(version, packages, _os) }}{% if package_list_files or clean %} && \{% endif %}
-{%- endif %}
-{%- if package_list_files %}
-{%- for package_list_file in package_list_files %}
-{{ install_packages_from_file(version, package_list_file | trim, _os) }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
+{{ install_packages_from_list(version, packages, _os) }}{% if package_list_files %} && \{% endif %}
+{% endif -%}
+{%- if package_list_files -%}
+{% for package_list_file in package_list_files -%}
+{{ install_packages_from_file(version, package_list_file | trim, _os) }}{% if (not loop.last) or clean %} && \{% endif %}
+{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
+{% endif %}
 {%- endfor %}
 {%- endif %}
-{%- if clean %}
+{%- if clean and package_list_files %}
 rm -f {{ package_list_files | map('trim') | join(' ') }}
-{%- endif -%}
+{%- endif %}
 {%- endmacro %}
 
 {# Installs one or more R packages and/or text files containing line separated lists of R packages to install to one or
@@ -133,10 +140,10 @@ more versions of R as separate RUN statements
 {%- if versions is string -%}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
-{% for version in versions -%}
+{%- for version in versions -%}
 RUN {{ install_packages((version | trim), packages, package_list_files, _os) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
-{%- endif %}
+{% endif %}
 {%- endfor %}
 {%- endmacro %}
 
