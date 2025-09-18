@@ -40,9 +40,9 @@ Currently, `Containerfile` templates render as a unique file for each variant an
   - `Path.Image`: The path to the current image's directory.
   - `Path.Version`: The path to the current image version's directory.
 - `Dependencies`: A dictionary containing retrieved dependency versions to be used in the image version rendering.
-  - `Dependencies.python`: A list of Python versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Python version constraints are specified.
-  - `Dependencies.R`: A list of R versions retrieved based on the image's `dependencyConstraints` field. Undefined if no R version constraints are specified.
-  - `Dependencies.quarto`: A list of Quarto versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Quarto version constraints are specified.
+  - `Dependencies.python`: A list of Python versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no Python version constraints are specified.
+  - `Dependencies.R`: A list of R versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no R version constraints are specified.
+  - `Dependencies.quarto`: A list of Quarto versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no Quarto version constraints are specified.
 
 ## Templating Macros
 
