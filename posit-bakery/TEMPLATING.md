@@ -1,11 +1,13 @@
-# Posit Bakery Template Macros Documentation
+# Posit Bakery Template Documentation
 
 This document outlines the available Jinja2 macros in the Posit Bakery templating system for creating Docker images with
 package installations.
 
 Macros must be explicitly imported in every file in which they are used.
 
-[Source Code](./posit_bakery/config/templating/macros)
+References:
+- [Source Code](./posit_bakery/config/templating/macros)
+- [Jinja2 Template Designer Documentation](https://jinja.palletsprojects.com/en/stable/templates/)
 
 ## Table of Contents
 
