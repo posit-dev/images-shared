@@ -23,24 +23,24 @@ The following variables are available for use in an image's Jinja2 templates.
 Currently, `Containerfile` templates render as a unique file for each variant and OS. Using variant and OS based Jinja2 conditionals outside of `Containerfile` templates is not currently supported and will lead to unexpected results or errors.
 
 - `Image`: A dictionary containing information about the current image, version, variant, and OS.
-  - `Name`: The name field of the image, e.g. `package-manager`, `workbench`, `connect`.
-  - `DisplayName`: The display name field of the image, e.g. `Package Manager`, `Workbench`, `Connect`.
-  - `Version`: The current version being rendered, e.g. `2025.08.0`.
-  - `Variant`: The current variant being rendered, e.g. `Standard`, `Minimal`.
-  - `OS`: A dictionary containing information about the current OS being rendered.
-    - `Name`: The name field of the OS, e.g. `ubuntu`, `debian`, `rhel`.
-    - `Family`: The generalized family of the OS, e.g. `debian`, `rhel`.
-    - `Version`: The version field of the OS, e.g. `22.04`, `20.04`, `9`, `8`, `8.6`, `7`.
-    - `Codename`: The codename of the OS version if defined, e.g. `jammy`, `noble`, `bookworm`.
-  - `DownloadURL`: The URL to download a development version artifact for installation. Only defined for development version builds.
+  - `Image.Name`: The name field of the image, e.g. `package-manager`, `workbench`, `connect`.
+  - `Image.DisplayName`: The display name field of the image, e.g. `Package Manager`, `Workbench`, `Connect`.
+  - `Image.Version`: The current version being rendered, e.g. `2025.08.0`.
+  - `Image.Variant`: The current variant being rendered, e.g. `Standard`, `Minimal`.
+  - `Image.OS`: A dictionary containing information about the current OS being rendered.
+    - `Image.OS.Name`: The name field of the OS, e.g. `ubuntu`, `debian`, `rhel`.
+    - `Image.OS.Family`: The generalized family of the OS, e.g. `debian`, `rhel`.
+    - `Image.OS.Version`: The version field of the OS, e.g. `22.04`, `20.04`, `9`, `8`, `8.6`, `7`.
+    - `Image.OS.Codename`: The codename of the OS version if defined, e.g. `jammy`, `noble`, `bookworm`.
+  - `Image.DownloadURL`: The URL to download a development version artifact for installation. Only defined for development version builds.
 - `Path`: A dictionary containing paths relative to the root build context.
-  - `Base`: The base path for the build context. Usually the parent directory of `bakery.yaml`.
-  - `Image`: The path to the current image's directory.
-  - `Version`: The path to the current image version's directory.
+  - `Path.Base`: The base path for the build context. Usually the parent directory of `bakery.yaml`.
+  - `Path.Image`: The path to the current image's directory.
+  - `Path.Version`: The path to the current image version's directory.
 - `Dependencies`: A dictionary containing retrieved dependency versions to be used in the image version rendering.
-  - `python`: A list of Python versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Python version constraints are specified.
-  - `R`: A list of R versions retrieved based on the image's `dependencyConstraints` field. Undefined if no R version constraints are specified.
-  - `quarto`: A list of Quarto versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Quarto version constraints are specified.
+  - `Dependencies.python`: A list of Python versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Python version constraints are specified.
+  - `Dependencies.R`: A list of R versions retrieved based on the image's `dependencyConstraints` field. Undefined if no R version constraints are specified.
+  - `Dependencies.quarto`: A list of Quarto versions retrieved based on the image's `dependencyConstraints` field. Undefined if no Quarto version constraints are specified.
 
 ## Templating Macros
 
