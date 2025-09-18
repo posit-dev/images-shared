@@ -2,7 +2,7 @@
 
 Repository for common tooling and GitHub Actions to support defining and building Posit Container Images.
 
-## Container Images
+## Code Repositories
 
 | Repository | Description |
 |:-----------|:------------|
@@ -10,7 +10,7 @@ Repository for common tooling and GitHub Actions to support defining and buildin
 | [posit-dev/images-connect](https://github.com/posit-dev/images-connect) | Posit Connect Container Images |
 | [posit-dev/images-package-manager](https://github.com/posit-dev/images-package-manager) | Posit Package Manager Container Images |
 | [posit-dev/images-workbench](https://github.com/posit-dev/images-workbench) | Posit Workbench Container Images |
-| [posit-dev/images-examples](https://github.com/posit-dev/images-examples | Examples for using and extending Posit Container Images |
+| [posit-dev/images-examples](https://github.com/posit-dev/images-examples) | Examples for using and extending Posit Container Images |
 
 ## Tools
 
@@ -18,7 +18,7 @@ Repository for common tooling and GitHub Actions to support defining and buildin
 
 The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to managed a matrix of container image builds.
 
->[!NOTE]
+>[!TIP]
 > [Get started with `bakery`](./posit-bakery/README.md#getting-started)
 
 ## GitHub Actions

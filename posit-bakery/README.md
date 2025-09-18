@@ -6,10 +6,11 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 
 ### Prerequisites
 
-| Tool | Purpose |
-|:-----|:--------|
-| [pipx](https://pipx.pypa.io/stable/installation/) | Installation and environment isolation of `bakery` tool |
-| [GitHub CLI (`gh`)](https://github.com/cli/cli#installation) | Used to fetch artifacts, such as `pti`, from private repositories |
+* [python](https://docs.astral.sh/uv/guides/install-python/)
+* [pipx](https://pipx.pypa.io/stable/installation/)
+* [docker buildx bake](https://github.com/docker/buildx#installing)
+* [just](https://just.systems/man/en/prerequisites.html)
+* [gh](https://github.com/cli/cli#installation) (required while repositories are private)
 
 ### 3rd Party Tools
 
@@ -70,6 +71,9 @@ bakery help
     Update the contents of the project configuration file.
     A new project configuration file includes a default set of values.
 
+    * Document the source code [Repository](./CONFIGURATION.md#repository)
+    * Configure image [Registry](./CONFIGURATION.md#registry) entries to tag and push images to specific registries
+
 ### Step 2. Create an image
 
 * Create a new image
@@ -87,27 +91,22 @@ bakery help
 
 * Make changes to the `bakery.yaml` file
 
+    Update the [Image](./CONFIGURATION.md#image) definition.
+
+    * Define [Image Variants](./CONFIGURATION.md#imagevariant)
+    * Set [Dependency Constraints](./CONFIGURATION.md#dependencyconstraint)
+
 * Make changes to the default Jinja2 templates
 
-  The default set of templates provide only a basic skeleton of what is required to define and build an image; you will need to modify these generic templates.
+    The default set of templates provide only a basic skeleton of what is required to define and build an image; you will need to modify these generic templates.
 
-  The following variables are available by default during rendering of Jinja2 templates:
-
-  | Variable            | Description                                                                                                                                                                         |
-  |:--------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-  | `Image.Name`        | The `name` of the image as specified in the `bakery.yaml`.                                                                                                                          |
-  | `Image.DisplayName` | The `displayName` of the image.                                                                                                                                                     |
-  | `Image.Version`     | The `name` of the version being rendered.                                                                                                                                           |
-  | `Image.Variant`     | The `name` of the variant being rendered. A separate `Containerfile` is rendered for each variant. This value can be used for branching logic between the `Containerfile` variants. |
-  | `Path.Base`         | The root context.                                                                                                                                                                   |
-  | `Path.Image`        | The path to the image directory as resolved from the base path of the project.                                                                                                      |
-  | `Path.Version`      | The path to the image version's directory as resolved from the base path of the project.                                                                                            |
+    See the [available Jinja variables](./TEMPLATING.md#available-variables) in the templating documentation.
 
 * Add additional templates that will be rendered for each image version
 
-  You can add additional template files that will be created for each new image version.
+    You can add additional template files that will be created for each new image version.
 
-  Template files must end with the `.jinja2` file extension.
+    Template files must end with the `.jinja2` file extension.
 
 ### Step 3. Create an image version
 
@@ -130,7 +129,11 @@ bakery help
 
     * Renders the templates created in [Step 2](#step-2-create-an-image), replacing the values
 
-      Custom template variables can be specified using `--value key=value` flag
+* Make changes to the `bakery.yaml` file
+
+    Update the [ImageVersion](./CONFIGURATION.md#imageversion) definition.
+
+    * Set [Dependency Versions](./CONFIGURATION.md#dependencyversions)
 
 ### Step 4. Build the image(s)
 
