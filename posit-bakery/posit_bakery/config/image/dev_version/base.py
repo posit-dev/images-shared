@@ -223,6 +223,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             overrideRegistries=self.overrideRegistries,
             os=self.os,
             latest=False,
+            dependencies=self.parent.resolve_dependency_versions(),
             ephemeral=True,
             isDevelopmentVersion=True,
         )
