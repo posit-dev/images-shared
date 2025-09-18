@@ -1017,12 +1017,10 @@ class TestPythonMacros:
         expected = textwrap.dedent(
             """\
             FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
-
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
-
             ENV UV_PYTHON_PREFERENCE=only-managed
-
             RUN uv python install 3.12.11 3.11.9
             """
         )
@@ -1039,12 +1037,10 @@ class TestPythonMacros:
         expected = textwrap.dedent(
             """\
             FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
-
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
-
             ENV UV_PYTHON_PREFERENCE=only-managed
-
             RUN uv python install 3.12.11 3.11.9
             """
         )
