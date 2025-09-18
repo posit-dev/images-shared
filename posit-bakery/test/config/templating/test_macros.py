@@ -1071,14 +1071,32 @@ class TestPythonMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_pip_install_command(self, environment_with_macros):
+    @pytest.mark.parametrize(
+        "python_version,break_system_packages,expected",
+        [
+            pytest.param(
+                "3.12.11",
+                True,
+                "/opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages",
+                id="with-break-system-packages",
+            ),
+            pytest.param(
+                "3.12.11",
+                False,
+                "/opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade",
+                id="without-break-system-packages",
+            ),
+        ],
+    )
+    def test_pip_install_command(self, environment_with_macros, python_version, break_system_packages, expected):
         template = textwrap.dedent(
             """\
             {%- import "python.j2" as python -%}
-            {{ python.pip_install_command("3.12.11") }}"""
+            {{ python.pip_install_command(python_version, break_system_packages) }}"""
         )
-        expected = "/opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade"
-        rendered = environment_with_macros.from_string(template).render()
+        rendered = environment_with_macros.from_string(template).render(
+            python_version=python_version, break_system_packages=break_system_packages
+        )
         assert rendered == expected
 
     @pytest.mark.parametrize(
@@ -1088,7 +1106,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas"""
                 ),
@@ -1098,7 +1116,7 @@ class TestPythonMacros:
                 ("'3.12.11'", "'numpy,pandas'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas"""
                 ),
@@ -1108,7 +1126,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, ["/tmp/requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt && \\
                     rm -f /tmp/requirements.txt"""
                 ),
@@ -1118,7 +1136,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt && \\
                     rm -f /tmp/requirements.txt"""
                 ),
@@ -1128,7 +1146,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, ["/tmp/requirements.txt"], False),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt"""
                 ),
                 id="only-requirements-list-noclean",
@@ -1137,7 +1155,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt && \\
@@ -1149,7 +1167,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt", "/tmp/dev-requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt \\
@@ -1162,7 +1180,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], False),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt"""
@@ -1186,10 +1204,10 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas
-                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas"""
                 ),
@@ -1199,10 +1217,10 @@ class TestPythonMacros:
                 ("'3.12.11,3.11.9'", ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas
-                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas"""
                 ),
@@ -1212,10 +1230,10 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], None, "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt
-                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt"""
                 ),
@@ -1225,12 +1243,12 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt
-                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt && \\
@@ -1242,11 +1260,11 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", False),
                 textwrap.dedent(
                     """\
-                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.12.11-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt
-                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade \\
+                    RUN /opt/python/cpython-3.11.9-linux-x86_64-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt"""
@@ -1481,7 +1499,7 @@ class TestRMacros:
                     RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
                         find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
                     RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                        find . -type f -name '[rR]-4.3.3.*\.(deb|rpm)' -delete"""
                 ),
                 id="multiple-versions",
             ),
@@ -1492,7 +1510,7 @@ class TestRMacros:
                     RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
                         find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
                     RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                        find . -type f -name '[rR]-4.3.3.*\.(deb|rpm)' -delete"""
                 ),
                 id="string-versions",
             ),
