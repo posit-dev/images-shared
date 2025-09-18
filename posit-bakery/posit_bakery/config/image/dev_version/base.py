@@ -215,14 +215,13 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     def as_image_version(self):
         """Convert this development version to a standard image version."""
-        os_copies = [deepcopy(os) for os in self.os]
         return ImageVersion(
             name=self.get_version(),
             subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
             parent=self.parent,
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
-            os=os_copies,
+            os=self.os,
             latest=False,
             ephemeral=True,
             isDevelopmentVersion=True,

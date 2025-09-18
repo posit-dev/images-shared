@@ -358,7 +358,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         }
         if variant is not None:
             values["Image"]["Variant"] = variant.name
-        if version_os:
+        if version_os is not None:
             values["Image"]["OS"] = {
                 "Name": version_os.buildOS.name,
                 "Family": version_os.buildOS.family.value,
