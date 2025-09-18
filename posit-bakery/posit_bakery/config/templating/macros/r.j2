@@ -1,3 +1,5 @@
+{# Macros for installing R and installing packages to R installations #}
+
 {# Returns the installation directory for a specific version of R #}
 {% macro get_version_directory(version) -%}
 /opt/R/{{ version | trim }}
