@@ -9,7 +9,7 @@
 #}
 {% macro install(version) -%}
 RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -fsSL https://rstd.io/r-install)" && \
-find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+find . -type f -name '[rR]-{{ version | trim }}.*\.(deb|rpm)' -delete
 {%- endmacro %}
 
 {# Installs one or more versions of R as separate RUN statements
