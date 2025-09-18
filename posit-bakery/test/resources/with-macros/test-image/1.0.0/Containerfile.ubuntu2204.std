@@ -19,12 +19,13 @@ ARG IMAGE_VERSION="1.0.0"
 RUN apt-get update -yqq --fix-missing && \
     apt-get upgrade -yqq && \
     apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
     apt-get install -yqq --no-install-recommends \
         curl \
         ca-certificates \
         gnupg \
         tar && \
-    apt-get autoremove -yqq --purge && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \
     apt-get clean -yqq && \
     rm -rf /var/lib/apt/lists/*
 
@@ -44,7 +45,8 @@ RUN apt-get update -yqq && \
 COPY --from=python-builder /opt/python /opt/python
 
 # Install R
-RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -L https://rstd.io/r-install)"
+RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \
+    find . -type f -name '[rR]-4.5.1.*\.(deb|rpm)' -delete
 
 # Install Quarto
 RUN mkdir -p /opt/quarto/1.8.24 && \

@@ -8,6 +8,12 @@ class BakeryError(Exception):
     pass
 
 
+class BakeryTemplateError(BakeryError):
+    """Generic error for template issues"""
+
+    pass
+
+
 class BakeryFileError(BakeryError):
     """Generic error for file/directory issues"""
 

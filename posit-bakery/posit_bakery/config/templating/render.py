@@ -3,6 +3,17 @@ import re
 import jinja2
 
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
+from posit_bakery.error import BakeryTemplateError
+
+
+def raise_template_exception(message: str) -> None:
+    """Raises a ValueError with the provided message.
+
+    :param message: The error message to raise.
+
+    :raises ValueError: Always raises a ValueError with the provided message.
+    """
+    raise BakeryTemplateError(message)
 
 
 def jinja2_env(**kwargs) -> jinja2.Environment:
@@ -18,6 +29,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
     env.filters["quote"] = lambda s: '"' + s + '"'
     env.filters["split"] = lambda s, sep: s.split(sep)
+    env.globals["raise"] = raise_template_exception
     return env
 
 

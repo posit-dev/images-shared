@@ -9,12 +9,13 @@ ARG IMAGE_VERSION="1.0.0"
 RUN apt-get update -yqq --fix-missing && \
     apt-get upgrade -yqq && \
     apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
     apt-get install -yqq --no-install-recommends \
         curl \
         ca-certificates \
         gnupg \
         tar && \
-    apt-get autoremove -yqq --purge && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \
     apt-get clean -yqq && \
     rm -rf /var/lib/apt/lists/*
 

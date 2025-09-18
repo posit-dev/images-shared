@@ -1,22 +1,44 @@
-{% macro install(versions) -%}
+{# Macros for installing R and installing packages to R installations #}
+
+{# Returns the installation directory for a specific version of R #}
+{% macro get_version_directory(version) -%}
+/opt/R/{{ version | trim }}
+{%- endmacro %}
+
+{# Downloads and runs the Posit r-install shell script to install a version of R
+
+:param version: The R version to install, e.g. "4.4.3"
+#}
+{% macro install(version) -%}
+RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -fsSL https://rstd.io/r-install)" && \
+find . -type f -name '[rR]-{{ version | trim }}.*\.(deb|rpm)' -delete
+{%- endmacro %}
+
+{# Installs one or more versions of R as separate RUN statements
+
+:param versions: A list of R versions or a comma separated string of R versions to install
+#}
+{% macro run_install(versions) -%}
 {%- if versions is string -%}
-{%- set versions = versions | split(",") -%}
+{%- set versions = versions | split(",") | map('trim') -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -L https://rstd.io/r-install)"
+RUN {{ install(version) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
 {%- endmacro %}
 
-{% macro get_version_directory(version) -%}
-/opt/R/{{ version | trim }}
-{%- endmacro %}
+{# Returns the appropriate Posit Package Manager CRAN repository URL for the given OS for binary packages
 
+:param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
+    Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
+    will be used.
+#}
 {% macro get_p3m_cran_repo(_os) -%}
 {%- if _os == None -%}
 https://p3m.dev/cran/latest
-{%- else %}
+{%- else -%}
 {%- if _os.Name == "ubuntu" or _os.Name == "debian" -%}
 https://p3m.dev/cran/__linux__/{{ _os.Codename }}/latest
 {%- elif _os.Name in ["rhel", "rocky", "alma"] -%}
@@ -27,16 +49,121 @@ https://p3m.dev/cran/latest
 {%- endif -%}
 {%- endmacro %}
 
-{% macro install_packages(versions, packages = None, package_list_file = None, _os = None) -%}
-{%- if versions is string -%}
-{%- set versions = versions | split(",") -%}
-{%- endif -%}
+{# Runs the given expression in a given version of R
+
+:param version: The R version to use, e.g. "4.4.3"
+:param expression: The R expression to run, e.g. 'install.packages("ggplot2")'
+#}
+{% macro r_expression(version, expression) -%}
+{{ get_version_directory(version | trim) }}/bin/R --vanilla -e '{{ expression | trim | safe }}'
+{%- endmacro %}
+
+{# Installs one or more R packages from a list of packages or a comma separated string of packages
+
+:param version: The R version to install packages to, e.g. "4.4.3"
+:param packages: A list of packages or a comma separated string of packages to install, e.g. ["ggplot2", "dplyr"]
+:param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
+    Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
+    will be used.
+#}
+{% macro install_packages_from_list(version, packages, _os = None) -%}
 {%- if packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
-{% for version in versions -%}
-RUN {{ get_version_directory(version | trim) }}/bin/R --vanilla -e 'install.packages(c({% if packages %}{{ packages | map('trim') | map('quote') | join(', ') | safe }}{% endif %}{% if packages and package_list_file %}, {% endif %}{% if package_list_file %}readLines("{{ package_list_file | trim }}"){% endif %}), repos="{{ get_p3m_cran_repo(_os) | trim }}", clean = TRUE)'
+{%- set package_string_list = packages | map('trim') | map('quote') | join(', ') -%}
+{%- set package_array = 'c(' + package_string_list | safe + ')' -%}
+{%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
+{%- set expr = 'install.packages(' + package_array + ', repos=' + repo_url + ', clean = TRUE)' -%}
+{{ r_expression(version, expr) }}
+{%- endmacro %}
+
+{# Installs one or more R packages from a text file containing a line separated list of packages
+
+:param version: The R version to install packages to, e.g. "4.4.3"
+:param package_list_file: The path to a text file containing a line separated list of packages to
+    install, e.g. "/tmp/packages.txt"
+:param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
+    Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
+    will be used.
+:param clean: Whether to remove the package list file after installation. Defaults to True.
+#}
+{% macro install_packages_from_file(version, package_list_file, _os = None) -%}
+{%- set package_list_file = package_list_file | quote | safe %}
+{%- set file_readlines = 'readLines(' + package_list_file + ')' -%}
+{%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
+{%- set expr = 'install.packages(' + file_readlines + ', repos=' + repo_url + ', clean = TRUE)' -%}
+{{ r_expression(version, expr | safe) }}
+{%- endmacro %}
+
+{# Installs one or more R packages and/or text files containing line separated lists of R packages to install to a
+version of R
+
+:param version: The R version to install packages to, e.g. "4.4.3"
+:param packages: A list of packages or a comma separated string of packages to install, e.g. ["ggplot2", "dplyr"]
+:param package_list_files: A list of text files or a comma separated string of text files containing line separated lists of
+    packages to install, e.g. ["/tmp/packages1.txt", "/tmp/packages2.txt"]
+:param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
+    Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
+    will be used.
+:param clean: Whether to remove the package list file(s) after installation. Defaults to True.
+#}
+{% macro install_packages(version, packages = None, package_list_files = None, _os = None, clean = True) -%}
+{%- set expressions = [] -%}
+{%- if package_list_files is string -%}
+{%- set package_list_files = package_list_files | split(",") -%}
+{%- endif -%}
+{%- if packages -%}
+{{ install_packages_from_list(version, packages, _os) }}{% if package_list_files %} && \{% endif %}
+{% endif -%}
+{%- if package_list_files -%}
+{% for package_list_file in package_list_files -%}
+{{ install_packages_from_file(version, package_list_file | trim, _os) }}{% if (not loop.last) or clean %} && \{% endif %}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
+{%- endif %}
+{%- if clean and package_list_files %}
+rm -f {{ package_list_files | map('trim') | join(' ') }}
+{%- endif %}
+{%- endmacro %}
+
+{# Installs one or more R packages and/or text files containing line separated lists of R packages to install to one or
+more versions of R as separate RUN statements
+
+:param versions: A list of R versions or a comma separated string of R versions to install, e.g. ["4.4.3", "4.5.0"]
+:param packages: A list of packages or a comma separated string of packages to install, e.g. ["ggplot2", "dplyr"]
+:param package_list_files: A list of text files or a comma separated string of text files containing line separated
+    lists of packages to install, e.g. ["/tmp/packages1.txt", "/tmp/packages2.txt"]
+:param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
+    Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
+    will be used.
+#}
+{% macro run_install_packages(versions, packages = None, package_list_files = None, _os = None) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") -%}
+{%- endif -%}
+{%- for version in versions -%}
+RUN {{ install_packages((version | trim), packages, package_list_files, _os) | indent(4) }}
+{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
+{% endif %}
+{%- endfor %}
+{%- endmacro %}
+
+{# Create a symlink to a specific R version installation directory
+
+:param version: The R version to symlink, e.g. "4.4.3"
+:param target: The target path for the symlink, e.g. "/opt/R/default"
+#}
+{% macro symlink_version(version, target) -%}
+ln -s {{ get_version_directory(version) }} {{ target }}
+{%- endmacro %}
+
+{# Create a symlink to a specific R version's binary by name
+
+:param version: The R version to symlink the binary from, e.g. "4.4.3"
+:param bin_name: The name of the binary to symlink, e.g. "R"
+:param target: The target path for the symlink, e.g. "/usr/local/bin/R"
+#}
+{% macro symlink_binary(version, bin_name, target) -%}
+ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {%- endmacro %}

@@ -1,36 +1,128 @@
+{# Macros for generating common dnf commands #}
+
+{# Global options for dnf commands #}
 {%- set global_options = "-yq" -%}
 
+{# Command for cleaning the dnf package cache #}
 {% macro clean_command() -%}
 dnf clean all {{ global_options }}
 {%- endmacro %}
 
-{% macro update_upgrade() -%}
-RUN dnf upgrade {{ global_options }} && \
-    {{ clean_command() | indent(4) }}
+{# Setup command for Posit Cloudsmith apt repositories #}
+{% macro setup_posit_cloudsmith() -%}
+bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
 {%- endmacro %}
 
-{% macro install_packages_from_list(packages) -%}
+{# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup_posit_cloudsmith() -%}
+RUN {{ setup_posit_cloudsmith() | indent(4) }}
+{%- endmacro %}
+
+{# Commands for updating and upgrading dnf system packages
+
+:param clean: Whether to clean the dnf cache after upgrades. Defaults to True.
+#}
+{% macro update_upgrade(clean = True) -%}
+dnf upgrade {{ global_options }}{% if clean %} && \
+{{ clean_command() }}
+{%- endif %}
+{%- endmacro %}
+
+{# The update_upgrade() commands wrapped with a Docker RUN statement. #}
+{% macro run_update_upgrade() -%}
+RUN {{ update_upgrade() | indent(4) }}
+{%- endmacro %}
+
+{# Commands to install one or more packages from a list of packages.
+
+:param packages: A list of packages or a comma separated string of packages to install.
+:param clean: Whether to clean the dnf cache after installation. Defaults to True.
+#}
+{% macro install_packages_from_list(packages, clean = True) -%}
 {%- if packages is string -%}
 {%- set packages = packages | split(",") -%}
 {%- endif -%}
-RUN dnf install {{ global_options }} \
-    {%- for package in packages %}
-        {{ package | trim }}{% if loop.last %} &&{% endif %} \
-    {%- endfor %}
-    {{ clean_command() | indent(4) }}
+dnf install {{ global_options }} \
+{%- for package in packages %}
+    {{ package | trim }}{% if loop.last and clean %} &&{% endif %}{% if (not loop.last) or clean %} \{% endif %}
+{%- endfor %}
+{%- if clean %}
+{{ clean_command() }}
+{%- endif %}
 {%- endmacro %}
 
-{% macro install_packages_from_file(file) -%}
-RUN xargs -a {{ file }} dnf install {{ global_options }} && \
-    {{ clean_command() | indent(4) }}
+{# Commands to install packages from a file containing a line separated list of packages.
+
+:param file: The file containing the line separated list of packages to install.
+:param clean: Whether to clean the dnf cache after installation. Defaults to True.
+#}
+{% macro install_packages_from_file(file, clean = True) -%}
+xargs -a {{ file }} dnf install {{ global_options }}{% if clean %} && \{%- endif %}
+{%- if clean %}
+{{ clean_command() }}
+{%- endif %}
 {%- endmacro %}
 
-{% macro setup() -%}
-RUN dnf upgrade {{ global_options }} && \
-    dnf install {{ global_options }} \
-        curl \
-        ca-certificates \
-        gnupg \
-        tar && \
-    {{ clean_command() | indent(4) }}
+{# Installs one or more system packages or text files containing line separated lists of packages using dnf.
+
+TODO: Weird whitespace issue around files here too.
+
+:param packages: A list of packages or a comma separated string of packages to install. Optional if files is provided.
+:param files: A list of files or a comma separated string of files containing line separated lists of packages to
+    install. Optional if packages is provided.
+:param clean: Whether to clean the dnf cache after installation. Defaults to True.
+#}
+{% macro install(packages = None, files = None, clean = True) -%}
+{%- if not packages and not files -%}
+{{- raise("One of packages or files must be provided to dnf.install().") -}}
+{%- endif -%}
+{%- if packages is string -%}
+{%- set packages = packages | split(",") -%}
+{%- endif -%}
+{%- if files is string -%}
+{%- set files = files | split(",") -%}
+{%- endif -%}
+{%- if packages -%}
+{{ install_packages_from_list(packages, False) }}{% if files or clean %} && \{% endif %}
+{% endif -%}
+{%- if files -%}
+{%- for file in files -%}
+{{ install_packages_from_file(file | trim, False) }}{% if (not loop.last) or clean %} && \{%- endif %}
+{% endfor -%}
+{%- endif -%}
+{%- if clean -%}
+{{ clean_command() }}
+{%- endif -%}
+{%- endmacro %}
+
+{# Wraps install commands in a Docker RUN statement
+
+:param packages: A list of packages or a comma separated string of packages to install. Optional if files is provided.
+:param files: A list of files or a comma separated string of files containing line separated lists of packages to
+    install. Optional if packages is provided.
+#}
+{% macro run_install(packages = None, files = None) -%}
+RUN {{ install(packages, files) | indent(4) }}
+{%- endmacro %}
+
+{# Commands to perform an initial setup of the dnf package manager, including upgrading existing packages and installing
+essential packages like curl, ca-certificates, gnupg, and tar.
+
+:param clean: Whether to clean the dnf cache after installation. Defaults to True.
+#}
+{% macro setup(clean = True) -%}
+dnf upgrade {{ global_options }} && \
+dnf install {{ global_options }} \
+    curl \
+    ca-certificates \
+    gnupg \
+    tar && \
+{{ setup_posit_cloudsmith() }}{% if clean %} && \
+{{ clean_command() }}
+{%- endif %}
+{%- endmacro %}
+
+{# The setup() commands wrapped with a Docker RUN statement. #}
+{% macro run_setup() -%}
+RUN {{ setup() | indent(4) }}
 {%- endmacro %}
