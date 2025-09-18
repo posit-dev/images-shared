@@ -36,8 +36,8 @@ COPY --from=python-builder /opt/python /opt/python
 {%- endmacro %}
 
 {# Root command and common arguments for a pip install command #}
-{% macro pip_install_command(version) -%}
-{{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade
+{% macro pip_install_command(version, break_system_packages = True) -%}
+{{ get_version_directory(version) }}/bin/pip install --no-cache-dir --upgrade{% if break_system_packages %} --break-system-packages{% endif %}
 {%- endmacro %}
 
 {# Generates a command to install one ore more packages or a requirements.txt file into a version of Python
@@ -48,8 +48,10 @@ COPY --from=python-builder /opt/python /opt/python
 :param requirements_files: A list of requirements.txt files or a comma separated string of requirements.txt files to
     install packages from. Optional if packages is provided.
 :param clean: Whether to remove the requirements.txt file(s) after installation. Defaults to True.
+:param break_system_packages: Whether to set `--break-system-packages` for the pip install command. This is required if
+    installing to a uv managed version of Python. Defaults to True.
 #}
-{% macro install_packages(version, packages = None, requirements_files = None, clean = True) -%}
+{% macro install_packages(version, packages = None, requirements_files = None, clean = True, break_system_packages = True) -%}
 {%- if packages is none -%}
 {%- set packages = [] -%}
 {%- elif packages is string -%}
@@ -60,7 +62,7 @@ COPY --from=python-builder /opt/python /opt/python
 {%- elif requirements_files is string -%}
 {%- set requirements_files = requirements_files | split(",") -%}
 {%- endif -%}
-{{ pip_install_command(version) }} \
+{{ pip_install_command(version, break_system_packages) }} \
     {%- for package in packages %}
     {{ package | trim }}{% if (not loop.last) or requirements_files %} \{% endif %}
     {%- endfor %}
@@ -80,13 +82,15 @@ rm -f {{ requirements_files | map('trim') | join(' ') }}
 :param packages: A list of packages to install, e.g. ["numpy", "pandas"]. Optional if requirements_file is provided.
 :param requirements_file: A requirements.txt file to install packages from. Optional if packages is provided.
 :param clean: Whether to remove the requirements.txt file after installation. Defaults to True.
+:param break_system_packages: Whether to set `--break-system-packages` for the pip install command. This is required if
+    installing to a uv managed version of Python. Defaults to True.
 #}
-{% macro run_install_packages(versions, packages = None, requirements_file = None, clean = True) -%}
+{% macro run_install_packages(versions, packages = None, requirements_file = None, clean = True, break_system_packages = True) -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install_packages(version | trim, packages, requirements_file, clean) | indent(4) }}
+RUN {{ install_packages(version | trim, packages, requirements_file, clean, break_system_packages) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
