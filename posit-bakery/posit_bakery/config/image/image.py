@@ -347,6 +347,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Name": self.name,
                 "DisplayName": self.displayName,
                 "Version": version.name,
+                "IsDevelopmentVersion": version.isDevelopmentVersion,
             },
             "Path": {
                 "Base": ".",
