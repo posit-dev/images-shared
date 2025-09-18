@@ -5,8 +5,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import Image, Registry
+from posit_bakery.config import Image, Registry, ImageVersionOS
+from posit_bakery.config.image import SUPPORTED_OS, BuildOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
+from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
 
 pytestmark = [
@@ -270,3 +272,606 @@ class TestImageDevelopmentVersionFromProductStream:
         assert len(i.all_registries) == 2
         for registry in override_registries:
             assert registry in i.all_registries
+
+
+class TestByStream:
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_amd64.deb",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu22_amd64.deb",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_amd64.deb",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu22_amd64.deb",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.x86_64.rpm",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.x86_64.rpm",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.x86_64.rpm",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el9.x86_64.rpm",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el9.x86_64.rpm",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2025.03.0",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el9.x86_64.rpm",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_connect_release(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
+        """Test that the correct URL is returned for a release version of Connect Release"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.CONNECT, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/"
+                "rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~ubuntu24_amd64.deb",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/"
+                "rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~ubuntu22_amd64.deb",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~"
+                "ubuntu24_amd64.deb",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect_2025.04.0-dev%2B10-gbe0a4a3d31~"
+                "ubuntu22_amd64.deb",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el8.x86_64.rpm",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el8.x86_64.rpm",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el8.x86_64.rpm",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el9.x86_64.rpm",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el9.x86_64.rpm",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2025.04.0-dev+10-gbe0a4a3d31",
+                "https://cdn.posit.co/connect/2025.04/rstudio-connect-2025.04.0-dev%2B10-gbe0a4a3d31.el9.x86_64.rpm",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_connect_daily(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
+        """Test that the correct URL is returned for a release version of Connect Daily"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.CONNECT, stream=ReleaseStreamEnum.DAILY, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/deb/amd64/rstudio-pm_2024.11.0-7_amd64.deb",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/deb/amd64/rstudio-pm_2024.11.0-7_amd64.deb",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/deb/amd64/rstudio-pm_2024.11.0-7_amd64.deb",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/deb/amd64/rstudio-pm_2024.11.0-7_amd64.deb",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2024.11.0-7",
+                "https://cdn.rstudio.com/package-manager/rpm/x86_64/rstudio-pm-2024.11.0-7.x86_64.rpm",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_package_manager_release(
+        self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
+    ):
+        """Test that the correct URL is returned for a release version of PPM Release"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.1-3776_amd64.deb",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.1-3776_amd64.deb",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.1-3776_amd64.deb",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.1-3776_amd64.deb",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2024.11.1-3776",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.1-3776.x86_64.rpm",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_package_manager_preview(
+        self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
+    ):
+        """Test that the correct URL is returned for a release version of PPM Preview"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.PREVIEW, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.2-9_amd64.deb",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.2-9_amd64.deb",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.2-9_amd64.deb",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_2024.11.2-9_amd64.deb",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2024.11.2-9",
+                "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-2024.11.2-9.x86_64.rpm",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_package_manager_daily(
+        self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
+    ):
+        """Test that the correct URL is returned for a release version of PPM Daily"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.DAILY, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url,expected_session_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb",
+                "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb",
+                "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb",
+                "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb",
+                "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel8/x86_64/rsp-session-rhel8-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel8/x86_64/rsp-session-rhel8-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel8/x86_64/rsp-session-rhel8-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel9/x86_64/"
+                "rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel9/x86_64/rsp-session-rhel9-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel9/x86_64/"
+                "rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel9/x86_64/rsp-session-rhel9-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2024.12.1+563.pro5",
+                "https://download2.rstudio.org/server/rhel9/x86_64/rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm",
+                "https://download1.rstudio.org/session/rhel9/x86_64/rsp-session-rhel9-2024.12.1-563.pro5-x86_64.tar.gz",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_workbench_release(
+        self,
+        patch_requests_get,
+        _os: ImageVersionOS,
+        expected_version: str,
+        expected_url: str,
+        expected_session_url: str,
+    ):
+        """Test that the correct URL is returned for a release version of Workbench Release"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_session_url
+        assert str(_os.artifactDownloadURL) == expected_session_url
+
+    @pytest.mark.parametrize(
+        "_os,expected_version,expected_url,expected_session_url",
+        [
+            pytest.param(
+                ImageVersionOS(name="Debian 12"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/"
+                "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/"
+                "rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz",
+                id="debian-12",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Debian 11"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/"
+                "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/"
+                "rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz",
+                id="debian-11",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 24.04"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/"
+                "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/"
+                "rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Ubuntu 22.04"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/"
+                "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/"
+                "rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 8"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel8/x86_64/"
+                "rsp-session-rhel8-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="alma-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 8"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel8/x86_64/"
+                "rsp-session-rhel8-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="rocky-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 8"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel8/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel8/x86_64/"
+                "rsp-session-rhel8-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="rhel-8",
+            ),
+            pytest.param(
+                ImageVersionOS(name="AlmaLinux 9"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel9/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel9/x86_64/"
+                "rsp-session-rhel9-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="alma-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="Rocky Linux 9"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel9/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel9/x86_64/"
+                "rsp-session-rhel9-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="rocky-9",
+            ),
+            pytest.param(
+                ImageVersionOS(name="RHEL 9"),
+                "2025.04.0-daily+404.pro4",
+                "https://s3.amazonaws.com/rstudio-ide-build/server/rhel9/x86_64/"
+                "rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm",
+                "https://s3.amazonaws.com/rstudio-ide-build/session/rhel9/x86_64/"
+                "rsp-session-rhel9-2025.04.0-daily-404.pro4-x86_64.tar.gz",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_workbench_daily(
+        self,
+        patch_requests_get,
+        _os: ImageVersionOS,
+        expected_version: str,
+        expected_url: str,
+        expected_session_url: str,
+    ):
+        """Test that the correct URL is returned for a release version of Workbench Daily"""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.DAILY, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_url
+        assert str(_os.artifactDownloadURL) == expected_url
+
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.DAILY, os=[_os]
+        )
+        assert dev_version.get_version() == expected_version
+        assert dev_version.get_url_by_os()[_os.name] == expected_session_url
+        assert str(_os.artifactDownloadURL) == expected_session_url

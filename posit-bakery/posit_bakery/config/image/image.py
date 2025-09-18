@@ -347,6 +347,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 "Name": self.name,
                 "DisplayName": self.displayName,
                 "Version": version.name,
+                "IsDevelopmentVersion": version.isDevelopmentVersion,
             },
             "Path": {
                 "Base": ".",
@@ -357,15 +358,15 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         }
         if variant is not None:
             values["Image"]["Variant"] = variant.name
-        if version_os:
+        if version_os is not None:
             values["Image"]["OS"] = {
                 "Name": version_os.buildOS.name,
-                "Family": version_os.buildOS.family,
+                "Family": version_os.buildOS.family.value,
                 "Version": version_os.buildOS.version,
                 "Codename": version_os.buildOS.codename,
             }
             if version_os.artifactDownloadURL is not None:
-                values["Image"]["DownloadURL"] = version_os.downloadURL
+                values["Image"]["DownloadURL"] = str(version_os.artifactDownloadURL)
         if extra_values:
             values.update(extra_values)
 

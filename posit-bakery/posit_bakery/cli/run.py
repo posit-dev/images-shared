@@ -5,7 +5,8 @@ from typing import Annotated, Optional
 import typer
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakeryConfigFilter
+from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.const import DevVersionInclusionEnum
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
 
@@ -23,6 +24,14 @@ def dgoss(
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
     image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate plan rendering to.")] = None,
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(help="Include or exclude development versions defined in config."),
+    ] = DevVersionInclusionEnum.EXCLUDE,
+    clean: Annotated[
+        Optional[bool],
+        typer.Option(help="Clean up intermediary and temporary files after building. Can be helpful for debugging."),
+    ] = True,
 ) -> None:
     """Runs dgoss tests against images in the context path
 
@@ -35,13 +44,17 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    _filter = BakeryConfigFilter(
-        image_name=image_name,
-        image_version=image_version,
-        image_variant=image_variant,
-        image_os=image_os,
+    settings = BakerySettings(
+        filter=BakeryConfigFilter(
+            image_name=image_name,
+            image_version=image_version,
+            image_variant=image_variant,
+            image_os=image_os,
+        ),
+        dev_versions=dev_versions,
+        clean_temporary=clean,
     )
-    c = BakeryConfig.from_context(context, _filter)
+    c = BakeryConfig.from_context(context, settings)
     results, err = c.dgoss_targets()
 
     stderr_console.print(results.table())

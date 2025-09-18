@@ -1,12 +1,14 @@
 import os
 import textwrap
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter
+import posit_bakery
+from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.const import DevVersionInclusionEnum
 from test.helpers import yaml_file_testcases, FileTestResultEnum, IMAGE_INDENT, VERSION_INDENT, SUCCESS_SUITES
 
 pytestmark = [
@@ -154,6 +156,48 @@ class TestBakeryConfig:
         config = BakeryConfig(yaml_file)
         assert config is not None
         assert "WARNING" not in caplog.text
+
+    @pytest.mark.parametrize(
+        "include_dev_version,clean,expected_versions",
+        [
+            (DevVersionInclusionEnum.EXCLUDE, True, []),
+            (DevVersionInclusionEnum.EXCLUDE, False, []),
+            (DevVersionInclusionEnum.INCLUDE, True, ["2024.11.2-9", "2024.11.1-3776"]),
+            (DevVersionInclusionEnum.INCLUDE, False, ["2024.11.2-9", "2024.11.1-3776"]),
+            (DevVersionInclusionEnum.ONLY, True, ["2024.11.2-9", "2024.11.1-3776"]),
+            (DevVersionInclusionEnum.ONLY, False, ["2024.11.2-9", "2024.11.1-3776"]),
+        ],
+    )
+    @patch("atexit.register")
+    def test_valid_dev_version_enum(
+        self,
+        mock_atexit_register,
+        include_dev_version,
+        clean,
+        expected_versions,
+        caplog,
+        testdata_path,
+        patch_requests_get,
+    ):
+        """Test that the DevVersionInclusionEnum works as expected."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "create_ephemeral_version_files") as mock_create_files:
+            with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files") as mock_remove_files:
+                config = BakeryConfig(
+                    yaml_file, BakerySettings(dev_versions=include_dev_version, clean_temporary=clean)
+                )
+                assert config is not None
+                assert "WARNING" not in caplog.text
+                assert mock_create_files.call_count == len(expected_versions)
+                if clean and not include_dev_version == DevVersionInclusionEnum.EXCLUDE:
+                    assert mock_atexit_register.call_count == len(expected_versions)
+                    expected_calls = [call(mock_remove_files)] * len(expected_versions)
+                    mock_atexit_register.assert_has_calls(expected_calls, any_order=True)
+                dev_versions = [v for i in config.model.images for v in i.versions if v.isDevelopmentVersion]
+                assert len(dev_versions) == len(expected_versions)
+                for version in dev_versions:
+                    assert version.name in expected_versions
+                    assert len(version.os) == 2
 
     @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
     def test_valid_with_warning(self, caplog, yaml_file: Path):
@@ -509,40 +553,42 @@ class TestBakeryConfig:
     def test_target_filtering_filter_image(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_name=r"package-manager-init")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"package-manager-init"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 2
 
-        _filter = BakeryConfigFilter(image_name=r"^package-manager$")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"^package-manager$"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 8
 
     def test_target_filtering_filter_variant(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_variant="std")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_variant="std"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_version(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_version="2025.04.2-8")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_version="2025.04.2-8"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 6
 
     def test_target_filtering_filter_os(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(image_os="Ubuntu 24.04")
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        settings = BakerySettings(filter=BakeryConfigFilter(image_os="Ubuntu 24.04"))
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 3
 
     def test_target_filtering_filter_multi(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
-        _filter = BakeryConfigFilter(
-            image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"
+        settings = BakerySettings(
+            filter=BakeryConfigFilter(
+                image_name=r"^package-manager$", image_version="2025.04.2-8", image_os="Ubuntu 24.04"
+            )
         )
-        config = BakeryConfig(complex_yaml, _filter=_filter)
+        config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 2

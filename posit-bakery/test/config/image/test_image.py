@@ -242,6 +242,7 @@ class TestImage:
                 "DisplayName": "My Image",
                 "Version": "2.0.0",
                 "Variant": "Standard",
+                "IsDevelopmentVersion": False,
                 "OS": {
                     "Name": "ubuntu",
                     "Family": "debian",

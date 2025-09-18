@@ -5,7 +5,8 @@ from typing import Annotated, Optional
 import typer
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakeryConfigFilter
+from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.const import DevVersionInclusionEnum
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -35,6 +36,14 @@ def build(
     image_os: Annotated[
         Optional[str], typer.Option(help="The image OS to build as an OS name or a regex pattern.")
     ] = None,
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(help="Include or exclude development versions defined in config."),
+    ] = DevVersionInclusionEnum.EXCLUDE,
+    clean: Annotated[
+        Optional[bool],
+        typer.Option(help="Clean up intermediary and temporary files after building. Can be helpful for debugging."),
+    ] = True,
     plan: Annotated[Optional[bool], typer.Option(help="Print the bake plan and exit.")] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
@@ -50,13 +59,17 @@ def build(
 
     Requires Docker, Podman, or nerdctl to be installed and running for `--strategy build`.
     """
-    _filter: BakeryConfigFilter = BakeryConfigFilter(
-        image_name=image_name,
-        image_version=image_version,
-        image_variant=image_variant,
-        image_os=image_os,
+    settings = BakerySettings(
+        filter=BakeryConfigFilter(
+            image_name=image_name,
+            image_version=image_version,
+            image_variant=image_variant,
+            image_os=image_os,
+        ),
+        dev_versions=dev_versions,
+        clean_temporary=clean,
     )
-    config: BakeryConfig = BakeryConfig.from_context(context, _filter)
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     if plan:
         if strategy == ImageBuildStrategy.BUILD:
