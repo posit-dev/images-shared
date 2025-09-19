@@ -489,10 +489,16 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
+            dependency_versions = self.resolve_dependency_versions()
+            log_message = "Resolved dependency versions:"
+            for dep in dependency_versions:
+                log_message += f"\n  - {dep.dependency}: {', '.join(dep.versions)}"
+            log.debug(log_message)
+
             args = {
                 "name": version_name,
                 "parent": self,
-                "dependencies": self.resolve_dependency_versions(),
+                "dependencies": dependency_versions,
             }
             if subpath is not None:
                 args["subpath"] = subpath
@@ -522,6 +528,11 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         """Load the development versions for this image."""
         for dev_version in self.devVersions:
             image_version = dev_version.as_image_version()
+            log_message = f"Loaded {self.name} development version from {repr(dev_version)}:\n"
+            log_message += f"  - Version: {image_version.name}\n"
+            for dep in image_version.dependencies:
+                log_message += f"  - Dependency: {dep.dependency} {', '.join(dep.versions)}\n"
+            log.info(log_message.strip())
             self.versions.append(image_version)
 
     def create_ephemeral_version_files(self, extra_values: dict[str, str] | None = None):

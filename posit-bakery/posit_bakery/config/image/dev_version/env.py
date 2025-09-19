@@ -82,3 +82,10 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
             d[_os.name] = rendered_url
 
         return d
+
+    def __repr__(self) -> str:
+        """Generate a unique representation for this development version configuration.
+
+        :return: A unique identifier string.
+        """
+        return f'devVersion(sourceType="env", versionEnvVar="{self.versionEnvVar}", urlEnvVar="{self.urlEnvVar}")'
