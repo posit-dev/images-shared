@@ -10,10 +10,11 @@
 
 {# Command to install TinyTeX using the Quarto CLI
 
-:param quarto_binary: The path to the Quarto binary
+:param quarto_binary: The path to the Quarto binary.
+:param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
 #}
-{% macro install_tinytex_command(quarto_binary) -%}
-{{ quarto_binary }} install tinytex
+{% macro install_tinytex_command(quarto_binary, update_path = False) -%}
+{{ quarto_binary }} install tinytex{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well
