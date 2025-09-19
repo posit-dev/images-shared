@@ -89,6 +89,10 @@ class DGossCommand(BaseModel):
             e["IMAGE_VARIANT"] = self.image_target.image_variant.name
         if self.image_target.image_os:
             e["IMAGE_OS"] = self.image_target.image_os.name
+            e["IMAGE_OS_NAME"] = self.image_target.image_os.buildOS.name
+            e["IMAGE_OS_CODENAME"] = self.image_target.image_os.buildOS.codename
+            e["IMAGE_OS_FAMILY"] = self.image_target.image_os.buildOS.family.value
+            e["IMAGE_OS_VERSION"] = self.image_target.image_os.buildOS.version
 
         return e
 
