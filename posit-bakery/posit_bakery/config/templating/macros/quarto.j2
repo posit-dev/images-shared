@@ -21,11 +21,12 @@
 
 :param version: The Quarto version to install, e.g. "1.8.24"
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
+:param tinytex_update_path: Adds --update-path to the TinyTeX install command to add TinyTeX binaries to the PATH. Defaults to False.
 #}
-{% macro install(version, with_tinytex = False) -%}
+{% macro install(version, with_tinytex = False, tinytex_update_path = False) -%}
 mkdir -p {{ get_version_directory(version) }} && \
 curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-amd64.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
-{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto") }}{% endif %}
+{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto", tinytex_update_path) }}{% endif %}
 {%- endmacro %}
 
 {# Installs one or more versions of Quarto as separate RUN statements
@@ -33,12 +34,12 @@ curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ versi
 :param versions: A list of Quarto versions or a comma separated string of Quarto versions to install
 :param with_tinytex: Whether to install TinyTeX along with each Quarto version. Defaults to False.
 #}
-{% macro run_install(versions, with_tinytex = False) -%}
+{% macro run_install(versions, with_tinytex = False, tinytex_update_path = False) -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install(version, with_tinytex) | indent(4) }}
+RUN {{ install(version, with_tinytex, tinytex_update_path) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
