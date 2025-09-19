@@ -392,8 +392,10 @@ Returns the command to install TinyTeX using a given Quarto binary.
 
 This command takes a full path to the Quarto binary, which can be constructed using `quarto.get_version_directory()`. Workbench manages its own installation of Quarto and thus must specify its own full path to the Quarto binary.
 
+If `update_path` is `True`, the command will have `--update-path` appended to add TinyTeX binaries to the system `PATH`. Default is `False`.
+
 ```jinja2
-{{ quarto.install_tinytex_command(quarto.get_version_directory("1.8.24")) }}
+{{ quarto.install_tinytex_command(quarto.get_version_directory("1.8.24"), update_path=True) }}
 ```
 
 #### Create Symlinks
@@ -407,4 +409,23 @@ Creates a symlink to a Quarto binary by name.
 
 ```jinja2
 {{ quarto.symlink_binary(version="1.8.24", bin_name="quarto", target="/usr/local/bin/quarto") }}
+```
+
+### wait-for-it
+
+#### Importing
+To use the wait-for-it macros, import the `wait-for-it` module in your Jinja2 template:
+```jinja2
+{%- import "wait-for-it.j2" as waitforit -%}
+```
+
+#### Install wait-for-it
+Returns the command to download and install the `wait-for-it` script. Requires `curl` to be installed prior to execution.
+```jinja2
+{{ waitforit.install() }}
+```
+
+To wrap `install()` in a Docker RUN statement, use:
+```jinja2
+{{ waitforit.run_install() }}
 ```
