@@ -1853,3 +1853,33 @@ class TestRMacros:
         expected = "ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+
+class TestWaitForItMacros:
+    def test_install(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "wait-for-it.j2" as waitforit -%}
+            {{ waitforit.install() }}"""
+        )
+        expected = textwrap.dedent(
+            """\
+            curl -fsSL -o /usr/local/bin/wait-for-it.sh https://raw.githubusercontent.com/rstudio/wait-for-it/master/wait-for-it.sh && \\
+            chmod +x /usr/local/bin/wait-for-it.sh"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "wait-for-it.j2" as waitforit -%}
+            {{ waitforit.run_install() }}"""
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN curl -fsSL -o /usr/local/bin/wait-for-it.sh https://raw.githubusercontent.com/rstudio/wait-for-it/master/wait-for-it.sh && \\
+                chmod +x /usr/local/bin/wait-for-it.sh"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected

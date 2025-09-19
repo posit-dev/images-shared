@@ -408,3 +408,22 @@ Creates a symlink to a Quarto binary by name.
 ```jinja2
 {{ quarto.symlink_binary(version="1.8.24", bin_name="quarto", target="/usr/local/bin/quarto") }}
 ```
+
+### wait-for-it
+
+#### Importing
+To use the wait-for-it macros, import the `wait-for-it` module in your Jinja2 template:
+```jinja2
+{%- import "wait-for-it.j2" as waitforit -%}
+```
+
+#### Install wait-for-it
+Returns the command to download and install the `wait-for-it` script. Requires `curl` to be installed prior to execution.
+```jinja2
+{{ waitforit.install() }}
+```
+
+To wrap `install()` in a Docker RUN statement, use:
+```jinja2
+{{ waitforit.run_install() }}
+```
