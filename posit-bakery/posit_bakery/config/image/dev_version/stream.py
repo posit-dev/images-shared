@@ -48,3 +48,6 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
             url_by_os[_os.name] = str(result.download_url)
 
         return url_by_os
+
+    def __repr__(self):
+        return f'devVersion(sourceType="stream", product="{self.product}", stream="{self.stream}")'
