@@ -392,8 +392,10 @@ Returns the command to install TinyTeX using a given Quarto binary.
 
 This command takes a full path to the Quarto binary, which can be constructed using `quarto.get_version_directory()`. Workbench manages its own installation of Quarto and thus must specify its own full path to the Quarto binary.
 
+If `update_path` is `True`, the command will have `--update-path` appended to add TinyTeX binaries to the system `PATH`. Default is `False`.
+
 ```jinja2
-{{ quarto.install_tinytex_command(quarto.get_version_directory("1.8.24")) }}
+{{ quarto.install_tinytex_command(quarto.get_version_directory("1.8.24"), update_path=True) }}
 ```
 
 #### Create Symlinks

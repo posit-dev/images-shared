@@ -1328,14 +1328,28 @@ class TestQuartoMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_install_tinytex_command(self, environment_with_macros):
+    @pytest.mark.parametrize(
+        "update_path,expected",
+        [
+            pytest.param(
+                True,
+                "/opt/quarto/1.8.24/bin/quarto install tinytex --update-path",
+                id="with-update-path",
+            ),
+            pytest.param(
+                False,
+                "/opt/quarto/1.8.24/bin/quarto install tinytex",
+                id="without-update-path",
+            ),
+        ],
+    )
+    def test_install_tinytex_command(self, environment_with_macros, update_path, expected):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
-            {{ quarto.install_tinytex_command("/opt/quarto/1.8.24/bin/quarto") }}"""
+            {{ quarto.install_tinytex_command("/opt/quarto/1.8.24/bin/quarto", update_path) }}"""
         )
-        expected = "/opt/quarto/1.8.24/bin/quarto install tinytex"
-        rendered = environment_with_macros.from_string(template).render()
+        rendered = environment_with_macros.from_string(template).render(update_path=update_path)
         assert rendered == expected
 
     @pytest.mark.parametrize(
