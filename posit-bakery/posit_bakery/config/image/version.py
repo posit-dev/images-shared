@@ -148,7 +148,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("name"):
+            if info.data.get("name") and not os[0].primary:
                 log.info(
                     f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
                     f"OS."

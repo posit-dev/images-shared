@@ -111,10 +111,7 @@ class TestImageVersion:
         assert len(i.os) == 1
         assert i.os[0].primary is True
         assert i.os[0].name == "Ubuntu 22.04"
-        assert (
-            "No primary OS defined for image version '1.0.0'. At least one OS should be marked as primary for "
-            "complete tagging and labeling of images."
-        ) not in caplog.text
+        assert "WARNING" not in caplog.text
 
     def test_max_one_primary_os(self):
         """Test that an error is raised if multiple primary OSes are defined."""
