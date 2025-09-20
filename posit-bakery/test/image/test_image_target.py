@@ -347,6 +347,7 @@ class TestImageTarget:
             "load": True,
             "push": False,
             "cache": True,
+            "platforms": ["linux/amd64"],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
