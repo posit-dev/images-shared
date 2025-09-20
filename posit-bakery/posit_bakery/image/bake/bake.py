@@ -157,6 +157,7 @@ class BakePlan(BaseModel):
             load=load,
             push=push,
             cache=cache,
+            set={"*.platform": "linux/amd64"},
         )
         if clean_bakefile:
             self.remove()

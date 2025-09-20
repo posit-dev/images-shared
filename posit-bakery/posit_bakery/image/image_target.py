@@ -278,6 +278,7 @@ class ImageTarget(BaseModel):
                     load=load,
                     push=push,
                     cache=cache,
+                    platforms=["linux/amd64"],
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
