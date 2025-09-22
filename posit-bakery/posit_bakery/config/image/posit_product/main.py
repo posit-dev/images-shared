@@ -36,9 +36,7 @@ class ReleaseStreamPath:
 
     def get(self, metadata: dict) -> ReleaseStreamResult:
         """Fetches data from the stream URL and resolves the data using the given resolvers."""
-        session = cached_session(
-            allowable_codes=[200],
-        )
+        session = cached_session()
         response = session.get(self.stream_url)
         response.raise_for_status()
         try:

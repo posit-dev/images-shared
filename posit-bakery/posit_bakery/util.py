@@ -71,6 +71,8 @@ def cached_session(**kwargs) -> CachedSession:
         "backend": "filesystem",
         "use_temp": True,
         "allowable_methods": ["GET"],
+        "allowable_codes": [200],
+        "stale_if_error": True,
     }
     session_kwargs.update(kwargs)
 
