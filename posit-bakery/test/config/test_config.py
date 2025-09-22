@@ -499,19 +499,18 @@ class TestBakeryConfig:
         FROM docker.io/library/ubuntu:22.04
         LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
 
-        ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/local/bin/pti
-
         ### ARG declarations ###
         ARG DEBIAN_FRONTEND=noninteractive
         ARG IMAGE_VERSION="2.0.0"
 
         ### Install Apt Packages ###
         COPY test-image/2.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
 
-        RUN pti container syspkg upgrade --dist \\
-            && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \\
-            && rm -f /tmp/ubuntu2204_packages.txt \\
-            && pti container syspkg clean
         """)
         assert (
             expected_min_containerfile == (context / "test-image" / "2.0" / "Containerfile.ubuntu2204.min").read_text()
@@ -521,21 +520,23 @@ class TestBakeryConfig:
         FROM docker.io/library/ubuntu:22.04
         LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
 
-        ADD --chmod=750 https://saipittwood.blob.core.windows.net/packages/pti /usr/local/bin/pti
-
         ### ARG declarations ###
         ARG DEBIAN_FRONTEND=noninteractive
         ARG IMAGE_VERSION="2.0.0"
 
         ### Install Apt Packages ###
         COPY test-image/2.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
         COPY test-image/2.0/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
-        RUN pti container syspkg upgrade --dist \\
-            && pti container syspkg install -f /tmp/ubuntu2204_packages.txt \\
-            && rm -f /tmp/ubuntu2204_packages.txt \\
-            && pti container syspkg install -f /tmp/ubuntu2204_optional_packages.txt \\
-            && rm -f /tmp/ubuntu2204_optional_packages.txt \\
-            && pti container syspkg clean
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_optional_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_optional_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
         """)
         assert (
             expected_std_containerfile == (context / "test-image" / "2.0" / "Containerfile.ubuntu2204.std").read_text()

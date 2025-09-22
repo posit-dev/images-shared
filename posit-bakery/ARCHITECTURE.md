@@ -114,15 +114,12 @@ flowchart TD
         config -.-> createVersion
     end
 
-    pti[pti]
-    pti o--o containerfile
-
     classDef tooling fill:#7494B1
     classDef external fill:grey
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
-    class pti,createProject,createImage,createVersion tooling
+    class createProject,createImage,createVersion tooling
 ```
 
 ### Build
