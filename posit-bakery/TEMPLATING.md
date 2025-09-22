@@ -364,6 +364,8 @@ Returns the command to download and install a Quarto version. Requires `curl` to
 
 The macro takes an optional `with_tinytex` argument to include the command to install TinyTeX using the installed Quarto binary. Default is `False`.
 
+If `with_tinytex` is `True`, `tinytex_update_path` can be set to `True` to append the `--update-path` option to the install command. This will add TinyTeX binaries to the system `PATH`.
+
 ```jinja2
 {{ quarto.install("1.8.24", with_tinytex=True) }}
 ```
