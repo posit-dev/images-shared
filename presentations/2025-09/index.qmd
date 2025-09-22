@@ -26,10 +26,10 @@ Compare to `rstudio-docker-products`
 
 * Source Code Repository
   * Individual GitHub respository per product
-  * Removes shared base image (smaller images)
+  * Removes shared base image, opting for shared practices and patterns
 
 * Image Builds
-  * Can be build directly from a static `Containerfile`
+  * Can be built directly from a static `Containerfile` with no additional inputs or tooling
   * Adds `Minimal` product images w/ no dependencies
   * Dependencies automatically kept up-to-date
 
@@ -46,7 +46,7 @@ Now
 * Tool (singular): `bakery`
 * Single YAML config file
 * Dependency versions
-  * Install in Jinja2 Macros
+  * Commands generated in Jinja2 Macros
   * Dynamically defined
 ::::
 
@@ -65,7 +65,7 @@ Then
 
 * Each product has `Minimal` & `Standard` images ^[`workbench-session` & `connect-content` not yet available; see next slide]
   * `Minimal`: Includes _only_ the product & required dependencies
-  * `Standard`: Includes single Python and R version
+  * `Standard`: "Traditional" image - `Minimal` plus optional dependencies such as additional system libraries, Python, R, Quarto, TinyTeX, etc.
 * Preview/Daily builds
   * Install freshest product builds
   * Install latest dependency versions
