@@ -137,7 +137,7 @@ class DGossCommand(BaseModel):
     @property
     def command(self) -> list[str]:
         """Return the full DGoss command to run."""
-        cmd = [self.dgoss_bin, self.dgoss_command]
+        cmd = [self.dgoss_bin, self.dgoss_command, "--platform", "linux/amd64"]
         for mount in self.volume_mounts:
             cmd.extend(["-v", f"{mount[0]}:{mount[1]}"])
         for env_var, value in self.image_environment.items():
