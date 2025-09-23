@@ -14,7 +14,7 @@
 :param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
 #}
 {% macro install_tinytex_command(quarto_binary, update_path = False) -%}
-{{ quarto_binary }} install tinytex{% if update_path %} --update-path{% endif %}
+{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well
