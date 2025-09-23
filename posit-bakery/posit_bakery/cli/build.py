@@ -86,7 +86,6 @@ def build(
     try:
         config.build_targets(load=load, push=push, cache=cache, strategy=strategy, fail_fast=fail_fast)
     except:
-        log.exception("Error building images")
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
