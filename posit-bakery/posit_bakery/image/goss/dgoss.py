@@ -72,7 +72,7 @@ class DGossCommand(BaseModel):
             "GOSS_OPTS": "--format json --no-color",
         }
         if self.goss_bin:
-            env["GOSS_BIN"] = self.goss_bin
+            env["GOSS_PATH"] = self.goss_bin
         if self.wait > 0:
             env["GOSS_SLEEP"] = str(self.wait)
         return env
