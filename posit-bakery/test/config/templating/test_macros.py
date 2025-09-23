@@ -1333,12 +1333,12 @@ class TestQuartoMacros:
         [
             pytest.param(
                 True,
-                "/opt/quarto/1.8.24/bin/quarto install tinytex --update-path",
+                "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path",
                 id="with-update-path",
             ),
             pytest.param(
                 False,
-                "/opt/quarto/1.8.24/bin/quarto install tinytex",
+                "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet",
                 id="without-update-path",
             ),
         ],
@@ -1382,7 +1382,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    /opt/quarto/1.8.24/bin/quarto install tinytex"""
+                    /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex",
             ),
@@ -1393,7 +1393,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    /opt/quarto/1.8.24/bin/quarto install tinytex --update-path"""
+                    /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-update-path",
             ),
@@ -1450,7 +1450,7 @@ class TestQuartoMacros:
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex"""
+                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex",
             ),
@@ -1460,10 +1460,10 @@ class TestQuartoMacros:
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex
+                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        /opt/quarto/1.7.8/bin/quarto install tinytex"""
+                        /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="multiple-versions-with-tinytex",
             ),
@@ -1473,7 +1473,7 @@ class TestQuartoMacros:
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --update-path"""
+                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-update-path",
             ),
@@ -1483,10 +1483,10 @@ class TestQuartoMacros:
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --update-path
+                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        /opt/quarto/1.7.8/bin/quarto install tinytex --update-path"""
+                        /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="multiple-versions-with-tinytex-update-path",
             ),
