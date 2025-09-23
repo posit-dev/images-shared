@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -140,7 +141,8 @@ class DGossCommand(BaseModel):
         for mount in self.volume_mounts:
             cmd.extend(["-v", f"{mount[0]}:{mount[1]}"])
         for env_var, value in self.image_environment.items():
-            cmd.extend(["-e", f"{env_var}={value}"])
+            env_value = re.sub(r"([\"\'\\$`!*?&#()|<>;\[\]{}\s])", r"\\\1", value)
+            cmd.extend(["-e", f"{env_var}={env_value}"])
         cmd.append("--init")
         if self.runtime_options:
             # TODO: We may want to validate this to ensure options are not duplicated.
