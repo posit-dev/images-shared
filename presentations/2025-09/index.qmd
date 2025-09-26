@@ -1,0 +1,102 @@
+---
+title: "Container Images"
+subtitle: "Where we were & Where we are"
+author:
+  - Ian Pittwood
+  - Ben Schwedler
+date: "2025-09-23"
+format:
+  revealjs:
+    theme: moon
+---
+
+## A Brief History of Build Time
+
+* SolEng created `rstudio-docker-products` in 2019
+* Images received official support in Feb 2023
+* Repository structure and workflows grew organically
+* Builds tightly coupled across all products
+* Current structure and workflows are difficult to maintain
+
+[2024 Team Work Week Presentation](https://expert-adventure-lm4elp6.pages.github.io/1)
+
+## What is different? {.smaller}
+
+Compare to `rstudio-docker-products`
+
+* Source Code Repository
+  * Individual GitHub respository per product
+  * Removes shared base image, opting for shared practices and patterns
+
+* Image Builds
+  * Can be built directly from a static `Containerfile` with no additional inputs or tooling
+  * Adds `Minimal` product images w/ no dependencies
+  * Dependencies automatically kept up-to-date
+
+* Image Versions
+  * Versions & Variants managed through configuration
+  * Can easily re-build previous product versions for security updates
+
+## Updates since 2025 Posit Work Week
+
+::: {.columns}
+:::: {.column witdh="50%"}
+Now
+
+* Tool (singular): `bakery`
+* Single YAML config file
+* Dependency versions
+  * Commands generated in Jinja2 Macros
+  * Dynamically defined
+::::
+
+:::: {.column width="50%"}
+Then
+
+* Tools: `bakery` + `pti`
+* Multiple TOML config files
+* Dependencies
+  * Installed with `pti` binary
+  * Statically defined
+::::
+:::
+
+## Where are we now?
+
+* Each product has `Minimal` & `Standard` images ^[`workbench-session` & `connect-content` not yet available; see next slide]
+  * `Minimal`: Includes _only_ the product & required dependencies
+  * `Standard`: "Traditional" image - `Minimal` plus optional dependencies such as additional system libraries, Python, R, Quarto, TinyTeX, etc.
+* Preview/Daily builds
+  * Install freshest product builds
+  * Install latest dependency versions
+
+## What's Next?
+
+[GitHub Milestones](https://github.com/orgs/posit-dev/projects/17/views/8)
+
+* Product team usage/extension of images
+* Shared GitHub Actions for common workflows
+* Dependency matrix builds (e.g. `python` & `R` versions)
+  * Req'd to support content & session images
+* Make GitHub repos public 🚀
+* Install images via Helm & in PTD
+* Automated funtional/smoke tests
+
+## How does it work? {.smaller}
+
+Image Definitions
+
+| Repository | Description |
+|:-----------|:------------|
+| [posit-dev/images-connect](https://github.com/posit-dev/images-connect) | Posit Connect Container Images |
+| [posit-dev/images-package-manager](https://github.com/posit-dev/images-package-manager) | Posit Package Manager Container Images |
+| [posit-dev/images-workbench](https://github.com/posit-dev/images-workbench) | Posit Workbench Container Images |
+
+
+Tooling & Documentation
+
+| Repository | Description |
+|:-----------|:------------|
+| [posit-dev/images](https://github.com/posit-dev/images) | Posit Container Image Meta Repository |
+| [posit-dev/images-examples](https://github.com/posit-dev/images-examples) | Examples using & extending Posit Container Images |
+| [posit-dev/images-shared](https://github.com/posit-dev/images-shared) | Shared Tooling for Container Images |
