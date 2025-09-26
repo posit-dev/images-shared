@@ -1,21 +1,32 @@
-name: 'Setup Posit Bakery'
+name: 'Setup Bakery'
 description: "Installs Posit Bakery tool in Github Actions CI"
 
 inputs:
-  # The version of the Posit Bakery tool to install
   version:
     description: "The version of the Posit Bakery tool to install"
-    required: true
-    default: "0.2.0.dev0"
+    required: false
+    default: "main"
+  python-version:
+    description: "The version of Python to use"
+    required: false
+    default: "3.x"
 
 runs:
   using: "composite"
   steps:
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
-    # TODO: replace with a different Package installation method
-    - name: Install Posit Bakery tool
+        python-version: "${{ inputs.python-version }}"
+
+    # Relies on the GITHUB_TOKEN environment variable
+    - name: Install Bakery
       shell: bash
-      run: pip install https://saipittwood.blob.core.windows.net/packages/posit_bakery-${{ inputs.version }}-py3-none-any.whl
+      run: |
+        if [ -z "${GITHUB_TOKEN}" ]; then
+          echo "GITHUB_TOKEN environment variable is not set"
+          exit 1
+        fi
+
+        gh auth setup-git
+        pipx install "git+https://github.com/posit-dev/images-shared.git@${{ inputs.version }}#subdirectory=posit-bakery&egg=posit-bakery"
