@@ -87,7 +87,11 @@ def image(
 @app.command()
 def version(
     image_name: Annotated[
-        str, typer.Argument(help="The image directory to render. This should be the path above the template directory.")
+        str,
+        typer.Argument(
+            help="The image to which the version belongs. This must match an image name present in the bakery.yaml "
+            "configuration."
+        ),
     ],
     image_version: Annotated[str, typer.Argument(help="The new version to render the templates to.")],
     context: Annotated[
