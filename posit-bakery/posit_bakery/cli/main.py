@@ -1,6 +1,6 @@
 import typer
 
-from posit_bakery.cli import ci, create, common, run, build
+from posit_bakery.cli import ci, create, common, run, build, update
 from posit_bakery.log import stderr_console
 
 app = typer.Typer(
@@ -14,6 +14,11 @@ app = typer.Typer(
 app.add_typer(create.app, name="create", help="Create new projects, images, and versions (aliases: c, new)")
 app.add_typer(create.app, name="c", hidden=True)
 app.add_typer(create.app, name="new", hidden=True)
+
+# Import teh "update" subcommand
+app.add_typer(update.app, name="update", help="Update managed files and configurations (aliases: u, up)")
+app.add_typer(update.app, name="up", hidden=True)
+app.add_typer(update.app, name="u", hidden=True)
 
 # Import the "ci" subcommand
 app.add_typer(ci.app, name="ci", help="Construct a CI matrix from the project.")
