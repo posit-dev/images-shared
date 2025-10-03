@@ -283,8 +283,8 @@ class ImageTarget(BaseModel):
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
                     message=f"Failed to build image '{str(self)}'",
-                    tool_name=python_on_whales.docker.client_type,
-                    cmd=[python_on_whales.docker.client_type, "build", str(self.containerfile)],
+                    tool_name="docker",  # FIXME: This should be dynamic based on the tool used. Not sure how to get.
+                    cmd=e.docker_command,
                     stdout=e.stdout,
                     stderr=e.stderr,
                     exit_code=e.return_code,
