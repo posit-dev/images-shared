@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
+import python_on_whales
 import typer
 
 from posit_bakery.config import BakeryConfig
@@ -85,7 +86,7 @@ def build(
 
     try:
         config.build_targets(load=load, push=push, cache=cache, strategy=strategy, fail_fast=fail_fast)
-    except:
+    except python_on_whales.DockerException:
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
