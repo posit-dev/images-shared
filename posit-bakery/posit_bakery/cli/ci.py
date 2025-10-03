@@ -27,6 +27,21 @@ def matrix(
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
 ) -> None:
+    """Generates a JSON matrix of image versions for CI workflows to consume
+
+    The output is a JSON array of objects with the following structure:
+
+    ```json
+    [
+      {
+        "image": "image-name",
+        "version": "version-name",
+        "dev": false
+      }
+    ]
+    ```
+    """
+
     try:
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
