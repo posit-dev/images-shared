@@ -82,7 +82,7 @@ class BakePlan(BaseModel):
     @property
     def bake_file(self) -> Path:
         """Return the path to the bake file in the context directory."""
-        return self.context / ".bakery-bake.json"
+        return (self.context / ".bakery-bake.json").resolve()
 
     @staticmethod
     def update_groups(

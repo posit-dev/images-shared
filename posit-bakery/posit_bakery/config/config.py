@@ -307,7 +307,7 @@ class BakeryConfig:
         if settings is None:
             settings = BakerySettings()
 
-        context = Path(context)
+        context = Path(context).resolve()
         search_paths = [context / "bakery.yaml", context / "bakery.yml"]
         for file in search_paths:
             if file.is_file():
