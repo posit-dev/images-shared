@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import patch, call
 
@@ -115,7 +116,7 @@ class TestBakePlan:
         assert Path("/path/to/context/.bakery-bake.json") == plan.bake_file
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_from_image_targets(self, get_expected_plan, get_config_obj, suite):
+    def test_from_image_targets(self, get_expected_plan, get_config_obj, suite, resource_path):
         """Test that barebones bake plan generates as expected."""
         expected_plan = get_expected_plan(suite)
         config_obj = get_config_obj(suite)
@@ -123,7 +124,27 @@ class TestBakePlan:
         plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
+        assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
         assert expected_plan.read_text().strip() == output
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_image_targets_alternate_context(
+        self, get_expected_plan, get_config_obj, suite, project_path, resource_path
+    ):
+        """Test that a BakePlan can be loaded in an alternate context directory."""
+        expected_plan = get_expected_plan(suite)
+        config_obj = get_config_obj(suite)
+
+        original_dir = os.getcwd()
+        os.chdir(project_path)  # Change to root directory
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        output = plan.model_dump_json(indent=2, exclude_none=True)
+
+        assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
+        assert expected_plan.read_text().strip() == output
+
+        os.chdir(original_dir)  # Change back to original directory
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_write_remove(self, get_expected_plan, get_tmpconfig, suite):
@@ -135,6 +156,23 @@ class TestBakePlan:
         assert not plan.bake_file.is_file()
         plan.write()
 
+        assert plan.bake_file.is_file()
+        assert expected_plan.read_text().strip() == plan.bake_file.read_text()
+
+        plan.remove()
+        assert not plan.bake_file.is_file()
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_write_remove(self, get_expected_plan, get_tmpconfig, suite):
+        """Test that barebones bake plan generates as expected."""
+        expected_plan = get_expected_plan(suite)
+        config_obj = get_tmpconfig(suite)
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        assert not plan.bake_file.is_file()
+        plan.write()
+
+        assert plan.bake_file == config_obj.base_path / ".bakery-bake.json"
         assert plan.bake_file.is_file()
         assert expected_plan.read_text().strip() == plan.bake_file.read_text()
 

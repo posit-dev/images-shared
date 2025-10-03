@@ -57,9 +57,9 @@ class TestDGossCommand:
         """Test that DGossCommand volume_mounts returns the expected volume mounts."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
         expected_mounts = [
-            (str(basic_standard_image_target.context.version_path.absolute()), "/tmp/version"),
-            (str(basic_standard_image_target.context.image_path.absolute()), "/tmp/image"),
-            (str(basic_standard_image_target.context.base_path.absolute()), "/tmp/project"),
+            (str(basic_standard_image_target.context.version_path.resolve()), "/tmp/version"),
+            (str(basic_standard_image_target.context.image_path.resolve()), "/tmp/image"),
+            (str(basic_standard_image_target.context.base_path.resolve()), "/tmp/project"),
         ]
         assert dgoss_command.volume_mounts == expected_mounts
 
@@ -86,11 +86,11 @@ class TestDGossCommand:
             "--platform",
             "linux/amd64",
             "-v",
-            f"{str(basic_standard_image_target.context.version_path.absolute())}:/tmp/version",
+            f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",
-            f"{str(basic_standard_image_target.context.image_path.absolute())}:/tmp/image",
+            f"{str(basic_standard_image_target.context.image_path.resolve())}:/tmp/image",
             "-v",
-            f"{str(basic_standard_image_target.context.base_path.absolute())}:/tmp/project",
+            f"{str(basic_standard_image_target.context.base_path.resolve())}:/tmp/project",
             "-e",
             "IMAGE_VERSION=1.0.0",
             "-e",
@@ -127,11 +127,11 @@ class TestDGossCommand:
             "--platform",
             "linux/amd64",
             "-v",
-            f"{str(basic_standard_image_target.context.version_path.absolute())}:/tmp/version",
+            f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",
-            f"{str(basic_standard_image_target.context.image_path.absolute())}:/tmp/image",
+            f"{str(basic_standard_image_target.context.image_path.resolve())}:/tmp/image",
             "-v",
-            f"{str(basic_standard_image_target.context.base_path.absolute())}:/tmp/project",
+            f"{str(basic_standard_image_target.context.base_path.resolve())}:/tmp/project",
             "-e",
             "IMAGE_VERSION=1.0.0",
             "-e",

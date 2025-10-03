@@ -2,11 +2,13 @@ import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
+import python_on_whales
 import typer
 
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -85,7 +87,7 @@ def build(
 
     try:
         config.build_targets(load=load, push=push, cache=cache, strategy=strategy, fail_fast=fail_fast)
-    except:
+    except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
 

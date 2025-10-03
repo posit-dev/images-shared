@@ -16,3 +16,11 @@ images:
         latest: true
         os:
           - name: "Scratch"
+    variants:
+      - name: "Minimal"
+        extension: "min"
+        tagDisplayName: "min"
+      - name: "Standard"
+        extension: "std"
+        tagDisplayName: "std"
+        primary: true

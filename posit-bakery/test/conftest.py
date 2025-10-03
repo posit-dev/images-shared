@@ -55,6 +55,18 @@ def patch_repository_revision(request, mocker: MockFixture, revision_value):
 
 
 @pytest.fixture(scope="session")
+def project_path():
+    """Return the path to the test directory"""
+    return TEST_DIRECTORY.parent
+
+
+@pytest.fixture(scope="session")
+def test_path():
+    """Return the path to the test directory"""
+    return TEST_DIRECTORY
+
+
+@pytest.fixture(scope="session")
 def resource_path():
     """Return the path to the test resources directory"""
     return TEST_DIRECTORY / "resources"
