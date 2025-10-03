@@ -100,9 +100,9 @@ class DGossCommand(BaseModel):
     @property
     def volume_mounts(self) -> list[tuple[str, str]]:
         return [
-            (str(self.image_target.context.version_path.absolute()), str(self.version_mountpoint)),
-            (str(self.image_target.context.image_path.absolute()), str(self.image_mountpoint)),
-            (str(self.image_target.context.base_path.absolute()), str(self.project_mountpoint)),
+            (str(self.image_target.context.version_path.resolve()), str(self.version_mountpoint)),
+            (str(self.image_target.context.image_path.resolve()), str(self.image_mountpoint)),
+            (str(self.image_target.context.base_path.resolve()), str(self.project_mountpoint)),
         ]
 
     @classmethod
