@@ -9,7 +9,14 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum
-from test.helpers import yaml_file_testcases, FileTestResultEnum, IMAGE_INDENT, VERSION_INDENT, SUCCESS_SUITES
+from test.helpers import (
+    yaml_file_testcases,
+    FileTestResultEnum,
+    IMAGE_INDENT,
+    VERSION_INDENT,
+    SUCCESS_SUITES,
+    TEST_DIRECTORY,
+)
 
 pytestmark = [
     pytest.mark.unit,
@@ -217,6 +224,21 @@ class TestBakeryConfig:
         """
         with pytest.raises(ValidationError):
             BakeryConfig(yaml_file)
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_alternate_context(self, suite, project_path, resource_path):
+        """Test that a BakeryConfig can be created from a context directory."""
+        original_dir = os.getcwd()
+        os.chdir(project_path)  # Change to root directory
+
+        context = resource_path / suite
+        config = BakeryConfig.from_context(context)
+        assert config is not None
+        assert config.config_file == context / "bakery.yaml"
+        assert config.base_path == context
+        assert len(config.model.images) >= 1
+
+        os.chdir(original_dir)  # Change back to original directory
 
     def test_config_does_not_exist(self):
         """Test that a FileNotFoundError is raised if the config file does not exist."""
