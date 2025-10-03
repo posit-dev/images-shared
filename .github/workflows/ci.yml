@@ -11,6 +11,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+
 jobs:
   bakery:
     name: Bakery Build
@@ -23,5 +24,6 @@ jobs:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
-      context: "posit-bakery/test/resources/with-macros/"
+      context: "./posit-bakery/test/resources/with-macros/"
       version: ci-workflow
+      dev-versions: include
