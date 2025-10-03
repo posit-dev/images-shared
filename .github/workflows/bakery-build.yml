@@ -107,20 +107,20 @@ jobs:
           owner: posit-dev
           repositories: images-shared
 
-      - name: Setup Bakery
+      - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@ci-workflow"
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           version: ${{ inputs.version }}
 
-      - name: Setup Goss and Dgoss
+      - name: Setup goss
         uses: "posit-dev/images-shared/setup-goss@ci-workflow"
 
       - name: Setup just
         uses: extractions/setup-just@v3
 
-      - name: Setup Docker Buildx
+      - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub

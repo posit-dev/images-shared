@@ -13,11 +13,50 @@ concurrency:
 
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install goss and dgoss
+        uses: ./setup-goss
+
+      - name: Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          pipx install poetry
+          poetry install
+
+      - name: Run tests
+        working-directory: ./posit-bakery
+        run: |
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          poetry run pytest -n auto \
+            --dist loadgroup \
+            --cov=posit_bakery \
+            --cov-report=xml \
+            --junit-xml=results.xml \
+            test/
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./posit-bakery/results.xml
+
   bakery:
     name: Bakery Build
     permissions:
       contents: read
-      packages: write
+      packages: read
 
     uses: "posit-dev/images-shared/.github/workflows/bakery-build.yml@ci-workflow"
     secrets:
