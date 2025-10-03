@@ -272,7 +272,7 @@ class BakeryConfig:
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
-        self.config_file = Path(config_file)
+        self.config_file = Path(config_file).resolve()
         if not self.config_file.exists():
             raise FileNotFoundError(f"File '{self.config_file}' does not exist.")
         self.base_path = self.config_file.parent
@@ -325,7 +325,7 @@ class BakeryConfig:
 
         :var base_path: The path where the new bakery.yaml file will be created.
         """
-        config_file = Path(base_path) / "bakery.yaml"
+        config_file = Path(base_path).resolve() / "bakery.yaml"
         log.info(f"Creating new project config file [bold]{config_file}")
         tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_BAKERY_CONFIG_YAML)
         rendered = tpl.render(repo_url=util.try_get_repo_url(base_path))
