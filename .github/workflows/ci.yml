@@ -20,21 +20,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install goss and dgoss
+      - name: Setup goss
         uses: ./setup-goss
 
-      - name: Install dependencies
+      - name: Install poetry
         working-directory: ./posit-bakery
         run: |
           pipx install poetry
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "posit-bakery/pyproject.toml"
+          cache: "poetry"
+
+      - name : Install dependencies
+        working-directory: ./posit-bakery
+        run: |
           poetry install
 
-      - name: Run tests
+      - name: Run pytest
         working-directory: ./posit-bakery
         run: |
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
@@ -46,7 +51,12 @@ jobs:
             --junit-xml=results.xml \
             test/
 
-      - name: Publish test results
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build
+
+      - name: Publish results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
@@ -66,3 +76,58 @@ jobs:
       context: "./posit-bakery/test/resources/with-macros/"
       version: ci-workflow
       dev-versions: include
+
+  release:
+    name: Release/Snapshot
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request')
+    needs: [test, bakery]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install poetry
+        run: |
+          pipx install poetry
+          pipx inject poetry "poetry-dynamic-versioning[plugin]"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "posit-bakery/pyproject.toml"
+          cache: "poetry"
+
+      - name: Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          poetry install
+
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build
+
+      - name: Upload snapshot artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakery-snapshot-pr${{ github.event.pull_request.number }}
+          path: ./posit-bakery/dist
+          retention-days: 7
+          overwrite: true
+
+      - name: Create a release draft
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --generate-notes \
+            --latest
+          gh release upload ${{ github.ref_name }} \
+            ./posit-bakery/dist/*
