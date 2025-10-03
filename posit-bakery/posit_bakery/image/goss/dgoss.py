@@ -10,7 +10,7 @@ from typing import Annotated, Self, Literal
 import pydantic
 from pydantic import BaseModel, Field, model_validator, computed_field
 
-from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
+from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup, BakeryDGossError
 from posit_bakery.image.goss.report import GossJsonReportCollection, GossJsonReport
 from posit_bakery.image.image_target import ImageTargetContext, ImageTarget
 from posit_bakery.util import find_bin
@@ -176,6 +176,7 @@ class DGossSuite:
             run_env = os.environ.copy()
             run_env.update(dgoss_command.dgoss_environment)
             p = subprocess.run(dgoss_command.command, env=run_env, cwd=self.context, capture_output=True)
+            exit_code = p.returncode
 
             image_subdir = results_dir / dgoss_command.image_target.image_name
             image_subdir.mkdir(parents=True, exist_ok=True)
@@ -196,37 +197,36 @@ class DGossSuite:
                     dgoss_command.image_target, GossJsonReport(filepath=results_file, **result_data)
                 )
             except json.JSONDecodeError as e:
-                log.warning(
-                    f"Failed to decode JSON output from dgoss for image '{str(dgoss_command.image_target)}': {e}"
-                )
+                log.error(f"Failed to decode JSON output from dgoss for image '{str(dgoss_command.image_target)}': {e}")
                 parse_err = e
             except pydantic.ValidationError as e:
-                log.warning(
+                log.error(
                     f"Failed to load result data for summary from dgoss for image '{str(dgoss_command.image_target)}: {e}"
                 )
                 log.warning(f"Test results will be excluded from '{str(dgoss_command.image_target)}' in final summary.")
                 parse_err = e
 
-            with open(results_file, "w") as f:
-                log.info(f"Writing results to {results_file}")
-                f.write(output)
+            if not parse_err:
+                with open(results_file, "w") as f:
+                    log.info(f"Writing results to {results_file}")
+                    f.write(output)
 
             # Goss can exit 1 in multiple scenarios including test failures and incorrect configurations. From Bakery's
             # perspective, we only want to report an error back if the execution of Goss failed in some way. Our best
             # method of doing this is to check if both the exit code is non-zero, and we were unable to parse the output
             # of the command.
-            exit_code = p.returncode
             if exit_code != 0 and parse_err is not None:
                 log.error(f"dgoss for image '{str(dgoss_command.image_target)}' exited with code {exit_code}")
                 errors.append(
-                    BakeryToolRuntimeError(
-                        f"Subprocess call to dgoss exited with code {exit_code}",
+                    BakeryDGossError(
+                        f"dgoss execution failed for image '{str(dgoss_command.image_target)}'",
                         "dgoss",
                         cmd=dgoss_command.command,
                         stdout=p.stdout,
                         stderr=p.stderr,
+                        parse_error=parse_err,
                         exit_code=exit_code,
-                        metadata={"results": results_file, "environment_variables": dgoss_command.dgoss_environment},
+                        metadata={"environment_variables": dgoss_command.dgoss_environment},
                     )
                 )
             elif exit_code == 0:
