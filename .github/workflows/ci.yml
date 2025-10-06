@@ -13,6 +13,26 @@ concurrency:
 
 
 jobs:
+  ci:
+    name: CI
+    # This should be the only action checked as required in the repo settings.
+    #
+    # This is a meta-job, here to express the conditions we require
+    # in order to consider a CI run to be successful.
+    if: always()
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+      - bakery
+      - release
+
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
+
   test:
     name: Test
     runs-on: ubuntu-latest
