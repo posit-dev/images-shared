@@ -3,7 +3,9 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.util import auto_path
+from posit_bakery.config import BakeryConfig
+from posit_bakery.log import stderr_console
+from posit_bakery.util import auto_path, log
 
 app = typer.Typer(no_args_is_help=True)
 update_version = typer.Typer(no_args_is_help=True)
@@ -34,6 +36,17 @@ def patch(
     If clean is true, the existing version files for old_version will be removed prior to rendering the new_version
     files.
     """
+    try:
+        c = BakeryConfig.from_context(context)
+        c.patch_version(image_name, old_version, new_version, clean=clean)
+    except:
+        log.exception("Error patching version")
+        stderr_console.print(
+            f"❌ Failed to patch version '{image_name}/{old_version}' to '{image_name}/{new_version}'", style="error"
+        )
+        raise typer.Exit(code=1)
+
+    stderr_console.print(f"✅ Successfully created image '{image_name}'", style="success")
 
 
 @update_version.command()
