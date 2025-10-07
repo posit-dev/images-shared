@@ -48,6 +48,14 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             description="List of supported ImageVersionOS objects for this image development version.",
         ),
     ]
+    values: Annotated[
+        dict[str, str],
+        Field(
+            default_factory=dict,
+            validate_default=True,
+            description="Arbitrary key-value pairs used in template rendering.",
+        ),
+    ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
@@ -222,6 +230,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
             os=self.os,
+            values=self.values,
             latest=False,
             dependencies=self.parent.resolve_dependency_versions(),
             ephemeral=True,

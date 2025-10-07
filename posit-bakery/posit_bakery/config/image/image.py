@@ -330,7 +330,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         variant: Union["ImageVariant", None] = None,
         version_os: Union["ImageVersionOS", None] = None,
         version_path: str | Path | None = None,
-        extra_values: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Generates the template values for rendering.
 
@@ -367,8 +366,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             }
             if version_os.artifactDownloadURL is not None:
                 values["Image"]["DownloadURL"] = str(version_os.artifactDownloadURL)
-        if extra_values:
-            values.update(extra_values)
+        if version.values:
+            values.update(version.values)
 
         return values
 
@@ -376,7 +375,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     def create_version_files(
         version: ImageVersion,
         variants: list[ImageVariant] | None = None,
-        extra_values: list[str] | None = None,
     ):
         """Render a new image version from the template.
 
@@ -431,7 +429,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
                     for variant in variants:
                         template_values = version.parent.generate_version_template_values(
-                            version, variant, containerfile_os, version.path, extra_values
+                            version, variant, containerfile_os, version.path
                         )
                         containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
                         rendered = tpl.render(**template_values, **render_kwargs)
@@ -442,7 +440,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 # Render other templates once
                 else:
                     template_values = version.parent.generate_version_template_values(
-                        version, version_path=version.path, extra_values=extra_values
+                        version, version_path=version.path
                     )
                     rendered = tpl.render(**template_values, **render_kwargs)
                     rel_path = tpl_rel_path.removesuffix(".jinja2")
@@ -456,6 +454,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         self,
         version_name: str,
         subpath: str | None = None,
+        values: dict[str, str] | None = None,
         latest: bool = True,
         update_if_exists: bool = False,
     ) -> ImageVersion:
@@ -464,6 +463,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         :param version_name: The name of the new image version.
         :param subpath: Optional subpath for the new version. If None, defaults to the version name with spaces replaced
             by hyphens and lowercase.
+        :param values: Optional dictionary of additional key-value pairs to include in the template values.
         :param latest: If True, sets this version as the latest version of the image. Unsets latest on all other image
             versions.
         :param update_if_exists: If True, updates the existing version if it already exists, otherwise raises an error
@@ -502,6 +502,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             }
             if subpath is not None:
                 args["subpath"] = subpath
+            if values is not None:
+                args["values"] = values
             if os is not None:
                 args["os"] = os
             if registries is not None:
@@ -521,6 +523,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 image_version.latest = True
             if subpath:
                 image_version.subpath = subpath
+            if values:
+                image_version.values = values
 
         return image_version
 
@@ -535,13 +539,12 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             log.info(log_message.strip())
             self.versions.append(image_version)
 
-    def create_ephemeral_version_files(self, extra_values: dict[str, str] | None = None):
+    def create_ephemeral_version_files(self):
         """Create the files for all ephemeral image versions."""
-        # TODO: Replace the extra_values parameter with Ben's dependency constraints resolution.
         for version in self.versions:
             if version.ephemeral:
                 log.debug(f"Creating ephemeral image version directory [bold]{version.path}")
-                self.create_version_files(version, self.variants, extra_values=extra_values)
+                self.create_version_files(version, self.variants)
 
     def remove_ephemeral_version_files(self):
         """Remove the files for all ephemeral image versions."""

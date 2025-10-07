@@ -80,6 +80,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="Dependency to install, pinned to a list of versions.",
         ),
     ]
+    values: Annotated[
+        dict[str, str],
+        Field(
+            default_factory=dict,
+            validate_default=True,
+            description="Arbitrary key-value pairs used in template rendering.",
+        ),
+    ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
