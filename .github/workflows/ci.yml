@@ -1,0 +1,153 @@
+name: CI
+on:
+  pull_request:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  # Only cancel in-progress runs for pull_request events, this prevents cancelling workflows against main or tags
+  # A pull_request will reuse the same group thus enabling cancelation, all others receive a unique run_id
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+
+jobs:
+  ci:
+    name: CI
+    # This should be the only action checked as required in the repo settings.
+    #
+    # This is a meta-job, here to express the conditions we require
+    # in order to consider a CI run to be successful.
+    if: always()
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+      - bakery
+      - release
+
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup goss
+        uses: ./setup-goss
+
+      - name: Install poetry
+        working-directory: ./posit-bakery
+        run: |
+          pipx install poetry
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "posit-bakery/pyproject.toml"
+          cache: "poetry"
+
+      - name : Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          poetry install
+
+      - name: Run pytest
+        working-directory: ./posit-bakery
+        run: |
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          poetry run pytest -n auto \
+            --dist loadgroup \
+            --cov=posit_bakery \
+            --cov-report=xml \
+            --junit-xml=results.xml \
+            test/
+
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build
+
+      - name: Publish results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./posit-bakery/results.xml
+
+  bakery:
+    name: Bakery Build
+    permissions:
+      contents: read
+      packages: read
+
+    uses: "posit-dev/images-shared/.github/workflows/bakery-build.yml@ci-workflow"
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    with:
+      context: "./posit-bakery/test/resources/with-macros/"
+      version: ci-workflow
+      dev-versions: include
+
+  release:
+    name: Release/Snapshot
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request')
+    needs: [test, bakery]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install poetry
+        run: |
+          pipx install poetry
+          pipx inject poetry "poetry-dynamic-versioning[plugin]"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "posit-bakery/pyproject.toml"
+          cache: "poetry"
+
+      - name: Install dependencies
+        working-directory: ./posit-bakery
+        run: |
+          poetry install
+
+      - name: Build
+        working-directory: ./posit-bakery
+        run: |
+          poetry build
+
+      - name: Upload snapshot artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakery-snapshot-pr${{ github.event.pull_request.number }}
+          path: ./posit-bakery/dist
+          retention-days: 7
+          overwrite: true
+
+      - name: Create a release draft
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --generate-notes \
+            --latest
+          gh release upload ${{ github.ref_name }} \
+            ./posit-bakery/dist/*
