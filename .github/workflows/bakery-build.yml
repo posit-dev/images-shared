@@ -70,7 +70,7 @@ jobs:
           repositories: images-shared
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@ci-workflow"
+        uses: "posit-dev/images-shared/setup-bakery@main"
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
@@ -108,14 +108,14 @@ jobs:
           repositories: images-shared
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@ci-workflow"
+        uses: "posit-dev/images-shared/setup-bakery@main"
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@ci-workflow"
+        uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Setup just
         uses: extractions/setup-just@v3
