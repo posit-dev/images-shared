@@ -20,7 +20,8 @@ References:
   - [Quarto Installation and Management](#quarto-installation-and-management)
 
 ## Available Variables
-The following variables are available for use in an image's Jinja2 templates.
+The following variables are available by default for use in an image's Jinja2 templates. Additional values passed using
+`--value` to `bakery create` or specified in the `values` field of an image version will also be available.
 
 Currently, `Containerfile` templates render as a unique file for each variant and OS. Using variant and OS based Jinja2 conditionals outside of `Containerfile` templates is not currently supported and will lead to unexpected results or errors.
 
