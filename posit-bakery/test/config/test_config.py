@@ -700,7 +700,7 @@ class TestBakeryConfig:
         expected_yaml = textwrap.indent(
             textwrap.dedent("""\
               - name: 1.0.1
-                subpath: 1.0
+                subpath: '1.0'
                 latest: true
                 os:
                   - name: Ubuntu 22.04
@@ -806,15 +806,15 @@ class TestBakeryConfig:
         original_path = version.path
 
         with patch("shutil.move") as mock_move:
-            config.patch_version(image.name, version.name, "1.0.1", clean=False)
-            mock_move.assert_called_once_with(original_path, version.path)
+            patched_version = config.patch_version(image.name, version.name, "1.0.1", clean=False)
+            mock_move.assert_called_once_with(original_path, patched_version.path)
 
     def test_patch_version_image_does_not_exist(self, get_tmpcontext):
         """Test patching a version for a non-existent image in the BakeryConfig generates an error."""
         context = get_tmpcontext("basic")
         config = BakeryConfig.from_context(context)
 
-        with pytest.raises(ValueError, match="Image 'non-existent-image' does not exist in the bakery config"):
+        with pytest.raises(ValueError, match="Image 'non-existent-image' does not exist in the config"):
             config.patch_version("non-existent-image", "1.0.0", "1.0.1")
 
     def test_patch_version_does_not_exist(self, get_tmpcontext):
@@ -836,7 +836,7 @@ class TestBakeryConfig:
 
         config.create_version(image.name, "2.0.0")
 
-        with pytest.raises(ValueError, match=f"Version '2.0.0' already exists for image '{image.name}'"):
+        with pytest.raises(ValueError, match=f"Version '2.0.0' already exists in image '{image.name}'"):
             config.patch_version(image.name, version.name, "2.0.0")
 
     def test_target_filtering_no_filter(self, testdata_path):

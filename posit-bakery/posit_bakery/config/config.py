@@ -473,7 +473,7 @@ class BakeryConfig:
         new_version: str,
         values: dict[str, str] | None = None,
         clean: bool = True,
-    ) -> None:
+    ) -> "ImageVersion":
         """Patches an existing image version with a new version and regenerates templates."""
         image = self.model.get_image(image_name)
 
@@ -489,6 +489,8 @@ class BakeryConfig:
         )
 
         self.write()
+
+        return patched_version
 
     def generate_image_targets(self, settings: BakerySettings | None = None):
         """Generates image targets from the images defined in the config.

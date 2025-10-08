@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -404,6 +405,204 @@ class TestImage:
         assert i.versions[0] is updated_version
         assert not i.versions[1].latest
         assert updated_version.parent is i
+
+    def test_patch_version(self, get_tmpcontext, common_image_variants_objects):
+        """Test that patch_version patches an existing version and updates files."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        i.patch_version("1.0.0", "1.0.1")
+
+        # Check that the version was updated in the model
+        assert i.versions[0].name == "1.0.1"
+
+        # Check that the version files were updated
+        expected_path = context / "test-image" / "1.0.1"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.std").read_text()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.min").read_text()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_test_clean(self, get_tmpcontext, common_image_variants_objects):
+        """Test that files are removed by patch_version when clean=True."""
+        context = get_tmpcontext("basic")
+        original_version_path = context / "test-image" / "1.0.0"
+        (original_version_path / "extra-file.txt").write_text("This is an extra file that should be removed.")
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        i.patch_version("1.0.0", "1.0.1")
+
+        # Check that the version was updated in the model
+        assert i.versions[0].name == "1.0.1"
+
+        # Check that the extra file was removed
+        assert not (context / "test-image" / "1.0.1" / "extra-file.txt").exists()
+
+        # Check that the version files were updated
+        expected_path = context / "test-image" / "1.0.1"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.std").read_text()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.min").read_text()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_test_no_clean(self, get_tmpcontext, common_image_variants_objects):
+        """Test that files are preserved by patch_version when clean=False."""
+        context = get_tmpcontext("basic")
+        original_version_path = context / "test-image" / "1.0.0"
+        (original_version_path / "extra-file.txt").write_text("This is an extra file that should be removed.")
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        i.patch_version("1.0.0", "1.0.1", clean=False)
+
+        # Check that the version was updated in the model
+        assert i.versions[0].name == "1.0.1"
+
+        # Check that the extra file was preserved
+        assert (context / "test-image" / "1.0.1" / "extra-file.txt").exists()
+
+        # Check that the version files were updated
+        expected_path = context / "test-image" / "1.0.1"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.std").read_text()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (expected_path / "Containerfile.ubuntu2204.min").read_text()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_test_clean_with_subpath(self, get_tmpcontext, common_image_variants_objects):
+        """Test that files are removed by patch_version when clean=True and a subpath is in use."""
+        context = get_tmpcontext("basic")
+        original_version_path = context / "test-image" / "1.0.0"
+        subpathed_path = context / "test-image" / "1.0"
+        shutil.move(original_version_path, subpathed_path)
+        (subpathed_path / "extra-file.txt").write_text("This is an extra file that should be removed.")
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0", "subpath": "1.0"}],
+            variants=common_image_variants_objects,
+            parent=mock_parent,
+        )
+        i.patch_version("1.0.0", "1.0.1")
+
+        # Check that the version was updated in the model
+        assert i.versions[0].name == "1.0.1"
+
+        # Check that the extra file was removed
+        assert not (subpathed_path / "extra-file.txt").exists()
+
+        # Check that the version files were updated
+        assert subpathed_path.exists() and subpathed_path.is_dir()
+        assert (subpathed_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (subpathed_path / "Containerfile.ubuntu2204.min").is_file()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (subpathed_path / "Containerfile.ubuntu2204.std").read_text()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (subpathed_path / "Containerfile.ubuntu2204.min").read_text()
+        assert (subpathed_path / "deps").is_dir()
+        assert (subpathed_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (subpathed_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (subpathed_path / "test").is_dir()
+        assert (subpathed_path / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_test_no_clean_with_subpath(self, get_tmpcontext, common_image_variants_objects):
+        """Test that files are preserved by patch_version when clean=False and a subpath is in use."""
+        context = get_tmpcontext("basic")
+        original_version_path = context / "test-image" / "1.0.0"
+        subpathed_path = context / "test-image" / "1.0"
+        shutil.move(original_version_path, subpathed_path)
+        (subpathed_path / "extra-file.txt").write_text("This is an extra file that should be removed.")
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0", "subpath": "1.0"}],
+            variants=common_image_variants_objects,
+            parent=mock_parent,
+        )
+        i.patch_version("1.0.0", "1.0.1")
+
+        # Check that the version was updated in the model
+        assert i.versions[0].name == "1.0.1"
+
+        # Check that the extra file was removed
+        assert not (subpathed_path / "extra-file.txt").exists()
+
+        # Check that the version files were updated
+        assert subpathed_path.exists() and subpathed_path.is_dir()
+        assert (subpathed_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (subpathed_path / "Containerfile.ubuntu2204.min").is_file()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (subpathed_path / "Containerfile.ubuntu2204.std").read_text()
+        assert 'ARG IMAGE_VERSION="1.0.1"' in (subpathed_path / "Containerfile.ubuntu2204.min").read_text()
+        assert (subpathed_path / "deps").is_dir()
+        assert (subpathed_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (subpathed_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (subpathed_path / "test").is_dir()
+        assert (subpathed_path / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_old_version_does_not_exist(self, get_tmpcontext, common_image_variants_objects):
+        """Test that patch_version patches an existing version and updates files."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        with pytest.raises(ValueError, match="Version '2.0.0' does not exist for image 'test-image'."):
+            i.patch_version("2.0.0", "2.0.1")
+
+    def test_patch_version_new_version_already_exists(self, get_tmpcontext, common_image_variants_objects):
+        """Test that patch_version patches an existing version and updates files."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'test-image'."):
+            i.patch_version("1.0.0", "1.0.0")
 
     def test_load_dev_versions(self):
         """Test that load_dev_versions correctly loads development versions from configured devVersions."""
