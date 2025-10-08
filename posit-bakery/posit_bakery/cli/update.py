@@ -55,31 +55,3 @@ def patch(
     stderr_console.print(
         f"✅ Successfully patched version '{image_name}/{old_version}' to '{image_name}/{new_version}'", style="success"
     )
-
-
-@update_version.command()
-def files(
-    context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
-    ] = auto_path(),
-    image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate file rendering to.")] = None,
-    image_version: Annotated[
-        Optional[str], typer.Option(help="The image version to isolate file rendering to.")
-    ] = None,
-    template_pattern: Annotated[
-        Optional[list[str]],
-        typer.Option(help="A glob pattern to filter which templates to render. Uses regex syntax."),
-    ] = None,
-    clean: Annotated[
-        Optional[bool],
-        typer.Option(help="Remove all existing matching files before rendering from templates."),
-    ] = True,
-) -> None:
-    """Rerenders versions from templates matching the given filters.
-
-    This command will rerender each matching image version's files from the templates in the image's template
-    directory. Existing configuration details for the version such as dependencies, variants, and the latest flag
-    are used and remain unmodified.
-
-    If clean is true, the existing version files will be removed prior to rendering.
-    """
