@@ -471,6 +471,7 @@ class BakeryConfig:
         image_name: str,
         old_version: str,
         new_version: str,
+        values: dict[str, str] | None = None,
         clean: bool = True,
     ) -> None:
         """Patches an existing image version with a new version and regenerates templates."""
@@ -479,7 +480,7 @@ class BakeryConfig:
         if image is None:
             raise ValueError(f"Image '{image_name}' does not exist in the config.")
 
-        patched_version = image.patch_version(old_version, new_version, clean)
+        patched_version = image.patch_version(old_version, new_version, values=values, clean=clean)
 
         image_index = self._get_image_index(image_name)
         version_index = self._get_version_index(image_name, patched_version.name)

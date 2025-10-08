@@ -532,12 +532,15 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         self,
         old_version_name: str,
         new_version_name: str,
+        values: dict[str, str] = None,
         clean: bool = True,
     ) -> ImageVersion:
         """Patches an existing image version with a new version name.
 
         :param old_version_name: The existing version name to be patched.
         :param new_version_name: The new version name to replace the old version with.
+        :param values: Optional dictionary of additional key-value pairs to include or update in the template values.
+        :param clean: If True, removes all existing version files before rendering the new version files
 
         :return: The patched ImageVersion object.
         """
@@ -556,6 +559,13 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         # Patch the version name
         image_version.name = new_version_name
+
+        # Patch the version values if provided
+        if values:
+            if image_version.values is None:
+                image_version.values = values
+            else:
+                image_version.values.update(values)
 
         # Fix or remove paths based on the clean and subpath settings.
         if image_version.path != original_path:

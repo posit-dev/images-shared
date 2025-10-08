@@ -5,6 +5,7 @@ from typing import Annotated, List, Optional
 import typer
 
 from posit_bakery import error
+from posit_bakery.cli.common import __make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.log import stderr_console
@@ -120,15 +121,7 @@ def version(
             └── Containerfile*.jinja2
     """
 
-    # Parse the key=value pairs into a dictionary
-    value_map = dict()
-    if value is not None:
-        for v in value:
-            sp = v.split("=")
-            if len(sp) != 2:
-                stderr_console.print(f"❌ Expected key=value pair, got [bold]'{v}'", style="error")
-                raise typer.Exit(code=1)
-            value_map[sp[0]] = sp[1]
+    value_map = __make_value_map(value)
 
     try:
         c = BakeryConfig.from_context(context)
