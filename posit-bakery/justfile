@@ -52,8 +52,10 @@ _pytest *ARGS:
 # Note: Both sets of quotes are required
 # Test the posit-bakery python project, skipping slow tests
 test *ARGS:
+    NO_COLOR="true" \
     just _pytest {{ ARGS }} -m "'not slow'"
 
 # Run all tests
 test-all *ARGS:
+    NO_COLOR="true" \
     just _pytest {{ ARGS }}
