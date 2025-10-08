@@ -1,0 +1,39 @@
+name: 'Setup Bakery'
+description: "Installs Posit Bakery tool in Github Actions CI"
+
+inputs:
+  version:
+    description: "The version of the Posit Bakery tool to install"
+    required: false
+    default: "main"
+  python-version:
+    description: "The version of Python to use"
+    required: false
+    default: "3.x"
+  setup-goss:
+    description: "Whether to install goss and dgoss tools"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "${{ inputs.python-version }}"
+
+    - name: Check Token
+      shell: bash
+      run: |
+        if [ -z "${GITHUB_TOKEN}" ]; then
+          echo "GITHUB_TOKEN environment variable is not set"
+          exit 1
+        fi
+
+    # Relies on the GITHUB_TOKEN environment variable
+    - name: Install Bakery
+      shell: bash
+      run: |
+        gh auth setup-git
+        pipx install "git+https://github.com/posit-dev/images-shared.git@${{ inputs.version }}#subdirectory=posit-bakery&egg=posit-bakery"

@@ -1,0 +1,174 @@
+#
+# Worklows can only be nested four levels deep.
+# This workflow will be called to build individual images so should be kept
+# as shallow as possible.
+
+name: Bakery
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "The version of the Posit Bakery tool to install"
+        default: "main"
+        required: false
+        type: string
+      context:
+        description: "The Bakery context to use (directory)"
+        default: "."
+        required: false
+        type: string
+      dev-versions:
+        description: "Dev version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
+      push:
+        description: "Whether to push images to registries [default: false]"
+        default: false
+        required: false
+        type: boolean
+      runs-on:
+        description: "The type of runner to use [default: ubuntu-latest]"
+        default: "ubuntu-latest"
+        required: false
+        type: string
+    secrets:
+      DOCKER_HUB_ACCESS_TOKEN:
+        description: "Docker Hub Access Token [required if pushing]"
+        required: false
+      # TODO: Remove secret requirements once repository is public
+      APP_ID:
+        description: "GitHub App ID with access to posit-dev repositories"
+        required: true
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key with access to posit-dev repositories"
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  matrix:
+    name: Image Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.images.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Install
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Images
+        id: images
+        run: |
+          echo "matrix=$(bakery --quiet ci matrix --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+
+      - name: Output
+        run: |
+          echo "Images: ${{ steps.images.outputs.matrix }}"
+
+  build:
+    name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
+    needs: matrix
+    runs-on: ${{ inputs.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        img: ${{ fromJson(needs.matrix.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Setup goss
+        uses: "posit-dev/images-shared/setup-goss@main"
+
+      - name: Setup just
+        uses: extractions/setup-just@v3
+
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          username: "posit"
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          bakery build --load \
+            --image-name ${{ matrix.img.image }} \
+            --image-version ${{ matrix.img.version }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --context ${{ inputs.context }}
+
+
+      - name: Test
+        run: |
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          bakery run dgoss \
+            --image-name ${{ matrix.img.image }} \
+            --image-version ${{ matrix.img.version }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --context ${{ inputs.context }}
+
+      - name: Push
+        # Since this is a reusable workflow, we need to be very explicit about
+        # when to push the images. We default to not pushing images, so the
+        # calling workflow must explicitly request pushing images.
+        if: ${{ inputs.push }}
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          bakery build --push \
+            --image-name ${{ matrix.img.image }} \
+            --image-version ${{ matrix.img.version }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --context ${{ inputs.context }}
