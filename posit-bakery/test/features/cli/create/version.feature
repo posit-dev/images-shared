@@ -16,6 +16,26 @@ Feature: create version
             | Successfully created version |
             | 'test-image/1.1.0' |
 
+    Scenario: Creating a new version with extra values
+        Given I call bakery create version
+        * in a temp basic context
+        * with the arguments:
+            | test-image |
+            | 1.1.0 |
+            | --value |
+            | extra_key=extra_value |
+        When I execute the command
+        Then The command succeeds
+        * the image "test-image" exists
+        * the version "1.1.0" exists
+        * the default rendered templates exist
+        * bakery.yaml contains:
+            | values: |
+            | extra_key: extra_value |
+        * the stderr output includes:
+            | Successfully created version |
+            | 'test-image/1.1.0' |
+
     Scenario: Creating a new version with a custom subpath
         Given I call bakery create version
         * in a temp basic context
