@@ -42,7 +42,7 @@ def __make_value_map(value: list[str] | None) -> dict[Any, Any]:
     value_map = dict()
     if value is not None:
         for v in value:
-            sp = v.split("=")
+            sp = v.split("=", 1)
             if len(sp) != 2:
                 stderr_console.print(f"❌ Expected key=value pair, got [bold]'{v}'", style="error")
                 raise typer.Exit(code=1)
