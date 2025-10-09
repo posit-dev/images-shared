@@ -1,4 +1,5 @@
 import logging
+import re
 import shutil
 from copy import deepcopy
 from pathlib import Path
@@ -375,6 +376,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     def create_version_files(
         version: ImageVersion,
         variants: list[ImageVariant] | None = None,
+        regex_filters: list[str] | None = None,
     ):
         """Render a new image version from the template.
 
@@ -408,6 +410,12 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         for root, dirs, files in version.parent.template_path.walk():
             for file in files:
                 tpl_rel_path = str((Path(root) / file).relative_to(version.parent.template_path))
+
+                for regex in regex_filters or []:
+                    if not re.match(regex, tpl_rel_path):
+                        log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
+                        continue
+
                 tpl = env.get_template(tpl_rel_path)
 
                 # Enable trim_blocks for Containerfile templates
