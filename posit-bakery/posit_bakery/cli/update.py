@@ -44,12 +44,12 @@ def files(
     try:
         c = BakeryConfig.from_context(context)
         c.regenerate_version_files(_filter, regex_filters=template_pattern)
-    except:
-        log.exception("Error patching version")
+    except Exception as e:
+        stderr_console.print(e, style="error")
         stderr_console.print(f"❌ Failed to render all files", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"✅ Files rendered", style="success")
+    stderr_console.print(f"✅ Files rendered successfully", style="success")
 
 
 @update_version.command()

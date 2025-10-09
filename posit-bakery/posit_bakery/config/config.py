@@ -26,6 +26,7 @@ from posit_bakery.error import (
     BakeryToolRuntimeErrorGroup,
     BakeryFileError,
     BakeryBuildErrorGroup,
+    BakeryTemplateErrorGroup,
 )
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
@@ -501,12 +502,20 @@ class BakeryConfig:
 
         return patched_version
 
-    def regenerate_version_files(self, _filter: BakeryConfigFilter, regex_filters: list[str]):
+    def regenerate_version_files(
+        self, _filter: BakeryConfigFilter | None = None, regex_filters: list[str] | None = None
+    ):
         """Regenerates version files from templates matching the given filters.
 
         :param _filter: A BakeryConfigFilter to apply when regenerating version files.
         :param regex_filters: A list of regex patterns to filter which templates to render.
+
+        :raises BakeryFileError: If any errors occur while regenerating version files.
         """
+        _filter = _filter or BakeryConfigFilter()
+        regex_filters = regex_filters or []
+        exception_list = []
+
         for image in self.model.images:
             if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
                 log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
@@ -519,11 +528,19 @@ class BakeryConfig:
                     )
                     continue
 
+                log.info(f"Rendering templates for image '{image.name}' version '{version.name}'")
                 try:
                     image.create_version_files(version, image.variants, regex_filters=regex_filters)
                 except Exception as e:
                     log.error(f"Failed to regenerate files for image '{image.name}' version '{version.name}'.")
-                    log.exception(e)
+                    exception_list.append(e)
+
+        if exception_list:
+            if len(exception_list) == 1:
+                raise exception_list[0]
+            raise BakeryTemplateErrorGroup(
+                "Multiple errors occurred while updating files from templates.", exception_list
+            )
 
     def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
         """Generates image targets from the images defined in the config.

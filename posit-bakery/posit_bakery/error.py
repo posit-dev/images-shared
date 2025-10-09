@@ -15,6 +15,19 @@ class BakeryTemplateError(BakeryError):
     pass
 
 
+class BakeryTemplateErrorGroup(ExceptionGroup):
+    """Group of template errors"""
+
+    def __str__(self) -> str:
+        s = f""
+        for e in self.exceptions:
+            s += f"{e}\n"
+        s += "\n"
+        s += f"{len(self.exceptions)} template(s) returned errors\n"
+
+        return s
+
+
 class BakeryFileError(BakeryError):
     """Generic error for file/directory issues"""
 
