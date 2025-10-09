@@ -1,4 +1,5 @@
 import enum
+import filecmp
 import os
 from pathlib import Path
 from typing import List, Tuple
@@ -66,3 +67,33 @@ def remove_images(obj: BakeryConfig | ImageTarget | None = None):
                 pass
     else:
         raise ValueError("Either config_obj or target must be provided.")
+
+
+def assert_directories_match(dir1, dir2):
+    """Assert that files between two directories match exactly."""
+    files1 = set(os.listdir(dir1))
+    files2 = set(os.listdir(dir2))
+
+    # Assert same files exist in both directories
+    only_in_dir1 = files1 - files2
+    only_in_dir2 = files2 - files1
+
+    assert not only_in_dir1, f"Files only in {dir1}: {only_in_dir1}"
+    assert not only_in_dir2, f"Files only in {dir2}: {only_in_dir2}"
+
+    common_files = files1 & files2
+
+    mismatching = []
+
+    for filename in common_files:
+        path1 = os.path.join(dir1, filename)
+        path2 = os.path.join(dir2, filename)
+
+        # Skip directories
+        if os.path.isdir(path1) or os.path.isdir(path2):
+            continue
+
+        if not filecmp.cmp(path1, path2, shallow=False):
+            mismatching.append(filename)
+
+    assert not mismatching, f"Files with different content: {mismatching}"

@@ -17,6 +17,7 @@ from test.helpers import (
     VERSION_INDENT,
     SUCCESS_SUITES,
     TEST_DIRECTORY,
+    assert_directories_match,
 )
 
 pytestmark = [
@@ -533,7 +534,6 @@ class TestBakeryConfig:
             rm -f /tmp/ubuntu2204_packages.txt && \\
             apt-get clean -yqq && \\
             rm -rf /var/lib/apt/lists/*
-
         """)
         assert (
             expected_min_containerfile == (context / "test-image" / "2.0" / "Containerfile.ubuntu2204.min").read_text()
@@ -627,7 +627,6 @@ class TestBakeryConfig:
             rm -f /tmp/ubuntu2204_packages.txt && \\
             apt-get clean -yqq && \\
             rm -rf /var/lib/apt/lists/*
-
         """)
         assert (
             expected_min_containerfile
@@ -880,7 +879,6 @@ class TestBakeryConfig:
             rm -f /tmp/ubuntu2204_packages.txt && \\
             apt-get clean -yqq && \\
             rm -rf /var/lib/apt/lists/*
-
         """)
         assert (
             expected_min_containerfile == (context / "test-image" / "1.0" / "Containerfile.ubuntu2204.min").read_text()
@@ -991,6 +989,79 @@ class TestBakeryConfig:
 
         with pytest.raises(ValueError, match=f"Version '2.0.0' already exists in image '{image.name}'"):
             config.patch_version(image.name, version.name, "2.0.0")
+
+    def test_regenerate_version_files_whole_version(self, get_context, get_tmpcontext):
+        """Test regenerating files for an existing version with no directory in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        shutil.rmtree(version.path)
+        assert not version.path.exists()
+
+        config.regenerate_version_files()
+
+        assert version.path.exists()
+        assert_directories_match(version.path, get_context("basic") / image.name / version.name)
+
+    def test_regenerate_version_files_altered_file(self, get_context, get_tmpcontext):
+        """Test regenerating files for an existing version with no directory in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        # Modify a file to ensure it gets overwritten
+        (version.path / "Containerfile.ubuntu2204.min").write_text("This is an altered file.")
+        assert "This is an altered file." in (version.path / "Containerfile.ubuntu2204.min").read_text()
+
+        config.regenerate_version_files()
+
+        assert version.path.exists()
+        assert_directories_match(version.path, get_context("basic") / image.name / version.name)
+
+    def test_regenerate_version_files_with_filter(self, get_tmpcontext):
+        """Test regenerating files for an existing version with no directory in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+
+        # Filter on a non-existent version. It won't cause an error, and it won't recreate the directory we changed.
+        _filter = BakeryConfigFilter(image_name="test-image", image_version="2.0.0")
+
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        shutil.rmtree(version.path)
+        assert not version.path.exists()
+
+        config.regenerate_version_files(_filter)
+
+        assert not version.path.exists()
+
+    def test_regenerate_version_files_with_regex(self, get_context, get_tmpcontext):
+        """Test regenerating files for an existing version with no directory in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        shutil.rmtree(version.path)
+        assert not version.path.exists()
+
+        config.regenerate_version_files(regex_filters=[r"deps"])
+
+        assert version.path.exists()
+        assert_directories_match(version.path / "deps", get_context("basic") / image.name / version.name / "deps")
 
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"

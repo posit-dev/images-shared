@@ -5,6 +5,7 @@ from pytest_bdd import then, parsers, scenarios
 from posit_bakery.config import BakeryConfig
 
 scenarios(
+    "cli/update/files.feature",
     "cli/update/version_patch.feature",
 )
 
