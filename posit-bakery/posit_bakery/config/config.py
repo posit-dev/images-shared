@@ -245,6 +245,7 @@ class BakerySettings(BaseModel):
     clean_temporary: Annotated[
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
+    cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
 
 
 class BakeryConfig:
@@ -500,16 +501,12 @@ class BakeryConfig:
 
         return patched_version
 
-    def generate_image_targets(self, settings: BakerySettings | None = None):
+    def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
         """Generates image targets from the images defined in the config.
 
         :param settings: Optional settings to apply when generating image targets. If None, all images will be included.
         """
-        # Create a filter if none is provided. All fields will set to None by default, this just makes it easier.
-        if settings is None:
-            settings = BakerySettings()
-
-        targets = []
+        targets: list[ImageTarget] = []
         for image in self.model.images:
             if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
                 log.debug(
@@ -566,8 +563,10 @@ class BakeryConfig:
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
-        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
-        return bake_plan.model_dump_json(indent=2, exclude_none=True)
+        bake_plan = BakePlan.from_image_targets(
+            context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
+        )
+        return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     def build_targets(
         self,
@@ -582,17 +581,26 @@ class BakeryConfig:
         :param load: If True, load the built images into the local Docker daemon.
         :param push: If True, push the built images to the configured registries.
         :param cache: If True, use the build cache when building images.
+        :param cache_from: Optional list of cache sources to use when building images.
+        :param cache_to: Optional list of cache destinations to use when building images.
         :param strategy: The strategy to use when building images.
         :param fail_fast: If True, stop building targets on the first failure.
         """
         if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
-            bake_plan.build(load=load, push=push, cache=cache, clean_bakefile=self.settings.clean_temporary)
+            bake_plan = BakePlan.from_image_targets(
+                context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
+            )
+            bake_plan.build(
+                load=load,
+                push=push,
+                cache=cache,
+                clean_bakefile=self.settings.clean_temporary,
+            )
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
                 try:
-                    target.build(load=load, push=push, cache=cache)
+                    target.build(load=load, push=push, cache=cache, cache_registry=self.settings.cache_registry)
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
                     if fail_fast:

@@ -51,6 +51,7 @@ def build(
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
     cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
+    cache_registry: Annotated[Optional[str], typer.Option(help="External cache sources")] = None,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
     """Builds images in the context path
@@ -71,6 +72,7 @@ def build(
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
+        cache_registry=cache_registry,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
@@ -87,7 +89,13 @@ def build(
         raise typer.Exit(code=0)
 
     try:
-        config.build_targets(load=load, push=push, cache=cache, strategy=strategy, fail_fast=fail_fast)
+        config.build_targets(
+            load=load,
+            push=push,
+            cache=cache,
+            strategy=strategy,
+            fail_fast=fail_fast,
+        )
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
