@@ -665,6 +665,159 @@ class TestBakeryConfig:
         assert (context / "test-image" / "1.0.1" / "test").is_dir()
         assert (context / "test-image" / "1.0.1" / "test" / "goss.yaml").is_file()
 
+    def test_patch_version_with_dependencies_macros(self, get_tmpcontext):
+        """Test patching an existing version in the BakeryConfig when the version has dependencies and macros."""
+        context = get_tmpcontext("with-macros")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        config.patch_version(image.name, version.name, "1.0.1")
+
+        # Check for the expected number of model images and versions.
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 1
+
+        # Check that directory structure has changed as expected.
+        assert (context / image.name / "1.0.1").is_dir()
+        assert not (context / image.name / "1.0.0").is_dir()
+        original_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.0
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+                dependencies:
+                  - dependency: R
+                    version: 4.5.1
+                  - dependency: python
+                    version: 3.13.7
+                  - dependency: quarto
+                    version: 1.8.24
+        """),
+            VERSION_INDENT,
+        )
+        assert original_yaml not in (context / "bakery.yaml").read_text()
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.1
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+                dependencies:
+                  - dependency: R
+                    version: 4.5.1
+                  - dependency: python
+                    version: 3.13.7
+                  - dependency: quarto
+                    version: 1.8.24
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+
+        # Check that the files have been rendered correctly.
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").is_file()
+        expected_min_containerfile = textwrap.dedent("""\
+            FROM docker.io/library/ubuntu:22.04
+            LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+            ### ARG declarations ###
+            ARG DEBIAN_FRONTEND=noninteractive
+            ARG IMAGE_VERSION="1.0.1"
+
+            ### Install Apt Packages ###
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+        """)
+        assert (
+            expected_min_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").is_file()
+        expected_std_containerfile = textwrap.dedent("""\
+            # Build Python using uv in a separate stage
+            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
+            ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+            ENV UV_PYTHON_INSTALL_DIR=/opt/python
+            ENV UV_PYTHON_PREFERENCE=only-managed
+            RUN uv python install 3.13.7
+
+            FROM docker.io/library/ubuntu:22.04
+            LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+            ### ARG declarations ###
+            ARG DEBIAN_FRONTEND=noninteractive
+            ARG IMAGE_VERSION="1.0.1"
+
+            ### Install Apt Packages ###
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_optional_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            # Install Python from previous stage
+            COPY --from=python-builder /opt/python /opt/python
+
+            # Install R
+            RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                find . -type f -name '[rR]-4.5.1.*\.(deb|rpm)' -delete
+
+            # Install Quarto
+            RUN mkdir -p /opt/quarto/1.8.24 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+        """)
+        assert (
+            expected_std_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "deps").is_dir()
+        assert (context / "test-image" / "1.0.1" / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (context / "test-image" / "1.0.1" / "test").is_dir()
+        assert (context / "test-image" / "1.0.1" / "test" / "goss.yaml").is_file()
+
     def test_patch_version_subpath(self, get_tmpcontext):
         context = get_tmpcontext("basic")
         config = BakeryConfig.from_context(context)
