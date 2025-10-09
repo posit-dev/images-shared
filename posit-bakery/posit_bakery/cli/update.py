@@ -28,13 +28,13 @@ def files(
         typer.Option(help="A glob pattern to filter which templates to render. Uses regex syntax."),
     ] = None,
 ) -> None:
-    """Rerenders versions from templates matching the given filters.
+    """Rerenders version files from templates matching the given filters.
 
     This command will rerender each matching image version's files from the templates in the image's template
     directory. Existing configuration details for the version such as dependencies, variants, and the latest flag
     are used and remain unmodified.
 
-    If clean is true, the existing version files will be removed prior to rendering.
+    Existing files will not be removed, but may be overwritten during template rendering.
     """
     _filter = BakeryConfigFilter(
         image_name=image_name,
