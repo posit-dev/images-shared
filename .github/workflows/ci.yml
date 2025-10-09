@@ -88,11 +88,12 @@ jobs:
       contents: read
       packages: read
 
-    uses: "posit-dev/images-shared/.github/workflows/bakery-build.yml@main"
+    uses: "./.github/workflows/bakery-build.yml"
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
+      version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
       dev-versions: include
 
