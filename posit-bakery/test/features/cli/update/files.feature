@@ -16,4 +16,4 @@ Feature: update files
       * the version "1.0.0" exists
       * the default rendered templates exist
       * the stderr output includes:
-          | Files rendered successfully |
+          | Files updated successfully |

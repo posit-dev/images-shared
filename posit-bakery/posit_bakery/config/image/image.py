@@ -18,6 +18,7 @@ from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
 from posit_bakery.config.tools import ToolField, ToolOptions
+from ...error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 
 log = logging.getLogger(__name__)
 
@@ -338,7 +339,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         :param variant: The ImageVariant object.
         :param version_os: The ImageVersionOS object, if applicable.
         :param version_path: The subpath to the version directory, if different from the default.
-        :param extra_values: Additional key-value pairs to include in the template values.
 
         :return: A dictionary of values to use for rendering version templates.
         """
@@ -382,11 +382,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         :param version: The ImageVersion object to render.
         :param variants: Optional list of ImageVariant objects to render Containerfiles for each variant.
-        :param extra_values: Optional list of additional key-value pairs to include in the template values
+        :param regex_filters: Optional list of regex patterns to filter which templates to render.
+
+        :raises BakeryFileError: If the template path does not exist.
+        :raises BakeryRenderError: If a template fails to render.
+        :raises BakeryRenderErrorGroup: If multiple templates fail to render.
         """
         # Check that template path exists
         if not version.parent.template_path.is_dir():
-            raise ValueError(f"Image template path does not exist: {version.parent.template_path}")
+            raise BakeryFileError(
+                f"Image '{version.parent.name}' template path does not exist", version.parent.template_path
+            )
 
         # Create new version directory
         if not version.path.is_dir():
@@ -405,18 +411,33 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             keep_trailing_newline=True,
         )
 
+        exceptions = []
+
         # Render templates to version directory
         # This is using walk instead of list_templates to ensure that the macro files are not rendered into the version.
         for root, dirs, files in version.parent.template_path.walk():
             for file in files:
-                tpl_rel_path = str((Path(root) / file).relative_to(version.parent.template_path))
+                tpl_full_path = (Path(root) / file).resolve()
+                tpl_rel_path = str(tpl_full_path.relative_to(version.parent.template_path))
 
                 for regex in regex_filters or []:
                     if not re.match(regex, tpl_rel_path):
                         log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
                         continue
-
-                tpl = env.get_template(tpl_rel_path)
+                try:
+                    tpl = env.get_template(tpl_rel_path)
+                except jinja2.TemplateError as e:
+                    log.error(f"Failed to load template [bold]{tpl_rel_path}[/] for image '{version.parent.name}'")
+                    exceptions.append(
+                        BakeryRenderError(
+                            cause=e,
+                            context=version.parent.parent.path,
+                            image=version.parent.name,
+                            version=version.name,
+                            template=Path(tpl_full_path),
+                        )
+                    )
+                    continue
 
                 # Enable trim_blocks for Containerfile templates
                 render_kwargs = {}
@@ -440,23 +461,63 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                             version, variant, containerfile_os, version.path
                         )
                         containerfile: Path = version.path / f"{containerfile_base_name}.{variant.extension}"
-                        rendered = tpl.render(**template_values, **render_kwargs)
+                        try:
+                            rendered = tpl.render(**template_values, **render_kwargs)
+                        except (jinja2.TemplateError, BakeryTemplateError) as e:
+                            log.error(
+                                f"Failed to render template [bold]{tpl_rel_path}[/] for image '{version.parent.name}' "
+                                f"version '{version.name}' variant '{variant.name}'"
+                            )
+                            exceptions.append(
+                                BakeryRenderError(
+                                    cause=e,
+                                    context=version.parent.parent.path,
+                                    image=version.parent.name,
+                                    version=version.name,
+                                    variant=variant.name,
+                                    template=Path(tpl_full_path),
+                                    destination=Path(containerfile),
+                                )
+                            )
+                            continue
                         with open(containerfile, "w") as f:
-                            log.debug(f"Rendering [bold]{containerfile}")
+                            log.debug(f"[bright_black]Rendering [bold]{containerfile}")
                             f.write(rendered)
 
                 # Render other templates once
                 else:
-                    template_values = version.parent.generate_version_template_values(
-                        version, version_path=version.path
-                    )
-                    rendered = tpl.render(**template_values, **render_kwargs)
                     rel_path = tpl_rel_path.removesuffix(".jinja2")
                     output_file = version.path / rel_path
                     output_file.parent.mkdir(parents=True, exist_ok=True)
+                    template_values = version.parent.generate_version_template_values(
+                        version, version_path=version.path
+                    )
+                    try:
+                        rendered = tpl.render(**template_values, **render_kwargs)
+                    except (jinja2.TemplateError, BakeryTemplateError) as e:
+                        log.error(
+                            f"Failed to render template [bold]{tpl_rel_path}[/] for image '{version.parent.name}' "
+                            f"version '{version.name}'"
+                        )
+                        exceptions.append(
+                            BakeryRenderError(
+                                cause=e,
+                                context=version.parent.parent.path,
+                                image=version.parent.name,
+                                version=version.name,
+                                template=Path(tpl_rel_path),
+                                destination=output_file,
+                            )
+                        )
+                        continue
                     with open(output_file, "w") as f:
                         log.debug(f"[bright_black]Rendering [bold]{output_file}")
                         f.write(rendered)
+
+        if exceptions:
+            if len(exceptions) == 1:
+                raise exceptions[0]
+            raise BakeryRenderErrorGroup("One or more template rendering errors occurred", exceptions)
 
     def create_version_model(
         self,
