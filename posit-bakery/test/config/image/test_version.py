@@ -22,8 +22,8 @@ class TestImageVersion:
     def test_name_only(self):
         """Test creating an ImageVersion object with only the name does not raise an exception.
 
-        Test that the default values for subpath, latest, registries, ephemeral, isDevelopmentVersion, and os are set
-        correctly.
+        Test that the default values for subpath, latest, registries, ephemeral, isDevelopmentVersion, os, and values
+        are set correctly.
         """
         i = ImageVersion(name="1.0.0")
 
@@ -34,6 +34,7 @@ class TestImageVersion:
         assert not i.ephemeral
         assert not i.isDevelopmentVersion
         assert len(i.os) == 0
+        assert i.values == {}
 
     def test_valid(self):
         """Test creating a valid ImageVersion object with all fields.
@@ -226,3 +227,13 @@ class TestImageVersion:
         assert len(i.all_registries) == 2
         for registry in override_registries:
             assert registry in i.all_registries
+
+    def test_values_field(self):
+        """Test that the values field accepts arbitrary key-value pairs."""
+        i = ImageVersion(
+            name="1.0.0",
+            values={"key1": "value1", "key2": "value2", "custom_var": "custom_value"},
+        )
+
+        assert i.values == {"key1": "value1", "key2": "value2", "custom_var": "custom_value"}
+        assert len(i.values) == 3

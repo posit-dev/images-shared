@@ -17,6 +17,13 @@ def check_bakery_file(bakery_command):
     assert config_file.is_file()
 
 
+@then("bakery.yaml contains:")
+def check_bakery_contains(bakery_command, datatable):
+    config_file = bakery_command.context / "bakery.yaml"
+    for row in datatable:
+        assert row[0] in config_file.read_text().strip()
+
+
 @then(parsers.parse('the image "{image_name}" exists'), target_fixture="cli_test_image_name")
 @then(parsers.parse('the image "{image_name}" exists in the "{subpath}" subpath'), target_fixture="cli_test_image_name")
 def check_image(cli_test_tmpcontext, image_name, subpath=None) -> str:

@@ -439,7 +439,7 @@ class BakeryConfig:
 
         # Create the version in the image model.
         new_version = image.create_version_model(
-            version_name=version, subpath=subpath, latest=latest, update_if_exists=force
+            version_name=version, subpath=subpath, values=values, latest=latest, update_if_exists=force
         )
 
         # Add version to the YAML config.
@@ -462,7 +462,7 @@ class BakeryConfig:
         self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v["name"], reverse=True)
 
         # Create the version directory and files.
-        image.create_version_files(new_version, image.variants, values)
+        image.create_version_files(new_version, image.variants)
 
         self.write()
 
