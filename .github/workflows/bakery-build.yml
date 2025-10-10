@@ -143,7 +143,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           bakery build --load \
-            --image-name ${{ matrix.img.image }} \
+            --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --context ${{ inputs.context }}
@@ -154,7 +154,7 @@ jobs:
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery run dgoss \
-            --image-name ${{ matrix.img.image }} \
+            --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --context ${{ inputs.context }}
@@ -168,7 +168,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           bakery build --push \
-            --image-name ${{ matrix.img.image }} \
+            --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --context ${{ inputs.context }}
