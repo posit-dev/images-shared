@@ -466,6 +466,40 @@ class BakeryConfig:
 
         self.write()
 
+    def patch_version(
+        self,
+        image_name: str,
+        old_version: str,
+        new_version: str,
+        values: dict[str, str] | None = None,
+        clean: bool = True,
+    ) -> "ImageVersion":
+        """Patches an existing image version with a new version and regenerates templates."""
+        image = self.model.get_image(image_name)
+
+        if image is None:
+            raise ValueError(f"Image '{image_name}' does not exist in the config.")
+
+        image_index = self._get_image_index(image_name)
+        # These checks should never fail, but we include them for safety since otherwise the last element will rewrite.
+        if image_index == -1:
+            raise ValueError(f"Image '{image_name}' does not exist in bakery.yaml.")
+
+        version_index = self._get_version_index(image_name, old_version)
+        # These checks should never fail, but we include them for safety since otherwise the last element will rewrite.
+        if version_index == -1:
+            raise ValueError(f"Version '{old_version}' does not exist for image '{image_name}' in bakery.yaml.")
+
+        patched_version = image.patch_version(old_version, new_version, values=values, clean=clean)
+
+        self._config_yaml["images"][image_index]["versions"][version_index] = patched_version.model_dump(
+            exclude_defaults=True, exclude_none=True, exclude_unset=True
+        )
+
+        self.write()
+
+        return patched_version
+
     def generate_image_targets(self, settings: BakerySettings | None = None):
         """Generates image targets from the images defined in the config.
 

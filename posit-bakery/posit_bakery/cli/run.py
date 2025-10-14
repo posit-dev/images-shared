@@ -23,8 +23,8 @@ def dgoss(
     ] = auto_path(),
     image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate goss testing to.")] = None,
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
-    image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
-    image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate plan rendering to.")] = None,
+    image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
+    image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(help="Include or exclude development versions defined in config."),

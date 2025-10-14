@@ -1,4 +1,5 @@
 import os
+import shutil
 import textwrap
 from pathlib import Path
 from unittest.mock import patch, call
@@ -567,6 +568,429 @@ class TestBakeryConfig:
         assert (context / "test-image" / "2.0" / "deps" / "ubuntu2204_packages.txt").is_file()
         assert (context / "test-image" / "2.0" / "test").is_dir()
         assert (context / "test-image" / "2.0" / "test" / "goss.yaml").is_file()
+
+    def test_patch_version(self, get_tmpcontext):
+        """Test patching an existing version in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        config.patch_version(image.name, version.name, "1.0.1")
+
+        # Check for the expected number of model images and versions.
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 1
+
+        # Check that directory structure has changed as expected.
+        assert (context / image.name / "1.0.1").is_dir()
+        assert not (context / image.name / "1.0.0").is_dir()
+        original_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.0
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert original_yaml not in (context / "bakery.yaml").read_text()
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.1
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+
+        # Check that the files have been rendered correctly.
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").is_file()
+        expected_min_containerfile = textwrap.dedent("""\
+        FROM docker.io/library/ubuntu:22.04
+        LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+        ### ARG declarations ###
+        ARG DEBIAN_FRONTEND=noninteractive
+        ARG IMAGE_VERSION="1.0.1"
+
+        ### Install Apt Packages ###
+        COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+
+        """)
+        assert (
+            expected_min_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").is_file()
+        expected_std_containerfile = textwrap.dedent("""\
+        FROM docker.io/library/ubuntu:22.04
+        LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+        ### ARG declarations ###
+        ARG DEBIAN_FRONTEND=noninteractive
+        ARG IMAGE_VERSION="1.0.1"
+
+        ### Install Apt Packages ###
+        COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+        COPY test-image/1.0.1/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_optional_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_optional_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+        """)
+        assert (
+            expected_std_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "deps").is_dir()
+        assert (context / "test-image" / "1.0.1" / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (context / "test-image" / "1.0.1" / "test").is_dir()
+        assert (context / "test-image" / "1.0.1" / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_with_dependencies_macros(self, get_tmpcontext):
+        """Test patching an existing version in the BakeryConfig when the version has dependencies and macros."""
+        context = get_tmpcontext("with-macros")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        config.patch_version(image.name, version.name, "1.0.1")
+
+        # Check for the expected number of model images and versions.
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 1
+
+        # Check that directory structure has changed as expected.
+        assert (context / image.name / "1.0.1").is_dir()
+        assert not (context / image.name / "1.0.0").is_dir()
+        original_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.0
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+                dependencies:
+                  - dependency: R
+                    version: 4.5.1
+                  - dependency: python
+                    version: 3.13.7
+                  - dependency: quarto
+                    version: 1.8.24
+        """),
+            VERSION_INDENT,
+        )
+        assert original_yaml not in (context / "bakery.yaml").read_text()
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.1
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+                dependencies:
+                  - dependency: R
+                    version: 4.5.1
+                  - dependency: python
+                    version: 3.13.7
+                  - dependency: quarto
+                    version: 1.8.24
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+
+        # Check that the files have been rendered correctly.
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").is_file()
+        expected_min_containerfile = textwrap.dedent("""\
+            FROM docker.io/library/ubuntu:22.04
+            LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+            ### ARG declarations ###
+            ARG DEBIAN_FRONTEND=noninteractive
+            ARG IMAGE_VERSION="1.0.1"
+
+            ### Install Apt Packages ###
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+        """)
+        assert (
+            expected_min_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.min").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").is_file()
+        expected_std_containerfile = textwrap.dedent("""\
+            # Build Python using uv in a separate stage
+            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
+            ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+            ENV UV_PYTHON_INSTALL_DIR=/opt/python
+            ENV UV_PYTHON_PREFERENCE=only-managed
+            RUN uv python install 3.13.7
+
+            FROM docker.io/library/ubuntu:22.04
+            LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+            ### ARG declarations ###
+            ARG DEBIAN_FRONTEND=noninteractive
+            ARG IMAGE_VERSION="1.0.1"
+
+            ### Install Apt Packages ###
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            COPY test-image/1.0.1/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+            RUN apt-get update -yqq && \\
+                xargs -a /tmp/ubuntu2204_optional_packages.txt apt-get install -yqq --no-install-recommends && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+
+            # Install Python from previous stage
+            COPY --from=python-builder /opt/python /opt/python
+
+            # Install R
+            RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
+                find . -type f -name '[rR]-4.5.1.*\.(deb|rpm)' -delete
+
+            # Install Quarto
+            RUN mkdir -p /opt/quarto/1.8.24 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+        """)
+        assert (
+            expected_std_containerfile
+            == (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").read_text()
+        )
+        assert (context / "test-image" / "1.0.1" / "deps").is_dir()
+        assert (context / "test-image" / "1.0.1" / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (context / "test-image" / "1.0.1" / "test").is_dir()
+        assert (context / "test-image" / "1.0.1" / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_subpath(self, get_tmpcontext):
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+
+        old_path = version.path
+        config.model.images[0].versions[0].subpath = "1.0"
+        shutil.move(old_path, config.model.images[0].versions[0].path)
+
+        config.patch_version(image.name, version.name, "1.0.1")
+
+        # Check for the expected number of model images and versions.
+        assert len(config.model.images) == 1
+        assert len(image.versions) == 1
+
+        # Check that directory structure has changed as expected.
+        assert (context / image.name / "1.0").is_dir()
+        original_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.0
+                subpath: 1.0
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert original_yaml not in (context / "bakery.yaml").read_text()
+        expected_yaml = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.1
+                subpath: '1.0'
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+
+        # Check that the files have been rendered correctly.
+        assert (context / "test-image" / "1.0" / "Containerfile.ubuntu2204.min").is_file()
+        expected_min_containerfile = textwrap.dedent("""\
+        FROM docker.io/library/ubuntu:22.04
+        LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+        ### ARG declarations ###
+        ARG DEBIAN_FRONTEND=noninteractive
+        ARG IMAGE_VERSION="1.0.1"
+
+        ### Install Apt Packages ###
+        COPY test-image/1.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+
+        """)
+        assert (
+            expected_min_containerfile == (context / "test-image" / "1.0" / "Containerfile.ubuntu2204.min").read_text()
+        )
+        assert (context / "test-image" / "1.0" / "Containerfile.ubuntu2204.std").is_file()
+        expected_std_containerfile = textwrap.dedent("""\
+        FROM docker.io/library/ubuntu:22.04
+        LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+        ### ARG declarations ###
+        ARG DEBIAN_FRONTEND=noninteractive
+        ARG IMAGE_VERSION="1.0.1"
+
+        ### Install Apt Packages ###
+        COPY test-image/1.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+        COPY test-image/1.0/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
+        RUN apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends $(cat /tmp/ubuntu2204_optional_packages.txt) && \\
+            rm -f /tmp/ubuntu2204_optional_packages.txt && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+        """)
+        assert (
+            expected_std_containerfile == (context / "test-image" / "1.0" / "Containerfile.ubuntu2204.std").read_text()
+        )
+        assert (context / "test-image" / "1.0" / "deps").is_dir()
+        assert (context / "test-image" / "1.0" / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (context / "test-image" / "1.0" / "test").is_dir()
+        assert (context / "test-image" / "1.0" / "test" / "goss.yaml").is_file()
+
+    def test_patch_version_clean(self, get_tmpcontext):
+        """Test patching an existing version with clean calls shutil.rmtree on the old version path."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+        original_path = version.path
+
+        with patch("shutil.rmtree") as mock_rmtree:
+            config.patch_version(image.name, version.name, "1.0.1", clean=True)
+            mock_rmtree.assert_called_once_with(original_path)
+
+    def test_patch_version_clean_subpath(self, get_tmpcontext):
+        """Test patching an existing version with clean calls shutil.rmtree on the old version path."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+        original_path = version.path
+
+        old_path = version.path
+        config.model.images[0].versions[0].subpath = "1.0"
+        shutil.move(old_path, config.model.images[0].versions[0].path)
+
+        with patch("shutil.rmtree") as mock_rmtree:
+            config.patch_version(image.name, version.name, "1.0.1", clean=True)
+            mock_rmtree.assert_called_once_with(config.model.images[0].versions[0].path)
+
+    def test_patch_version_no_clean(self, get_tmpcontext):
+        """Test patching an existing version without clean calls shutil.move on the old version path."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert len(image.versions) == 1
+        version = image.versions[0]
+        original_path = version.path
+
+        with patch("shutil.move") as mock_move:
+            patched_version = config.patch_version(image.name, version.name, "1.0.1", clean=False)
+            mock_move.assert_called_once_with(original_path, patched_version.path)
+
+    def test_patch_version_image_does_not_exist(self, get_tmpcontext):
+        """Test patching a version for a non-existent image in the BakeryConfig generates an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+
+        with pytest.raises(ValueError, match="Image 'non-existent-image' does not exist in the config"):
+            config.patch_version("non-existent-image", "1.0.0", "1.0.1")
+
+    def test_patch_version_does_not_exist(self, get_tmpcontext):
+        """Test patching a non-existent version in the BakeryConfig generates an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+
+        with pytest.raises(
+            ValueError, match=f"Version '9.9.9' does not exist for image '{config.model.images[0].name}'"
+        ):
+            config.patch_version(config.model.images[0].name, "9.9.9", "10.0.0")
+
+    def test_patch_version_new_version_already_exists(self, get_tmpcontext):
+        """Test patching a version to a new version that already exists in the BakeryConfig generates an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        image = config.model.images[0]
+        version = image.versions[0]
+
+        config.create_version(image.name, "2.0.0")
+
+        with pytest.raises(ValueError, match=f"Version '2.0.0' already exists in image '{image.name}'"):
+            config.patch_version(image.name, version.name, "2.0.0")
 
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"

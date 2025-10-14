@@ -528,6 +528,68 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return image_version
 
+    def patch_version(
+        self,
+        old_version_name: str,
+        new_version_name: str,
+        values: dict[str, str] = None,
+        clean: bool = True,
+    ) -> ImageVersion:
+        """Patches an existing image version with a new version name.
+
+        :param old_version_name: The existing version name to be patched.
+        :param new_version_name: The new version name to replace the old version with.
+        :param values: Optional dictionary of additional key-value pairs to include or update in the template values.
+        :param clean: If True, removes all existing version files before rendering the new version files
+
+        :return: The patched ImageVersion object.
+        """
+        # Check if the old version exists
+        image_version = self.get_version(old_version_name)
+        if image_version is None:
+            raise ValueError(
+                f"Version '{old_version_name}' does not exist for image '{self.name}'. Use the `bakery create version` "
+                f"command instead."
+            )
+
+        # Check if the new version already exists
+        if self.get_version(new_version_name) is not None:
+            raise ValueError(f"Version '{new_version_name}' already exists in image '{self.name}'.")
+
+        original_version_data = image_version.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+        original_path = image_version.path
+
+        # Patch the version name
+        original_version_data["name"] = new_version_name
+
+        # Patch the version values if provided
+        if values is not None:
+            original_version_data.setdefault("values", {}).update(values)
+
+        # Recreate the ImageVersion object to ensure all properties are updated correctly.
+        patched_image_version = ImageVersion(**original_version_data)
+        patched_image_version.parent = self
+        self.versions.append(patched_image_version)
+
+        # Pop the old version from the versions list for this image.
+        self.versions.remove(image_version)
+
+        # Fix or remove paths based on the clean and subpath settings.
+        if patched_image_version.path != image_version.path:
+            if clean:
+                log.debug(f"Removing existing version files for '{old_version_name}' at [bold]{original_path}")
+                shutil.rmtree(image_version.path)
+            else:
+                shutil.move(image_version.path, patched_image_version.path)
+        elif clean:
+            log.debug(f"Removing existing version files for '{old_version_name}' at [bold]{image_version.path}")
+            shutil.rmtree(image_version.path)
+
+        # Render the version files.
+        self.create_version_files(patched_image_version, self.variants)
+
+        return patched_image_version
+
     def load_dev_versions(self):
         """Load the development versions for this image."""
         for dev_version in self.devVersions:
