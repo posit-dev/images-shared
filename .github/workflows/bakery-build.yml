@@ -81,10 +81,6 @@ jobs:
         run: |
           echo "matrix=$(bakery --quiet ci matrix --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
-      - name: Output
-        run: |
-          echo "Images: ${{ steps.images.outputs.matrix }}"
-
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
     needs: matrix
@@ -131,7 +127,6 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        if: ${{ inputs.push }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -141,13 +136,14 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
+        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           bakery build --load \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --context ${{ inputs.context }}
-
 
       - name: Test
         run: |

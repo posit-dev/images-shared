@@ -12,7 +12,7 @@ from pydantic import BaseModel, computed_field, ConfigDict, Field
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
-from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 
 log = logging.getLogger(__name__)
@@ -249,6 +249,21 @@ class ImageTarget(BaseModel):
 
         return labels
 
+    def cache_name(self, cache_registry: str | None = None) -> str | None:
+        """Generate the image name and tag to use for a build cache."""
+        if not cache_registry:
+            return None
+
+        tag = re.sub(r"[+-].*", "", self.image_version.name)
+        tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag).strip("-._")
+        if self.image_os:
+            tag += f"-{self.image_os.tagDisplayName}"
+        if self.image_variant:
+            tag += f"-{self.image_variant.tagDisplayName}"
+        cache_name = f"{cache_registry}/{self.image_name}/cache:{tag}"
+
+        return cache_name
+
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
         for tag in self.tags:
@@ -256,7 +271,9 @@ class ImageTarget(BaseModel):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
-    def build(self, load: bool = True, push: bool = False, cache: bool = True) -> python_on_whales.Image | None:
+    def build(
+        self, load: bool = True, push: bool = False, cache: bool = True, cache_registry: str | None = None
+    ) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
         if not (self.context.base_path / self.containerfile).is_file():
             raise BakeryFileError(
@@ -264,6 +281,13 @@ class ImageTarget(BaseModel):
                 f"{str(self.context.base_path / self.containerfile)}",
                 filepath=self.containerfile,
             )
+
+        cache_from = None
+        cache_to = None
+        if cache_registry:
+            cache_name = self.cache_name(cache_registry=cache_registry)
+            cache_from = f"type=registry,ref={cache_name}"
+            cache_to = f"{cache_from},mode=max"
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
@@ -278,6 +302,8 @@ class ImageTarget(BaseModel):
                     load=load,
                     push=push,
                     cache=cache,
+                    cache_from=cache_from,
+                    cache_to=cache_to,
                     platforms=["linux/amd64"],
                 )
             except python_on_whales.exceptions.DockerException as e:

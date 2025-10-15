@@ -347,6 +347,8 @@ class TestImageTarget:
             "load": True,
             "push": False,
             "cache": True,
+            "cache_from": None,
+            "cache_to": None,
             "platforms": ["linux/amd64"],
         }
 

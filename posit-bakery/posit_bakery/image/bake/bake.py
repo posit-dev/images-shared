@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Annotated
 
@@ -46,6 +47,24 @@ class BakeTarget(BaseModel):
     dockerfile: Annotated[Path | str, Field(description="Path to the Containerfile relative to the context.")]
     labels: Annotated[dict[str, str], Field(description="Labels to apply to the image.")]
     tags: Annotated[list[str], Field(description="Tags to apply to the image.")]
+    cache_from: Annotated[
+        list | None,
+        Field(
+            default_factory=list,
+            description="Cache sources for the image build.",
+            exclude_if=lambda v: len(v) == 0,
+            serialization_alias="cache-from",
+        ),
+    ]
+    cache_to: Annotated[
+        list,
+        Field(
+            default_factory=list,
+            description="Cache destinations for the image build.",
+            exclude_if=lambda v: len(v) == 0,
+            serialization_alias="cache-to",
+        ),
+    ]
 
     @field_serializer("dockerfile", "context", when_used="json")
     @staticmethod
@@ -59,8 +78,15 @@ class BakeTarget(BaseModel):
         return str(value)
 
     @classmethod
-    def from_image_target(cls, image_target: ImageTarget) -> "BakeTarget":
+    def from_image_target(cls, image_target: ImageTarget, cache_registry: str | None = None) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
+        cache_from = []
+        cache_to = []
+        if cache_registry:
+            cache_name = image_target.cache_name(cache_registry=cache_registry)
+            cache_from = [{"type": "registry", "ref": cache_name}]
+            cache_to = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+
         return cls(
             image_name=image_target.image_name,
             image_version=image_target.image_version.name,
@@ -69,6 +95,8 @@ class BakeTarget(BaseModel):
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
             tags=image_target.tags,
+            cache_from=cache_from,
+            cache_to=cache_to,
         )
 
 
@@ -111,7 +139,9 @@ class BakePlan(BaseModel):
         return groups
 
     @classmethod
-    def from_image_targets(cls, context: Path, image_targets: list[ImageTarget]) -> "BakePlan":
+    def from_image_targets(
+        cls, context: Path, image_targets: list[ImageTarget], cache_registry: str | None = None
+    ) -> "BakePlan":
         """Create a BakePlan from a list of ImageTarget objects.
 
         :param context: The absolute path to the build context directory.
@@ -125,7 +155,7 @@ class BakePlan(BaseModel):
         targets: dict[str, BakeTarget] = {}
 
         for image_target in image_targets:
-            bake_target = BakeTarget.from_image_target(image_target)
+            bake_target = BakeTarget.from_image_target(image_target=image_target, cache_registry=cache_registry)
             groups = cls.update_groups(
                 groups=groups,
                 uid=image_target.uid,
@@ -140,25 +170,36 @@ class BakePlan(BaseModel):
     def write(self):
         """Write the bake plan to a file in the context directory."""
         with open(self.bake_file, "w") as f:
-            f.write(self.model_dump_json(indent=2, exclude_none=True))
+            f.write(self.model_dump_json(indent=2, exclude_none=True, by_alias=True))
 
     def remove(self):
         """Delete the bake plan file if it exists."""
         self.bake_file.unlink(missing_ok=True)
 
-    def build(self, load: bool = True, push: bool = False, cache: bool = True, clean_bakefile: bool = True):
+    def build(
+        self,
+        load: bool = True,
+        push: bool = False,
+        cache: bool = True,
+        cache_from: str | None = None,
+        cache_to: str | None = None,
+        clean_bakefile: bool = True,
+    ):
         """Run the bake plan to build all targets."""
         original_cwd = os.getcwd()
         os.chdir(self.context)
 
         self.write()
-        python_on_whales.docker.buildx.bake(
-            files=[self.bake_file.name],
-            load=load,
-            push=push,
-            cache=cache,
-            set={"*.platform": "linux/amd64"},
-        )
+
+        _set = {
+            "*.platform": "linux/amd64",
+        }
+        if cache_from:
+            _set["*.cache-from"] = cache_from
+        if cache_to:
+            _set["*.cache-to"] = cache_to
+
+        python_on_whales.docker.buildx.bake(files=[self.bake_file.name], load=load, push=push, cache=cache, set=_set)
         if clean_bakefile:
             self.remove()
 
