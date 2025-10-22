@@ -1039,3 +1039,131 @@ class TestBakeryConfig:
         )
         config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 2
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_remove_image(self, suite, get_tmpcontext):
+        """Test removing an image from the BakeryConfig."""
+        context = get_tmpcontext(suite)
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image_name = config.model.images[0].name
+        image_path = context / image_name
+
+        # Verify the image exists
+        assert image_path.is_dir()
+        assert config.model.get_image(image_name) is not None
+
+        # Remove the image
+        config.remove_image(image_name)
+
+        # Verify the image has been removed
+        assert len(config.model.images) == 0
+        assert not image_path.is_dir()
+        assert config.model.get_image(image_name) is None
+
+        # Verify the config file has been updated
+        yaml_content = (context / "bakery.yaml").read_text()
+        assert f"- name: {image_name}" not in yaml_content
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_remove_image_with_subpath(self, suite, get_tmpcontext):
+        """Test removing an image with a custom subpath from the BakeryConfig."""
+        context = get_tmpcontext(suite)
+        config = BakeryConfig.from_context(context)
+
+        # Create a new image with a subpath
+        config.create_image("new-image", subpath="custom/path")
+        assert len(config.model.images) == 2
+        image_path = context / "custom" / "path"
+        assert image_path.is_dir()
+
+        # Remove the image
+        config.remove_image("new-image")
+
+        # Verify the image has been removed
+        assert len(config.model.images) == 1
+        assert not image_path.is_dir()
+        assert config.model.get_image("new-image") is None
+
+        # Verify the config file has been updated
+        yaml_content = (context / "bakery.yaml").read_text()
+        assert "- name: new-image" not in yaml_content
+
+    def test_remove_image_does_not_exist(self, get_tmpcontext):
+        """Test removing a non-existent image raises an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+
+        with pytest.raises(ValueError, match="Image 'non-existent' does not exist in the config"):
+            config.remove_image("non-existent")
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_remove_version(self, suite, get_tmpcontext):
+        """Test removing a version from an image in the BakeryConfig."""
+        context = get_tmpcontext(suite)
+        config = BakeryConfig.from_context(context)
+        image = config.model.images[0]
+        version = image.versions[0]
+
+        # Create a second version so the image isn't left without versions
+        config.create_version(image.name, "2.0.0")
+        assert len(image.versions) == 2
+
+        # Remove the first version
+        config.remove_version(image.name, version.name)
+
+        # Verify the version has been removed
+        assert len(image.versions) == 1
+        assert image.get_version(version.name) is None
+        version_path = context / image.name / version.name
+        assert not version_path.is_dir()
+
+        # Verify the config file has been updated
+        yaml_content = (context / "bakery.yaml").read_text()
+        # The version name might still appear in the remaining version, so we check more specifically
+        config_reloaded = BakeryConfig.from_context(context)
+        reloaded_image = config_reloaded.model.get_image(image.name)
+        assert reloaded_image.get_version(version.name) is None
+        assert reloaded_image.get_version("2.0.0") is not None
+
+    def test_remove_version_with_subpath(self, get_tmpcontext):
+        """Test removing a version with a custom subpath from an image in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        image = config.model.images[0]
+
+        # Create a version with a subpath
+        config.create_version(image.name, "2.0.0", subpath="2/0/0")
+        assert len(image.versions) == 2
+        version_path = context / image.name / "2" / "0" / "0"
+        assert version_path.is_dir()
+
+        # Remove the version
+        config.remove_version(image.name, "2.0.0")
+
+        # Verify the version has been removed
+        assert len(image.versions) == 1
+        assert image.get_version("2.0.0") is None
+        assert not version_path.is_dir()
+
+        # Verify the config file has been updated
+        config_reloaded = BakeryConfig.from_context(context)
+        reloaded_image = config_reloaded.model.get_image(image.name)
+        assert reloaded_image.get_version("2.0.0") is None
+
+    def test_remove_version_image_does_not_exist(self, get_tmpcontext):
+        """Test removing a version from a non-existent image raises an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+
+        with pytest.raises(ValueError, match="Image 'non-existent' does not exist in the config"):
+            config.remove_version("non-existent", "1.0.0")
+
+    def test_remove_version_does_not_exist(self, get_tmpcontext):
+        """Test removing a non-existent version raises an error."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        image_name = config.model.images[0].name
+
+        with pytest.raises(ValueError, match=f"Version 'non-existent' does not exist for image '{image_name}'"):
+            config.remove_version(image_name, "non-existent")

@@ -32,7 +32,7 @@ def image(
         stderr_console.print(f"❌ Failed to remove image '{image_name}'", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"✅ Successfully created image '{image_name}'", style="success")
+    stderr_console.print(f"✅ Successfully removed image '{image_name}'", style="success")
 
 
 @app.command()
