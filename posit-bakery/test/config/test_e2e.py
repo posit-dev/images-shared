@@ -143,6 +143,8 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
                     "docker.io/posit/image-one:1.0.0-min",
                     "docker.io/posit/image-one:min",
                 ],
+                "cache-from": [],
+                "cache-to": [],
             },
             "image-one-1-0-0-standard": {
                 "context": ".",
@@ -166,6 +168,8 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
                     "docker.io/posit/image-one:latest",
                     "docker.io/posit/image-one:std",
                 ],
+                "cache-from": [],
+                "cache-to": [],
             },
         },
     }
