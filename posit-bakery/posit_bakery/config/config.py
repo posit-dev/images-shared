@@ -412,9 +412,6 @@ class BakeryConfig:
         if image_index == -1:
             raise ValueError(f"Image '{image_name}' does not exist in bakery.yaml.")
 
-        # Remove the image from the model.
-        self.model.images.remove(image)
-
         # Remove the image directory.
         image_path = self.base_path / image.subpath
         if image_path.is_dir():
@@ -424,6 +421,9 @@ class BakeryConfig:
         # Remove the image from the config.
         self._config_yaml["images"].pop(image_index)
         self.write()
+
+        # Remove the image from the model.
+        self.model.images.remove(image)
 
     def create_version(
         self,
@@ -600,9 +600,6 @@ class BakeryConfig:
         if version_index == -1:
             raise ValueError(f"Version '{version_name}' does not exist for image '{image_name}' in bakery.yaml.")
 
-        # Remove the version from the model.
-        image.versions.remove(version)
-
         # Remove the version directory.
         version_path = self.base_path / image.subpath / version.subpath
         if version_path.is_dir():
@@ -612,6 +609,9 @@ class BakeryConfig:
         # Remove the version from the config.
         self._config_yaml["images"][image_index]["versions"].pop(version_index)
         self.write()
+
+        # Remove the version from the model.
+        image.versions.remove(version)
 
     def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
         """Generates image targets from the images defined in the config.
