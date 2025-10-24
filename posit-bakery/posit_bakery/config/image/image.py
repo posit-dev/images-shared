@@ -18,7 +18,7 @@ from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
 from posit_bakery.config.tools import ToolField, ToolOptions
-from ...error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
+from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 
 log = logging.getLogger(__name__)
 
