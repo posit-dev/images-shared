@@ -26,9 +26,15 @@ def image(
     """
     try:
         c = BakeryConfig.from_context(context)
+    except:
+        log.exception("Error removing image, could not load project")
+        stderr_console.print(f"❌ Failed to remove image '{image_name}'", style="error")
+        raise typer.Exit(code=1)
+
+    try:
         c.remove_image(image_name)
     except:
-        log.exception("Error removing image, no bakery project found")
+        log.exception("Error removing image")
         stderr_console.print(f"❌ Failed to remove image '{image_name}'", style="error")
         raise typer.Exit(code=1)
 
@@ -56,9 +62,15 @@ def version(
     """
     try:
         c = BakeryConfig.from_context(context)
+    except:
+        log.exception("Error removing version, could not load bakery project")
+        stderr_console.print(f"❌ Failed to remove version '{image_version}' from image '{image_name}'", style="error")
+        raise typer.Exit(code=1)
+
+    try:
         c.remove_version(image_name, image_version)
     except:
-        log.exception("Error removing version, no bakery project found")
+        log.exception("Error removing version")
         stderr_console.print(f"❌ Failed to remove version '{image_version}' from image '{image_name}'", style="error")
         raise typer.Exit(code=1)
 
