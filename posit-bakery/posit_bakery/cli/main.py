@@ -1,6 +1,6 @@
 import typer
 
-from posit_bakery.cli import ci, create, common, run, build, update, remove
+from posit_bakery.cli import ci, create, common, run, build, update, remove, get
 from posit_bakery.log import stderr_console
 
 app = typer.Typer(
@@ -14,6 +14,10 @@ app = typer.Typer(
 app.add_typer(create.app, name="create", help="Create new projects, images, and versions (aliases: c, new)")
 app.add_typer(create.app, name="c", hidden=True)
 app.add_typer(create.app, name="new", hidden=True)
+
+# Import the "get" subcommand
+app.add_typer(get.app, name="get", help="Retrieve information about the project (aliases: g)")
+app.add_typer(get.app, name="g", hidden=True)
 
 # Import the "update" subcommand
 app.add_typer(update.app, name="update", help="Update managed files and configurations (aliases: u, up)")

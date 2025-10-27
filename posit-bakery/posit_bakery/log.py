@@ -8,6 +8,7 @@ from rich.theme import Theme
 default_theme = Theme(
     {
         "info": "bright_blue",
+        "warning": "yellow",
         "error": "bright_red",
         "success": "green3",
         "quiet": "bright_black",
