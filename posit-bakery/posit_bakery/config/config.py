@@ -26,6 +26,8 @@ from posit_bakery.error import (
     BakeryToolRuntimeErrorGroup,
     BakeryFileError,
     BakeryBuildErrorGroup,
+    BakeryRenderError,
+    BakeryRenderErrorGroup,
 )
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
@@ -429,6 +431,7 @@ class BakeryConfig:
             raise ValueError(f"Version '{version}' already exists for image '{image_name}'. Use --force to overwrite.")
 
         version_path = self.base_path / image_name / (subpath or version)
+        version_path_preexists = version_path.is_dir()
 
         # If the version already exists, some checks will be performed.
         if existing_version is not None:
@@ -463,7 +466,14 @@ class BakeryConfig:
         self._config_yaml["images"][image_index]["versions"].sort(key=lambda v: v["name"], reverse=True)
 
         # Create the version directory and files.
-        image.create_version_files(new_version, image.variants)
+        try:
+            image.create_version_files(new_version, image.variants)
+        except (BakeryRenderError, BakeryRenderErrorGroup) as e:
+            log.error(f"Failed to create version files for image '{image_name}' version '{version}'.")
+            # If creating the version files fails and this is a new version, we remove the files that were created.
+            if not existing_version and not version_path_preexists:
+                shutil.rmtree(version_path)
+            raise e
 
         self.write()
 
@@ -500,6 +510,47 @@ class BakeryConfig:
         self.write()
 
         return patched_version
+
+    def regenerate_version_files(
+        self, _filter: BakeryConfigFilter | None = None, regex_filters: list[str] | None = None
+    ):
+        """Regenerates version files from templates matching the given filters.
+
+        :param _filter: A BakeryConfigFilter to apply when regenerating version files.
+        :param regex_filters: A list of regex patterns to filter which templates to render.
+
+        :raises BakeryFileError: If any errors occur while regenerating version files.
+        """
+        _filter = _filter or BakeryConfigFilter()
+        regex_filters = regex_filters or []
+        exceptions = []
+
+        for image in self.model.images:
+            if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
+                log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
+                continue
+            for version in image.versions:
+                if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                    log.debug(
+                        f"Skipping image version '{version.name}' in image '{image.name}' "
+                        f"due to not matching version filter '{_filter.image_version}'"
+                    )
+                    continue
+
+                log.info(f"Rendering templates for image '{image.name}' version '{version.name}'")
+                try:
+                    image.create_version_files(version, image.variants, regex_filters=regex_filters)
+                except (BakeryRenderError, BakeryRenderErrorGroup) as e:
+                    log.error(f"Failed to regenerate files for image '{image.name}' version '{version.name}'.")
+                    if isinstance(e, BakeryRenderErrorGroup):
+                        exceptions.extend(e.exceptions)
+                    else:
+                        exceptions.append(e)
+
+        if exceptions:
+            if len(exceptions) == 1:
+                raise exceptions[0]
+            raise BakeryRenderErrorGroup("Multiple errors occurred while rendering templates.", exceptions)
 
     def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
         """Generates image targets from the images defined in the config.

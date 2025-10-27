@@ -5,12 +5,51 @@ import typer
 
 from posit_bakery.cli.common import __make_value_map
 from posit_bakery.config import BakeryConfig
+from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path, log
 
 app = typer.Typer(no_args_is_help=True)
 update_version = typer.Typer(no_args_is_help=True)
 app.add_typer(update_version, name="version", help="Update image versions managed by Posit Bakery")
+
+
+@app.command()
+def files(
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate file rendering to.")] = None,
+    image_version: Annotated[
+        Optional[str], typer.Option(help="The image version to isolate file rendering to.")
+    ] = None,
+    template_pattern: Annotated[
+        Optional[list[str]],
+        typer.Option(help="A glob pattern to filter which templates to render. Uses regex syntax."),
+    ] = None,
+) -> None:
+    """Rerenders version files from templates matching the given filters.
+
+    This command will rerender each matching image version's files from the templates in the image's template
+    directory. Existing configuration details for the version such as dependencies, variants, and the latest flag
+    are used and remain unmodified.
+
+    Existing files will not be removed, but may be overwritten during template rendering.
+    """
+    _filter = BakeryConfigFilter(
+        image_name=image_name,
+        image_version=image_version,
+    )
+
+    try:
+        c = BakeryConfig.from_context(context)
+        c.regenerate_version_files(_filter, regex_filters=template_pattern)
+    except Exception as e:
+        stderr_console.print(e, style="error")
+        stderr_console.print(f"❌ Update failed", style="error")
+        raise typer.Exit(code=1)
+
+    stderr_console.print(f"✅ Files updated successfully", style="success")
 
 
 @update_version.command()
@@ -45,8 +84,8 @@ def patch(
     try:
         c = BakeryConfig.from_context(context)
         c.patch_version(image_name, old_version, new_version, values=value_map, clean=clean)
-    except:
-        log.exception("Error patching version")
+    except Exception as e:
+        stderr_console.print(e, style="error")
         stderr_console.print(
             f"❌ Failed to patch version '{image_name}/{old_version}' to '{image_name}/{new_version}'", style="error"
         )

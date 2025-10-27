@@ -1,4 +1,5 @@
 # conftest.py loads this file via pytest_plugins
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -54,6 +55,20 @@ def cli_tmpcontext(bakery_command, suite_name, get_tmpcontext):
 @given("in a temp directory")
 def tmp_directory(bakery_command, tmpdir):
     bakery_command.context = Path(tmpdir)
+
+
+@given(parsers.parse("with the '{target_path}' path removed"))
+def remove_path(bakery_command, target_path, cli_test_tmpcontext):
+    target_path = (cli_test_tmpcontext / target_path).resolve()
+    if target_path.exists():
+        if target_path.is_dir():
+            shutil.rmtree(target_path)
+        else:
+            target_path.unlink()
+    else:
+        pytest.fail(f"Path {target_path} does not exist to be removed")
+
+    assert not target_path.exists()
 
 
 @given("with the arguments:")
