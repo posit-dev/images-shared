@@ -1,11 +1,10 @@
 import json
 import logging
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery import error
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum
