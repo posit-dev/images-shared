@@ -13,7 +13,7 @@ from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
-from posit_bakery.config.registry import Registry
+from posit_bakery.config.registry import Registry, RegistryImage
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
@@ -51,7 +51,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     extraRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             validate_default=True,
@@ -59,7 +59,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     overrideRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             validate_default=True,

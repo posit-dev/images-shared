@@ -7,7 +7,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.image.version import ImageVersion
-from posit_bakery.config.registry import Registry
+from posit_bakery.config.registry import Registry, RegistryImage
 from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.shared import BakeryYAMLModel
 
@@ -26,7 +26,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         ),
     ]
     extraRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             description="List of additional registries to use for this image development version with registries "
@@ -34,7 +34,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         ),
     ]
     overrideRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             description="List of registries to use in place of registries defined globally or for the image.",

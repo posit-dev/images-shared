@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from posit_bakery.config.registry import Registry
 
@@ -8,7 +9,6 @@ pytestmark = [
 ]
 
 
-@pytest.mark.config
 class TestRegistry:
     def test_create_registry(self):
         """Test creating a generic ConfigRegistry object does not raise an exception"""
@@ -35,3 +35,13 @@ class TestRegistry:
         c3 = Registry(host="ghcr.io", namespace="posit")
         assert hash(c1) == hash(c2)
         assert hash(c1) != hash(c3)
+
+
+class TestRegistryImage:
+    def test_create_registry_with_name(self):
+        with pytest.raises(ValidationError):
+            Registry(
+                host="docker.io",
+                namespace="posit",
+                name="connect",
+            )

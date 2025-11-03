@@ -227,7 +227,10 @@ class ImageTarget(BaseModel):
         if self.image_version.all_registries:
             for registry in self.image_version.all_registries:
                 for suffix in self.tag_suffixes:
-                    tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+                    if hasattr(registry, "name"):
+                        tags.append(f"{registry.base_url}/{registry.name}:{suffix}")
+                    else:
+                        tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
         else:
             for suffix in self.tag_suffixes:
                 tags.append(f"{self.image_version.parent.name}:{suffix}")

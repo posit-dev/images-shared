@@ -6,6 +6,7 @@ from typing import Annotated, Union, Self
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from posit_bakery.config.registry import Registry, RegistryImage
 from posit_bakery.config.dependencies import DependencyVersionsField
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -31,7 +32,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     extraRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             description="List of additional registries to use for this image version with registries defined "
@@ -39,7 +40,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     overrideRegistries: Annotated[
-        list[Registry],
+        list[RegistryImage | Registry],
         Field(
             default_factory=list,
             description="List of registries to use in place of registries defined globally or for the image.",
