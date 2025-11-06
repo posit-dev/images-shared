@@ -3,7 +3,7 @@ import re
 from datetime import timedelta
 
 from posit_bakery.config import Registry
-from posit_bakery.registry_management.ghcr.api import github_client, get_package_versions, delete_package_versions
+from posit_bakery.registry_management.ghcr.api import GHCRClient
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions
 
 log = logging.getLogger(__name__)
@@ -24,8 +24,8 @@ def clean_cache(
     package = match.group("package")
 
     # Retrieve all package versions.
-    client = github_client()
-    package_versions = get_package_versions(client, organization, package)
+    client = GHCRClient(organization)
+    package_versions = client.get_package_versions(organization, package)
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
@@ -41,13 +41,13 @@ def clean_cache(
         log.info(f"Removing {len(versions_to_delete)} version(s) from {cache_registry} cache")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
-        delete_package_versions(client, versions_to_delete)
+        client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No versions to remove from {cache_registry} cache")
 
 
 def clean_registry(
-    image_registry: Registry,
+    image_registry: str,
     remove_tagged_older_than: timedelta | None = timedelta(weeks=80),
     remove_untagged_older_than: timedelta | None = timedelta(weeks=26),
 ):
@@ -60,8 +60,8 @@ def clean_registry(
     package = match.group("package")
 
     # Retrieve all package versions.
-    client = github_client()
-    package_versions = get_package_versions(client, organization, package)
+    client = GHCRClient(organization)
+    package_versions = client.get_package_versions(organization, package)
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
@@ -78,6 +78,6 @@ def clean_registry(
         log.info(f"Removing {len(versions_to_delete)} version(s) from {image_registry}")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
-        delete_package_versions(client, versions_to_delete)
+        client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No versions to remove from {image_registry}")
