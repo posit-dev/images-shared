@@ -19,11 +19,7 @@ class GHCRClient:
         auth = Auth.Token(token)
         self.client = Github(auth=auth)
 
-    def get_package(
-        self,
-        organization: str,
-        package: str,
-    ) -> dict:
+    def get_package(self, organization: str, package: str) -> dict:
         """Get details on a package."""
         headers, response = self.client.requester.requestJsonAndCheck(
             "GET",
@@ -32,11 +28,7 @@ class GHCRClient:
         response = json.loads(response)
         return response
 
-    def get_package_versions(
-        self,
-        organization: str,
-        package: str,
-    ) -> GHCRPackageVersions:
+    def get_package_versions(self, organization: str, package: str) -> GHCRPackageVersions:
         # Check the number of versions for the package to calculate pagination cycles required.
         response = self.get_package(organization, package)
         version_count = response.get("versionCount", 0)
@@ -55,19 +47,13 @@ class GHCRClient:
 
         return GHCRPackageVersions(versions=results)
 
-    def delete_package_version(
-        self,
-        version: GHCRPackageVersion,
-    ):
+    def delete_package_version(self, version: GHCRPackageVersion):
         target_endpoint = version.url.removeprefix("https://api.github.com")
         self.client.requester.requestJsonAndCheck(
             "DELETE",
             target_endpoint,
         )
 
-    def delete_package_versions(
-        self,
-        versions: GHCRPackageVersions,
-    ):
+    def delete_package_versions(self, versions: GHCRPackageVersions):
         for version in versions.versions:
             self.delete_package_version(version)

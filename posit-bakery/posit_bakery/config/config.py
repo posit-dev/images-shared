@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+from datetime import timedelta
 from pathlib import Path
 
 import jinja2
@@ -33,6 +34,7 @@ from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.image.bake.bake import BakePlan
+from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
 
@@ -741,3 +743,25 @@ class BakeryConfig:
         """
         suite = DGossSuite(self.base_path, self.targets)
         return suite.run()
+
+    def clean_caches(
+        self, cache_registry: str, remove_untagged: bool = True, remove_older_than: timedelta | None = None
+    ):
+        """Cleans up dangling caches in the specified registry for all generated image targets.
+
+        :param cache_registry: The cache registry to clean.
+        :param remove_untagged: If True, remove untagged caches.
+        :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
+        """
+        target_caches = []
+        for target in self.targets:
+            target_cache_name = target.cache_name(cache_registry)
+            target_caches.append(target_cache_name.split(":")[0])
+        target_caches = list(set(target_caches))
+
+        for target_cache in target_caches:
+            ghcr.clean_cache(
+                cache_registry=target_cache,
+                remove_untagged=remove_untagged,
+                remove_older_than=remove_older_than,
+            )

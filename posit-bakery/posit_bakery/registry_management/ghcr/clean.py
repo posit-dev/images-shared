@@ -2,7 +2,6 @@ import logging
 import re
 from datetime import timedelta
 
-from posit_bakery.config import Registry
 from posit_bakery.registry_management.ghcr.api import GHCRClient
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions
 
@@ -13,9 +12,9 @@ REGISTRY_PATTERN = re.compile(r"ghcr\.io/(?P<organization>[A-Za-z0-9_.-]+)/(?P<p
 def clean_cache(
     cache_registry: str,
     remove_untagged: bool = True,
-    remove_older_than: timedelta | None = timedelta(weeks=2),
+    remove_older_than: timedelta | None = None,
 ):
-    """Cleans up dangling caches that have not been updated within 2 weeks or are untagged."""
+    """Cleans up dangling caches that are not tagged or are older than a given timedelta."""
     # Check that the registry matches the expected pattern.
     match = REGISTRY_PATTERN.match(cache_registry)
     if not match:
