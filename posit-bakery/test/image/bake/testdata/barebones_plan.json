@@ -16,7 +16,7 @@
       "context": ".",
       "dockerfile": "scratch/1.0.0/Containerfile.scratch",
       "labels": {
-        "org.opencontainers.image.created": "2025-01-01T00:00:00",
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
         "org.opencontainers.image.source": "https://github.com/posit-images-shared/posit-images-shared",
         "org.opencontainers.image.title": "Scratch",
         "org.opencontainers.image.vendor": "Posit Software, PBC",
