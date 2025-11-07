@@ -24,6 +24,9 @@ def cache_registry(
     image_name: Annotated[
         Optional[str], typer.Option(help="The image name or a regex pattern to isolate plan rendering to.")
     ] = None,
+    dry_run: Annotated[
+        Optional[bool], typer.Option(help="If set, will only log what would be deleted without making changes.")
+    ] = False,
 ):
     """Cleans up dangling caches in the specified registry."""
     settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name))

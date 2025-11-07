@@ -12,6 +12,7 @@ def clean_registry(
     image_registry: str,
     remove_tagged_older_than: timedelta | None = timedelta(weeks=80),
     remove_untagged_older_than: timedelta | None = timedelta(weeks=26),
+    dry_run: bool = False,
 ):
     """Cleans up images in the specified registry."""
     # Check that the registry matches the expected pattern.
@@ -36,5 +37,11 @@ def clean_registry(
                 filtered_tags.append(tag)
 
     log.info(f"Removing {len(filtered_tags)} tagged images from {image_registry}")
-    for tag in filtered_tags:
-        client.delete_tag(namespace, repository, tag.get("tag_id"))
+    if dry_run:
+        log.info("Dry run enabled, the following images would be removed:")
+        for tag in filtered_tags:
+            log.info(f"{tag.get('name')} (ID: {tag.get('tag_id')})")
+    else:
+        for tag in filtered_tags:
+            log.info(f"Deleting {tag.get('name')} (ID: {tag.get('tag_id')})")
+            client.delete_tag(namespace, repository, tag.get("tag_id"))

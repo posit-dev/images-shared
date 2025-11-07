@@ -1281,7 +1281,7 @@ class TestBakeryConfig:
         context = get_tmpcontext("basic")
         cache_registry = "ghcr.io/posit-test"
         settings = BakerySettings(cache_registry=cache_registry)
-        config = BakeryConfig.from_context(context)
+        config = BakeryConfig.from_context(context, settings)
 
         mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
         mock_ghcr_client_instance = mock_ghcr_client.return_value
@@ -1303,3 +1303,32 @@ class TestBakeryConfig:
                 assert version_id in [v.id for v in versions_deleted.versions]
         else:
             mock_ghcr_client_instance.delete_package_version.assert_not_called()
+
+    def test_clean_caches_dry_run(
+        self,
+        mocker,
+        caplog,
+        get_tmpcontext,
+        ghcr_package_versions_data,
+    ):
+        """Test cleaning caches in the BakeryConfig."""
+        context = get_tmpcontext("basic")
+        cache_registry = "ghcr.io/posit-test"
+        settings = BakerySettings(cache_registry=cache_registry)
+        config = BakeryConfig.from_context(context, settings)
+
+        mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
+        mock_ghcr_client_instance = mock_ghcr_client.return_value
+        mock_ghcr_client_instance.get_package_versions.return_value = ghcr_package_versions_data
+
+        # Clean caches
+        config.clean_caches(
+            cache_registry=cache_registry,
+            remove_untagged=True,
+            remove_older_than=timedelta(days=14),
+            dry_run=True,
+        )
+
+        mock_ghcr_client.assert_called_once()
+        mock_ghcr_client_instance.get_package_versions.assert_called_once()
+        mock_ghcr_client_instance.delete_package_version.assert_not_called()

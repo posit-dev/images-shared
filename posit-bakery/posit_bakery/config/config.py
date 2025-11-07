@@ -745,7 +745,11 @@ class BakeryConfig:
         return suite.run()
 
     def clean_caches(
-        self, cache_registry: str, remove_untagged: bool = True, remove_older_than: timedelta | None = None
+        self,
+        cache_registry: str,
+        remove_untagged: bool = True,
+        remove_older_than: timedelta | None = None,
+        dry_run: bool = False,
     ):
         """Cleans up dangling caches in the specified registry for all generated image targets.
 
@@ -764,4 +768,5 @@ class BakeryConfig:
                 cache_registry=target_cache,
                 remove_untagged=remove_untagged,
                 remove_older_than=remove_older_than,
+                dry_run=dry_run,
             )

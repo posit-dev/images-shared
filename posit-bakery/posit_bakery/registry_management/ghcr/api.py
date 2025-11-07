@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import os
 from urllib.parse import quote
@@ -49,6 +50,7 @@ class GHCRClient:
 
     def delete_package_version(self, version: GHCRPackageVersion):
         target_endpoint = version.url.removeprefix("https://api.github.com")
+        logging.debug(f"DELETE {target_endpoint}")
         self.client.requester.requestJsonAndCheck(
             "DELETE",
             target_endpoint,

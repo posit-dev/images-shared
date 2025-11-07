@@ -13,6 +13,7 @@ def clean_cache(
     cache_registry: str,
     remove_untagged: bool = True,
     remove_older_than: timedelta | None = None,
+    dry_run: bool = False,
 ):
     """Cleans up dangling caches that are not tagged or are older than a given timedelta."""
     # Check that the registry matches the expected pattern.
@@ -41,7 +42,10 @@ def clean_cache(
         log.info(f"Removing {len(versions_to_delete)} version(s) from {cache_registry} cache")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
-        client.delete_package_versions(versions_to_delete)
+        if dry_run:
+            log.info(versions_to_delete.model_dump_json(indent=2))
+        else:
+            client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No versions to remove from {cache_registry} cache")
 
@@ -50,6 +54,7 @@ def clean_registry(
     image_registry: str,
     remove_tagged_older_than: timedelta | None = timedelta(weeks=80),
     remove_untagged_older_than: timedelta | None = timedelta(weeks=26),
+    dry_run: bool = False,
 ):
     """Cleans up images in the specified registry."""
     # Check that the registry matches the expected pattern.
@@ -79,6 +84,9 @@ def clean_registry(
         log.info(f"Removing {len(versions_to_delete)} version(s) from {image_registry}")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
-        client.delete_package_versions(versions_to_delete)
+        if dry_run:
+            log.info(versions_to_delete.model_dump_json(indent=2))
+        else:
+            client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No versions to remove from {image_registry}")
