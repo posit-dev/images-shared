@@ -80,6 +80,6 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
-          bakery "ghcr.io/${{ github.repository_owner }}" \
+          bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --context ${{ inputs.context }} \
             ${{ inputs.dry-run && '--dry-run' }} ${{ !inputs.remove-dangling && '--no-untagged' }} ${{ inputs.remove-older-than > 0 && format('--older-than {0}', inputs.remove-older-than) }}
