@@ -34,6 +34,7 @@ def clean_cache(
     if remove_untagged:
         untagged_versions = package_versions.filter_untagged()
         versions_to_delete.extend(untagged_versions.versions)
+    versions_to_delete = list(set(versions_to_delete))  # Deduplicate versions.
 
     # Process deletions.
     if len(versions_to_delete) > 0:
@@ -71,6 +72,7 @@ def clean_registry(
         untagged_versions = package_versions.filter_untagged()
         untagged_old_versions = untagged_versions.filter_older_than(remove_untagged_older_than)
         versions_to_delete.extend(untagged_old_versions.versions)
+    versions_to_delete = list(set(versions_to_delete))  # Deduplicate versions.
 
     # Process deletions.
     if len(versions_to_delete) > 0:

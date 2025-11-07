@@ -3,7 +3,7 @@ import math
 import os
 from urllib.parse import quote
 
-from github import Auth, Github, GithubException
+from github import Auth, Github
 
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions, GHCRPackageVersion
 

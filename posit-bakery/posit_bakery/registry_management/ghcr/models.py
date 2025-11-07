@@ -28,6 +28,9 @@ class GHCRPackageVersion(BaseModel):
     html_url: str
     metadata: GHCRPackageVersionMetadata
 
+    def __hash__(self):
+        return hash(self.id)
+
 
 class GHCRPackageVersions(BaseModel):
     """Represents a list of GitHub Container Registry package versions."""
