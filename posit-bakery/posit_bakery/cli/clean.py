@@ -34,4 +34,9 @@ def cache_registry(
 
     log.info(f"Cleaning cache registry: {registry}")
 
-    config.clean_caches(registry, remove_untagged=untagged, remove_older_than=timedelta(days=older_than))
+    config.clean_caches(
+        registry,
+        remove_untagged=untagged,
+        remove_older_than=timedelta(days=older_than) if older_than else None,
+        dry_run=dry_run,
+    )

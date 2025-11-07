@@ -8,6 +8,8 @@ from github import Auth, Github
 
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions, GHCRPackageVersion
 
+log = logging.getLogger(__name__)
+
 
 class GHCRClient:
     ENDPOINTS = {
@@ -22,28 +24,33 @@ class GHCRClient:
 
     def get_package(self, organization: str, package: str) -> dict:
         """Get details on a package."""
+        target_url = self.ENDPOINTS["package"].format(organization=organization, package=quote(package, safe=""))
+        log.debug(f"GET {target_url}")
         headers, response = self.client.requester.requestJsonAndCheck(
             "GET",
-            self.ENDPOINTS["package"].format(organization=organization, package=quote(package)),
+            target_url,
         )
-        response = json.loads(response)
         return response
 
     def get_package_versions(self, organization: str, package: str) -> GHCRPackageVersions:
         # Check the number of versions for the package to calculate pagination cycles required.
         response = self.get_package(organization, package)
-        version_count = response.get("versionCount", 0)
+        version_count = response.get("version_count", 0)
+        log.debug(f"Package {package} has {version_count} versions")
         per_page = 100
         page_count = math.ceil(version_count / per_page)
 
         results = []
         for page in range(1, page_count + 1):
+            target_url = self.ENDPOINTS["package_versions"].format(
+                organization=organization, package=quote(package, safe="")
+            )
+            log.debug(f"GET {target_url} (page {page}/{page_count})")
             headers, response = self.client.requester.requestJsonAndCheck(
                 "GET",
-                self.ENDPOINTS["package_versions"].format(organization=organization, package=quote(package)),
+                target_url,
                 parameters={"per_page": 100, "page": page, "state": "active"},
             )
-            response = json.loads(response)
             results.extend(response)
 
         return GHCRPackageVersions(versions=results)
