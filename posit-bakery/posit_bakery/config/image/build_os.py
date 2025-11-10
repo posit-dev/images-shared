@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from posit_bakery.config.shared import OSFamilyEnum
 
 
-class TargetPlatform(Enum, str):
+class TargetPlatform(str, Enum):
     LINUX_AMD64 = "linux/amd64"
     LINUX_ARM64 = "linux/arm64"
 
