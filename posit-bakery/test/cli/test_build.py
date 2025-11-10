@@ -1,8 +1,12 @@
 import json
+import subprocess
+from shutil import which
 
 import pytest
 import python_on_whales
 from pytest_bdd import scenarios, then, parsers
+
+from posit_bakery.util import find_bin
 
 scenarios(
     "cli/build.feature",
@@ -50,6 +54,44 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
                 image = python_on_whales.docker.image.inspect(tag)
                 assert label in image.config.labels
                 assert image.config.labels[label] == value
+
+
+@then(parsers.parse("the {suite_name} test suite built for platforms:"))
+def check_multiplatform_build(resource_path, bakery_command, suite_name, get_config_obj, datatable):
+    suite_path = resource_path / suite_name
+    assert suite_path.is_dir()
+
+    # FIXME(ianpittwood): python-on-whales does not yet support the --platform flag for `docker image inspect`, so we
+    #                     have to shell out for now.
+    #                     See https://github.com/gabrieldemarmiesse/python-on-whales/issues/692
+    docker_path = which("docker")
+
+    config = get_config_obj(suite_name)
+    for target in config.targets:
+        for tag in target.tags:
+            for row in datatable:
+                platform = row[0]
+                proc = subprocess.run([docker_path, "image", "inspect", "--platform", platform, tag])
+                assert proc.returncode == 0, f"Image {tag} not found for platform {platform}"
+
+
+@then(parsers.parse("the {suite_name} test suite did not build for platforms:"))
+def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_config_obj, datatable):
+    suite_path = resource_path / suite_name
+    assert suite_path.is_dir()
+
+    # FIXME(ianpittwood): python-on-whales does not yet support the --platform flag for `docker image inspect`, so we
+    #                     have to shell out for now.
+    #                     See https://github.com/gabrieldemarmiesse/python-on-whales/issues/692
+    docker_path = which("docker")
+
+    config = get_config_obj(suite_name)
+    for target in config.targets:
+        for tag in target.tags:
+            for row in datatable:
+                platform = row[0]
+                proc = subprocess.run([docker_path, "image", "inspect", "--platform", platform, tag])
+                assert proc.returncode != 0, f"Image {tag} found for platform {platform}"
 
 
 @then(parsers.parse("the {suite_name} test suite is not built"))
