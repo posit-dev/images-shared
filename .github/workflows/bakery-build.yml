@@ -121,6 +121,13 @@ jobs:
 
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
 
       - name: Login to Docker Hub
         if: ${{ inputs.push }}
