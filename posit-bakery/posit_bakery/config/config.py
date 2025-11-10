@@ -685,6 +685,7 @@ class BakeryConfig:
         load: bool = True,
         push: bool = False,
         cache: bool = True,
+        platforms: list[str] | None = None,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
         fail_fast: bool = False,
     ):
@@ -693,8 +694,8 @@ class BakeryConfig:
         :param load: If True, load the built images into the local Docker daemon.
         :param push: If True, push the built images to the configured registries.
         :param cache: If True, use the build cache when building images.
-        :param cache_from: Optional list of cache sources to use when building images.
-        :param cache_to: Optional list of cache destinations to use when building images.
+        :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
+            platform.
         :param strategy: The strategy to use when building images.
         :param fail_fast: If True, stop building targets on the first failure.
         """
@@ -707,12 +708,19 @@ class BakeryConfig:
                 push=push,
                 cache=cache,
                 clean_bakefile=self.settings.clean_temporary,
+                platforms=platforms,
             )
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
                 try:
-                    target.build(load=load, push=push, cache=cache, cache_registry=self.settings.cache_registry)
+                    target.build(
+                        load=load,
+                        push=push,
+                        cache=cache,
+                        cache_registry=self.settings.cache_registry,
+                        platforms=platforms,
+                    )
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
                     if fail_fast:

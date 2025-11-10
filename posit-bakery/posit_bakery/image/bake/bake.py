@@ -6,6 +6,7 @@ from typing import Annotated
 import python_on_whales
 from pydantic import BaseModel, Field, field_serializer
 
+from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
 
 
@@ -47,6 +48,10 @@ class BakeTarget(BaseModel):
     dockerfile: Annotated[Path | str, Field(description="Path to the Containerfile relative to the context.")]
     labels: Annotated[dict[str, str], Field(description="Labels to apply to the image.")]
     tags: Annotated[list[str], Field(description="Tags to apply to the image.")]
+    platforms: Annotated[
+        list[TargetPlatform],
+        Field(default=DEFAULT_PLATFORMS, description="Target platforms to build the image for."),
+    ]
     cache_from: Annotated[
         list | None,
         Field(
@@ -95,6 +100,7 @@ class BakeTarget(BaseModel):
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
             tags=image_target.tags,
+            platforms=image_target.image_os.platforms,
             cache_from=cache_from,
             cache_to=cache_to,
         )
@@ -183,6 +189,7 @@ class BakePlan(BaseModel):
         cache: bool = True,
         cache_from: str | None = None,
         cache_to: str | None = None,
+        platforms: list[str] | None = None,
         clean_bakefile: bool = True,
     ):
         """Run the bake plan to build all targets."""
@@ -191,9 +198,9 @@ class BakePlan(BaseModel):
 
         self.write()
 
-        _set = {
-            "*.platform": "linux/amd64",
-        }
+        _set = {}
+        if platforms:
+            _set["*.platform"] = ",".join(platforms)
         if cache_from:
             _set["*.cache-from"] = cache_from
         if cache_to:

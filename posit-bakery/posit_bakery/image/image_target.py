@@ -272,7 +272,12 @@ class ImageTarget(BaseModel):
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
     def build(
-        self, load: bool = True, push: bool = False, cache: bool = True, cache_registry: str | None = None
+        self,
+        load: bool = True,
+        push: bool = False,
+        cache: bool = True,
+        cache_registry: str | None = None,
+        platforms: list[str] | None = None,
     ) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
         if not (self.context.base_path / self.containerfile).is_file():
@@ -304,7 +309,7 @@ class ImageTarget(BaseModel):
                     cache=cache,
                     cache_from=cache_from,
                     cache_to=cache_to,
-                    platforms=["linux/amd64"],
+                    platforms=platforms or self.image_os.platforms,
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
