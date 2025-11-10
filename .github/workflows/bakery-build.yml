@@ -116,6 +116,9 @@ jobs:
       - name: Setup just
         uses: extractions/setup-just@v3
 
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
