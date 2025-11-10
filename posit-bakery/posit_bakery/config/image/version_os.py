@@ -5,7 +5,7 @@ from typing import Annotated, Union
 from pydantic import BaseModel, Field, field_validator, HttpUrl
 from pydantic_core.core_schema import ValidationInfo
 
-from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES
+from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.shared import BakeryYAMLModel, ExtensionField, TagDisplayNameField
 
 log = logging.getLogger(__name__)
@@ -26,6 +26,10 @@ class ImageVersionOS(BakeryYAMLModel):
     ]
     primary: Annotated[
         bool, Field(default=False, description="Flag to indicate if this is the primary OS for the image.")
+    ]
+    platforms: Annotated[
+        list[TargetPlatform],
+        Field(default=DEFAULT_PLATFORMS, description="List of platforms to build for this image."),
     ]
     extension: Annotated[
         ExtensionField,

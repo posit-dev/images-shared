@@ -1,6 +1,16 @@
+from enum import Enum
+
 from pydantic import BaseModel
 
 from posit_bakery.config.shared import OSFamilyEnum
+
+
+class TargetPlatform(Enum, str):
+    LINUX_AMD64 = "linux/amd64"
+    LINUX_ARM64 = "linux/arm64"
+
+
+DEFAULT_PLATFORMS = [TargetPlatform.LINUX_AMD64]
 
 
 class BuildOS(BaseModel):
