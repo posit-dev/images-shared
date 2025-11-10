@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Annotated, Union
 
-from pydantic import BaseModel, Field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator, HttpUrl, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
@@ -121,3 +121,8 @@ class ImageVersionOS(BakeryYAMLModel):
                 return SUPPORTED_OS[match_dict["name"]][match_dict["version"]]
 
         return SUPPORTED_OS["unknown"]
+
+    @field_serializer("platforms")
+    def serialize_platforms(self, platforms: list[TargetPlatform]) -> list[str]:
+        """Serialize the platforms field to a list of strings for YAML output."""
+        return [platform.value for platform in platforms]

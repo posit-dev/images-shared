@@ -100,7 +100,7 @@ class BakeTarget(BaseModel):
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
             tags=image_target.tags,
-            platforms=image_target.image_os.platforms,
+            platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
             cache_from=cache_from,
             cache_to=cache_to,
         )

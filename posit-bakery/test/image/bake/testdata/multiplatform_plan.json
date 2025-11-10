@@ -53,7 +53,8 @@
         "ghcr.io/posit-dev/test-image:ubuntu-22.04-min"
       ],
       "platforms": [
-        "linux/amd64"
+        "linux/amd64",
+        "linux/arm64"
       ]
     },
     "test-image-1-0-0-standard-ubuntu-22-04": {
@@ -93,7 +94,8 @@
         "ghcr.io/posit-dev/test-image:ubuntu-22.04-std"
       ],
       "platforms": [
-        "linux/amd64"
+        "linux/amd64",
+        "linux/arm64"
       ]
     }
   }

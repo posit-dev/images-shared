@@ -25,7 +25,7 @@ class FileTestResultEnum(str, enum.Enum):
 # Duplicate of entry in conftest.py, but required for this file
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
-SUCCESS_SUITES = ["basic", "barebones"]
+SUCCESS_SUITES = ["basic", "barebones", "multiplatform"]
 FAIL_SUITES = ["fail-fast"]
 
 
