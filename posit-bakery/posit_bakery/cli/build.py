@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from pathlib import Path
@@ -52,10 +53,17 @@ def build(
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
     platform: Annotated[
         Optional[list[str]],
-        typer.Option(help="Target platform for the build (e.g., linux/amd64). Overrides configured platforms."),
+        typer.Option(help="Isolate builds to images compatible with the given platform (e.g., linux/amd64)."),
     ] = None,
     cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
     cache_registry: Annotated[Optional[str], typer.Option(help="External cache sources")] = None,
+    temp_registry: Annotated[
+        Optional[str], typer.Option(help="Temporary registry to use for multiplatform split/merge builds.")
+    ] = None,
+    metadata_file: Annotated[
+        Optional[Path],
+        typer.Option(help="Path to output build metadata JSON file after building images."),
+    ] = None,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
     """Builds images in the context path
@@ -77,6 +85,7 @@ def build(
         dev_versions=dev_versions,
         clean_temporary=clean,
         cache_registry=cache_registry,
+        temp_registry=temp_registry,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
@@ -93,7 +102,7 @@ def build(
         raise typer.Exit(code=0)
 
     try:
-        config.build_targets(
+        images_metadata = config.build_targets(
             load=load,
             push=push,
             cache=cache,
@@ -104,5 +113,9 @@ def build(
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
+
+    if metadata_file is not None:
+        with open(metadata_file, "w") as f:
+            json.dump(images_metadata, f)
 
     stderr_console.print("✅ Build completed", style="success")
