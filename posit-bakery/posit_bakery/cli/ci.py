@@ -36,7 +36,8 @@ def matrix(
       {
         "image": "image-name",
         "version": "version-name",
-        "dev": false
+        "dev": false,
+        "platform": "linux/amd64"
       }
     ]
     ```
@@ -59,14 +60,15 @@ def matrix(
                     continue
                 if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
                     continue
-
-                data.append(
-                    {
-                        "image": img.name,
-                        "version": ver.name,
-                        "dev": ver.isDevelopmentVersion,
-                    }
-                )
+                for platform in ver.supported_platforms:
+                    data.append(
+                        {
+                            "image": img.name,
+                            "version": ver.name,
+                            "dev": ver.isDevelopmentVersion,
+                            "platform": platform,
+                        }
+                    )
 
         stdout_console.print(json.dumps(data))
 
