@@ -229,6 +229,9 @@ class BakeryConfigFilter(BaseModel):
     image_os: Annotated[
         str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
     ]
+    image_platform: Annotated[
+        str | None, Field(description="Name or regex pattern of the image platform to filter by.", default=None)
+    ]
 
 
 class BakerySettings(BaseModel):
@@ -248,6 +251,16 @@ class BakerySettings(BaseModel):
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
+    temp_registry: Annotated[
+        str | None,
+        Field(
+            description="Registry to use for temporary image storage in multiplatform split/merge builds", default=None
+        ),
+    ]
+    metadata_file: Annotated[
+        Path | None,
+        Field(description="Path to output build metadata JSON file after building images.", default=None),
+    ]
 
 
 class BakeryConfig:
@@ -641,6 +654,16 @@ class BakeryConfig:
                         f"due to not matching version filter '{settings.filter.image_version}'"
                     )
                     continue
+                if settings.filter.image_platform is not None and all(
+                    re.search(settings.filter.image_platform, platform) is None
+                    for platform in version.supported_platforms
+                ):
+                    log.debug(
+                        f"Skipping image '{image.name}' "
+                        f"due to unsupported build platform '{settings.filter.image_platform}', "
+                        f"supported platforms are: {', '.join(version.supported_platforms)}"
+                    )
+                    continue
                 for variant in image.variants or [None]:
                     if (
                         settings.filter.image_variant is not None
@@ -667,6 +690,10 @@ class BakeryConfig:
                                 image_version=version,
                                 image_variant=variant,
                                 image_os=_os,
+                                settings={
+                                    "temp_registry": self.settings.temp_registry,
+                                    "cache_registry": self.settings.cache_registry,
+                                },
                             )
                         )
 
@@ -675,9 +702,7 @@ class BakeryConfig:
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
-        bake_plan = BakePlan.from_image_targets(
-            context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
-        )
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
         return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     def build_targets(
@@ -699,9 +724,12 @@ class BakeryConfig:
         :param strategy: The strategy to use when building images.
         :param fail_fast: If True, stop building targets on the first failure.
         """
+        images: dict[str, dict[str, str]] = {}
+
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
+                context=self.base_path,
+                image_targets=self.targets,
             )
             bake_plan.build(
                 load=load,
@@ -710,6 +738,9 @@ class BakeryConfig:
                 clean_bakefile=self.settings.clean_temporary,
                 platforms=platforms,
             )
+            if self.settings.metadata_file:
+                for target in self.targets:
+                    target.inspect()
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
@@ -718,9 +749,9 @@ class BakeryConfig:
                         load=load,
                         push=push,
                         cache=cache,
-                        cache_registry=self.settings.cache_registry,
                         platforms=platforms,
                     )
+                    images[target.uid] = target.inspect()
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
                     if fail_fast:
@@ -731,6 +762,8 @@ class BakeryConfig:
                 if len(errors) == 1:
                     raise errors[0]
                 raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
+
+        return images
 
     def dgoss_targets(
         self,

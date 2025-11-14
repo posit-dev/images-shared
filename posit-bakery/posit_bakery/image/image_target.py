@@ -25,6 +25,17 @@ class ImageBuildStrategy(str, Enum):
     BAKE = "bake"  # Build using Docker BuildKit bake
 
 
+class ImageTargetSettings(BaseModel):
+    temp_registry: Annotated[
+        str | None,
+        Field(default=None, description="Temporary registry to use for multiplatform split/merge builds."),
+    ]
+    cache_registry: Annotated[
+        str | None,
+        Field(default=None, description="Registry to use for build cache storage and retrieval."),
+    ]
+
+
 class ImageTargetContext(BaseModel):
     """Container for contextual path information related to an image target."""
 
@@ -51,6 +62,7 @@ class ImageTarget(BaseModel):
     image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
     image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
     image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
+    settings: Annotated[ImageTargetSettings, Field(default_factory=ImageTargetSettings)]
 
     @classmethod
     def new_image_target(
@@ -59,6 +71,7 @@ class ImageTarget(BaseModel):
         image_version: ImageVersion,
         image_variant: ImageVariant | None = None,
         image_os: ImageVersionOS | None = None,
+        settings: ImageTargetSettings | None = None,
     ) -> "ImageTarget":
         """Create a new ImageTarget instance from a repository, version, variant, and OS combination.
 
@@ -66,6 +79,7 @@ class ImageTarget(BaseModel):
         :param image_version: The specific version of the image.
         :param image_variant: The variant of the image, if applicable.
         :param image_os: The operating system of the image, if applicable.
+        :param settings: Optional settings for the image target.
 
         :return: A new ImageTarget representing the given combination of configurations.
         """
@@ -81,6 +95,7 @@ class ImageTarget(BaseModel):
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
+            settings=settings,
         )
 
     def __str__(self):
@@ -198,18 +213,24 @@ class ImageTarget(BaseModel):
 
         return tags
 
+    def _render_tags(self, registries: list[str], subnamespace: str = "") -> list[str]:
+        """Render tags for the image based on provided registries."""
+        tags = []
+        if registries:
+            for registry in registries:
+                for suffix in self.tag_suffixes:
+                    tags.append(f"{registry}/{self.image_version.parent.name}{subnamespace}:{suffix}")
+        else:
+            for suffix in self.tag_suffixes:
+                tags.append(f"{self.image_version.parent.name}{subnamespace}:{suffix}")
+
+        return sorted(tags)
+
     @computed_field
     @property
     def tags(self) -> list[str]:
         """Generate tags for the image based on tag patterns."""
-        tags = []
-        if self.image_version.all_registries:
-            for registry in self.image_version.all_registries:
-                for suffix in self.tag_suffixes:
-                    tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
-        else:
-            for suffix in self.tag_suffixes:
-                tags.append(f"{self.image_version.parent.name}:{suffix}")
+        tags = self._render_tags([r.base_url for r in self.image_version.all_registries])
 
         return sorted(tags)
 
@@ -249,9 +270,10 @@ class ImageTarget(BaseModel):
 
         return labels
 
-    def cache_name(self, cache_registry: str | None = None) -> str | None:
+    @property
+    def cache_name(self) -> str | None:
         """Generate the image name and tag to use for a build cache."""
-        if not cache_registry:
+        if not self.settings.cache_registry:
             return None
 
         tag = re.sub(r"[+-].*", "", self.image_version.name)
@@ -260,9 +282,25 @@ class ImageTarget(BaseModel):
             tag += f"-{self.image_os.tagDisplayName}"
         if self.image_variant:
             tag += f"-{self.image_variant.tagDisplayName}"
-        cache_name = f"{cache_registry}/{self.image_name}/cache:{tag}"
+        cache_tag = f"{self.settings.cache_registry}/{self.image_name}/cache:{tag}"
 
-        return cache_name
+        return cache_tag
+
+    @property
+    def temp_name(self) -> str | None:
+        """Generate the image name and tag to use for temporary image storage in multiplatform split/merge builds."""
+        if not self.settings.temp_registry:
+            return None
+
+        tag = re.sub(r"[+-].*", "", self.image_version.name)
+        tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag).strip("-._")
+        if self.image_os:
+            tag += f"-{self.image_os.tagDisplayName}"
+        if self.image_variant:
+            tag += f"-{self.image_variant.tagDisplayName}"
+        temp_tag = f"{self.settings.temp_registry}/{self.image_name}/tmp:{tag}"
+
+        return temp_tag
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
@@ -271,12 +309,45 @@ class ImageTarget(BaseModel):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
+    def exists(self) -> bool:
+        """Check if the image exists in the local image cache or registry."""
+        tags = self.tags
+        if self.temp_name is not None:
+            tags = [self.temp_name]
+
+        if python_on_whales.docker.image.exists(tags[0]):
+            return True
+        return False
+
+    def inspect(self):
+        """Inspect the image and return its metadata."""
+        tags = self.tags
+        if self.temp_name is not None:
+            tags = [self.temp_name]
+
+        if not self.exists():
+            return {}
+
+        image = python_on_whales.docker.image.inspect(tags[0])
+        metadata = {
+            "id": image.id,
+            "architecture": image.architecture,
+            "repo_digests": image.repo_digests,
+            "tags": image.repo_tags,
+        }
+
+        # If a temporary registry is used,
+        if self.temp_name is not None:
+            metadata["temp_tags"] = metadata.pop("tags")
+            metadata["tags"] = self.tags
+
+        return metadata
+
     def build(
         self,
         load: bool = True,
         push: bool = False,
         cache: bool = True,
-        cache_registry: str | None = None,
         platforms: list[str] | None = None,
     ) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
@@ -289,10 +360,19 @@ class ImageTarget(BaseModel):
 
         cache_from = None
         cache_to = None
-        if cache_registry:
-            cache_name = self.cache_name(cache_registry=cache_registry)
-            cache_from = f"type=registry,ref={cache_name}"
+        if self.cache_name is not None:
+            cache_from = f"type=registry,ref={self.cache_name}"
             cache_to = f"{cache_from},mode=max"
+
+        tags = self.tags
+        output = {}
+        if self.temp_name is not None:
+            tags = [self.temp_name]
+            # If push is true for a temporary image, override the output to push the image by digest.
+            if push:
+                tags = [self.temp_name.rsplit(":", 1)[0]]
+                output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
+                push = False
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
@@ -302,10 +382,11 @@ class ImageTarget(BaseModel):
                 image = python_on_whales.docker.build(
                     context_path=self.context.base_path,
                     file=self.containerfile,
-                    tags=self.tags,
+                    tags=tags,
                     labels=self.labels,
                     load=load,
                     push=push,
+                    output=output,
                     cache=cache,
                     cache_from=cache_from,
                     cache_to=cache_to,
