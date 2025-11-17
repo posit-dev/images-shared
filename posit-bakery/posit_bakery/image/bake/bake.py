@@ -95,18 +95,15 @@ class BakeTarget(BaseModel):
         image_target: ImageTarget,
     ) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
-        cache_from = []
-        cache_to = []
+        kwargs = {"tags": image_target.tags}
         if image_target.settings.cache_registry:
             cache_name = image_target.cache_name
-            cache_from = [{"type": "registry", "ref": cache_name}]
-            cache_to = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+            kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
+            kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
 
-        tags = image_target.tags
-        output = None
         if image_target.temp_name is not None:
-            tags = [image_target.temp_name]
-            output = [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
+            kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
+            kwargs["output"] = [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
 
         return cls(
             image_name=image_target.image_name,
@@ -115,11 +112,8 @@ class BakeTarget(BaseModel):
             image_os=image_target.image_os.name if image_target.image_os else None,
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
-            tags=tags,
             platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
-            cache_from=cache_from,
-            cache_to=cache_to,
-            output=output,
+            **kwargs,
         )
 
 

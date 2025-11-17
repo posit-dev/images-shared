@@ -62,7 +62,7 @@ def build(
     ] = None,
     metadata_file: Annotated[
         Optional[Path],
-        typer.Option(help="Path to output build metadata JSON file after building images."),
+        typer.Option(help="The path to write JSON build metadata to once builds are finished."),
     ] = None,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
@@ -86,6 +86,7 @@ def build(
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
+        metadata_file=metadata_file,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
@@ -100,9 +101,15 @@ def build(
             raise typer.Exit(code=1)
         stdout_console.print_json(config.bake_plan_targets())
         raise typer.Exit(code=0)
+    if metadata_file and strategy == ImageBuildStrategy.BAKE:
+        stderr_console.print(
+            "⚠️ Warning: The --metadata-file option is not yet supported with the 'bake' strategy. "
+            "No metadata will be written.",
+            style="warning",
+        )
 
     try:
-        images_metadata = config.build_targets(
+        config.build_targets(
             load=load,
             push=push,
             cache=cache,
@@ -113,9 +120,5 @@ def build(
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
-
-    if metadata_file is not None:
-        with open(metadata_file, "w") as f:
-            json.dump(images_metadata, f)
 
     stderr_console.print("✅ Build completed", style="success")

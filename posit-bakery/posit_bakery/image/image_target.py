@@ -34,6 +34,10 @@ class ImageTargetSettings(BaseModel):
         str | None,
         Field(default=None, description="Registry to use for build cache storage and retrieval."),
     ]
+    temp_directory: Annotated[
+        Path | None,
+        Field(default=None, description="Registry to use for build cache storage and retrieval."),
+    ]
 
 
 class ImageTargetContext(BaseModel):
@@ -163,6 +167,16 @@ class ImageTarget(BaseModel):
             expected_path = expected_path.relative_to(self.context.base_path)
 
         return expected_path
+
+    @property
+    def metadata_file(self) -> Path | None:
+        """Return the path of the metadata file for this image target."""
+        if self.settings.temp_directory is None:
+            return None
+
+        metadata_filename = f"{self.uid}.json"
+
+        return self.settings.temp_directory / metadata_filename
 
     @property
     def tag_template_values(self) -> dict[str, str]:
@@ -374,6 +388,10 @@ class ImageTarget(BaseModel):
                 output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
                 push = False
 
+        metadata_file = self.metadata_file
+        if not metadata_file.parent.exists():
+            metadata_file.parent.mkdir(parents=True, exist_ok=True)
+
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
         with contextlib.chdir(self.context.base_path):
@@ -391,6 +409,7 @@ class ImageTarget(BaseModel):
                     cache_from=cache_from,
                     cache_to=cache_to,
                     platforms=platforms or self.image_os.platforms,
+                    metadata_file=metadata_file,
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
@@ -404,5 +423,7 @@ class ImageTarget(BaseModel):
                 )
 
         log.info(f"Successfully built image '{str(self)}'")
+        if self.metadata_file is not None:
+            log.debug(f"Metadata written to {self.metadata_file}")
 
         return image

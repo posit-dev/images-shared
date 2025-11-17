@@ -1,14 +1,16 @@
 import atexit
+import json
 import logging
 import os
 import re
 import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory, mkdtemp
 
 import jinja2
 import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
-from typing import Annotated, Self
+from typing import Annotated, Self, Any
 
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
@@ -250,6 +252,10 @@ class BakerySettings(BaseModel):
     clean_temporary: Annotated[
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
+    temp_directory: Annotated[
+        Path | None,
+        Field(description="Path to temporary storage for Bakery.", default=None),
+    ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
     temp_registry: Annotated[
         str | None,
@@ -259,7 +265,7 @@ class BakerySettings(BaseModel):
     ]
     metadata_file: Annotated[
         Path | None,
-        Field(description="Path to output build metadata JSON file after building images.", default=None),
+        Field(description="Path to output build metadata JSON file(s) after building images.", default=None),
     ]
 
 
@@ -285,6 +291,10 @@ class BakeryConfig:
             settings = BakerySettings()
         self.settings = settings
 
+        if self.settings.metadata_file:
+            self.settings.temp_directory = Path(mkdtemp(prefix="bakery"))
+            log.debug(f"Created temporary directory: {self.settings.temp_directory}")
+
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
@@ -308,6 +318,12 @@ class BakeryConfig:
 
         self.targets = []
         self.generate_image_targets(self.settings)
+
+    def __del__(self):
+        """Cleans up temporary directories if needed."""
+        if self.settings.clean_temporary and isinstance(self.settings.temp_directory, TemporaryDirectory):
+            log.debug(f"Removing temporary directory: {self.settings.temp_directory}")
+            shutil.rmtree(self.settings.temp_directory)
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
@@ -693,12 +709,34 @@ class BakeryConfig:
                                 settings={
                                     "temp_registry": self.settings.temp_registry,
                                     "cache_registry": self.settings.cache_registry,
+                                    "temp_directory": Path(self.settings.temp_directory)
+                                    if self.settings.temp_directory
+                                    else None,
                                 },
                             )
                         )
 
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
+
+    def _merge_build_metadata(self) -> dict[str, Any]:
+        """Merges build metadata from all image targets into a single dictionary.
+
+        :return: A dictionary containing merged build metadata.
+        """
+        merged_metadata: dict[str, Any] = {}
+        for target in self.targets:
+            metadata_file = target.metadata_file
+            if metadata_file and metadata_file.is_file():
+                with open(metadata_file, "r") as f:
+                    target_metadata = json.load(f)
+                    merged_metadata[target.uid] = target_metadata
+            elif not metadata_file.is_file():
+                log.warning(
+                    f"Expected metadata file '{metadata_file}' for target '{str(target.uid)}' not found. Skipping..."
+                )
+
+        return merged_metadata
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
@@ -724,8 +762,6 @@ class BakeryConfig:
         :param strategy: The strategy to use when building images.
         :param fail_fast: If True, stop building targets on the first failure.
         """
-        images: dict[str, dict[str, str]] = {}
-
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
                 context=self.base_path,
@@ -738,9 +774,6 @@ class BakeryConfig:
                 clean_bakefile=self.settings.clean_temporary,
                 platforms=platforms,
             )
-            if self.settings.metadata_file:
-                for target in self.targets:
-                    target.inspect()
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
@@ -751,19 +784,23 @@ class BakeryConfig:
                         cache=cache,
                         platforms=platforms,
                     )
-                    images[target.uid] = target.inspect()
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
                     if fail_fast:
                         log.info("--fail-fast is set, stopping builds...")
                         raise e
                     errors.append(e)
+
             if errors:
                 if len(errors) == 1:
                     raise errors[0]
                 raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
 
-        return images
+            if self.settings.metadata_file:
+                merged_metadata = self._merge_build_metadata()
+                with open(self.settings.metadata_file, "w") as f:
+                    json.dump(merged_metadata, f, indent=2)
+                log.info(f"Build metadata written to {self.settings.metadata_file}")
 
     def dgoss_targets(
         self,
