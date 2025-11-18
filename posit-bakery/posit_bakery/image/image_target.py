@@ -8,12 +8,14 @@ from typing import Annotated
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field
+from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
+from posit_bakery.image.image_metadata import BuildMetadata
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +68,9 @@ class ImageTarget(BaseModel):
     image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
     image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
     image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
+    build_metadata: Annotated[
+        BuildMetadata | None, Field(default=None, description="Build metadata of the image target.")
+    ]
     settings: Annotated[ImageTargetSettings, Field(default_factory=ImageTargetSettings)]
 
     @classmethod
@@ -227,26 +232,28 @@ class ImageTarget(BaseModel):
 
         return tags
 
-    def _render_tags(self, registries: list[str], subnamespace: str = "") -> list[str]:
-        """Render tags for the image based on provided registries."""
+    @computed_field
+    @property
+    def tags(self) -> list[str]:
+        """Generate tags for the image based on tag patterns."""
         tags = []
-        if registries:
-            for registry in registries:
+        if self.image_version.all_registries:
+            for registry in self.image_version.all_registries:
                 for suffix in self.tag_suffixes:
-                    tags.append(f"{registry}/{self.image_version.parent.name}{subnamespace}:{suffix}")
+                    tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
         else:
             for suffix in self.tag_suffixes:
-                tags.append(f"{self.image_version.parent.name}{subnamespace}:{suffix}")
+                tags.append(f"{self.image_version.parent.name}:{suffix}")
 
         return sorted(tags)
 
     @computed_field
     @property
-    def tags(self) -> list[str]:
-        """Generate tags for the image based on tag patterns."""
-        tags = self._render_tags([r.base_url for r in self.image_version.all_registries])
-
-        return sorted(tags)
+    def ref(self) -> str:
+        """Returns a reference to the image, preferring a build metadata digest if available."""
+        if self.build_metadata is not None:
+            return self.build_metadata.image_ref
+        return self.tags[0]
 
     @computed_field
     @property
@@ -316,22 +323,20 @@ class ImageTarget(BaseModel):
 
         return temp_tag
 
+    def exists(self) -> bool:
+        """Check if the image exists in the local image cache or registry."""
+        if python_on_whales.docker.image.exists(self.ref):
+            return True
+        return False
+
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
+        if self.exists():
+            python_on_whales.docker.image.remove(self.ref)
         for tag in self.tags:
             if python_on_whales.docker.image.exists(tag):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
-
-    def exists(self) -> bool:
-        """Check if the image exists in the local image cache or registry."""
-        tags = self.tags
-        if self.temp_name is not None:
-            tags = [self.temp_name]
-
-        if python_on_whales.docker.image.exists(tags[0]):
-            return True
-        return False
 
     def inspect(self):
         """Inspect the image and return its metadata."""
@@ -356,6 +361,40 @@ class ImageTarget(BaseModel):
             metadata["tags"] = self.tags
 
         return metadata
+
+    def pull(self):
+        """Pull the image from the registry to the local image cache."""
+        if self.exists():
+            log.debug(f"Image '{str(self)}' already exists in local cache. Skipping pull.")
+            return
+
+        log.info(f"Pulling image '{str(self)}'...")
+        try:
+            python_on_whales.docker.image.pull(self.ref)
+        except python_on_whales.exceptions.DockerException as e:
+            raise BakeryToolRuntimeError(
+                message=f"Failed to pull image '{str(self)}'",
+                tool_name="docker",  # FIXME: This should be dynamic based on the tool used. Not sure how to get.
+                cmd=e.docker_command,
+                stdout=e.stdout,
+                stderr=e.stderr,
+                exit_code=e.return_code,
+                metadata={"image_target": str(self)},
+            )
+        log.info(f"Successfully pulled image '{str(self)}'")
+
+    def attach_metadata(self, metadata: BuildMetadata | dict, pull: bool = False):
+        """Attach build metadata to the image target.
+
+        :param metadata: The build metadata to attach.
+        :param pull: Whether to pull the image before attaching metadata.
+        """
+        if isinstance(metadata, dict):
+            metadata = BuildMetadata(**metadata)
+        self.build_metadata = metadata
+
+        if pull:
+            self.pull()
 
     def build(
         self,

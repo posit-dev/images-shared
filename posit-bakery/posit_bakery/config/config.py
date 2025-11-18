@@ -720,6 +720,22 @@ class BakeryConfig:
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
 
+    def attach_metadata_to_targets(self, pull: bool = False):
+        """Attaches build metadata to all image targets from their respective metadata files."""
+        if not self.settings.metadata_file:
+            log.debug("No metadata file specified in settings, skipping metadata attachment.")
+            return
+        if not self.settings.metadata_file.is_file():
+            log.debug(f"Metadata file '{self.settings.metadata_file}' does not exist, skipping metadata attachment.")
+            return
+
+        with open(self.settings.metadata_file, "r") as f:
+            metadata = json.load(f)
+
+        for target in self.targets:
+            if target.uid in metadata:
+                target.attach_metadata(metadata[target.uid], pull=pull)
+
     def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
         """Returns an image target by its UID.
 

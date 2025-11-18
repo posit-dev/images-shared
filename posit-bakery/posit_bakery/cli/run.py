@@ -25,10 +25,19 @@ def dgoss(
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
     image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
+    image_platform: Annotated[
+        Optional[list[str]], typer.Option(help="The image platform to isolate goss testing to.")
+    ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(help="Include or exclude development versions defined in config."),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    metadata_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a build metadata file. If given, attempts to run tests against image artifacts in the file."
+        ),
+    ] = None,
     clean: Annotated[
         Optional[bool],
         typer.Option(help="Clean up intermediary and temporary files after building. Can be helpful for debugging."),
@@ -40,7 +49,7 @@ def dgoss(
     directory and generate and execute test commands on all images.
 
     Images are expected to be available to the local Docker daemon. It is advised to run `build` before running
-    dgoss tests.
+    dgoss tests. If a metadata file is provided, images will be pulled and tested based on the artifacts in the file.
 
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
@@ -51,11 +60,18 @@ def dgoss(
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
+            image_platform=image_platform,
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
+        metadata_file=metadata_file,
     )
     c = BakeryConfig.from_context(context, settings)
+
+    if metadata_file:
+        log.info(f"Using build metadata from {metadata_file} to locate images for dgoss testing.")
+        c.attach_metadata_to_targets(pull=True)
+
     results, err = c.dgoss_targets()
 
     stderr_console.print(results.table())
