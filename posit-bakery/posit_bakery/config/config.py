@@ -232,7 +232,7 @@ class BakeryConfigFilter(BaseModel):
         str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
     ]
     image_platform: Annotated[
-        str | None, Field(description="Name or regex pattern of the image platform to filter by.", default=None)
+        list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
     ]
 
 
@@ -670,16 +670,6 @@ class BakeryConfig:
                         f"due to not matching version filter '{settings.filter.image_version}'"
                     )
                     continue
-                if settings.filter.image_platform is not None and all(
-                    re.search(settings.filter.image_platform, platform) is None
-                    for platform in version.supported_platforms
-                ):
-                    log.debug(
-                        f"Skipping image '{image.name}' "
-                        f"due to unsupported build platform '{settings.filter.image_platform}', "
-                        f"supported platforms are: {', '.join(version.supported_platforms)}"
-                    )
-                    continue
                 for variant in image.variants or [None]:
                     if (
                         settings.filter.image_variant is not None
@@ -698,6 +688,17 @@ class BakeryConfig:
                             log.debug(
                                 f"Skipping image OS '{_os.name}' in image '{image.name}' "
                                 f"due to not matching OS filter '{settings.filter.image_os}'"
+                            )
+                            continue
+                        if settings.filter.image_platform and all(
+                            re.search(filter_platform, platform) is None
+                            for platform in _os.platforms
+                            for filter_platform in settings.filter.image_platform
+                        ):
+                            log.debug(
+                                f"Skipping image '{image.name}' "
+                                f"due to no matching platforms for patterns {settings.filter.image_platform}, "
+                                f"supported platforms are: {', '.join(version.supported_platforms)}"
                             )
                             continue
                         targets.append(

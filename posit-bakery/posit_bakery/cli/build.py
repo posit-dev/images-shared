@@ -81,6 +81,7 @@ def build(
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
+            image_platform=platform,
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
