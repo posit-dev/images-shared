@@ -1,9 +1,10 @@
 import json
 import logging
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 import typer
+from python_on_whales import DockerException
 
 from posit_bakery import error
 from posit_bakery.config import BakeryConfig
@@ -75,3 +76,72 @@ def matrix(
     except:
         log.exception("Failed to load bakery config")
         raise typer.Exit(code=1)
+
+
+@app.command()
+def merge(
+    metadata_file: Annotated[list[Path], typer.Argument(help="Path to input build metadata JSON file(s) to merge.")],
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+    ] = auto_path(),
+    dry_run: Annotated[
+        bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
+    ] = False,
+):
+    """Merges multiple metadata files with single-platform images into a single multi-platform image by UID.
+
+    This command is intended for use in CI workflows that utilize native builders for multiplatform builds.
+    Easier multiplatform builds can be achieved by using emulation (Docker and QEMU), but builds in emulation typically
+    suffer severe performance disadvantages.
+
+    This command should be ran after multiple `bakery build --strategy build --platform <platform>
+    --metadata-file <path> --temp-registry <registry>` commands have been executed for different platforms. The
+    resulting metadata files can be fed into this command to merge and push combined multi-platform images. Matches are
+    made by the top-level Image UID keys in the metadata files. Single entries with no other matches will be tagged and
+    pushed as is. If an entry has no matching UID in the project, it will be skipped with a delayed error.
+
+    Metadata files are expected to be JSON with the following structure:
+
+    ```json
+    {
+      "<Image UID>": {metadata...}
+    }
+    ```
+    """
+    settings = BakerySettings(
+        dev_versions=DevVersionInclusionEnum.INCLUDE,
+        clean_temporary=False,
+    )
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    image_digests: dict[str, list[str]] = {}
+    for file in metadata_file:
+        if not file.is_file():
+            log.error(f"Metadata file '{file}' does not exist")
+            raise typer.Exit(code=1)
+        with open(file, "r") as f:
+            data = json.load(f)
+        for uid, metadata in data.items():
+            image_name = metadata.get("image.name")
+            if not image_name:
+                log.error(f"Metadata file '{file}' is missing 'image.name' for image UID '{uid}'")
+                raise typer.Exit(code=1)
+            digest = metadata.get("containerimage.digest")
+            if not digest:
+                log.error(f"Metadata file '{file}' is missing 'containerimage.digest' for image UID '{uid}'")
+                raise typer.Exit(code=1)
+            image_digests.setdefault(uid, []).append(f"{image_name}@{digest}")
+
+    log.info(f"Found {len(image_digests.keys())} targets")
+    log.debug(json.dumps(image_digests, indent=2, sort_keys=True))
+
+    for uid, sources in image_digests.items():
+        target = config.get_image_target_by_uid(uid)
+        log.info(f"Merging {len(sources)} sources for image UID '{uid}'")
+        try:
+            manifest = target.merge(sources=sources, dry_run=dry_run)
+            if dry_run:
+                stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+        except DockerException as e:
+            log.error(f"Error merging sources for UID '{uid}'")
+            log.error(str(e))

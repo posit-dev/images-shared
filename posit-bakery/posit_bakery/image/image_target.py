@@ -427,3 +427,11 @@ class ImageTarget(BaseModel):
             log.debug(f"Metadata written to {self.metadata_file}")
 
         return image
+
+    def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
+        """Merge multiple images into a single image, tag, and push."""
+        return python_on_whales.docker.buildx.imagetools.create(
+            sources=sources,
+            tags=self.tags,
+            dry_run=dry_run,
+        )

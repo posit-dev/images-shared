@@ -720,7 +720,18 @@ class BakeryConfig:
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
 
-    def _merge_build_metadata(self) -> dict[str, Any]:
+    def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
+        """Returns an image target by its UID.
+
+        :param uid: The UID of the image target to find.
+        :return: The ImageTarget with the given UID, or None if not found.
+        """
+        for target in self.targets:
+            if target.uid == uid:
+                return target
+        return None
+
+    def _merge_sequential_build_metadata_files(self) -> dict[str, Any]:
         """Merges build metadata from all image targets into a single dictionary.
 
         :return: A dictionary containing merged build metadata.
@@ -798,7 +809,7 @@ class BakeryConfig:
                 raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
 
             if self.settings.metadata_file:
-                merged_metadata = self._merge_build_metadata()
+                merged_metadata = self._merge_sequential_build_metadata_files()
                 with open(self.settings.metadata_file, "w") as f:
                     json.dump(merged_metadata, f, indent=2)
                 log.info(f"Build metadata written to {self.settings.metadata_file}")
