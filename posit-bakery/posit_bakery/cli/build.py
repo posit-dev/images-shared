@@ -75,6 +75,9 @@ def build(
 
     Requires Docker, Podman, or nerdctl to be installed and running for `--strategy build`.
     """
+    if platform is None:
+        platform = []
+
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
