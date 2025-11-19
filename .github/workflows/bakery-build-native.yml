@@ -40,6 +40,11 @@ on:
         description: "GitHub App private key with access to posit-dev repositories"
         required: true
 
+env:
+  DEFAULT_RUNNER: ubuntu-latest
+  AMD64_RUNNER: ubuntu-latest-4x
+  ARM64_RUNNER: ubuntu-24.04-arm64-4-core
+
 defaults:
   run:
     shell: bash
@@ -47,7 +52,7 @@ defaults:
 jobs:
   matrix:
     name: Image Matrix
-    runs-on: ubuntu-24.04
+    runs-on: ${{ env.DEFAULT_RUNNER }}
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
       versions-matrix: ${{ steps.images-by-version.outputs.versions_matrix }}
@@ -89,7 +94,7 @@ jobs:
       fail-fast: false
       matrix:
         img: ${{ fromJson(needs.matrix.outputs.platform-matrix) }}
-    runs-on: ${{ matrix.img.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.img.platform == 'linux/arm64' && env.ARM64_RUNNER || env.AMD64_RUNNER }}
 
     steps:
       - name: Checkout
@@ -186,7 +191,7 @@ jobs:
       fail-fast: false
       matrix:
         img: ${{ fromJson(needs.matrix.outputs.versions-matrix) }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ env.DEFAULT_RUNNER }}
 
     steps:
       - name: Checkout
