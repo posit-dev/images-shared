@@ -28,11 +28,6 @@ on:
         default: false
         required: false
         type: boolean
-      runs-on:
-        description: "The type of runner to use [default: ubuntu-latest]"
-        default: "ubuntu-latest"
-        required: false
-        type: string
     secrets:
       DOCKER_HUB_ACCESS_TOKEN:
         description: "Docker Hub Access Token [required if pushing]"
@@ -52,7 +47,7 @@ defaults:
 jobs:
   matrix:
     name: Image Matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
       versions-matrix: ${{ steps.images-by-version.outputs.versions_matrix }}
@@ -94,7 +89,7 @@ jobs:
       fail-fast: false
       matrix:
         img: ${{ fromJson(needs.matrix.outputs.platform-matrix) }}
-    runs-on: ${{ inputs.runs-on }}${{ matrix.img.platform == 'linux/arm64' && '-arm' || '' }}
+    runs-on: ${{ matrix.img.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
 
     steps:
       - name: Checkout
@@ -191,7 +186,7 @@ jobs:
       fail-fast: false
       matrix:
         img: ${{ fromJson(needs.matrix.outputs.versions-matrix) }}
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
