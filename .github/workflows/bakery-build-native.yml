@@ -190,7 +190,7 @@ jobs:
           bakery run dgoss \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
-            --image-platform ${{ matrix.img.platform }} \
+            --platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
             --context ${{ inputs.context }}

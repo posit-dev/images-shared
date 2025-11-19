@@ -25,7 +25,7 @@ def dgoss(
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
     image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
-    image_platform: Annotated[
+    platform: Annotated[
         Optional[list[str]], typer.Option(help="The image platform to isolate goss testing to.")
     ] = None,
     dev_versions: Annotated[
@@ -54,13 +54,16 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
+    if platform is None:
+        platform = []
+
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
-            image_platform=image_platform,
+            image_platform=platform,
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
