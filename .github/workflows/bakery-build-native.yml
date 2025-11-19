@@ -156,11 +156,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Normalize platform
+        id: normalize-platform
+        env:
+          BUILD_PLATFORM: ${{ matrix.img.platform }}
+        run: |
+          PLATFORM=${BUILD_PLATFORM#linux/}
+          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
         # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
+          PLATFORM=${BUILD_PLATFORM#linux/} \
           bakery build \
             --strategy build \
             --image-name '^${{ matrix.img.image }}$' \
@@ -169,12 +178,13 @@ jobs:
             --dev-versions ${{ inputs.dev-versions }} \
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --temp-registry "ghcr.io/${{ github.repository_owner }}" \
-            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ matrix.img.platform }}-metadata.json" \
+            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
             --context ${{ inputs.context }} \
             --push
 
       - name: Test
         run: |
+          PLATFORM=${BUILD_PLATFORM#linux/} \
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery run dgoss \
@@ -182,14 +192,14 @@ jobs:
             --image-version ${{ matrix.img.version }} \
             --image-platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
-            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ matrix.img.platform }}-metadata.json" \
+            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
             --context ${{ inputs.context }}
 
       - name: Upload Metadata
         uses: actions/upload-artifact@v4
         with:
-          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ matrix.img.platform }}-metadata"
-          path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ matrix.img.platform }}-metadata.json"
+          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata"
+          path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
           overwrite: 'true'
 
   merge:
