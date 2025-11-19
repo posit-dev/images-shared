@@ -26,6 +26,7 @@ jobs:
     needs:
       - test
       - bakery
+      - bakery-native
       - release
 
     steps:
