@@ -81,9 +81,9 @@ def matrix(
                 if BakeryCIMatrixFieldEnum.PLATFORM not in exclude:
                     for platform in ver.supported_platforms:
                         entry["platform"] = platform
-                        data.append(entry)
+                        data.append(entry.copy())
                 else:
-                    data.append(entry)
+                    data.append(entry.copy())
 
         stdout_console.print(json.dumps(data))
 
