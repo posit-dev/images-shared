@@ -9,7 +9,13 @@ runs:
     - name: Install goss
       shell: bash
       run: |
-        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/goss-linux-amd64 -o tools/goss
+        arch=$(uname -m)
+        if [ "$arch" = "x86_64" ]; then
+            arch="amd64"
+        elif [ "$arch" = "aarch64" ]; then
+            arch="arm64"
+        fi
+        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/goss-linux-${arch} -o tools/goss
         chmod +rx tools/goss
     - name: Install dgoss
       shell: bash
