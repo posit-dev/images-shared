@@ -25,9 +25,7 @@ def dgoss(
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
     image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
-    platform: Annotated[
-        Optional[list[str]], typer.Option(help="The image platform to isolate goss testing to.")
-    ] = None,
+    platform: Annotated[Optional[str], typer.Option(help="The image platform to isolate goss testing to.")] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(help="Include or exclude development versions defined in config."),
@@ -53,17 +51,17 @@ def dgoss(
 
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
-    """
-    if platform is None:
-        platform = []
 
+    If tests must be run against non-host platform architecture, ensure the provided Goss binary matches the platform
+    provided by the `--platform` option. Tests will only run against compatible image targets.
+    """
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
-            image_platform=platform,
+            image_platform=[platform] if platform else [],
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
@@ -75,7 +73,7 @@ def dgoss(
         log.info(f"Using build metadata from {metadata_file} to locate images for dgoss testing.")
         c.attach_metadata_to_targets(pull=True)
 
-    results, err = c.dgoss_targets()
+    results, err = c.dgoss_targets(platform)
 
     stderr_console.print(results.table())
     if results.test_failures:
