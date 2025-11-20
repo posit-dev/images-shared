@@ -129,7 +129,6 @@ jobs:
       context: "./posit-bakery/test/resources/with-macros/"
       remove-dangling: true
       remove-older-than: 14
-      version: clean-command
 
   release:
     name: Release/Snapshot
