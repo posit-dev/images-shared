@@ -30,10 +30,10 @@ def clean_cache(
     # Filter package versions that should be deleted.
     versions_to_delete = []
     if remove_older_than is not None:
-        old_versions = package_versions.filter_older_than(remove_older_than)
+        old_versions = package_versions.older_than(remove_older_than)
         versions_to_delete.extend(old_versions.versions)
     if remove_untagged:
-        untagged_versions = package_versions.filter_untagged()
+        untagged_versions = package_versions.untagged()
         versions_to_delete.extend(untagged_versions.versions)
     versions_to_delete = list(set(versions_to_delete))  # Deduplicate versions.
 
@@ -71,11 +71,11 @@ def clean_registry(
     # Filter package versions that should be deleted.
     versions_to_delete = []
     if remove_tagged_older_than is not None:
-        old_versions = package_versions.filter_older_than(remove_tagged_older_than)
+        old_versions = package_versions.older_than(remove_tagged_older_than)
         versions_to_delete.extend(old_versions.versions)
     if remove_untagged_older_than is not None:
-        untagged_versions = package_versions.filter_untagged()
-        untagged_old_versions = untagged_versions.filter_older_than(remove_untagged_older_than)
+        untagged_versions = package_versions.untagged()
+        untagged_old_versions = untagged_versions.older_than(remove_untagged_older_than)
         versions_to_delete.extend(untagged_old_versions.versions)
     versions_to_delete = list(set(versions_to_delete))  # Deduplicate versions.
 

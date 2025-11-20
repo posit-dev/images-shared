@@ -37,7 +37,7 @@ class GHCRPackageVersions(BaseModel):
 
     versions: list[GHCRPackageVersion]
 
-    def filter_older_than(self, td: timedelta = timedelta(weeks=2)):
+    def older_than(self, td: timedelta = timedelta(weeks=2)):
         now = datetime.now(UTC)
         limit = now - td
 
@@ -48,7 +48,7 @@ class GHCRPackageVersions(BaseModel):
 
         return GHCRPackageVersions(versions=filtered_versions)
 
-    def filter_untagged(self):
+    def untagged(self):
         filtered_versions = []
         for version in self.versions:
             if len(version.metadata.container.tags) == 0:
