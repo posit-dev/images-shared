@@ -199,7 +199,7 @@ class TestBakePlan:
             "load": True,
             "push": False,
             "cache": True,
-            "set": {"*.platform": "linux/amd64"},
+            "set": {},
         }
 
         with patch("python_on_whales.docker.buildx.bake") as mock_bake:

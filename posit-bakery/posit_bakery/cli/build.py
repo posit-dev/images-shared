@@ -50,6 +50,10 @@ def build(
     plan: Annotated[Optional[bool], typer.Option(help="Print the bake plan and exit.")] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
+    platform: Annotated[
+        Optional[list[str]],
+        typer.Option(help="Target platform for the build (e.g., linux/amd64). Overrides configured platforms."),
+    ] = None,
     cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
     cache_registry: Annotated[Optional[str], typer.Option(help="External cache sources")] = None,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
@@ -93,6 +97,7 @@ def build(
             load=load,
             push=push,
             cache=cache,
+            platforms=platform,
             strategy=strategy,
             fail_fast=fail_fast,
         )

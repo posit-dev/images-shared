@@ -1,0 +1,102 @@
+{
+  "group": {
+    "default": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04",
+        "test-multi-1-0-0-standard-ubuntu-22-04"
+      ]
+    },
+    "test-multi": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04",
+        "test-multi-1-0-0-standard-ubuntu-22-04"
+      ]
+    },
+    "Minimal": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04"
+      ]
+    },
+    "Standard": {
+      "targets": [
+        "test-multi-1-0-0-standard-ubuntu-22-04"
+      ]
+    }
+  },
+  "target": {
+    "test-multi-1-0-0-minimal-ubuntu-22-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.min",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Minimal",
+        "co.posit.image.os": "Ubuntu 22.04"
+      },
+      "tags": [
+        "docker.io/posit/test-multi:1.0.0-min",
+        "docker.io/posit/test-multi:1.0.0-ubuntu-22.04-min",
+        "docker.io/posit/test-multi:min",
+        "docker.io/posit/test-multi:ubuntu-22.04-min",
+        "ghcr.io/posit-dev/test-multi:1.0.0-min",
+        "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min",
+        "ghcr.io/posit-dev/test-multi:min",
+        "ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
+      ],
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "test-multi-1-0-0-standard-ubuntu-22-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.std",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Standard",
+        "co.posit.image.os": "Ubuntu 22.04"
+      },
+      "tags": [
+        "docker.io/posit/test-multi:1.0.0",
+        "docker.io/posit/test-multi:1.0.0-std",
+        "docker.io/posit/test-multi:1.0.0-ubuntu-22.04",
+        "docker.io/posit/test-multi:1.0.0-ubuntu-22.04-std",
+        "docker.io/posit/test-multi:latest",
+        "docker.io/posit/test-multi:std",
+        "docker.io/posit/test-multi:ubuntu-22.04",
+        "docker.io/posit/test-multi:ubuntu-22.04-std",
+        "ghcr.io/posit-dev/test-multi:1.0.0",
+        "ghcr.io/posit-dev/test-multi:1.0.0-std",
+        "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04",
+        "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-std",
+        "ghcr.io/posit-dev/test-multi:latest",
+        "ghcr.io/posit-dev/test-multi:std",
+        "ghcr.io/posit-dev/test-multi:ubuntu-22.04",
+        "ghcr.io/posit-dev/test-multi:ubuntu-22.04-std"
+      ],
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    }
+  }
+}
