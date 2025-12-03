@@ -83,8 +83,6 @@ class TestDGossCommand:
         expected_command = [
             find_dgoss_bin(basic_standard_image_target.context),
             "run",
-            "--platform",
-            "linux/amd64",
             "-v",
             f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",
@@ -112,7 +110,7 @@ class TestDGossCommand:
             "-e",
             "IMAGE_OS_VERSION=22.04",
             "--init",
-            basic_standard_image_target.tags[0],
+            basic_standard_image_target.ref,
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
         ]
         assert dgoss_command.command == expected_command
@@ -124,8 +122,6 @@ class TestDGossCommand:
         expected_command = [
             find_dgoss_bin(basic_standard_image_target.context),
             "run",
-            "--platform",
-            "linux/amd64",
             "-v",
             f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",
@@ -154,7 +150,7 @@ class TestDGossCommand:
             "IMAGE_OS_VERSION=22.04",
             "--init",
             "--privileged",
-            basic_standard_image_target.tags[0],
+            basic_standard_image_target.ref,
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
         ]
         assert dgoss_command.command == expected_command

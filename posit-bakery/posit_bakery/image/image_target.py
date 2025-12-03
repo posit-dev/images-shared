@@ -92,20 +92,21 @@ class ImageTarget(BaseModel):
 
         :return: A new ImageTarget representing the given combination of configurations.
         """
-        context = ImageTargetContext(
-            base_path=image_version.parent.parent.path,
-            image_path=image_version.parent.path,
-            version_path=image_version.path,
-        )
+        kwargs = {
+            "context": ImageTargetContext(
+                base_path=image_version.parent.parent.path,
+                image_path=image_version.parent.path,
+                version_path=image_version.path,
+            ),
+            "repository": repository,
+            "image_version": image_version,
+            "image_variant": image_variant,
+            "image_os": image_os,
+        }
+        if settings is not None:
+            kwargs["settings"] = settings
 
-        return cls(
-            context=context,
-            repository=repository,
-            image_version=image_version,
-            image_variant=image_variant,
-            image_os=image_os,
-            settings=settings,
-        )
+        return cls(**kwargs)
 
     def __str__(self):
         """Return a string representation of the image target."""
@@ -428,7 +429,7 @@ class ImageTarget(BaseModel):
                 push = False
 
         metadata_file = self.metadata_file
-        if not metadata_file.parent.exists():
+        if metadata_file is not None and not metadata_file.parent.exists():
             metadata_file.parent.mkdir(parents=True, exist_ok=True)
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working

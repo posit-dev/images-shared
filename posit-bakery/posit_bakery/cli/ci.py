@@ -137,6 +137,7 @@ def merge(
         else:
             resolved_files.append(file)
     metadata_file = resolved_files
+    log.info(f"Reading targets from {', '.join(str(f) for f in metadata_file)}")
 
     image_digests: dict[str, list[str]] = {}
     for file in metadata_file:

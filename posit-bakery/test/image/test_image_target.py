@@ -346,10 +346,12 @@ class TestImageTarget:
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
+            "output": {},
             "cache": True,
             "cache_from": None,
             "cache_to": None,
             "platforms": ["linux/amd64"],
+            "metadata_file": None,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
