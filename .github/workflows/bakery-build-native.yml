@@ -271,5 +271,5 @@ jobs:
         run: |
           bakery ci merge \
             --context ${{ inputs.context }} \
-            ${{ inputs.push && ' \' || '--dry-run \' }} \
+            ${{ inputs.push && ' \' || '--dry-run \' }}
             *-metadata.json
