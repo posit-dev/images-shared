@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 from enum import Enum
@@ -127,6 +128,15 @@ def merge(
         clean_temporary=False,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    # Resolve glob patterns in metadata_file arguments
+    resolved_files: list[Path] = []
+    for file in metadata_file:
+        if "*" in str(file) or "?" in str(file) or "[" in str(file):
+            resolved_files.extend(sorted(Path(x) for x in glob.glob(str(file))))
+        else:
+            resolved_files.append(file)
+    metadata_file = resolved_files
 
     image_digests: dict[str, list[str]] = {}
     for file in metadata_file:
