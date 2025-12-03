@@ -127,7 +127,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@main"
+        uses: "posit-dev/images-shared/setup-goss@ci-native-multiplatform"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
@@ -232,9 +232,6 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           version: ${{ inputs.version }}
-
-      - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@ci-native-multiplatform"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
