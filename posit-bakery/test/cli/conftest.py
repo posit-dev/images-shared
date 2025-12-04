@@ -10,6 +10,12 @@ from test.cli.bakery_command import BakeryCommand
 from test.helpers import remove_images
 
 
+@pytest.fixture(scope="session")
+def ci_testdata():
+    """Return the path to the CI test data directory"""
+    return Path(__file__).parent / "testdata"
+
+
 def pytest_bdd_apply_tag(tag, function):
     """Modify scenario tags to be pytest-compatible."""
     if tag == "xdist-build":

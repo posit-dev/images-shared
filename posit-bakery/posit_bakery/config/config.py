@@ -6,20 +6,19 @@ import re
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
+from typing import Annotated, Self, Any
 
 import jinja2
 import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
-from typing import Annotated, Self, Any
-
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
+from posit_bakery.config.image import Image
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
-from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
@@ -31,10 +30,10 @@ from posit_bakery.error import (
     BakeryRenderError,
     BakeryRenderErrorGroup,
 )
+from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
-from posit_bakery.image.bake.bake import BakePlan
 
 log = logging.getLogger(__name__)
 
@@ -698,7 +697,7 @@ class BakeryConfig:
                             log.debug(
                                 f"Skipping image '{image.name}' "
                                 f"due to no matching platforms for patterns {settings.filter.image_platform}, "
-                                f"supported platforms are: {', '.join(version.supported_platforms)}"
+                                f"supported platforms are: {', '.join(_os.platforms)}"
                             )
                             continue
                         targets.append(

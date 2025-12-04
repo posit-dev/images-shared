@@ -33,7 +33,7 @@ def matrix(
     ] = DevVersionInclusionEnum.EXCLUDE,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
-        typer.Option(help="Include or exclude development versions defined in config."),
+        typer.Option(help="Fields to exclude splitting the matrix by."),
     ] = None,
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
