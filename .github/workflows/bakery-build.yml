@@ -33,9 +33,17 @@ on:
         default: "ubuntu-latest"
         required: false
         type: string
+      aws-region:
+        description: "AWS Region [default: us-east-2]"
+        default: "us-east-2"
+        required: false
+        type: string
     secrets:
       DOCKER_HUB_ACCESS_TOKEN:
-        description: "Docker Hub Access Token [required if pushing]"
+        description: "Docker Hub Access Token [required if pushing to Docker Hub]"
+        required: false
+      AWS_ROLE:
+        description: "AWS Role to assume [required if pushing to ECR]"
         required: false
       # TODO: Remove secret requirements once repository is public
       APP_ID:
@@ -94,6 +102,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Since secrets cannot be referenced in an `if` condition directly,
+      # this step sets an output that we can reference later.
+      - name: Filter Steps
+        id: filter-steps
+        run: |
+          if [ -n "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" ] ; then
+            echo "docker-hub=true" >> $GITHUB_OUTPUT
+          else
+            echo "docker-hub=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -n "${{ secrets.AWS_ROLE }}" ] ; then
+            echo "ecr=true" >> $GITHUB_OUTPUT
+          else
+            echo "ecr=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Token
         uses: actions/create-github-app-token@v1
         id: app-token
@@ -119,19 +144,32 @@ jobs:
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        if: ${{ inputs.push }}
-        uses: docker/login-action@v3
-        with:
-          username: "posit"
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          username: "posit"
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Configure AWS Credentials
+        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-bakery-build
+
+      - name: Login to Amazon ECR
+        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build
         env:
