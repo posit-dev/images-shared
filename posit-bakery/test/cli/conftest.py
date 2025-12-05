@@ -59,10 +59,10 @@ def cli_tmpcontext(bakery_command, suite_name, get_tmpcontext):
     return Path(get_tmpcontext(suite_name))
 
 
-@given("with the temp context as the working directory")
-def cli_tmpcontext(bakery_command, cli_test_tmpcontext):
+@given("with the context as the working directory")
+def cli_tmpcontext(bakery_command):
     original_wd = os.getcwd()
-    os.chdir(cli_test_tmpcontext)
+    os.chdir(bakery_command.context)
     yield
     os.chdir(original_wd)
 

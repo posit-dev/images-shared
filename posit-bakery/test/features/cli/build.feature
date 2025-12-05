@@ -90,8 +90,10 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform (sequential build)
-        Given I call bakery build --strategy build
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --strategy | build |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
@@ -105,8 +107,10 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms
-        Given I call bakery build --platform linux/arm64
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --platform | linux/arm64 |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
@@ -121,8 +125,10 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms (sequential build)
-        Given I call bakery build --platform linux/arm64 --strategy build
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --platform | linux/arm64 | --strategy | build |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
@@ -133,3 +139,21 @@ Feature: build
         * the multiplatform test suite did not build for platforms:
             | linux/amd64 |
         * the multiplatform images are removed
+
+    @slow
+    @xdist-build
+    Scenario: Building images and outputting to a metadata file (sequential build)
+        Given I call bakery build
+        * in a temp basic context
+        * with the arguments:
+            | --strategy | build | --metadata-file | build-metadata.json |
+        * with the context as the working directory
+        When I execute the command
+        Then The command succeeds
+        * the stderr output includes:
+            | Build completed |
+        * the basic test suite is built
+        * the context includes file:
+            | build-metadata.json |
+        * build-metadata.json contains build metadata for the basic test suite
+        * the basic images are removed

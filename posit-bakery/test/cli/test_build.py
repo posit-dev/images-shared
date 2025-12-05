@@ -45,15 +45,13 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
-    filtered_platforms = [
-        bakery_command.subcommand[i + 1] for i, x in enumerate(bakery_command.subcommand) if x == "--platform"
-    ]
+    filtered_platforms = [bakery_command.args[i + 1] for i, x in enumerate(bakery_command.args) if x == "--platform"]
 
     config = get_config_obj(suite_name)
     for target in config.targets:
-        if filtered_platforms and not any(
-            re.search(platform, target_platform) is not None
-            for platform in filtered_platforms
+        if filtered_platforms and all(
+            re.search(filter_platform, target_platform) is None
+            for filter_platform in filtered_platforms
             for target_platform in target.image_os.platforms
         ):
             continue
@@ -106,7 +104,7 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
 
 
 @then(parsers.parse("the {suite_name} test suite is not built"))
-def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_obj):
+def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, get_config_obj):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
@@ -114,3 +112,24 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
     for target in config.targets:
         for tag in target.tags:
             assert not python_on_whales.docker.image.exists(tag)
+
+
+@then(parsers.parse("{metadata_file} contains build metadata for the {suite_name} test suite"))
+def check_build_metadata(resource_path, bakery_command, metadata_file, suite_name, get_config_obj):
+    metadata_path = bakery_command.context / metadata_file
+    assert metadata_path.is_file()
+
+    with open(metadata_path, "r") as f:
+        data = json.load(f)
+
+    config = get_config_obj(suite_name)
+
+    expected_uids = [target.uid for target in config.targets].sort()
+    actual_uids = list(data.keys()).sort()
+    assert expected_uids == actual_uids
+
+    for _, metadata in data.items():
+        assert "image.name" in metadata
+        assert re.search(r"[a-z0-9]+([._-][a-z0-9]+)*(:[a-zA-Z0-9._-]+)?", metadata["image.name"]) is not None
+        assert "containerimage.digest" in metadata
+        assert re.match(r"^sha256:[a-f0-9]{64}$", metadata["containerimage.digest"]) is not None

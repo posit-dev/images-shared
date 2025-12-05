@@ -2,10 +2,12 @@
 Feature: merge
 
     Scenario: Merging multiplatform builds
-        Given I call bakery ci merge *-metadata.json
+        Given I call bakery ci merge
         * in a temp multiplatform context
+        * with the arguments:
+            | *-metadata.json |
         * with testdata ci/merge/multiplatform copied to context
-        * with the temp context as the working directory
+        * with the context as the working directory
         * with image target merge method patched
         When I execute the command
         Then The command succeeds

@@ -133,11 +133,11 @@ def merge(
     resolved_files: list[Path] = []
     for file in metadata_file:
         if "*" in str(file) or "?" in str(file) or "[" in str(file):
-            resolved_files.extend(sorted(Path(x) for x in glob.glob(str(file))))
+            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(str(file))))
         else:
-            resolved_files.append(file)
+            resolved_files.append(file.absolute())
     metadata_file = resolved_files
-    log.info(f"Reading targets from {', '.join(str(f) for f in metadata_file)}")
+    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
 
     image_digests: dict[str, list[str]] = {}
     for file in metadata_file:
