@@ -237,3 +237,24 @@ class TestImageVersion:
 
         assert i.values == {"key1": "value1", "key2": "value2", "custom_var": "custom_value"}
         assert len(i.values) == 3
+
+    def test_supported_platforms(self):
+        i = ImageVersion(
+            name="1.0.0",
+            subpath="1.0",
+            extraRegistries=[
+                {"host": "registry1.example.com", "namespace": "namespace1"},
+                {"host": "registry2.example.com", "namespace": "namespace2"},
+            ],
+            latest=True,
+            os=[
+                {"name": "Ubuntu 22.04", "platforms": ["linux/amd64"]},
+                {"name": "Ubuntu 24.04", "primary": True, "platforms": ["linux/amd64", "linux/arm64"]},
+            ],
+            dependencies=[
+                {"dependency": "R", "versions": ["4.5.1", "4.4.3"]},
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "quarto", "versions": ["1.8.24"]},
+            ],
+        )
+        assert i.supported_platforms == ["linux/amd64", "linux/arm64"]
