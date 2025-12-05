@@ -1,4 +1,5 @@
 # conftest.py loads this file via pytest_plugins
+import os
 import shutil
 from pathlib import Path
 from typing import List
@@ -58,6 +59,14 @@ def cli_tmpcontext(bakery_command, suite_name, get_tmpcontext):
     return Path(get_tmpcontext(suite_name))
 
 
+@given("with the temp context as the working directory")
+def cli_tmpcontext(bakery_command, cli_test_tmpcontext):
+    original_wd = os.getcwd()
+    os.chdir(cli_test_tmpcontext)
+    yield
+    os.chdir(original_wd)
+
+
 @given("in a temp directory")
 def tmp_directory(bakery_command, tmpdir):
     bakery_command.context = Path(tmpdir)
@@ -84,9 +93,10 @@ def add_args_table(bakery_command, datatable):
 
 
 # Run the command
-@when("I execute the command")
-def run(bakery_command):
+@when("I execute the command", target_fixture="command_logs")
+def run(bakery_command, caplog):
     bakery_command.run()
+    return caplog
 
 
 # Check the results of the command

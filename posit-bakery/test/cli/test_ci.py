@@ -41,21 +41,24 @@ def patch_image_target_merge_method(mocker):
 
     def patched_merge_method(self, sources: list[str], dry_run: bool = False) -> Manifest:
         calls.append((sources, dry_run))
-        return Manifest()
+        return Manifest(
+            schemaVersion=2,
+            mediaType="application/vnd.docker.distribution.manifest.v2+json",
+        )
 
     mocker.patch.object(ImageTarget, "merge", patched_merge_method)
-    return patched_merge_method
+    return calls
 
 
 @then("the files read include:")
-def check_log_metadata_targets(caplog, datatable):
+def check_log_metadata_targets(command_logs, datatable):
     for row in datatable:
-        assert re.search(f"Reading targets from .*{row[0]}", caplog.text)
+        assert re.search(f"Reading targets from .*{row[0]}", command_logs.text)
 
 
 @then(parsers.parse("{num_targets} targets are found in the metadata"))
-def check_log_metadata_targets(caplog, num_targets):
-    assert f"Found {num_targets} build targets in metadata" in caplog.text
+def check_log_metadata_targets(command_logs, num_targets):
+    assert f"Found {num_targets} targets" in command_logs.text
 
 
 @then("the merge calls include:")
@@ -64,7 +67,7 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
     expected_calls = []
     for row in datatable:
         call = []
-        for col in datatable:
+        for col in row:
             col = col.strip()
             if col:
                 call.append(col)
