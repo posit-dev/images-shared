@@ -11,8 +11,6 @@ repository:
       email: "author2@posit.co"
 
 registries:
-  - host: "docker.io"
-    namespace: "posit"
   - host: "ghcr.io"
     namespace: "posit-dev"
 
