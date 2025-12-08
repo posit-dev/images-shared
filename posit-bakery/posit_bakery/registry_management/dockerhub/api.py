@@ -33,8 +33,15 @@ class DockerhubClient:
         self.access_token = self.create_token(identifier, secret)
 
     @classmethod
+    def endpoint(cls, endpoint_name: str, **kwargs) -> str:
+        endpoint_template = cls.ENDPOINTS.get(endpoint_name)
+        if endpoint_template is None:
+            raise ValueError(f"Endpoint '{endpoint_name}' not found.")
+        return urljoin(cls.BASE_URL, endpoint_template.format(**kwargs))
+
+    @classmethod
     def create_token(cls, identifier: str, secret: str) -> str:
-        target = urljoin(cls.BASE_URL, cls.ENDPOINTS["auth"])
+        target = cls.endpoint("auth")
         params = {"identifier": identifier, "secret": secret}
 
         response = requests.post(target, json=params)
@@ -55,7 +62,7 @@ class DockerhubClient:
     def get_repositories(self, namespace: str = None) -> list[dict]:
         if namespace is None:
             namespace = self.identifier
-        target = urljoin(self.BASE_URL, self.ENDPOINTS["repositories"].format(namespace=namespace))
+        target = self.endpoint("repositories", namespace=namespace)
         params = {"page_size": 100}
 
         response = requests.get(target, headers=self._get_headers(), params=params)
@@ -75,10 +82,7 @@ class DockerhubClient:
             namespace = self.identifier
         if repository is None:
             raise ValueError("Repository name must be provided.")
-        target = urljoin(
-            self.BASE_URL,
-            self.ENDPOINTS["repository"].format(namespace=namespace, repository=repository),
-        )
+        target = self.endpoint("repository", namespace=namespace, repository=repository)
 
         response = requests.get(target, headers=self._get_headers())
         response.raise_for_status()
@@ -90,10 +94,7 @@ class DockerhubClient:
             namespace = self.identifier
         if repository is None:
             raise ValueError("Repository name must be provided.")
-        target = urljoin(
-            self.BASE_URL,
-            self.ENDPOINTS["tags"].format(namespace=namespace, repository=repository),
-        )
+        target = self.endpoint("tags", namespace=namespace, repository=repository)
         params = {"page_size": 100}
 
         response = requests.get(target, headers=self._get_headers(), params=params)
@@ -115,10 +116,7 @@ class DockerhubClient:
             raise ValueError("Repository name must be provided.")
         if tag is None:
             raise ValueError("Tag name must be provided.")
-        target = urljoin(
-            self.BASE_URL,
-            self.ENDPOINTS["tag"].format(namespace=namespace, repository=repository, tag=tag),
-        )
+        target = self.endpoint("tag", namespace=namespace, repository=repository, tag=tag)
 
         response = requests.get(target, headers=self._get_headers())
         response.raise_for_status()
@@ -132,10 +130,7 @@ class DockerhubClient:
             raise ValueError("Repository name must be provided.")
         if tag is None:
             raise ValueError("Tag name must be provided.")
-        target = urljoin(
-            self.BASE_URL,
-            self.ENDPOINTS["tag"].format(namespace=namespace, repository=repository, tag=tag),
-        )
+        target = self.endpoint("tag", namespace=namespace, repository=repository, tag=tag)
 
         response = requests.delete(target, headers=self._get_headers())
         response.raise_for_status()
