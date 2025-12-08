@@ -22,11 +22,14 @@ images:
       - name: 1.0.0
         latest: true
         os:
-          - name: Ubuntu 22.04
+          - name: Ubuntu 24.04
             primary: true
             platforms:
               - "linux/amd64"
               - "linux/arm64"
+          - name: Ubuntu 22.04
+            platforms:
+              - "linux/amd64"
     variants:
       - name: "Minimal"
         extension: "min"
