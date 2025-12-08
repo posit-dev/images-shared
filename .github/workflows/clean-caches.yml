@@ -78,7 +78,6 @@ jobs:
       - name: Clean caches
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --context ${{ inputs.context }} \
