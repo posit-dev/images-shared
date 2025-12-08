@@ -10,6 +10,10 @@ import requests
 from posit_bakery.config import ImageVariant
 import posit_bakery.config.dependencies.const as dependencies_const
 import posit_bakery.config.image.posit_product.const as product_const
+from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions
+
+CONFIG_TESTDATA_DIR = Path(os.path.dirname(__file__)) / "testdata"
+GHCR_PACKAGE_VERSIONS = CONFIG_TESTDATA_DIR / "ghcr_package_versions.json"
 
 
 DEPENDENCIES_TESTDATA_DIR = Path(os.path.dirname(__file__)) / "dependencies" / "testdata"
@@ -91,3 +95,9 @@ def disable_requests_caching(mocker):
 def patch_requests_get(disable_requests_caching):
     disable_requests_caching.return_value.get = patch_testdata_response
     return disable_requests_caching
+
+
+@pytest.fixture()
+def ghcr_package_versions_data():
+    """Return the GHCR package versions test data as a dictionary."""
+    return GHCRPackageVersions(versions=json.loads(GHCR_PACKAGE_VERSIONS.read_text()))
