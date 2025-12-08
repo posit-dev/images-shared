@@ -11,7 +11,7 @@ from posit_bakery.config import BakeryConfig
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
-CONST_DATETIME_NOW = datetime.datetime(2025, 1, 1, 0, 0, 0)
+CONST_DATETIME_NOW = datetime.datetime(2025, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
 
 
 @pytest.fixture
@@ -26,13 +26,17 @@ def patch_datetime_now(request, mocker: MockFixture, datetime_now_value):
     if "disable_patch_datetime_now" not in request.keywords:
         import posit_bakery.image.image_target
 
-        mocked_datetime = mocker.patch(
+        for patch_path in [
             "posit_bakery.image.image_target.datetime",
-        )
-        mock_datetime_now = MagicMock(spec=datetime_now_value)
-        mocked_datetime.now = mock_datetime_now
-        mock_datetime_now.return_value = datetime_now_value
-        mock_datetime_now.isoformat.return_value = datetime_now_value.isoformat()
+            "posit_bakery.registry_management.ghcr.models.datetime",
+        ]:
+            mocked_datetime = mocker.patch(
+                patch_path,
+            )
+            mock_datetime_now = MagicMock(spec=datetime_now_value)
+            mocked_datetime.now = mock_datetime_now
+            mock_datetime_now.return_value = datetime_now_value
+            mock_datetime_now.isoformat.return_value = datetime_now_value.isoformat()
 
 
 @pytest.fixture

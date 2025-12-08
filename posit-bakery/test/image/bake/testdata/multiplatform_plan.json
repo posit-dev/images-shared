@@ -34,7 +34,7 @@
       "context": ".",
       "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.min",
       "labels": {
-        "org.opencontainers.image.created": "2025-01-01T00:00:00",
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
         "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
         "org.opencontainers.image.title": "Test Multi",
         "org.opencontainers.image.vendor": "Posit Software, PBC",
@@ -89,7 +89,7 @@
       "context": ".",
       "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.std",
       "labels": {
-        "org.opencontainers.image.created": "2025-01-01T00:00:00",
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
         "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
         "org.opencontainers.image.title": "Test Multi",
         "org.opencontainers.image.vendor": "Posit Software, PBC",
