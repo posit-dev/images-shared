@@ -115,6 +115,21 @@ jobs:
       context: "./posit-bakery/test/resources/with-macros/"
       dev-versions: include
 
+  clean-caches:
+    name: Clean Caches
+    permissions:
+      contents: read
+      packages: write
+
+    uses: "./.github/workflows/clean-caches.yml"
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    with:
+      context: "./posit-bakery/test/resources/with-macros/"
+      remove-dangling: true
+      remove-older-than: 14
+
   release:
     name: Release/Snapshot
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request')

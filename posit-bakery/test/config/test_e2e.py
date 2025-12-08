@@ -127,7 +127,7 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
                 "context": ".",
                 "dockerfile": "image-one/1.0.0/Containerfile.min",
                 "labels": {
-                    "org.opencontainers.image.created": "2025-01-01T00:00:00",
+                    "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
                     "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
                     "org.opencontainers.image.title": "Image One",
                     "org.opencontainers.image.vendor": "Posit Software, PBC",
@@ -149,7 +149,7 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
                 "context": ".",
                 "dockerfile": "image-one/1.0.0/Containerfile.std",
                 "labels": {
-                    "org.opencontainers.image.created": "2025-01-01T00:00:00",
+                    "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
                     "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
                     "org.opencontainers.image.title": "Image One",
                     "org.opencontainers.image.vendor": "Posit Software, PBC",

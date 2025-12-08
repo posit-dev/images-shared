@@ -1,6 +1,6 @@
 import typer
 
-from posit_bakery.cli import ci, create, common, run, build, update, remove
+from posit_bakery.cli import ci, create, common, run, build, update, remove, clean
 from posit_bakery.log import stderr_console
 
 app = typer.Typer(
@@ -37,6 +37,9 @@ app.add_typer(run.app, name="r", hidden=True)
 app.command(name="build", help="Build images using buildkit bake (aliases: b, bake)")(build.build)
 app.command(name="bake", hidden=True)(build.build)
 app.command(name="b", hidden=True)(build.build)
+
+# Import the "clean" subcommand
+app.add_typer(clean.app, name="clean", help="Cleaning utilities for remote build caches")
 
 
 @app.command(name="help")
