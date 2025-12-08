@@ -32,7 +32,7 @@ class GHCRClient:
         """Get details on a package."""
         target_url = self.endpoint("package", organization=organization, package=quote(package, safe=""))
         log.debug(f"GET {target_url}")
-        headers, response = self.client.requester.requestJsonAndCheck(
+        _, response = self.client.requester.requestJsonAndCheck(
             "GET",
             target_url,
         )
@@ -50,7 +50,7 @@ class GHCRClient:
         for page in range(1, page_count + 1):
             target_url = self.endpoint("package_versions", organization=organization, package=quote(package, safe=""))
             log.debug(f"GET {target_url} (page {page}/{page_count})")
-            headers, response = self.client.requester.requestJsonAndCheck(
+            _, response = self.client.requester.requestJsonAndCheck(
                 "GET",
                 target_url,
                 parameters={"per_page": 100, "page": page, "state": "active"},

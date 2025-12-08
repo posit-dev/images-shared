@@ -15,7 +15,7 @@ class DockerhubClient:
         "tag": "/namespaces/{namespace}/repositories/{repository}/tags/{tag}",
     }
 
-    def __init__(self, identifier: str = None, secret: str = None):
+    def __init__(self, identifier: str | None = None, secret: str | None = None):
         self.identifier = identifier or os.getenv("DOCKERHUB_USERNAME")
         if not self.identifier:
             raise ValueError(
@@ -59,7 +59,7 @@ class DockerhubClient:
             self.access_token = self.create_token(self.identifier, self.secret)
         return {"Authorization": f"Bearer {self.access_token}"}
 
-    def get_repositories(self, namespace: str = None) -> list[dict]:
+    def get_repositories(self, namespace: str | None = None) -> list[dict]:
         if namespace is None:
             namespace = self.identifier
         target = self.endpoint("repositories", namespace=namespace)
@@ -77,7 +77,7 @@ class DockerhubClient:
 
         return results
 
-    def get_repository(self, namespace: str = None, repository: str = None) -> dict:
+    def get_repository(self, namespace: str | None = None, repository: str | None = None) -> dict:
         if namespace is None:
             namespace = self.identifier
         if repository is None:
@@ -89,7 +89,7 @@ class DockerhubClient:
 
         return response.json()
 
-    def get_tags(self, namespace: str = None, repository: str = None) -> list[dict]:
+    def get_tags(self, namespace: str | None = None, repository: str | None = None) -> list[dict]:
         if namespace is None:
             namespace = self.identifier
         if repository is None:
@@ -109,7 +109,7 @@ class DockerhubClient:
 
         return results
 
-    def get_tag(self, namespace: str = None, repository: str = None, tag: str = None) -> dict:
+    def get_tag(self, namespace: str | None = None, repository: str | None = None, tag: str | None = None) -> dict:
         if namespace is None:
             namespace = self.identifier
         if repository is None:
@@ -123,7 +123,7 @@ class DockerhubClient:
 
         return response.json()
 
-    def delete_tag(self, namespace: str = None, repository: str = None, tag: str = None) -> None:
+    def delete_tag(self, namespace: str | None = None, repository: str | None = None, tag: str | None = None) -> None:
         if namespace is None:
             namespace = self.identifier
         if repository is None:
