@@ -1,5 +1,16 @@
 name: 'Setup goss and dgoss'
 description: 'Installs goss and dgoss to tools/'
+
+inputs:
+  version:
+    description: "The goss release version to install"
+    required: false
+    default: "latest"
+  architecture:
+    description: "The system architecture (e.g., amd64, arm64). If not set, it will be detected automatically."
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -9,10 +20,23 @@ runs:
     - name: Install goss
       shell: bash
       run: |
-        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/goss-linux-amd64 -o tools/goss
+        # Determine architecture if not provided
+        arch="${{ inputs.architecture }}"
+        if [ -z "$arch" ]; then
+          arch=$(uname -m)
+        fi
+        
+        # Map architecture names to goss naming conventions
+        if [ "$arch" = "x86_64" ]; then
+            arch="amd64"
+        elif [ "$arch" = "aarch64" ]; then
+            arch="arm64"
+        fi
+        
+        curl -fsSL https://github.com/goss-org/goss/releases/${{ inputs.version }}/download/goss-linux-${arch} -o tools/goss
         chmod +rx tools/goss
     - name: Install dgoss
       shell: bash
       run: |
-        curl -fsSL https://github.com/goss-org/goss/releases/latest/download/dgoss -o tools/dgoss
+        curl -fsSL https://github.com/goss-org/goss/releases/${{ inputs.version }}/download/dgoss -o tools/dgoss
         chmod +rx tools/dgoss
