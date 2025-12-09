@@ -88,3 +88,6 @@ app.add_typer(
 
 # Import the "version" subcommand
 app.command(name="version", help="Show the Posit Bakery version")(version.version)
+
+# Import the "version" subcommand
+app.command(name="version", help="Show the Posit Bakery version")(version.version)
