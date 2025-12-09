@@ -1,7 +1,6 @@
 import typer
 
 from posit_bakery.cli import ci, create, common, run, build, update, remove, clean
-from posit_bakery.log import stderr_console
 
 app = typer.Typer(
     name="bakery",
@@ -40,11 +39,3 @@ app.command(name="b", hidden=True)(build.build)
 
 # Import the "clean" subcommand
 app.add_typer(clean.app, name="clean", help="Cleaning utilities for remote build caches")
-
-
-@app.command(name="help")
-@run.app.command(name="help")
-@create.app.command(name="help")
-def _help(ctx: typer.Context) -> None:
-    """Show this message and exit."""
-    stderr_console.print(ctx.parent.get_help())
