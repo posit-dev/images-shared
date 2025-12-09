@@ -1,6 +1,6 @@
 import typer
 
-from posit_bakery.cli import ci, create, common, run, build, update, remove, clean
+from posit_bakery.cli import ci, create, common, run, build, update, remove, clean, version
 
 app = typer.Typer(
     name="bakery",
@@ -39,3 +39,6 @@ app.command(name="b", hidden=True)(build.build)
 
 # Import the "clean" subcommand
 app.add_typer(clean.app, name="clean", help="Cleaning utilities for remote build caches")
+
+# Import the "version" subcommand
+app.command(name="version", help="Show the Posit Bakery version")(version.version)
