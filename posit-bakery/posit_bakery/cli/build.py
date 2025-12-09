@@ -39,6 +39,13 @@ def build(
     image_os: Annotated[
         Optional[str], typer.Option(help="The image OS to build as an OS name or a regex pattern.")
     ] = None,
+    image_platform: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            help="Filters which image platforms to build for, e.g. 'linux/amd64'. "
+            "Image build targets incompatible with the given platform(s) will be skipped."
+        ),
+    ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(help="Include or exclude development versions defined in config."),
@@ -50,10 +57,6 @@ def build(
     plan: Annotated[Optional[bool], typer.Option(help="Print the bake plan and exit.")] = False,
     load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
     push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
-    platform: Annotated[
-        Optional[list[str]],
-        typer.Option(help="Target platform for the build (e.g., linux/amd64). Overrides configured platforms."),
-    ] = None,
     cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
     cache_registry: Annotated[Optional[str], typer.Option(help="External cache sources")] = None,
     fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
@@ -73,6 +76,7 @@ def build(
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
+            image_platform=image_platform or [],
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
@@ -97,7 +101,7 @@ def build(
             load=load,
             push=push,
             cache=cache,
-            platforms=platform,
+            platforms=image_platform,
             strategy=strategy,
             fail_fast=fail_fast,
         )
