@@ -59,6 +59,7 @@ class DGossCommand(BaseModel):
     image_mountpoint: Literal["/tmp/image"] = "/tmp/image"
     project_mountpoint: Literal["/tmp/project"] = "/tmp/project"
 
+    platform: Annotated[str | None, Field(default=None, description="The platform to target for container execution.")]
     test_path: Annotated[Path | None, Field(default_factory=lambda data: find_test_path(data["image_target"].context))]
     runtime_options: Annotated[str | None, Field(default=None, description="Additional runtime options for dgoss.")]
     wait: Annotated[int, Field(default=0)]
@@ -106,10 +107,12 @@ class DGossCommand(BaseModel):
         ]
 
     @classmethod
-    def from_image_target(cls, image_target: ImageTarget) -> "DGossCommand":
+    def from_image_target(cls, image_target: ImageTarget, platform: str | None = None) -> "DGossCommand":
         args = {
             "image_target": image_target,
         }
+        if platform:
+            args["platform"] = platform
         if image_target.image_variant:
             goss_options = image_target.image_variant.get_tool_option("goss")
             if goss_options is not None:
@@ -138,6 +141,9 @@ class DGossCommand(BaseModel):
     def command(self) -> list[str]:
         """Return the full DGoss command to run."""
         cmd = [self.dgoss_bin, self.dgoss_command, "--platform", "linux/amd64"]
+
+        if self.platform:
+            cmd.extend(["--platform", self.platform])
         for mount in self.volume_mounts:
             cmd.extend(["-v", f"{mount[0]}:{mount[1]}"])
         for env_var, value in self.image_environment.items():
@@ -154,10 +160,10 @@ class DGossCommand(BaseModel):
 
 
 class DGossSuite:
-    def __init__(self, context: Path, image_targets: list[ImageTarget]):
+    def __init__(self, context: Path, image_targets: list[ImageTarget], platform: str | None = None) -> None:
         self.context = context
         self.image_targets = image_targets
-        self.dgoss_commands = [DGossCommand.from_image_target(target) for target in image_targets]
+        self.dgoss_commands = [DGossCommand.from_image_target(target, platform=platform) for target in image_targets]
 
     def run(self) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
         results_dir = self.context / "results" / "dgoss"

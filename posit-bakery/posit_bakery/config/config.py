@@ -749,12 +749,13 @@ class BakeryConfig:
 
     def dgoss_targets(
         self,
+        platform: str | None = None,
     ) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
         """Run dgoss tests for all image targets.
 
         :return: A tuple containing the GossJsonReportCollection and any errors encountered during the tests.
         """
-        suite = DGossSuite(self.base_path, self.targets)
+        suite = DGossSuite(self.base_path, self.targets, platform=platform)
         return suite.run()
 
     def clean_caches(
