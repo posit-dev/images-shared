@@ -1100,6 +1100,21 @@ class TestBakeryConfig:
         config = BakeryConfig(complex_yaml, settings)
         assert len(config.targets) == 3
 
+    def test_target_filtering_filter_platform(self, testdata_path):
+        complex_yaml = testdata_path / "valid" / "complex.yaml"
+
+        settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/arm64"]))
+        config = BakeryConfig(complex_yaml, settings)
+        assert len(config.targets) == 2
+
+        settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/amd64"]))
+        config = BakeryConfig(complex_yaml, settings)
+        assert len(config.targets) == 10
+
+        settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/amd64", "linux/arm64"]))
+        config = BakeryConfig(complex_yaml, settings)
+        assert len(config.targets) == 10
+
     def test_target_filtering_filter_multi(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
