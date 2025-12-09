@@ -140,7 +140,7 @@ class DGossCommand(BaseModel):
     @property
     def command(self) -> list[str]:
         """Return the full DGoss command to run."""
-        cmd = [self.dgoss_bin, self.dgoss_command, "--platform", "linux/amd64"]
+        cmd = [self.dgoss_bin, self.dgoss_command]
 
         if self.platform:
             cmd.extend(["--platform", self.platform])
