@@ -26,40 +26,75 @@ def build(
         typer.Option(
             help="The strategy to use when building the image. 'bake' requires Docker Buildkit and builds "
             "images in parallel. 'build' can use generic container builders, such as Podman, and builds "
-            "images sequentially."
+            "images sequentially.",
+            rich_help_panel="Build Configuration & Outputs",
         ),
     ] = ImageBuildStrategy.BAKE,
+    fail_fast: Annotated[
+        Optional[bool],
+        typer.Option(help="Terminate builds on the first failure.", rich_help_panel="Build Configuration & Outputs"),
+    ] = False,
+    plan: Annotated[
+        Optional[bool],
+        typer.Option(help="Print the bake plan and exit.", rich_help_panel="Build Configuration & Outputs"),
+    ] = False,
+    load: Annotated[
+        Optional[bool],
+        typer.Option(help="Load the image to Docker after building.", rich_help_panel="Build Configuration & Outputs"),
+    ] = True,
+    push: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Push the image to its registry tags after building.", rich_help_panel="Build Configuration & Outputs"
+        ),
+    ] = False,
+    clean: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Clean up intermediary and temporary files after building. Disable for debugging.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = True,
+    cache: Annotated[
+        Optional[bool],
+        typer.Option(help="Enable layer caching for image builds.", rich_help_panel="Build Configuration & Outputs"),
+    ] = True,
+    cache_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="External registry to use for layer caching.", rich_help_panel="Build Configuration & Outputs"
+        ),
+    ] = None,
     image_name: Annotated[
-        Optional[str], typer.Option(help="The image name or a regex pattern to isolate plan rendering to.")
+        Optional[str],
+        typer.Option(help="The image name or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
     ] = None,
     image_version: Annotated[
-        Optional[str], typer.Option(help="The image version or a regex pattern to isolate plan rendering to.")
+        Optional[str],
+        typer.Option(help="The image version or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
     ] = None,
-    image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate plan rendering to.")] = None,
+    image_variant: Annotated[
+        Optional[str],
+        typer.Option(help="The image type to isolate builds to.", rich_help_panel="Filters"),
+    ] = None,
     image_os: Annotated[
-        Optional[str], typer.Option(help="The image OS to build as an OS name or a regex pattern.")
+        Optional[str],
+        typer.Option(help="The image OS name or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
     ] = None,
     image_platform: Annotated[
         Optional[list[str]],
         typer.Option(
-            help="Filters which image platforms to build for, e.g. 'linux/amd64'. "
-            "Image build targets incompatible with the given platform(s) will be skipped."
+            help="The image platform(s) to isolate builds to, e.g. 'linux/amd64'. "
+            "Image build targets incompatible with the given platform(s) will be skipped.",
+            rich_help_panel="Filters",
         ),
     ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
-        typer.Option(help="Include or exclude development versions defined in config."),
+        typer.Option(
+            help="Include or exclude development version builds defined in config.", rich_help_panel="Filters"
+        ),
     ] = DevVersionInclusionEnum.EXCLUDE,
-    clean: Annotated[
-        Optional[bool],
-        typer.Option(help="Clean up intermediary and temporary files after building. Can be helpful for debugging."),
-    ] = True,
-    plan: Annotated[Optional[bool], typer.Option(help="Print the bake plan and exit.")] = False,
-    load: Annotated[Optional[bool], typer.Option(help="Load the image to Docker after building.")] = True,
-    push: Annotated[Optional[bool], typer.Option(help="Push the image to the registry after building.")] = False,
-    cache: Annotated[Optional[bool], typer.Option(help="Enable caching for image builds.")] = True,
-    cache_registry: Annotated[Optional[str], typer.Option(help="External cache sources")] = None,
-    fail_fast: Annotated[Optional[bool], typer.Option(help="Stop building on the first failure.")] = False,
 ) -> None:
     """Builds images in the context path
 
