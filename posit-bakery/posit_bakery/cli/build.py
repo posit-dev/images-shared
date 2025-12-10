@@ -75,28 +75,43 @@ def build(
     cache_registry: Annotated[
         Optional[str],
         typer.Option(
-            help="External registry to use for layer caching.", rich_help_panel="Build Configuration & Outputs"
+            show_default=False,
+            help="External registry to use for layer caching.",
+            rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
     image_name: Annotated[
         Optional[str],
-        typer.Option(help="The image name or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image name or a regex pattern to isolate builds to.",
+            rich_help_panel="Filters",
+        ),
     ] = None,
     image_version: Annotated[
         Optional[str],
-        typer.Option(help="The image version or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image version or a regex pattern to isolate builds to.",
+            rich_help_panel="Filters",
+        ),
     ] = None,
     image_variant: Annotated[
         Optional[str],
-        typer.Option(help="The image type to isolate builds to.", rich_help_panel="Filters"),
+        typer.Option(show_default=False, help="The image type to isolate builds to.", rich_help_panel="Filters"),
     ] = None,
     image_os: Annotated[
         Optional[str],
-        typer.Option(help="The image OS name or a regex pattern to isolate builds to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image OS name or a regex pattern to isolate builds to.",
+            rich_help_panel="Filters",
+        ),
     ] = None,
     image_platform: Annotated[
         Optional[list[str]],
         typer.Option(
+            show_default=False,
             help="The image platform(s) to isolate builds to, e.g. 'linux/amd64'. "
             "Image build targets incompatible with the given platform(s) will be skipped.",
             rich_help_panel="Filters",
