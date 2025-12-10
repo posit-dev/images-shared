@@ -2,6 +2,7 @@ import logging
 import re
 from datetime import timedelta
 
+from posit_bakery.log import stdout_console
 from posit_bakery.registry_management.ghcr.api import GHCRClient
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions
 
@@ -43,7 +44,7 @@ def clean_cache(
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
         if dry_run:
-            log.info(versions_to_delete.model_dump_json(indent=2))
+            stdout_console.print_json(versions_to_delete.model_dump_json(indent=2))
         else:
             client.delete_package_versions(versions_to_delete)
     else:
@@ -85,7 +86,7 @@ def clean_registry(
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
         if dry_run:
-            log.info(versions_to_delete.model_dump_json(indent=2))
+            stdout_console.print_json(versions_to_delete.model_dump_json(indent=2))
         else:
             client.delete_package_versions(versions_to_delete)
     else:
