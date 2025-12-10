@@ -14,14 +14,25 @@ log = logging.getLogger(__name__)
 
 @app.command()
 def image(
-    image_name: Annotated[str, typer.Argument(help="The image name to remove files and configurations for.")],
+    image_name: Annotated[
+        str, typer.Argument(show_default=False, help="The image name to remove files and configurations for.")
+    ],
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
 ) -> None:
     """Removes an existing image from the bakery project
 
-    This tool will remove the image directory and all its contents from the bakery project and will remove its
+    Removes the image directory and all its contents from the bakery project and will remove its
     configuration from the bakery.yaml file.
     """
     try:
@@ -46,19 +57,29 @@ def version(
     image_name: Annotated[
         str,
         typer.Argument(
-            help="The image to which the version belongs. This must match an image name present in the bakery.yaml "
-            "configuration."
+            show_default=False,
+            help="The image to which the version to be removed belongs. This must match an image name present in the "
+            "bakery.yaml configuration.",
         ),
     ],
-    image_version: Annotated[str, typer.Argument(help="The new version to render the templates to.")],
+    image_version: Annotated[str, typer.Argument(show_default=False, help="The image version to remove.")],
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
 ) -> None:
     """Removes an existing version from an image in the bakery project
 
-    This tool will remove the version directory and all its contents from the specified image in the bakery project
-    and will remove its configuration from the bakery.yaml file.
+    Removes the version subpath and all its contents from the specified image in the bakery project
+    and will remove its configuration from the parent image in the bakery.yaml file.
     """
     try:
         c = BakeryConfig.from_context(context)
