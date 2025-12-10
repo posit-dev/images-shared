@@ -19,11 +19,20 @@ log = logging.getLogger(__name__)
 
 def build(
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
     strategy: Annotated[
         Optional[ImageBuildStrategy],
         typer.Option(
+            case_sensitive=False,
             help="The strategy to use when building the image. 'bake' requires Docker Buildkit and builds "
             "images in parallel. 'build' can use generic container builders, such as Podman, and builds "
             "images sequentially.",
@@ -32,11 +41,15 @@ def build(
     ] = ImageBuildStrategy.BAKE,
     fail_fast: Annotated[
         Optional[bool],
-        typer.Option(help="Terminate builds on the first failure.", rich_help_panel="Build Configuration & Outputs"),
+        typer.Option(
+            "--fail-fast",
+            help="Terminate builds on the first failure.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
     ] = False,
     plan: Annotated[
         Optional[bool],
-        typer.Option(help="Print the bake plan and exit.", rich_help_panel="Build Configuration & Outputs"),
+        typer.Option("--plan", help="Print the bake plan and exit.", rich_help_panel="Build Configuration & Outputs"),
     ] = False,
     load: Annotated[
         Optional[bool],
