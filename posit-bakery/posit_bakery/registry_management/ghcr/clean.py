@@ -24,6 +24,8 @@ def clean_cache(
     organization = match.group("organization")
     package = match.group("package")
 
+    log.info(f"Analyzing caches in {cache_registry}")
+
     # Retrieve all package versions.
     client = GHCRClient(organization)
     package_versions = client.get_package_versions(organization, package)
@@ -40,7 +42,7 @@ def clean_cache(
 
     # Process deletions.
     if len(versions_to_delete) > 0:
-        log.info(f"Removing {len(versions_to_delete)} version(s) from {cache_registry} cache")
+        log.info(f"Removing {len(versions_to_delete)} cache(s) from {cache_registry}")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
         if dry_run:
@@ -48,7 +50,7 @@ def clean_cache(
         else:
             client.delete_package_versions(versions_to_delete)
     else:
-        log.info(f"No versions to remove from {cache_registry} cache")
+        log.info(f"No caches to remove from {cache_registry}")
 
 
 def clean_registry(
