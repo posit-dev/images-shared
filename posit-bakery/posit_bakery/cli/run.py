@@ -52,10 +52,9 @@ def dgoss(
     image_platform: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False,
+            show_default=platform.machine(),  # TODO: improve output to match docker platform format
             help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
-            "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary. If not "
-            "provided, the host architecture will be used by default.",
+            "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.",
             rich_help_panel="Filters",
         ),
     ] = None,
