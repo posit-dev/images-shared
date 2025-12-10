@@ -7,7 +7,7 @@ from posit_bakery.cli.common import __make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
-from posit_bakery.util import auto_path, log
+from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
 update_version = typer.Typer(no_args_is_help=True)
@@ -17,23 +17,44 @@ app.add_typer(update_version, name="version", help="Update image versions manage
 @app.command()
 def files(
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
-    image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate file rendering to.")] = None,
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False, help="The image name to isolate file rendering to.", rich_help_panel="Filters"
+        ),
+    ] = None,
     image_version: Annotated[
-        Optional[str], typer.Option(help="The image version to isolate file rendering to.")
+        Optional[str],
+        typer.Option(
+            show_default=False, help="The image version to isolate file rendering to.", rich_help_panel="Filters"
+        ),
     ] = None,
     template_pattern: Annotated[
         Optional[list[str]],
-        typer.Option(help="A glob pattern to filter which templates to render. Uses regex syntax."),
+        typer.Option(
+            show_default=False, help="Regex pattern(s) to filter which templates to render.", rich_help_panel="Filters"
+        ),
     ] = None,
 ) -> None:
-    """Rerenders version files from templates matching the given filters.
+    """Renders templates to version files matching the given filters
 
+    \b
     This command will rerender each matching image version's files from the templates in the image's template
     directory. Existing configuration details for the version such as dependencies, variants, and the latest flag
     are used and remain unmodified.
 
+    \b
     Existing files will not be removed, but may be overwritten during template rendering.
     """
     _filter = BakeryConfigFilter(
@@ -55,15 +76,22 @@ def files(
 @update_version.command()
 def patch(
     image_name: Annotated[
-        str, typer.Argument(help="The image directory to render. This should be the path above the template directory.")
+        str,
+        typer.Argument(
+            show_default=False,
+            help="The image directory to render. This should be the path above the template directory.",
+        ),
     ],
-    old_version: Annotated[str, typer.Argument(help="The existing image version to be patched.")],
-    new_version: Annotated[str, typer.Argument(help="The new image version to replace the old version with.")],
+    old_version: Annotated[str, typer.Argument(show_default=False, help="The existing image version to be patched.")],
+    new_version: Annotated[
+        str, typer.Argument(show_default=False, help="The new image version to replace the old version with.")
+    ],
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
     value: Annotated[
-        list[str], typer.Option(help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.")
+        list[str],
+        typer.Option(show_default=False, help="A 'key=value' pair to pass to the templates. Accepts multiple pairs."),
     ] = None,
     clean: Annotated[
         Optional[bool],
@@ -72,10 +100,12 @@ def patch(
 ) -> None:
     """Patches an existing image version with the given new image version.
 
+    \b
     This command will replace the existing old_version in the bakery.yaml file with the new_version, preserving all
     existing configuration details for the version such as dependencies, variants, and the latest flag. Existing files
     for the old_version will be rerendered to reflect the new_version.
 
+    \b
     If clean is true, the existing version files for old_version will be removed prior to rendering the new_version
     files.
     """
