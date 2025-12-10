@@ -1,12 +1,11 @@
 import typer
 
-from posit_bakery.cli import ci, create, common, run, build, update, remove, clean, version
+from posit_bakery.cli import ci, create, run, build, update, remove, clean, version
 from posit_bakery.const import APP_NAME
 
 app = typer.Typer(
     name=APP_NAME,
     no_args_is_help=True,
-    callback=common.__global_flags,
     rich_markup_mode="markdown",
     help="A tool for building, testing, and managing container images",
 )

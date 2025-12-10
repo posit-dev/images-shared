@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from posit_bakery.cli.common import verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum
@@ -23,6 +24,7 @@ class BakeryCIMatrixFieldEnum(str, Enum):
 
 
 @app.command()
+@verbosity_flags
 def matrix(
     image_name: Annotated[str | None, typer.Argument(help="The image name to isolate matrix to.")] = None,
     dev_versions: Annotated[

@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from posit_bakery.cli.common import verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum
@@ -18,6 +19,7 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()
+@verbosity_flags
 def dgoss(
     context: Annotated[
         Path,

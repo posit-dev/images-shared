@@ -1,3 +1,5 @@
+import functools
+import inspect
 import logging
 from typing import Annotated, Optional, Any
 
@@ -6,25 +8,57 @@ import typer
 from posit_bakery.log import init_logging, stderr_console
 
 
-def __global_flags(
-    verbose: Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")] = False,
-    quiet: Annotated[Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")] = False,
-) -> None:
-    """Callback to configure global flags"""
-    if verbose and quiet:
-        raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
+def verbosity_flags(fn):
+    @functools.wraps(fn)
+    def wrapper(
+        *args,
+        verbose: Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")] = False,
+        quiet: Annotated[
+            Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")
+        ] = False,
+        **kwargs,
+    ):
+        if verbose and quiet:
+            raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
-    log_level: str | int = logging.INFO
-    if verbose:
-        log_level = logging.DEBUG
-    elif quiet:
-        log_level = logging.ERROR
+        log_level: str | int = logging.INFO
+        if verbose:
+            log_level = logging.DEBUG
+        elif quiet:
+            log_level = logging.ERROR
 
-    init_logging(log_level)
+        init_logging(log_level)
+        return fn(*args, **kwargs)
+
+    # Update signature with verbosity flags
+    sig = inspect.signature(wrapper)
+    params = list(sig.parameters.values())
+    params.extend(
+        [
+            inspect.Parameter(
+                "verbose",
+                inspect.Parameter.KEYWORD_ONLY,
+                default=False,
+                annotation=Annotated[Optional[bool], typer.Option("--verbose", "-v", help="Enable debug logging")],
+            ),
+            inspect.Parameter(
+                "quiet",
+                inspect.Parameter.KEYWORD_ONLY,
+                default=False,
+                annotation=Annotated[
+                    Optional[bool], typer.Option("--quiet", "-q", help="Supress all output except errors")
+                ],
+            ),
+        ]
+    )
+    sig = sig.replace(parameters=params)
+    wrapper.__signature__ = sig
+
+    return wrapper
 
 
 def __make_value_map(value: list[str] | None) -> dict[Any, Any]:
-    # Parse the key=value pairs into a dictionary
+    """Parses key=value option pairs into a dictionary"""
     value_map = dict()
     if value is not None:
         for v in value:

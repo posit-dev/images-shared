@@ -5,7 +5,7 @@ from typing import Annotated, List, Optional
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import __make_value_map
+from posit_bakery.cli.common import __make_value_map, verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.log import stderr_console
@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @app.command()
+@verbosity_flags
 def project(
     context: Annotated[
         Path,
@@ -52,6 +53,7 @@ def project(
 
 
 @app.command()
+@verbosity_flags
 def image(
     image_name: Annotated[str, typer.Argument(show_default=False, help="The image name to create a skeleton for.")],
     context: Annotated[
@@ -135,6 +137,7 @@ def image(
 
 
 @app.command()
+@verbosity_flags
 def version(
     image_name: Annotated[
         str,
