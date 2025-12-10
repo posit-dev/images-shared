@@ -15,20 +15,48 @@ log = logging.getLogger(__name__)
 
 @app.command()
 def cache_registry(
-    registry: Annotated[str, typer.Argument(help="External cache sources")],
+    registry: Annotated[
+        str, typer.Argument(show_default=False, help="GHCR registry to clean caches in *(ex. ghcr.io/my-org)*.")
+    ],
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
-    untagged: Annotated[Optional[bool], typer.Option(help="Prune dangling caches")] = True,
-    older_than: Annotated[Optional[int], typer.Option(help="Prune caches older than specified days")] = None,
+    untagged: Annotated[Optional[bool], typer.Option(help="Prune dangling caches.", rich_help_panel="Filters")] = True,
+    older_than: Annotated[
+        Optional[int],
+        typer.Option(show_default=False, help="Prune caches older than specified days.", rich_help_panel="Filters"),
+    ] = None,
     image_name: Annotated[
-        Optional[str], typer.Option(help="The image name or a regex pattern to isolate plan rendering to.")
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image name or a regex pattern to isolate clean operations to.",
+            rich_help_panel="Filters",
+        ),
     ] = None,
     dry_run: Annotated[
-        Optional[bool], typer.Option(help="If set, will only log what would be deleted without making changes.")
+        Optional[bool], typer.Option("--dry-run", help="If set, print what would be deleted and exit.")
     ] = False,
 ):
-    """Cleans up dangling caches in the specified registry."""
+    """Cleans up dangling caches in an external registry
+
+    \b
+    ⚠️ **This command currently only supports GHCR registries.** ⚠️
+
+    This command is intended to be used as a cleanup utility for build caches created with the
+    `bakery build --cache-registry <registry>` option. By default, it will remove all untagged/dangling caches.
+    Additional filters can be applied to remove caches older than a specified number of days. Caches are assumed to be
+    created by Bakery in the registry namespace `<registry>/<image-name>/cache`. If the `--image-name` filter is not
+    provided, all image caches for the project will be cleaned.
+    """
     settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name))
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
