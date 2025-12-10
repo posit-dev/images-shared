@@ -20,23 +20,48 @@ app = typer.Typer(no_args_is_help=True)
 @app.command()
 def dgoss(
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
-    image_name: Annotated[Optional[str], typer.Option(help="The image name to isolate goss testing to.")] = None,
-    image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
-    image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
-    image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(show_default=False, help="The image name to isolate goss testing to.", rich_help_panel="Filters"),
+    ] = None,
+    image_version: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False, help="The image version to isolate goss testing to.", rich_help_panel="Filters"
+        ),
+    ] = None,
+    image_variant: Annotated[
+        Optional[str],
+        typer.Option(show_default=False, help="The image type to isolate goss testing to.", rich_help_panel="Filters"),
+    ] = None,
+    image_os: Annotated[
+        Optional[str],
+        typer.Option(show_default=False, help="The image OS to isolate goss testing to.", rich_help_panel="Filters"),
+    ] = None,
     image_platform: Annotated[
         Optional[str],
         typer.Option(
+            show_default=False,
             help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
             "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary. If not "
             "provided, the host architecture will be used by default.",
+            rich_help_panel="Filters",
         ),
     ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
-        typer.Option(help="Include or exclude development versions defined in config."),
+        typer.Option(help="Include or exclude development versions defined in config.", rich_help_panel="Filters"),
     ] = DevVersionInclusionEnum.EXCLUDE,
     clean: Annotated[
         Optional[bool],
@@ -45,12 +70,15 @@ def dgoss(
 ) -> None:
     """Runs dgoss tests against images in the context path
 
-    If no options are provided, the command will auto-discover all images in the current
-    directory and generate and execute test commands on all images.
+    \b
+    If no options are provided, the command test all images in the project and write test results to the `results/`
+    directory in the context path.
 
+    \b
     Images are expected to be available to the local Docker daemon. It is advised to run `build` before running
     dgoss tests.
 
+    \b
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
