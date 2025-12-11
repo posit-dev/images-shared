@@ -1,7 +1,7 @@
 import typer
 
 from posit_bakery.cli import ci, create, run, build, update, remove, clean, version
-from posit_bakery.const import APP_NAME
+from posit_bakery.settings import APP_NAME
 
 app = typer.Typer(
     name=APP_NAME,

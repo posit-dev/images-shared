@@ -1,11 +1,16 @@
 import functools
 import inspect
 import logging
+import tempfile
+from pathlib import Path
 from typing import Annotated, Optional, Any
 
 import typer
 
+from posit_bakery import settings
 from posit_bakery.log import init_logging, stderr_console
+
+log = logging.getLogger(__name__)
 
 
 def verbosity_flags(fn):
@@ -51,6 +56,28 @@ def verbosity_flags(fn):
             ),
         ]
     )
+    sig = sig.replace(parameters=params)
+    wrapper.__signature__ = sig
+
+    return wrapper
+
+
+def with_temporary_storage(fn):
+    @functools.wraps(fn)
+    def wrapper(ctx: typer.Context, *args, **kwargs) -> None:
+        temp_dir = tempfile.TemporaryDirectory(prefix="posit-bakery")
+        settings.TEMP_DIRECTORY = Path(temp_dir.name)
+        if ctx.params.get("clean", True):
+            ctx.call_on_close(temp_dir.cleanup)
+
+        log.debug(f"Created temporary directory at {settings.TEMP_DIRECTORY}")
+
+        return fn(*args, **kwargs)
+
+    # Update signature with verbosity flags
+    sig = inspect.signature(wrapper)
+    params = list(sig.parameters.values())
+    params.insert(0, inspect.Parameter("ctx", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=typer.Context))
     sig = sig.replace(parameters=params)
     wrapper.__signature__ = sig
 
