@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import __make_value_map, verbosity_flags
+from posit_bakery.cli.common import __make_value_map, with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
@@ -15,7 +15,7 @@ app.add_typer(update_version, name="version", help="Update image versions manage
 
 
 @app.command()
-@verbosity_flags
+@with_verbosity_flags
 def files(
     context: Annotated[
         Path,
@@ -75,7 +75,7 @@ def files(
 
 
 @update_version.command()
-@verbosity_flags
+@with_verbosity_flags
 def patch(
     image_name: Annotated[
         str,

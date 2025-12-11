@@ -13,7 +13,7 @@ from posit_bakery.log import init_logging, stderr_console
 log = logging.getLogger(__name__)
 
 
-def verbosity_flags(fn):
+def with_verbosity_flags(fn):
     @functools.wraps(fn)
     def wrapper(
         *args,

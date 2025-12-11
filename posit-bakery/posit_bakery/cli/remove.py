@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from posit_bakery.cli.common import verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 @app.command()
-@verbosity_flags
+@with_verbosity_flags
 def image(
     image_name: Annotated[
         str, typer.Argument(show_default=False, help="The image name to remove files and configurations for.")
@@ -55,7 +55,7 @@ def image(
 
 
 @app.command()
-@verbosity_flags
+@with_verbosity_flags
 def version(
     image_name: Annotated[
         str,

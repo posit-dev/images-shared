@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.util import auto_path
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 @app.command()
-@verbosity_flags
+@with_verbosity_flags
 def cache_registry(
     registry: Annotated[
         str, typer.Argument(show_default=False, help="GHCR registry to clean caches in *(ex. ghcr.io/my-org)*.")
