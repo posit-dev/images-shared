@@ -1,11 +1,12 @@
 import atexit
+import json
 import logging
 import os
 import re
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Self, Any
 
 import jinja2
 import pydantic
@@ -34,6 +35,7 @@ from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.registry_management import ghcr
+from posit_bakery.settings import TEMP_DIRECTORY
 
 log = logging.getLogger(__name__)
 
@@ -688,6 +690,17 @@ class BakeryConfig:
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
 
+    def _merge_sequential_build_metadata_files(self) -> dict[str, Any]:
+        """Merges all sequential build metadata files generated during image builds.
+
+        :return: A dictionary containing the merged metadata.
+        """
+        merged_metadata: dict[str, dict[str, Any]] = {}
+        for target in self.targets:
+            if target.metadata_file is not None:
+                merged_metadata[target.uid] = target.metadata.dump(exclude_none=True)
+        return merged_metadata
+
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
         bake_plan = BakePlan.from_image_targets(
@@ -702,6 +715,7 @@ class BakeryConfig:
         cache: bool = True,
         platforms: list[str] | None = None,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
+        metadata_file: Path | None = None,
         fail_fast: bool = False,
     ):
         """Build image targets using the specified strategy.
@@ -735,6 +749,7 @@ class BakeryConfig:
                         cache=cache,
                         cache_registry=self.settings.cache_registry,
                         platforms=platforms,
+                        metadata_file=TEMP_DIRECTORY / f"{target.uid}.json" if metadata_file else None,
                     )
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
@@ -746,6 +761,9 @@ class BakeryConfig:
                 if len(errors) == 1:
                     raise errors[0]
                 raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
+            if metadata_file is not None:
+                with open(metadata_file, "w") as f:
+                    json.dump(self._merge_sequential_build_metadata_files(), f, indent=2)
 
     def dgoss_targets(
         self,
