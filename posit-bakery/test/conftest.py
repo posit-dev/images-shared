@@ -58,6 +58,15 @@ def patch_repository_revision(request, mocker: MockFixture, revision_value):
         )
 
 
+@pytest.fixture(autouse=True)
+def patch_temporary_directory(request, tmp_path):
+    """Patch the repository revision to return a fixed value."""
+    if "disable_patch_temporary_directory" not in request.keywords:
+        from posit_bakery.settings import SETTINGS
+
+        SETTINGS.temporary_storage = tmp_path
+
+
 @pytest.fixture(scope="session")
 def project_path():
     """Return the path to the test directory"""
