@@ -15,7 +15,7 @@ from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile
-from posit_bakery.settings import TEMP_DIRECTORY
+from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class ImageTarget(BaseModel):
             cache_to = f"{cache_from},mode=max"
 
         if isinstance(metadata_file, bool) and metadata_file:
-            metadata_file = TEMP_DIRECTORY / f"{self.uid}.json"
+            metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
@@ -335,6 +335,7 @@ class ImageTarget(BaseModel):
         log.info(f"Successfully built image '{str(self)}'")
 
         if isinstance(metadata_file, Path):
-            self.metadata_file = MetadataFile(self.uid, filepath=metadata_file)
+            log.debug(f"Loading in build metadata from file {str(metadata_file)}")
+            self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
 
         return image

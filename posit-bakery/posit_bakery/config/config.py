@@ -35,7 +35,7 @@ from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.registry_management import ghcr
-from posit_bakery.settings import TEMP_DIRECTORY
+from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
@@ -698,7 +698,7 @@ class BakeryConfig:
         merged_metadata: dict[str, dict[str, Any]] = {}
         for target in self.targets:
             if target.metadata_file is not None:
-                merged_metadata[target.uid] = target.metadata.dump(exclude_none=True)
+                merged_metadata[target.uid] = target.metadata_file.metadata.dump(exclude_none=True)
         return merged_metadata
 
     def bake_plan_targets(self) -> str:
@@ -749,7 +749,7 @@ class BakeryConfig:
                         cache=cache,
                         cache_registry=self.settings.cache_registry,
                         platforms=platforms,
-                        metadata_file=TEMP_DIRECTORY / f"{target.uid}.json" if metadata_file else None,
+                        metadata_file=SETTINGS.temporary_storage / f"{target.uid}.json" if metadata_file else None,
                     )
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
