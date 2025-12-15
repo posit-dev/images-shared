@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Self
 
-from pydantic import ConfigDict, BaseModel, Field, computed_field
+from pydantic import ConfigDict, BaseModel, Field, computed_field, model_validator
 
 
 class BuildMetadataContainerImageDescriptorPlatform(BaseModel):
@@ -56,62 +56,40 @@ class BuildMetadata(BaseModel):
 
     @computed_field
     @property
+    def image_tags(self) -> list[str]:
+        """Returns the list of tags associated with the built image."""
+        tags = self.image_name.split(",")
+        return [tag.strip() for tag in tags if tag.strip()]
+
+    @computed_field
+    @property
     def image_ref(self) -> str | None:
         """Returns the full image reference including name and digest."""
-        if self.image_name and self.container_image_digest:
-            return f"{self.image_name}@{self.container_image_digest}"
-        elif self.image_name:
-            return self.image_name
+        primary_tag = self.image_tags[0]
+        if primary_tag and self.container_image_digest:
+            return f"{primary_tag}@{self.container_image_digest}"
+        elif primary_tag:
+            return primary_tag
         return None
 
 
-class MetadataFile:
-    def __init__(
-        self, target_uid: str, filepath: Path | None = None, metadata: BuildMetadata | dict[str, Any] | None = None
-    ):
-        """Initializes a MetadataFile instance.
+class MetadataFile(BaseModel):
+    target_uid: Annotated[str, Field(description="The target UID associated with the metadata.")]
+    filepath: Annotated[Path | None, Field(description="The path to the metadata file.", default=None)]
+    metadata: Annotated[BuildMetadata | None, Field(description="The build metadata.", default=None)]
 
-        Args:
-            filepath: The path to the metadata file.
-            metadata: The build metadata as a BuildMetadata instance or a dictionary.
-        """
-        if filepath is None and metadata is None:
-            raise ValueError("Either filepath or metadata must be provided.")
+    @model_validator(mode="after")
+    def validate_metadata(self) -> Self:
+        """Validates that metadata is provided."""
+        if self.metadata is None:
+            if self.filepath is None or not self.filepath.is_file():
+                raise ValueError("Either filepath or metadata must be provided.")
+            with open(self.filepath, "r") as f:
+                content = json.load(f)
+                if not isinstance(content, dict):
+                    raise ValueError("The metadata file does not contain a valid JSON object.")
+                if self.target_uid in content.keys():
+                    content = content[self.target_uid]
+                self.metadata = BuildMetadata.model_validate(content)
 
-        self.target_uid = target_uid
-        self._filepath = filepath
-
-        if isinstance(metadata, BuildMetadata):
-            self.metadata = metadata
-        elif isinstance(metadata, dict):
-            self.metadata = BuildMetadata.model_validate(metadata)
-        elif metadata is not None:
-            raise TypeError("metadata must be a BuildMetadata instance or a dictionary")
-
-        if self._filepath and self._filepath.is_file():
-            self._reload()
-        elif self._filepath is not None:
-            raise ValueError("The provided filepath is not a valid file.")
-
-    def _reload(self):
-        """Reloads the metadata from the file."""
-        with open(self._filepath, "r") as f:
-            content = json.load(f)
-            if not isinstance(content, dict):
-                raise ValueError("The metadata file does not contain a valid JSON object.")
-            if self.target_uid in content.keys():
-                content = content[self.target_uid]
-            self.metadata = BuildMetadata.model_validate(content)
-
-    @property
-    def filepath(self):
-        """Returns the path to the metadata file."""
-        return self._filepath
-
-    @filepath.setter
-    def filepath(self, value: Path):
-        """Sets the path to the metadata file and reloads the metadata."""
-        if not value or not value.is_file():
-            raise ValueError("The provided filepath is not a valid file.")
-        self._filepath = value
-        self._reload()
+        return self
