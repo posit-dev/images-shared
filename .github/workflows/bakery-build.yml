@@ -79,7 +79,7 @@ jobs:
       - name: Images
         id: images
         run: |
-          echo "matrix=$(bakery --quiet ci matrix --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
