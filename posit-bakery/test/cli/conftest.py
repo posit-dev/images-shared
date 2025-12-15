@@ -84,9 +84,10 @@ def add_args_table(bakery_command, datatable):
 
 
 # Run the command
-@when("I execute the command")
-def run(bakery_command):
+@when("I execute the command", target_fixture="command_logs")
+def run(bakery_command, caplog):
     bakery_command.run()
+    return caplog
 
 
 # Check the results of the command
