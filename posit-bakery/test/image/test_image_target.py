@@ -349,6 +349,7 @@ class TestImageTarget:
             "cache": True,
             "cache_from": None,
             "cache_to": None,
+            "metadata_file": None,
             "platforms": ["linux/amd64"],
         }
 
