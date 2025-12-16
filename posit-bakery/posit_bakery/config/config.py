@@ -35,7 +35,6 @@ from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
 from posit_bakery.registry_management import ghcr
-from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
@@ -749,7 +748,7 @@ class BakeryConfig:
                         cache=cache,
                         cache_registry=self.settings.cache_registry,
                         platforms=platforms,
-                        metadata_file=SETTINGS.temporary_storage / f"{target.uid}.json" if metadata_file else None,
+                        metadata_file=True if metadata_file else False,
                     )
                 except (BakeryFileError, DockerException) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
@@ -763,6 +762,7 @@ class BakeryConfig:
                 raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
             if metadata_file is not None:
                 with open(metadata_file, "w") as f:
+                    log.info(f"Writing build metadata to '{str(metadata_file)}'.")
                     json.dump(self._merge_sequential_build_metadata_files(), f, indent=2)
 
     def dgoss_targets(

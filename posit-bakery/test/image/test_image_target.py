@@ -6,7 +6,9 @@ import python_on_whales
 
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
@@ -373,5 +375,28 @@ class TestImageTarget:
                     meta = python_on_whales.docker.image.inspect(tag)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
+
+            remove_images(target)
+
+    @pytest.mark.build
+    @pytest.mark.slow
+    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_build_metadata_file(self, suite, get_targets):
+        """Test the build property of an ImageTarget."""
+        image_targets = get_targets(suite)
+        for target in image_targets:
+            target.build(metadata_file=True)
+            for tag in target.tags:
+                assert python_on_whales.docker.image.exists(tag)
+                for key, value in target.labels.items():
+                    meta = python_on_whales.docker.image.inspect(tag)
+                    assert key in meta.config.labels
+                    assert value == meta.config.labels[key]
+
+            metadata_file = SETTINGS.temporary_storage / f"{target.uid}.json"
+            assert metadata_file.is_file()
+            metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_file)
+            assert metadata_file.metadata.image_tags.sort() == target.tags.sort()
 
             remove_images(target)
