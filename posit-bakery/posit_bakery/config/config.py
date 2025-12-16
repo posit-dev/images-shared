@@ -700,6 +700,17 @@ class BakeryConfig:
                 merged_metadata[target.uid] = target.metadata_file.metadata.model_dump(exclude_none=True, by_alias=True)
         return merged_metadata
 
+    def load_build_metadata_from_file(self, metadata_file: Path):
+        """Loads build metadata from a given metadata file.
+
+        :param metadata_file: Path to the metadata file to load.
+        :return: A dictionary containing the loaded metadata.
+        """
+        if not metadata_file.is_file():
+            raise FileNotFoundError(f"Metadata file '{str(metadata_file)}' does not exist.")
+        for target in self.targets:
+            target.load_metadata_file(metadata_file)
+
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
         bake_plan = BakePlan.from_image_targets(

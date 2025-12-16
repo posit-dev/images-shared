@@ -220,6 +220,14 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
+    def ref(self) -> str:
+        """Returns a reference to the image, preferring a build metadata digest if available."""
+        if self.metadata_file is not None:
+            return self.metadata_file.metadata.image_ref
+        return self.tags[0]
+
+    @computed_field
+    @property
     def labels(self) -> dict[str, str]:
         """Generate labels for the image based on its properties."""
         labels = {
@@ -275,6 +283,10 @@ class ImageTarget(BaseModel):
             if python_on_whales.docker.image.exists(tag):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
+
+    def load_build_metadata_from_file(self, metadata_file: Path):
+        """Load build metadata from a given file."""
+        self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
 
     def build(
         self,
