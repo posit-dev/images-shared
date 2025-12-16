@@ -33,7 +33,7 @@ from posit_bakery.error import (
 from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
-from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
+from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
@@ -684,6 +684,9 @@ class BakeryConfig:
                                 image_version=version,
                                 image_variant=variant,
                                 image_os=_os,
+                                settings=ImageTargetSettings(
+                                    temp_registry=settings.temp_registry, cache_registry=settings.cache_registry
+                                ),
                             )
                         )
 
@@ -737,12 +740,11 @@ class BakeryConfig:
         :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
             platform.
         :param strategy: The strategy to use when building images.
+        :param metadata_file: Optional path to a metadata file to write build metadata to.
         :param fail_fast: If True, stop building targets on the first failure.
         """
         if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
-            )
+            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
             bake_plan.build(
                 load=load,
                 push=push,
@@ -758,7 +760,6 @@ class BakeryConfig:
                         load=load,
                         push=push,
                         cache=cache,
-                        cache_registry=self.settings.cache_registry,
                         platforms=platforms,
                         metadata_file=True if metadata_file else False,
                     )
