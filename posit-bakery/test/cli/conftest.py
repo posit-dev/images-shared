@@ -1,4 +1,5 @@
 # conftest.py loads this file via pytest_plugins
+import os
 import shutil
 from pathlib import Path
 from typing import List
@@ -61,6 +62,14 @@ def cli_tmpcontext(bakery_command, suite_name, get_tmpcontext):
 @given("in a temp directory")
 def tmp_directory(bakery_command, tmpdir):
     bakery_command.context = Path(tmpdir)
+
+
+@given("with the context as the working directory")
+def cli_tmpcontext(bakery_command):
+    original_wd = os.getcwd()
+    os.chdir(bakery_command.context)
+    yield
+    os.chdir(original_wd)
 
 
 @given(parsers.parse("with the '{target_path}' path removed"))
