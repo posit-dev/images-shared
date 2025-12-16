@@ -93,14 +93,13 @@ class BakeTarget(BaseModel):
     def from_image_target(cls, image_target: ImageTarget) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
         kwargs = {"tags": image_target.tags}
-        if image_target.settings.cache_registry:
-            cache_name = image_target.cache_name
-            kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
-            kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+        if image_target.cache_name is not None:
+            kwargs["cache_from"] = [{"type": "registry", "ref": image_target.cache_name}]
+            kwargs["cache_to"] = [{"type": "registry", "ref": image_target.cache_name, "mode": "max"}]
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
-            kwargs["output"] = [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
+            kwargs["output"] = [{"type": "image", "push-by-digest": True, "name-canonical": True}]
 
         return cls(
             image_name=image_target.image_name,

@@ -277,6 +277,7 @@ class ImageTarget(BaseModel):
 
         return labels
 
+    @property
     def cache_name(self) -> str | None:
         """Generate the image name and tag to use for a build cache."""
         if not self.settings.cache_registry:
@@ -329,7 +330,7 @@ class ImageTarget(BaseModel):
 
         cache_from = None
         cache_to = None
-        if self.cache_name() is not None:
+        if self.cache_name is not None:
             cache_from = f"type=registry,ref={self.cache_name}"
             cache_to = f"{cache_from},mode=max"
 

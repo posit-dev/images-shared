@@ -7,7 +7,7 @@ import python_on_whales
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import MetadataFile
-from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
@@ -365,6 +365,12 @@ class TestImageTarget:
             assert key in labels
             assert labels[key] == value
 
+    def test_temp_name(self, basic_standard_image_target):
+        """Test the temp_name property of an ImageTarget."""
+        assert basic_standard_image_target.temp_name is None
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
+        assert basic_standard_image_target.temp_name == "ghcr.io/posit-dev/test-image/tmp"
+
     @pytest.mark.build
     def test_build_args(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
@@ -375,6 +381,7 @@ class TestImageTarget:
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
+            "output": {},
             "cache": True,
             "cache_from": None,
             "cache_to": None,
@@ -384,6 +391,54 @@ class TestImageTarget:
 
         with patch("python_on_whales.docker.build") as mock_build:
             basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_cache_registry(self, basic_standard_image_target):
+        """Test the build property of an ImageTarget."""
+        basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "tags": basic_standard_image_target.tags,
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "output": {},
+            "cache": True,
+            "cache_from": f"type=registry,ref={basic_standard_image_target.cache_name}",
+            "cache_to": f"type=registry,ref={basic_standard_image_target.cache_name},mode=max",
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_temp_registry(self, basic_standard_image_target):
+        """Test the build property of an ImageTarget."""
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "tags": [basic_standard_image_target.temp_name],
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True},
+            "cache": True,
+            "cache_from": None,
+            "cache_to": None,
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build(push=True)
 
         mock_build.assert_called_once_with(**expected_build_args)
 
