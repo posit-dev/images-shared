@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import ConfigDict, BaseModel, Field, computed_field, model_validator
+from pydantic import ConfigDict, BaseModel, Field, model_validator
 
 
 class BuildMetadataContainerImageDescriptorPlatform(BaseModel):
@@ -54,14 +54,12 @@ class BuildMetadata(BaseModel):
         ),
     ]
 
-    @computed_field
     @property
     def image_tags(self) -> list[str]:
         """Returns the list of tags associated with the built image."""
         tags = self.image_name.split(",")
         return [tag.strip() for tag in tags if tag.strip()]
 
-    @computed_field
     @property
     def image_ref(self) -> str | None:
         """Returns the full image reference including name and digest."""
@@ -90,6 +88,6 @@ class MetadataFile(BaseModel):
                     raise ValueError("The metadata file does not contain a valid JSON object.")
                 if self.target_uid in content.keys():
                     content = content[self.target_uid]
-                self.metadata = BuildMetadata.model_validate(content)
+                self.metadata = BuildMetadata.model_validate(content, by_alias=True)
 
         return self

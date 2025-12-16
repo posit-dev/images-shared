@@ -698,7 +698,7 @@ class BakeryConfig:
         merged_metadata: dict[str, dict[str, Any]] = {}
         for target in self.targets:
             if target.metadata_file is not None:
-                merged_metadata[target.uid] = target.metadata_file.metadata.dump(exclude_none=True)
+                merged_metadata[target.uid] = target.metadata_file.metadata.model_dump(exclude_none=True, by_alias=True)
         return merged_metadata
 
     def bake_plan_targets(self) -> str:
