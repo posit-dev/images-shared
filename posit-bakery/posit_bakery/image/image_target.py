@@ -298,15 +298,7 @@ class ImageTarget(BaseModel):
         if not self.settings.temp_registry:
             return None
 
-        tag = re.sub(r"[+-].*", "", self.image_version.name)
-        tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag).strip("-._")
-        if self.image_os:
-            tag += f"-{self.image_os.tagDisplayName}"
-        if self.image_variant:
-            tag += f"-{self.image_variant.tagDisplayName}"
-        temp_tag = f"{self.settings.temp_registry}/{self.image_name}/tmp:{tag}"
-
-        return temp_tag
+        return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
@@ -350,7 +342,6 @@ class ImageTarget(BaseModel):
             tags = [self.temp_name]
             # If push is true for a temporary image, override the output to push the image by digest.
             if push:
-                tags = [self.temp_name.rsplit(":", 1)[0]]
                 output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
                 push = False
 
