@@ -95,8 +95,8 @@ class BakeTarget(BaseModel):
         kwargs = {"tags": image_target.tags}
         if image_target.settings.cache_registry:
             cache_name = image_target.cache_name
-            cache_from = [{"type": "registry", "ref": cache_name}]
-            cache_to = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+            kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
+            kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
