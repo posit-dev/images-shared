@@ -13,7 +13,7 @@ from .dev_version import DevelopmentVersionField
 from .variant import ImageVariant
 from .version import ImageVersion
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
-from posit_bakery.config.registry import Registry, RegistryImage
+from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
@@ -51,7 +51,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     extraRegistries: Annotated[
-        list[RegistryImage | Registry],
+        list[Registry | BaseRegistry],
         Field(
             default_factory=list,
             validate_default=True,
@@ -59,7 +59,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     overrideRegistries: Annotated[
-        list[RegistryImage | Registry],
+        list[Registry | BaseRegistry],
         Field(
             default_factory=list,
             validate_default=True,
@@ -114,7 +114,9 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
-    def deduplicate_registries(cls, registries: list[Registry], info: ValidationInfo) -> list[Registry]:
+    def deduplicate_registries(
+        cls, registries: list[Registry | BaseRegistry], info: ValidationInfo
+    ) -> list[Registry | BaseRegistry]:
         """Ensures that the registries list is unique and warns on duplicates.
 
         :param registries: List of registries to deduplicate.
@@ -265,7 +267,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         return self.path / "template"
 
     @property
-    def all_registries(self) -> list[Registry]:
+    def all_registries(self) -> list[Registry | BaseRegistry]:
         """Returns the merged registries for this image."""
         # If overrideRegistries are set, return those directly.
         if self.overrideRegistries:

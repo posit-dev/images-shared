@@ -16,7 +16,7 @@ from ruamel.yaml import YAML
 
 from posit_bakery import util
 from posit_bakery.config.image import Image
-from posit_bakery.config.registry import Registry
+from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
@@ -47,7 +47,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
     ]
     repository: Annotated[Repository, Field(description="Repository configuration for the Bakery project.")]
     registries: Annotated[
-        list[Registry],
+        list[BaseRegistry],
         Field(
             default_factory=list,
             validate_default=True,
@@ -61,10 +61,10 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("registries", mode="after")
     @classmethod
-    def deduplicate_registries(cls, registries: list[Registry]) -> list[Registry]:
+    def deduplicate_registries(cls, registries: list[BaseRegistry]) -> list[BaseRegistry]:
         """Ensures that the registries list is unique. Warns if duplicates are found.
 
-        :param registries: List of Registry objects to deduplicate.
+        :param registries: List of BaseRegistry objects to deduplicate.
         """
         unique_registries = set(registries)
         for unique_registry in unique_registries:

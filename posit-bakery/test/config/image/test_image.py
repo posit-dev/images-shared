@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import Image, BakeryConfigDocument, Registry, ImageVersion, ImageVariant
+from posit_bakery.config import Image, BakeryConfigDocument, BaseRegistry, ImageVersion, ImageVariant
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
@@ -171,9 +171,9 @@ class TestImage:
     def test_all_registries(self):
         """Test that merged_registries returns the correct list of registries for object and parents."""
         expected_registries = [
-            Registry(host="docker.io", namespace="posit"),
-            Registry(host="ghcr.io", namespace="posit-dev"),
-            Registry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
         ]
 
         mock_config_parent = MagicMock(spec=BakeryConfigDocument)
@@ -290,7 +290,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -319,7 +319,7 @@ class TestImage:
         context = get_tmpcontext("with-macros")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image",
@@ -411,7 +411,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -442,7 +442,7 @@ class TestImage:
 
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -476,7 +476,7 @@ class TestImage:
 
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -512,7 +512,7 @@ class TestImage:
 
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image",
@@ -550,7 +550,7 @@ class TestImage:
 
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image",
@@ -583,7 +583,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -596,7 +596,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         i = Image(
             name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
@@ -668,7 +668,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         new_version = ImageVersion(
             name="2.0.0",
@@ -701,7 +701,7 @@ class TestImage:
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
-        mock_parent.registries = [Registry(host="docker.io", namespace="posit")]
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
 
         new_version = ImageVersion(
             name="2.0.0",

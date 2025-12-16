@@ -7,7 +7,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.image.version import ImageVersion
-from posit_bakery.config.registry import Registry, RegistryImage
+from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.shared import BakeryYAMLModel
 
@@ -26,7 +26,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         ),
     ]
     extraRegistries: Annotated[
-        list[RegistryImage | Registry],
+        list[Registry | BaseRegistry],
         Field(
             default_factory=list,
             description="List of additional registries to use for this image development version with registries "
@@ -34,7 +34,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         ),
     ]
     overrideRegistries: Annotated[
-        list[RegistryImage | Registry],
+        list[Registry | BaseRegistry],
         Field(
             default_factory=list,
             description="List of registries to use in place of registries defined globally or for the image.",
@@ -59,7 +59,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
-    def deduplicate_registries(cls, registries: list[Registry]) -> list[Registry]:
+    def deduplicate_registries(cls, registries: list[Registry | BaseRegistry]) -> list[Registry | BaseRegistry]:
         """Ensures that the registries list is unique and warns on duplicates.
 
         :param registries: List of registries to deduplicate.
@@ -174,7 +174,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         return self
 
     @property
-    def all_registries(self) -> list[Registry]:
+    def all_registries(self) -> list[Registry | BaseRegistry]:
         """Returns the merged registries for this image version.
 
         :return: A list of registries that includes the overrideRegistiries or the version's extraRegistries and any
