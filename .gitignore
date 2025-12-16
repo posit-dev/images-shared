@@ -192,3 +192,6 @@ go.work.sum
 .env
 
 out/
+
+# Claude
+*/.claude/settings.local.json
