@@ -1,5 +1,5 @@
 import re
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
@@ -315,6 +315,33 @@ class TestImageTarget:
 
         assert len(expected_tags) == len(target.tags)
         assert all(tag in target.tags for tag in expected_tags)
+
+    @pytest.mark.parametrize(
+        "target_name,expected_ref",
+        [
+            (
+                "basic_standard_image_target",
+                "docker.io/posit/test-image:1.0.0",
+            ),
+            (
+                "basic_minimal_image_target",
+                "docker.io/posit/test-image:1.0.0-min",
+            ),
+        ],
+    )
+    def test_ref(self, request, target_name, expected_ref):
+        """Test the tag_suffixes property of an ImageTarget."""
+        target = request.getfixturevalue(target_name)
+        assert target.ref.endswith(expected_ref)
+
+    def test_ref_from_metadata(self, basic_standard_image_target):
+        """Test the tag_suffixes property of an ImageTarget."""
+        mock_metadata_file = MagicMock(spec=MetadataFile)
+        mock_metadata = MagicMock()
+        mock_metadata_file.metadata = mock_metadata
+        mock_metadata_file.metadata.image_ref = "test-image@sha256:1234567890abcdef"
+        basic_standard_image_target.metadata_file = mock_metadata_file
+        assert basic_standard_image_target.ref == "test-image@sha256:1234567890abcdef"
 
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
