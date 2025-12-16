@@ -253,6 +253,7 @@ class BakerySettings(BaseModel):
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
+    temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
 
 
 class BakeryConfig:

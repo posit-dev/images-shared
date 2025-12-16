@@ -111,6 +111,13 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = None,
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Temporary registry to use for multiplatform split/merge builds.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = None,
     image_name: Annotated[
         Optional[str],
         typer.Option(
@@ -178,6 +185,7 @@ def build(
         dev_versions=dev_versions,
         clean_temporary=clean,
         cache_registry=cache_registry,
+        temp_registry=temp_registry,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
