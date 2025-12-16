@@ -6,10 +6,11 @@ from typing import Annotated, Union, Self
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.registry import Registry
-from .version_os import ImageVersionOS
 from posit_bakery.config.dependencies import DependencyVersionsField
+from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from .build_os import DEFAULT_PLATFORMS, TargetPlatform
+from .version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
 
@@ -263,3 +264,19 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     all_registries.append(registry)
 
         return all_registries
+
+    @property
+    def supported_platforms(self) -> list[TargetPlatform]:
+        """Returns a list of supported target platforms for this image version.
+        :return: A list of TargetPlatform objects supported by this image version.
+        """
+        if not self.os:
+            return DEFAULT_PLATFORMS
+
+        platforms = []
+
+        for version_os in self.os:
+            for platform in version_os.platforms:
+                if platform not in platforms:
+                    platforms.append(platform)
+        return platforms

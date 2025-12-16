@@ -1,12 +1,11 @@
 import json
+import re
 import subprocess
 from shutil import which
 
 import pytest
 import python_on_whales
 from pytest_bdd import scenarios, then, parsers
-
-from posit_bakery.util import find_bin
 
 scenarios(
     "cli/build.feature",
@@ -46,8 +45,16 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
+    filtered_platforms = [bakery_command.args[i + 1] for i, x in enumerate(bakery_command.args) if x == "--platform"]
+
     config = get_config_obj(suite_name)
     for target in config.targets:
+        if filtered_platforms and all(
+            re.search(filter_platform, target_platform) is None
+            for filter_platform in filtered_platforms
+            for target_platform in target.image_os.platforms
+        ):
+            continue
         for tag in target.tags:
             python_on_whales.docker.image.exists(tag)
             for label, value in target.labels.items():
@@ -71,6 +78,8 @@ def check_multiplatform_build(resource_path, bakery_command, suite_name, get_con
         for tag in target.tags:
             for row in datatable:
                 platform = row[0]
+                if all(re.search(platform, target_platform) is None for target_platform in target.image_os.platforms):
+                    continue
                 proc = subprocess.run([docker_path, "image", "inspect", "--platform", platform, tag])
                 assert proc.returncode == 0, f"Image {tag} not found for platform {platform}"
 
@@ -95,7 +104,7 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
 
 
 @then(parsers.parse("the {suite_name} test suite is not built"))
-def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_obj):
+def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, get_config_obj):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
