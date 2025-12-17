@@ -83,8 +83,46 @@ class TestDGossCommand:
         expected_command = [
             find_dgoss_bin(basic_standard_image_target.context),
             "run",
+            "-v",
+            f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
+            "-v",
+            f"{str(basic_standard_image_target.context.image_path.resolve())}:/tmp/image",
+            "-v",
+            f"{str(basic_standard_image_target.context.base_path.resolve())}:/tmp/project",
+            "-e",
+            "IMAGE_VERSION=1.0.0",
+            "-e",
+            "IMAGE_VERSION_MOUNT=/tmp/version",
+            "-e",
+            "IMAGE_MOUNT=/tmp/image",
+            "-e",
+            "PROJECT_MOUNT=/tmp/project",
+            "-e",
+            "IMAGE_VARIANT=Standard",
+            "-e",
+            "IMAGE_OS=Ubuntu\ 22.04",
+            "-e",
+            "IMAGE_OS_NAME=ubuntu",
+            "-e",
+            "IMAGE_OS_CODENAME=jammy",
+            "-e",
+            "IMAGE_OS_FAMILY=debian",
+            "-e",
+            "IMAGE_OS_VERSION=22.04",
+            "--init",
+            basic_standard_image_target.tags[0],
+            *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
+        ]
+        assert dgoss_command.command == expected_command
+
+    def test_command_with_platform_option(self, basic_standard_image_target):
+        """Test that DGossCommand command returns the expected command."""
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target, platform="linux/arm64")
+        expected_command = [
+            find_dgoss_bin(basic_standard_image_target.context),
+            "run",
             "--platform",
-            "linux/amd64",
+            "linux/arm64",
             "-v",
             f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",
@@ -124,8 +162,6 @@ class TestDGossCommand:
         expected_command = [
             find_dgoss_bin(basic_standard_image_target.context),
             "run",
-            "--platform",
-            "linux/amd64",
             "-v",
             f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
             "-v",

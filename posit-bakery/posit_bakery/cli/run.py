@@ -1,4 +1,5 @@
 import logging
+import platform
 import re
 from pathlib import Path
 from typing import Annotated, Optional
@@ -25,6 +26,14 @@ def dgoss(
     image_version: Annotated[Optional[str], typer.Option(help="The image version to isolate goss testing to.")] = None,
     image_variant: Annotated[Optional[str], typer.Option(help="The image type to isolate goss testing to.")] = None,
     image_os: Annotated[Optional[str], typer.Option(help="The image OS to isolate goss testing to.")] = None,
+    image_platform: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
+            "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary. If not "
+            "provided, the host architecture will be used by default.",
+        ),
+    ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(help="Include or exclude development versions defined in config."),
@@ -45,18 +54,29 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
+    # Autoselect host architecture platform if not specified.
+    if image_platform is None:
+        machine = platform.machine()
+        arch_map = {
+            "x86_64": "amd64",
+            "aarch64": "arm64",
+        }
+        arch = arch_map.get(machine, "amd64")
+        image_platform = f"linux/{arch}"
+
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
             image_version=re.escape(image_version) if image_version else None,
             image_variant=image_variant,
             image_os=image_os,
+            image_platform=[image_platform],
         ),
         dev_versions=dev_versions,
         clean_temporary=clean,
     )
     c = BakeryConfig.from_context(context, settings)
-    results, err = c.dgoss_targets()
+    results, err = c.dgoss_targets(platform=image_platform)
 
     stderr_console.print(results.table())
     if results.test_failures:

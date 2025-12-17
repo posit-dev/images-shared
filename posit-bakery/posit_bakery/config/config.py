@@ -5,20 +5,19 @@ import re
 import shutil
 from datetime import timedelta
 from pathlib import Path
+from typing import Annotated, Self
 
 import jinja2
 import pydantic
 from pydantic import Field, model_validator, field_validator, BaseModel
-from typing import Annotated, Self
-
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
+from posit_bakery.config.image import Image
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
-from posit_bakery.config.image import Image
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
@@ -30,10 +29,10 @@ from posit_bakery.error import (
     BakeryRenderError,
     BakeryRenderErrorGroup,
 )
+from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
-from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
@@ -230,6 +229,9 @@ class BakeryConfigFilter(BaseModel):
     ]
     image_os: Annotated[
         str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
+    ]
+    image_platform: Annotated[
+        list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
     ]
 
 
@@ -663,6 +665,17 @@ class BakeryConfig:
                                 f"due to not matching OS filter '{settings.filter.image_os}'"
                             )
                             continue
+                        if settings.filter.image_platform and all(
+                            re.search(filter_platform, platform) is None
+                            for platform in _os.platforms
+                            for filter_platform in settings.filter.image_platform
+                        ):
+                            log.debug(
+                                f"Skipping image '{image.name}' "
+                                f"due to no matching platforms for patterns {settings.filter.image_platform}, "
+                                f"supported platforms are: {', '.join(_os.platforms)}"
+                            )
+                            continue
                         targets.append(
                             ImageTarget.new_image_target(
                                 repository=self.model.repository,
@@ -736,12 +749,13 @@ class BakeryConfig:
 
     def dgoss_targets(
         self,
+        platform: str | None = None,
     ) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
         """Run dgoss tests for all image targets.
 
         :return: A tuple containing the GossJsonReportCollection and any errors encountered during the tests.
         """
-        suite = DGossSuite(self.base_path, self.targets)
+        suite = DGossSuite(self.base_path, self.targets, platform=platform)
         return suite.run()
 
     def clean_caches(

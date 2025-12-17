@@ -79,14 +79,24 @@ images:
         stream: "preview"
         os:
           - name: "Ubuntu 22.04"
+            platforms:
+              - "linux/amd64"
           - name: "Ubuntu 24.04"
+            platforms:
+              - "linux/amd64"
+              - "linux/arm64"
             primary: true
       - sourceType: "stream"
         product: "package-manager"
         stream: "daily"
         os:
           - name: "Ubuntu 22.04"
+            platforms:
+              - "linux/amd64"
           - name: "Ubuntu 24.04"
+            platforms:
+              - "linux/amd64"
+              - "linux/arm64"
             primary: true
     versions:
       - name: "2025.04.2-8"
@@ -95,6 +105,9 @@ images:
         os:
           - name: "Ubuntu 22.04"
           - name: "Ubuntu 24.04"
+            platforms:
+              - "linux/amd64"
+              - "linux/arm64"
             primary: true
         dependencies:
           - dependency: R
@@ -105,6 +118,8 @@ images:
         subpath: "2025.04.0"
         os:
           - name: "Ubuntu 22.04"
+            platforms:
+              - "linux/amd64"
             primary: true
         dependencies:
           - dependency: R

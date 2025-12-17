@@ -90,8 +90,10 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform (sequential build)
-        Given I call bakery build --strategy build
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --strategy | build |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
@@ -105,13 +107,14 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms
-        Given I call bakery build --platform linux/arm64
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --image-platform | linux/arm64 |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
-        * the multiplatform test suite is built
         * the multiplatform test suite built for platforms:
             | linux/arm64 |
         * the multiplatform test suite did not build for platforms:
@@ -121,13 +124,14 @@ Feature: build
     @slow
     @xdist-build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms (sequential build)
-        Given I call bakery build --platform linux/arm64 --strategy build
+        Given I call bakery build
         * in a temp multiplatform context
+        * with the arguments:
+            | --image-platform | linux/arm64 | --strategy | build |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
-        * the multiplatform test suite is built
         * the multiplatform test suite built for platforms:
             | linux/arm64 |
         * the multiplatform test suite did not build for platforms:
