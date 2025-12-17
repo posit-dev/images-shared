@@ -47,7 +47,7 @@ def build(
             help="The strategy to use when building the image. 'bake' requires Docker Buildkit and builds "
             "images in parallel. 'build' can use generic container builders, such as Podman, and builds "
             "images sequentially.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = ImageBuildStrategy.BAKE,
     fail_fast: Annotated[
@@ -55,7 +55,7 @@ def build(
         typer.Option(
             "--fail-fast",
             help="Terminate builds on the first failure.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
     plan: Annotated[
