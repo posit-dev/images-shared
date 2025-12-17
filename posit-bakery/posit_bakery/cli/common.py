@@ -67,7 +67,7 @@ def with_temporary_storage(fn):
     def wrapper(ctx: typer.Context, *args, **kwargs) -> None:
         temp_dir = tempfile.TemporaryDirectory(prefix="posit-bakery")
         SETTINGS.temporary_storage = Path(temp_dir.name)
-        if ctx.params.get("clean", True) or ctx.params.get("no-clean", False):
+        if ctx.params.get("clean", True):
             ctx.call_on_close(temp_dir.cleanup)
 
         log.debug(f"Created temporary directory at {SETTINGS.temporary_storage}")
