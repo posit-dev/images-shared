@@ -115,7 +115,6 @@ Feature: build
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
-        * the multiplatform test suite is built
         * the multiplatform test suite built for platforms:
             | linux/arm64 |
         * the multiplatform test suite did not build for platforms:
@@ -133,7 +132,6 @@ Feature: build
         Then The command succeeds
         * the stderr output includes:
             | Build completed |
-        * the multiplatform test suite is built
         * the multiplatform test suite built for platforms:
             | linux/arm64 |
         * the multiplatform test suite did not build for platforms:
