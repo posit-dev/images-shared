@@ -693,6 +693,16 @@ class BakeryConfig:
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
 
+    def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
+        """Returns an image target by its UID.
+        :param uid: The UID of the image target to find.
+        :return: The ImageTarget with the given UID, or None if not found.
+        """
+        for target in self.targets:
+            if target.uid == uid:
+                return target
+        return None
+
     def _merge_sequential_build_metadata_files(self) -> dict[str, Any]:
         """Merges all sequential build metadata files generated during image builds.
 
