@@ -1,25 +1,42 @@
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, List, Optional
 
 import typer
 
 from posit_bakery import error
-from posit_bakery.cli.common import __make_value_map
+from posit_bakery.cli.common import __make_value_map, with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
 
-
 app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
 
 
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    IMAGE_CONFIGURATION = "Image Configuration"
+    VERSION_CONFIGURATION = "Version Configuration"
+
+
 @app.command()
+@with_verbosity_flags
 def project(
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
 ) -> None:
     """Creates a new project in the context path
@@ -27,9 +44,11 @@ def project(
     This tool will create a new directory in the context path with the following structure:
 
     \b
+    ```
     .
     └── context/
         └── bakery.yaml.
+    ```
     """
     try:
         BakeryConfig.from_context(context)
@@ -42,22 +61,64 @@ def project(
 
 
 @app.command()
+@with_verbosity_flags
 def image(
-    image_name: Annotated[str, typer.Argument(help="The image name to create a skeleton for.")],
+    image_name: Annotated[str, typer.Argument(show_default=False, help="The image name to create a skeleton for.")],
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
-    base_image: Annotated[str, typer.Option(help="The base to use for the new image.")] = DEFAULT_BASE_IMAGE,
-    subpath: Annotated[Optional[str], typer.Option(help="The directory name to use for the image. ")] = None,
-    display_name: Annotated[Optional[str], typer.Option(help="The display name for the image.")] = None,
-    description: Annotated[Optional[str], typer.Option(help="The description for the image. Used in labels.")] = None,
-    documentation_url: Annotated[Optional[str], typer.Option(help="The documentation URL for the image.")] = None,
+    base_image: Annotated[
+        str,
+        typer.Option(help="The base to use for the new image.", rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION),
+    ] = DEFAULT_BASE_IMAGE,
+    subpath: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default="based on image_name",
+            help="The directory name to use for the image.",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
+        ),
+    ] = None,
+    display_name: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default="based on image_name",
+            help="The display name for the image.",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
+        ),
+    ] = None,
+    description: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The description for the image. Used in labels.",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
+        ),
+    ] = None,
+    documentation_url: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The documentation URL for the image.",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
+        ),
+    ] = None,
 ) -> None:
     """Creates a quickstart skeleton for a new image in the context path
 
     This tool will create a new directory in the context path with the following structure:
 
     \b
+    ```
     .
     └── image_name/
         └── template/
@@ -66,6 +127,7 @@ def image(
             ├── test/
             │   └── goss.yaml.jinja2
             └── Containerfile.jinja2
+    ```
     """
     try:
         c = BakeryConfig.from_context(context)
@@ -86,32 +148,64 @@ def image(
 
 
 @app.command()
+@with_verbosity_flags
 def version(
     image_name: Annotated[
         str,
         typer.Argument(
+            show_default=False,
             help="The image to which the version belongs. This must match an image name present in the bakery.yaml "
-            "configuration."
+            "configuration.",
         ),
     ],
-    image_version: Annotated[str, typer.Argument(help="The new version to render the templates to.")],
+    image_version: Annotated[
+        str, typer.Argument(show_default=False, help="The new version to render the templates to.")
+    ],
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
     subpath: Annotated[
-        Optional[str], typer.Option(help="The subdirectory to use for the version. Defaults to the image version.")
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The subdirectory to use for the version. Defaults to the image version.",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
+        ),
     ] = None,
     value: Annotated[
-        List[str], typer.Option(help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.")
+        List[str],
+        typer.Option(
+            show_default=False,
+            help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
+        ),
     ] = None,
-    mark_latest: Annotated[bool, typer.Option(help="Skip marking the latest version of the image.")] = True,
-    force: Annotated[Optional[bool], typer.Option(help="Force overwrite of existing version directory.")] = False,
+    mark_latest: Annotated[
+        bool,
+        typer.Option(
+            help="Skip marking the latest version of the image.",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
+        ),
+    ] = True,
+    force: Annotated[
+        Optional[bool], typer.Option("--force", help="Force overwrite of existing version directory.")
+    ] = False,
 ) -> None:
     """Renders templates for an image to a versioned subdirectory of the image directory.
 
     This tool expects an image directory to use the following structure as generated by `bakery create image`:
 
     \b
+    ```
     .
     └── image_path/
         └── template/
@@ -119,6 +213,7 @@ def version(
             │   └── *.jinja2
             ├── *.jinja2
             └── Containerfile*.jinja2
+    ```
     """
 
     value_map = __make_value_map(value)

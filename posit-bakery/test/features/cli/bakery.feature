@@ -47,10 +47,8 @@ Feature: bakery
         * the stderr output includes:
             | No such option: --planet |
 
-    Scenario: Bakery shows its version for --version and exits
-        Given I call bakery
-        * with the arguments:
-            | --version |
+    Scenario: Bakery shows its version for version command and exits
+        Given I call bakery version
         When I execute the command
         Then The command succeeds
         * the version is shown

@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum
@@ -16,6 +17,12 @@ app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
 
 
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    FILTERS = "Filters"
+
+
 class BakeryCIMatrixFieldEnum(str, Enum):
     VERSION = "version"
     DEV = "dev"
@@ -23,24 +30,36 @@ class BakeryCIMatrixFieldEnum(str, Enum):
 
 
 @app.command()
+@with_verbosity_flags
 def matrix(
-    image_name: Annotated[str | None, typer.Argument(help="The image name to list versions for.")] = None,
+    image_name: Annotated[str | None, typer.Argument(help="The image name to isolate matrix to.")] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
-        typer.Option(help="Include or exclude development versions defined in config."),
+        typer.Option(
+            help="Include or exclude development versions defined in config.", rich_help_panel=RichHelpPanelEnum.FILTERS
+        ),
     ] = DevVersionInclusionEnum.EXCLUDE,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
     ] = None,
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
 ) -> None:
     """Generates a JSON matrix of image versions for CI workflows to consume
 
     The output is a JSON array of objects with the following structure:
 
+    \b
     ```json
     [
       {
