@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -12,6 +13,12 @@ from posit_bakery.util import auto_path
 
 app = typer.Typer()
 log = logging.getLogger(__name__)
+
+
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    FILTERS = "Filters"
 
 
 @app.command()
@@ -31,17 +38,23 @@ def cache_registry(
             help="The root path to use. Defaults to the current working directory where invoked.",
         ),
     ] = auto_path(),
-    untagged: Annotated[Optional[bool], typer.Option(help="Prune dangling caches.", rich_help_panel="Filters")] = True,
+    untagged: Annotated[
+        Optional[bool], typer.Option(help="Prune dangling caches.", rich_help_panel=RichHelpPanelEnum.FILTERS)
+    ] = True,
     older_than: Annotated[
         Optional[int],
-        typer.Option(show_default=False, help="Prune caches older than specified days.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="Prune caches older than specified days.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
     ] = None,
     image_name: Annotated[
         Optional[str],
         typer.Option(
             show_default=False,
             help="The image name or a regex pattern to isolate clean operations to.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     dry_run: Annotated[

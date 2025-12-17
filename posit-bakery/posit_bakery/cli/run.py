@@ -1,6 +1,7 @@
 import logging
 import platform
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -16,6 +17,12 @@ from posit_bakery.util import auto_path
 log = logging.getLogger(__name__)
 
 app = typer.Typer(no_args_is_help=True)
+
+
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    FILTERS = "Filters"
 
 
 @app.command()
@@ -35,21 +42,35 @@ def dgoss(
     ] = auto_path(),
     image_name: Annotated[
         Optional[str],
-        typer.Option(show_default=False, help="The image name to isolate goss testing to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image name to isolate goss testing to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
     ] = None,
     image_version: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False, help="The image version to isolate goss testing to.", rich_help_panel="Filters"
+            show_default=False,
+            help="The image version to isolate goss testing to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_variant: Annotated[
         Optional[str],
-        typer.Option(show_default=False, help="The image type to isolate goss testing to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image type to isolate goss testing to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
     ] = None,
     image_os: Annotated[
         Optional[str],
-        typer.Option(show_default=False, help="The image OS to isolate goss testing to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False,
+            help="The image OS to isolate goss testing to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
     ] = None,
     image_platform: Annotated[
         Optional[str],
@@ -57,12 +78,15 @@ def dgoss(
             show_default=platform.machine(),  # TODO: improve output to match docker platform format
             help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
             "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
-        typer.Option(help="Include or exclude development versions defined in config.", rich_help_panel="Filters"),
+        typer.Option(
+            help="Include or exclude development versions defined in config.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
     ] = DevVersionInclusionEnum.EXCLUDE,
     clean: Annotated[
         Optional[bool],

@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, List, Optional
 
@@ -13,6 +14,13 @@ from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
+
+
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    IMAGE_CONFIGURATION = "Image Configuration"
+    VERSION_CONFIGURATION = "Version Configuration"
 
 
 @app.command()
@@ -69,14 +77,15 @@ def image(
         ),
     ] = auto_path(),
     base_image: Annotated[
-        str, typer.Option(help="The base to use for the new image.", rich_help_panel="Image Configuration")
+        str,
+        typer.Option(help="The base to use for the new image.", rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION),
     ] = DEFAULT_BASE_IMAGE,
     subpath: Annotated[
         Optional[str],
         typer.Option(
             show_default="based on image_name",
             help="The directory name to use for the image.",
-            rich_help_panel="Image Configuration",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
         ),
     ] = None,
     display_name: Annotated[
@@ -84,7 +93,7 @@ def image(
         typer.Option(
             show_default="based on image_name",
             help="The display name for the image.",
-            rich_help_panel="Image Configuration",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
         ),
     ] = None,
     description: Annotated[
@@ -92,13 +101,15 @@ def image(
         typer.Option(
             show_default=False,
             help="The description for the image. Used in labels.",
-            rich_help_panel="Image Configuration",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
         ),
     ] = None,
     documentation_url: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False, help="The documentation URL for the image.", rich_help_panel="Image Configuration"
+            show_default=False,
+            help="The documentation URL for the image.",
+            rich_help_panel=RichHelpPanelEnum.IMAGE_CONFIGURATION,
         ),
     ] = None,
 ) -> None:
@@ -167,7 +178,7 @@ def version(
         typer.Option(
             show_default=False,
             help="The subdirectory to use for the version. Defaults to the image version.",
-            rich_help_panel="Version Configuration",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
         ),
     ] = None,
     value: Annotated[
@@ -175,12 +186,15 @@ def version(
         typer.Option(
             show_default=False,
             help="A 'key=value' pair to pass to the templates. Accepts multiple pairs.",
-            rich_help_panel="Version Configuration",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
         ),
     ] = None,
     mark_latest: Annotated[
         bool,
-        typer.Option(help="Skip marking the latest version of the image.", rich_help_panel="Version Configuration"),
+        typer.Option(
+            help="Skip marking the latest version of the image.",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
+        ),
     ] = True,
     force: Annotated[
         Optional[bool], typer.Option("--force", help="Force overwrite of existing version directory.")

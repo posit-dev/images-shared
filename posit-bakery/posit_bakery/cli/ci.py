@@ -17,6 +17,12 @@ app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
 
 
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    FILTERS = "Filters"
+
+
 class BakeryCIMatrixFieldEnum(str, Enum):
     VERSION = "version"
     DEV = "dev"
@@ -29,7 +35,9 @@ def matrix(
     image_name: Annotated[str | None, typer.Argument(help="The image name to isolate matrix to.")] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
-        typer.Option(help="Include or exclude development versions defined in config.", rich_help_panel="Filters"),
+        typer.Option(
+            help="Include or exclude development versions defined in config.", rich_help_panel=RichHelpPanelEnum.FILTERS
+        ),
     ] = DevVersionInclusionEnum.EXCLUDE,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],

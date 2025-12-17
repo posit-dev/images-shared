@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -12,6 +13,12 @@ from posit_bakery.util import auto_path
 app = typer.Typer(no_args_is_help=True)
 update_version = typer.Typer(no_args_is_help=True)
 app.add_typer(update_version, name="version", help="Update image versions managed by Posit Bakery")
+
+
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    FILTERS = "Filters"
 
 
 @app.command()
@@ -32,19 +39,25 @@ def files(
     image_name: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False, help="The image name to isolate file rendering to.", rich_help_panel="Filters"
+            show_default=False,
+            help="The image name to isolate file rendering to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_version: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False, help="The image version to isolate file rendering to.", rich_help_panel="Filters"
+            show_default=False,
+            help="The image version to isolate file rendering to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     template_pattern: Annotated[
         Optional[list[str]],
         typer.Option(
-            show_default=False, help="Regex pattern(s) to filter which templates to render.", rich_help_panel="Filters"
+            show_default=False,
+            help="Regex pattern(s) to filter which templates to render.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
 ) -> None:

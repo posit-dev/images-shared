@@ -1,5 +1,6 @@
 import logging
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -16,6 +17,13 @@ from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
+
+
+class RichHelpPanelEnum(str, Enum):
+    """Enum for categorizing options into rich help panels."""
+
+    BUILD_CONFIGURATION_AND_OUTPUTS = "Build Configuration & Outputs"
+    FILTERS = "Filters"
 
 
 @with_verbosity_flags
@@ -52,35 +60,46 @@ def build(
     ] = False,
     plan: Annotated[
         Optional[bool],
-        typer.Option("--plan", help="Print the bake plan and exit.", rich_help_panel="Build Configuration & Outputs"),
+        typer.Option(
+            "--plan",
+            help="Print the bake plan and exit.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
     ] = False,
     load: Annotated[
         Optional[bool],
-        typer.Option(help="Load the image to Docker after building.", rich_help_panel="Build Configuration & Outputs"),
+        typer.Option(
+            help="Load the image to Docker after building.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
     ] = True,
     push: Annotated[
         Optional[bool],
         typer.Option(
-            help="Push the image to its registry tags after building.", rich_help_panel="Build Configuration & Outputs"
+            help="Push the image to its registry tags after building.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
     clean: Annotated[
         Optional[bool],
         typer.Option(
             help="Clean up intermediary and temporary files after building. Disable for debugging.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = True,
     cache: Annotated[
         Optional[bool],
-        typer.Option(help="Enable layer caching for image builds.", rich_help_panel="Build Configuration & Outputs"),
+        typer.Option(
+            help="Enable layer caching for image builds.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
     ] = True,
     cache_registry: Annotated[
         Optional[str],
         typer.Option(
             show_default=False,
             help="External registry to use for layer caching.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = None,
     image_name: Annotated[
@@ -88,7 +107,7 @@ def build(
         typer.Option(
             show_default=False,
             help="The image name or a regex pattern to isolate builds to.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_version: Annotated[
@@ -96,19 +115,21 @@ def build(
         typer.Option(
             show_default=False,
             help="The image version or a regex pattern to isolate builds to.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_variant: Annotated[
         Optional[str],
-        typer.Option(show_default=False, help="The image type to isolate builds to.", rich_help_panel="Filters"),
+        typer.Option(
+            show_default=False, help="The image type to isolate builds to.", rich_help_panel=RichHelpPanelEnum.FILTERS
+        ),
     ] = None,
     image_os: Annotated[
         Optional[str],
         typer.Option(
             show_default=False,
             help="The image OS name or a regex pattern to isolate builds to.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_platform: Annotated[
@@ -117,13 +138,14 @@ def build(
             show_default=False,
             help="The image platform(s) to isolate builds to, e.g. 'linux/amd64'. "
             "Image build targets incompatible with the given platform(s) will be skipped.",
-            rich_help_panel="Filters",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(
-            help="Include or exclude development version builds defined in config.", rich_help_panel="Filters"
+            help="Include or exclude development version builds defined in config.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
 ) -> None:
