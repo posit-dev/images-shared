@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import python_on_whales
 from pydantic import BaseModel, Field, field_serializer
@@ -99,7 +99,6 @@ class BakeTarget(BaseModel):
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
-            kwargs["output"] = [{"type": "image", "push-by-digest": True, "name-canonical": True}]
 
         return cls(
             image_name=image_target.image_name,
@@ -195,6 +194,7 @@ class BakePlan(BaseModel):
         cache_from: str | None = None,
         cache_to: str | None = None,
         platforms: list[str] | None = None,
+        set_opts: dict[str, Any] | None = None,
         clean_bakefile: bool = True,
     ):
         """Run the bake plan to build all targets."""
@@ -210,6 +210,8 @@ class BakePlan(BaseModel):
             _set["*.cache-from"] = cache_from
         if cache_to:
             _set["*.cache-to"] = cache_to
+        if set_opts:
+            _set.update(set_opts)
 
         python_on_whales.docker.buildx.bake(files=[self.bake_file.name], load=load, push=push, cache=cache, set=_set)
         if clean_bakefile:

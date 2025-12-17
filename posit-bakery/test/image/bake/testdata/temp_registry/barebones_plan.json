@@ -33,13 +33,6 @@
       ],
       "platforms": [
         "linux/amd64"
-      ],
-      "output": [
-        {
-          "type": "image",
-          "push-by-digest": true,
-          "name-canonical": true
-        }
       ]
     }
   }

@@ -47,13 +47,6 @@
       ],
       "platforms": [
         "linux/amd64"
-      ],
-      "output": [
-        {
-          "type": "image",
-          "push-by-digest": true,
-          "name-canonical": true
-        }
       ]
     },
     "test-image-1-0-0-standard-ubuntu-22-04": {
@@ -79,13 +72,6 @@
       ],
       "platforms": [
         "linux/amd64"
-      ],
-      "output": [
-        {
-          "type": "image",
-          "push-by-digest": true,
-          "name-canonical": true
-        }
       ]
     }
   }

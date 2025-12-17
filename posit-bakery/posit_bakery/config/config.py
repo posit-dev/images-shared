@@ -713,7 +713,7 @@ class BakeryConfig:
         if not metadata_file.is_file():
             raise FileNotFoundError(f"Metadata file '{str(metadata_file)}' does not exist.")
         for target in self.targets:
-            target.load_metadata_file(metadata_file)
+            target.load_build_metadata_from_file(metadata_file)
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
@@ -743,12 +743,18 @@ class BakeryConfig:
         """
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+            set_opts = None
+            if self.settings.temp_registry is not None and push:
+                set_opts = {
+                    "*.output": [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
+                }
             bake_plan.build(
                 load=load,
                 push=push,
                 cache=cache,
                 clean_bakefile=self.settings.clean_temporary,
                 platforms=platforms,
+                set_opts=set_opts,
             )
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
