@@ -717,9 +717,7 @@ class BakeryConfig:
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
-        bake_plan = BakePlan.from_image_targets(
-            context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
-        )
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
         return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     def build_targets(
@@ -791,22 +789,17 @@ class BakeryConfig:
 
     def clean_caches(
         self,
-        cache_registry: str,
         remove_untagged: bool = True,
         remove_older_than: timedelta | None = None,
         dry_run: bool = False,
     ):
         """Cleans up dangling caches in the specified registry for all generated image targets.
 
-        :param cache_registry: The cache registry to clean.
         :param remove_untagged: If True, remove untagged caches.
         :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
+        :param dry_run: If True, print what would be deleted without actually deleting anything.
         """
-        target_caches = []
-        for target in self.targets:
-            target_cache_name = target.cache_name(cache_registry)
-            target_caches.append(target_cache_name.split(":")[0])
-        target_caches = list(set(target_caches))
+        target_caches = list(set([target.cache_name.split(":")[0] for target in self.targets]))
 
         for target_cache in target_caches:
             ghcr.clean_cache(

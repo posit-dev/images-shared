@@ -1320,7 +1320,6 @@ class TestBakeryConfig:
 
         # Clean caches
         config.clean_caches(
-            cache_registry=cache_registry,
             remove_untagged=untagged,
             remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
         )
@@ -1354,7 +1353,6 @@ class TestBakeryConfig:
 
         # Clean caches
         config.clean_caches(
-            cache_registry=cache_registry,
             remove_untagged=True,
             remove_older_than=timedelta(days=14),
             dry_run=True,
