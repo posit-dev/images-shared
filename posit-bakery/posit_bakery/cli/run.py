@@ -54,7 +54,7 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
-    # Autoselect host arhitecture platform if not specified.
+    # Autoselect host architecture platform if not specified.
     if image_platform is None:
         machine = platform.machine()
         arch_map = {
