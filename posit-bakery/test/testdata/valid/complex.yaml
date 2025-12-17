@@ -130,8 +130,6 @@ images:
         subpath: "2024.11.0"
         os:
           - name: "Ubuntu 22.04"
-            platforms:
-              - "linux/amd64"
             primary: true
         dependencies:
           - dependency: R
