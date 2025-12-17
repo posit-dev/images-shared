@@ -14,6 +14,8 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
+from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
@@ -51,6 +53,9 @@ class ImageTarget(BaseModel):
     image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
     image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
     image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
+    metadata_file: Annotated[
+        MetadataFile | None, Field(default=None, description="Build metadata for the image target.")
+    ]
 
     @classmethod
     def new_image_target(
@@ -215,6 +220,14 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
+    def ref(self) -> str:
+        """Returns a reference to the image, preferring a build metadata digest if available."""
+        if self.metadata_file is not None:
+            return self.metadata_file.metadata.image_ref
+        return self.tags[0]
+
+    @computed_field
+    @property
     def labels(self) -> dict[str, str]:
         """Generate labels for the image based on its properties."""
         labels = {
@@ -271,6 +284,10 @@ class ImageTarget(BaseModel):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
+    def load_build_metadata_from_file(self, metadata_file: Path):
+        """Load build metadata from a given file."""
+        self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
+
     def build(
         self,
         load: bool = True,
@@ -278,6 +295,7 @@ class ImageTarget(BaseModel):
         cache: bool = True,
         cache_registry: str | None = None,
         platforms: list[str] | None = None,
+        metadata_file: Path | bool | None = None,
     ) -> python_on_whales.Image | None:
         """Build the image using the Containerfile and return the built image."""
         if not (self.context.base_path / self.containerfile).is_file():
@@ -294,6 +312,9 @@ class ImageTarget(BaseModel):
             cache_from = f"type=registry,ref={cache_name}"
             cache_to = f"{cache_from},mode=max"
 
+        if isinstance(metadata_file, bool) and metadata_file:
+            metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
+
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
         with contextlib.chdir(self.context.base_path):
@@ -309,6 +330,7 @@ class ImageTarget(BaseModel):
                     cache=cache,
                     cache_from=cache_from,
                     cache_to=cache_to,
+                    metadata_file=metadata_file,
                     platforms=platforms or self.image_os.platforms,
                 )
             except python_on_whales.exceptions.DockerException as e:
@@ -323,5 +345,9 @@ class ImageTarget(BaseModel):
                 )
 
         log.info(f"Successfully built image '{str(self)}'")
+
+        if isinstance(metadata_file, Path):
+            log.debug(f"Loading in build metadata from file {str(metadata_file)}")
+            self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
 
         return image

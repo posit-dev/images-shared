@@ -112,3 +112,24 @@ def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, g
     for target in config.targets:
         for tag in target.tags:
             assert not python_on_whales.docker.image.exists(tag)
+
+
+@then(parsers.parse("{metadata_file} contains build metadata for the {suite_name} test suite"))
+def check_build_metadata(resource_path, bakery_command, metadata_file, suite_name, get_config_obj):
+    metadata_path = bakery_command.context / metadata_file
+    assert metadata_path.is_file()
+
+    with open(metadata_path, "r") as f:
+        data = json.load(f)
+
+    config = get_config_obj(suite_name)
+
+    expected_uids = [target.uid for target in config.targets].sort()
+    actual_uids = list(data.keys()).sort()
+    assert expected_uids == actual_uids
+
+    for _, metadata in data.items():
+        assert "image.name" in metadata
+        assert re.search(r"[a-z0-9]+([._-][a-z0-9]+)*(:[a-zA-Z0-9._-]+)?", metadata["image.name"]) is not None
+        assert "containerimage.digest" in metadata
+        assert re.match(r"^sha256:[a-f0-9]{64}$", metadata["containerimage.digest"]) is not None

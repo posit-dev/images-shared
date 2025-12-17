@@ -1,12 +1,14 @@
 import re
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
 
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
@@ -314,6 +316,33 @@ class TestImageTarget:
         assert len(expected_tags) == len(target.tags)
         assert all(tag in target.tags for tag in expected_tags)
 
+    @pytest.mark.parametrize(
+        "target_name,expected_ref",
+        [
+            (
+                "basic_standard_image_target",
+                "docker.io/posit/test-image:1.0.0",
+            ),
+            (
+                "basic_minimal_image_target",
+                "docker.io/posit/test-image:1.0.0-min",
+            ),
+        ],
+    )
+    def test_ref(self, request, target_name, expected_ref):
+        """Test the tag_suffixes property of an ImageTarget."""
+        target = request.getfixturevalue(target_name)
+        assert target.ref.endswith(expected_ref)
+
+    def test_ref_from_metadata(self, basic_standard_image_target):
+        """Test the tag_suffixes property of an ImageTarget."""
+        mock_metadata_file = MagicMock(spec=MetadataFile)
+        mock_metadata = MagicMock()
+        mock_metadata_file.metadata = mock_metadata
+        mock_metadata_file.metadata.image_ref = "test-image@sha256:1234567890abcdef"
+        basic_standard_image_target.metadata_file = mock_metadata_file
+        assert basic_standard_image_target.ref == "test-image@sha256:1234567890abcdef"
+
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
         expected_labels = {
@@ -349,6 +378,7 @@ class TestImageTarget:
             "cache": True,
             "cache_from": None,
             "cache_to": None,
+            "metadata_file": None,
             "platforms": ["linux/amd64"],
         }
 
@@ -372,5 +402,28 @@ class TestImageTarget:
                     meta = python_on_whales.docker.image.inspect(tag)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
+
+            remove_images(target)
+
+    @pytest.mark.build
+    @pytest.mark.slow
+    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_build_metadata_file(self, suite, get_targets):
+        """Test the build property of an ImageTarget."""
+        image_targets = get_targets(suite)
+        for target in image_targets:
+            target.build(metadata_file=True)
+            for tag in target.tags:
+                assert python_on_whales.docker.image.exists(tag)
+                for key, value in target.labels.items():
+                    meta = python_on_whales.docker.image.inspect(tag)
+                    assert key in meta.config.labels
+                    assert value == meta.config.labels[key]
+
+            metadata_file = SETTINGS.temporary_storage / f"{target.uid}.json"
+            assert metadata_file.is_file()
+            metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_file)
+            assert metadata_file.metadata.image_tags.sort() == target.tags.sort()
 
             remove_images(target)

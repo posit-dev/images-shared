@@ -7,8 +7,8 @@ from typing import Annotated, Optional, Any
 
 import typer
 
-from posit_bakery import settings
 from posit_bakery.log import init_logging, stderr_console
+from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
@@ -66,11 +66,11 @@ def with_temporary_storage(fn):
     @functools.wraps(fn)
     def wrapper(ctx: typer.Context, *args, **kwargs) -> None:
         temp_dir = tempfile.TemporaryDirectory(prefix="posit-bakery")
-        settings.TEMP_DIRECTORY = Path(temp_dir.name)
+        SETTINGS.temporary_storage = Path(temp_dir.name)
         if ctx.params.get("clean", True):
             ctx.call_on_close(temp_dir.cleanup)
 
-        log.debug(f"Created temporary directory at {settings.TEMP_DIRECTORY}")
+        log.debug(f"Created temporary directory at {SETTINGS.temporary_storage}")
 
         return fn(*args, **kwargs)
 

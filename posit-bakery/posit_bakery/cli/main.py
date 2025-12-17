@@ -3,7 +3,7 @@ from enum import Enum
 import typer
 
 from posit_bakery.cli import ci, create, run, build, update, remove, clean, version
-from posit_bakery.settings import APP_NAME
+from posit_bakery.settings import SETTINGS
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -15,7 +15,7 @@ class RichHelpPanelEnum(str, Enum):
 
 
 app = typer.Typer(
-    name=APP_NAME,
+    name=SETTINGS.app_name,
     no_args_is_help=True,
     rich_markup_mode="markdown",
     help="A tool for building, testing, and managing container images",
@@ -85,6 +85,9 @@ app.add_typer(
     help="Cleaning utilities for remote build caches",
     rich_help_panel=RichHelpPanelEnum.CI_CD_AND_MAINTENANCE,
 )
+
+# Import the "version" subcommand
+app.command(name="version", help="Show the Posit Bakery version")(version.version)
 
 # Import the "version" subcommand
 app.command(name="version", help="Show the Posit Bakery version")(version.version)

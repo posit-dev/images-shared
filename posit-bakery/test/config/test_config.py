@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import textwrap
@@ -11,6 +12,8 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.image.image_metadata import MetadataFile
+from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
     yaml_file_testcases,
     FileTestResultEnum,
@@ -1253,6 +1256,19 @@ class TestBakeryConfig:
 
         with pytest.raises(ValueError, match=f"Version 'non-existent' does not exist for image '{image_name}'"):
             config.remove_version(image_name, "non-existent")
+
+    def test__merge_sequential_build_metadata_files(self, get_config_obj):
+        """Test merging sequential build metadata files."""
+        config = get_config_obj("basic")
+        for target in config.targets:
+            metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / f"{target.uid}.json"
+            target.metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_filepath)
+
+        merged_metadata = config._merge_sequential_build_metadata_files()
+        with open(CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json", "r") as f:
+            expected_metadata = json.load(f)
+
+        assert merged_metadata == expected_metadata
 
     @pytest.mark.parametrize(
         "untagged,older_than_days,expected_deletions",

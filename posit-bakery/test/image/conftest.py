@@ -1,7 +1,15 @@
+import pathlib
+
 import pytest
 from pytest_mock import MockFixture
 
 from posit_bakery.image import ImageTarget
+
+
+@pytest.fixture
+def image_testdata_path():
+    """Return the path to the image testdata directory"""
+    return pathlib.Path(__file__).parent / "testdata"
 
 
 @pytest.fixture

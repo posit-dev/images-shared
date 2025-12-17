@@ -88,6 +88,12 @@ def dgoss(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    metadata_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a build metadata file. If given, attempts to run tests against image artifacts in the file."
+        ),
+    ] = None,
     clean: Annotated[
         Optional[bool],
         typer.Option(help="Clean up intermediary and temporary files after building. Can be helpful for debugging."),
@@ -129,6 +135,10 @@ def dgoss(
         clean_temporary=clean,
     )
     c = BakeryConfig.from_context(context, settings)
+
+    if metadata_file:
+        c.load_build_metadata_from_file(metadata_file)
+
     results, err = c.dgoss_targets(platform=image_platform)
 
     stderr_console.print(results.table())

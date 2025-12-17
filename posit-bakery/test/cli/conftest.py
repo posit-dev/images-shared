@@ -1,4 +1,5 @@
 # conftest.py loads this file via pytest_plugins
+import os
 import shutil
 from pathlib import Path
 from typing import List
@@ -63,6 +64,14 @@ def tmp_directory(bakery_command, tmpdir):
     bakery_command.context = Path(tmpdir)
 
 
+@given("with the context as the working directory")
+def cli_tmpcontext(bakery_command):
+    original_wd = os.getcwd()
+    os.chdir(bakery_command.context)
+    yield
+    os.chdir(original_wd)
+
+
 @given(parsers.parse("with the '{target_path}' path removed"))
 def remove_path(bakery_command, target_path, cli_test_tmpcontext):
     target_path = (cli_test_tmpcontext / target_path).resolve()
@@ -84,9 +93,10 @@ def add_args_table(bakery_command, datatable):
 
 
 # Run the command
-@when("I execute the command")
-def run(bakery_command):
+@when("I execute the command", target_fixture="command_logs")
+def run(bakery_command, caplog):
     bakery_command.run()
+    return caplog
 
 
 # Check the results of the command

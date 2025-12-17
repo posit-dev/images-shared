@@ -1,0 +1,10 @@
+{
+  "buildx.build.ref": "default/default/y58irtj2ggvud5yw3gkl7e49b",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647",
+    "size": 1607
+  },
+  "containerimage.digest": "sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647",
+  "image.name": "docker.io/posit/test-multi:1.0.0-min,docker.io/posit/test-multi:1.0.0-ubuntu-22.04-min,docker.io/posit/test-multi:min,docker.io/posit/test-multi:ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:1.0.0-min,ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:min,ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
+}

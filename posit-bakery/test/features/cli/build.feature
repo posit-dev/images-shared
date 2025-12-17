@@ -137,3 +137,21 @@ Feature: build
         * the multiplatform test suite did not build for platforms:
             | linux/amd64 |
         * the multiplatform images are removed
+
+    @slow
+    @xdist-build
+    Scenario: Building images and outputting to a metadata file (sequential build)
+        Given I call bakery build
+        * in a temp basic context
+        * with the arguments:
+            | --metadata-file | build-metadata.json | --strategy | build |
+        * with the context as the working directory
+        When I execute the command
+        Then The command succeeds
+        * the stderr output includes:
+            | Build completed |
+        * the basic test suite is built
+        * the context includes file:
+            | build-metadata.json |
+        * build-metadata.json contains build metadata for the basic test suite
+        * the basic images are removed

@@ -87,6 +87,15 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = True,
+    metadata_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            writable=True,
+            resolve_path=True,
+            help="The path to write JSON build metadata to once builds are finished.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = None,
     cache: Annotated[
         Optional[bool],
         typer.Option(
@@ -192,6 +201,7 @@ def build(
             platforms=image_platform,
             strategy=strategy,
             fail_fast=fail_fast,
+            metadata_file=metadata_file,
         )
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
