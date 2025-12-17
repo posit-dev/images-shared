@@ -157,6 +157,16 @@ class TestBakeryConfigDocument:
         assert d.images[0] is new_image
         assert new_image.parent is d
 
+    def test_registry_with_repository_field_invalid(self):
+        """Test that specifying a registry with a repository field fails validation."""
+        base_path = Path(os.getcwd())
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            BakeryConfigDocument(
+                base_path=base_path,
+                repository={"url": "https://example.com/repo"},
+                registries=[{"host": "registry.example.com", "namespace": "namespace", "repository": "my-repo"}],
+            )
+
 
 class TestBakeryConfig:
     @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID))
