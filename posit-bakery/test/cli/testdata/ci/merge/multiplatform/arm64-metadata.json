@@ -1,0 +1,132 @@
+{
+  "test-multi-1-0-0-minimal-ubuntu-24-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@24.04?platform=linux%2Farm64",
+          "digest": {
+            "sha256": "c35e29c9450151419d9448b0fd75374fec4fff364a27f176fb458d472dfc9e54"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2404.min"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+            "label:co.posit.image.name": "Test Multi",
+            "label:co.posit.image.os": "Ubuntu 24.04",
+            "label:co.posit.image.revision": "d005f1e9a45e45890b3809f286e82c87370f96c0",
+            "label:co.posit.image.variant": "Minimal",
+            "label:co.posit.image.version": "1.0.0",
+            "label:org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+            "label:org.opencontainers.image.created": "2025-11-19T09:30:08.398431",
+            "label:org.opencontainers.image.revision": "d005f1e9a45e45890b3809f286e82c87370f96c0",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+            "label:org.opencontainers.image.title": "Test Multi",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "1.0.0"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "dc-builder/dc-builder0/i6a0o9qcykzw1urd5wef2ahkw",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:b0f70c272157281f3e70fcd1d890d6927a9268f4bd315e6d7cba677182bd6098",
+      "size": 862,
+      "annotations": {
+        "org.opencontainers.image.created": "2025-11-19T16:30:10Z"
+      },
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:b0f70c272157281f3e70fcd1d890d6927a9268f4bd315e6d7cba677182bd6098",
+    "image.name": "cripittwood.azurecr.io/posit/test-multi/tmp:latest"
+  },
+  "test-multi-1-0-0-standard-ubuntu-24-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@24.04?platform=linux%2Farm64",
+          "digest": {
+            "sha256": "c35e29c9450151419d9448b0fd75374fec4fff364a27f176fb458d472dfc9e54"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2404.std"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+            "label:co.posit.image.name": "Test Multi",
+            "label:co.posit.image.os": "Ubuntu 24.04",
+            "label:co.posit.image.revision": "d005f1e9a45e45890b3809f286e82c87370f96c0",
+            "label:co.posit.image.variant": "Standard",
+            "label:co.posit.image.version": "1.0.0",
+            "label:org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+            "label:org.opencontainers.image.created": "2025-11-19T09:30:13.108016",
+            "label:org.opencontainers.image.revision": "d005f1e9a45e45890b3809f286e82c87370f96c0",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+            "label:org.opencontainers.image.title": "Test Multi",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "1.0.0"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "dc-builder/dc-builder0/x38jq90chn6mz2ianqa3u3w0l",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:415b48b2fcc903f194b20e48cdbd2c76e2f8127c2453f8b18e5512973186dde0",
+      "size": 1243,
+      "annotations": {
+        "org.opencontainers.image.created": "2025-11-19T16:30:14Z"
+      },
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:415b48b2fcc903f194b20e48cdbd2c76e2f8127c2453f8b18e5512973186dde0",
+    "image.name": "cripittwood.azurecr.io/posit/test-multi/tmp:latest"
+  }
+}
