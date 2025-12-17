@@ -186,11 +186,17 @@ class GossJsonReportCollection(dict):
                 # If the image has no variant, show an empty string in the table
                 if target.image_variant is None:
                     target.image_variant = type("ImageVariant", (), {"name": ""})
+                # If the image has no OS, show an empty string in the table
+                if target.image_os is None:
+                    target.image_os = type("ImageVersionOS", (), {"name": ""})
 
                 results.setdefault(image_name, dict())
                 results[image_name].setdefault(target.image_version.name, dict())
-                results[image_name][target.image_version.name].setdefault(target.image_variant.name, dict())
-                results[image_name][target.image_version.name][target.image_variant.name] = {
+                results[image_name][target.image_version.name].setdefault(target.image_os.name, dict())
+                results[image_name][target.image_version.name][target.image_os.name].setdefault(
+                    target.image_variant.name, dict()
+                )
+                results[image_name][target.image_version.name][target.image_os.name][target.image_variant.name] = {
                     "success": report.summary.success_count,
                     "failed": report.summary.failed_count,
                     "skipped": report.summary.skipped_count,
@@ -213,6 +219,7 @@ class GossJsonReportCollection(dict):
         table = Table(title="Goss Test Results")
         table.add_column("Image Name", justify="left")
         table.add_column("Version", justify="left")
+        table.add_column("OS", justify="left")
         table.add_column("Variant", justify="left")
         table.add_column("Success", justify="right", header_style="green3")
         table.add_column("Failed", justify="right", header_style="bright_red")
@@ -222,28 +229,33 @@ class GossJsonReportCollection(dict):
 
         for image_name, versions in aggregated_results.items():
             p_image_name = image_name
-            for version, target_types in versions.items():
+            for version, oses in versions.items():
                 p_version = version
-                for target_type, result in target_types.items():
-                    success_style = "green3 bold" if result["failed"] == 0 else ""
-                    failed_style = "bright_red bold" if result["failed"] > 0 else "bright_black italic"
-                    skipped_style = "yellow bold" if result["skipped"] > 0 else "bright_black italic"
-                    table.add_row(
-                        p_image_name,
-                        p_version,
-                        target_type,
-                        Text(str(result["success"]), style=success_style),
-                        Text(str(result["failed"]), style=failed_style),
-                        Text(str(result["skipped"]), style=skipped_style),
-                        str(result["total_tests"]),
-                        f"{result['duration'] / 1_000_000_000:.2f}s",
-                    )
-                    p_image_name = ""
-                    p_version = ""
+                for os_name, variants in oses.items():
+                    p_os = os_name
+                    for variant_name, result in variants.items():
+                        success_style = "green3 bold" if result["failed"] == 0 else ""
+                        failed_style = "bright_red bold" if result["failed"] > 0 else "bright_black italic"
+                        skipped_style = "yellow bold" if result["skipped"] > 0 else "bright_black italic"
+                        table.add_row(
+                            p_image_name,
+                            p_version,
+                            p_os,
+                            variant_name,
+                            Text(str(result["success"]), style=success_style),
+                            Text(str(result["failed"]), style=failed_style),
+                            Text(str(result["skipped"]), style=skipped_style),
+                            str(result["total_tests"]),
+                            f"{result['duration'] / 1_000_000_000:.2f}s",
+                        )
+                        p_image_name = ""
+                        p_version = ""
+                        p_os = ""
 
         table.add_section()
         table.add_row(
             "Total",
+            "",
             "",
             "",
             str(total_row["success"]),
