@@ -170,7 +170,7 @@ jobs:
             --strategy build \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
-            --platform ${{ matrix.img.platform }} \
+            --image-platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --temp-registry "ghcr.io/${{ github.repository_owner }}" \
@@ -185,7 +185,7 @@ jobs:
           bakery run dgoss \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
-            --platform ${{ matrix.img.platform }} \
+            --image-platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
             --context ${{ inputs.context }}
