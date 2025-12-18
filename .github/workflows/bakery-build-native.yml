@@ -94,6 +94,7 @@ jobs:
         id: images-by-version
         run: |
           echo "versions_matrix=$(bakery --quiet ci matrix --dev-versions ${{ inputs.dev-versions }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
     needs: matrix
