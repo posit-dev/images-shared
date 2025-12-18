@@ -153,13 +153,26 @@ def merge(
         else:
             resolved_files.append(file.absolute())
     metadata_file = resolved_files
+
+    files_ok = True
+    for file in metadata_file:
+        if not file.is_file():
+            log.error(f"Metadata file '{file}' does not exist")
+            files_ok = False
+        with open(file, "r") as f:
+            try:
+                json.load(f)
+            except json.JSONDecodeError as e:
+                log.error(f"Metadata file '{file}' is not valid JSON: {e}")
+                files_ok = False
+
+    if not files_ok:
+        raise typer.Exit(code=1)
+
     log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
 
     image_digests: dict[str, list[str]] = {}
     for file in metadata_file:
-        if not file.is_file():
-            log.error(f"Metadata file '{file}' does not exist")
-            raise typer.Exit(code=1)
         with open(file, "r") as f:
             data = json.load(f)
         for uid, metadata in data.items():
