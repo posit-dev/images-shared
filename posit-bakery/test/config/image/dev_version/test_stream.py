@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import Image, Registry, ImageVersionOS
+from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
 from posit_bakery.config.image import SUPPORTED_OS, BuildOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
@@ -207,10 +207,10 @@ class TestImageDevelopmentVersionFromProductStream:
     def test_all_registries(self):
         """Test that merged_registries returns the correct list of registries for object and parents."""
         expected_registries = [
-            Registry(host="docker.io", namespace="posit"),
-            Registry(host="ghcr.io", namespace="posit-dev"),
-            Registry(host="ghcr.io", namespace="posit-team"),
-            Registry(host="registry1.example.com", namespace="namespace1"),
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="registry1.example.com", namespace="namespace1"),
         ]
 
         mock_image_parent = MagicMock(spec=Image)
@@ -242,13 +242,13 @@ class TestImageDevelopmentVersionFromProductStream:
     def test_all_registries_with_override(self):
         """Test that merged_registries returns the correct list of registries when overridden."""
         parent_registries = [
-            Registry(host="docker.io", namespace="posit"),
-            Registry(host="ghcr.io", namespace="posit-dev"),
-            Registry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
         ]
         override_registries = [
-            Registry(host="ghcr.io", namespace="posit-team"),
-            Registry(host="registry1.example.com", namespace="namespace1"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="registry1.example.com", namespace="namespace1"),
         ]
 
         mock_image_parent = MagicMock(spec=Image)

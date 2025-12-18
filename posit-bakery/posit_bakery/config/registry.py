@@ -1,12 +1,14 @@
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 
 
-class Registry(BakeryYAMLModel):
+class BaseRegistry(BakeryYAMLModel):
     """Model representing an image registry in the Bakery configuration."""
+
+    model_config = ConfigDict(extra="forbid")
 
     host: Annotated[str, Field(description="Hostname of the registry.", examples=["docker.io", "ghcr.io"])]
     namespace: Annotated[
@@ -26,5 +28,14 @@ class Registry(BakeryYAMLModel):
         return u
 
     def __hash__(self) -> int:
-        """Unique hash for a Registry object."""
+        """Unique hash for a BaseRegistry object."""
         return hash(self.base_url)
+
+
+class Registry(BaseRegistry):
+    """Model representing an image from a registry in the Bakery configuration."""
+
+    repository: Annotated[
+        str,
+        Field(description="Name of the image repository.", examples=["connect", "package-manager"]),
+    ]

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import ImageVersion, Image, Registry
+from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry
 
 pytestmark = [
     pytest.mark.unit,
@@ -179,10 +179,10 @@ class TestImageVersion:
     def test_all_registries(self):
         """Test that merged_registries returns the correct list of registries for object and parents."""
         expected_registries = [
-            Registry(host="docker.io", namespace="posit"),
-            Registry(host="ghcr.io", namespace="posit-dev"),
-            Registry(host="ghcr.io", namespace="posit-team"),
-            Registry(host="registry1.example.com", namespace="namespace1"),
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="registry1.example.com", namespace="namespace1"),
         ]
 
         mock_image_parent = MagicMock(spec=Image)
@@ -207,13 +207,13 @@ class TestImageVersion:
     def test_all_registries_with_override(self):
         """Test that merged_registries returns the correct list of registries when overridden."""
         parent_registries = [
-            Registry(host="docker.io", namespace="posit"),
-            Registry(host="ghcr.io", namespace="posit-dev"),
-            Registry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
         ]
         override_registries = [
-            Registry(host="ghcr.io", namespace="posit-team"),
-            Registry(host="registry1.example.com", namespace="namespace1"),
+            BaseRegistry(host="ghcr.io", namespace="posit-team"),
+            BaseRegistry(host="registry1.example.com", namespace="namespace1"),
         ]
 
         mock_image_parent = MagicMock(spec=Image)
@@ -226,6 +226,50 @@ class TestImageVersion:
 
         assert len(i.all_registries) == 2
         for registry in override_registries:
+            assert registry in i.all_registries
+
+    def test_extra_registries_with_repository_field(self):
+        """Test that all_registries returns the correct list of registries when extraRegistries with repository field is defined."""
+        parent_registries = [
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+        ]
+        expected_registries = [
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+            Registry(host="ghcr.io", namespace="posit-dev", repository="custom-repo"),
+        ]
+
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.all_registries = parent_registries
+        i = ImageVersion(
+            parent=mock_parent,
+            name="1.0.0",
+            extraRegistries=[{"host": "ghcr.io", "namespace": "posit-dev", "repository": "custom-repo"}],
+        )
+        assert len(i.all_registries) == 3
+        for registry in expected_registries:
+            assert registry in i.all_registries
+
+    def test_override_registries_with_repository_field(self):
+        """Test that all_registries returns the correct list of registries when overrideRegistries with repository field is defined."""
+        parent_registries = [
+            BaseRegistry(host="docker.io", namespace="posit"),
+            BaseRegistry(host="ghcr.io", namespace="posit-dev"),
+        ]
+        expected_registries = [
+            Registry(host="ghcr.io", namespace="posit-dev", repository="custom-repo"),
+        ]
+
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.all_registries = parent_registries
+        i = ImageVersion(
+            parent=mock_parent,
+            name="1.0.0",
+            overrideRegistries=[{"host": "ghcr.io", "namespace": "posit-dev", "repository": "custom-repo"}],
+        )
+        assert len(i.all_registries) == 1
+        for registry in expected_registries:
             assert registry in i.all_registries
 
     def test_values_field(self):
