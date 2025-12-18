@@ -114,6 +114,7 @@ def matrix(
 
 
 @app.command()
+@with_verbosity_flags
 def merge(
     metadata_file: Annotated[list[Path], typer.Argument(help="Path to input build metadata JSON file(s) to merge.")],
     context: Annotated[
