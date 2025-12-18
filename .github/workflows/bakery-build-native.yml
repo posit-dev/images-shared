@@ -192,7 +192,7 @@ jobs:
       - name: Upload Metadata
         uses: actions/upload-artifact@v4
         with:
-          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata"
+          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
           path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
           overwrite: 'true'
 
@@ -256,7 +256,7 @@ jobs:
       - name: Download Metadata
         uses: actions/download-artifact@v5
         with:
-          pattern: "${{ matrix.img.image }}-${{ matrix.img.version }}-*-metadata"
+          pattern: "${{ matrix.img.image }}-${{ matrix.img.version }}-*-metadata.json"
 
       - name: Merge/Push
         env:
