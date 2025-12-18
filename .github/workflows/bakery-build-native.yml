@@ -258,6 +258,10 @@ jobs:
         with:
           pattern: "${{ matrix.img.image }}-${{ matrix.img.version }}-*-metadata.json"
 
+      - name: List files
+        run: |
+          ls -ltra .
+
       - name: Merge/Push
         env:
           GIT_SHA: ${{ github.sha }}
