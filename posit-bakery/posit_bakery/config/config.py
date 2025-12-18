@@ -818,8 +818,30 @@ class BakeryConfig:
         target_caches = list(set([target.cache_name.split(":")[0] for target in self.targets]))
 
         for target_cache in target_caches:
-            ghcr.clean_cache(
-                cache_registry=target_cache,
+            ghcr.clean_temporary_artifacts(
+                ghcr_registry=target_cache,
+                remove_untagged=remove_untagged,
+                remove_older_than=remove_older_than,
+                dry_run=dry_run,
+            )
+
+    def clean_temporary(
+        self,
+        remove_untagged: bool = True,
+        remove_older_than: timedelta | None = None,
+        dry_run: bool = False,
+    ):
+        """Cleans up temporary images in the specified registry for all generated image targets.
+
+        :param remove_untagged: If True, remove untagged images.
+        :param remove_older_than: Optional timedelta to remove images older than the specified duration.
+        :param dry_run: If True, print what would be deleted without actually deleting anything.
+        """
+        target_caches = list(set([target.temp_name for target in self.targets]))
+
+        for target_cache in target_caches:
+            ghcr.clean_temporary_artifacts(
+                ghcr_registry=target_cache,
                 remove_untagged=remove_untagged,
                 remove_older_than=remove_older_than,
                 dry_run=dry_run,

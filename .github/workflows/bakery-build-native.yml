@@ -1,0 +1,273 @@
+# Worklows can only be nested four levels deep.
+# This workflow will be called to build individual images so should be kept
+# as shallow as possible.
+
+name: Bakery
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "The version of the Posit Bakery tool to install"
+        default: "main"
+        required: false
+        type: string
+      context:
+        description: "The Bakery context to use (directory)"
+        default: "."
+        required: false
+        type: string
+      dev-versions:
+        description: "Dev version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
+      push:
+        description: "Whether to push images to registries [default: false]"
+        default: false
+        required: false
+        type: boolean
+      runs-on:
+        description: "The type of runner to use [default: ubuntu-latest]"
+        default: "ubuntu-latest"
+        required: false
+        type: string
+      amd64-builder:
+        description: "The type of runner to use for amd64 builds [default: ubuntu-latest-4x]"
+        default: "ubuntu-latest-4x"
+        required: false
+        type: string
+      arm64-builder:
+        description: "The type of runner to use for arm64 builds [default: ubuntu-24.04-arm64-4-core]"
+        default: "ubuntu-24.04-arm64-4-core"
+        required: false
+        type: string
+    secrets:
+      DOCKER_HUB_ACCESS_TOKEN:
+        description: "Docker Hub Access Token [required if pushing]"
+        required: false
+      # TODO: Remove secret requirements once repository is public
+      APP_ID:
+        description: "GitHub App ID with access to posit-dev repositories"
+        required: true
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key with access to posit-dev repositories"
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  matrix:
+    name: Image Matrix
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
+      versions-matrix: ${{ steps.images-by-version.outputs.versions_matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Install
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Images by Version/Platform
+        id: images-by-platform
+        run: |
+          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+      - name: Images by Version
+        id: images-by-version
+        run: |
+          echo "versions_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+
+  build-test:
+    name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        img: ${{ fromJson(needs.matrix.outputs.platform-matrix) }}
+    runs-on: ${{ matrix.img.platform == 'linux/arm64' && inputs.arm64-builder || inputs.amd64-builder }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Setup goss
+        uses: "posit-dev/images-shared/setup-goss@ci-native-multiplatform"
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          username: "posit"
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize platform
+        id: normalize-platform
+        env:
+          BUILD_PLATFORM: ${{ matrix.img.platform }}
+        run: |
+          PLATFORM=${BUILD_PLATFORM#linux/}
+          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+      - name: Build
+        env:
+          GIT_SHA: ${{ github.sha }}
+        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
+        run: |
+          PLATFORM=${BUILD_PLATFORM#linux/} \
+          bakery build \
+            --strategy build \
+            --image-name '^${{ matrix.img.image }}$' \
+            --image-version ${{ matrix.img.version }} \
+            --image-platform ${{ matrix.img.platform }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --cache-registry "ghcr.io/${{ github.repository_owner }}" \
+            --temp-registry "ghcr.io/${{ github.repository_owner }}" \
+            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
+            --context ${{ inputs.context }} \
+            --push
+      - name: Test
+        run: |
+          PLATFORM=${BUILD_PLATFORM#linux/} \
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          bakery run dgoss \
+            --image-name '^${{ matrix.img.image }}$' \
+            --image-version ${{ matrix.img.version }} \
+            --image-platform ${{ matrix.img.platform }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
+            --context ${{ inputs.context }}
+      - name: Upload Metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata"
+          path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
+          overwrite: 'true'
+
+  merge:
+    name: "Merge/Push ${{ matrix.img.image }}:${{ matrix.img.version }}"
+    needs:
+      - matrix
+      - build-test
+    strategy:
+      fail-fast: false
+      matrix:
+        img: ${{ fromJson(needs.matrix.outputs.versions-matrix) }}
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          username: "posit"
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Metadata
+        uses: actions/download-artifact@v5
+        with:
+          pattern: "${{ matrix.img.image }}-${{ matrix.img.version }}-*-metadata"
+          merge-multiple: true
+
+      - name: List files
+        run: |
+          ls -ltra .
+
+      - name: Merge/Push
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          bakery ci merge \
+            --context ${{ inputs.context }} \
+            ${{ inputs.push && ' \' || '--dry-run \' }}
+            *-metadata.json
