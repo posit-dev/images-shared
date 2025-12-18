@@ -1,4 +1,4 @@
-name: clean-caches.yml
+name: clean.yml
 on:
   workflow_call:
     inputs:
@@ -146,4 +146,4 @@ jobs:
             --context ${{ inputs.context }} \
             ${{ inputs.dry-run && '--dry-run' || '' }} \
             ${{ !inputs.remove-dangling-temporary-images && '--no-untagged' || '--untagged' }} \
-            ${{ inputs.remove-temporary-images-older-than > 0 && format('--older-than {0}', remove-temporary-images-older-than) || '' }}
+            ${{ inputs.remove-temporary-images-older-than > 0 && format('--older-than {0}', inputs.remove-temporary-images-older-than) || '' }}
