@@ -72,7 +72,7 @@ def cache_registry(
     created by Bakery in the registry namespace `<registry>/<image-name>/cache`. If the `--image-name` filter is not
     provided, all image caches for the project will be cleaned.
     """
-    settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), cache_registry=cache_registry)
+    settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), cache_registry=registry)
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     log.info(f"Cleaning cache registry: {registry}")

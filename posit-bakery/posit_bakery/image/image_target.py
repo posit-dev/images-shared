@@ -8,6 +8,7 @@ from typing import Annotated
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field
+from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
@@ -383,3 +384,11 @@ class ImageTarget(BaseModel):
             self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
 
         return image
+
+    def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
+        """Merge multiple images into a single image, tag, and push."""
+        return python_on_whales.docker.buildx.imagetools.create(
+            sources=sources,
+            tags=self.tags,
+            dry_run=dry_run,
+        )
