@@ -143,8 +143,10 @@ jobs:
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
-      remove-dangling: true
-      remove-older-than: 14
+      remove-dangling-caches: true
+      remove-caches-older-than: 14
+      remove-dangling-temporary-images: false
+      remove-temporary-images-older-than: 3
 
   release:
     name: Release/Snapshot
