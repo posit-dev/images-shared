@@ -1,0 +1,149 @@
+name: clean-caches.yml
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "The version of the Posit Bakery tool to install"
+        default: "main"
+        required: false
+        type: string
+      context:
+        description: "The Bakery context to use (directory)"
+        default: "."
+        required: false
+        type: string
+      clean-caches:
+        description: "Whether to clean caches [default: true]"
+        default: true
+        required: false
+        type: boolean
+      remove-dangling-caches:
+        description: "Remove untagged caches from registries [default: true]"
+        default: true
+        required: false
+        type: boolean
+      remove-caches-older-than:
+        description: "Remove caches older than this number of days [default: 14]"
+        default: 14
+        required: false
+        type: number
+      clean-temporary-images:
+        description: "Whether to clean temporary images [default: true]"
+        default: true
+        required: false
+        type: boolean
+      remove-dangling-temporary-images:
+        description: "Remove untagged temporary images from registries [default: false]"
+        default: false
+        required: false
+        type: boolean
+      remove-temporary-images-older-than:
+        description: "Remove temporary images older than this number of days [default: 3]"
+        default: 3
+        required: false
+        type: number
+      dry-run:
+        description: "Perform a dry run without deleting any caches [default: false]"
+        default: false
+        required: false
+        type: boolean
+    secrets:
+      DOCKER_HUB_ACCESS_TOKEN:
+        description: "Docker Hub Access Token [required if pushing]"
+        required: false
+      # TODO: Remove secret requirements once repository is public
+      APP_ID:
+        description: "GitHub App ID with access to posit-dev repositories"
+        required: true
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key with access to posit-dev repositories"
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  clean-caches:
+    name: Clean Caches
+    runs-on: "ubuntu-latest"
+    if: ${{ inputs.clean-caches == true }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean caches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
+            --context ${{ inputs.context }} \
+            ${{ inputs.dry-run && '--dry-run' || '' }} \
+            ${{ !inputs.remove-dangling-caches && '--no-untagged' || '--untagged' }} \
+            ${{ inputs.remove-caches-older-than > 0 && format('--older-than {0}', inputs.remove-caches-older-than) || '' }}
+
+  clean-temp:
+    name: Clean Temporary Images
+    runs-on: "ubuntu-latest"
+    if: ${{ inputs.clean-temporary-images == true }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: posit-dev
+          repositories: images-shared
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean caches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
+            --context ${{ inputs.context }} \
+            ${{ inputs.dry-run && '--dry-run' || '' }} \
+            ${{ !inputs.remove-dangling-temporary-images && '--no-untagged' || '--untagged' }} \
+            ${{ inputs.remove-temporary-images-older-than > 0 && format('--older-than {0}', remove-temporary-images-older-than) || '' }}

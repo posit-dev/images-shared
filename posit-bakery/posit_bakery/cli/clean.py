@@ -75,9 +75,72 @@ def cache_registry(
     settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), cache_registry=registry)
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-    log.info(f"Cleaning cache registry: {registry}")
+    log.info(f"Cleaning cache registries in {registry}")
 
     config.clean_caches(
+        remove_untagged=untagged,
+        remove_older_than=timedelta(days=older_than) if older_than else None,
+        dry_run=dry_run,
+    )
+
+
+@app.command()
+@with_verbosity_flags
+def temp_registry(
+    registry: Annotated[
+        str,
+        typer.Argument(show_default=False, help="GHCR registry to clean temporary images in *(ex. ghcr.io/my-org)*."),
+    ],
+    context: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
+    ] = auto_path(),
+    untagged: Annotated[
+        Optional[bool], typer.Option(help="Prune dangling images.", rich_help_panel=RichHelpPanelEnum.FILTERS)
+    ] = False,
+    older_than: Annotated[
+        Optional[int],
+        typer.Option(
+            show_default=False,
+            help="Prune caches older than specified days.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image name or a regex pattern to isolate clean operations to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dry_run: Annotated[
+        Optional[bool], typer.Option("--dry-run", help="If set, print what would be deleted and exit.")
+    ] = False,
+):
+    """Cleans up temporary images in an external registry
+
+    \b
+    ⚠️ **This command currently only supports GHCR registries.** ⚠️
+
+    This command is intended to be used as a cleanup utility for temporary images created with the
+    `bakery build --temp-registry <registry>` option. By default, it will remove all images older than 3 days.
+    Images are assumed to be created by Bakery in the registry namespace `<registry>/<image-name>/tmp`. If the
+    `--image-name` filter is not provided, all images for the project will be cleaned.
+    """
+    settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), temp_registry=registry)
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    log.info(f"Cleaning temporary registries in {registry}")
+
+    config.clean_temporary(
         remove_untagged=untagged,
         remove_older_than=timedelta(days=older_than) if older_than else None,
         dry_run=dry_run,

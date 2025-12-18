@@ -10,21 +10,21 @@ log = logging.getLogger(__name__)
 REGISTRY_PATTERN = re.compile(r"ghcr\.io/(?P<organization>[A-Za-z0-9_.-]+)/(?P<package>[A-Za-z0-9_./-]+)")
 
 
-def clean_cache(
-    cache_registry: str,
+def clean_temporary_artifacts(
+    ghcr_registry: str,
     remove_untagged: bool = True,
     remove_older_than: timedelta | None = None,
     dry_run: bool = False,
 ):
-    """Cleans up dangling caches that are not tagged or are older than a given timedelta."""
+    """Cleans up temporary caches and images that are not tagged or are older than a given timedelta."""
     # Check that the registry matches the expected pattern.
-    match = REGISTRY_PATTERN.match(cache_registry)
+    match = REGISTRY_PATTERN.match(ghcr_registry)
     if not match:
-        raise ValueError(f"Invalid GHCR registry format: {cache_registry}")
+        raise ValueError(f"Invalid GHCR registry format: {ghcr_registry}")
     organization = match.group("organization")
     package = match.group("package")
 
-    log.info(f"Analyzing caches in {cache_registry}")
+    log.info(f"Analyzing artifacts in {ghcr_registry}")
 
     # Retrieve all package versions.
     client = GHCRClient(organization)
@@ -42,7 +42,7 @@ def clean_cache(
 
     # Process deletions.
     if len(versions_to_delete) > 0:
-        log.info(f"Removing {len(versions_to_delete)} cache(s) from {cache_registry}")
+        log.info(f"Removing {len(versions_to_delete)} artifact(s) from {ghcr_registry}")
         versions_to_delete = GHCRPackageVersions(versions=versions_to_delete)
 
         if dry_run:
@@ -50,7 +50,7 @@ def clean_cache(
         else:
             client.delete_package_versions(versions_to_delete)
     else:
-        log.info(f"No caches to remove from {cache_registry}")
+        log.info(f"No artifacts to remove from {ghcr_registry}")
 
 
 def clean_registry(

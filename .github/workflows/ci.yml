@@ -136,7 +136,7 @@ jobs:
       contents: read
       packages: write
 
-    uses: "./.github/workflows/clean-caches.yml"
+    uses: "./.github/workflows/clean.yml"
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
