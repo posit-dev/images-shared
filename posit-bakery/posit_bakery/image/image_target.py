@@ -37,6 +37,17 @@ class ImageTargetContext(BaseModel):
     version_path: Path  # Path to the image version directory
 
 
+class ImageTargetSettings(BaseModel):
+    temp_registry: Annotated[
+        str | None,
+        Field(default=None, description="Temporary registry to use for multiplatform split/merge builds."),
+    ]
+    cache_registry: Annotated[
+        str | None,
+        Field(default=None, description="Registry to use for build cache storage and retrieval."),
+    ]
+
+
 class ImageTarget(BaseModel):
     """Represents a combination of image variant, image version, and image version OS that make up a target image.
 
@@ -56,6 +67,7 @@ class ImageTarget(BaseModel):
     metadata_file: Annotated[
         MetadataFile | None, Field(default=None, description="Build metadata for the image target.")
     ]
+    settings: Annotated[ImageTargetSettings, Field(default_factory=ImageTargetSettings)]
 
     @classmethod
     def new_image_target(
@@ -64,6 +76,7 @@ class ImageTarget(BaseModel):
         image_version: ImageVersion,
         image_variant: ImageVariant | None = None,
         image_os: ImageVersionOS | None = None,
+        settings: ImageTargetSettings | None = None,
     ) -> "ImageTarget":
         """Create a new ImageTarget instance from a repository, version, variant, and OS combination.
 
@@ -71,6 +84,7 @@ class ImageTarget(BaseModel):
         :param image_version: The specific version of the image.
         :param image_variant: The variant of the image, if applicable.
         :param image_os: The operating system of the image, if applicable.
+        :param settings: Optional settings for the image target.
 
         :return: A new ImageTarget representing the given combination of configurations.
         """
@@ -86,6 +100,7 @@ class ImageTarget(BaseModel):
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
+            settings=settings or ImageTargetSettings(),
         )
 
     def __str__(self):
@@ -262,9 +277,10 @@ class ImageTarget(BaseModel):
 
         return labels
 
-    def cache_name(self, cache_registry: str | None = None) -> str | None:
+    @property
+    def cache_name(self) -> str | None:
         """Generate the image name and tag to use for a build cache."""
-        if not cache_registry:
+        if not self.settings.cache_registry:
             return None
 
         tag = re.sub(r"[+-].*", "", self.image_version.name)
@@ -273,9 +289,17 @@ class ImageTarget(BaseModel):
             tag += f"-{self.image_os.tagDisplayName}"
         if self.image_variant:
             tag += f"-{self.image_variant.tagDisplayName}"
-        cache_name = f"{cache_registry}/{self.image_name}/cache:{tag}"
+        cache_name = f"{self.settings.cache_registry}/{self.image_name}/cache:{tag}"
 
         return cache_name
+
+    @property
+    def temp_name(self) -> str | None:
+        """Generate the image name and tag to use for temporary image storage in multiplatform split/merge builds."""
+        if not self.settings.temp_registry:
+            return None
+
+        return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
@@ -293,7 +317,6 @@ class ImageTarget(BaseModel):
         load: bool = True,
         push: bool = False,
         cache: bool = True,
-        cache_registry: str | None = None,
         platforms: list[str] | None = None,
         metadata_file: Path | bool | None = None,
     ) -> python_on_whales.Image | None:
@@ -307,13 +330,21 @@ class ImageTarget(BaseModel):
 
         cache_from = None
         cache_to = None
-        if cache_registry:
-            cache_name = self.cache_name(cache_registry=cache_registry)
-            cache_from = f"type=registry,ref={cache_name}"
+        if self.cache_name is not None:
+            cache_from = f"type=registry,ref={self.cache_name}"
             cache_to = f"{cache_from},mode=max"
 
         if isinstance(metadata_file, bool) and metadata_file:
             metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
+
+        tags = self.tags
+        output = {}
+        if self.temp_name is not None:
+            tags = [self.temp_name]
+            # If push is true for a temporary image, override the output to push the image by digest.
+            if push:
+                output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
+                push = False
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
@@ -323,10 +354,11 @@ class ImageTarget(BaseModel):
                 image = python_on_whales.docker.build(
                     context_path=self.context.base_path,
                     file=self.containerfile,
-                    tags=self.tags,
+                    tags=tags,
                     labels=self.labels,
                     load=load,
                     push=push,
+                    output=output,
                     cache=cache,
                     cache_from=cache_from,
                     cache_to=cache_to,

@@ -1,0 +1,136 @@
+{
+  "group": {
+    "default": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04",
+        "test-multi-1-0-0-minimal-ubuntu-24-04",
+        "test-multi-1-0-0-standard-ubuntu-22-04",
+        "test-multi-1-0-0-standard-ubuntu-24-04"
+      ]
+    },
+    "test-multi": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04",
+        "test-multi-1-0-0-minimal-ubuntu-24-04",
+        "test-multi-1-0-0-standard-ubuntu-22-04",
+        "test-multi-1-0-0-standard-ubuntu-24-04"
+      ]
+    },
+    "Minimal": {
+      "targets": [
+        "test-multi-1-0-0-minimal-ubuntu-22-04",
+        "test-multi-1-0-0-minimal-ubuntu-24-04"
+      ]
+    },
+    "Standard": {
+      "targets": [
+        "test-multi-1-0-0-standard-ubuntu-22-04",
+        "test-multi-1-0-0-standard-ubuntu-24-04"
+      ]
+    }
+  },
+  "target": {
+    "test-multi-1-0-0-minimal-ubuntu-22-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.min",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Minimal",
+        "co.posit.image.os": "Ubuntu 22.04"
+      },
+      "tags": [
+        "ghcr.io/posit-dev/test-multi/tmp"
+      ],
+      "platforms": [
+        "linux/amd64"
+      ]
+    },
+    "test-multi-1-0-0-minimal-ubuntu-24-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2404.min",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Minimal",
+        "co.posit.image.os": "Ubuntu 24.04"
+      },
+      "tags": [
+        "ghcr.io/posit-dev/test-multi/tmp"
+      ],
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "test-multi-1-0-0-standard-ubuntu-22-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2204.std",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Standard",
+        "co.posit.image.os": "Ubuntu 22.04"
+      },
+      "tags": [
+        "ghcr.io/posit-dev/test-multi/tmp"
+      ],
+      "platforms": [
+        "linux/amd64"
+      ]
+    },
+    "test-multi-1-0-0-standard-ubuntu-24-04": {
+      "context": ".",
+      "dockerfile": "test-multi/1.0.0/Containerfile.ubuntu2404.std",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-dev/images-shared",
+        "org.opencontainers.image.title": "Test Multi",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Test Multi",
+        "org.opencontainers.image.authors": "Author 1 <author1@posit.co>, Author 2 <author2@posit.co>",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.variant": "Standard",
+        "co.posit.image.os": "Ubuntu 24.04"
+      },
+      "tags": [
+        "ghcr.io/posit-dev/test-multi/tmp"
+      ],
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    }
+  }
+}

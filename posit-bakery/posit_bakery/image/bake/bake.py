@@ -1,7 +1,6 @@
 import os
-import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import python_on_whales
 from pydantic import BaseModel, Field, field_serializer
@@ -70,6 +69,14 @@ class BakeTarget(BaseModel):
             serialization_alias="cache-to",
         ),
     ]
+    output: Annotated[
+        list[dict],
+        Field(
+            default_factory=list,
+            description="Output configuration for the image build.",
+            exclude_if=lambda v: len(v) == 0,
+        ),
+    ]
 
     @field_serializer("dockerfile", "context", when_used="json")
     @staticmethod
@@ -83,14 +90,15 @@ class BakeTarget(BaseModel):
         return str(value)
 
     @classmethod
-    def from_image_target(cls, image_target: ImageTarget, cache_registry: str | None = None) -> "BakeTarget":
+    def from_image_target(cls, image_target: ImageTarget) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
-        cache_from = []
-        cache_to = []
-        if cache_registry:
-            cache_name = image_target.cache_name(cache_registry=cache_registry)
-            cache_from = [{"type": "registry", "ref": cache_name}]
-            cache_to = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+        kwargs = {"tags": image_target.tags}
+        if image_target.cache_name is not None:
+            kwargs["cache_from"] = [{"type": "registry", "ref": image_target.cache_name}]
+            kwargs["cache_to"] = [{"type": "registry", "ref": image_target.cache_name, "mode": "max"}]
+
+        if image_target.temp_name is not None:
+            kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
 
         return cls(
             image_name=image_target.image_name,
@@ -99,10 +107,8 @@ class BakeTarget(BaseModel):
             image_os=image_target.image_os.name if image_target.image_os else None,
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
-            tags=image_target.tags,
             platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
-            cache_from=cache_from,
-            cache_to=cache_to,
+            **kwargs,
         )
 
 
@@ -145,9 +151,7 @@ class BakePlan(BaseModel):
         return groups
 
     @classmethod
-    def from_image_targets(
-        cls, context: Path, image_targets: list[ImageTarget], cache_registry: str | None = None
-    ) -> "BakePlan":
+    def from_image_targets(cls, context: Path, image_targets: list[ImageTarget]) -> "BakePlan":
         """Create a BakePlan from a list of ImageTarget objects.
 
         :param context: The absolute path to the build context directory.
@@ -161,7 +165,7 @@ class BakePlan(BaseModel):
         targets: dict[str, BakeTarget] = {}
 
         for image_target in image_targets:
-            bake_target = BakeTarget.from_image_target(image_target=image_target, cache_registry=cache_registry)
+            bake_target = BakeTarget.from_image_target(image_target=image_target)
             groups = cls.update_groups(
                 groups=groups,
                 uid=image_target.uid,
@@ -190,6 +194,7 @@ class BakePlan(BaseModel):
         cache_from: str | None = None,
         cache_to: str | None = None,
         platforms: list[str] | None = None,
+        set_opts: dict[str, Any] | None = None,
         clean_bakefile: bool = True,
     ):
         """Run the bake plan to build all targets."""
@@ -205,6 +210,8 @@ class BakePlan(BaseModel):
             _set["*.cache-from"] = cache_from
         if cache_to:
             _set["*.cache-to"] = cache_to
+        if set_opts:
+            _set.update(set_opts)
 
         python_on_whales.docker.buildx.bake(files=[self.bake_file.name], load=load, push=push, cache=cache, set=_set)
         if clean_bakefile:

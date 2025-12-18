@@ -1270,6 +1270,19 @@ class TestBakeryConfig:
 
         assert merged_metadata == expected_metadata
 
+    def test_load_build_metadata_file(self, get_config_obj):
+        """Test loading a build metadata file."""
+        metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json"
+        config = get_config_obj("basic")
+        config.load_build_metadata_from_file(metadata_filepath)
+
+        for target in config.targets:
+            assert isinstance(target.metadata_file, MetadataFile)
+            assert target.metadata_file.filepath == metadata_filepath
+            assert target.metadata_file.metadata is not None
+            assert target.metadata_file.metadata.image_name is not None
+            assert target.metadata_file.metadata.container_image_digest is not None
+
     @pytest.mark.parametrize(
         "untagged,older_than_days,expected_deletions",
         [
@@ -1320,7 +1333,6 @@ class TestBakeryConfig:
 
         # Clean caches
         config.clean_caches(
-            cache_registry=cache_registry,
             remove_untagged=untagged,
             remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
         )
@@ -1354,7 +1366,6 @@ class TestBakeryConfig:
 
         # Clean caches
         config.clean_caches(
-            cache_registry=cache_registry,
             remove_untagged=True,
             remove_older_than=timedelta(days=14),
             dry_run=True,

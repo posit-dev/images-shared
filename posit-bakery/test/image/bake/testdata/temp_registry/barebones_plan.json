@@ -1,0 +1,39 @@
+{
+  "group": {
+    "default": {
+      "targets": [
+        "scratch-1-0-0-scratch"
+      ]
+    },
+    "scratch": {
+      "targets": [
+        "scratch-1-0-0-scratch"
+      ]
+    }
+  },
+  "target": {
+    "scratch-1-0-0-scratch": {
+      "context": ".",
+      "dockerfile": "scratch/1.0.0/Containerfile.scratch",
+      "labels": {
+        "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
+        "org.opencontainers.image.source": "https://github.com/posit-images-shared/posit-images-shared",
+        "org.opencontainers.image.title": "Scratch",
+        "org.opencontainers.image.vendor": "Posit Software, PBC",
+        "co.posit.image.maintainer": "Posit Docker Team <docker@posit.co>",
+        "co.posit.image.name": "Scratch",
+        "org.opencontainers.image.version": "1.0.0",
+        "org.opencontainers.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.version": "1.0.0",
+        "co.posit.image.revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "co.posit.image.os": "Scratch"
+      },
+      "tags": [
+        "ghcr.io/posit-dev/scratch/tmp"
+      ],
+      "platforms": [
+        "linux/amd64"
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import json
 import shutil
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -13,6 +14,8 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.goss,
 ]
+
+DGOSS_TESTDATA_DIR = (Path(__file__).parent / "testdata").absolute()
 
 
 class TestDGossCommand:
@@ -190,6 +193,49 @@ class TestDGossCommand:
             "IMAGE_OS_VERSION=22.04",
             "--init",
             "--privileged",
+            basic_standard_image_target.ref,
+            *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
+        ]
+        assert dgoss_command.command == expected_command
+
+    def test_command_with_build_metadata(self, basic_standard_image_target):
+        """Test that DGossCommand command returns the expected command."""
+        basic_standard_image_target.load_build_metadata_from_file(DGOSS_TESTDATA_DIR / "basic_metadata.json")
+        assert (
+            basic_standard_image_target.ref
+            == "docker.io/posit/test-image:1.0.0@sha256:80a50319320bf34740251482b7c06bf6dddb52aa82ea4cbffa812ed2fafaa0b9"
+        )
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        expected_command = [
+            find_dgoss_bin(basic_standard_image_target.context),
+            "run",
+            "-v",
+            f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
+            "-v",
+            f"{str(basic_standard_image_target.context.image_path.resolve())}:/tmp/image",
+            "-v",
+            f"{str(basic_standard_image_target.context.base_path.resolve())}:/tmp/project",
+            "-e",
+            "IMAGE_VERSION=1.0.0",
+            "-e",
+            "IMAGE_VERSION_MOUNT=/tmp/version",
+            "-e",
+            "IMAGE_MOUNT=/tmp/image",
+            "-e",
+            "PROJECT_MOUNT=/tmp/project",
+            "-e",
+            "IMAGE_VARIANT=Standard",
+            "-e",
+            "IMAGE_OS=Ubuntu\ 22.04",
+            "-e",
+            "IMAGE_OS_NAME=ubuntu",
+            "-e",
+            "IMAGE_OS_CODENAME=jammy",
+            "-e",
+            "IMAGE_OS_FAMILY=debian",
+            "-e",
+            "IMAGE_OS_VERSION=22.04",
+            "--init",
             basic_standard_image_target.ref,
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
         ]

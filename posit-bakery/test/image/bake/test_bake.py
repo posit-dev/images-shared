@@ -8,6 +8,7 @@ from pytest_mock import MockFixture
 
 from posit_bakery.image.bake import BakePlan
 from posit_bakery.image.bake.bake import BakeTarget, BakeGroup
+from posit_bakery.image.image_target import ImageTargetSettings
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
@@ -50,8 +51,8 @@ def bake_testdata():
 def get_expected_plan(bake_testdata):
     """Fixture to provide the expected bake plan."""
 
-    def _get_expected_plan(suite_name: str) -> Path:
-        return bake_testdata / f"{suite_name}_plan.json"
+    def _get_expected_plan(result_set: str, suite_name: str) -> Path:
+        return bake_testdata / result_set / f"{suite_name}_plan.json"
 
     return _get_expected_plan
 
@@ -117,9 +118,41 @@ class TestBakePlan:
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_from_image_targets(self, get_expected_plan, get_config_obj, suite, resource_path):
-        """Test that barebones bake plan generates as expected."""
-        expected_plan = get_expected_plan(suite)
+        """Test that bake plans generate as expected."""
+        expected_plan = get_expected_plan("default", suite)
         config_obj = get_config_obj(suite)
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        output = plan.model_dump_json(indent=2, exclude_none=True)
+
+        assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
+        assert expected_plan.read_text().strip() == output
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_image_targets_with_cache_registry(self, get_expected_plan, get_config_obj, suite, resource_path):
+        """Test that bake plans generate as expected with a cache registry."""
+        expected_plan = get_expected_plan("cache_registry", suite)
+        config_obj = get_config_obj(suite)
+
+        settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        for target in config_obj.targets:
+            target.settings = settings
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        output = plan.model_dump_json(indent=2, exclude_none=True)
+
+        assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
+        assert expected_plan.read_text().strip() == output
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_image_targets_with_temp_registry(self, get_expected_plan, get_config_obj, suite, resource_path):
+        """Test that bake plans generate as expected with a temp registry."""
+        expected_plan = get_expected_plan("temp_registry", suite)
+        config_obj = get_config_obj(suite)
+
+        settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
+        for target in config_obj.targets:
+            target.settings = settings
 
         plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
         output = plan.model_dump_json(indent=2, exclude_none=True)
@@ -132,7 +165,7 @@ class TestBakePlan:
         self, get_expected_plan, get_config_obj, suite, project_path, resource_path
     ):
         """Test that a BakePlan can be loaded in an alternate context directory."""
-        expected_plan = get_expected_plan(suite)
+        expected_plan = get_expected_plan("default", suite)
         config_obj = get_config_obj(suite)
 
         original_dir = os.getcwd()
@@ -165,7 +198,7 @@ class TestBakePlan:
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_write_remove(self, get_expected_plan, get_tmpconfig, suite):
         """Test that barebones bake plan generates as expected."""
-        expected_plan = get_expected_plan(suite)
+        expected_plan = get_expected_plan("default", suite)
         config_obj = get_tmpconfig(suite)
 
         plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)

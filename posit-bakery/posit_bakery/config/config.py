@@ -33,7 +33,7 @@ from posit_bakery.error import (
 from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
-from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
+from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
@@ -253,6 +253,7 @@ class BakerySettings(BaseModel):
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
+    temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
 
 
 class BakeryConfig:
@@ -683,6 +684,9 @@ class BakeryConfig:
                                 image_version=version,
                                 image_variant=variant,
                                 image_os=_os,
+                                settings=ImageTargetSettings(
+                                    temp_registry=settings.temp_registry, cache_registry=settings.cache_registry
+                                ),
                             )
                         )
 
@@ -709,13 +713,11 @@ class BakeryConfig:
         if not metadata_file.is_file():
             raise FileNotFoundError(f"Metadata file '{str(metadata_file)}' does not exist.")
         for target in self.targets:
-            target.load_metadata_file(metadata_file)
+            target.load_build_metadata_from_file(metadata_file)
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""
-        bake_plan = BakePlan.from_image_targets(
-            context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
-        )
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
         return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     def build_targets(
@@ -736,18 +738,23 @@ class BakeryConfig:
         :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
             platform.
         :param strategy: The strategy to use when building images.
+        :param metadata_file: Optional path to a metadata file to write build metadata to.
         :param fail_fast: If True, stop building targets on the first failure.
         """
         if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, cache_registry=self.settings.cache_registry
-            )
+            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+            set_opts = None
+            if self.settings.temp_registry is not None and push:
+                set_opts = {
+                    "*.output": [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
+                }
             bake_plan.build(
                 load=load,
                 push=push,
                 cache=cache,
                 clean_bakefile=self.settings.clean_temporary,
                 platforms=platforms,
+                set_opts=set_opts,
             )
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
@@ -757,7 +764,6 @@ class BakeryConfig:
                         load=load,
                         push=push,
                         cache=cache,
-                        cache_registry=self.settings.cache_registry,
                         platforms=platforms,
                         metadata_file=True if metadata_file else False,
                     )
@@ -789,22 +795,17 @@ class BakeryConfig:
 
     def clean_caches(
         self,
-        cache_registry: str,
         remove_untagged: bool = True,
         remove_older_than: timedelta | None = None,
         dry_run: bool = False,
     ):
         """Cleans up dangling caches in the specified registry for all generated image targets.
 
-        :param cache_registry: The cache registry to clean.
         :param remove_untagged: If True, remove untagged caches.
         :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
+        :param dry_run: If True, print what would be deleted without actually deleting anything.
         """
-        target_caches = []
-        for target in self.targets:
-            target_cache_name = target.cache_name(cache_registry)
-            target_caches.append(target_cache_name.split(":")[0])
-        target_caches = list(set(target_caches))
+        target_caches = list(set([target.cache_name.split(":")[0] for target in self.targets]))
 
         for target_cache in target_caches:
             ghcr.clean_cache(
