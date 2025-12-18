@@ -154,37 +154,33 @@ def merge(
             resolved_files.append(file.absolute())
     metadata_file = resolved_files
 
+    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
+
     files_ok = True
+    image_digests: dict[str, list[str]] = {}
     for file in metadata_file:
         if not file.is_file():
             log.error(f"Metadata file '{file}' does not exist")
             files_ok = False
-        with open(file, "r") as f:
-            try:
-                json.load(f)
-            except json.JSONDecodeError as e:
-                log.error(f"Metadata file '{file}' is not valid JSON: {e}")
-                files_ok = False
-
-    if not files_ok:
-        raise typer.Exit(code=1)
-
-    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
-
-    image_digests: dict[str, list[str]] = {}
-    for file in metadata_file:
+            continue
         with open(file, "r") as f:
             data = json.load(f)
         for uid, metadata in data.items():
             image_name = metadata.get("image.name")
             if not image_name:
                 log.error(f"Metadata file '{file}' is missing 'image.name' for image UID '{uid}'")
-                raise typer.Exit(code=1)
+                files_ok = False
+                continue
             digest = metadata.get("containerimage.digest")
             if not digest:
                 log.error(f"Metadata file '{file}' is missing 'containerimage.digest' for image UID '{uid}'")
-                raise typer.Exit(code=1)
+                files_ok = False
+                continue
             image_digests.setdefault(uid, []).append(f"{image_name}@{digest}")
+
+    if not files_ok:
+        log.error("One or more metadata files are invalid, aborting merge.")
+        raise typer.Exit(code=1)
 
     log.info(f"Found {len(image_digests.keys())} targets")
     log.debug(json.dumps(image_digests, indent=2, sort_keys=True))
