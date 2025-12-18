@@ -126,6 +126,7 @@ jobs:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
+      version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
       remove-dangling: true
       remove-older-than: 14
