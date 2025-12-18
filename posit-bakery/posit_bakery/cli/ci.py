@@ -164,7 +164,12 @@ def merge(
             files_ok = False
             continue
         with open(file, "r") as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as e:
+                log.error(f"Metadata file '{file}' is not valid JSON: {str(e)}")
+                files_ok = False
+                continue
         for uid, metadata in data.items():
             image_name = metadata.get("image.name")
             if not image_name:
