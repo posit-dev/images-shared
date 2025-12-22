@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import Annotated
 
 import requests
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, AnyUrl, Field
 
 from posit_bakery.config.image.build_os import BuildOS
 from posit_bakery.config.image.posit_product import resolvers
@@ -24,7 +24,7 @@ class ReleaseStreamResult(BaseModel):
     """Represents a resulting artifact found in a release stream. This provides an easy validation for data we get."""
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
-    download_url: HttpUrl
+    download_url: str | HttpUrl
 
 
 class ReleaseStreamPath:
