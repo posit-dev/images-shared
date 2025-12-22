@@ -93,9 +93,15 @@ class BakeTarget(BaseModel):
     def from_image_target(cls, image_target: ImageTarget) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
         kwargs = {"tags": image_target.tags}
+        platforms = image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS
+
         if image_target.cache_name is not None:
-            kwargs["cache_from"] = [{"type": "registry", "ref": image_target.cache_name}]
-            kwargs["cache_to"] = [{"type": "registry", "ref": image_target.cache_name, "mode": "max"}]
+            cache_name = image_target.cache_name
+            # Append platform suffix to cache name
+            platform_suffix = "-".join(p.removeprefix("linux/").replace("/", "-") for p in platforms)
+            cache_name = f"{cache_name}-{platform_suffix}"
+            kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
+            kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
@@ -107,7 +113,7 @@ class BakeTarget(BaseModel):
             image_os=image_target.image_os.name if image_target.image_os else None,
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
-            platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
+            platforms=platforms,
             **kwargs,
         )
 
