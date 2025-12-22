@@ -16,13 +16,28 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 RUN uv python install {{ versions | join(' ') }}
 {%- endmacro %}
 
+{# Set the appropriate PYTHONARCH environment variable based on the TARGETARCH for use with uv
+
+:return: A command to set the PYTHONARCH environment variable
+#}
+{% macro set_arch() -%}
+if [ "$TARGETARCH" = "amd64" ]; then \
+    export PYTHONARCH="x86_64"; \
+elif [ "$TARGETARCH" = "arm64" ]; then \
+    export PYTHONARCH="aarch64"; \
+else \
+    echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \
+    exit 1; \
+fi
+{%- endmacro %}
+
 {# Retrieve the expected version directory for a version of Python built and installed using uv
 
 :param version: The full Python version, e.g. "3.12.11"
 :return: The expected installation directory for that version
 #}
 {% macro get_version_directory(version) -%}
-/opt/python/cpython-{{ version }}-linux-x86_64-gnu
+/opt/python/cpython-{{ version }}-linux-${PYTHONARCH}-gnu
 {%- endmacro %}
 
 {# Arguments to copy Python installations from a uv build stage to the current build stage
@@ -90,7 +105,8 @@ rm -f {{ requirements_files | map('trim') | join(' ') }}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install_packages(version | trim, packages, requirements_file, clean, break_system_packages) | indent(4) }}
+RUN {% if loop.first -%}{{ set_arch() | indent(4) }} && \
+    {% endif -%}{{ install_packages(version | trim, packages, requirements_file, clean, break_system_packages) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
