@@ -37,14 +37,22 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
 
         return result.version
 
-    def get_url_by_os(self) -> dict[str, str]:
+    def get_url_by_os(self, use_arch_placeholder: bool = False) -> dict[str, str]:
         """Retrieve the URL for each OS from the specified product stream.
 
-        :return: A dictionary mapping OS names to their corresponding URLs.
+        Args:
+            use_arch_placeholder: If True, returns URLs with __ARCH__ placeholder instead of
+                concrete architecture strings. This allows the URL to be resolved at
+                container build time based on TARGETARCH. Defaults to False.
+
+        Returns:
+            A dictionary mapping OS names to their corresponding URLs.
         """
         url_by_os = {}
         for _os in self.os:
-            result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
+            result = get_product_artifact_by_stream(
+                self.product, self.stream, _os.buildOS, use_arch_placeholder=use_arch_placeholder
+            )
             url_by_os[_os.name] = str(result.download_url)
 
         return url_by_os

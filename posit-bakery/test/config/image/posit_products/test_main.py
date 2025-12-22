@@ -5,7 +5,12 @@ from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseSt
 from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
+    _get_arch_identifier,
+    _replace_arch_in_url,
+    _is_template_based_stream,
     get_product_artifact_by_stream,
+    product_release_stream_url_map,
+    ARCH_PLACEHOLDER,
 )
 
 pytestmark = [
@@ -750,3 +755,171 @@ class TestGetProductArtifactByStream:
         output = get_product_artifact_by_stream(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_session_url
+
+
+class TestArchPlaceholder:
+    """Tests for architecture placeholder functionality."""
+
+    def test_get_arch_identifier_debian_default(self):
+        """Test that Debian-like OS returns 'amd64' by default."""
+        _os = SUPPORTED_OS["ubuntu"]["22"]
+        assert _get_arch_identifier(_os) == "amd64"
+
+    def test_get_arch_identifier_rhel_default(self):
+        """Test that RHEL-like OS returns 'x86_64' by default."""
+        _os = SUPPORTED_OS["rhel"]["9"]
+        assert _get_arch_identifier(_os) == "x86_64"
+
+    def test_get_arch_identifier_with_placeholder(self):
+        """Test that use_placeholder=True returns the placeholder constant."""
+        _os = SUPPORTED_OS["ubuntu"]["22"]
+        assert _get_arch_identifier(_os, use_placeholder=True) == ARCH_PLACEHOLDER
+
+        _os = SUPPORTED_OS["rhel"]["9"]
+        assert _get_arch_identifier(_os, use_placeholder=True) == ARCH_PLACEHOLDER
+
+    def test_make_resolver_metadata_with_placeholder(self):
+        """Test that metadata contains placeholder when use_arch_placeholder=True."""
+        _os = SUPPORTED_OS["ubuntu"]["22"]
+        meta = _make_resolver_metadata(_os, ProductEnum.CONNECT, use_arch_placeholder=True)
+        assert meta["arch_identifier"] == ARCH_PLACEHOLDER
+
+    def test_replace_arch_in_url_debian(self):
+        """Test URL arch replacement for Debian-based systems."""
+        _os = SUPPORTED_OS["ubuntu"]["22"]
+        url = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm_1.0.0_amd64.deb"
+        result = _replace_arch_in_url(url, _os)
+        assert "amd64" not in result
+        assert ARCH_PLACEHOLDER in result
+        assert (
+            result
+            == f"https://cdn.posit.co/package-manager/deb/{ARCH_PLACEHOLDER}/rstudio-pm_1.0.0_{ARCH_PLACEHOLDER}.deb"
+        )
+
+    def test_replace_arch_in_url_debian_arm64(self):
+        """Test URL arch replacement for Debian-based ARM systems."""
+        _os = SUPPORTED_OS["ubuntu"]["22"]
+        url = "https://cdn.posit.co/package-manager/deb/arm64/rstudio-pm_1.0.0_arm64.deb"
+        result = _replace_arch_in_url(url, _os)
+        assert "arm64" not in result
+        assert ARCH_PLACEHOLDER in result
+
+    def test_replace_arch_in_url_rhel(self):
+        """Test URL arch replacement for RHEL-based systems."""
+        _os = SUPPORTED_OS["rhel"]["9"]
+        url = "https://cdn.posit.co/package-manager/rpm/x86_64/rstudio-pm-1.0.0.x86_64.rpm"
+        result = _replace_arch_in_url(url, _os)
+        assert "x86_64" not in result
+        assert ARCH_PLACEHOLDER in result
+
+    def test_replace_arch_in_url_rhel_aarch64(self):
+        """Test URL arch replacement for RHEL-based ARM systems."""
+        _os = SUPPORTED_OS["rhel"]["9"]
+        url = "https://cdn.posit.co/package-manager/rpm/arm64/rstudio-pm-1.0.0.aarch64.rpm"
+        result = _replace_arch_in_url(url, _os)
+        assert "aarch64" not in result
+        # Note: arm64 in path should remain (only x86_64 and aarch64 are replaced for RHEL)
+        assert ARCH_PLACEHOLDER in result
+
+    def test_is_template_based_stream_ppm_preview(self):
+        """Test that Package Manager preview/daily are identified as template-based."""
+        stream_path = product_release_stream_url_map[ProductEnum.PACKAGE_MANAGER][ReleaseStreamEnum.PREVIEW]
+        assert _is_template_based_stream(stream_path) is True
+
+        stream_path = product_release_stream_url_map[ProductEnum.PACKAGE_MANAGER][ReleaseStreamEnum.DAILY]
+        assert _is_template_based_stream(stream_path) is True
+
+    def test_is_template_based_stream_ppm_release(self):
+        """Test that Package Manager release is NOT template-based (uses JSON)."""
+        stream_path = product_release_stream_url_map[ProductEnum.PACKAGE_MANAGER][ReleaseStreamEnum.RELEASE]
+        assert _is_template_based_stream(stream_path) is False
+
+    def test_is_template_based_stream_connect(self):
+        """Test that Connect streams are NOT template-based (uses JSON)."""
+        stream_path = product_release_stream_url_map[ProductEnum.CONNECT][ReleaseStreamEnum.RELEASE]
+        assert _is_template_based_stream(stream_path) is False
+
+        stream_path = product_release_stream_url_map[ProductEnum.CONNECT][ReleaseStreamEnum.DAILY]
+        assert _is_template_based_stream(stream_path) is False
+
+    @pytest.mark.parametrize(
+        "_os,expected_url_pattern",
+        [
+            pytest.param(
+                SUPPORTED_OS["ubuntu"]["22"],
+                f"https://cdn.posit.co/package-manager/deb/{ARCH_PLACEHOLDER}/rstudio-pm_",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                SUPPORTED_OS["rhel"]["9"],
+                f"https://cdn.posit.co/package-manager/rpm/{ARCH_PLACEHOLDER}/rstudio-pm-",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_ppm_preview_with_placeholder(self, patch_requests_get, _os: BuildOS, expected_url_pattern: str):
+        """Test Package Manager preview with arch placeholder."""
+        output = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.PREVIEW, _os, use_arch_placeholder=True
+        )
+        assert expected_url_pattern in str(output.download_url)
+        assert ARCH_PLACEHOLDER in str(output.download_url)
+        # Version should still be resolved correctly
+        assert output.version == "2024.11.1-3776"
+
+    @pytest.mark.parametrize(
+        "_os,expected_url_pattern",
+        [
+            pytest.param(
+                SUPPORTED_OS["ubuntu"]["22"],
+                f"https://cdn.posit.co/package-manager/deb/{ARCH_PLACEHOLDER}/rstudio-pm_",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                SUPPORTED_OS["rhel"]["9"],
+                f"https://cdn.posit.co/package-manager/rpm/{ARCH_PLACEHOLDER}/rstudio-pm-",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_ppm_daily_with_placeholder(self, patch_requests_get, _os: BuildOS, expected_url_pattern: str):
+        """Test Package Manager daily with arch placeholder."""
+        output = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.DAILY, _os, use_arch_placeholder=True
+        )
+        assert expected_url_pattern in str(output.download_url)
+        assert ARCH_PLACEHOLDER in str(output.download_url)
+        # Version should still be resolved correctly
+        assert output.version == "2024.11.2-9"
+
+    @pytest.mark.parametrize(
+        "_os",
+        [
+            pytest.param(SUPPORTED_OS["ubuntu"]["22"], id="ubuntu-22"),
+            pytest.param(SUPPORTED_OS["rhel"]["9"], id="rhel-9"),
+        ],
+    )
+    def test_connect_release_with_placeholder(self, patch_requests_get, _os: BuildOS):
+        """Test Connect release with arch placeholder (JSON-based stream)."""
+        output = get_product_artifact_by_stream(
+            ProductEnum.CONNECT, ReleaseStreamEnum.RELEASE, _os, use_arch_placeholder=True
+        )
+        assert ARCH_PLACEHOLDER in str(output.download_url)
+        # Version should still be resolved correctly
+        assert output.version == "2025.03.0"
+
+    @pytest.mark.parametrize(
+        "_os",
+        [
+            pytest.param(SUPPORTED_OS["ubuntu"]["22"], id="ubuntu-22"),
+            pytest.param(SUPPORTED_OS["rhel"]["9"], id="rhel-9"),
+        ],
+    )
+    def test_workbench_daily_with_placeholder(self, patch_requests_get, _os: BuildOS):
+        """Test Workbench daily with arch placeholder (JSON-based stream)."""
+        output = get_product_artifact_by_stream(
+            ProductEnum.WORKBENCH, ReleaseStreamEnum.DAILY, _os, use_arch_placeholder=True
+        )
+        assert ARCH_PLACEHOLDER in str(output.download_url)
+        # Version should still be resolved correctly
+        assert output.version == "2025.04.0-daily+404.pro4"
