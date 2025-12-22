@@ -244,15 +244,12 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
 
 def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     """Generates a set of metadata used in string formatting with the given OS and Product."""
-    # FIXME: Eventually we should take into account other architectures as a param.
-    arch_identifier = "amd64"
-    if _os.family == OSFamilyEnum.REDHAT_LIKE:
-        arch_identifier = "x86_64"
-
+    # FIXME: This does not take into account RHEL-based OS notations (x86_64 or aarch64). These may need to be set at
+    #        buildtime using bash expressions.
     meta = {
         "os": _os,
         "download_json_os": _parse_download_json_os_identifier(_os, product),
-        "arch_identifier": arch_identifier,
+        "arch_identifier": "$TARGETARCH",
     }
 
     if product == ProductEnum.CONNECT:
