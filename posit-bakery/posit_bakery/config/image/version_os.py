@@ -2,11 +2,12 @@ import logging
 import re
 from typing import Annotated, Union
 
-from pydantic import BaseModel, Field, field_validator, HttpUrl, field_serializer
+from pydantic import BaseModel, Field, field_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.shared import BakeryYAMLModel, ExtensionField, TagDisplayNameField
+from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
+from .posit_product.const import URL_WITH_ENV_VARS_REGEX_PATTERN
 
 log = logging.getLogger(__name__)
 
@@ -58,8 +59,12 @@ class ImageVersionOS(BakeryYAMLModel):
         ),
     ]
     artifactDownloadURL: Annotated[
-        HttpUrl | None,
-        Field(default=None, description="Optional URL for artifact retrieval. Passed to version template rendering."),
+        str | None,
+        Field(
+            default=None,
+            description="Optional URL for artifact retrieval. Passed to version template rendering.",
+            pattern=URL_WITH_ENV_VARS_REGEX_PATTERN,
+        ),
     ]
 
     def __hash__(self):

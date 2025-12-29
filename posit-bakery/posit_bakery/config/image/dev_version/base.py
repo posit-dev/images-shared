@@ -4,11 +4,11 @@ from copy import deepcopy
 from typing import Annotated, Self
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_core.core_schema import ValidationInfo
 
+from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.version import ImageVersion
-from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.image.version_os import ImageVersionOS
+from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryYAMLModel
 
 log = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         raise NotImplementedError("Subclasses must implement get_version method.")
 
     @abc.abstractmethod
-    def get_url_by_os(self) -> dict[str, str]:
+    def get_url_by_os(self, generalize_architecture: bool = False) -> dict[str, str]:
         """Retrieve the URLs for each OS for this image development version.
 
         :return: A map of OS names to their corresponding URL strings.
@@ -215,8 +215,8 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
         :return: The modified BaseImageDevelopmentVersion object.
         """
-        url_by_os = self.get_url_by_os()
         for os_version in self.os:
+            url_by_os = self.get_url_by_os(generalize_architecture=os_version.platforms != DEFAULT_PLATFORMS)
             os_version.artifactDownloadURL = url_by_os.get(os_version.name, "")
 
         return self

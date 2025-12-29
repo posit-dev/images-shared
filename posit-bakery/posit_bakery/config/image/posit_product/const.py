@@ -7,6 +7,9 @@ CALVER_REGEX_PATTERN = re.compile(
     r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
     r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
 )
+URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
+    r"^https?://[^\s]+(?:\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)[^\s]*)*$"
+)
 
 WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/latest/index.json"
 PACKAGE_MANAGER_DAILY_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-main-latest.txt"
