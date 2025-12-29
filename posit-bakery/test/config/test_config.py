@@ -775,6 +775,8 @@ class TestBakeryConfig:
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
             ENV UV_PYTHON_PREFERENCE=only-managed
             RUN uv python install 3.13.7
+            RUN mv /opt/python/cpython-3.13.7-linux-*/ /opt/python/3.13.7
+
 
             FROM docker.io/library/ubuntu:22.04
             LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"

@@ -1022,6 +1022,9 @@ class TestPythonMacros:
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
             ENV UV_PYTHON_PREFERENCE=only-managed
             RUN uv python install 3.12.11 3.11.9
+            RUN mv /opt/python/cpython-3.12.11-linux-*/ /opt/python/3.12.11 && \\
+                mv /opt/python/cpython-3.11.9-linux-*/ /opt/python/3.11.9
+
             """
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -1042,6 +1045,9 @@ class TestPythonMacros:
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
             ENV UV_PYTHON_PREFERENCE=only-managed
             RUN uv python install 3.12.11 3.11.9
+            RUN mv /opt/python/cpython-3.12.11-linux-*/ /opt/python/3.12.11 && \\
+                mv /opt/python/cpython-3.11.9-linux-*/ /opt/python/3.11.9
+
             """
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -1053,7 +1059,7 @@ class TestPythonMacros:
             {%- import "python.j2" as python -%}
             {{ python.get_version_directory("3.12.11") }}"""
         )
-        expected = "/opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu"
+        expected = "/opt/python/3.12.11"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -1073,13 +1079,13 @@ class TestPythonMacros:
             pytest.param(
                 "3.12.11",
                 True,
-                "/opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages",
+                "/opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages",
                 id="with-break-system-packages",
             ),
             pytest.param(
                 "3.12.11",
                 False,
-                "/opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade",
+                "/opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade",
                 id="without-break-system-packages",
             ),
         ],
@@ -1102,7 +1108,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas"""
                 ),
@@ -1112,7 +1118,7 @@ class TestPythonMacros:
                 ("'3.12.11'", "'numpy,pandas'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas"""
                 ),
@@ -1122,7 +1128,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, ["/tmp/requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt && \\
                     rm -f /tmp/requirements.txt"""
                 ),
@@ -1132,7 +1138,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt && \\
                     rm -f /tmp/requirements.txt"""
                 ),
@@ -1142,7 +1148,7 @@ class TestPythonMacros:
                 ("'3.12.11'", None, ["/tmp/requirements.txt"], False),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         -r /tmp/requirements.txt"""
                 ),
                 id="only-requirements-list-noclean",
@@ -1151,7 +1157,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt && \\
@@ -1163,7 +1169,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt", "/tmp/dev-requirements.txt"], True),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt \\
@@ -1176,7 +1182,7 @@ class TestPythonMacros:
                 ("'3.12.11'", ["numpy", "pandas"], ["/tmp/requirements.txt"], False),
                 textwrap.dedent(
                     """\
-                    /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                         numpy \\
                         pandas \\
                         -r /tmp/requirements.txt"""
@@ -1200,26 +1206,10 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.11.9-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas"""
                 ),
@@ -1229,26 +1219,10 @@ class TestPythonMacros:
                 ("'3.12.11,3.11.9'", ["numpy", "pandas"], None, True),
                 textwrap.dedent(
                     """\
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.11.9-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas"""
                 ),
@@ -1258,26 +1232,10 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], None, "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.11.9-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt"""
                 ),
@@ -1287,28 +1245,12 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", True),
                 textwrap.dedent(
                     """\
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.11.9-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt && \\
@@ -1320,27 +1262,11 @@ class TestPythonMacros:
                 (["3.12.11", "3.11.9"], ["numpy", "pandas"], "'/tmp/requirements.txt'", False),
                 textwrap.dedent(
                     """\
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt
-                    RUN if [ "$TARGETARCH" = "amd64" ]; then \\
-                            export PYTHONARCH="x86_64"; \\
-                        elif [ "$TARGETARCH" = "arm64" ]; then \\
-                            export PYTHONARCH="aarch64"; \\
-                        else \\
-                            echo "Unsupported TARGETARCH: $TARGETARCH" >&2; \\
-                            exit 1; \\
-                        fi && \\
-                        /opt/python/cpython-3.11.9-linux-${PYTHONARCH}-gnu/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
                             -r /tmp/requirements.txt"""
@@ -1363,7 +1289,7 @@ class TestPythonMacros:
             {%- import "python.j2" as python -%}
             {{ python.symlink_version("3.12.11", "/opt/python/default") }}"""
         )
-        expected = "ln -s /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu /opt/python/default"
+        expected = "ln -s /opt/python/3.12.11 /opt/python/default"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -1373,7 +1299,7 @@ class TestPythonMacros:
             {%- import "python.j2" as python -%}
             {{ python.symlink_binary("3.12.11", "python", "/usr/local/bin/python3.12") }}"""
         )
-        expected = "ln -s /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/python /usr/local/bin/python3.12"
+        expected = "ln -s /opt/python/3.12.11/bin/python /usr/local/bin/python3.12"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -1388,9 +1314,9 @@ class TestPythonMacros:
         )
         expected = textwrap.dedent(
             """\
-            RUN ln -s /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu /opt/python/default && \\
-                ln -s /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/python /usr/local/bin/python3.12 && \\
-                ln -s /opt/python/cpython-3.12.11-linux-${PYTHONARCH}-gnu/bin/pip /usr/local/bin/pip3.12
+            RUN ln -s /opt/python/3.12.11 /opt/python/default && \\
+                ln -s /opt/python/3.12.11/bin/python /usr/local/bin/python3.12 && \\
+                ln -s /opt/python/3.12.11/bin/pip /usr/local/bin/pip3.12
             """
         )
         rendered = environment_with_macros.from_string(template).render()
