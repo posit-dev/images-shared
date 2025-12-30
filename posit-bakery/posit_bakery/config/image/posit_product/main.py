@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import Annotated
 
 import requests
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, HttpUrl
 
 from posit_bakery.config.image.build_os import BuildOS
 from posit_bakery.config.image.posit_product import resolvers
@@ -15,7 +15,6 @@ from posit_bakery.config.image.posit_product.const import (
     PACKAGE_MANAGER_PREVIEW_URL,
     CONNECT_DAILY_URL,
     DOWNLOADS_JSON_URL,
-    URL_WITH_ENV_VARS_REGEX_PATTERN,
 )
 from posit_bakery.config.shared import OSFamilyEnum
 from posit_bakery.util import cached_session
@@ -25,13 +24,13 @@ class ReleaseStreamResult(BaseModel):
     """Represents a resulting artifact found in a release stream. This provides an easy validation for data we get."""
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
-    download_url: Annotated[str, Field(pattern=URL_WITH_ENV_VARS_REGEX_PATTERN, strip_whitespace=True, strict=True)]
+    download_url: HttpUrl
 
     @computed_field
     @property
     def architecture_generalized_download_url(self) -> str:
         """Generalizes the architecture in the download URL to amd64/x86_64."""
-        return self.download_url.replace("amd64", "$TARGETARCH").replace("x86_64", "$TARGETARCH")
+        return str(self.download_url).replace("amd64", "$TARGETARCH").replace("x86_64", "$TARGETARCH")
 
 
 class ReleaseStreamPath:
