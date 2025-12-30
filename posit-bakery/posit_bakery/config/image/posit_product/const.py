@@ -8,7 +8,11 @@ CALVER_REGEX_PATTERN = re.compile(
     r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
 )
 URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
-    r"^https?://[^\s]+(?:\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)[^\s]*)*$"
+    r"^https?://(?:[a-zA-Z0-9\-._~%]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)+"
+    r"(?::(?:[0-9]{1,5}|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?))?"
+    r"(?:/(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?"
+    r"(?:\?(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/?]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?"
+    r"(?:#(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/?]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?$"
 )
 
 WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/latest/index.json"
