@@ -90,7 +90,7 @@ class BakeTarget(BaseModel):
         return str(value)
 
     @classmethod
-    def from_image_target(cls, image_target: ImageTarget, push: bool = False) -> "BakeTarget":
+    def from_image_target(cls, image_target: ImageTarget, push_cache: bool = False) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget."""
         kwargs = {"tags": image_target.tags}
         platforms = image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS
@@ -101,7 +101,7 @@ class BakeTarget(BaseModel):
             platform_suffix = "-".join(p.removeprefix("linux/").replace("/", "-") for p in platforms)
             cache_name = f"{cache_name}-{platform_suffix}"
             kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
-            if push:
+            if push_cache:
                 kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
 
         if image_target.temp_name is not None:
@@ -158,12 +158,14 @@ class BakePlan(BaseModel):
         return groups
 
     @classmethod
-    def from_image_targets(cls, context: Path, image_targets: list[ImageTarget], push: bool = False) -> "BakePlan":
+    def from_image_targets(
+        cls, context: Path, image_targets: list[ImageTarget], push_cache: bool = False
+    ) -> "BakePlan":
         """Create a BakePlan from a list of ImageTarget objects.
 
         :param context: The absolute path to the build context directory.
         :param image_targets: A list of ImageTarget objects to include in the bake plan.
-        :param push: Whether images will be pushed. Controls cache_to behavior.
+        :param push_cache: Whether to push build cache to the cache registry.
 
         :return: A BakePlan object containing the context, groups, and targets.
         """
@@ -173,7 +175,7 @@ class BakePlan(BaseModel):
         targets: dict[str, BakeTarget] = {}
 
         for image_target in image_targets:
-            bake_target = BakeTarget.from_image_target(image_target=image_target, push=push)
+            bake_target = BakeTarget.from_image_target(image_target=image_target, push_cache=push_cache)
             groups = cls.update_groups(
                 groups=groups,
                 uid=image_target.uid,

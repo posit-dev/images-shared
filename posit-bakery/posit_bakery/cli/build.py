@@ -80,6 +80,13 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
+    push_cache: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Push the build cache to the cache registry without pushing the image.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = False,
     clean: Annotated[
         Optional[bool],
         typer.Option(
@@ -205,6 +212,7 @@ def build(
         config.build_targets(
             load=load,
             push=push,
+            push_cache=push_cache,
             cache=cache,
             platforms=image_platform,
             strategy=strategy,

@@ -734,6 +734,7 @@ class BakeryConfig:
         self,
         load: bool = True,
         push: bool = False,
+        push_cache: bool = False,
         cache: bool = True,
         platforms: list[str] | None = None,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
@@ -744,6 +745,7 @@ class BakeryConfig:
 
         :param load: If True, load the built images into the local Docker daemon.
         :param push: If True, push the built images to the configured registries.
+        :param push_cache: If True, push the build cache to the cache registry without pushing images.
         :param cache: If True, use the build cache when building images.
         :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
             platform.
@@ -752,7 +754,9 @@ class BakeryConfig:
         :param fail_fast: If True, stop building targets on the first failure.
         """
         if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets, push=push)
+            bake_plan = BakePlan.from_image_targets(
+                context=self.base_path, image_targets=self.targets, push_cache=push_cache
+            )
             set_opts = None
             if self.settings.temp_registry is not None and push:
                 set_opts = {
