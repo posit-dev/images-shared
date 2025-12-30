@@ -6,6 +6,7 @@ from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
     get_product_artifact_by_stream,
+    ReleaseStreamResult,
 )
 
 pytestmark = [
@@ -160,6 +161,28 @@ helper_test_collection = [
         for product in [ProductEnum.PACKAGE_MANAGER, ProductEnum.WORKBENCH, ProductEnum.WORKBENCH_SESSION]
     ],
 ]
+
+
+class TestReleaseStreamResult:
+    @pytest.mark.parametrize(
+        "download_url,expected_url",
+        [
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_amd64.deb",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_$TARGETARCH.deb",
+                id="debian-url",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.x86_64.rpm",
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.$TARGETARCH.rpm",
+                id="rhel-url",
+            ),
+        ],
+    )
+    def test_architecture_generalized_download_url(self, download_url, expected_url):
+        """Tests for architecture_generalized_download_url property of ReleaseStreamResult"""
+        result = ReleaseStreamResult(version="1.0.0", download_url=download_url)
+        assert str(result.architecture_generalized_download_url) == expected_url
 
 
 class TestHelpers:

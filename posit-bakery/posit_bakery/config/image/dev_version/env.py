@@ -58,7 +58,7 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
         """
         return _get_value_from_env("versionEnvVar", self.versionEnvVar)
 
-    def get_url_by_os(self) -> dict[str, str]:
+    def get_url_by_os(self, **kwargs) -> dict[str, str]:
         """Retrieve the URL from the specified environment variable.
 
         :return: The URL string from the environment variable.

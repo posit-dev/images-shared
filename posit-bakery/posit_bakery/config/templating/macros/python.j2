@@ -1,19 +1,44 @@
 {# Macros for installing Python and generating python or pip commands #}
 
+{# Generates a RUN command to install one or more Python versions with uv
+
+:param versions: A list of Python versions to install, e.g. ["3.11", "3.12"].
+#}
+{% macro run_uv_python_install(versions) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") | map('trim') -%}
+{%- endif -%}
+RUN uv python install {{ versions | join(' ') }}
+{%- endmacro %}
+
+{# Normalizes Python installation paths for one or more Python versions with uv
+
+:param versions: A list of Python versions to install, e.g. ["3.11", "3.12"].
+#}
+{% macro run_normalize_uv_python_paths(versions) -%}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") | map('trim') -%}
+{%- endif -%}
+{% for version in versions -%}
+{% if loop.first %}RUN {% endif %}mv /opt/python/cpython-{{ version }}-linux-*/ /opt/python/{{ version }}{% if not loop.last %} && \{% endif %}
+{% endfor -%}
+{%- endmacro %}
+
 {# Adds a build stage to build one ore more Python versions using uv
 
 :param versions: A list of Python versions to build, e.g. ["3.11", "3.12"].
 #}
 {% macro build_stage(versions) -%}
 {%- if versions is string -%}
-{%- set versions = versions | split(",") | map('trim') -%}
+{%- set versions = versions | split(",") | map('trim') | list -%}
 {%- endif -%}
 FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
 
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 ENV UV_PYTHON_PREFERENCE=only-managed
-RUN uv python install {{ versions | join(' ') }}
+{{ run_uv_python_install(versions) }}
+{{ run_normalize_uv_python_paths(versions) | indent(4) }}
 {%- endmacro %}
 
 {# Retrieve the expected version directory for a version of Python built and installed using uv
@@ -22,7 +47,7 @@ RUN uv python install {{ versions | join(' ') }}
 :return: The expected installation directory for that version
 #}
 {% macro get_version_directory(version) -%}
-/opt/python/cpython-{{ version }}-linux-x86_64-gnu
+/opt/python/{{ version }}
 {%- endmacro %}
 
 {# Arguments to copy Python installations from a uv build stage to the current build stage

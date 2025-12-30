@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import Annotated
 
 import requests
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, Field, computed_field, HttpUrl
 
 from posit_bakery.config.image.build_os import BuildOS
 from posit_bakery.config.image.posit_product import resolvers
@@ -25,6 +25,12 @@ class ReleaseStreamResult(BaseModel):
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
     download_url: HttpUrl
+
+    @computed_field
+    @property
+    def architecture_generalized_download_url(self) -> str:
+        """Generalizes the architecture in the download URL to amd64/x86_64."""
+        return str(self.download_url).replace("amd64", "$TARGETARCH").replace("x86_64", "$TARGETARCH")
 
 
 class ReleaseStreamPath:
@@ -244,7 +250,9 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
 
 def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     """Generates a set of metadata used in string formatting with the given OS and Product."""
-    # FIXME: Eventually we should take into account other architectures as a param.
+    # FIXME: This does not take into account RHEL-based OS notations (x86_64 or aarch64). These may need to be set at
+    #        buildtime using bash expressions.
+
     arch_identifier = "amd64"
     if _os.family == OSFamilyEnum.REDHAT_LIKE:
         arch_identifier = "x86_64"
@@ -269,7 +277,9 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     return meta
 
 
-def get_product_artifact_by_stream(product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS) -> ReleaseStreamResult:
+def get_product_artifact_by_stream(
+    product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
+) -> ReleaseStreamResult:
     """Fetches the version and download URL for a given product, release stream, and OS."""
     if product not in product_release_stream_url_map:
         raise ValueError(f"Product {product} is not supported.")

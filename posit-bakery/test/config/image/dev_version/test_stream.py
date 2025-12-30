@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +5,6 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
-from posit_bakery.config.image import SUPPORTED_OS, BuildOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
@@ -269,6 +267,51 @@ class TestImageDevelopmentVersionFromProductStream:
         assert len(i.all_registries) == 2
         for registry in override_registries:
             assert registry in i.all_registries
+
+    @pytest.mark.parametrize(
+        "download_url,generalize_architecture,expected_url",
+        [
+            pytest.param(
+                "https://example.com/image-amd64.tar.gz",
+                False,
+                "https://example.com/image-amd64.tar.gz",
+                id="debian-amd64-architecture",
+            ),
+            pytest.param(
+                "https://example.com/image-x86_64.tar.gz",
+                False,
+                "https://example.com/image-x86_64.tar.gz",
+                id="rhel-amd64-architecture",
+            ),
+            pytest.param(
+                "https://example.com/image-amd64.tar.gz",
+                True,
+                "https://example.com/image-$TARGETARCH.tar.gz",
+                id="generalized-debian-amd64-architecture",
+            ),
+            pytest.param(
+                "https://example.com/image-x86_64.tar.gz",
+                True,
+                "https://example.com/image-$TARGETARCH.tar.gz",
+                id="generalized-rhel-amd64-architecture",
+            ),
+        ],
+    )
+    def test_get_url_by_os(self, download_url, generalize_architecture, expected_url):
+        """Test that get_url_by_os returns the correct URL based on generalize_architecture flag."""
+        mock_os = ImageVersionOS(name="Ubuntu 22.04")
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.DAILY, os=[mock_os]
+        )
+
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(
+                version="1.0.0",
+                download_url=download_url,
+            )
+
+            url_by_os = dev_version.get_url_by_os(generalize_architecture=generalize_architecture)
+            assert url_by_os[mock_os.name] == expected_url
 
 
 class TestByStream:

@@ -48,6 +48,61 @@ class TestImageVersionOS:
         with pytest.raises(ValidationError):
             ImageVersionOS(name="Ubuntu 22.04", tagDisplayName="invalid tag name!")
 
+    @pytest.mark.parametrize(
+        "input_url,is_valid",
+        [
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_amd64.deb",
+                True,
+                id="standard-debian-url",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.x86_64.rpm",
+                True,
+                id="standard-rhel-url",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_$TARGETARCH.deb",
+                True,
+                id="generalized-debian-url",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.$TARGETARCH.rpm",
+                True,
+                id="generalized-rhel-url",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect_2025.03.0~ubuntu24_${TARGETARCH}.deb",
+                True,
+                id="generalized-debian-url-with-brackets",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect-2025.03.0.el8.${TARGETARCH}.rpm",
+                True,
+                id="generalized-rhel-url-with-brackets",
+            ),
+            pytest.param("invalid_url", False, id="not-a-url"),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect^2025.03.0[ubuntu24]_amd64.deb",
+                False,
+                id="invalid-standard-with-invalid-characters",
+            ),
+            pytest.param(
+                "https://cdn.rstudio.com/connect/2025.03/rstudio-connect^2025.03.0[ubuntu24]_$TARGETARCH.deb",
+                False,
+                id="invalid-generalized-with-invalid-characters",
+            ),
+        ],
+    )
+    def test_artifactDownloadURL_regex_pattern(self, input_url, is_valid):
+        """Test that the artifactDownloadURL field validates URLs correctly."""
+        if is_valid:
+            os = ImageVersionOS(name="Ubuntu 22.04", artifactDownloadURL=input_url)
+            assert os.artifactDownloadURL == input_url
+        else:
+            with pytest.raises(ValidationError):
+                ImageVersionOS(name="Ubuntu 22.04", artifactDownloadURL=input_url)
+
     def test_hash(self):
         """Test that the hash method returns a unique hash based on the name."""
         os1 = ImageVersionOS(name="Ubuntu 22.04")

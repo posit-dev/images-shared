@@ -3,10 +3,10 @@ from typing import Literal, Annotated
 from pydantic import Field
 
 from posit_bakery.config.image.build_os import DEFAULT_OS
-from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
 from posit_bakery.config.image.posit_product.main import get_product_artifact_by_stream
+from posit_bakery.config.image.version_os import ImageVersionOS
 
 
 class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
@@ -37,7 +37,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
 
         return result.version
 
-    def get_url_by_os(self) -> dict[str, str]:
+    def get_url_by_os(self, generalize_architecture: bool = False) -> dict[str, str]:
         """Retrieve the URL for each OS from the specified product stream.
 
         :return: A dictionary mapping OS names to their corresponding URLs.
@@ -45,7 +45,10 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         url_by_os = {}
         for _os in self.os:
             result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
-            url_by_os[_os.name] = str(result.download_url)
+            if generalize_architecture:
+                url_by_os[_os.name] = str(result.architecture_generalized_download_url)
+            else:
+                url_by_os[_os.name] = str(result.download_url)
 
         return url_by_os
 
