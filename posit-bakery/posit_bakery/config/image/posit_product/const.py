@@ -7,12 +7,23 @@ CALVER_REGEX_PATTERN = re.compile(
     r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
     r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
 )
+# Environment variable pattern: $VAR or ${VAR}
+_ENV_VAR = r"\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?"
+
+# Character classes for different URL components
+_HOST = r"[a-zA-Z0-9\-._~%]"
+_PORT = r"[0-9]{1,5}"
+_PATH = r"[a-zA-Z0-9\-._~%:@!$&'()*+,;=/]"
+_QUERY_FRAGMENT = r"[a-zA-Z0-9\-._~%:@!$&'()*+,;=/?]"
+
+# URL pattern: protocol://host[:port][/path][?query][#fragment]
+# Each component can contain its allowed characters or an environment variable
 URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
-    r"^https?://(?:[a-zA-Z0-9\-._~%]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)+"
-    r"(?::(?:[0-9]{1,5}|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?))?"
-    r"(?:/(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?"
-    r"(?:\?(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/?]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?"
-    r"(?:#(?:[a-zA-Z0-9\-._~%:@!$&'()*+,;=/?]|\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?)*)?$"
+    rf"^https?://(?:{_HOST}|{_ENV_VAR})+"
+    rf"(?::(?:{_PORT}|{_ENV_VAR}))?"
+    rf"(?:/(?:{_PATH}|{_ENV_VAR})*)?"
+    rf"(?:\?(?:{_QUERY_FRAGMENT}|{_ENV_VAR})*)?"
+    rf"(?:#(?:{_QUERY_FRAGMENT}|{_ENV_VAR})*)?$"
 )
 
 WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/latest/index.json"
