@@ -1,16 +1,19 @@
 # Posit Images Shared Tools
 
-Repository for common tooling and GitHub Actions to support defining and building Posit Container Images.
+> [!IMPORTANT]
+> These images are under active development and testing and are not yet supported by Posit.
+>
+> Please see [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products) for officially supported images.
 
 ## Code Repositories
 
 | Repository | Description |
 |:-----------|:------------|
-| [posit-dev/images](https://github.com/posit-dev/images) | Posit Container Image Meta Repository |
-| [posit-dev/images-connect](https://github.com/posit-dev/images-connect) | Posit Connect Container Images |
-| [posit-dev/images-package-manager](https://github.com/posit-dev/images-package-manager) | Posit Package Manager Container Images |
-| [posit-dev/images-workbench](https://github.com/posit-dev/images-workbench) | Posit Workbench Container Images |
-| [posit-dev/images-examples](https://github.com/posit-dev/images-examples) | Examples for using and extending Posit Container Images |
+| [images](https://github.com/posit-dev/images) | Posit Container Image Meta Repository |
+| `images-connect` | Posit Connect Container Images |
+| [images-package-manager](https://github.com/posit-dev/images-package-manager) | Posit Package Manager Container Images |
+| `images-workbench` | Posit Workbench Container Images |
+| [images-examples](https://github.com/posit-dev/images-examples) | Examples for using and extending Posit Container Images |
 
 ## Tools
 
@@ -28,6 +31,10 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 Bakery uses [goss](https://github.com/goss-org/goss) and [dgoss](https://github.com/goss-org/goss/tree/master/extras/dgoss) to define and execute tests that ensure that the container image was built properly.
 
 You can include the [setup-goss](./setup-goss) action in a [GitHub Actions Workflow](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) to automatically install the latest versions of `goss` and `dgoss` in the `tools` directory at the top level of the repository.
+
+## Share your Feedback
+
+We invite you to join us on [GitHub Discussions](https://github.com/posit-dev/images/discussions) to ask questions and share feedback.
 
 ## Issues
 
