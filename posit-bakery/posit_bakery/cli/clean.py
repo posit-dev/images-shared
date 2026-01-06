@@ -77,11 +77,14 @@ def cache_registry(
 
     log.info(f"Cleaning cache registries in {registry}")
 
-    config.clean_caches(
+    errors = config.clean_caches(
         remove_untagged=untagged,
         remove_older_than=timedelta(days=older_than) if older_than else None,
         dry_run=dry_run,
     )
+    if errors:
+        log.error(f"Completed with {len(errors)} errors encountered during cleanup.")
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -140,8 +143,11 @@ def temp_registry(
 
     log.info(f"Cleaning temporary registries in {registry}")
 
-    config.clean_temporary(
+    errors = config.clean_temporary(
         remove_untagged=untagged,
         remove_older_than=timedelta(days=older_than) if older_than else None,
         dry_run=dry_run,
     )
+    if errors:
+        log.error(f"Completed with {len(errors)} errors encountered during cleanup.")
+        raise typer.Exit(code=1)
