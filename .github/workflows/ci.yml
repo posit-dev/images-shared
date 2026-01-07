@@ -125,11 +125,15 @@ jobs:
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
-  clean-caches:
-    name: Clean Caches
+  clean:
+    name: Clean
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
+    needs:
+      - bakery
+      - bakery-native
 
     uses: "./.github/workflows/clean.yml"
     with:
