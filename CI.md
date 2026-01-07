@@ -83,8 +83,6 @@ jobs:
     uses: "posit-dev/images-shared/.github/workflows/bakery-build.yml@main"
     secrets:
       DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       dev-versions: "exclude"
       # Push images only for merges into main and weekly schduled re-builds.
@@ -104,9 +102,6 @@ jobs:
       packages: write
 
     uses: "posit-dev/images-shared/.github/workflows/bakery-build.yml@main"
-    secrets:
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       dev-versions: "only"
       # Push images only for merges into main and hourly schduled re-builds.
@@ -211,8 +206,6 @@ jobs:
     uses: "posit-dev/images-shared/.github/workflows/bakery-build-native.yml@main"
     secrets:
       DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       dev-versions: "exclude"
       # Push images only for merges into main and weekly schduled re-builds.
@@ -229,9 +222,6 @@ jobs:
       contents: read
       packages: write
     uses: "posit-dev/images-shared/.github/workflows/bakery-build-native.yml@main"
-    secrets:
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       dev-versions: "only"
       # Push images only for merges into main and hourly schduled re-builds.
