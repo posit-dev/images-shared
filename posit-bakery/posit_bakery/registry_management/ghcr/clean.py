@@ -30,7 +30,11 @@ def clean_temporary_artifacts(
 
     # Retrieve all package versions.
     client = GHCRClient(organization)
-    package_versions = client.get_package_versions(organization, package)
+    try:
+        package_versions = client.get_package_versions(organization, package)
+    except GithubException as e:
+        log.error(f"Failed to retrieve package versions for {ghcr_registry}: {e}")
+        return [e]
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
@@ -73,7 +77,11 @@ def clean_registry(
 
     # Retrieve all package versions.
     client = GHCRClient(organization)
-    package_versions = client.get_package_versions(organization, package)
+    try:
+        package_versions = client.get_package_versions(organization, package)
+    except GithubException as e:
+        log.error(f"Failed to retrieve package versions for {image_registry}: {e}")
+        return [e]
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
