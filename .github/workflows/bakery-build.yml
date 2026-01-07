@@ -45,13 +45,6 @@ on:
       AWS_ROLE:
         description: "AWS Role to assume [required if pushing to ECR]"
         required: false
-      # TODO: Remove secret requirements once repository is public
-      APP_ID:
-        description: "GitHub App ID with access to posit-dev repositories"
-        required: false
-      APP_PRIVATE_KEY:
-        description: "GitHub App private key with access to posit-dev repositories"
-        required: false
 
 defaults:
   run:
