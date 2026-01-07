@@ -319,6 +319,8 @@ jobs:
 
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: "docker"
 
       - name: Download Metadata
         uses: actions/download-artifact@v5
