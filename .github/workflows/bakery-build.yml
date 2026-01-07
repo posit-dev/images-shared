@@ -124,9 +124,6 @@ jobs:
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Setup docker buildx
-        uses: docker/setup-buildx-action@v3
-
       # Since secrets cannot be referenced in an `if` condition directly,
       # this step sets an output that we can reference later.
       - name: Filter Steps
@@ -169,6 +166,9 @@ jobs:
       - name: Login to Amazon ECR
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build
         env:
