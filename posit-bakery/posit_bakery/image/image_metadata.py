@@ -5,6 +5,34 @@ from typing import Annotated, Self
 from pydantic import ConfigDict, BaseModel, Field, model_validator
 
 
+class ImageToolsInspectionPlatformMetadata(BaseModel):
+    """Representation of platform metadata from image-tools."""
+
+    model_config = ConfigDict(extra="allow")
+
+    architecture: Annotated[str | None, Field(description="The architecture of the built image.", default=None)]
+    os: Annotated[str | None, Field(description="The operating system of the built image.", default=None)]
+
+
+class ImageToolsInspectionMetadata(BaseModel):
+    """Representation of image inspection metadata from image-tools."""
+
+    model_config = ConfigDict(extra="allow")
+
+    media_type: Annotated[
+        str | None, Field(description="The media type of the built image.", alias="mediaType", default=None)
+    ]
+    digest: Annotated[str | None, Field(description="The digest of the built image.", default=None)]
+    size: Annotated[int | None, Field(description="The size of the built image in bytes.", default=None)]
+    platform: Annotated[
+        ImageToolsInspectionPlatformMetadata | None, Field(description="The platform of the built image.", default=None)
+    ]
+    manifests: Annotated[
+        list["ImageToolsInspectionMetadata"],
+        Field(description="The manifests of the built image.", default_factory=list),
+    ]
+
+
 class BuildMetadataContainerImageDescriptorPlatform(BaseModel):
     """Representation of a container image platform in build metadata."""
 
