@@ -9,14 +9,14 @@ class RegistryContainer:
     _CONTAINER_PORT = 5000
 
     def __init__(self, image: str = "docker.io/registry:3", port: int | None = None, restart_policy: str = "always"):
-        log.debug(f"Starting registry container at port {port}...")
+        log.debug(f"Starting registry container...")
         self._container = python_on_whales.docker.run(
             image=image,
             publish=[(port, self._CONTAINER_PORT)] if port is not None else [(self._CONTAINER_PORT,)],
             restart=restart_policy,
             detach=True,
         )
-        log.debug("Started registry container.")
+        log.debug(f"Started registry container at {self.url}.")
 
     @property
     def url(self):

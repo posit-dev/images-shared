@@ -16,6 +16,7 @@ from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
@@ -390,8 +391,26 @@ class ImageTarget(BaseModel):
 
     def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
         """Merge multiple images into a single image, tag, and push."""
-        return python_on_whales.docker.buildx.imagetools.create(
-            sources=sources,
-            tags=self.tags,
-            dry_run=dry_run,
-        )
+        if dry_run:
+            return python_on_whales.docker.buildx.imagetools.create(
+                sources=sources,
+                tags=self.tags,
+                dry_run=dry_run,
+            )
+
+        with RegistryContainer() as registry:
+            temp_tag = f"{registry.url}/{self.uid}:latest"
+            log.debug(f"Merging sources to {temp_tag}...")
+            python_on_whales.docker.buildx.imagetools.create(
+                sources=sources,
+                tags=[temp_tag],
+                dry_run=dry_run,
+            )
+            log.debug("Pulling merged image...")
+            python_on_whales.docker.image.pull(temp_tag, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+            log.debug("Applying tags...")
+            for tag in self.tags:
+                python_on_whales.docker.image.tag(temp_tag, tag)
+            log.debug("Pushing image...")
+            python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+            return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
