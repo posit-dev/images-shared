@@ -26,13 +26,12 @@ def with_verbosity_flags(fn):
         if verbose and quiet:
             raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
 
-        log_level: str | int = logging.INFO
         if verbose:
-            log_level = logging.DEBUG
+            SETTINGS.log_level = logging.DEBUG
         elif quiet:
-            log_level = logging.ERROR
+            SETTINGS.log_level = logging.ERROR
 
-        init_logging(log_level)
+        init_logging(SETTINGS.log_level)
         return fn(*args, **kwargs)
 
     # Update signature with verbosity flags
