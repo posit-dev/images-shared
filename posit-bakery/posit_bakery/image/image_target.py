@@ -408,13 +408,24 @@ class ImageTarget(BaseModel):
                 tags=[temp_tag],
                 dry_run=dry_run,
             )
+
             manifest = inspect_image(temp_tag)
             index_ref = f"{temp_tag}@{manifest.digest}"
+            platforms = [str(m.platform) for m in manifest.manifests]
+
             log.debug("Pulling merged image...")
+            for platform in platforms:
+                python_on_whales.docker.image.pull(
+                    temp_tag,
+                    quiet=False if SETTINGS.log_level == logging.DEBUG else True,
+                    platform=platform,
+                )
             python_on_whales.docker.image.pull(index_ref, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+
             log.debug("Applying tags...")
             for tag in self.tags:
                 python_on_whales.docker.image.tag(index_ref, tag)
+
             log.info(f"Pushing image {self.uid}...")
             python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
 

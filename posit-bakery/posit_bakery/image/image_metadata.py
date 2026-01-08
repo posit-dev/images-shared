@@ -13,6 +13,16 @@ class ImageToolsInspectionPlatformMetadata(BaseModel):
     architecture: Annotated[str | None, Field(description="The architecture of the built image.", default=None)]
     os: Annotated[str | None, Field(description="The operating system of the built image.", default=None)]
 
+    def __str__(self):
+        """Returns a string representation of the platform."""
+        s = ""
+        if self.os:
+            s += self.os + "/"
+        if self.architecture:
+            s += self.architecture
+
+        return s
+
 
 class ImageToolsInspectionMetadata(BaseModel):
     """Representation of image inspection metadata from image-tools."""
