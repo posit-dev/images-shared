@@ -392,6 +392,7 @@ class ImageTarget(BaseModel):
 
     def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
         """Merge multiple images into a single image, tag, and push."""
+        # For dry-runs, `imagetools create` produces effectively the same result as the steps below.
         if dry_run:
             return python_on_whales.docker.buildx.imagetools.create(
                 sources=sources,
@@ -399,7 +400,12 @@ class ImageTarget(BaseModel):
                 dry_run=dry_run,
             )
 
+        # This insanity originates from `docker buildx imagetools create` not supporting Docker's own authentication.
+        # Attempting to run `docker buildx imagetools create` with source images from a private repository will always
+        # result in a 4XX or 5XX HTTP error for registries other than the source registry because all operations happen
+        # server-side through API requests. If a smarter way of doing this comes along, replace this nonsense.
         with RegistryContainer() as registry:
+            # Push the merged image to a temporary registry. This will allow us to pull and retag the image locally.
             temp_tag = f"{registry.url}/{self.uid}:latest"
             log.debug(f"Merging sources for {self.uid}...")
             log.debug(f"Pushing merged image to temporary tag '{temp_tag}'...")
@@ -409,10 +415,14 @@ class ImageTarget(BaseModel):
                 dry_run=dry_run,
             )
 
+            # Identify the image's index reference and the platform it targets.
             manifest = inspect_image(temp_tag)
             index_ref = f"{temp_tag}@{manifest.digest}"
             platforms = [str(m.platform) for m in manifest.manifests]
 
+            # Pull each platform-specific image and the index reference locally. Docker will automatically assume
+            # it should pull the platform matching the host architecture. No option currently exists to "pull all" so
+            # this must be done manually to ensure the final pushes are not partial.
             log.debug("Pulling merged image...")
             for platform in platforms:
                 python_on_whales.docker.image.pull(
@@ -422,11 +432,15 @@ class ImageTarget(BaseModel):
                 )
             python_on_whales.docker.image.pull(index_ref, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
 
+            # Tag the index reference appropriately with each target tag.
             log.debug("Applying tags...")
             for tag in self.tags:
                 python_on_whales.docker.image.tag(index_ref, tag)
 
+            # Push each tag to the target registries. Since every individual piece of the image has been pulled locally,
+            # Docker will push all the component manifests as well as the index.
             log.info(f"Pushing image {self.uid}...")
             python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
 
+        # Return the final manifest for the merged image as a sanity check.
         return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
