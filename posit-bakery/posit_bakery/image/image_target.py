@@ -16,6 +16,7 @@ from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.image.util import inspect_image
 from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
 
@@ -407,11 +408,13 @@ class ImageTarget(BaseModel):
                 tags=[temp_tag],
                 dry_run=dry_run,
             )
+            manifest = inspect_image(temp_tag)
+            index_ref = f"{temp_tag}@{manifest.digest}"
             log.debug("Pulling merged image...")
-            python_on_whales.docker.image.pull(temp_tag, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+            python_on_whales.docker.image.pull(index_ref, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
             log.debug("Applying tags...")
             for tag in self.tags:
-                python_on_whales.docker.image.tag(temp_tag, tag)
+                python_on_whales.docker.image.tag(index_ref, tag)
             log.info(f"Pushing image {self.uid}...")
             python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
 
