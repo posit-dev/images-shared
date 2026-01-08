@@ -400,7 +400,8 @@ class ImageTarget(BaseModel):
 
         with RegistryContainer() as registry:
             temp_tag = f"{registry.url}/{self.uid}:latest"
-            log.debug(f"Merging sources to {temp_tag}...")
+            log.debug(f"Merging sources for {self.uid}...")
+            log.debug(f"Pushing merged image to temporary tag '{temp_tag}'...")
             python_on_whales.docker.buildx.imagetools.create(
                 sources=sources,
                 tags=[temp_tag],
@@ -411,6 +412,7 @@ class ImageTarget(BaseModel):
             log.debug("Applying tags...")
             for tag in self.tags:
                 python_on_whales.docker.image.tag(temp_tag, tag)
-            log.debug("Pushing image...")
+            log.info(f"Pushing image {self.uid}...")
             python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
-            return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
+
+        return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
