@@ -1,4 +1,10 @@
+import pytest
+
 from posit_bakery.image import util
+
+pytestmark = [
+    pytest.mark.container,
+]
 
 
 def test_inspect_image():
