@@ -1,16 +1,39 @@
+import itertools
 import logging
 from pathlib import Path
-from typing import Annotated, Union, Self
+from typing import Annotated, Union, Self, Any
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config import Registry, BaseRegistry, ImageVersionOS
+from posit_bakery.config import Registry, BaseRegistry, ImageVersionOS, ImageVersion
 from posit_bakery.config.dependencies import DependencyVersionsField, DependencyConstraintField
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.config.templating import jinja2_env
 
 log = logging.getLogger(__name__)
+
+
+def generate_default_name_pattern(data: dict[str, Any]) -> str:
+    """Generates the default name pattern for image versions.
+
+    :return: The default name pattern string.
+    """
+    dependencies = data.get("dependencies", [])
+    values = data.get("values", {})
+
+    pattern = ""
+    for dependency in dependencies:
+        pattern += "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
+    for key in sorted(values.keys()):
+        pattern += "{{ " + f"Values.{key}" + " }}-"
+    pattern = pattern.rstrip("-")
+
+    if not pattern:
+        raise ValueError("If no dependencies or values are defined, a namePattern must be explicitly set.")
+
+    return pattern
 
 
 class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
@@ -19,11 +42,10 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     parent: Annotated[
         Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
     ]
-    namePattern: Annotated[str, Field(description="A pattern to use for image names.")]
     subpath: Annotated[
         str,
         Field(
-            default_factory=lambda data: data.get("name", "").replace(" ", "-").lower(),
+            default="matrix",
             min_length=1,
             description="Subpath under the image to use for the image version.",
         ),
@@ -68,13 +90,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     values: Annotated[
-        dict[str, str],
+        dict[str, str | list],
         Field(
             default_factory=dict,
             validate_default=True,
             description="Arbitrary key-value pairs used in template rendering.",
         ),
     ]
+    namePattern: Annotated[str, Field(description="A pattern to use for image names.")]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
@@ -248,6 +271,19 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(error_message.strip())
         return dependencies
 
+    @model_validator(mode="after")
+    def check_one_of_dependencies_or_values(self) -> Self:
+        """Ensures that at least one of dependencies or values is defined.
+
+        :raises ValueError: If neither dependencies nor values are defined.
+        """
+        if not self.dependencies and not self.values:
+            raise ValueError(
+                "At least one of 'dependencies' or 'values' must be defined for an image matrix. Perhaps use normal "
+                "image versions instead?"
+            )
+        return self
+
     @property
     def path(self) -> Path | None:
         """Returns the path to the image version directory.
@@ -280,3 +316,108 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 if platform not in platforms:
                     platforms.append(platform)
         return platforms
+
+    @staticmethod
+    def _flatten_dependencies(dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
+        """Flattens the dependency versions into a list of single-version DependencyVersionsField objects.
+
+        :param dependencies: List of DependencyVersionsField objects.
+
+        :return: A flattened list of DependencyVersionsField objects.
+        """
+        flattened = []
+        for dependency in dependencies:
+            for version in dependency.versions:
+                flattened.append(DependencyVersionsField(dependency=dependency.dependency, versions=[version]))
+        return flattened
+
+    @staticmethod
+    def _flatten_values(values: dict[str, Any]) -> list[dict[str, Any]]:
+        """Flattens the values into a dictionary of lists.
+
+        :param values: Dictionary of values.
+
+        :return: A flattened dictionary of values.
+        """
+        flattened = []
+        for key, value in values.items():
+            if isinstance(value, list):
+                flattened.extend([{key: v} for v in value])
+            else:
+                flattened.append({key: value})
+
+        return flattened
+
+    @staticmethod
+    def _cartesian_product(
+        dependencies: list[DependencyVersionsField], values: dict[str, Any]
+    ) -> list[dict[str, list | dict]]:
+        """Generates the cartesian product of dependency versions and values.
+
+        :param dependencies: List of DependencyVersionsField objects.
+        :param values: Dictionary of values.
+
+        :return: A tuple containing a list of dependency combinations and a dictionary of value combinations.
+        """
+        flattened_dependencies = ImageMatrix._flatten_dependencies(dependencies)
+        flattened_values = ImageMatrix._flatten_values(values)
+
+        products = itertools.product(*[flattened_dependencies, flattened_values])
+
+        grouped_products = []
+        for product in products:
+            grouped = {"dependencies": [], "values": {}}
+            for item in product:
+                if isinstance(item, DependencyVersionsField):
+                    grouped["dependencies"].append(item)
+                elif isinstance(item, dict):
+                    grouped["values"].update(item)
+            grouped_products.append((grouped["dependencies"], grouped["values"]))
+
+        return grouped_products
+
+    @staticmethod
+    def _render_name_pattern(
+        name_pattern: str, dependencies: list[DependencyVersionsField], values: dict[str, Any]
+    ) -> str:
+        """Renders the name pattern with the given dependencies and values.
+
+        :param name_pattern: The name pattern to render.
+        :param dependencies: List of DependencyVersionsField objects.
+        :param values: Dictionary of values.
+
+        :return: The rendered name string.
+        """
+        env = jinja2_env()
+        template = env.from_string(name_pattern)
+        rendered_name = template.render(
+            Dependencies={d.dependency: d.versions[0] for d in dependencies},
+            Values=values,
+        )
+        rendered_name = rendered_name.strip()
+        rendered_name = rendered_name.strip("-._")  # Ensure no leading or trailing separators.
+
+        return rendered_name
+
+    def to_image_versions(self) -> list[ImageVersion]:
+        """Generates ImageVersion objects for each combination of OS and dependency versions.
+
+        :return: A list of ImageVersion objects.
+        """
+        image_versions = []
+
+        products = self._cartesian_product(self.dependencies, self.values)
+        for product in products:
+            image_version = ImageVersion(
+                parent=self.parent,
+                name=self._render_name_pattern(self.namePattern, product["dependencies"], product["values"]),
+                subpath=self.subpath,
+                extraRegistries=self.extraRegistries,
+                overrideRegistries=self.overrideRegistries,
+                os=self.os,
+                dependencies=product["dependencies"],
+                values=product["values"],
+            )
+            image_versions.append(image_version)
+
+        return image_versions
