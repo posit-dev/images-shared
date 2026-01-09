@@ -196,8 +196,7 @@ def merge(
         log.info(f"Merging {len(sources)} sources for image UID '{uid}'")
         try:
             manifest = target.merge(sources=sources, dry_run=dry_run)
-            if dry_run:
-                stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+            stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
         except DockerException as e:
             log.error(f"Error merging sources for UID '{uid}'")
             log.error(str(e))
