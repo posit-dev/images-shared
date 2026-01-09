@@ -125,9 +125,8 @@ jobs:
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
-  clean:
-    name: Clean
-    if: github.ref == 'refs/heads/main'
+  with-macros-clean-caches:
+    name: Clean Caches (with-macros suite)
     permissions:
       contents: read
       packages: write
@@ -139,6 +138,23 @@ jobs:
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
+      remove-dangling-caches: true
+      remove-caches-older-than: 14
+      clean-temporary-images: false  # TODO: flip to true if this build starts using the native workflow
+
+  multiplatform-clean-caches:
+    name: Clean Caches (multiplatform suite)
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - bakery
+      - bakery-native
+
+    uses: "./.github/workflows/clean.yml"
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      context: "./posit-bakery/test/resources/multiplatform/"
       remove-dangling-caches: true
       remove-caches-older-than: 14
       remove-dangling-temporary-images: false
