@@ -145,6 +145,23 @@ class TestBakePlan:
         assert expected_plan.read_text().strip() == output
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_image_targets_with_cache_registry_push_cache(self, get_config_obj, suite):
+        """Test that bake plans include cache_to when push_cache=True."""
+        config_obj = get_config_obj(suite)
+
+        settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        for target in config_obj.targets:
+            target.settings = settings
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets, push_cache=True)
+
+        for bake_target in plan.target.values():
+            assert bake_target.cache_from is not None
+            assert bake_target.cache_to is not None
+            assert bake_target.cache_to[0]["ref"] == bake_target.cache_from[0]["ref"]
+            assert bake_target.cache_to[0]["mode"] == "max"
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_from_image_targets_with_temp_registry(self, get_expected_plan, get_config_obj, suite, resource_path):
         """Test that bake plans generate as expected with a temp registry."""
         expected_plan = get_expected_plan("temp_registry", suite)

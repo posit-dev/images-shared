@@ -171,7 +171,6 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
-        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/} \
           bakery build \
@@ -183,8 +182,9 @@ jobs:
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --temp-registry "ghcr.io/${{ github.repository_owner }}" \
             --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
-            --context ${{ inputs.context }} \
-            --push
+            ${{ inputs.push && '--push-cache' || '' }} \
+            --push \
+            --context ${{ inputs.context }}
       - name: Test
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/} \

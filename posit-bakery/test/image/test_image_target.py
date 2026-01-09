@@ -398,6 +398,10 @@ class TestImageTarget:
     def test_build_args_cache_registry(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
         basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        # Cache name includes platform suffix
+        platforms = basic_standard_image_target.image_os.platforms
+        platform_suffix = "-".join(p.removeprefix("linux/").replace("/", "-") for p in platforms)
+        cache_name_with_platform = f"{basic_standard_image_target.cache_name}-{platform_suffix}"
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
@@ -407,10 +411,10 @@ class TestImageTarget:
             "push": False,
             "output": {},
             "cache": True,
-            "cache_from": f"type=registry,ref={basic_standard_image_target.cache_name}",
-            "cache_to": f"type=registry,ref={basic_standard_image_target.cache_name},mode=max",
+            "cache_from": f"type=registry,ref={cache_name_with_platform}",
+            "cache_to": f"type=registry,ref={cache_name_with_platform},mode=max",
             "metadata_file": None,
-            "platforms": ["linux/amd64"],
+            "platforms": platforms,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:

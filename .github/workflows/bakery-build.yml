@@ -144,13 +144,13 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
-        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           bakery build --load \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
+            ${{ inputs.push && '--push-cache' || '' }} \
             --context ${{ inputs.context }}
 
       - name: Test

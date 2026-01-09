@@ -58,14 +58,7 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-min"
-        }
-      ],
-      "cache_to": [
-        {
-          "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-min",
-          "mode": "max"
+          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-min-amd64"
         }
       ]
     },
@@ -100,14 +93,7 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-min"
-        }
-      ],
-      "cache_to": [
-        {
-          "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-min",
-          "mode": "max"
+          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-min-amd64-arm64"
         }
       ]
     },
@@ -141,14 +127,7 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-std"
-        }
-      ],
-      "cache_to": [
-        {
-          "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-std",
-          "mode": "max"
+          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-22.04-std-amd64"
         }
       ]
     },
@@ -187,14 +166,7 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-std"
-        }
-      ],
-      "cache_to": [
-        {
-          "type": "registry",
-          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-std",
-          "mode": "max"
+          "ref": "ghcr.io/posit-dev/test-multi/cache:1.0.0-ubuntu-24.04-std-amd64-arm64"
         }
       ]
     }
