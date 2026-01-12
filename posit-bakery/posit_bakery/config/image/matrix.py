@@ -52,29 +52,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             description="Subpath under the image to use for the image version.",
         ),
     ]
-    extraRegistries: Annotated[
-        list[Registry | BaseRegistry],
-        Field(
-            default_factory=list,
-            description="List of additional registries to use for this image version with registries defined "
-            "globally or for the image.",
-        ),
-    ]
-    overrideRegistries: Annotated[
-        list[Registry | BaseRegistry],
-        Field(
-            default_factory=list,
-            description="List of registries to use in place of registries defined globally or for the image.",
-        ),
-    ]
-    os: Annotated[
-        list[ImageVersionOS],
-        Field(
-            default_factory=list,
-            validate_default=True,
-            description="List of supported ImageVersionOS objects for this image version.",
-        ),
-    ]
     dependencyConstraints: Annotated[
         list[DependencyConstraintField],
         Field(
@@ -99,7 +76,32 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             description="Arbitrary key-value pairs used in template rendering.",
         ),
     ]
-    namePattern: Annotated[str, Field(description="A pattern to use for image names.")]
+    namePattern: Annotated[
+        str, Field(description="A pattern to use for image names.", default_factory=generate_default_name_pattern)
+    ]
+    os: Annotated[
+        list[ImageVersionOS],
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="List of supported ImageVersionOS objects for this image version.",
+        ),
+    ]
+    extraRegistries: Annotated[
+        list[Registry | BaseRegistry],
+        Field(
+            default_factory=list,
+            description="List of additional registries to use for this image version with registries defined "
+            "globally or for the image.",
+        ),
+    ]
+    overrideRegistries: Annotated[
+        list[Registry | BaseRegistry],
+        Field(
+            default_factory=list,
+            description="List of registries to use in place of registries defined globally or for the image.",
+        ),
+    ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
@@ -117,8 +119,8 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for unique_registry in unique_registries:
             if registries.count(unique_registry) > 1:
                 log.warning(
-                    f"Duplicate registry defined in config for version '{info.data.get('name')}': "
-                    f"{unique_registry.base_url}"
+                    "Duplicate registry defined in config for image matrix with name pattern "
+                    f"'{info.data['namePattern']}': {unique_registry.base_url}"
                 )
         return sorted(list(unique_registries), key=lambda r: r.base_url)
 
@@ -133,11 +135,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         :return: The unmodified list of ImageVersionOS objects.
         """
         # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("name") and not os:
+        if info.data.get("namePattern") and not os:
             log.warning(
-                f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
-                f"complete tagging and labeling of images."
+                f"No OSes defined for image matrix with name pattern '{info.data['namePattern']}'. At least one OS "
+                "should be defined for complete tagging and labeling of images."
             )
+
         return os
 
     @field_validator("os", mode="after")
@@ -152,8 +155,11 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         unique_oses = set(os)
         for unique_os in unique_oses:
-            if info.data.get("name") and os.count(unique_os) > 1:
-                log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
+            if info.data.get("namePattern") and os.count(unique_os) > 1:
+                log.warning(
+                    "Duplicate OS defined in config for image matrix with name pattern "
+                    f"'{info.data['namePattern']}': {unique_os.name}"
+                )
 
         return sorted(list(unique_oses), key=lambda o: o.name)
 
@@ -170,10 +176,10 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
             # Skip warning if name already propagates an error.
-            if info.data.get("name") and not os[0].primary:
+            if info.data.get("namePattern") and not os[0].primary:
                 log.info(
-                    f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
-                    f"OS."
+                    "Only one OS, {os[0].name}, defined for image matrix with name pattern "
+                    f"{info.data['namePattern']}. Marking it as primary OS."
                 )
             os[0].primary = True
         return os
@@ -191,14 +197,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         :raises ValueError: If more than one OS is marked as primary.
         """
         primary_os_count = sum(1 for o in os if o.primary)
-        if primary_os_count > 1:
+        if info.data.get("namePattern") and primary_os_count > 1:
             raise ValueError(
-                f"Only one OS can be marked as primary for image version '{info.data['name']}'. "
-                f"Found {primary_os_count} OSes marked primary."
+                f"Only one OS can be marked as primary for image matrix with name pattern "
+                f"'{info.data['namePattern']}'. Found {primary_os_count} OSes marked primary."
             )
-        elif info.data.get("name") and primary_os_count == 0:
+        elif info.data.get("namePattern") and primary_os_count == 0:
             log.warning(
-                f"No OS marked as primary for image version '{info.data['name']}'. "
+                f"No OS marked as primary for image matrix with name pattern '{info.data['namePattern']}'. "
                 "At least one OS should be marked as primary for complete tagging and labeling of images."
             )
         return os
@@ -222,7 +228,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for dc in dependency_constraints:
             if dc.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency constraints found in image '{info.data['name']}':\n"
+                    error_message = f"Duplicate dependency constraints found in image matrix:\n"
                 error_message += f" - {dc.dependency}\n"
             seen_dependencies.add(dc.dependency)
         if error_message:
@@ -266,23 +272,40 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency or dependency constraints found in image matrix':\n"
+                    error_message = f"Duplicate dependency or dependency constraints found in image matrix:\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
+
         if error_message:
             raise ValueError(error_message.strip())
+
         return dependencies
 
-    @model_validator(mode="after")
-    def check_one_of_dependencies_or_values(self) -> Self:
+    @model_validator(mode="before")
+    @classmethod
+    def check_one_of_dependencies_or_values(cls, data) -> Self:
         """Ensures that at least one of dependencies or values is defined.
 
         :raises ValueError: If neither dependencies nor values are defined.
         """
-        if not self.dependencies and not self.values:
+        if not (data.get("dependencyConstraints") or data.get("dependencies")) and not data.get("values"):
             raise ValueError(
                 "At least one of 'dependencies' or 'values' must be defined for an image matrix. Perhaps use normal "
                 "image versions instead?"
+            )
+
+        return data
+
+    @model_validator(mode="after")
+    def extra_registries_or_override_registries(self) -> Self:
+        """Ensures that only one of extraRegistries or overrideRegistries is defined.
+
+        :raises ValueError: If both extraRegistries and overrideRegistries are defined.
+        """
+        if self.extraRegistries and self.overrideRegistries:
+            raise ValueError(
+                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name "
+                f"pattern '{self.namePattern}'."
             )
         return self
 
