@@ -233,7 +233,28 @@ class TestImageMatrix:
         matrix.subpath = "1.0"
         assert matrix.path == Path("/tmp/path/1.0")
 
-    def test_resolve_dependency_constraints_to_dependencies(self, patch_requests_get):
+    def test_supported_platforms(self):
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24", "1.25"]},
+            extraRegistries=[
+                {"host": "registry1.example.com", "namespace": "namespace1"},
+                {"host": "registry2.example.com", "namespace": "namespace2"},
+            ],
+            os=[
+                {"name": "Ubuntu 22.04", "platforms": ["linux/amd64"]},
+                {"name": "Ubuntu 24.04", "primary": True, "platforms": ["linux/amd64", "linux/arm64"]},
+            ],
+            dependencies=[
+                {"dependency": "R", "versions": ["4.5.1", "4.4.3"]},
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "quarto", "versions": ["1.8.24"]},
+            ],
+        )
+
+        assert matrix.supported_platforms == ["linux/amd64", "linux/arm64"]
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_resolve_dependency_constraints_to_dependencies(self):
         """Test that dependency constraints are correctly resolved to specific versions."""
         matrix = ImageMatrix(
             values={"go_version": ["1.24", "1.25"]},
