@@ -21,6 +21,8 @@ class ImageToolsInspectionPlatformMetadata(BaseModel):
         if self.architecture:
             s += self.architecture
 
+        s = s.rstrip("/")
+
         return s
 
 
