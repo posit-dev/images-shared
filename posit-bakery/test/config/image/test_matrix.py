@@ -267,3 +267,26 @@ class TestImageMatrix:
         quarto_dep = next(dep for dep in matrix.dependencies if dep.dependency == "quarto")
         assert isinstance(quarto_dep, QuartoDependencyVersions)
         assert quarto_dep.versions == ["1.7.34"]
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_duplicate_dependencies(self):
+        """Test that an error is raised if resolving dependency constraints results in duplicate dependencies."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependency or dependency constraints found in image matrix",
+        ):
+            ImageMatrix(
+                values={"go_version": ["1.24", "1.25"]},
+                dependencies=[
+                    {
+                        "dependency": "python",
+                        "versions": ["3.9.5"],
+                    },
+                ],
+                dependencyConstraints=[
+                    {
+                        "dependency": "python",
+                        "constraint": {"latest": True, "count": 2},
+                    },
+                ],
+            )
