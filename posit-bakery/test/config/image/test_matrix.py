@@ -232,3 +232,38 @@ class TestImageMatrix:
 
         matrix.subpath = "1.0"
         assert matrix.path == Path("/tmp/path/1.0")
+
+    def test_resolve_dependency_constraints_to_dependencies(self, patch_requests_get):
+        """Test that dependency constraints are correctly resolved to specific versions."""
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24", "1.25"]},
+            dependencyConstraints=[
+                {
+                    "dependency": "python",
+                    "constraint": {"latest": True, "count": 2},
+                },
+                {
+                    "dependency": "R",
+                    "constraint": {"max": "4.2", "count": 3},
+                },
+                {
+                    "dependency": "quarto",
+                    "constraint": {"latest": True},
+                    "prerelease": False,
+                },
+            ],
+        )
+
+        assert len(matrix.dependencies) == 3
+
+        python_dep = next(dep for dep in matrix.dependencies if dep.dependency == "python")
+        assert isinstance(python_dep, PythonDependencyVersions)
+        assert python_dep.versions == ["3.13.7", "3.12.11"]
+
+        r_dep = next(dep for dep in matrix.dependencies if dep.dependency == "R")
+        assert isinstance(r_dep, RDependencyVersions)
+        assert r_dep.versions == ["4.2.3", "4.1.3", "4.0.5"]
+
+        quarto_dep = next(dep for dep in matrix.dependencies if dep.dependency == "quarto")
+        assert isinstance(quarto_dep, QuartoDependencyVersions)
+        assert quarto_dep.versions == ["1.7.34"]
