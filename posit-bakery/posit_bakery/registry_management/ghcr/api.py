@@ -3,7 +3,7 @@ import math
 import os
 from urllib.parse import quote
 
-from github import Auth, Github
+from github import Auth, Github, GithubException
 
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions, GHCRPackageVersion
 
@@ -68,5 +68,11 @@ class GHCRClient:
         )
 
     def delete_package_versions(self, versions: GHCRPackageVersions):
+        errors = []
         for version in versions.versions:
-            self.delete_package_version(version)
+            try:
+                self.delete_package_version(version)
+            except GithubException as e:
+                logging.error(f"Failed to delete package version {version.html_url}: {e.message}")
+                errors.append((version.id, e.message))
+        return errors
