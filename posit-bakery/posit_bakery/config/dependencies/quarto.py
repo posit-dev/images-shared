@@ -4,11 +4,11 @@ from typing import Annotated, Literal, ClassVar
 from pydantic import ConfigDict, Field
 from ruamel.yaml import YAML
 
-from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL
-from .dependency import DependencyConstraint, DependencyVersions
-from .version import DependencyVersion
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
+from .const import QUARTO_DOWNLOAD_URL, QUARTO_PREVIOUS_VERSIONS_URL, QUARTO_PRERELEASE_URL, SupportedDependencies
+from .dependency import DependencyConstraint, DependencyVersions
+from .version import DependencyVersion
 
 
 class QuartoDependency(BakeryYAMLModel, abc.ABC):
@@ -18,7 +18,7 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
 
     model_config = ConfigDict(extra="forbid")
 
-    dependency: Literal["quarto"] = "quarto"
+    dependency: Literal[SupportedDependencies.QUARTO] = SupportedDependencies.QUARTO
 
     prerelease: Annotated[
         bool,

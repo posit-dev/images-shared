@@ -1,4 +1,6 @@
 # All available python versions from astral-sh/python-build-standalone
+from enum import Enum
+
 UV_PYTHON_DOWNLOADS_JSON_URL = (
     "https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json"
 )
@@ -14,3 +16,9 @@ QUARTO_PRERELEASE_URL = "https://quarto.org/docs/download/_prerelease.json"
 QUARTO_PREVIOUS_VERSIONS_URL = (
     "https://raw.githubusercontent.com/quarto-dev/quarto-web/refs/heads/main/docs/download/_download-older.yml"
 )
+
+
+class SupportedDependencies(str, Enum):
+    PYTHON = "python"
+    R = "R"
+    QUARTO = "quarto"

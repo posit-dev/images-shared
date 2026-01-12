@@ -6,7 +6,12 @@ from typing import Annotated, Union, Self, Any
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.dependencies import DependencyVersionsField, DependencyConstraintField
+from posit_bakery.config.dependencies import (
+    DependencyVersionsField,
+    DependencyConstraintField,
+    get_dependency_versions_class,
+    DependencyVersions,
+)
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -27,9 +32,9 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
 
     pattern = ""
     for dependency in dependencies:
-        pattern += "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
+        pattern += dependency.dependency.value + "{{ " + f"Dependencies.{dependency.dependency.value}" + " }}-"
     for key in sorted(values.keys()):
-        pattern += "{{ " + f"Values.{key}" + " }}-"
+        pattern += key + "{{ " + f"Values.{key}" + " }}-"
     pattern = pattern.rstrip("-")
 
     if not pattern:
@@ -343,65 +348,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return platforms
 
     @staticmethod
-    def _flatten_dependencies(dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
-        """Flattens the dependency versions into a list of single-version DependencyVersionsField objects.
-
-        :param dependencies: List of DependencyVersionsField objects.
-
-        :return: A flattened list of DependencyVersionsField objects.
-        """
-        flattened = []
-        for dependency in dependencies:
-            for version in dependency.versions:
-                flattened.append(DependencyVersionsField(dependency=dependency.dependency, versions=[version]))
-        return flattened
-
-    @staticmethod
-    def _flatten_values(values: dict[str, Any]) -> list[dict[str, Any]]:
-        """Flattens the values into a dictionary of lists.
-
-        :param values: Dictionary of values.
-
-        :return: A flattened dictionary of values.
-        """
-        flattened = []
-        for key, value in values.items():
-            if isinstance(value, list):
-                flattened.extend([{key: v} for v in value])
-            else:
-                flattened.append({key: value})
-
-        return flattened
-
-    @staticmethod
-    def _cartesian_product(
-        dependencies: list[DependencyVersionsField], values: dict[str, Any]
-    ) -> list[dict[str, list | dict]]:
-        """Generates the cartesian product of dependency versions and values.
-
-        :param dependencies: List of DependencyVersionsField objects.
-        :param values: Dictionary of values.
-
-        :return: A tuple containing a list of dependency combinations and a dictionary of value combinations.
-        """
-        flattened_dependencies = ImageMatrix._flatten_dependencies(dependencies)
-        flattened_values = ImageMatrix._flatten_values(values)
-
-        products = itertools.product(*[flattened_dependencies, flattened_values])
-
-        grouped_products = []
-        for product in products:
-            grouped = {"dependencies": [], "values": {}}
-            for item in product:
-                if isinstance(item, DependencyVersionsField):
-                    grouped["dependencies"].append(item)
-                elif isinstance(item, dict):
-                    grouped["values"].update(item)
-            grouped_products.append((grouped["dependencies"], grouped["values"]))
-
-        return grouped_products
-
-    @staticmethod
     def _render_name_pattern(
         name_pattern: str, dependencies: list[DependencyVersionsField], values: dict[str, Any]
     ) -> str:
@@ -423,6 +369,70 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         rendered_name = rendered_name.strip("-._")  # Ensure no leading or trailing separators.
 
         return rendered_name
+
+    @staticmethod
+    def _flatten_dependencies(dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
+        """Flattens the dependency versions into a list of single-version DependencyVersionsField objects.
+
+        :param dependencies: List of DependencyVersionsField objects.
+
+        :return: A flattened list of DependencyVersionsField objects.
+        """
+        flattened = []
+        for dependency in dependencies:
+            dependency_version_class = get_dependency_versions_class(dependency.dependency)
+            dependency_versions = []
+            for version in dependency.versions:
+                dependency_versions.append(
+                    dependency_version_class(dependency=dependency.dependency, versions=[version])
+                )
+            flattened.append(dependency_versions)
+        return flattened
+
+    @staticmethod
+    def _flatten_values(values: dict[str, Any]) -> list[dict[str, Any]]:
+        """Flattens the values into a dictionary of lists.
+
+        :param values: Dictionary of values.
+
+        :return: A flattened dictionary of values.
+        """
+        flattened = []
+        for key, value in values.items():
+            if isinstance(value, list):
+                flattened.append([{key: v} for v in value])
+            else:
+                flattened.append([{key: value}])
+
+        return flattened
+
+    @staticmethod
+    def _cartesian_product(
+        dependencies: list[DependencyVersionsField], values: dict[str, Any]
+    ) -> list[dict[str, list | dict]]:
+        """Generates the cartesian product of dependency versions and values.
+
+        :param dependencies: List of DependencyVersionsField objects.
+        :param values: Dictionary of values.
+
+        :return: A tuple containing a list of dependency combinations and a dictionary of value combinations.
+        """
+        flattened_dependencies = ImageMatrix._flatten_dependencies(dependencies)
+        flattened_values = ImageMatrix._flatten_values(values)
+
+        products = itertools.product(*flattened_dependencies, *flattened_values)
+
+        grouped_products = []
+        for product in products:
+            grouped = {"dependencies": [], "values": {}}
+            for item in product:
+                if isinstance(item, DependencyVersions):
+                    grouped["dependencies"].append(item)
+                elif isinstance(item, dict):
+                    grouped["values"].update(item)
+            grouped_products.append(grouped)
+
+        return grouped_products
 
     def to_image_versions(self) -> list[ImageVersion]:
         """Generates ImageVersion objects for each combination of OS and dependency versions.

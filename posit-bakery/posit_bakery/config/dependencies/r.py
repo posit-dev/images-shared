@@ -3,11 +3,11 @@ from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
 
-from .const import R_VERSIONS_URL
-from .dependency import DependencyVersions, DependencyConstraint
-from .version import DependencyVersion
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
+from .const import R_VERSIONS_URL, SupportedDependencies
+from .dependency import DependencyVersions, DependencyConstraint
+from .version import DependencyVersion
 
 
 class RDependency(BakeryYAMLModel, abc.ABC):
@@ -15,7 +15,7 @@ class RDependency(BakeryYAMLModel, abc.ABC):
 
     model_config = ConfigDict(extra="forbid")
 
-    dependency: Literal["R"] = "R"
+    dependency: Literal[SupportedDependencies.R] = SupportedDependencies.R
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available R versions from Posit.
