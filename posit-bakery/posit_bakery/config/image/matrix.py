@@ -6,11 +6,13 @@ from typing import Annotated, Union, Self, Any
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config import Registry, BaseRegistry, ImageVersionOS, ImageVersion
 from posit_bakery.config.dependencies import DependencyVersionsField, DependencyConstraintField
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
+from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
+from .version import ImageVersion
+from .version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
 
