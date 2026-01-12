@@ -1,3 +1,4 @@
+import logging
 import tempfile
 from pathlib import Path
 
@@ -11,6 +12,7 @@ class Settings:
         self.app_name = "bakery"
         self.application_storage: Path = Path(typer.get_app_dir(app_name=self.app_name)).resolve()
         self.temporary_storage: Path = Path(tempfile.gettempdir())
+        self.log_level: str | int = logging.INFO
 
 
 SETTINGS = Settings()
