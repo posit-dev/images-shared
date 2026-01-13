@@ -13,7 +13,7 @@ from .version import DependencyVersion
 class PythonDependency(BakeryYAMLModel, abc.ABC):
     """Python depencency definition for bakery configuration."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     dependency: Literal[SupportedDependencies.PYTHON] = SupportedDependencies.PYTHON
 

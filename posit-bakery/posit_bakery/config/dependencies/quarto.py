@@ -16,7 +16,7 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
 
     :param prerelease: Whether to include prerelease versions. (default: False)"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     dependency: Literal[SupportedDependencies.QUARTO] = SupportedDependencies.QUARTO
 
