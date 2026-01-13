@@ -100,9 +100,9 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         Field(default_factory=list, description="List of development versions for this image."),
     ]
     matrix: Annotated[
-        ImageMatrix,
+        ImageMatrix | None,
         Field(
-            default_factory=ImageMatrix,
+            default=None,
             validate_default=True,
             description="Matrix configuration for generating image versions.",
         ),
@@ -177,6 +177,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             seen_dependencies.add(dc.dependency)
         if error_message:
             raise ValueError(error_message.strip())
+
         return dependency_constraints
 
     @field_validator("versions", mode="after")
@@ -243,23 +244,22 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(error_message.strip())
         return variants
 
-    @field_validator("matrix", mode="after")
+    @model_validator(mode="before")
     @classmethod
-    def check_matrix_or_versions(cls, matrix: ImageMatrix, info: ValidationInfo) -> ImageMatrix:
+    def check_matrix_or_versions(cls, data) -> dict:
         """Ensures that only one of matrix or versions and devVersions are defined for the image.
 
-        :param matrix: The ImageMatrix object to check.
-        :param info: ValidationInfo containing the data being validated.
+        :param data: The data being validated.
 
-        :return: The unmodified ImageMatrix object.
+        :return: The unmodified data dictionary.
 
         :raises ValueError: If neither matrix nor versions are defined.
         """
-        if matrix and (info.data.get("versions") or info.data.get("devVersions")):
+        if data.get("matrix") and (data.get("versions") or data.get("devVersions")):
             raise ValueError(
-                f"Only one of 'matrix' or 'versions'/'devVersions' can be defined for image '{info.data['name']}'."
+                f"Only one of 'matrix' or 'versions'/'devVersions' can be defined for image '{data.get('name')}'."
             )
-        return matrix
+        return data
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
