@@ -1,5 +1,9 @@
 # All available python versions from astral-sh/python-build-standalone
-from enum import Enum
+import enum
+
+from ruamel.yaml import yaml_object, YAML
+
+yaml = YAML()
 
 UV_PYTHON_DOWNLOADS_JSON_URL = (
     "https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json"
@@ -18,7 +22,12 @@ QUARTO_PREVIOUS_VERSIONS_URL = (
 )
 
 
-class SupportedDependencies(str, Enum):
+@yaml_object(yaml)
+class SupportedDependencies(enum.StrEnum):
     PYTHON = "python"
     R = "R"
     QUARTO = "quarto"
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        return representer.represent_str(node.value)
