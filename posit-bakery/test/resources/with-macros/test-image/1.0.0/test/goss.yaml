@@ -11,7 +11,7 @@ package:
 file:
   python-3.13.7:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
-    path: /opt/python/cpython-3.13.7-linux-x86_64-gnu
+    path: /opt/python/3.13.7
   r-4.5.1:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
     path: /opt/R/4.5.1
