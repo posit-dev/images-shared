@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
+from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
@@ -482,3 +483,69 @@ class TestImageTarget:
             assert metadata_file.metadata.image_tags.sort() == target.tags.sort()
 
             remove_images(target)
+
+    def test_merge_dry_run(self, patch_imagetools_create, basic_standard_image_target):
+        """Test the merge method of an ImageTarget in dry-run mode."""
+        sources = ["image1:tag", "image2:tag"]
+        manifest = basic_standard_image_target.merge(sources=sources, dry_run=True)
+
+        patch_imagetools_create.assert_called_once_with(
+            sources=sources,
+            tags=basic_standard_image_target.tags,
+            dry_run=True,
+        )
+        assert isinstance(manifest, Manifest)
+
+    def test_merge(
+        self,
+        basic_standard_image_target,
+        patch_imagetools_create,
+        patch_imagetools_inspect,
+        patch_util_inspect_image,
+        patch_registry_container,
+        patch_docker_pull,
+        patch_docker_tag,
+        patch_docker_push,
+    ):
+        """Test the merge method of an ImageTarget."""
+        sources = ["image1:tag", "image2:tag"]
+        manifest = basic_standard_image_target.merge(sources=sources)
+
+        patch_registry_container.assert_called_once()
+        registry_url = patch_registry_container.return_value.__enter__.return_value.url
+
+        expected_temp_tag = f"{registry_url}/{basic_standard_image_target.uid}:latest"
+        patch_imagetools_create.assert_called_once_with(
+            sources=sources,
+            tags=[expected_temp_tag],
+            dry_run=False,
+        )
+
+        patch_util_inspect_image.assert_called_once_with(expected_temp_tag)
+        inspection_manifest = patch_util_inspect_image.return_value
+
+        for platform in ["linux/amd64", "linux/arm64"]:
+            patch_docker_pull.assert_any_call(
+                expected_temp_tag,
+                quiet=True,
+                platform=platform,
+            )
+        patch_docker_pull.assert_any_call(
+            f"{expected_temp_tag}@{inspection_manifest.digest}",
+            quiet=True,
+        )
+
+        for tag in basic_standard_image_target.tags:
+            patch_docker_tag.assert_any_call(
+                f"{expected_temp_tag}@{inspection_manifest.digest}",
+                tag,
+            )
+
+        patch_docker_push.assert_called_once_with(
+            basic_standard_image_target.tags,
+            quiet=True,
+        )
+
+        patch_imagetools_inspect.assert_called_once_with(basic_standard_image_target.tags[0])
+
+        assert isinstance(manifest, Manifest)

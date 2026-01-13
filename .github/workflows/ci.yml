@@ -26,6 +26,7 @@ jobs:
     needs:
       - test
       - bakery
+      - bakery-native
       - release
 
     steps:
@@ -107,9 +108,6 @@ jobs:
       packages: write
 
     uses: "./.github/workflows/bakery-build.yml"
-    secrets:
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
@@ -122,27 +120,41 @@ jobs:
       packages: write
 
     uses: "./.github/workflows/bakery-build-native.yml"
-    secrets:
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
-  clean-caches:
-    name: Clean Caches
+  with-macros-clean-caches:
+    name: Clean Caches (with-macros suite)
     permissions:
       contents: read
       packages: write
+    needs:
+      - bakery
+      - bakery-native
 
     uses: "./.github/workflows/clean.yml"
-    secrets:
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/with-macros/"
+      remove-dangling-caches: true
+      remove-caches-older-than: 14
+      clean-temporary-images: false  # TODO: flip to true if this build starts using the native workflow
+
+  multiplatform-clean-caches:
+    name: Clean Caches (multiplatform suite)
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - bakery
+      - bakery-native
+
+    uses: "./.github/workflows/clean.yml"
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      context: "./posit-bakery/test/resources/multiplatform/"
       remove-dangling-caches: true
       remove-caches-older-than: 14
       remove-dangling-temporary-images: false
@@ -151,7 +163,10 @@ jobs:
   release:
     name: Release/Snapshot
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request')
-    needs: [test, bakery]
+    needs:
+      - test
+      - bakery
+      - bakery-native
     runs-on: ubuntu-latest
 
     steps:

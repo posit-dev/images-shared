@@ -51,13 +51,6 @@ on:
       DOCKER_HUB_ACCESS_TOKEN:
         description: "Docker Hub Access Token [required if pushing]"
         required: false
-      # TODO: Remove secret requirements once repository is public
-      APP_ID:
-        description: "GitHub App ID with access to posit-dev repositories"
-        required: true
-      APP_PRIVATE_KEY:
-        description: "GitHub App private key with access to posit-dev repositories"
-        required: true
 
 defaults:
   run:
@@ -73,19 +66,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Token
-        uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: posit-dev
-          repositories: images-shared
-
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           version: ${{ inputs.version }}
 
@@ -115,19 +97,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Token
-        uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: posit-dev
-          repositories: images-shared
-
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           version: ${{ inputs.version }}
 
@@ -138,11 +109,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clean caches
+      - name: Clean temporary images
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
+          bakery clean temp-registry "ghcr.io/${{ github.repository_owner }}" \
             --context ${{ inputs.context }} \
             ${{ inputs.dry-run && '--dry-run' || '' }} \
             ${{ !inputs.remove-dangling-temporary-images && '--no-untagged' || '--untagged' }} \

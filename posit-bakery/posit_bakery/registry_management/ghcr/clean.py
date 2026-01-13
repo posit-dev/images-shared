@@ -2,6 +2,8 @@ import logging
 import re
 from datetime import timedelta
 
+from github import GithubException
+
 from posit_bakery.log import stdout_console
 from posit_bakery.registry_management.ghcr.api import GHCRClient
 from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions
@@ -15,7 +17,7 @@ def clean_temporary_artifacts(
     remove_untagged: bool = True,
     remove_older_than: timedelta | None = None,
     dry_run: bool = False,
-):
+) -> list[GithubException]:
     """Cleans up temporary caches and images that are not tagged or are older than a given timedelta."""
     # Check that the registry matches the expected pattern.
     match = REGISTRY_PATTERN.match(ghcr_registry)
@@ -28,7 +30,11 @@ def clean_temporary_artifacts(
 
     # Retrieve all package versions.
     client = GHCRClient(organization)
-    package_versions = client.get_package_versions(organization, package)
+    try:
+        package_versions = client.get_package_versions(organization, package)
+    except GithubException as e:
+        log.error(f"Failed to retrieve package versions for {ghcr_registry}: {e}")
+        return [e]
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
@@ -48,9 +54,11 @@ def clean_temporary_artifacts(
         if dry_run:
             stdout_console.print_json(versions_to_delete.model_dump_json(indent=2))
         else:
-            client.delete_package_versions(versions_to_delete)
+            return client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No artifacts to remove from {ghcr_registry}")
+
+    return []
 
 
 def clean_registry(
@@ -69,7 +77,11 @@ def clean_registry(
 
     # Retrieve all package versions.
     client = GHCRClient(organization)
-    package_versions = client.get_package_versions(organization, package)
+    try:
+        package_versions = client.get_package_versions(organization, package)
+    except GithubException as e:
+        log.error(f"Failed to retrieve package versions for {image_registry}: {e}")
+        return [e]
 
     # Filter package versions that should be deleted.
     versions_to_delete = []
@@ -90,6 +102,8 @@ def clean_registry(
         if dry_run:
             stdout_console.print_json(versions_to_delete.model_dump_json(indent=2))
         else:
-            client.delete_package_versions(versions_to_delete)
+            return client.delete_package_versions(versions_to_delete)
     else:
         log.info(f"No versions to remove from {image_registry}")
+
+    return []

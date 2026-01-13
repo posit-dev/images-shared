@@ -817,13 +817,18 @@ class BakeryConfig:
         """
         target_caches = list(set([target.cache_name.split(":")[0] for target in self.targets]))
 
+        errors = []
         for target_cache in target_caches:
-            ghcr.clean_temporary_artifacts(
-                ghcr_registry=target_cache,
-                remove_untagged=remove_untagged,
-                remove_older_than=remove_older_than,
-                dry_run=dry_run,
+            errors.extend(
+                ghcr.clean_temporary_artifacts(
+                    ghcr_registry=target_cache,
+                    remove_untagged=remove_untagged,
+                    remove_older_than=remove_older_than,
+                    dry_run=dry_run,
+                )
             )
+
+        return errors
 
     def clean_temporary(
         self,
@@ -839,10 +844,15 @@ class BakeryConfig:
         """
         target_caches = list(set([target.temp_name for target in self.targets]))
 
+        errors = []
         for target_cache in target_caches:
-            ghcr.clean_temporary_artifacts(
-                ghcr_registry=target_cache,
-                remove_untagged=remove_untagged,
-                remove_older_than=remove_older_than,
-                dry_run=dry_run,
+            errors.extend(
+                ghcr.clean_temporary_artifacts(
+                    ghcr_registry=target_cache,
+                    remove_untagged=remove_untagged,
+                    remove_older_than=remove_older_than,
+                    dry_run=dry_run,
+                )
             )
+
+        return errors
