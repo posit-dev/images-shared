@@ -1,5 +1,15 @@
 {# Macros for installing R and installing packages to R installations #}
 
+{# Declare a generic build argument for an R version #}
+{% macro declare_build_arg(name = "R_VERSION", default = "") -%}
+ARG {{ name }}{% if default %}={{ default }}{% endif %}
+{%- endmacro %}
+
+{# Reference the build argument for an R version #}
+{% macro build_arg(name = "R_VERSION") -%}
+${{ name }}
+{%- endmacro %}
+
 {# Returns the installation directory for a specific version of R #}
 {% macro get_version_directory(version) -%}
 /opt/R/{{ version | trim }}

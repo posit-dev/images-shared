@@ -1,5 +1,15 @@
 {# Macros for installing and managing Quarto #}
 
+{# Declare a generic build argument for a Quarto version #}
+{% macro declare_build_arg(name = "QUARTO_VERSION", default = "") -%}
+ARG {{ name }}{% if default %}={{ default }}{% endif %}
+{%- endmacro %}
+
+{# Reference the build argument for a Quarto version #}
+{% macro build_arg(name = "QUARTO_VERSION") -%}
+${{ name }}
+{%- endmacro %}
+
 {# The directory for an installed version of Quarto
 
 :param version: The Quarto version, e.g. "1.8.24"
