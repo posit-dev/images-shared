@@ -108,6 +108,21 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
 
+    @model_validator(mode="before")
+    @classmethod
+    def check_one_of_dependencies_or_values(cls, data) -> dict:
+        """Ensures that at least one of dependencies or values is defined.
+
+        :raises ValueError: If neither dependencies nor values are defined.
+        """
+        if not (data.get("dependencyConstraints") or data.get("dependencies")) and not data.get("values"):
+            raise ValueError(
+                "At least one of 'dependencies' or 'values' must be defined for an image matrix. Perhaps use normal "
+                "image versions instead?"
+            )
+
+        return data
+
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
     def deduplicate_registries(
@@ -285,21 +300,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(error_message.strip())
 
         return dependencies
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_one_of_dependencies_or_values(cls, data) -> dict:
-        """Ensures that at least one of dependencies or values is defined.
-
-        :raises ValueError: If neither dependencies nor values are defined.
-        """
-        if not (data.get("dependencyConstraints") or data.get("dependencies")) and not data.get("values"):
-            raise ValueError(
-                "At least one of 'dependencies' or 'values' must be defined for an image matrix. Perhaps use normal "
-                "image versions instead?"
-            )
-
-        return data
 
     @model_validator(mode="after")
     def extra_registries_or_override_registries(self) -> Self:
