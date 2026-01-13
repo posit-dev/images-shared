@@ -10,6 +10,15 @@ Feature: build
         Then The command succeeds
         * the bake plan is valid
 
+    Scenario: Generating a buildkit bake plan with push-cache flag
+        Given I call bakery build
+        * in a temp basic context
+        * with the arguments:
+            | --plan | --push-cache |
+        When I execute the command
+        Then The command succeeds
+        * the bake plan is valid
+
     Scenario: Generating a buildkit bake plan with git commit
         Given I call bakery build
         * in the basic context

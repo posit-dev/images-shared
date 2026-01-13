@@ -337,7 +337,12 @@ class ImageTarget(BaseModel):
         cache_from = None
         cache_to = None
         if self.cache_name is not None:
-            cache_from = f"type=registry,ref={self.cache_name}"
+            cache_name = self.cache_name
+            # Append platform suffix to cache name
+            build_platforms = platforms or self.image_os.platforms
+            platform_suffix = "-".join(p.removeprefix("linux/").replace("/", "-") for p in build_platforms)
+            cache_name = f"{cache_name}-{platform_suffix}"
+            cache_from = f"type=registry,ref={cache_name}"
             cache_to = f"{cache_from},mode=max"
 
         if isinstance(metadata_file, bool) and metadata_file:
