@@ -32,7 +32,7 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
 
     pattern = ""
     for dependency in dependencies:
-        pattern += dependency.dependency.value + "{{ " + f"Dependencies.{dependency.dependency.value}" + " }}-"
+        pattern += dependency.dependency + "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
     for key in sorted(values.keys()):
         pattern += key + "{{ " + f"Values.{key}" + " }}-"
     pattern = pattern.rstrip("-")
@@ -288,7 +288,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
     @model_validator(mode="before")
     @classmethod
-    def check_one_of_dependencies_or_values(cls, data) -> Self:
+    def check_one_of_dependencies_or_values(cls, data) -> dict:
         """Ensures that at least one of dependencies or values is defined.
 
         :raises ValueError: If neither dependencies nor values are defined.
