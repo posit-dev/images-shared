@@ -1007,6 +1007,81 @@ class TestDnfMacros:
 
 
 class TestPythonMacros:
+    def test_declare_build_arg_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.declare_build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG PYTHON_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.declare_build_arg(name="MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_with_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.declare_build_arg(default="3.13.7") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG PYTHON_VERSION=3.13.7
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $PYTHON_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.build_arg("MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_build_stage(self, environment_with_macros):
         template = textwrap.dedent(
             """\
@@ -1047,6 +1122,30 @@ class TestPythonMacros:
             RUN uv python install 3.12.11 3.11.9
             RUN mv /opt/python/cpython-3.12.11-linux-*/ /opt/python/3.12.11 && \\
                 mv /opt/python/cpython-3.11.9-linux-*/ /opt/python/3.11.9
+
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_stage_with_build_arg(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.build_stage(python.build_arg(), prerun=python.declare_build_arg()) }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
+            ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+            ENV UV_PYTHON_INSTALL_DIR=/opt/python
+            ENV UV_PYTHON_PREFERENCE=only-managed
+
+            ARG PYTHON_VERSION
+            RUN uv python install $PYTHON_VERSION
+            RUN mv /opt/python/cpython-$PYTHON_VERSION-linux-*/ /opt/python/$PYTHON_VERSION
 
             """
         )
@@ -1324,6 +1423,81 @@ class TestPythonMacros:
 
 
 class TestQuartoMacros:
+    def test_declare_build_arg_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.declare_build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG QUARTO_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.declare_build_arg(name="MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_with_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.declare_build_arg(default="1.8.26") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG QUARTO_VERSION=1.8.26
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $QUARTO_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.build_arg("MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_get_version_directory(self, environment_with_macros):
         template = textwrap.dedent(
             """\
@@ -1528,6 +1702,81 @@ class TestQuartoMacros:
 
 
 class TestRMacros:
+    def test_declare_build_arg_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.declare_build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG R_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.declare_build_arg(name="MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_declare_build_arg_with_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.declare_build_arg(default="4.4.0") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            ARG R_VERSION=4.4.0
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.build_arg() }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $R_VERSION
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_build_arg_alternate_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.build_arg("MY_VERSION_OVERRIDE") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            $MY_VERSION_OVERRIDE
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_get_version_directory(self, environment_with_macros):
         template = textwrap.dedent(
             """\

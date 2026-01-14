@@ -1,5 +1,17 @@
 {# Macros for installing Python and generating python or pip commands #}
 
+{%- set _BUILD_ARG_NAME = "PYTHON_VERSION" -%}
+
+{# Declare a generic build argument for a Python version #}
+{% macro declare_build_arg(name = _BUILD_ARG_NAME, default = "") -%}
+ARG {{ name }}{% if default %}={{ default }}{% endif %}
+{%- endmacro %}
+
+{# Reference the build argument for a Python version #}
+{% macro build_arg(name = _BUILD_ARG_NAME) -%}
+${{ name }}
+{%- endmacro %}
+
 {# Generates a RUN command to install one or more Python versions with uv
 
 :param versions: A list of Python versions to install, e.g. ["3.11", "3.12"].
@@ -28,7 +40,7 @@ RUN uv python install {{ versions | join(' ') }}
 
 :param versions: A list of Python versions to build, e.g. ["3.11", "3.12"].
 #}
-{% macro build_stage(versions) -%}
+{% macro build_stage(versions, prerun="") -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") | map('trim') | list -%}
 {%- endif -%}
@@ -37,6 +49,10 @@ FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 ENV UV_PYTHON_PREFERENCE=only-managed
+{%- if prerun %}
+
+{{ prerun | trim }}
+{%- endif %}
 {{ run_uv_python_install(versions) }}
 {{ run_normalize_uv_python_paths(versions) | indent(4) }}
 {%- endmacro %}
