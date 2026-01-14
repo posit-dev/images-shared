@@ -3,19 +3,19 @@ from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
 
-from .const import UV_PYTHON_DOWNLOADS_JSON_URL
-from .dependency import DependencyVersions, DependencyConstraint
-from .version import DependencyVersion
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
+from .const import UV_PYTHON_DOWNLOADS_JSON_URL, SupportedDependencies
+from .dependency import DependencyVersions, DependencyConstraint
+from .version import DependencyVersion
 
 
 class PythonDependency(BakeryYAMLModel, abc.ABC):
     """Python depencency definition for bakery configuration."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
-    dependency: Literal["python"] = "python"
+    dependency: Literal[SupportedDependencies.PYTHON] = SupportedDependencies.PYTHON
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available Python versions from astral-sh/python-build-standalone.

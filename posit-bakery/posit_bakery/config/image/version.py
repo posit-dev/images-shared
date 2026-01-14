@@ -6,8 +6,8 @@ from typing import Annotated, Union, Self
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.dependencies import DependencyVersionsField
+from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from .build_os import DEFAULT_PLATFORMS, TargetPlatform
