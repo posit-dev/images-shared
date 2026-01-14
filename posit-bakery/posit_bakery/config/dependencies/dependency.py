@@ -2,10 +2,10 @@ import abc
 import typing
 from typing import Annotated, ClassVar
 
-from pydantic import Field, field_validator, model_serializer, field_serializer, AliasChoices
+from pydantic import Field, field_validator, model_serializer, AliasChoices
 
-from .version import DependencyVersion, VersionConstraint
 from posit_bakery.config.shared import BakeryYAMLModel
+from .version import DependencyVersion, VersionConstraint
 
 
 class Dependency(BakeryYAMLModel, abc.ABC):

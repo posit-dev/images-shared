@@ -9,9 +9,6 @@ import jinja2
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from .dev_version import DevelopmentVersionField
-from .variant import ImageVariant
-from .version import ImageVersion
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -19,6 +16,10 @@ from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
 from posit_bakery.config.tools import ToolField, ToolOptions
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
+from .dev_version import DevelopmentVersionField
+from .matrix import ImageMatrix
+from .variant import ImageVariant
+from .version import ImageVersion
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +99,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         list[DevelopmentVersionField],
         Field(default_factory=list, description="List of development versions for this image."),
     ]
+    matrix: Annotated[
+        ImageMatrix | None,
+        Field(
+            default=None,
+            validate_default=True,
+            description="Matrix configuration for generating image versions.",
+        ),
+    ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
     @field_validator("documentationUrl", mode="before")
@@ -168,6 +177,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             seen_dependencies.add(dc.dependency)
         if error_message:
             raise ValueError(error_message.strip())
+
         return dependency_constraints
 
     @field_validator("versions", mode="after")
@@ -233,6 +243,23 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         if error_message:
             raise ValueError(error_message.strip())
         return variants
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_matrix_or_versions(cls, data) -> dict:
+        """Ensures that only one of matrix or versions and devVersions are defined for the image.
+
+        :param data: The data being validated.
+
+        :return: The unmodified data dictionary.
+
+        :raises ValueError: If neither matrix nor versions are defined.
+        """
+        if data.get("matrix") and (data.get("versions") or data.get("devVersions")):
+            raise ValueError(
+                f"Only one of 'matrix' or 'versions'/'devVersions' can be defined for image '{data.get('name')}'."
+            )
+        return data
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
