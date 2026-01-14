@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import Image, BakeryConfigDocument, BaseRegistry, Registry, ImageVersion, ImageVariant
+from posit_bakery.config import Image, BakeryConfigDocument, BaseRegistry, Registry, ImageVersion
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
@@ -282,130 +282,10 @@ class TestImage:
 
         assert i.get_variant("non-existent") is None
 
-    def test_generate_version_template_values(self, patch_requests_get):
-        """Test that generate_version_template_values returns the correct template values."""
-        expected_values = {
-            "Image": {
-                "Name": "my-image",
-                "DisplayName": "My Image",
-                "Version": "2.0.0",
-                "Variant": "Standard",
-                "IsDevelopmentVersion": False,
-                "OS": {
-                    "Name": "ubuntu",
-                    "Family": "debian",
-                    "Version": "22.04",
-                    "Codename": "jammy",
-                },
-            },
-            "Path": {
-                "Base": ".",
-                "Image": "my-image",
-                "Version": "my-image/2.0",
-            },
-            "Dependencies": {
-                "R": ["4.5.1", "4.4.3"],
-                "python": ["3.12.11", "3.11.13"],
-                "quarto": ["1.7.34"],
-            },
-        }
-
-        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_config_parent.path = Path("/tmp/path")
-        i = Image(
-            parent=mock_config_parent,
-            name="my-image",
-            versions=[{"name": "1.0.0"}],
-            dependencyConstraints=[
-                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
-                {"dependency": "python", "constraint": {"max": "3.12", "count": 2}},
-                {"dependency": "quarto", "constraint": {"latest": True}},
-            ],
-        )
-        variant = ImageVariant(name="Standard", extension="std", primary=True, parent=i)
-        new_version = ImageVersion(
-            parent=i,
-            name="2.0.0",
-            subpath="2.0",
-            os=[{"name": "Ubuntu 22.04", "primary": True}],
-            dependencies=i.resolve_dependency_versions(),
-        )
-        assert i.generate_version_template_values(new_version, variant, new_version.os[0]) == expected_values
-
-    def test_create_version_files(self, get_tmpcontext, common_image_variants_objects):
-        """Test that create_version_files creates the correct directory structure."""
-        context = get_tmpcontext("basic")
-        mock_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_parent.path = context
-        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
-
-        i = Image(
-            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
-        )
-        new_version = ImageVersion(
-            parent=i,
-            name="2.0.0",
-            subpath="2.0",
-            os=[{"name": "Ubuntu 22.04", "primary": True}],
-        )
-
-        Image.create_version_files(new_version, i.variants)
-
-        expected_path = context / "test-image" / "2.0"
-        assert expected_path.exists() and expected_path.is_dir()
-        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
-        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
-        assert (expected_path / "deps").is_dir()
-        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
-        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
-        assert (expected_path / "test").is_dir()
-        assert (expected_path / "test" / "goss.yaml").is_file()
-
-    def test_create_version_files_with_macros(self, get_tmpcontext, patch_requests_get):
-        """Test that create_version_files works with templates utilizing macros."""
-        context = get_tmpcontext("with-macros")
-        mock_parent = MagicMock(spec=BakeryConfigDocument)
-        mock_parent.path = context
-        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
-
-        i = Image(
-            name="test-image",
-            versions=[{"name": "1.0.0"}],
-            variants=[{"name": "Minimal", "extension": "min"}, {"name": "Standard", "extension": "std"}],
-            dependencyConstraints=[
-                {"dependency": "R", "constraint": {"latest": True}},
-                {"dependency": "python", "constraint": {"latest": True}},
-                {"dependency": "quarto", "constraint": {"latest": True}},
-            ],
-            parent=mock_parent,
-        )
-        new_version = ImageVersion(
-            parent=i,
-            name="2.0.0",
-            subpath="2.0",
-            os=[{"name": "Ubuntu 22.04", "primary": True}],
-            dependencies=i.resolve_dependency_versions(),
-        )
-
-        Image.create_version_files(
-            new_version,
-            i.variants,
-        )
-
-        expected_path = context / "test-image" / "2.0"
-        assert expected_path.exists() and expected_path.is_dir()
-        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
-        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
-        assert (expected_path / "deps").is_dir()
-        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
-        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
-        assert (expected_path / "test").is_dir()
-        assert (expected_path / "test" / "goss.yaml").is_file()
-
     def test_create_version_model(self):
         """Test that create_version creates a new version and adds it to the image."""
         i = Image(name="my-image")
-        new_version = i.create_version_model("1.0.0")
+        new_version = i.create_version("1.0.0")
 
         assert new_version.name == "1.0.0"
         assert len(i.versions) == 1
@@ -422,7 +302,7 @@ class TestImage:
                 {"dependency": "quarto", "constraint": {"latest": True}},
             ],
         )
-        new_version = i.create_version_model("1.0.0")
+        new_version = i.create_version("1.0.0")
 
         assert new_version.name == "1.0.0"
         assert len(i.versions) == 1
@@ -438,12 +318,12 @@ class TestImage:
         i = Image(name="my-image", versions=[{"name": "1.0.0"}])
 
         with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'my-image'."):
-            i.create_version_model("1.0.0")
+            i.create_version("1.0.0")
 
     def test_create_version_model_existing_version_update(self):
         """Test that create_version updates an existing version if it already exists."""
         i = Image(name="my-image", versions=[{"name": "1.0.0"}, {"name": "2.0.0", "latest": True}])
-        updated_version = i.create_version_model("1.0.0", subpath="updated-subpath", update_if_exists=True)
+        updated_version = i.create_version("1.0.0", subpath="updated-subpath", update_if_exists=True)
 
         assert updated_version.name == "1.0.0"
         assert updated_version.subpath == "updated-subpath"
@@ -731,7 +611,7 @@ class TestImage:
             parent=mock_parent,
         )
 
-        i.create_ephemeral_version_files()
+        i.render_ephemeral_version_files()
 
         expected_path = context / "test-image" / ".dev-2.0.0"
         assert expected_path.exists() and expected_path.is_dir()
@@ -764,7 +644,7 @@ class TestImage:
             parent=mock_parent,
         )
 
-        i.create_ephemeral_version_files()
+        i.render_ephemeral_version_files()
 
         expected_path = context / "test-image" / ".dev-2.0.0"
         assert expected_path.exists() and expected_path.is_dir()

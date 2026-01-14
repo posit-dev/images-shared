@@ -295,7 +295,7 @@ class BakeryConfig:
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
                 image.load_dev_versions()
-                image.create_ephemeral_version_files()
+                image.render_ephemeral_version_files()
                 if self.settings.clean_temporary:
                     atexit.register(image.remove_ephemeral_version_files)
 
@@ -461,6 +461,8 @@ class BakeryConfig:
         existing_version = image.get_version(version)
         if existing_version is not None and not force:
             raise ValueError(f"Version '{version}' already exists for image '{image_name}'. Use --force to overwrite.")
+        if image.matrix:
+            raise ValueError(f"Cannot create version '{version}' for image '{image_name}' because it defines a matrix.")
 
         version_path = self.base_path / image_name / (subpath or version)
         version_path_preexists = version_path.is_dir()
@@ -474,7 +476,7 @@ class BakeryConfig:
                 shutil.move(existing_version_path, version_path)
 
         # Create the version in the image model.
-        new_version = image.create_version_model(
+        new_version = image.create_version(
             version_name=version, subpath=subpath, values=values, latest=latest, update_if_exists=force
         )
 
@@ -499,7 +501,7 @@ class BakeryConfig:
 
         # Create the version directory and files.
         try:
-            image.create_version_files(new_version, image.variants)
+            new_version.render_files(image.variants)
         except (BakeryRenderError, BakeryRenderErrorGroup) as e:
             log.error(f"Failed to create version files for image '{image_name}' version '{version}'.")
             # If creating the version files fails and this is a new version, we remove the files that were created.
@@ -571,7 +573,7 @@ class BakeryConfig:
 
                 log.info(f"Rendering templates for image '{image.name}' version '{version.name}'")
                 try:
-                    image.create_version_files(version, image.variants, regex_filters=regex_filters)
+                    version.render_files(image.variants, regex_filters=regex_filters)
                 except (BakeryRenderError, BakeryRenderErrorGroup) as e:
                     log.error(f"Failed to regenerate files for image '{image.name}' version '{version.name}'.")
                     if isinstance(e, BakeryRenderErrorGroup):

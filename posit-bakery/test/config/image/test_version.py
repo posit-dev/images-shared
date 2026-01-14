@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry
+from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry, BakeryConfigDocument, ImageVariant
 
 pytestmark = [
     pytest.mark.unit,
@@ -303,3 +303,120 @@ class TestImageVersion:
         )
 
         assert i.supported_platforms == ["linux/amd64", "linux/arm64"]
+
+    def test_generate_version_template_values(self, patch_requests_get):
+        """Test that generate_version_template_values returns the correct template values."""
+        expected_values = {
+            "Image": {
+                "Name": "my-image",
+                "DisplayName": "My Image",
+                "Version": "2.0.0",
+                "Variant": "Standard",
+                "IsDevelopmentVersion": False,
+                "OS": {
+                    "Name": "ubuntu",
+                    "Family": "debian",
+                    "Version": "22.04",
+                    "Codename": "jammy",
+                },
+            },
+            "Path": {
+                "Base": ".",
+                "Image": "my-image",
+                "Version": "my-image/2.0",
+            },
+            "Dependencies": {
+                "R": ["4.5.1", "4.4.3"],
+                "python": ["3.12.11", "3.11.13"],
+                "quarto": ["1.7.34"],
+            },
+        }
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        i = Image(
+            parent=mock_config_parent,
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "python", "constraint": {"max": "3.12", "count": 2}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+        )
+        variant = ImageVariant(name="Standard", extension="std", primary=True, parent=i)
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            dependencies=i.resolve_dependency_versions(),
+        )
+        assert new_version.generate_template_values(variant, new_version.os[0]) == expected_values
+
+    def test_create_version_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that create_version_files creates the correct directory structure."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_create_version_files_with_macros(self, get_tmpcontext, patch_requests_get):
+        """Test that create_version_files works with templates utilizing macros."""
+        context = get_tmpcontext("with-macros")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image",
+            versions=[{"name": "1.0.0"}],
+            variants=[{"name": "Minimal", "extension": "min"}, {"name": "Standard", "extension": "std"}],
+            dependencyConstraints=[
+                {"dependency": "R", "constraint": {"latest": True}},
+                {"dependency": "python", "constraint": {"latest": True}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+            parent=mock_parent,
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            dependencies=i.resolve_dependency_versions(),
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "Containerfile.ubuntu2204.min").is_file()
+        assert (expected_path / "Containerfile.ubuntu2204.std").is_file()
+        assert (expected_path / "deps").is_dir()
+        assert (expected_path / "deps" / "ubuntu2204_packages.txt").is_file()
+        assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
+        assert (expected_path / "test").is_dir()
+        assert (expected_path / "test" / "goss.yaml").is_file()
