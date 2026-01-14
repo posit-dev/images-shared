@@ -77,7 +77,8 @@ class TestImageVersion:
         assert i.all_registries[0].namespace == "namespace1"
         assert "WARNING" in caplog.text
         assert (
-            "Duplicate registry defined in config for version '1.0.0': registry1.example.com/namespace1" in caplog.text
+            "Duplicate registry defined in config for image version '1.0.0': registry1.example.com/namespace1"
+            in caplog.text
         )
 
     def test_check_os_not_empty(self, caplog):

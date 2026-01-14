@@ -19,6 +19,7 @@ from posit_bakery.config.image import Image
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.config.validators import check_duplicates_or_raise, deduplicate_with_warning
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
@@ -66,11 +67,11 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
         :param registries: List of BaseRegistry objects to deduplicate.
         """
-        unique_registries = set(registries)
-        for unique_registry in unique_registries:
-            if registries.count(unique_registry) > 1:
-                log.warning(f"Duplicate registry defined in config: {unique_registry.base_url}")
-        return sorted(list(unique_registries), key=lambda r: r.base_url)
+        return deduplicate_with_warning(
+            registries,
+            key=lambda r: r.base_url,
+            warn_message_func=lambda r: f"Duplicate registry defined in config: {r.base_url}",
+        )
 
     @field_validator("images", mode="after")
     @classmethod
@@ -90,18 +91,17 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
         :param images: List of Image objects to check for duplicates.
         """
-        error_message = ""
-        seen_names = set()
-        for image in images:
-            if image.name in seen_names:
-                if not error_message:
-                    error_message = "Duplicate image names found in the bakery config:\n"
-                error_message += f" - {image.name}\n"
-            seen_names.add(image.name)
-        if error_message:
-            raise ValueError(error_message.strip())
 
-        return images
+        def error_message_func(dupes: list) -> str:
+            msg = "Duplicate image names found in the bakery config:\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
+
+        return check_duplicates_or_raise(
+            images,
+            key_func=lambda img: img.name,
+            error_message_func=error_message_func,
+        )
 
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:

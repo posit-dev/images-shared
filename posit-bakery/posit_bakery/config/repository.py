@@ -3,9 +3,10 @@ from functools import cached_property
 from typing import Annotated, Any
 
 import git
-from pydantic import HttpUrl, NameEmail, Field, field_validator, computed_field
+from pydantic import NameEmail, Field, field_validator, computed_field
 
-from posit_bakery.config.shared import BakeryYAMLModel
+from posit_bakery.config.shared import BakeryYAMLModel, HttpUrlWithDefaultScheme
+from posit_bakery.config.validators import deduplicate_with_warning
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class Repository(BakeryYAMLModel):
     parent: Annotated[
         BakeryYAMLModel, Field(default=None, exclude=True, description="Parent BakeryConfigDocument object.")
     ]
-    url: Annotated[HttpUrl, Field(description="URL for the repository. Used in labeling.")]
+    url: Annotated[HttpUrlWithDefaultScheme, Field(description="URL for the repository. Used in labeling.")]
     vendor: Annotated[str, Field(default="Posit Software, PBC", description="Vendor name for the repository.")]
     maintainer: Annotated[
         HashableNameEmail,
@@ -64,18 +65,6 @@ class Repository(BakeryYAMLModel):
         except Exception as e:
             log.debug(f"Unable to get git commit for labels: {e}")
         return sha
-
-    @field_validator("url", mode="before")
-    @classmethod
-    def default_https_url_scheme(cls, value: Any) -> Any:
-        """Prepend 'https://' to the URL if it does not already start with it.
-
-        :param value: The URL to validate and possibly modify.
-        """
-        if isinstance(value, str):
-            if not value.startswith("https://") and not value.startswith("http://"):
-                value = f"https://{value}"
-        return value
 
     @field_validator("authors", mode="before")
     @classmethod
@@ -128,14 +117,8 @@ class Repository(BakeryYAMLModel):
 
         :return: A list of unique authors.
         """
-        unique_authors = set(authors)
-        warning_message = ""
-        if len(unique_authors) != len(authors):
-            warning_message = "Duplicate authors found in bakery.yaml:\n"
-            for unique_author in unique_authors:
-                if authors.count(unique_author) > 1:
-                    warning_message += f" - {unique_author}\n"
-        if warning_message:
-            log.warning(warning_message.strip())
-
-        return sorted(list(unique_authors), key=lambda x: str(x).lower())
+        return deduplicate_with_warning(
+            authors,
+            key=lambda x: str(x).lower(),
+            warn_message_func=lambda a: f"Duplicate authors found in bakery.yaml: {a}",
+        )

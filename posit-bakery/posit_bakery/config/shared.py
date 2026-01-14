@@ -2,13 +2,24 @@ import abc
 import re
 from enum import Enum
 from pathlib import Path
+from typing import Annotated, Any
 
-from pydantic import Field
-from typing import Annotated
-
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl
 
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
+
+
+def normalize_https_url(value: Any) -> Any:
+    """Prepend 'https://' if no scheme present.
+
+    Allows users to specify URLs like 'example.com' without the scheme.
+    """
+    if isinstance(value, str) and "://" not in value:
+        return f"https://{value}"
+    return value
+
+
+HttpUrlWithDefaultScheme = Annotated[HttpUrl, BeforeValidator(normalize_https_url)]
 
 # Shared field configuration for file extensions.
 ExtensionField = Annotated[
