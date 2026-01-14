@@ -1,12 +1,14 @@
 {# Macros for installing and managing Quarto #}
 
+{%- set _BUILD_ARG_NAME = "QUARTO_VERSION" -%}
+
 {# Declare a generic build argument for a Quarto version #}
-{% macro declare_build_arg(name = "QUARTO_VERSION", default = "") -%}
+{% macro declare_build_arg(name = _BUILD_ARG_NAME, default = "") -%}
 ARG {{ name }}{% if default %}={{ default }}{% endif %}
 {%- endmacro %}
 
 {# Reference the build argument for a Quarto version #}
-{% macro build_arg(name = "QUARTO_VERSION") -%}
+{% macro build_arg(name = _BUILD_ARG_NAME) -%}
 ${{ name }}
 {%- endmacro %}
 
