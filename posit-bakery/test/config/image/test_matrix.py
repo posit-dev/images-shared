@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from posit_bakery.config import Image
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions, QuartoDependencyVersions
-from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix
+from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
 
 
 @pytest.mark.parametrize(
@@ -114,7 +114,7 @@ class TestImageMatrix:
             },
         )
         assert matrix.namePattern == "python{{ Dependencies.python }}-go_version{{ Values.go_version }}"
-        assert matrix.subpath == "matrix"
+        assert matrix.subpath == DEFAULT_MATRIX_SUBPATH
         assert len(matrix.dependencies) == 1
         assert matrix.dependencies[0].dependency == "python"
         assert matrix.dependencies[0].versions == ["3.8", "3.9"]

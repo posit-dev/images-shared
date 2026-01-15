@@ -25,6 +25,8 @@ from ...error import BakeryFileError, BakeryRenderError, BakeryTemplateError, Ba
 
 log = logging.getLogger(__name__)
 
+DEFAULT_MATRIX_SUBPATH: Literal["matrix"] = "matrix"
+
 
 def generate_default_name_pattern(data: dict[str, Any]) -> str:
     """Generates the default name pattern for image versions.
@@ -56,7 +58,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     subpath: Annotated[
         str,
         Field(
-            default="matrix",
+            default=DEFAULT_MATRIX_SUBPATH,
             min_length=1,
             description="Subpath under the image to use for the image version.",
         ),
@@ -439,7 +441,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                             cause=e,
                             context=self.parent.parent.path,
                             image=self.parent.name,
-                            version="matrix",
+                            version=DEFAULT_MATRIX_SUBPATH,
                             template=Path(tpl_full_path),
                         )
                     )
@@ -477,7 +479,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                                     cause=e,
                                     context=self.parent.parent.path,
                                     image=self.parent.name,
-                                    version="matrix",
+                                    version=DEFAULT_MATRIX_SUBPATH,
                                     variant=variant.name,
                                     template=Path(tpl_full_path),
                                     destination=Path(containerfile),
@@ -505,7 +507,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                                 cause=e,
                                 context=self.parent.parent.path,
                                 image=self.parent.name,
-                                version="matrix",
+                                version=DEFAULT_MATRIX_SUBPATH,
                                 template=Path(tpl_rel_path),
                                 destination=output_file,
                             )
