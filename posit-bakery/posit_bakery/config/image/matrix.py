@@ -1,7 +1,6 @@
 import itertools
 import logging
-from pathlib import Path
-from typing import Annotated, Union, Self, Any
+from typing import Annotated, Any, Union
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -12,7 +11,7 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
     DependencyVersions,
 )
-from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
+from posit_bakery.config.mixins import OSParentageMixin, SubpathMixin, SupportedPlatformsMixin
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
@@ -48,8 +47,34 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
     return pattern
 
 
-class ImageMatrix(OSValidationMixin, RegistryValidationMixin, BakeryPathMixin, BakeryYAMLModel):
-    """Model representing a matrix of a image value combinations to build."""
+class ImageMatrix(
+    OSValidationMixin,
+    RegistryValidationMixin,
+    SubpathMixin,
+    SupportedPlatformsMixin,
+    OSParentageMixin,
+    BakeryPathMixin,
+    BakeryYAMLModel,
+):
+    """Factory for generating ImageVersion objects from a cartesian product of values.
+
+    ImageMatrix is a pure factory that generates multiple ImageVersion objects
+    by computing the cartesian product of dependency versions and custom values.
+    The core method is `to_image_versions()` which produces the ImageVersion list.
+
+    Matrix-specific fields (for cartesian product generation):
+        - namePattern: Template for generating version names
+        - values: Custom key-value pairs to expand
+        - dependencies: Pinned dependency versions to expand
+        - dependencyConstraints: Constraints that resolve to dependency versions
+
+    Template fields (passed through to generated ImageVersions):
+        - parent, subpath, os, extraRegistries, overrideRegistries
+
+    Example:
+        A matrix with dependencies=[python: [3.11, 3.12]] and values={variant: [full, min]}
+        generates 4 ImageVersions: python3.11-full, python3.11-min, python3.12-full, python3.12-min
+    """
 
     parent: Annotated[
         Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
@@ -114,9 +139,11 @@ class ImageMatrix(OSValidationMixin, RegistryValidationMixin, BakeryPathMixin, B
     ]
 
     @classmethod
-    def _get_os_context(cls, info: ValidationInfo) -> str:
+    def _get_os_context(cls, info: ValidationInfo | None) -> str | None:
         """Return context string for messages using namePattern."""
-        return info.data.get("namePattern") or "unknown"
+        if info is None:
+            return None
+        return info.data.get("namePattern") or None
 
     @classmethod
     def _get_os_context_type(cls) -> str:
@@ -212,39 +239,6 @@ class ImageMatrix(OSValidationMixin, RegistryValidationMixin, BakeryPathMixin, B
             key_func=lambda d: d.dependency,
             error_message_func=error_message_func,
         )
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
-
-    @model_validator(mode="after")
-    def resolve_parentage(self) -> Self:
-        """Sets the parent for all OSes in this image version."""
-        for version_os in self.os:
-            version_os.parent = self
-        return self
-
-    @property
-    def supported_platforms(self) -> list[TargetPlatform]:
-        """Returns a list of supported target platforms for this image version.
-        :return: A list of TargetPlatform objects supported by this image version.
-        """
-        if not self.os:
-            return DEFAULT_PLATFORMS
-
-        platforms = []
-
-        for version_os in self.os:
-            for platform in version_os.platforms:
-                if platform not in platforms:
-                    platforms.append(platform)
-        return platforms
 
     @staticmethod
     def _render_name_pattern(

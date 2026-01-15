@@ -1,12 +1,16 @@
 import logging
-from copy import deepcopy
-from pathlib import Path
-from typing import Annotated, Union, Self
+from typing import Annotated, Union
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import DependencyVersionsField
+from posit_bakery.config.mixins import (
+    AllRegistriesMixin,
+    OSParentageMixin,
+    SubpathMixin,
+    SupportedPlatformsMixin,
+)
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -15,13 +19,21 @@ from posit_bakery.config.validators import (
     RegistryValidationMixin,
     check_duplicates_or_raise,
 )
-from .build_os import DEFAULT_PLATFORMS, TargetPlatform
 from .version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
 
 
-class ImageVersion(OSValidationMixin, RegistryValidationMixin, BakeryPathMixin, BakeryYAMLModel):
+class ImageVersion(
+    OSValidationMixin,
+    RegistryValidationMixin,
+    SubpathMixin,
+    SupportedPlatformsMixin,
+    AllRegistriesMixin,
+    OSParentageMixin,
+    BakeryPathMixin,
+    BakeryYAMLModel,
+):
     """Model representing a version of an image."""
 
     parent: Annotated[
@@ -126,56 +138,3 @@ class ImageVersion(OSValidationMixin, RegistryValidationMixin, BakeryPathMixin, 
             key_func=lambda d: d.dependency,
             error_message_func=error_message_func,
         )
-
-    @model_validator(mode="after")
-    def resolve_parentage(self) -> Self:
-        """Sets the parent for all OSes in this image version."""
-        for version_os in self.os:
-            version_os.parent = self
-        return self
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
-
-    @property
-    def all_registries(self) -> list[Registry | BaseRegistry]:
-        """Returns the merged registries for this image version.
-
-        :return: A list of registries that includes the overrideRegistiries or the version's extraRegistries and any
-            registries from the parent image.
-        """
-        # If overrideRegistries are set, return those directly.
-        if self.overrideRegistries:
-            return deepcopy(self.overrideRegistries)
-
-        # Otherwise, merge the registries from the image version and its parent.
-        all_registries = deepcopy(self.extraRegistries)
-        if self.parent is not None:
-            for registry in self.parent.all_registries:
-                if registry not in all_registries:
-                    all_registries.append(registry)
-
-        return all_registries
-
-    @property
-    def supported_platforms(self) -> list[TargetPlatform]:
-        """Returns a list of supported target platforms for this image version.
-        :return: A list of TargetPlatform objects supported by this image version.
-        """
-        if not self.os:
-            return DEFAULT_PLATFORMS
-
-        platforms = []
-
-        for version_os in self.os:
-            for platform in version_os.platforms:
-                if platform not in platforms:
-                    platforms.append(platform)
-        return platforms
