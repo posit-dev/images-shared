@@ -304,8 +304,8 @@ class TestImageVersion:
 
         assert i.supported_platforms == ["linux/amd64", "linux/arm64"]
 
-    def test_generate_version_template_values(self, patch_requests_get):
-        """Test that generate_version_template_values returns the correct template values."""
+    def test_generate_template_values(self, patch_requests_get):
+        """Test that generate_template_values returns the correct template values."""
         expected_values = {
             "Image": {
                 "Name": "my-image",
@@ -354,8 +354,8 @@ class TestImageVersion:
         )
         assert new_version.generate_template_values(variant, new_version.os[0]) == expected_values
 
-    def test_create_version_files(self, get_tmpcontext, common_image_variants_objects):
-        """Test that create_version_files creates the correct directory structure."""
+    def test_render_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files creates the correct directory structure."""
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
@@ -383,8 +383,8 @@ class TestImageVersion:
         assert (expected_path / "test").is_dir()
         assert (expected_path / "test" / "goss.yaml").is_file()
 
-    def test_create_version_files_with_macros(self, get_tmpcontext, patch_requests_get):
-        """Test that create_version_files works with templates utilizing macros."""
+    def test_render_files_with_macros(self, get_tmpcontext, patch_requests_get):
+        """Test that render_files works with templates utilizing macros."""
         context = get_tmpcontext("with-macros")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context

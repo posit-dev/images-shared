@@ -590,8 +590,8 @@ class TestImage:
         assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
         assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
 
-    def test_create_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
-        """Test that create_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
+    def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
         context = get_tmpcontext("basic")
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
