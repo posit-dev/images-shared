@@ -7,7 +7,7 @@ from typing import Annotated, Union, Any, Self
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions, DependencyConstraint
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
@@ -268,6 +268,20 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             dev_version.parent = self
         return self
 
+    @model_validator(mode="after")
+    def check_dependency_constraints_with_matrix(self) -> Self:
+        """Checks if dependencyConstraints and matrix are both defined.
+
+        Warns if dependencyConstraints will be ineffectual as they must be defined at matrix-level.
+        """
+        if self.matrix is not None and self.dependencyConstraints:
+            log.warning(
+                f"Image '{self.name}' defines both 'dependencyConstraints' and a 'matrix'. "
+                f"Image-level 'dependencyConstraints' will be ignored; define them at the matrix-level instead."
+            )
+
+        return self
+
     @field_serializer("documentationUrl")
     def serialize_documentation_url(self, value: HttpUrl | None) -> str | None:
         """Serializes the documentation URL to a string."""
@@ -428,6 +442,70 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 image_version.values = values
 
         return image_version
+
+    def create_matrix(
+        self,
+        name_pattern: str | None = None,
+        subpath: str | None = None,
+        dependency_constraints: list[DependencyConstraint] | None = None,
+        dependencies: list[DependencyVersions] | None = None,
+        values: dict[str, str] | None = None,
+        update_if_exists: bool = False,
+    ) -> ImageMatrix:
+        """Creates a new image version and adds it to the image.
+
+        :param name_pattern: The name pattern for the new image version. If None, defaults to the version name with
+            spaces replaced by hyphens and lowercase.
+        :param subpath: Optional subpath for the new version. If None, defaults to the version name with spaces replaced
+            by hyphens and lowercase.
+        :param dependency_constraints: Optional list of DependencyConstraint objects to use for resolving
+            dependencies for the new version.
+        :param dependencies: Optional list of DependencyVersions objects to use for the new version.
+        :param values: Optional dictionary of additional key-value pairs to include in the template values.
+        :param update_if_exists: If True, updates the existing version if it already exists, otherwise raises an error
+            if the version exists.
+
+        :return: The created or updated ImageVersion object.
+        """
+        # If versions or devVersions are defined, raise an error.
+        if self.versions or self.devVersions:
+            raise ValueError(
+                f"Cannot create matrix version for image '{self.name}' because versions or devVersions are already "
+                f"defined."
+            )
+        # If matrix exists and update_if_exists is False, raise an error.
+        if self.matrix is not None and not update_if_exists:
+            raise ValueError(f"Matrix already defined for image '{self.name}'.")
+
+        # Logic for creating a new version.
+        if self.matrix is None:
+            args = {
+                "parent": self,
+                "dependencyConstraints": dependency_constraints or [],
+                "dependencies": dependencies or [],
+                "values": values or {},
+            }
+            if name_pattern is not None:
+                args["namePattern"] = name_pattern
+            if subpath is not None:
+                args["subpath"] = subpath
+
+            self.matrix = ImageMatrix(**args)
+
+        # Logic for updating an existing version.
+        else:
+            if name_pattern is not None:
+                self.matrix.namePattern = name_pattern
+            if subpath is not None:
+                self.matrix.subpath = subpath
+            if dependency_constraints is not None:
+                self.matrix.dependencyConstraints = dependency_constraints
+            if dependencies is not None:
+                self.matrix.dependencies = dependencies
+            if values is not None:
+                self.matrix.values = values
+
+        return self.matrix
 
     def patch_version(
         self,
