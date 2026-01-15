@@ -61,8 +61,10 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
                 "dependencyConstraints": [
                     PythonDependencyConstraint(
                         dependency="python",
-                        latest=True,
-                        count=3,
+                        constraint={
+                            "latest": True,
+                            "count": 3,
+                        },
                     ),
                 ],
             },
@@ -74,15 +76,19 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
                 "dependencyConstraints": [
                     PythonDependencyConstraint(
                         dependency="python",
-                        latest=True,
-                        count=3,
+                        constraint={
+                            "latest": True,
+                            "count": 3,
+                        },
                     ),
                     RDependencyConstraint(
                         dependency="R",
-                        latest=True,
-                        count=2,
+                        constraint={
+                            "latest": True,
+                            "count": 2,
+                        },
                     ),
-                    QuartoDependencyConstraint(dependency="quarto", latest=True),
+                    QuartoDependencyConstraint(dependency="quarto", constraint={"latest": True}),
                 ],
             },
             "python{{ Dependencies.python }}-R{{ Dependencies.R }}-quarto{{ Dependencies.quarto }}",
@@ -134,7 +140,9 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
                 "dependencyConstraints": [
                     QuartoDependencyConstraint(
                         dependency="quarto",
-                        latest=True,
+                        constraint={
+                            "latest": True,
+                        },
                     ),
                 ],
                 "values": {"go_version": ["1.24", "1.25"]},
@@ -260,7 +268,7 @@ class TestImageMatrix:
         """Test an error is raised if duplicate dependencies are defined."""
         with pytest.raises(
             ValidationError,
-            match="Duplicate dependency or dependency constraints found in image matrix",
+            match="Duplicate dependency definition found in image matrix",
         ):
             ImageMatrix(
                 values={"go_version": ["1.24", "1.25"]},
@@ -356,7 +364,8 @@ class TestImageMatrix:
         """Test that an error is raised if resolving dependency constraints results in duplicate dependencies."""
         with pytest.raises(
             ValidationError,
-            match="Duplicate dependency or dependency constraints found in image matrix",
+            match="The following dependencies are defined in both 'dependencies' and 'dependencyConstraints' for image "
+            "matrix with name pattern",
         ):
             ImageMatrix(
                 values={"go_version": ["1.24", "1.25"]},
