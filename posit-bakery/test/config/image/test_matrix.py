@@ -5,7 +5,14 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config import Image
-from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions, QuartoDependencyVersions
+from posit_bakery.config.dependencies import (
+    PythonDependencyVersions,
+    RDependencyVersions,
+    QuartoDependencyVersions,
+    PythonDependencyConstraint,
+    RDependencyConstraint,
+    QuartoDependencyConstraint,
+)
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
 
 
@@ -51,6 +58,38 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
         ),
         pytest.param(
             {
+                "dependencyConstraints": [
+                    PythonDependencyConstraint(
+                        dependency="python",
+                        latest=True,
+                        count=3,
+                    ),
+                ],
+            },
+            "python{{ Dependencies.python }}",
+            id="single-dependency-constraint",
+        ),
+        pytest.param(
+            {
+                "dependencyConstraints": [
+                    PythonDependencyConstraint(
+                        dependency="python",
+                        latest=True,
+                        count=3,
+                    ),
+                    RDependencyConstraint(
+                        dependency="R",
+                        latest=True,
+                        count=2,
+                    ),
+                    QuartoDependencyConstraint(dependency="quarto", latest=True),
+                ],
+            },
+            "python{{ Dependencies.python }}-R{{ Dependencies.R }}-quarto{{ Dependencies.quarto }}",
+            id="mutliple-dependency-constraints",
+        ),
+        pytest.param(
+            {
                 "values": {"go_version": ["1.24", "1.25"]},
             },
             "go_version{{ Values.go_version }}",
@@ -79,6 +118,29 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
             },
             "python{{ Dependencies.python }}-R{{ Dependencies.R }}-go_version{{ Values.go_version }}",
             id="dependencies-and-values",
+        ),
+        pytest.param(
+            {
+                "dependencies": [
+                    PythonDependencyVersions(
+                        dependency="python",
+                        versions=["3.8", "3.9", "3.10"],
+                    ),
+                    RDependencyVersions(
+                        dependency="R",
+                        versions=["4.0", "4.1"],
+                    ),
+                ],
+                "dependencyConstraints": [
+                    QuartoDependencyConstraint(
+                        dependency="quarto",
+                        latest=True,
+                    ),
+                ],
+                "values": {"go_version": ["1.24", "1.25"]},
+            },
+            "python{{ Dependencies.python }}-R{{ Dependencies.R }}-quarto{{ Dependencies.quarto }}-go_version{{ Values.go_version }}",
+            id="dependencies-constraints-and-values",
         ),
     ],
 )
@@ -254,7 +316,7 @@ class TestImageMatrix:
         assert matrix.supported_platforms == ["linux/amd64", "linux/arm64"]
 
     @pytest.mark.usefixtures("patch_requests_get")
-    def test_resolve_dependency_constraints_to_dependencies(self):
+    def test_resolved_dependencies(self):
         """Test that dependency constraints are correctly resolved to specific versions."""
         matrix = ImageMatrix(
             values={"go_version": ["1.24", "1.25"]},
@@ -275,17 +337,17 @@ class TestImageMatrix:
             ],
         )
 
-        assert len(matrix.dependencies) == 3
+        assert len(matrix.resolved_dependencies) == 3
 
-        python_dep = next(dep for dep in matrix.dependencies if dep.dependency == "python")
+        python_dep = next(dep for dep in matrix.resolved_dependencies if dep.dependency == "python")
         assert isinstance(python_dep, PythonDependencyVersions)
         assert python_dep.versions == ["3.13.7", "3.12.11"]
 
-        r_dep = next(dep for dep in matrix.dependencies if dep.dependency == "R")
+        r_dep = next(dep for dep in matrix.resolved_dependencies if dep.dependency == "R")
         assert isinstance(r_dep, RDependencyVersions)
         assert r_dep.versions == ["4.2.3", "4.1.3", "4.0.5"]
 
-        quarto_dep = next(dep for dep in matrix.dependencies if dep.dependency == "quarto")
+        quarto_dep = next(dep for dep in matrix.resolved_dependencies if dep.dependency == "quarto")
         assert isinstance(quarto_dep, QuartoDependencyVersions)
         assert quarto_dep.versions == ["1.7.34"]
 
@@ -401,7 +463,7 @@ class TestImageMatrix:
             ],
         )
 
-        product = matrix._cartesian_product(matrix.dependencies, matrix.values)
+        product = matrix._cartesian_product(matrix.resolved_dependencies, matrix.values)
 
         assert len(product) == 8  # 2 python * 2 R * 2 go_version * 1 pro_drivers_version
         expected_combinations = [

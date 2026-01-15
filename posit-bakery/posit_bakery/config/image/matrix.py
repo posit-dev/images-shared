@@ -1,8 +1,9 @@
 import itertools
 import logging
 import re
+from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Union, Self, Any
+from typing import Annotated, Union, Self, Any, Literal
 
 import jinja2
 from pydantic import Field, field_validator, model_validator
@@ -18,10 +19,10 @@ from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
+from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
+from .variant import ImageVariant
 from .version import ImageVersion
 from .version_os import ImageVersionOS
-from .. import ImageVariant
-from ...error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 
 log = logging.getLogger(__name__)
 
@@ -34,11 +35,16 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
     :return: The default name pattern string.
     """
     dependencies = data.get("dependencies", [])
+    dependency_constraints = data.get("dependencyConstraints", [])
     values = data.get("values", {})
 
     pattern = ""
     for dependency in dependencies:
         pattern += dependency.dependency + "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
+    for dependency_constraint in dependency_constraints:
+        pattern += (
+            dependency_constraint.dependency + "{{ " + f"Dependencies.{dependency_constraint.dependency}" + " }}-"
+        )
     for key in sorted(values.keys()):
         pattern += key + "{{ " + f"Values.{key}" + " }}-"
     pattern = pattern.rstrip("-")
@@ -240,7 +246,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     def check_duplicate_dependency_constraints(
         cls, dependency_constraints: list[DependencyConstraintField], info: ValidationInfo
     ) -> list[DependencyConstraintField]:
-        """Ensures that there are no duplicate dependencies in the image.
+        """Ensures that there are no duplicate dependency constraints in the matrix.
 
         :param dependency_constraints: List of DependencyConstraintField objects to check for duplicates.
         :param info: ValidationInfo containing the data being validated.
@@ -263,27 +269,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("dependencies", mode="after")
     @classmethod
-    def resolve_dependency_constraints_to_dependencies(
-        cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
-    ) -> list[DependencyVersionsField]:
-        """Resolves any DependencyConstraintField entries in dependencies to DependencyVersionsField entries.
-
-        :param dependencies: List of dependencies to resolve.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: A list of DependencyVersionsField objects.
-        """
-        if info.data.get("dependencyConstraints"):
-            for dc in info.data.get("dependencyConstraints"):
-                dependencies.append(dc.resolve_versions())
-
-        return dependencies
-
-    @field_validator("dependencies", mode="after")
-    @classmethod
-    def check_duplicate_dependencies(
-        cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
-    ) -> list[DependencyVersionsField]:
+    def check_duplicate_dependencies(cls, dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
         """Ensures that the dependencies list is unique and errors on duplicates.
 
         :param dependencies: List of dependencies to deduplicate.
@@ -298,7 +284,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency or dependency constraints found in image matrix:\n"
+                    error_message = f"Duplicate dependency definition found in image matrix:\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
 
@@ -317,6 +303,23 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(
                 f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name "
                 f"pattern '{self.namePattern}'."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def check_no_conflicting_dependency_definitions(self) -> Self:
+        """Ensures that no dependencies are defined in both dependencies and dependencyConstraints.
+
+        :raises ValueError: If a dependency is defined in both dependencies and dependencyConstraints.
+        """
+        dependency_names = {d.dependency for d in self.dependencies}
+        conflicting_dependencies = [
+            dc.dependency for dc in self.dependencyConstraints if dc.dependency in dependency_names
+        ]
+        if conflicting_dependencies:
+            raise ValueError(
+                f"The following dependencies are defined in both 'dependencies' and 'dependencyConstraints' for "
+                f"image matrix with name pattern '{self.namePattern}': {', '.join(conflicting_dependencies)}"
             )
         return self
 
@@ -352,6 +355,18 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 if platform not in platforms:
                     platforms.append(platform)
         return platforms
+
+    @property
+    def resolved_dependencies(self) -> list[DependencyVersions]:
+        """Returns the list of resolved dependencies for this image version.
+
+        :return: A list of DependencyVersions objects.
+        """
+        resolved = deepcopy(self.dependencies)
+        for dc in self.dependencyConstraints:
+            resolved.append(dc.resolve_versions())
+
+        return resolved
 
     def generate_template_values(
         self,
@@ -616,7 +631,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         image_versions = []
 
-        products = self._cartesian_product(self.dependencies, self.values)
+        products = self._cartesian_product(self.resolved_dependencies, self.values)
         for product in products:
             image_version = ImageVersion(
                 parent=self.parent,
