@@ -6,15 +6,16 @@ from pathlib import Path
 from typing import Annotated, Union, Any, Self
 
 import jinja2
-from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
+from pydantic import Field, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
 from posit_bakery.config.registry import BaseRegistry, Registry
-from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel, HttpUrlWithDefaultScheme
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
 from posit_bakery.config.templating import jinja2_env
 from posit_bakery.config.tools import ToolField, ToolOptions
+from posit_bakery.config.validators import RegistryValidationMixin, check_duplicates_or_raise
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 from .dev_version import DevelopmentVersionField
 from .matrix import ImageMatrix
@@ -24,7 +25,7 @@ from .version import ImageVersion
 log = logging.getLogger(__name__)
 
 
-class Image(BakeryPathMixin, BakeryYAMLModel):
+class Image(RegistryValidationMixin, BakeryPathMixin, BakeryYAMLModel):
     """Model representing an image in the bakery configuration."""
 
     parent: Annotated[
@@ -41,7 +42,8 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     ]
     description: Annotated[str | None, Field(default=None, description="Description of the image. Used for labeling.")]
     documentationUrl: Annotated[
-        HttpUrl | None, Field(default=None, description="URL to the image documentation. Used for labeling")
+        HttpUrlWithDefaultScheme | None,
+        Field(default=None, description="URL to the image documentation. Used for labeling"),
     ]
     subpath: Annotated[
         str,
@@ -109,49 +111,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
-    @field_validator("documentationUrl", mode="before")
     @classmethod
-    def default_https_url_scheme(cls, value: Any) -> Any:
-        """Prepend 'https://' to the URL if it does not already start with it.
-
-        :param value: The URL to validate and possibly modify.
-        """
-        if isinstance(value, str):
-            if not value.startswith("https://") and not value.startswith("http://"):
-                value = f"https://{value}"
-        return value
-
-    @field_validator("extraRegistries", "overrideRegistries", mode="after")
-    @classmethod
-    def deduplicate_registries(
-        cls, registries: list[Registry | BaseRegistry], info: ValidationInfo
-    ) -> list[Registry | BaseRegistry]:
-        """Ensures that the registries list is unique and warns on duplicates.
-
-        :param registries: List of registries to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: A list of unique registries.
-        """
-        unique_registries = set(registries)
-        for unique_registry in unique_registries:
-            if info.data.get("name") and registries.count(unique_registry) > 1:
-                log.warning(
-                    f"Duplicate registry defined in config for image '{info.data['name']}': {unique_registry.base_url}"
-                )
-        return sorted(list(unique_registries), key=lambda r: r.base_url)
-
-    @model_validator(mode="after")
-    def extra_registries_or_override_registries(self) -> Self:
-        """Ensures that only one of extraRegistries or overrideRegistries is defined.
-
-        :raises ValueError: If both extraRegistries and overrideRegistries are defined.
-        """
-        if self.extraRegistries and self.overrideRegistries:
-            raise ValueError(
-                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image '{self.name}'."
-            )
-        return self
+    def _get_registry_context_type(cls) -> str:
+        """Return the type name for messages."""
+        return "image"
 
     @field_validator("dependencyConstraints", mode="after")
     @classmethod
@@ -167,18 +130,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         :raises ValueError: If duplicate dependencies are found.
         """
-        error_message = ""
-        seen_dependencies = set()
-        for dc in dependency_constraints:
-            if dc.dependency in seen_dependencies:
-                if not error_message:
-                    error_message = f"Duplicate dependency constraints found in image '{info.data['name']}':\n"
-                error_message += f" - {dc.dependency}\n"
-            seen_dependencies.add(dc.dependency)
-        if error_message:
-            raise ValueError(error_message.strip())
 
-        return dependency_constraints
+        def error_message_func(dupes: list) -> str:
+            msg = f"Duplicate dependency constraints found in image '{info.data['name']}':\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
+
+        return check_duplicates_or_raise(
+            dependency_constraints,
+            key_func=lambda dc: dc.dependency,
+            error_message_func=error_message_func,
+        )
 
     @field_validator("versions", mode="after")
     @classmethod
@@ -208,17 +170,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         :raises ValueError: If duplicate version names are found.
         """
-        error_message = ""
-        seen_names = set()
-        for version in versions:
-            if version.name in seen_names:
-                if not error_message:
-                    error_message = f"Duplicate versions found in image '{info.data['name']}':\n"
-                error_message += f" - {version.name}\n"
-            seen_names.add(version.name)
-        if error_message:
-            raise ValueError(error_message.strip())
-        return versions
+
+        def error_message_func(dupes: list) -> str:
+            msg = f"Duplicate versions found in image '{info.data['name']}':\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
+
+        return check_duplicates_or_raise(
+            versions,
+            key_func=lambda v: v.name,
+            error_message_func=error_message_func,
+        )
 
     @field_validator("variants", mode="after")
     @classmethod
@@ -232,17 +194,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         :raises ValueError: If duplicate variant names are found.
         """
-        error_message = ""
-        seen_names = set()
-        for variant in variants:
-            if variant.name in seen_names:
-                if not error_message:
-                    error_message = f"Duplicate variants found in image '{info.data['name']}':\n"
-                error_message += f" - {variant.name}\n"
-            seen_names.add(variant.name)
-        if error_message:
-            raise ValueError(error_message.strip())
-        return variants
+
+        def error_message_func(dupes: list) -> str:
+            msg = f"Duplicate variants found in image '{info.data['name']}':\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
+
+        return check_duplicates_or_raise(
+            variants,
+            key_func=lambda v: v.name,
+            error_message_func=error_message_func,
+        )
 
     @model_validator(mode="before")
     @classmethod
@@ -273,7 +235,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         return self
 
     @field_serializer("documentationUrl")
-    def serialize_documentation_url(self, value: HttpUrl | None) -> str | None:
+    def serialize_documentation_url(self, value: HttpUrlWithDefaultScheme | None) -> str | None:
         """Serializes the documentation URL to a string."""
         if value is None:
             return None

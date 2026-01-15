@@ -1,7 +1,6 @@
 import itertools
 import logging
-from pathlib import Path
-from typing import Annotated, Union, Self, Any
+from typing import Annotated, Any, Union
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -12,10 +11,15 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
     DependencyVersions,
 )
-from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
+from posit_bakery.config.mixins import OSParentageMixin, SubpathMixin, SupportedPlatformsMixin
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
+from posit_bakery.config.validators import (
+    OSValidationMixin,
+    RegistryValidationMixin,
+    check_duplicates_or_raise,
+)
 from .version import ImageVersion
 from .version_os import ImageVersionOS
 
@@ -43,8 +47,34 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
     return pattern
 
 
-class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
-    """Model representing a matrix of a image value combinations to build."""
+class ImageMatrix(
+    OSValidationMixin,
+    RegistryValidationMixin,
+    SubpathMixin,
+    SupportedPlatformsMixin,
+    OSParentageMixin,
+    BakeryPathMixin,
+    BakeryYAMLModel,
+):
+    """Factory for generating ImageVersion objects from a cartesian product of values.
+
+    ImageMatrix is a pure factory that generates multiple ImageVersion objects
+    by computing the cartesian product of dependency versions and custom values.
+    The core method is `to_image_versions()` which produces the ImageVersion list.
+
+    Matrix-specific fields (for cartesian product generation):
+        - namePattern: Template for generating version names
+        - values: Custom key-value pairs to expand
+        - dependencies: Pinned dependency versions to expand
+        - dependencyConstraints: Constraints that resolve to dependency versions
+
+    Template fields (passed through to generated ImageVersions):
+        - parent, subpath, os, extraRegistries, overrideRegistries
+
+    Example:
+        A matrix with dependencies=[python: [3.11, 3.12]] and values={variant: [full, min]}
+        generates 4 ImageVersions: python3.11-full, python3.11-min, python3.12-full, python3.12-min
+    """
 
     parent: Annotated[
         Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
@@ -108,6 +138,23 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
 
+    @classmethod
+    def _get_os_context(cls, info: ValidationInfo | None) -> str | None:
+        """Return context string for messages using namePattern."""
+        if info is None:
+            return None
+        return info.data.get("namePattern") or None
+
+    @classmethod
+    def _get_os_context_type(cls) -> str:
+        """Return the type name for messages."""
+        return "image matrix with name pattern"
+
+    @classmethod
+    def _get_registry_context_type(cls) -> str:
+        """Return the type name for messages."""
+        return "image matrix with name pattern"
+
     @model_validator(mode="before")
     @classmethod
     def check_one_of_dependencies_or_values(cls, data) -> dict:
@@ -123,112 +170,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         return data
 
-    @field_validator("extraRegistries", "overrideRegistries", mode="after")
-    @classmethod
-    def deduplicate_registries(
-        cls, registries: list[Registry | BaseRegistry], info: ValidationInfo
-    ) -> list[Registry | BaseRegistry]:
-        """Ensures that the registries list is unique and warns on duplicates.
-
-        :param registries: List of registries to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: A list of unique registries.
-        """
-        unique_registries = set(registries)
-        for unique_registry in unique_registries:
-            if registries.count(unique_registry) > 1:
-                log.warning(
-                    "Duplicate registry defined in config for image matrix with name pattern "
-                    f"'{info.data['namePattern']}': {unique_registry.base_url}"
-                )
-        return sorted(list(unique_registries), key=lambda r: r.base_url)
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is not empty.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The unmodified list of ImageVersionOS objects.
-        """
-        # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("namePattern") and not os:
-            log.warning(
-                f"No OSes defined for image matrix with name pattern '{info.data['namePattern']}'. At least one OS "
-                "should be defined for complete tagging and labeling of images."
-            )
-
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is unique and warns on duplicates.
-
-        :param os: List of ImageVersionOS objects to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: A list of unique ImageVersionOS objects.
-        """
-        unique_oses = set(os)
-        for unique_os in unique_oses:
-            if info.data.get("namePattern") and os.count(unique_os) > 1:
-                log.warning(
-                    "Duplicate OS defined in config for image matrix with name pattern "
-                    f"'{info.data['namePattern']}': {unique_os.name}"
-                )
-
-        return sorted(list(unique_oses), key=lambda o: o.name)
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The list of ImageVersionOS objects with at most one primary OS.
-        """
-        # If there's only one OS, mark it as primary by default.
-        if len(os) == 1:
-            # Skip warning if name already propagates an error.
-            if info.data.get("namePattern") and not os[0].primary:
-                log.info(
-                    "Only one OS, {os[0].name}, defined for image matrix with name pattern "
-                    f"{info.data['namePattern']}. Marking it as primary OS."
-                )
-            os[0].primary = True
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The list of ImageVersionOS objects with at most one primary OS.
-
-        :raises ValueError: If more than one OS is marked as primary.
-        """
-        primary_os_count = sum(1 for o in os if o.primary)
-        if info.data.get("namePattern") and primary_os_count > 1:
-            raise ValueError(
-                f"Only one OS can be marked as primary for image matrix with name pattern "
-                f"'{info.data['namePattern']}'. Found {primary_os_count} OSes marked primary."
-            )
-        elif info.data.get("namePattern") and primary_os_count == 0:
-            log.warning(
-                f"No OS marked as primary for image matrix with name pattern '{info.data['namePattern']}'. "
-                "At least one OS should be marked as primary for complete tagging and labeling of images."
-            )
-        return os
-
     @field_validator("dependencyConstraints", mode="after")
     @classmethod
     def check_duplicate_dependency_constraints(
@@ -243,17 +184,17 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         :raises ValueError: If duplicate dependencies are found.
         """
-        error_message = ""
-        seen_dependencies = set()
-        for dc in dependency_constraints:
-            if dc.dependency in seen_dependencies:
-                if not error_message:
-                    error_message = f"Duplicate dependency constraints found in image matrix:\n"
-                error_message += f" - {dc.dependency}\n"
-            seen_dependencies.add(dc.dependency)
-        if error_message:
-            raise ValueError(error_message.strip())
-        return dependency_constraints
+
+        def error_message_func(dupes: list) -> str:
+            msg = "Duplicate dependency constraints found in image matrix:\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
+
+        return check_duplicates_or_raise(
+            dependency_constraints,
+            key_func=lambda dc: dc.dependency,
+            error_message_func=error_message_func,
+        )
 
     @field_validator("dependencies", mode="after")
     @classmethod
@@ -287,65 +228,17 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         :raises ValueError: If duplicate dependencies are found.
         """
-        error_message = ""
-        seen_dependencies = set()
-        for d in dependencies:
-            if d.dependency in seen_dependencies:
-                if not error_message:
-                    error_message = f"Duplicate dependency or dependency constraints found in image matrix:\n"
-                error_message += f" - {d.dependency}\n"
-            seen_dependencies.add(d.dependency)
 
-        if error_message:
-            raise ValueError(error_message.strip())
+        def error_message_func(dupes: list) -> str:
+            msg = "Duplicate dependency or dependency constraints found in image matrix:\n"
+            msg += "".join(f" - {d}\n" for d in dupes)
+            return msg.strip()
 
-        return dependencies
-
-    @model_validator(mode="after")
-    def extra_registries_or_override_registries(self) -> Self:
-        """Ensures that only one of extraRegistries or overrideRegistries is defined.
-
-        :raises ValueError: If both extraRegistries and overrideRegistries are defined.
-        """
-        if self.extraRegistries and self.overrideRegistries:
-            raise ValueError(
-                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name "
-                f"pattern '{self.namePattern}'."
-            )
-        return self
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
-
-    @model_validator(mode="after")
-    def resolve_parentage(self) -> Self:
-        """Sets the parent for all OSes in this image version."""
-        for version_os in self.os:
-            version_os.parent = self
-        return self
-
-    @property
-    def supported_platforms(self) -> list[TargetPlatform]:
-        """Returns a list of supported target platforms for this image version.
-        :return: A list of TargetPlatform objects supported by this image version.
-        """
-        if not self.os:
-            return DEFAULT_PLATFORMS
-
-        platforms = []
-
-        for version_os in self.os:
-            for platform in version_os.platforms:
-                if platform not in platforms:
-                    platforms.append(platform)
-        return platforms
+        return check_duplicates_or_raise(
+            dependencies,
+            key_func=lambda d: d.dependency,
+            error_message_func=error_message_func,
+        )
 
     @staticmethod
     def _render_name_pattern(
