@@ -99,7 +99,8 @@ def __make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exce
             sp = v.split("=", 1)
             if len(sp) != 2:
                 errors.append(ValueError(f"Invalid key=value pair: {v}"))
-            value_map[sp[0]] = sp[1]
+            else:
+                value_map[sp[0]] = sp[1]
     return value_map, errors
 
 
