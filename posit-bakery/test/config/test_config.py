@@ -203,7 +203,7 @@ class TestBakeryConfig:
     ):
         """Test that the DevVersionInclusionEnum works as expected."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
-        with patch.object(posit_bakery.config.image.Image, "create_ephemeral_version_files") as mock_create_files:
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files") as mock_create_files:
             with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files") as mock_remove_files:
                 config = BakeryConfig(
                     yaml_file, BakerySettings(dev_versions=include_dev_version, clean_temporary=clean)
