@@ -15,7 +15,9 @@ from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
+from posit_bakery.config.dependencies import DependencyConstraint, DependencyVersions
 from posit_bakery.config.image import Image
+from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -453,8 +455,6 @@ class BakeryConfig:
         :param latest: Whether this version should be marked as the latest version.
         :param force: If True, will overwrite an existing version with the same name.
         """
-        # TODO: In the future, we should have some sort of "values" completion function called here. This would add or
-        #       complete common values such as R, Python, and Quarto versions.
         image = self.model.get_image(image_name)
         if image is None:
             raise ValueError(f"Image '{image_name}' does not exist in the config.")
@@ -545,9 +545,86 @@ class BakeryConfig:
 
         return patched_version
 
-    def regenerate_version_files(
-        self, _filter: BakeryConfigFilter | None = None, regex_filters: list[str] | None = None
+    def create_matrix(
+        self,
+        image_name: str,
+        name_pattern: str | None = None,
+        subpath: str | None = None,
+        dependency_constraints: list[DependencyConstraint] | None = None,
+        dependencies: list[DependencyVersions] | None = None,
+        values: dict[str, str] | None = None,
+        force: bool = False,
     ):
+        """Creates a matrix definition for an image.
+
+        Creates a new matrix directory from image templates, add the matrix definition to the config, and writes the
+        version back to bakery.yaml.
+
+        :param image_name: The name of the image to create the version for.
+        :param name_pattern: Optional name pattern for the matrix versions. If not provided, the default pattern will
+            be used.
+        :param subpath: Optional subpath for the version. If not provided, the version name will be used as the subpath.
+        :param dependency_constraints: Optional list of DependencyConstraint objects to define constraints for the
+            matrix.
+        :param dependencies: Optional list of DependencyVersions objects to define dependencies for the matrix.
+        :param values: Optional dictionary of values to use in the version. This can be used to provide additional
+            context or configuration for the version. Often used to specify versions of R, Python, or Quarto.
+        :param force: If True, will overwrite an existing version with the same name.
+        """
+        image = self.model.get_image(image_name)
+        if image is None:
+            raise ValueError(f"Image '{image_name}' does not exist in the config.")
+        if len(image.versions) > 0:
+            raise ValueError(
+                f"Versions already exist for image '{image_name}'. Use `bakery remove` to remove them and try again."
+            )
+        existing_matrix = image.matrix is not None
+        if existing_matrix and not force:
+            raise ValueError(
+                f"Cannot create matrix for image '{image_name}' because it already defines a matrix. Use --force to "
+                f"overwrite."
+            )
+
+        matrix_path = self.base_path / image_name / (subpath or DEFAULT_MATRIX_SUBPATH)
+        matrix_path_preexists = matrix_path.is_dir()
+
+        # If the version already exists, some checks will be performed.
+        if existing_matrix:
+            # If the version already exists, we check if the subpaths match.
+            if image.matrix.subpath != (subpath or DEFAULT_MATRIX_SUBPATH):
+                # If the subpaths do not match, we move the existing subpath to the new subpath.
+                existing_version_path = self.base_path / image_name / image.matrix.subpath
+                shutil.move(existing_version_path, matrix_path)
+
+        # Create the version in the image model.
+        matrix = image.create_matrix(
+            name_pattern=name_pattern,
+            subpath=subpath,
+            dependency_constraints=dependency_constraints,
+            dependencies=dependencies,
+            values=values,
+            update_if_exists=force,
+        )
+
+        # Add version to the YAML config.
+        image_index = self._get_image_index(image_name)
+        self._config_yaml["images"][image_index]["matrix"] = matrix.model_dump(
+            exclude_defaults=True, exclude_none=True, exclude_unset=True
+        )
+
+        # Create the version directory and files.
+        try:
+            matrix.render_files(image.variants)
+        except (BakeryRenderError, BakeryRenderErrorGroup) as e:
+            log.error(f"Failed to create files for image '{image_name}' matrix.")
+            # If creating the version files fails and this is a new version, we remove the files that were created.
+            if not existing_matrix and not matrix_path_preexists:
+                shutil.rmtree(matrix_path)
+            raise e
+
+        self.write()
+
+    def rerender_files(self, _filter: BakeryConfigFilter | None = None, regex_filters: list[str] | None = None):
         """Regenerates version files from templates matching the given filters.
 
         :param _filter: A BakeryConfigFilter to apply when regenerating version files.
@@ -563,19 +640,30 @@ class BakeryConfig:
             if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
                 log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
                 continue
-            for version in image.versions:
-                if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
-                    log.debug(
-                        f"Skipping image version '{version.name}' in image '{image.name}' "
-                        f"due to not matching version filter '{_filter.image_version}'"
-                    )
-                    continue
+            if image.versions:
+                for version in image.versions:
+                    if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                        log.debug(
+                            f"Skipping image version '{version.name}' in image '{image.name}' "
+                            f"due to not matching version filter '{_filter.image_version}'"
+                        )
+                        continue
 
-                log.info(f"Rendering templates for image '{image.name}' version '{version.name}'")
+                    log.info(f"Rendering templates for image '{image.name}' version '{version.name}'")
+                    try:
+                        version.render_files(image.variants, regex_filters=regex_filters)
+                    except (BakeryRenderError, BakeryRenderErrorGroup) as e:
+                        log.error(f"Failed to regenerate files for image '{image.name}' version '{version.name}'.")
+                        if isinstance(e, BakeryRenderErrorGroup):
+                            exceptions.extend(e.exceptions)
+                        else:
+                            exceptions.append(e)
+            if image.matrix:
+                log.info(f"Rendering templates for image '{image.name}' matrix")
                 try:
-                    version.render_files(image.variants, regex_filters=regex_filters)
+                    image.matrix.render_files(image.variants, regex_filters=regex_filters)
                 except (BakeryRenderError, BakeryRenderErrorGroup) as e:
-                    log.error(f"Failed to regenerate files for image '{image.name}' version '{version.name}'.")
+                    log.error(f"Failed to regenerate files for image '{image.name}' matrix.")
                     if isinstance(e, BakeryRenderErrorGroup):
                         exceptions.extend(e.exceptions)
                     else:
