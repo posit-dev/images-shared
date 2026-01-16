@@ -85,7 +85,7 @@ class DependencyConstraint(BakeryYAMLModel):
         )
 
     @model_serializer(mode="wrap")
-    def serialize_versions(self, next_serializer):
+    def serialize_literal(self, next_serializer):
         dumped = next_serializer(self)
         for name, field_info in self.model_fields.items():
             # Ensure Literal fields are always included since exclude_unset=True is used in serialization.
