@@ -658,6 +658,7 @@ class BakeryConfig:
                             exceptions.extend(e.exceptions)
                         else:
                             exceptions.append(e)
+
             if image.matrix:
                 log.info(f"Rendering templates for image '{image.name}' matrix")
                 try:
