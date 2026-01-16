@@ -1,5 +1,6 @@
 import functools
 import inspect
+import json
 import logging
 import tempfile
 from pathlib import Path
@@ -7,7 +8,13 @@ from typing import Annotated, Optional, Any
 
 import typer
 
-from posit_bakery.log import init_logging, stderr_console
+from posit_bakery.config.dependencies import (
+    get_dependency_versions_class,
+    get_dependency_constraint_class,
+    DependencyConstraint,
+    DependencyVersions,
+)
+from posit_bakery.log import init_logging
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
@@ -93,5 +100,30 @@ def __make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exce
             if len(sp) != 2:
                 errors.append(ValueError(f"Invalid key=value pair: {v}"))
             value_map[sp[0]] = sp[1]
-    return value_map
     return value_map, errors
+
+
+def __parse_dependency_constraint(value: str) -> DependencyConstraint:
+    """Parses a dependency constraint from a JSON string to a dictionary."""
+    dc = json.loads(value)
+
+    if not dc.get("dependency"):
+        raise ValueError("Dependency constraint must have a 'dependency' field.")
+
+    dependency_name = str(dc["dependency"])
+    dependency_constraint_class = get_dependency_constraint_class(dependency_name)
+
+    return dependency_constraint_class.model_validate(dc)
+
+
+def __parse_dependency_versions(value: str) -> DependencyVersions:
+    """Parses a dependency versions from a JSON string to a dictionary."""
+    dv = json.loads(value)
+
+    if not dv.get("dependency"):
+        raise ValueError("Dependency versions must have a 'dependency' field.")
+
+    dependency_name = str(dv["dependency"])
+    dependency_versions_class = get_dependency_versions_class(dependency_name)
+
+    return dependency_versions_class.model_validate(dv)
