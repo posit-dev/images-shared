@@ -123,12 +123,13 @@ class TestImage:
                 versions=[{"name": "1.0.0"}],
             )
 
-    def test_check_versions_not_empty(self, caplog):
+    def test_check_not_empty(self, caplog):
         """Test that an Image must have at least one version defined."""
-        Image(name="my-image", versions=[])
+        Image(name="my-image", versions=[], devVersions=[], matrix=None)
         assert "WARNING" in caplog.text
         assert (
-            "No versions found in image 'my-image'. At least one version is required for most commands." in caplog.text
+            "No versions, devVersions, or matrix found in image 'my-image'. At least one is required for most commands."
+            in caplog.text
         )
 
     def test_check_version_duplicates(self):

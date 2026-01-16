@@ -178,22 +178,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("versions", mode="after")
     @classmethod
-    def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
-        """Ensures that the versions list is not empty.
-
-        :param versions: List of ImageVersion objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The unmodified list of ImageVersion objects.
-        """
-        if info.data.get("name") and not versions:
-            log.warning(
-                f"No versions found in image '{info.data['name']}'. At least one version is required for most commands."
-            )
-        return versions
-
-    @field_validator("versions", mode="after")
-    @classmethod
     def check_version_duplicates(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
         """Ensures that there are no duplicate version names in the image.
 
@@ -266,6 +250,21 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.parent = self
         for dev_version in self.devVersions:
             dev_version.parent = self
+        if self.matrix is not None:
+            self.matrix.parent = self
+        return self
+
+    @model_validator(mode="after")
+    def check_not_empty(self) -> Self:
+        """Ensures one version or matrix is defined.
+
+        :return: The unmodified Image object.
+        """
+        if self.name and not self.versions and not self.devVersions and not self.matrix:
+            log.warning(
+                f"No versions, devVersions, or matrix found in image '{self.name}'. At least one is required for most "
+                f"commands."
+            )
         return self
 
     @model_validator(mode="after")
