@@ -83,14 +83,15 @@ def with_temporary_storage(fn):
     return wrapper
 
 
-def __make_value_map(value: list[str] | None) -> dict[Any, Any]:
+def __make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exception]]:
     """Parses key=value option pairs into a dictionary"""
     value_map = dict()
+    errors = []
     if value is not None:
         for v in value:
             sp = v.split("=", 1)
             if len(sp) != 2:
-                stderr_console.print(f"❌ Expected key=value pair, got [bold]'{v}'", style="error")
-                raise typer.Exit(code=1)
+                errors.append(ValueError(f"Invalid key=value pair: {v}"))
             value_map[sp[0]] = sp[1]
     return value_map
+    return value_map, errors

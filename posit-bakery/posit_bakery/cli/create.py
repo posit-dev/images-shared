@@ -215,8 +215,12 @@ def version(
             └── Containerfile*.jinja2
     ```
     """
-
-    value_map = __make_value_map(value)
+    value_map, errors = __make_value_map(value)
+    if errors:
+        for e in errors:
+            log.error(e)
+        log.error("❌ Errors parsing key=value pairs")
+        raise typer.Exit(code=1)
 
     try:
         c = BakeryConfig.from_context(context)
