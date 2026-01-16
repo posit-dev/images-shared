@@ -59,4 +59,6 @@ class PythonDependencyVersions(DependencyVersions, PythonDependency):
 class PythonDependencyConstraint(DependencyConstraint, PythonDependency):
     """Class for specifying a list of Python version constraints."""
 
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
     VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = PythonDependencyVersions

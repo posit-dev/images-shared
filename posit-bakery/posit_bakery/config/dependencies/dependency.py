@@ -83,3 +83,12 @@ class DependencyConstraint(BakeryYAMLModel):
         return self.VERSIONS_CLASS(
             versions=[str(v) for v in self.constraint.resolve_versions(self.available_versions())]
         )
+
+    @model_serializer(mode="wrap")
+    def serialize_versions(self, next_serializer):
+        dumped = next_serializer(self)
+        for name, field_info in self.model_fields.items():
+            # Ensure Literal fields are always included since exclude_unset=True is used in serialization.
+            if typing.get_origin(field_info.annotation) == typing.Literal:
+                dumped[name] = getattr(self, name)
+        return dumped
