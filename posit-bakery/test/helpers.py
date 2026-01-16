@@ -11,6 +11,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.image import ImageTarget
 
 IMAGE_INDENT = " " * 2
+MATRIX_INDENT = " " * 4
 VERSION_INDENT = " " * 6
 
 

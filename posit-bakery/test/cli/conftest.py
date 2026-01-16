@@ -94,6 +94,15 @@ def remove_path(bakery_command, target_path, cli_test_tmpcontext):
     assert not target_path.exists()
 
 
+@given(parsers.parse('with a new image named "{image_name}"'))
+def add_image(bakery_command, image_name, cli_test_tmpcontext):
+    command = BakeryCommand()
+    command.context = cli_test_tmpcontext
+    command.set_subcommand(["create", "image", image_name])
+    command.run()
+    assert command.result.exit_code == 0
+
+
 @given("with the arguments:")
 def add_args_table(bakery_command, datatable):
     for row in datatable:

@@ -1,8 +1,11 @@
 import itertools
 import logging
+import re
+from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Union, Self, Any
+from typing import Annotated, Union, Self, Any, Literal
 
+import jinja2
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
@@ -16,10 +19,14 @@ from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
+from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
+from .variant import ImageVariant
 from .version import ImageVersion
 from .version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
+
+DEFAULT_MATRIX_SUBPATH: Literal["matrix"] = "matrix"
 
 
 def generate_default_name_pattern(data: dict[str, Any]) -> str:
@@ -28,11 +35,16 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
     :return: The default name pattern string.
     """
     dependencies = data.get("dependencies", [])
+    dependency_constraints = data.get("dependencyConstraints", [])
     values = data.get("values", {})
 
     pattern = ""
     for dependency in dependencies:
         pattern += dependency.dependency + "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
+    for dependency_constraint in dependency_constraints:
+        pattern += (
+            dependency_constraint.dependency + "{{ " + f"Dependencies.{dependency_constraint.dependency}" + " }}-"
+        )
     for key in sorted(values.keys()):
         pattern += key + "{{ " + f"Values.{key}" + " }}-"
     pattern = pattern.rstrip("-")
@@ -52,7 +64,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     subpath: Annotated[
         str,
         Field(
-            default="matrix",
+            default=DEFAULT_MATRIX_SUBPATH,
             min_length=1,
             description="Subpath under the image to use for the image version.",
         ),
@@ -234,7 +246,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     def check_duplicate_dependency_constraints(
         cls, dependency_constraints: list[DependencyConstraintField], info: ValidationInfo
     ) -> list[DependencyConstraintField]:
-        """Ensures that there are no duplicate dependencies in the image.
+        """Ensures that there are no duplicate dependency constraints in the matrix.
 
         :param dependency_constraints: List of DependencyConstraintField objects to check for duplicates.
         :param info: ValidationInfo containing the data being validated.
@@ -257,27 +269,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("dependencies", mode="after")
     @classmethod
-    def resolve_dependency_constraints_to_dependencies(
-        cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
-    ) -> list[DependencyVersionsField]:
-        """Resolves any DependencyConstraintField entries in dependencies to DependencyVersionsField entries.
-
-        :param dependencies: List of dependencies to resolve.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: A list of DependencyVersionsField objects.
-        """
-        if info.data.get("dependencyConstraints"):
-            for dc in info.data.get("dependencyConstraints"):
-                dependencies.append(dc.resolve_versions())
-
-        return dependencies
-
-    @field_validator("dependencies", mode="after")
-    @classmethod
-    def check_duplicate_dependencies(
-        cls, dependencies: list[DependencyVersionsField], info: ValidationInfo
-    ) -> list[DependencyVersionsField]:
+    def check_duplicate_dependencies(cls, dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
         """Ensures that the dependencies list is unique and errors on duplicates.
 
         :param dependencies: List of dependencies to deduplicate.
@@ -292,7 +284,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency or dependency constraints found in image matrix:\n"
+                    error_message = f"Duplicate dependency definition found in image matrix:\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
 
@@ -311,6 +303,23 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(
                 f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name "
                 f"pattern '{self.namePattern}'."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def check_no_conflicting_dependency_definitions(self) -> Self:
+        """Ensures that no dependencies are defined in both dependencies and dependencyConstraints.
+
+        :raises ValueError: If a dependency is defined in both dependencies and dependencyConstraints.
+        """
+        dependency_names = {d.dependency for d in self.dependencies}
+        conflicting_dependencies = [
+            dc.dependency for dc in self.dependencyConstraints if dc.dependency in dependency_names
+        ]
+        if conflicting_dependencies:
+            raise ValueError(
+                f"The following dependencies are defined in both 'dependencies' and 'dependencyConstraints' for "
+                f"image matrix with name pattern '{self.namePattern}': {', '.join(conflicting_dependencies)}"
             )
         return self
 
@@ -346,6 +355,187 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 if platform not in platforms:
                     platforms.append(platform)
         return platforms
+
+    @property
+    def resolved_dependencies(self) -> list[DependencyVersions]:
+        """Returns the list of resolved dependencies for this image version.
+
+        :return: A list of DependencyVersions objects.
+        """
+        resolved = deepcopy(self.dependencies)
+        for dc in self.dependencyConstraints:
+            resolved.append(dc.resolve_versions())
+
+        return resolved
+
+    def generate_template_values(
+        self,
+        variant: Union["ImageVariant", None] = None,
+        version_os: Union["ImageVersionOS", None] = None,
+    ) -> dict[str, Any]:
+        """Generates the template values for rendering.
+
+        :param variant: The ImageVariant object.
+        :param version_os: The ImageVersionOS object, if applicable.
+
+        :return: A dictionary of values to use for rendering version templates.
+        """
+        values = {
+            "Image": {
+                "Name": self.parent.name,
+                "DisplayName": self.parent.displayName,
+            },
+            "Path": {
+                "Base": ".",
+                "Image": str(self.parent.path.relative_to(self.parent.parent.path)),
+                "Version": str(Path(self.parent.path / self.subpath).relative_to(self.parent.parent.path)),
+            },
+        }
+        if variant is not None:
+            values["Image"]["Variant"] = variant.name
+        if version_os is not None:
+            values["Image"]["OS"] = {
+                "Name": version_os.buildOS.name,
+                "Family": version_os.buildOS.family.value,
+                "Version": version_os.buildOS.version,
+                "Codename": version_os.buildOS.codename,
+            }
+
+        return values
+
+    def render_files(self, variants: list[ImageVariant] | None = None, regex_filters: list[str] | None = None):
+        """Render matrix file definitions from templates.
+
+        :param variants: Optional list of ImageVariant objects to render Containerfiles for each variant.
+        :param regex_filters: Optional list of regex patterns to filter which templates to render.
+
+        :raises BakeryFileError: If the template path does not exist.
+        :raises BakeryRenderError: If a template fails to render.
+        :raises BakeryRenderErrorGroup: If multiple templates fail to render.
+        """
+        # Check that template path exists
+        if not self.parent.template_path.is_dir():
+            raise BakeryFileError(f"Image '{self.parent.name}' template path does not exist", self.parent.template_path)
+
+        # Create new version directory
+        if not self.path.is_dir():
+            log.debug(f"Creating new image version directory [bold]{self.path}")
+            self.path.mkdir(parents=True)
+
+        env = jinja2_env(
+            loader=jinja2.ChoiceLoader(
+                [
+                    jinja2.FileSystemLoader(self.parent.template_path),
+                    jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
+                ]
+            ),
+            autoescape=True,
+            undefined=jinja2.StrictUndefined,
+            keep_trailing_newline=True,
+        )
+
+        exceptions = []
+
+        # Render templates to version directory
+        # This is using walk instead of list_templates to ensure that the macro files are not rendered into the version.
+        for root, dirs, files in self.parent.template_path.walk():
+            for file in files:
+                tpl_full_path = (Path(root) / file).resolve()
+                tpl_rel_path = str(tpl_full_path.relative_to(self.parent.template_path))
+
+                for regex in regex_filters or []:
+                    if not re.match(regex, tpl_rel_path):
+                        log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
+                        continue
+                try:
+                    tpl = env.get_template(tpl_rel_path)
+                except jinja2.TemplateError as e:
+                    log.error(f"Failed to load template [bold]{tpl_rel_path}[/] for image '{self.parent.name}'")
+                    exceptions.append(
+                        BakeryRenderError(
+                            cause=e,
+                            context=self.parent.parent.path,
+                            image=self.parent.name,
+                            version=DEFAULT_MATRIX_SUBPATH,
+                            template=Path(tpl_full_path),
+                        )
+                    )
+                    continue
+
+                # Enable trim_blocks for Containerfile templates
+                render_kwargs = {}
+                if tpl_rel_path.startswith("Containerfile"):
+                    render_kwargs["trim_blocks"] = True
+
+                # If variants are specified, render Containerfile for each variant
+                if tpl_rel_path.startswith("Containerfile") and variants:
+                    containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
+
+                    # Attempt to match the OS from the Containerfile name
+                    os_ext = containerfile_base_name.split(".")[-1]
+                    containerfile_os = None
+                    for _os in self.os:
+                        if _os.extension == os_ext:
+                            containerfile_os = _os
+                            break
+
+                    for variant in variants:
+                        template_values = self.generate_template_values(variant, containerfile_os)
+                        containerfile: Path = self.path / f"{containerfile_base_name}.{variant.extension}"
+                        try:
+                            rendered = tpl.render(**template_values, **render_kwargs)
+                        except (jinja2.TemplateError, BakeryTemplateError) as e:
+                            log.error(
+                                f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' "
+                                f"matrix variant '{variant.name}'"
+                            )
+                            exceptions.append(
+                                BakeryRenderError(
+                                    cause=e,
+                                    context=self.parent.parent.path,
+                                    image=self.parent.name,
+                                    version=DEFAULT_MATRIX_SUBPATH,
+                                    variant=variant.name,
+                                    template=Path(tpl_full_path),
+                                    destination=Path(containerfile),
+                                )
+                            )
+                            continue
+                        with open(containerfile, "w") as f:
+                            log.debug(f"[bright_black]Rendering [bold]{containerfile}")
+                            f.write(rendered)
+
+                # Render other templates once
+                else:
+                    rel_path = tpl_rel_path.removesuffix(".jinja2")
+                    output_file = self.path / rel_path
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    template_values = self.generate_template_values()
+                    try:
+                        rendered = tpl.render(**template_values, **render_kwargs)
+                    except (jinja2.TemplateError, BakeryTemplateError) as e:
+                        log.error(
+                            f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' matrix"
+                        )
+                        exceptions.append(
+                            BakeryRenderError(
+                                cause=e,
+                                context=self.parent.parent.path,
+                                image=self.parent.name,
+                                version=DEFAULT_MATRIX_SUBPATH,
+                                template=Path(tpl_rel_path),
+                                destination=output_file,
+                            )
+                        )
+                        continue
+                    with open(output_file, "w") as f:
+                        log.debug(f"[bright_black]Rendering [bold]{output_file}")
+                        f.write(rendered)
+
+        if exceptions:
+            if len(exceptions) == 1:
+                raise exceptions[0]
+            raise BakeryRenderErrorGroup("One or more template rendering errors occurred", exceptions)
 
     @staticmethod
     def _render_name_pattern(
@@ -441,7 +631,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         image_versions = []
 
-        products = self._cartesian_product(self.dependencies, self.values)
+        products = self._cartesian_product(self.resolved_dependencies, self.values)
         for product in products:
             image_version = ImageVersion(
                 parent=self.parent,

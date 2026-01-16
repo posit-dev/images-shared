@@ -74,4 +74,6 @@ class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
 class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):
     """Class for specifying a list of Quarto version constraints."""
 
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
     VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = QuartoDependencyVersions

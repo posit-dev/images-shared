@@ -1,0 +1,52 @@
+# Build Python using uv in a separate stage
+FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+ENV UV_PYTHON_PREFERENCE=only-managed
+
+ARG PYTHON_VERSION
+RUN uv python install $PYTHON_VERSION
+RUN mv /opt/python/cpython-$PYTHON_VERSION-linux-*/ /opt/python/$PYTHON_VERSION
+
+
+FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+### ARG declarations ###
+ARG DEBIAN_FRONTEND=noninteractive
+ARG R_VERSION
+ARG PYTHON_VERSION
+ARG QUARTO_VERSION
+
+### Install Apt Packages ###
+RUN apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY test-matrix/matrix/deps/ubuntu-24.04_packages.txt /tmp/ubuntu-24.04_packages.txt
+RUN apt-get update -yqq && \
+    xargs -a /tmp/ubuntu-24.04_packages.txt apt-get install -yqq --no-install-recommends && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python from previous stage
+COPY --from=python-builder /opt/python /opt/python
+
+# Install R
+RUN RUN_UNATTENDED=1 R_VERSION=$R_VERSION bash -c "$(curl -fsSL https://rstd.io/r-install)" && \
+    find . -type f -name '[rR]-$R_VERSION.*\.(deb|rpm)' -delete
+
+# Install Quarto
+RUN mkdir -p /opt/quarto/$QUARTO_VERSION && \
+    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v$QUARTO_VERSION/quarto-$QUARTO_VERSION-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/$QUARTO_VERSION" --strip-components=1 && \
+    /opt/quarto/$QUARTO_VERSION/bin/quarto install tinytex --no-prompt --quiet

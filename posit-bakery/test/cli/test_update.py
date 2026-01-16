@@ -3,6 +3,7 @@ from pathlib import Path
 from pytest_bdd import then, parsers, scenarios
 
 from posit_bakery.config import BakeryConfig
+from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 
 scenarios(
     "cli/update/files.feature",
@@ -83,6 +84,29 @@ def check_rendered_templates(cli_test_tmpcontext, cli_test_image_name, cli_test_
     assert deps.is_dir()
     assert (deps / "ubuntu2204_packages.txt").is_file()
     assert (deps / "ubuntu2204_optional_packages.txt").is_file()
+
+    test = version_dir / "test"
+    assert test.is_dir()
+    assert (test / "goss.yaml").is_file()
+
+
+@then("the default matrix rendered templates exist")
+def check_matrix_rendered_templates(
+    cli_test_tmpcontext,
+    cli_test_image_name,
+) -> None:
+    version_dir = cli_test_tmpcontext / cli_test_image_name / DEFAULT_MATRIX_SUBPATH
+
+    _os = "ubuntu2404"
+
+    containerfile = version_dir / f"Containerfile.{_os}"
+    assert containerfile.is_file()
+    containerfile_contents = containerfile.read_text()
+    assert "ARG PYTHON_VERSION" in containerfile_contents
+
+    deps = version_dir / "deps"
+    assert deps.is_dir()
+    assert (deps / f"ubuntu-24.04_packages.txt").is_file()
 
     test = version_dir / "test"
     assert test.is_dir()

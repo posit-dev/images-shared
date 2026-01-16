@@ -7,7 +7,7 @@ from typing import Annotated, Union, Any, Self
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions
+from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions, DependencyConstraint
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_tag_patterns, TagPattern
@@ -178,22 +178,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
     @field_validator("versions", mode="after")
     @classmethod
-    def check_versions_not_empty(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
-        """Ensures that the versions list is not empty.
-
-        :param versions: List of ImageVersion objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The unmodified list of ImageVersion objects.
-        """
-        if info.data.get("name") and not versions:
-            log.warning(
-                f"No versions found in image '{info.data['name']}'. At least one version is required for most commands."
-            )
-        return versions
-
-    @field_validator("versions", mode="after")
-    @classmethod
     def check_version_duplicates(cls, versions: list[ImageVersion], info: ValidationInfo) -> list[ImageVersion]:
         """Ensures that there are no duplicate version names in the image.
 
@@ -240,23 +224,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(error_message.strip())
         return variants
 
-    @model_validator(mode="before")
-    @classmethod
-    def check_matrix_or_versions(cls, data) -> dict:
-        """Ensures that only one of matrix or versions and devVersions are defined for the image.
-
-        :param data: The data being validated.
-
-        :return: The unmodified data dictionary.
-
-        :raises ValueError: If neither matrix nor versions are defined.
-        """
-        if data.get("matrix") and (data.get("versions") or data.get("devVersions")):
-            raise ValueError(
-                f"Only one of 'matrix' or 'versions'/'devVersions' can be defined for image '{data.get('name')}'."
-            )
-        return data
-
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
         """Sets the parent for all variants and versions in this image."""
@@ -266,6 +233,35 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             version.parent = self
         for dev_version in self.devVersions:
             dev_version.parent = self
+        if self.matrix is not None:
+            self.matrix.parent = self
+        return self
+
+    @model_validator(mode="after")
+    def check_not_empty(self) -> Self:
+        """Ensures one version or matrix is defined.
+
+        :return: The unmodified Image object.
+        """
+        if self.name and not self.versions and not self.devVersions and not self.matrix:
+            log.warning(
+                f"No versions, devVersions, or matrix found in image '{self.name}'. At least one is required for most "
+                f"commands."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def check_dependency_constraints_with_matrix(self) -> Self:
+        """Checks if dependencyConstraints and matrix are both defined.
+
+        Warns if dependencyConstraints will be ineffectual as they must be defined at matrix-level.
+        """
+        if self.matrix is not None and self.dependencyConstraints:
+            log.warning(
+                f"Image '{self.name}' defines both 'dependencyConstraints' and a 'matrix'. "
+                f"Image-level 'dependencyConstraints' will be ignored; define them at the matrix-level instead."
+            )
+
         return self
 
     @field_serializer("documentationUrl")
@@ -428,6 +424,70 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                 image_version.values = values
 
         return image_version
+
+    def create_matrix(
+        self,
+        name_pattern: str | None = None,
+        subpath: str | None = None,
+        dependency_constraints: list[DependencyConstraint] | None = None,
+        dependencies: list[DependencyVersions] | None = None,
+        values: dict[str, str] | None = None,
+        update_if_exists: bool = False,
+    ) -> ImageMatrix:
+        """Creates a new image version and adds it to the image.
+
+        :param name_pattern: The name pattern for the new image version. If None, defaults to the version name with
+            spaces replaced by hyphens and lowercase.
+        :param subpath: Optional subpath for the new version. If None, defaults to the version name with spaces replaced
+            by hyphens and lowercase.
+        :param dependency_constraints: Optional list of DependencyConstraint objects to use for resolving
+            dependencies for the new version.
+        :param dependencies: Optional list of DependencyVersions objects to use for the new version.
+        :param values: Optional dictionary of additional key-value pairs to include in the template values.
+        :param update_if_exists: If True, updates the existing version if it already exists, otherwise raises an error
+            if the version exists.
+
+        :return: The created or updated ImageVersion object.
+        """
+        # If versions or devVersions are defined, raise an error.
+        if self.versions or self.devVersions:
+            raise ValueError(
+                f"Cannot create matrix version for image '{self.name}' because versions or devVersions are already "
+                f"defined."
+            )
+        # If matrix exists and update_if_exists is False, raise an error.
+        if self.matrix is not None and not update_if_exists:
+            raise ValueError(f"Matrix already defined for image '{self.name}'.")
+
+        # Logic for creating a new version.
+        if self.matrix is None:
+            args = {
+                "parent": self,
+                "dependencyConstraints": dependency_constraints or [],
+                "dependencies": dependencies or [],
+                "values": values or {},
+            }
+            if name_pattern is not None:
+                args["namePattern"] = name_pattern
+            if subpath is not None:
+                args["subpath"] = subpath
+
+            self.matrix = ImageMatrix(**args)
+
+        # Logic for updating an existing version.
+        else:
+            if name_pattern is not None:
+                self.matrix.namePattern = name_pattern
+            if subpath is not None:
+                self.matrix.subpath = subpath
+            if dependency_constraints is not None:
+                self.matrix.dependencyConstraints = dependency_constraints
+            if dependencies is not None:
+                self.matrix.dependencies = dependencies
+            if values is not None:
+                self.matrix.values = values
+
+        return self.matrix
 
     def patch_version(
         self,

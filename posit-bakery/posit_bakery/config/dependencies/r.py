@@ -50,4 +50,6 @@ class RDependencyVersions(DependencyVersions, RDependency):
 class RDependencyConstraint(DependencyConstraint, RDependency):
     """Class for specifying an R version constraint."""
 
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
     VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = RDependencyVersions

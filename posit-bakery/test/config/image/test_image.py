@@ -123,12 +123,13 @@ class TestImage:
                 versions=[{"name": "1.0.0"}],
             )
 
-    def test_check_versions_not_empty(self, caplog):
+    def test_check_not_empty(self, caplog):
         """Test that an Image must have at least one version defined."""
-        Image(name="my-image", versions=[])
+        Image(name="my-image", versions=[], devVersions=[], matrix=None)
         assert "WARNING" in caplog.text
         assert (
-            "No versions found in image 'my-image'. At least one version is required for most commands." in caplog.text
+            "No versions, devVersions, or matrix found in image 'my-image'. At least one is required for most commands."
+            in caplog.text
         )
 
     def test_check_version_duplicates(self):
@@ -157,6 +158,15 @@ class TestImage:
             assert version.parent is i
         for variant in i.variants:
             assert variant.parent is i
+
+    def test_check_dependency_constraints_with_matrix(self, caplog):
+        i = Image(
+            name="my-image",
+            dependencyConstraints=[{"dependency": "R", "constraint": {"latest": True, "count": 2}}],
+            matrix={"dependencyConstraints": [{"dependency": "python", "constraint": {"latest": True, "count": 2}}]},
+        )
+        assert "WARNING" in caplog.text
+        assert "defines both 'dependencyConstraints' and a 'matrix'" in caplog.text
 
     def test_path_resolution(self):
         """Test that the path property resolves correctly based on the parent image's path and subpath."""
@@ -282,7 +292,7 @@ class TestImage:
 
         assert i.get_variant("non-existent") is None
 
-    def test_create_version_model(self):
+    def test_create_version(self):
         """Test that create_version creates a new version and adds it to the image."""
         i = Image(name="my-image")
         new_version = i.create_version("1.0.0")
@@ -292,7 +302,7 @@ class TestImage:
         assert i.versions[0] is new_version
         assert new_version.parent is i
 
-    def test_create_version_model_with_dependencies(self, patch_requests_get):
+    def test_create_version_with_dependencies(self, patch_requests_get):
         """Test that create_version creates a new version with dependencies when dependency constraints are defined."""
         i = Image(
             name="my-image",
@@ -320,7 +330,7 @@ class TestImage:
         with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'my-image'."):
             i.create_version("1.0.0")
 
-    def test_create_version_model_existing_version_update(self):
+    def test_create_version_existing_version_update(self):
         """Test that create_version updates an existing version if it already exists."""
         i = Image(name="my-image", versions=[{"name": "1.0.0"}, {"name": "2.0.0", "latest": True}])
         updated_version = i.create_version("1.0.0", subpath="updated-subpath", update_if_exists=True)
@@ -530,6 +540,72 @@ class TestImage:
         )
         with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'test-image'."):
             i.patch_version("1.0.0", "1.0.0")
+
+    def test_create_matrix(self):
+        """Test that create_version creates a new version and adds it to the image."""
+        i = Image(name="my-image")
+        matrix = i.create_matrix(
+            dependency_constraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "python", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ]
+        )
+
+        assert (
+            matrix.namePattern
+            == "R{{ Dependencies.R }}-python{{ Dependencies.python }}-quarto{{ Dependencies.quarto }}"
+        )
+        assert i.matrix is matrix
+        assert matrix.parent is i
+        assert len(matrix.resolved_dependencies) == 3
+
+    def test_create_matrix_existing_versions(self):
+        """Test that create_matrix raises an error if a version already exists."""
+        i = Image(name="my-image", versions=[{"name": "1.0.0"}])
+
+        with pytest.raises(ValueError, match="Cannot create matrix version for image"):
+            i.create_matrix(
+                dependency_constraints=[
+                    {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                    {"dependency": "python", "constraint": {"latest": True, "count": 2}},
+                    {"dependency": "quarto", "constraint": {"latest": True}},
+                ]
+            )
+
+    def test_create_matrix_existing_matrix(self):
+        """Test that create_matrix raises an error if a matrix already exists."""
+        i = Image(
+            name="my-image",
+            matrix={"dependencyConstraints": [{"dependency": "quarto", "constraint": {"latest": True}}]},
+        )
+
+        with pytest.raises(ValueError, match="Matrix already defined"):
+            i.create_matrix(
+                dependency_constraints=[
+                    {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                    {"dependency": "python", "constraint": {"latest": True, "count": 2}},
+                    {"dependency": "quarto", "constraint": {"latest": True}},
+                ]
+            )
+
+    def test_create_matrix_existing_matrix_update_existing(self):
+        """Test that create_matrix updates a matrix the update_if_exists option."""
+        i = Image(
+            name="my-image",
+            matrix={"dependencyConstraints": [{"dependency": "quarto", "constraint": {"latest": True}}]},
+        )
+        assert len(i.matrix.resolved_dependencies) == 1
+
+        i.create_matrix(
+            dependency_constraints=[
+                {"dependency": "R", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "python", "constraint": {"latest": True, "count": 2}},
+                {"dependency": "quarto", "constraint": {"latest": True}},
+            ],
+            update_if_exists=True,
+        )
+        assert len(i.matrix.resolved_dependencies) == 3
 
     def test_load_dev_versions(self):
         """Test that load_dev_versions correctly loads development versions from configured devVersions."""

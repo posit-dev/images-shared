@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -9,6 +10,8 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
+
+log = logging.getLogger(__name__)
 
 app = typer.Typer(no_args_is_help=True)
 update_version = typer.Typer(no_args_is_help=True)
@@ -78,7 +81,7 @@ def files(
 
     try:
         c = BakeryConfig.from_context(context)
-        c.regenerate_version_files(_filter, regex_filters=template_pattern)
+        c.rerender_files(_filter, regex_filters=template_pattern)
     except Exception as e:
         stderr_console.print(e, style="error")
         stderr_console.print(f"❌ Update failed", style="error")
@@ -124,7 +127,12 @@ def patch(
     If clean is true, the existing version files for old_version will be removed prior to rendering the new_version
     files.
     """
-    value_map = __make_value_map(value)
+    value_map, errors = __make_value_map(value)
+    if errors:
+        for e in errors:
+            log.error(e)
+        log.error("❌ Errors parsing key=value pairs")
+        raise typer.Exit(code=1)
 
     try:
         c = BakeryConfig.from_context(context)

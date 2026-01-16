@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.const import DevVersionInclusionEnum
 from posit_bakery.image.image_metadata import MetadataFile
 from test.config.conftest import CONFIG_TESTDATA_DIR
@@ -21,6 +22,7 @@ from test.helpers import (
     VERSION_INDENT,
     SUCCESS_SUITES,
     assert_directories_match,
+    MATRIX_INDENT,
 )
 
 pytestmark = [
@@ -1005,7 +1007,180 @@ class TestBakeryConfig:
         with pytest.raises(ValueError, match=f"Version '2.0.0' already exists in image '{image.name}'"):
             config.patch_version(image.name, version.name, "2.0.0")
 
-    def test_regenerate_version_files_whole_version(self, get_context, get_tmpcontext):
+    def test_create_matrix(self, get_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        context = get_tmpcontext("barebones")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+
+        config.create_image("test-matrix")
+        config.create_matrix(
+            "test-matrix",
+            dependency_constraints=[
+                PythonDependencyConstraint(constraint={"latest": True, "count": 2}),
+            ],
+            dependencies=[
+                RDependencyVersions(versions=["4.4.3", "4.3.3"]),
+            ],
+        )
+
+        image = config.model.images[1]
+        assert image.name == "test-matrix"
+        assert image.matrix is not None
+        expected_yaml = textwrap.indent(
+            textwrap.dedent(f"""\
+              matrix:
+                dependencyConstraints:
+                  - constraint:
+                      count: 2
+                      latest: true
+                    dependency: python
+                dependencies:
+                  - versions:
+                      - 4.4.3
+                      - 4.3.3
+                    dependency: R
+        """),
+            MATRIX_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+        assert (context / image.name / image.matrix.subpath).is_dir()
+        assert (context / image.name / image.matrix.subpath / "Containerfile").is_file()
+        assert (context / image.name / image.matrix.subpath / "deps").is_dir()
+        assert (context / image.name / image.matrix.subpath / "deps" / "packages.txt").is_file()
+        assert (context / image.name / image.matrix.subpath / "test").is_dir()
+        assert (context / image.name / image.matrix.subpath / "test" / "goss.yaml").is_file()
+
+    def test_create_matrix_image_does_not_exist(self, get_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        context = get_tmpcontext("barebones")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+
+        with pytest.raises(ValueError, match="Versions already exist for image 'scratch'"):
+            config.create_matrix(
+                "scratch",
+                dependency_constraints=[
+                    PythonDependencyConstraint(constraint={"latest": True, "count": 2}),
+                ],
+                dependencies=[
+                    RDependencyVersions(versions=["4.4.3", "4.3.3"]),
+                ],
+            )
+
+    def test_create_matrix_image_has_versions(self, get_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        context = get_tmpcontext("matrix")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+
+        with pytest.raises(ValueError, match="Image 'image-does-not-exist' does not exist in the config"):
+            config.create_matrix(
+                "image-does-not-exist",
+                dependency_constraints=[
+                    PythonDependencyConstraint(constraint={"latest": True, "count": 2}),
+                ],
+                dependencies=[
+                    RDependencyVersions(versions=["4.4.3", "4.3.3"]),
+                ],
+            )
+
+    def test_create_matrix_exists_no_force(self, get_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        context = get_tmpcontext("matrix")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+
+        with pytest.raises(
+            ValueError, match="Cannot create matrix for image 'test-matrix' because it already defines a matrix."
+        ):
+            config.create_matrix(
+                "test-matrix",
+                dependency_constraints=[
+                    PythonDependencyConstraint(constraint={"latest": True, "count": 2}),
+                ],
+                dependencies=[
+                    RDependencyVersions(versions=["4.4.3", "4.3.3"]),
+                ],
+            )
+
+        image = config.model.images[0]
+        assert image.name == "test-matrix"
+        assert image.matrix is not None
+        expected_yaml = textwrap.indent(
+            textwrap.dedent(f"""\
+              matrix:
+                dependencyConstraints:
+                  - dependency: R
+                    constraint:
+                      min: 4.0
+                      latest: true
+                  - dependency: python
+                    constraint:
+                      min: 3.10
+                      latest: true
+                  - dependency: quarto
+                    constraint:
+                      latest: true
+        """),
+            MATRIX_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+        assert (context / image.name / image.matrix.subpath).is_dir()
+        assert (context / image.name / image.matrix.subpath / "Containerfile.ubuntu2404").is_file()
+        assert (context / image.name / image.matrix.subpath / "deps").is_dir()
+        assert (context / image.name / image.matrix.subpath / "deps" / "ubuntu-24.04_packages.txt").is_file()
+        assert (context / image.name / image.matrix.subpath / "test").is_dir()
+        assert (context / image.name / image.matrix.subpath / "test" / "goss.yaml").is_file()
+
+    def test_create_matrix_exists_force(self, get_tmpcontext):
+        """Test creating a new version in the BakeryConfig."""
+        context = get_tmpcontext("matrix")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+
+        config.create_matrix(
+            "test-matrix",
+            dependency_constraints=[
+                PythonDependencyConstraint(constraint={"latest": True, "count": 2}),
+            ],
+            dependencies=[
+                RDependencyVersions(versions=["4.4.3", "4.3.3"]),
+            ],
+            subpath="matrix-override",
+            force=True,
+        )
+
+        image = config.model.images[0]
+        assert image.name == "test-matrix"
+        assert image.matrix is not None
+        assert image.matrix.subpath == "matrix-override"
+        expected_yaml = textwrap.indent(
+            textwrap.dedent(f"""\
+              matrix:
+                subpath: matrix-override
+                dependencyConstraints:
+                  - constraint:
+                      count: 2
+                      latest: true
+                    dependency: python
+                dependencies:
+                  - versions:
+                      - 4.4.3
+                      - 4.3.3
+                    dependency: R
+        """),
+            MATRIX_INDENT,
+        )
+        assert expected_yaml in (context / "bakery.yaml").read_text()
+        assert (context / image.name / image.matrix.subpath).is_dir()
+        assert (context / image.name / image.matrix.subpath / f"Containerfile.ubuntu2404").is_file()
+        assert (context / image.name / image.matrix.subpath / "deps").is_dir()
+        assert (context / image.name / image.matrix.subpath / "deps" / "ubuntu-24.04_packages.txt").is_file()
+        assert (context / image.name / image.matrix.subpath / "test").is_dir()
+        assert (context / image.name / image.matrix.subpath / "test" / "goss.yaml").is_file()
+
+    def test_rerender_files_whole_version(self, get_context, get_tmpcontext):
         """Test regenerating files for an existing version with no directory in the BakeryConfig."""
         context = get_tmpcontext("basic")
         config = BakeryConfig.from_context(context)
@@ -1017,12 +1192,29 @@ class TestBakeryConfig:
         shutil.rmtree(version.path)
         assert not version.path.exists()
 
-        config.regenerate_version_files()
+        config.rerender_files()
 
         assert version.path.exists()
         assert_directories_match(version.path, get_context("basic") / image.name / version.name)
 
-    def test_regenerate_version_files_altered_file(self, get_context, get_tmpcontext):
+    def test_rerender_files_matrix(self, get_context, get_tmpcontext):
+        """Test regenerating files for an existing version with no directory in the BakeryConfig."""
+        context = get_tmpcontext("matrix")
+        config = BakeryConfig.from_context(context)
+        assert len(config.model.images) == 1
+        image = config.model.images[0]
+        assert image.matrix is not None
+        matrix = image.matrix
+
+        shutil.rmtree(matrix.path)
+        assert not matrix.path.exists()
+
+        config.rerender_files()
+
+        assert matrix.path.exists()
+        assert_directories_match(matrix.path, get_context("matrix") / image.name / matrix.subpath)
+
+    def test_rerender_files_altered_file(self, get_context, get_tmpcontext):
         """Test regenerating files for an existing version with no directory in the BakeryConfig."""
         context = get_tmpcontext("basic")
         config = BakeryConfig.from_context(context)
@@ -1035,12 +1227,12 @@ class TestBakeryConfig:
         (version.path / "Containerfile.ubuntu2204.min").write_text("This is an altered file.")
         assert "This is an altered file." in (version.path / "Containerfile.ubuntu2204.min").read_text()
 
-        config.regenerate_version_files()
+        config.rerender_files()
 
         assert version.path.exists()
         assert_directories_match(version.path, get_context("basic") / image.name / version.name)
 
-    def test_regenerate_version_files_with_filter(self, get_tmpcontext):
+    def test_rerender_files_with_filter(self, get_tmpcontext):
         """Test regenerating files for an existing version with no directory in the BakeryConfig."""
         context = get_tmpcontext("basic")
 
@@ -1056,11 +1248,11 @@ class TestBakeryConfig:
         shutil.rmtree(version.path)
         assert not version.path.exists()
 
-        config.regenerate_version_files(_filter)
+        config.rerender_files(_filter)
 
         assert not version.path.exists()
 
-    def test_regenerate_version_files_with_regex(self, get_context, get_tmpcontext):
+    def test_rerender_files_with_regex(self, get_context, get_tmpcontext):
         """Test regenerating files for an existing version with no directory in the BakeryConfig."""
         context = get_tmpcontext("basic")
 
@@ -1073,7 +1265,7 @@ class TestBakeryConfig:
         shutil.rmtree(version.path)
         assert not version.path.exists()
 
-        config.regenerate_version_files(regex_filters=[r"deps"])
+        config.rerender_files(regex_filters=[r"deps"])
 
         assert version.path.exists()
         assert_directories_match(version.path / "deps", get_context("basic") / image.name / version.name / "deps")

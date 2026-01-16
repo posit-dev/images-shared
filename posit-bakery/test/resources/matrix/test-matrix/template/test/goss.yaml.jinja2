@@ -1,0 +1,21 @@
+{%- import "python.j2" as python -%}
+{%- import "quarto.j2" as quarto -%}
+{%- import "r.j2" as r -%}
+
+package:
+  ca-certificates:
+    installed: true
+  curl:
+    installed: true
+  git:
+    installed: true
+file:
+  python-{% raw %}{{ .Env.PYTHON_VERSION }}{% endraw %}:
+    exists: true
+    path: {{ python.get_version_directory("{{ .Env.PYTHON_VERSION }}") }}
+  r-{% raw %}{{ .Env.R_VERSION }}{% endraw %}:
+    exists: true
+    path: {{ r.get_version_directory("{{ .Env.R_VERSION }}") }}
+  quarto-{% raw %}{{ .Env.QUARTO_VERSION }}{% endraw %}:
+    exists: true
+    path: {{ quarto.get_version_directory("{{ .Env.QUARTO_VERSION }}") }}
