@@ -224,23 +224,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             raise ValueError(error_message.strip())
         return variants
 
-    @model_validator(mode="before")
-    @classmethod
-    def check_matrix_or_versions(cls, data) -> dict:
-        """Ensures that only one of matrix or versions and devVersions are defined for the image.
-
-        :param data: The data being validated.
-
-        :return: The unmodified data dictionary.
-
-        :raises ValueError: If neither matrix nor versions are defined.
-        """
-        if data.get("matrix") and (data.get("versions") or data.get("devVersions")):
-            raise ValueError(
-                f"Only one of 'matrix' or 'versions'/'devVersions' can be defined for image '{data.get('name')}'."
-            )
-        return data
-
     @model_validator(mode="after")
     def resolve_parentage(self) -> Self:
         """Sets the parent for all variants and versions in this image."""
