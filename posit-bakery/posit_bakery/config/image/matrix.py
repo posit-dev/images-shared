@@ -642,6 +642,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 os=self.os,
                 dependencies=product["dependencies"],
                 values=product["values"],
+                isMatrixVersion=True,
             )
             image_versions.append(image_version)
 

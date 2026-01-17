@@ -722,7 +722,10 @@ class BakeryConfig:
                     f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'"
                 )
                 continue
-            for version in image.versions:
+            versions = image.versions
+            if image.matrix is not None:
+                versions = image.matrix.to_image_versions()
+            for version in versions:
                 if settings.dev_versions == DevVersionInclusionEnum.ONLY and not version.isDevelopmentVersion:
                     log.debug(
                         f"Skipping image version '{version.name}' in image '{image.name}' due to not being a "
