@@ -52,6 +52,7 @@
         "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min",
         "ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ],
@@ -93,6 +94,7 @@
         "ghcr.io/posit-dev/test-multi:min",
         "ghcr.io/posit-dev/test-multi:ubuntu-24.04-min"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64",
         "linux/arm64"
@@ -135,6 +137,7 @@
         "ghcr.io/posit-dev/test-multi:ubuntu-22.04",
         "ghcr.io/posit-dev/test-multi:ubuntu-22.04-std"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ],
@@ -180,6 +183,7 @@
         "ghcr.io/posit-dev/test-multi:ubuntu-24.04",
         "ghcr.io/posit-dev/test-multi:ubuntu-24.04-std"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64",
         "linux/arm64"

@@ -45,6 +45,7 @@
       "tags": [
         "ghcr.io/posit-dev/test-image/tmp"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ]
@@ -70,6 +71,7 @@
       "tags": [
         "ghcr.io/posit-dev/test-image/tmp"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ]

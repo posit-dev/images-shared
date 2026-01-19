@@ -52,6 +52,7 @@
         "ghcr.io/posit-dev/test-image:min",
         "ghcr.io/posit-dev/test-image:ubuntu-22.04-min"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ]
@@ -92,6 +93,7 @@
         "ghcr.io/posit-dev/test-image:ubuntu-22.04",
         "ghcr.io/posit-dev/test-image:ubuntu-22.04-std"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ]

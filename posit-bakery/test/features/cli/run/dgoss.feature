@@ -48,7 +48,7 @@ Feature: dgoss
         Then The command succeeds
 
         Given I call bakery run dgoss
-        * in a temp with-macros context
+        * in a temp matrix context
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
