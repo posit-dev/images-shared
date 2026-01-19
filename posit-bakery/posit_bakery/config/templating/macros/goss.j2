@@ -1,0 +1,5 @@
+{# Macros for generating common goss.yaml patterns #}
+
+{% macro build_arg_from_env_var(name) -%}
+{% raw %}{{ {% endraw %}.Env.{{ name }}{% raw %} }}{% endraw %}
+{%- endmacro %}

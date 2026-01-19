@@ -47,6 +47,7 @@ class BakeTarget(BaseModel):
     dockerfile: Annotated[Path | str, Field(description="Path to the Containerfile relative to the context.")]
     labels: Annotated[dict[str, str], Field(description="Labels to apply to the image.")]
     tags: Annotated[list[str], Field(description="Tags to apply to the image.")]
+    args: Annotated[dict[str, str], Field(default_factory=dict, description="Build arguments for the image build.")]
     platforms: Annotated[
         list[TargetPlatform],
         Field(default=DEFAULT_PLATFORMS, description="Target platforms to build the image for."),
@@ -107,6 +108,7 @@ class BakeTarget(BaseModel):
             image_os=image_target.image_os.name if image_target.image_os else None,
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
+            args=image_target.build_args,
             platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
             **kwargs,
         )

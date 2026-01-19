@@ -372,6 +372,7 @@ class ImageTarget(BaseModel):
                 image = python_on_whales.docker.build(
                     context_path=self.context.base_path,
                     file=self.containerfile,
+                    build_args=self.build_args,
                     tags=tags,
                     labels=self.labels,
                     load=load,

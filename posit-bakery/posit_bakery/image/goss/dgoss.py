@@ -95,6 +95,10 @@ class DGossCommand(BaseModel):
             e["IMAGE_OS_CODENAME"] = self.image_target.image_os.buildOS.codename
             e["IMAGE_OS_FAMILY"] = self.image_target.image_os.buildOS.family.value
             e["IMAGE_OS_VERSION"] = self.image_target.image_os.buildOS.version
+        if self.image_target.build_args:
+            for arg, value in self.image_target.build_args.items():
+                env_var = f"BUILD_ARG_{arg.upper()}"
+                e[env_var] = value
 
         return e
 
