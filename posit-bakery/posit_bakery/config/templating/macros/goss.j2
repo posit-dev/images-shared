@@ -1,5 +1,6 @@
 {# Macros for generating common goss.yaml patterns #}
 
-{% macro build_arg_from_env_var(name) -%}
-{% raw %}{{ {% endraw %}.Env.{{ name }}{% raw %} }}{% endraw %}
+{# Inserts a reference to a build arg passed as an env var to Goss tests #}
+{% macro build_arg_env_var(name) -%}
+{% raw %}{{ {% endraw %}.Env.BUILD_ARG_{{ name }}{% raw %} }}{% endraw %}
 {%- endmacro %}
