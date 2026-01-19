@@ -1113,11 +1113,11 @@ class TestBakeryConfig:
                 dependencyConstraints:
                   - dependency: R
                     constraint:
-                      min: 4.0
+                      count: 2
                       latest: true
                   - dependency: python
                     constraint:
-                      min: 3.10
+                      count: 2
                       latest: true
                   - dependency: quarto
                     constraint:
@@ -1269,6 +1269,10 @@ class TestBakeryConfig:
 
         assert version.path.exists()
         assert_directories_match(version.path / "deps", get_context("basic") / image.name / version.name / "deps")
+
+    def test_target_generation_matrix(self, get_tmpcontext):
+        config = BakeryConfig(get_tmpcontext("matrix") / "bakery.yaml")
+        assert len(config.targets) == 4
 
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"

@@ -1006,6 +1006,23 @@ class TestDnfMacros:
         assert rendered == expected
 
 
+class TestGossMacros:
+    def test_build_arg_env_var(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "goss.j2" as goss -%}
+            {{ goss.build_arg_env_var("PYTHON_VERSION") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            {{ .Env.BUILD_ARG_PYTHON_VERSION }}
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+
 class TestPythonMacros:
     def test_declare_build_arg_default(self, environment_with_macros):
         template = textwrap.dedent(

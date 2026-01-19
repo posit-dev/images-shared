@@ -5,6 +5,7 @@ import pytest
 import python_on_whales
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
+from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import MetadataFile
@@ -318,6 +319,99 @@ class TestImageTarget:
         assert all(tag in target.tags for tag in expected_tags)
 
     @pytest.mark.parametrize(
+        "is_matrix,dependencies,values,expected_args",
+        [
+            pytest.param(
+                False,
+                [],
+                {},
+                {},
+                id="not-matrix-no-deps-no-values",
+            ),
+            pytest.param(
+                True,
+                [],
+                {},
+                {},
+                id="matrix-no-deps-no-values",
+            ),
+            pytest.param(
+                False,
+                [
+                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+                    RDependencyVersions(dependency="R", versions=["4.3.3"]),
+                ],
+                {},
+                {},
+                id="no-matrix-deps-no-values",
+            ),
+            pytest.param(
+                True,
+                [
+                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+                    RDependencyVersions(dependency="R", versions=["4.3.3"]),
+                ],
+                {},
+                {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
+                id="matrix-deps-no-values",
+            ),
+            pytest.param(
+                False,
+                [],
+                {"golang_version": "1.25.2"},
+                {},
+                id="no-matrix-no-deps-values",
+            ),
+            pytest.param(
+                True,
+                [],
+                {"golang_version": "1.25.2"},
+                {"GOLANG_VERSION": "1.25.2"},
+                id="matrix-no-deps-values",
+            ),
+            pytest.param(
+                False,
+                [
+                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+                    RDependencyVersions(dependency="R", versions=["4.3.3"]),
+                ],
+                {"golang_version": "1.25.2"},
+                {},
+                id="no-matrix-deps-values",
+            ),
+            pytest.param(
+                True,
+                [
+                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+                    RDependencyVersions(dependency="R", versions=["4.3.3"]),
+                ],
+                {"golang_version": "1.25.2"},
+                {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3", "GOLANG_VERSION": "1.25.2"},
+                id="matrix-deps-values",
+            ),
+        ],
+    )
+    def test_build_args(self, get_config_obj, is_matrix, dependencies, values, expected_args):
+        """Test creating a new ImageTarget object."""
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
+        version = image.get_version("1.0.0")
+        version.isMatrixVersion = is_matrix
+        version.dependencies = dependencies
+        version.values = values
+        variant = image.get_variant("Standard")
+        os = version.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=basic_config_obj.model.repository,
+            image_version=version,
+            image_variant=variant,
+            image_os=os,
+        )
+
+        assert target.build_args == expected_args
+
+    @pytest.mark.parametrize(
         "target_name,expected_ref",
         [
             (
@@ -378,6 +472,37 @@ class TestImageTarget:
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
+            "build_args": {},
+            "tags": basic_standard_image_target.tags,
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "output": {},
+            "cache": True,
+            "cache_from": None,
+            "cache_to": None,
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_with_build_args(self, basic_standard_image_target):
+        """Test the build property of an ImageTarget when build args are applicable."""
+        basic_standard_image_target.image_version.isMatrixVersion = True
+        basic_standard_image_target.image_version.dependencies = [
+            PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+            RDependencyVersions(dependency="R", versions=["4.3.3"]),
+        ]
+
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "build_args": {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
             "tags": basic_standard_image_target.tags,
             "labels": basic_standard_image_target.labels,
             "load": True,
@@ -402,6 +527,7 @@ class TestImageTarget:
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
+            "build_args": {},
             "tags": basic_standard_image_target.tags,
             "labels": basic_standard_image_target.labels,
             "load": True,
@@ -426,6 +552,7 @@ class TestImageTarget:
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
+            "build_args": {},
             "tags": [basic_standard_image_target.temp_name],
             "labels": basic_standard_image_target.labels,
             "load": True,

@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
+from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.image import DGossSuite
 from posit_bakery.image.goss.dgoss import DGossCommand, find_dgoss_bin
 from test.helpers import remove_images
@@ -112,6 +113,53 @@ class TestDGossCommand:
             "IMAGE_OS_FAMILY=debian",
             "-e",
             "IMAGE_OS_VERSION=22.04",
+            "--init",
+            basic_standard_image_target.ref,
+            *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
+        ]
+        assert dgoss_command.command == expected_command
+
+    def test_command_build_args_env_vars(self, basic_standard_image_target):
+        """Test that DGossCommand command returns the expected command."""
+        basic_standard_image_target.image_version.isMatrixVersion = True
+        basic_standard_image_target.image_version.dependencies = [
+            PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
+            RDependencyVersions(dependency="R", versions=["4.3.3"]),
+        ]
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        expected_command = [
+            find_dgoss_bin(basic_standard_image_target.context),
+            "run",
+            "-v",
+            f"{str(basic_standard_image_target.context.version_path.resolve())}:/tmp/version",
+            "-v",
+            f"{str(basic_standard_image_target.context.image_path.resolve())}:/tmp/image",
+            "-v",
+            f"{str(basic_standard_image_target.context.base_path.resolve())}:/tmp/project",
+            "-e",
+            "IMAGE_VERSION=1.0.0",
+            "-e",
+            "IMAGE_VERSION_MOUNT=/tmp/version",
+            "-e",
+            "IMAGE_MOUNT=/tmp/image",
+            "-e",
+            "PROJECT_MOUNT=/tmp/project",
+            "-e",
+            "IMAGE_VARIANT=Standard",
+            "-e",
+            "IMAGE_OS=Ubuntu\ 22.04",
+            "-e",
+            "IMAGE_OS_NAME=ubuntu",
+            "-e",
+            "IMAGE_OS_CODENAME=jammy",
+            "-e",
+            "IMAGE_OS_FAMILY=debian",
+            "-e",
+            "IMAGE_OS_VERSION=22.04",
+            "-e",
+            "BUILD_ARG_PYTHON_VERSION=3.13.7",
+            "-e",
+            "BUILD_ARG_R_VERSION=4.3.3",
             "--init",
             basic_standard_image_target.ref,
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),

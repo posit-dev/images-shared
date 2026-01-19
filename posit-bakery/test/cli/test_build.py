@@ -12,7 +12,7 @@ scenarios(
 )
 
 
-@then("the bake plan is valid")
+@then("the bake plan is valid", target_fixture="bake_plan_data")
 def check_bake_plan_json(bakery_command):
     try:
         plan = json.loads(bakery_command.result.stdout)
@@ -28,6 +28,13 @@ def check_bake_plan_json(bakery_command):
 
     assert "target" in plan
     assert isinstance(plan["target"], dict)
+
+    return plan
+
+
+@then(parsers.parse("the bake plan has {num_targets} targets"))
+def check_bake_plan_num_targets(num_targets, bake_plan_data):
+    assert len(bake_plan_data["target"]) == int(num_targets)
 
 
 @then("the targets include the commit hash")
