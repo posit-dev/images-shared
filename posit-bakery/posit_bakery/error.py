@@ -40,10 +40,18 @@ class BakeryRenderError(BakeryError):
         self.template = template
         self.destination = destination
 
+    def _safe_relative_path(self, path: Path) -> Path:
+        """Safely get a relative path, falling back to the original path if not possible."""
+        if self.context is None or path is None:
+            return path
+        if path.is_relative_to(self.context):
+            return path.relative_to(self.context)
+        return path
+
     def __str__(self) -> str:
         s = f"Error rendering template"
         if self.template:
-            s += f" {self.template.relative_to(self.context)}"
+            s += f" {self._safe_relative_path(self.template)}"
         if isinstance(self.__cause__, TemplateError) and hasattr(self.__cause__, "lineno") and self.__cause__.lineno:
             s += f", line {self.__cause__.lineno}"
         s += f": {self.__cause__}\n"
@@ -54,7 +62,7 @@ class BakeryRenderError(BakeryError):
         if self.variant:
             s += f"  - Variant: {self.variant}\n"
         if self.destination:
-            s += f"  - Destination: {self.destination.relative_to(self.context)}\n"
+            s += f"  - Destination: {self._safe_relative_path(self.destination)}\n"
         return s
 
 
