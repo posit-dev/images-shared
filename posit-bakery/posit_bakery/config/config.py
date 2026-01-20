@@ -23,7 +23,7 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
-from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
+from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
     BakeryToolRuntimeError,
     BakeryToolRuntimeErrorGroup,
@@ -249,6 +249,13 @@ class BakerySettings(BaseModel):
         Field(
             description="Include or exclude development versions defined in config.",
             default=DevVersionInclusionEnum.EXCLUDE,
+        ),
+    ]
+    matrix_versions: Annotated[
+        MatrixVersionInclusionEnum,
+        Field(
+            description="Include or exclude versions defined in image matrix.",
+            default=MatrixVersionInclusionEnum.EXCLUDE,
         ),
     ]
     clean_temporary: Annotated[
@@ -723,7 +730,11 @@ class BakeryConfig:
                 )
                 continue
             versions = image.versions
-            if image.matrix is not None:
+            if (image.matrix is None and settings.matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
+                image.matrix is not None and settings.matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
+            ):
+                continue
+            elif image.matrix is not None and settings.matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
                 versions = image.matrix.to_image_versions()
             for version in versions:
                 if settings.dev_versions == DevVersionInclusionEnum.ONLY and not version.isDevelopmentVersion:
