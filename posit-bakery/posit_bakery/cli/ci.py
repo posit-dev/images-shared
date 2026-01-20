@@ -11,7 +11,7 @@ from python_on_whales import DockerException
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
-from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stdout_console
 from posit_bakery.util import auto_path
 
@@ -41,6 +41,13 @@ def matrix(
             help="Include or exclude development versions defined in config.", rich_help_panel=RichHelpPanelEnum.FILTERS
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude versions defined in image matrix.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -89,7 +96,14 @@ def matrix(
         data = []
         for img in images:
             entry = {"image": img.name}
-            for ver in img.versions:
+            versions = img.versions
+            if (img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
+                img.matrix is not None and matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
+            ):
+                continue
+            elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
+                versions = img.matrix.to_image_versions()
+            for ver in versions:
                 if ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.EXCLUDE:
                     continue
                 if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:

@@ -155,3 +155,27 @@ Feature: build
             | build-metadata.json |
         * build-metadata.json contains build metadata for the basic test suite
         * the basic images are removed
+
+    Scenario: Generating a buildkit bake plan with a matrix
+        Given I call bakery build
+        * in a temp matrix context
+        * with the arguments:
+            | --plan | --matrix-versions | include |
+        When I execute the command
+        Then The command succeeds
+        * the bake plan is valid
+        * the bake plan has 4 targets
+
+    @slow
+    @xdist-build
+    Scenario: Building images from a project using bake with a matrix
+        Given I call bakery build
+        * in a temp matrix context
+        * with the arguments:
+            | --matrix-versions | include |
+        When I execute the command
+        Then The command succeeds
+        * the stderr output includes:
+            | Build completed |
+        * the matrix test suite is built
+        * the matrix images are removed

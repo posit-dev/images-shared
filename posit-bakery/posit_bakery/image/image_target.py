@@ -241,6 +241,18 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
+    def build_args(self) -> dict[str, str]:
+        """Generate build arguments for the image based on its properties."""
+        build_args = {}
+        if self.image_version.isMatrixVersion:
+            for dependency in self.image_version.dependencies:
+                build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
+            for value in self.image_version.values:
+                build_args[value.name.upper()] = value.value
+        return build_args
+
+    @computed_field
+    @property
     def ref(self) -> str:
         """Returns a reference to the image, preferring a build metadata digest if available."""
         if self.metadata_file is not None:
@@ -360,6 +372,7 @@ class ImageTarget(BaseModel):
                 image = python_on_whales.docker.build(
                     context_path=self.context.base_path,
                     file=self.containerfile,
+                    build_args=self.build_args,
                     tags=tags,
                     labels=self.labels,
                     load=load,

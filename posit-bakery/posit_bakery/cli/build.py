@@ -10,7 +10,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
-from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
@@ -164,6 +164,13 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude versions defined in image matrix.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
 ) -> None:
     """Builds images in the context path
 
@@ -183,6 +190,7 @@ def build(
             image_platform=image_platform or [],
         ),
         dev_versions=dev_versions,
+        matrix_versions=matrix_versions,
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,

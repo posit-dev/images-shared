@@ -22,6 +22,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      matrix-versions:
+        description: "Matrix version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -79,11 +84,11 @@ jobs:
       - name: Images by Version/Platform
         id: images-by-platform
         run: |
-          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
       - name: Images by Version
         id: images-by-version
         run: |
-          echo "versions_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "versions_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
@@ -180,6 +185,7 @@ jobs:
             --image-version ${{ matrix.img.version }} \
             --image-platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }} \
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --temp-registry "ghcr.io/${{ github.repository_owner }}" \
             --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
@@ -195,6 +201,7 @@ jobs:
             --image-version ${{ matrix.img.version }} \
             --image-platform ${{ matrix.img.platform }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }} \
             --metadata-file "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json" \
             --context ${{ inputs.context }}
       - name: Upload Metadata

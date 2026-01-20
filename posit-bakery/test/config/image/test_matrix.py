@@ -564,6 +564,7 @@ class TestImageMatrix:
             assert "R" in [dep.dependency for dep in image_version.dependencies]
             assert image_version.values["pro_drivers_version"] == "2025.07.0"
             assert image_version.values["go_version"] in ["1.24", "1.25"]
+            assert image_version.isMatrixVersion
 
         expected_names = [
             "python3.13.7-R4.2.3-go_version1.24-pro_drivers_version2025.07.0",

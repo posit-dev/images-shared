@@ -31,6 +31,7 @@
       "tags": [
         "ghcr.io/posit-dev/scratch/tmp"
       ],
+      "args": {},
       "platforms": [
         "linux/amd64"
       ]

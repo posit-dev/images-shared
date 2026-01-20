@@ -6,12 +6,12 @@ package:
   git:
     installed: true
 file:
-  python-{{ .Env.PYTHON_VERSION }}:
+  python-{{ .Env.BUILD_ARG_PYTHON_VERSION }}:
     exists: true
-    path: /opt/python/{{ .Env.PYTHON_VERSION }}
-  r-{{ .Env.R_VERSION }}:
+    path: /opt/python/{{ .Env.BUILD_ARG_PYTHON_VERSION }}
+  r-{{ .Env.BUILD_ARG_R_VERSION }}:
     exists: true
-    path: /opt/R/{{ .Env.R_VERSION }}
-  quarto-{{ .Env.QUARTO_VERSION }}:
+    path: /opt/R/{{ .Env.BUILD_ARG_R_VERSION }}
+  quarto-{{ .Env.BUILD_ARG_QUARTO_VERSION }}:
     exists: true
-    path: /opt/quarto/{{ .Env.QUARTO_VERSION }}
+    path: /opt/quarto/{{ .Env.BUILD_ARG_QUARTO_VERSION }}

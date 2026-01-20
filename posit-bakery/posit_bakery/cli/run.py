@@ -10,7 +10,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
-from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
 
@@ -88,6 +88,13 @@ def dgoss(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude versions defined in image matrix.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
     metadata_file: Annotated[
         Optional[Path],
         typer.Option(
@@ -132,6 +139,7 @@ def dgoss(
             image_platform=[image_platform],
         ),
         dev_versions=dev_versions,
+        matrix_versions=matrix_versions,
         clean_temporary=clean,
     )
     c = BakeryConfig.from_context(context, settings)

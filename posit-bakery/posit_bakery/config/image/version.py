@@ -71,6 +71,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="Flag to indicate if this is a development version.",
         ),
     ]
+    isMatrixVersion: Annotated[
+        bool,
+        Field(
+            exclude=True,
+            default=False,
+            description="Flag to indicate if this is a matrix version.",
+        ),
+    ]
     os: Annotated[
         list[ImageVersionOS],
         Field(
