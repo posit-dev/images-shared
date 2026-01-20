@@ -12,7 +12,7 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
-from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.image.image_metadata import MetadataFile
 from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
@@ -212,16 +212,69 @@ class TestBakeryConfig:
                 )
                 assert config is not None
                 assert "WARNING" not in caplog.text
-                assert mock_create_files.call_count == len(expected_versions)
+                if include_dev_version != DevVersionInclusionEnum.EXCLUDE:
+                    assert mock_create_files.call_count == len(config.model.images)
                 if clean and not include_dev_version == DevVersionInclusionEnum.EXCLUDE:
-                    assert mock_atexit_register.call_count == len(expected_versions)
-                    expected_calls = [call(mock_remove_files)] * len(expected_versions)
+                    assert mock_atexit_register.call_count == len(config.model.images)
+                    expected_calls = [call(mock_remove_files)] * len(config.model.images)
                     mock_atexit_register.assert_has_calls(expected_calls, any_order=True)
                 dev_versions = [v for i in config.model.images for v in i.versions if v.isDevelopmentVersion]
                 assert len(dev_versions) == len(expected_versions)
                 for version in dev_versions:
                     assert version.name in expected_versions
                     assert len(version.os) == 2
+
+    @pytest.mark.parametrize(
+        "include_matrix_versions,expected_uids",
+        [
+            pytest.param(
+                MatrixVersionInclusionEnum.EXCLUDE,
+                [],
+                id="exclude-matrix-versions",
+            ),
+            pytest.param(
+                MatrixVersionInclusionEnum.INCLUDE,
+                [
+                    "session-r4-5-1-python3-13-7-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-5-1-python3-12-11-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-4-3-python3-13-7-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-4-3-python3-12-11-quarto1-7-34-ubuntu-24-04",
+                ],
+                id="include-matrix-versions",
+            ),
+            pytest.param(
+                MatrixVersionInclusionEnum.ONLY,
+                [
+                    "session-r4-5-1-python3-13-7-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-5-1-python3-12-11-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-4-3-python3-13-7-quarto1-7-34-ubuntu-24-04",
+                    "session-r4-4-3-python3-12-11-quarto1-7-34-ubuntu-24-04",
+                ],
+                id="only-matrix-versions",
+            ),
+        ],
+    )
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_valid_matrix_version_enum(
+        self,
+        include_matrix_versions,
+        expected_uids,
+        caplog,
+        testdata_path,
+    ):
+        """Test that the DevVersionInclusionEnum works as expected."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(yaml_file, BakerySettings(matrix_versions=include_matrix_versions))
+        assert config is not None
+        assert "WARNING" not in caplog.text
+        matrix_versions = [t for t in config.targets if t.image_version.isMatrixVersion]
+        assert len(matrix_versions) == len(expected_uids)
+        if include_matrix_versions == MatrixVersionInclusionEnum.INCLUDE:
+            assert len(config.targets) > len(matrix_versions)
+        elif include_matrix_versions == MatrixVersionInclusionEnum.ONLY:
+            assert len(config.targets) == len(matrix_versions)
+        for target in matrix_versions:
+            assert target.uid in expected_uids
 
     @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
     def test_valid_with_warning(self, caplog, yaml_file: Path):
@@ -1271,7 +1324,10 @@ class TestBakeryConfig:
         assert_directories_match(version.path / "deps", get_context("basic") / image.name / version.name / "deps")
 
     def test_target_generation_matrix(self, get_tmpcontext):
-        config = BakeryConfig(get_tmpcontext("matrix") / "bakery.yaml")
+        config = BakeryConfig(
+            get_tmpcontext("matrix") / "bakery.yaml",
+            settings=BakerySettings(matrix_versions=MatrixVersionInclusionEnum.INCLUDE),
+        )
         assert len(config.targets) == 4
 
     def test_target_filtering_no_filter(self, testdata_path):

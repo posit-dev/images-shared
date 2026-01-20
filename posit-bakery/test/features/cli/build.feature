@@ -160,7 +160,7 @@ Feature: build
         Given I call bakery build
         * in a temp matrix context
         * with the arguments:
-            | --plan |
+            | --plan | --matrix-versions | include |
         When I execute the command
         Then The command succeeds
         * the bake plan is valid
@@ -171,6 +171,8 @@ Feature: build
     Scenario: Building images from a project using bake with a matrix
         Given I call bakery build
         * in a temp matrix context
+        * with the arguments:
+            | --matrix-versions | include |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:

@@ -138,3 +138,21 @@ images:
             versions: ["4.4.2"]
           - dependency: python
             versions: ["3.12.7"]
+
+  - name: "session"
+    matrix:
+      dependencyConstraints:
+        - dependency: R
+          constraint:
+            count: 2
+            latest: true
+        - dependency: python
+          constraint:
+            count: 2
+            latest: true
+        - dependency: quarto
+          constraint:
+            latest: true
+      os:
+        - name: "Ubuntu 24.04"
+          primary: true

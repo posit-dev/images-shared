@@ -44,11 +44,15 @@ Feature: dgoss
     Scenario: Running dgoss tests against matrix images
         Given I call bakery build
         * in a temp matrix context
+        * with the arguments:
+            | --matrix-versions | only |
         When I execute the command
         Then The command succeeds
 
         Given I call bakery run dgoss
         * in a temp matrix context
+        * with the arguments:
+            | --matrix-versions | only |
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
