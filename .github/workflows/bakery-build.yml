@@ -23,6 +23,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      matrix-versions:
+        description: "Matrix version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -69,7 +74,7 @@ jobs:
       - name: Images
         id: images
         run: |
-          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
@@ -150,6 +155,7 @@ jobs:
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }} \
             --cache-registry "ghcr.io/${{ github.repository_owner }}" \
             --context ${{ inputs.context }}
 
@@ -161,6 +167,7 @@ jobs:
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }} \
             --context ${{ inputs.context }}
 
       - name: Push
@@ -175,4 +182,5 @@ jobs:
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }} \
             --context ${{ inputs.context }}
