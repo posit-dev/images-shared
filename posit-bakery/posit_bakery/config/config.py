@@ -558,18 +558,18 @@ class BakeryConfig:
         """Creates a matrix definition for an image.
 
         Creates a new matrix directory from image templates, add the matrix definition to the config, and writes the
-        version back to bakery.yaml.
+        matrix back to bakery.yaml.
 
-        :param image_name: The name of the image to create the version for.
+        :param image_name: The name of the image to create the matrix for.
         :param name_pattern: Optional name pattern for the matrix versions. If not provided, the default pattern will
             be used.
-        :param subpath: Optional subpath for the version. If not provided, the version name will be used as the subpath.
+        :param subpath: Optional subpath for the matrix. If not provided, the matrix name will be used as the subpath.
         :param dependency_constraints: Optional list of DependencyConstraint objects to define constraints for the
             matrix.
         :param dependencies: Optional list of DependencyVersions objects to define dependencies for the matrix.
-        :param values: Optional dictionary of values to use in the version. This can be used to provide additional
-            context or configuration for the version. Often used to specify versions of R, Python, or Quarto.
-        :param force: If True, will overwrite an existing version with the same name.
+        :param values: Optional dictionary of values to use in the matrix. This can be used to provide additional
+            context or configuration for the matrix. Often used to specify unmanaged dependency versions.
+        :param force: If True, will overwrite an existing matrix.
         """
         image = self.model.get_image(image_name)
         if image is None:
@@ -588,15 +588,15 @@ class BakeryConfig:
         matrix_path = self.base_path / image_name / (subpath or DEFAULT_MATRIX_SUBPATH)
         matrix_path_preexists = matrix_path.is_dir()
 
-        # If the version already exists, some checks will be performed.
+        # If the matrix already exists, some checks will be performed.
         if matrix_exists:
-            # If the version already exists, we check if the subpaths match.
+            # If the matrix already exists, we check if the subpaths match.
             if image.matrix.subpath != (subpath or DEFAULT_MATRIX_SUBPATH):
                 # If the subpaths do not match, we move the existing subpath to the new subpath.
-                existing_version_path = self.base_path / image_name / image.matrix.subpath
-                shutil.move(existing_version_path, matrix_path)
+                existing_matrix_path = self.base_path / image_name / image.matrix.subpath
+                shutil.move(existing_matrix_path, matrix_path)
 
-        # Create the version in the image model.
+        # Create the matrix in the image model.
         matrix = image.create_matrix(
             name_pattern=name_pattern,
             subpath=subpath,
@@ -606,18 +606,18 @@ class BakeryConfig:
             update_if_exists=force,
         )
 
-        # Add version to the YAML config.
+        # Add matrix to the YAML config.
         image_index = self._get_image_index(image_name)
         self._config_yaml["images"][image_index]["matrix"] = matrix.model_dump(
             exclude_defaults=True, exclude_none=True, exclude_unset=True
         )
 
-        # Create the version directory and files.
+        # Create the matrix directory and files.
         try:
             matrix.render_files(image.variants)
         except (BakeryRenderError, BakeryRenderErrorGroup) as e:
             log.error(f"Failed to create files for image '{image_name}' matrix.")
-            # If creating the version files fails and this is a new version, we remove the files that were created.
+            # If creating the matrix files fails and this is a new matrix, we remove the files that were created.
             if not matrix_exists and not matrix_path_preexists:
                 shutil.rmtree(matrix_path)
             raise e
