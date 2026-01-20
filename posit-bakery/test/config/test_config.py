@@ -186,10 +186,10 @@ class TestBakeryConfig:
         [
             (DevVersionInclusionEnum.EXCLUDE, True, []),
             (DevVersionInclusionEnum.EXCLUDE, False, []),
-            (DevVersionInclusionEnum.INCLUDE, True, ["2024.11.2-9", "2024.11.1-3776"]),
-            (DevVersionInclusionEnum.INCLUDE, False, ["2024.11.2-9", "2024.11.1-3776"]),
-            (DevVersionInclusionEnum.ONLY, True, ["2024.11.2-9", "2024.11.1-3776"]),
-            (DevVersionInclusionEnum.ONLY, False, ["2024.11.2-9", "2024.11.1-3776"]),
+            (DevVersionInclusionEnum.INCLUDE, True, ["2026.02.0-dev+89-ga1b2c3d4e5", "2026.01.0-dev+167-gd27bbec1d7"]),
+            (DevVersionInclusionEnum.INCLUDE, False, ["2026.02.0-dev+89-ga1b2c3d4e5", "2026.01.0-dev+167-gd27bbec1d7"]),
+            (DevVersionInclusionEnum.ONLY, True, ["2026.02.0-dev+89-ga1b2c3d4e5", "2026.01.0-dev+167-gd27bbec1d7"]),
+            (DevVersionInclusionEnum.ONLY, False, ["2026.02.0-dev+89-ga1b2c3d4e5", "2026.01.0-dev+167-gd27bbec1d7"]),
         ],
     )
     @patch("atexit.register")
