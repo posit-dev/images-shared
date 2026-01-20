@@ -1,7 +1,9 @@
-from typing import Annotated, Self
-from packaging.version import Version
+from typing import Annotated, Self, Any
 
-from pydantic import Field, model_validator
+from packaging.version import Version
+from pydantic import Field, model_validator, field_validator
+from ruamel.yaml.scalarfloat import ScalarFloat
+from ruamel.yaml.scalarint import ScalarInt
 
 from posit_bakery.config.shared import BakeryYAMLModel
 
@@ -106,6 +108,14 @@ class VersionConstraint(BakeryYAMLModel):
     latest: Annotated[bool | None, Field(default=None, description="Include the latest version.")]
     max: Annotated[str | None, Field(default=None, description="Maximum version to include.")]
     min: Annotated[str | None, Field(default=None, description="Minimum version to include.")]
+
+    @field_validator("max", "min", mode="before")
+    @classmethod
+    def validate_version_string(cls, v: Any) -> str | None:
+        """Ensure that version strings are properly converted to strings."""
+        if isinstance(v, (int, float, ScalarFloat, ScalarInt)):
+            return str(v)
+        return v
 
     @model_validator(mode="after")
     def validate_minimum_required_fields(self) -> Self:
