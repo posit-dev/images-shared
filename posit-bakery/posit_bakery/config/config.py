@@ -578,8 +578,8 @@ class BakeryConfig:
             raise ValueError(
                 f"Versions already exist for image '{image_name}'. Use `bakery remove` to remove them and try again."
             )
-        existing_matrix = image.matrix is not None
-        if existing_matrix and not force:
+        matrix_exists = image.matrix is not None
+        if matrix_exists and not force:
             raise ValueError(
                 f"Cannot create matrix for image '{image_name}' because it already defines a matrix. Use --force to "
                 f"overwrite."
@@ -589,7 +589,7 @@ class BakeryConfig:
         matrix_path_preexists = matrix_path.is_dir()
 
         # If the version already exists, some checks will be performed.
-        if existing_matrix:
+        if matrix_exists:
             # If the version already exists, we check if the subpaths match.
             if image.matrix.subpath != (subpath or DEFAULT_MATRIX_SUBPATH):
                 # If the subpaths do not match, we move the existing subpath to the new subpath.
@@ -618,7 +618,7 @@ class BakeryConfig:
         except (BakeryRenderError, BakeryRenderErrorGroup) as e:
             log.error(f"Failed to create files for image '{image_name}' matrix.")
             # If creating the version files fails and this is a new version, we remove the files that were created.
-            if not existing_matrix and not matrix_path_preexists:
+            if not matrix_exists and not matrix_path_preexists:
                 shutil.rmtree(matrix_path)
             raise e
 
