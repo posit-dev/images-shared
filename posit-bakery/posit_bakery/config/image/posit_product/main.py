@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from typing import Annotated
+from urllib.parse import quote
 
 import requests
 from pydantic import BaseModel, Field, computed_field, HttpUrl
@@ -53,7 +54,9 @@ class ReleaseStreamPath:
         result = {k: "" for k in self.resolver_map.keys()}
         for key, resolver in self.resolver_map.items():
             if isinstance(resolver, str):
-                result[key] = resolver.format(**metadata, **result)
+                # Provide URL-safe versions of all result values for use in URL templates
+                url_safe_result = {f"url_safe_{k}": quote(str(v), safe="") for k, v in result.items()}
+                result[key] = resolver.format(**metadata, **result, **url_safe_result)
             elif isinstance(resolver, resolvers.AbstractResolver):
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
@@ -111,7 +114,7 @@ product_release_stream_url_map = {
                     (
                         "download_url",
                         "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
-                        "rstudio-pm{os.packageVersionSeparator}{version}{os.packageArchSeparator}"
+                        "rstudio-pm{os.packageVersionSeparator}{url_safe_version}{os.packageArchSeparator}"
                         "{arch_identifier}.{os.packageSuffix}",
                     ),
                 ]
@@ -125,7 +128,7 @@ product_release_stream_url_map = {
                     (
                         "download_url",
                         "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
-                        "rstudio-pm{os.packageVersionSeparator}{version}{os.packageArchSeparator}"
+                        "rstudio-pm{os.packageVersionSeparator}{url_safe_version}{os.packageArchSeparator}"
                         "{arch_identifier}.{os.packageSuffix}",
                     ),
                 ]
