@@ -276,6 +276,87 @@ class TestBakeryConfig:
         for target in matrix_versions:
             assert target.uid in expected_uids
 
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_filter_warning_matrix_image_excluded_by_default(self, caplog, testdata_path):
+        """Test that a warning is logged when --image-name matches a matrix image but it's excluded by default."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^session$"),
+                matrix_versions=MatrixVersionInclusionEnum.EXCLUDE,
+            ),
+        )
+        assert config is not None
+        assert len(config.targets) == 0
+        assert "WARNING" in caplog.text
+        assert "Image 'session' matches --image-name filter but is being skipped" in caplog.text
+        assert "matrix image excluded by default" in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_filter_warning_non_matrix_image_excluded_by_matrix_only(self, caplog, testdata_path):
+        """Test that a warning is logged when --image-name matches a non-matrix image but --matrix-versions only is set."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^package-manager$"),
+                matrix_versions=MatrixVersionInclusionEnum.ONLY,
+            ),
+        )
+        assert config is not None
+        assert len(config.targets) == 0
+        assert "WARNING" in caplog.text
+        assert "Image 'package-manager' matches --image-name filter but is being skipped" in caplog.text
+        assert "non-matrix image excluded by --matrix-versions only" in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_filter_warning_version_excluded_by_dev_versions_only(self, caplog, testdata_path):
+        """Test that a warning is logged when --image-version matches but --dev-versions only excludes it."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            config = BakeryConfig(
+                yaml_file,
+                BakerySettings(
+                    filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^2025.04.2-8$"),
+                    dev_versions=DevVersionInclusionEnum.ONLY,
+                ),
+            )
+        assert config is not None
+        assert len(config.targets) == 0
+        assert "WARNING" in caplog.text
+        assert "Version '2025.04.2-8' in image 'package-manager' matches --image-version filter" in caplog.text
+        assert "not a development version" in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_filter_warning_image_matches_but_no_targets(self, caplog, testdata_path):
+        """Test that a warning is logged when --image-name matches but all versions are filtered out."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^nonexistent$"),
+            ),
+        )
+        assert config is not None
+        assert len(config.targets) == 0
+        assert "WARNING" in caplog.text
+        assert "Image 'package-manager' matches --image-name filter but yielded no targets" in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_filter_no_warning_when_targets_generated(self, caplog, testdata_path):
+        """Test that no warning is logged when filters match and targets are generated."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^2025.04.2-8$"),
+            ),
+        )
+        assert config is not None
+        assert len(config.targets) > 0
+        assert "WARNING" not in caplog.text
+
     @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
     def test_valid_with_warning(self, caplog, yaml_file: Path):
         """Test valid YAML config files with warnings
