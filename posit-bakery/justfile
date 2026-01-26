@@ -59,3 +59,7 @@ test *ARGS:
 test-all *ARGS:
     NO_COLOR="true" \
     just _pytest {{ ARGS }}
+
+# Run type checking with pyright
+check-types:
+    poetry run pyright
