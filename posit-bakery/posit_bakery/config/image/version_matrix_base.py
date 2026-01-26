@@ -5,17 +5,18 @@ import logging
 import re
 from copy import deepcopy
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, cast
 
 import jinja2
 
 from posit_bakery.config.registry import BaseRegistry, Registry
-from posit_bakery.config.shared import CONTAINERFILE_PREFIX
+from posit_bakery.config.shared import CONTAINERFILE_PREFIX, BakeryYAMLModel, BakeryPathMixin
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryRenderErrorGroup, BakeryTemplateError
 from .build_os import DEFAULT_PLATFORMS, TargetPlatform
 from ..templating import jinja2_env
 
 if TYPE_CHECKING:
+    from .image import Image
     from .variant import ImageVariant
     from .version_os import ImageVersionOS
 
@@ -29,6 +30,14 @@ class VersionMatrixMixin(abc.ABC):
     All fields should be defined in the concrete classes to maintain proper
     field ordering for serialization.
     """
+
+    # Abstract properties that concrete classes must provide
+    parent: Union["Image", None]
+    subpath: str
+    extraRegistries: list[Registry | BaseRegistry]
+    overrideRegistries: list[Registry | BaseRegistry]
+    os: list["ImageVersionOS"]
+    values: dict[str, Any]
 
     @classmethod
     @abc.abstractmethod
@@ -56,7 +65,7 @@ class VersionMatrixMixin(abc.ABC):
         ...
 
     @property
-    def path(self) -> Path | None:
+    def path(self) -> Path:
         """Returns the path to the image version directory.
 
         :raises ValueError: If the parent image does not have a valid path.
@@ -64,6 +73,19 @@ class VersionMatrixMixin(abc.ABC):
         if self.parent is None or self.parent.path is None:
             raise ValueError("Parent image must resolve a valid path.")
         return Path(self.parent.path) / Path(self.subpath)
+
+    def _get_context_path(self) -> Path:
+        """Returns the context path from the parent's parent (BakeryConfigDocument).
+
+        :raises ValueError: If the parent hierarchy is not properly set.
+        """
+        if self.parent is None or self.parent.parent is None:
+            raise ValueError("Parent hierarchy must be set.")
+        # parent.parent is BakeryConfigDocument which has a path property via BakeryPathMixin
+        parent_parent = cast(BakeryPathMixin, self.parent.parent)
+        if parent_parent.path is None:
+            raise ValueError("Context path must be set.")
+        return parent_parent.path
 
     @property
     def all_registries(self) -> list[Registry | BaseRegistry]:
@@ -113,7 +135,11 @@ class VersionMatrixMixin(abc.ABC):
         """
         if self.parent is None:
             raise ValueError("Parent image must be set before generating template values.")
+        if self.parent.path is None:
+            raise ValueError("Parent image must have a valid path.")
 
+        context_path = self._get_context_path()
+        parent_path = self.parent.path
         values: dict[str, Any] = {
             "Image": {
                 "Name": self.parent.name,
@@ -121,8 +147,8 @@ class VersionMatrixMixin(abc.ABC):
             },
             "Path": {
                 "Base": ".",
-                "Image": str(self.parent.path.relative_to(self.parent.parent.path)),
-                "Version": str(Path(self.parent.path / self.subpath).relative_to(self.parent.parent.path)),
+                "Image": str(parent_path.relative_to(context_path)),
+                "Version": str(Path(parent_path / self.subpath).relative_to(context_path)),
             },
         }
 
@@ -161,6 +187,8 @@ class VersionMatrixMixin(abc.ABC):
         """
         if self.parent is None:
             raise ValueError("Parent image must be set before rendering files.")
+
+        context_path = self._get_context_path()
 
         # Check that template path exists
         if not self.parent.template_path.is_dir():
@@ -205,7 +233,7 @@ class VersionMatrixMixin(abc.ABC):
                     exceptions.append(
                         BakeryRenderError(
                             cause=e,
-                            context=self.parent.parent.path,
+                            context=context_path,
                             image=self.parent.name,
                             version=self._get_version_identifier(),
                             template=Path(tpl_full_path),
@@ -243,7 +271,7 @@ class VersionMatrixMixin(abc.ABC):
                             exceptions.append(
                                 BakeryRenderError(
                                     cause=e,
-                                    context=self.parent.parent.path,
+                                    context=context_path,
                                     image=self.parent.name,
                                     version=self._get_version_identifier(),
                                     variant=variant.name,
@@ -271,7 +299,7 @@ class VersionMatrixMixin(abc.ABC):
                         exceptions.append(
                             BakeryRenderError(
                                 cause=e,
-                                context=self.parent.parent.path,
+                                context=context_path,
                                 image=self.parent.name,
                                 version=self._get_version_identifier(),
                                 template=Path(tpl_rel_path),
