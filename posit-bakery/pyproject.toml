@@ -56,7 +56,7 @@ unfixable = [
 ]
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 include = ["posit_bakery"]
 reportPrivateUsage = "none"
