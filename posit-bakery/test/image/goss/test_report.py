@@ -4,7 +4,6 @@ Tests cover the Goss report parsing and aggregation functionality.
 """
 
 import json
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -344,8 +343,17 @@ class TestGossJsonReport:
         )
         assert report.test_skips == []
 
-    def test_test_failures_with_none_results(self):
-        """Test test_failures returns empty list when results is None."""
+    @pytest.mark.parametrize(
+        "results_value,property_name",
+        [
+            pytest.param(None, "test_failures", id="failures-none-results"),
+            pytest.param(None, "test_skips", id="skips-none-results"),
+            pytest.param([], "test_failures", id="failures-empty-results"),
+            pytest.param([], "test_skips", id="skips-empty-results"),
+        ],
+    )
+    def test_empty_results_returns_empty_list(self, results_value, property_name):
+        """Test that test_failures and test_skips return empty list for None or empty results."""
         report = GossJsonReport(
             summary=GossSummary(
                 **{
@@ -356,57 +364,9 @@ class TestGossJsonReport:
                     "total-duration": 0,
                 }
             ),
-            results=None,
+            results=results_value,
         )
-        assert report.test_failures == []
-
-    def test_test_skips_with_none_results(self):
-        """Test test_skips returns empty list when results is None."""
-        report = GossJsonReport(
-            summary=GossSummary(
-                **{
-                    "test-count": 0,
-                    "failed-count": 0,
-                    "skipped-count": 0,
-                    "summary-line": "Count: 0",
-                    "total-duration": 0,
-                }
-            ),
-            results=None,
-        )
-        assert report.test_skips == []
-
-    def test_test_failures_with_empty_results(self):
-        """Test test_failures returns empty list when results is empty list."""
-        report = GossJsonReport(
-            summary=GossSummary(
-                **{
-                    "test-count": 0,
-                    "failed-count": 0,
-                    "skipped-count": 0,
-                    "summary-line": "Count: 0",
-                    "total-duration": 0,
-                }
-            ),
-            results=[],
-        )
-        assert report.test_failures == []
-
-    def test_test_skips_with_empty_results(self):
-        """Test test_skips returns empty list when results is empty list."""
-        report = GossJsonReport(
-            summary=GossSummary(
-                **{
-                    "test-count": 0,
-                    "failed-count": 0,
-                    "skipped-count": 0,
-                    "summary-line": "Count: 0",
-                    "total-duration": 0,
-                }
-            ),
-            results=[],
-        )
-        assert report.test_skips == []
+        assert getattr(report, property_name) == []
 
 
 class TestGossJsonReportCollection:
@@ -425,19 +385,25 @@ class TestGossJsonReportCollection:
         return target
 
     @pytest.fixture
-    def report_with_failures(self, passing_command_result_data):
-        """Create a GossJsonReport with 1 failure and 1 skip in summary counts."""
+    def report_with_failures(
+        self, passing_command_result_data, failed_command_result_data, skipped_command_result_data
+    ):
+        """Create a GossJsonReport with mixed results: 1 pass, 1 fail, 1 skip."""
         return GossJsonReport(
             summary=GossSummary(
                 **{
-                    "test-count": 5,
+                    "test-count": 3,
                     "failed-count": 1,
                     "skipped-count": 1,
-                    "summary-line": "Count: 5",
+                    "summary-line": "Count: 3",
                     "total-duration": 5000000000,  # 5 seconds
                 }
             ),
-            results=[GossResult.model_validate(passing_command_result_data)],
+            results=[
+                GossResult.model_validate(passing_command_result_data),
+                GossResult.model_validate(failed_command_result_data),
+                GossResult.model_validate(skipped_command_result_data),
+            ],
         )
 
     def test_add_report(self, mock_image_target, report_with_failures):
@@ -534,10 +500,10 @@ class TestGossJsonReportCollection:
         aggregated = collection.aggregate()
 
         assert "total" in aggregated
-        assert aggregated["total"]["success"] == 3  # 5 - 1 - 1
+        assert aggregated["total"]["success"] == 1  # 3 - 1 - 1
         assert aggregated["total"]["failed"] == 1
         assert aggregated["total"]["skipped"] == 1
-        assert aggregated["total"]["total_tests"] == 5
+        assert aggregated["total"]["total_tests"] == 3
         assert aggregated["total"]["duration"] == 5000000000
 
         assert "test-image" in aggregated
