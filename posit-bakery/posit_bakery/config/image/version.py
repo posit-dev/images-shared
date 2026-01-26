@@ -1,29 +1,23 @@
 import logging
-import re
-from copy import deepcopy
-from pathlib import Path
-from typing import Annotated, Union, Self, Any
+from typing import Annotated, Any, Union
 
-import jinja2
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import DependencyVersionsField
-from posit_bakery.config.registry import BaseRegistry
-from posit_bakery.config.registry import Registry
+from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
-from .build_os import DEFAULT_PLATFORMS, TargetPlatform
 from .variant import ImageVariant
+from .version_matrix_base import VersionMatrixMixin
 from .version_os import ImageVersionOS
-from ..templating import jinja2_env
-from ...error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 
 log = logging.getLogger(__name__)
 
 
-class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
+class ImageVersion(VersionMatrixMixin, BakeryPathMixin, BakeryYAMLModel):
     """Model representing a version of an image."""
 
+    # Fields are defined in the original order to maintain serialization compatibility
     parent: Annotated[
         Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
     ]
@@ -96,7 +90,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
     values: Annotated[
-        dict[str, str],
+        dict[str, Any],
         Field(
             default_factory=dict,
             validate_default=True,
@@ -104,106 +98,93 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         ),
     ]
 
+    @classmethod
+    def _get_entity_name(cls) -> str:
+        """Returns a human-readable name for this entity type."""
+        return "image version"
+
+    def _get_version_identifier(self) -> str:
+        """Returns the version identifier for error messages."""
+        return self.name
+
+    def _get_image_template_values(self) -> dict[str, Any]:
+        """Returns image-specific template values to add to the Image dict."""
+        return {"Version": self.name, "IsDevelopmentVersion": self.isDevelopmentVersion}
+
+    @model_validator(mode="before")
+    @classmethod
+    def log_duplicates_before_dedup(cls, data: dict) -> dict:
+        """Log duplicate registries and OSes before they are deduplicated."""
+        name = data.get("name")
+        if not name:
+            return data
+
+        # Check for duplicate registries
+        extra_registries = data.get("extraRegistries", [])
+        override_registries = data.get("overrideRegistries", [])
+        seen = set()
+        for reg in extra_registries + override_registries:
+            if isinstance(reg, dict):
+                key = (reg.get("host"), reg.get("namespace"), reg.get("repository"))
+                base_url = f"{reg.get('host')}/{reg.get('namespace')}"
+                if reg.get("repository"):
+                    base_url += f"/{reg.get('repository')}"
+            else:
+                key = (getattr(reg, "host", None), getattr(reg, "namespace", None), getattr(reg, "repository", None))
+                base_url = reg.base_url if hasattr(reg, "base_url") else f"{key[0]}/{key[1]}"
+            if key in seen:
+                log.warning(f"Duplicate registry defined in config for version '{name}': {base_url}")
+            seen.add(key)
+
+        # Check for duplicate OSes
+        os_list = data.get("os", [])
+        seen_os = set()
+        for os_item in os_list:
+            if isinstance(os_item, dict):
+                os_name = os_item.get("name")
+            else:
+                os_name = getattr(os_item, "name", None)
+            if os_name in seen_os:
+                log.warning(f"Duplicate OS defined in config for image version '{name}': {os_name}")
+            seen_os.add(os_name)
+
+        return data
+
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
     def deduplicate_registries(
-        cls, registries: list[Registry | BaseRegistry], info: ValidationInfo
+        cls, registries: list[Registry | BaseRegistry]
     ) -> list[Registry | BaseRegistry]:
-        """Ensures that the registries list is unique and warns on duplicates.
+        """Ensures that the registries list is unique.
 
         :param registries: List of registries to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
 
         :return: A list of unique registries.
         """
-        unique_registries = set(registries)
-        for unique_registry in unique_registries:
-            if registries.count(unique_registry) > 1:
-                log.warning(
-                    f"Duplicate registry defined in config for version '{info.data.get('name')}': "
-                    f"{unique_registry.base_url}"
-                )
-        return sorted(list(unique_registries), key=lambda r: r.base_url)
+        return sorted(list(set(registries)), key=lambda r: r.base_url)
 
     @field_validator("os", mode="after")
     @classmethod
-    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is not empty.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The unmodified list of ImageVersionOS objects.
-        """
-        # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("name") and not os:
-            log.warning(
-                f"No OSes defined for image version '{info.data['name']}'. At least one OS should be defined for "
-                f"complete tagging and labeling of images."
-            )
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is unique and warns on duplicates.
+    def deduplicate_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
+        """Ensures that the os list is unique.
 
         :param os: List of ImageVersionOS objects to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
 
         :return: A list of unique ImageVersionOS objects.
         """
-        unique_oses = set(os)
-        for unique_os in unique_oses:
-            if info.data.get("name") and os.count(unique_os) > 1:
-                log.warning(f"Duplicate OS defined in config for image version '{info.data['name']}': {unique_os.name}")
-
-        return sorted(list(unique_oses), key=lambda o: o.name)
+        return sorted(list(set(os)), key=lambda o: o.name)
 
     @field_validator("os", mode="after")
     @classmethod
-    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
+    def make_single_os_primary(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
+        """Ensures that if only one OS is defined, it is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
 
-        :return: The list of ImageVersionOS objects with at most one primary OS.
+        :return: The list of ImageVersionOS objects with single OS marked primary.
         """
-        # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
-            # Skip warning if name already propagates an error.
-            if info.data.get("name") and not os[0].primary:
-                log.info(
-                    f"Only one OS, {os[0].name}, defined for image version {info.data['name']}. Marking it as primary "
-                    f"OS."
-                )
             os[0].primary = True
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The list of ImageVersionOS objects with at most one primary OS.
-
-        :raises ValueError: If more than one OS is marked as primary.
-        """
-        primary_os_count = sum(1 for o in os if o.primary)
-        if primary_os_count > 1:
-            raise ValueError(
-                f"Only one OS can be marked as primary for image version '{info.data['name']}'. "
-                f"Found {primary_os_count} OSes marked primary."
-            )
-        elif info.data.get("name") and primary_os_count == 0:
-            log.warning(
-                f"No OS marked as primary for image version '{info.data['name']}'. "
-                "At least one OS should be marked as primary for complete tagging and labeling of images."
-            )
         return os
 
     @field_validator("dependencies", mode="after")
@@ -225,7 +206,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependencies found in image '{info.data['name']}':\n"
+                    error_message = f"Duplicate dependencies found in image '{info.data.get('name')}':\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
         if error_message:
@@ -233,69 +214,50 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         return dependencies
 
     @model_validator(mode="after")
-    def extra_registries_or_override_registries(self) -> Self:
+    def validate_os_settings(self) -> "ImageVersion":
+        """Validate OS settings after all fields are available."""
+        # Check if OS list is empty
+        if not self.os:
+            log.warning(
+                f"No OSes defined for image version '{self.name}'. At least one OS should be defined for "
+                f"complete tagging and labeling of images."
+            )
+            return self
+
+        # Check primary OS count
+        primary_os_count = sum(1 for o in self.os if o.primary)
+        if primary_os_count > 1:
+            raise ValueError(
+                f"Only one OS can be marked as primary for image version '{self.name}'. "
+                f"Found {primary_os_count} OSes marked primary."
+            )
+        elif primary_os_count == 0:
+            log.warning(
+                f"No OS marked as primary for image version '{self.name}'. "
+                "At least one OS should be marked as primary for complete tagging and labeling of images."
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def extra_registries_or_override_registries(self) -> "ImageVersion":
         """Ensures that only one of extraRegistries or overrideRegistries is defined.
 
         :raises ValueError: If both extraRegistries and overrideRegistries are defined.
         """
         if self.extraRegistries and self.overrideRegistries:
             raise ValueError(
-                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image version '{self.name}'."
+                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for "
+                f"image version '{self.name}'."
             )
         return self
 
     @model_validator(mode="after")
-    def resolve_parentage(self) -> Self:
+    def resolve_parentage(self) -> "ImageVersion":
         """Sets the parent for all OSes in this image version."""
         for version_os in self.os:
             version_os.parent = self
         return self
-
-    @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
-
-    @property
-    def all_registries(self) -> list[Registry | BaseRegistry]:
-        """Returns the merged registries for this image version.
-
-        :return: A list of registries that includes the overrideRegistiries or the version's extraRegistries and any
-            registries from the parent image.
-        """
-        # If overrideRegistries are set, return those directly.
-        if self.overrideRegistries:
-            return deepcopy(self.overrideRegistries)
-
-        # Otherwise, merge the registries from the image version and its parent.
-        all_registries = deepcopy(self.extraRegistries)
-        if self.parent is not None:
-            for registry in self.parent.all_registries:
-                if registry not in all_registries:
-                    all_registries.append(registry)
-
-        return all_registries
-
-    @property
-    def supported_platforms(self) -> list[TargetPlatform]:
-        """Returns a list of supported target platforms for this image version.
-        :return: A list of TargetPlatform objects supported by this image version.
-        """
-        if not self.os:
-            return DEFAULT_PLATFORMS
-
-        platforms = []
-
-        for version_os in self.os:
-            for platform in version_os.platforms:
-                if platform not in platforms:
-                    platforms.append(platform)
-        return platforms
 
     def generate_template_values(
         self,
@@ -309,171 +271,6 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
 
         :return: A dictionary of values to use for rendering version templates.
         """
-        values = {
-            "Image": {
-                "Name": self.parent.name,
-                "DisplayName": self.parent.displayName,
-                "Version": self.name,
-                "IsDevelopmentVersion": self.isDevelopmentVersion,
-            },
-            "Path": {
-                "Base": ".",
-                "Image": str(self.parent.path.relative_to(self.parent.parent.path)),
-                "Version": str(Path(self.parent.path / self.subpath).relative_to(self.parent.parent.path)),
-            },
-            "Dependencies": {d.dependency: d.versions for d in self.dependencies},
-        }
-        if variant is not None:
-            values["Image"]["Variant"] = variant.name
-        if version_os is not None:
-            values["Image"]["OS"] = {
-                "Name": version_os.buildOS.name,
-                "Family": version_os.buildOS.family.value,
-                "Version": version_os.buildOS.version,
-                "Codename": version_os.buildOS.codename,
-            }
-            if version_os.artifactDownloadURL is not None:
-                values["Image"]["DownloadURL"] = str(version_os.artifactDownloadURL)
-        if self.values:
-            values.update(self.values)
-
+        values = super().generate_template_values(variant, version_os)
+        values["Dependencies"] = {d.dependency: d.versions for d in self.dependencies}
         return values
-
-    def render_files(
-        self,
-        variants: list[ImageVariant] | None = None,
-        regex_filters: list[str] | None = None,
-    ):
-        """Render a new image version from the template.
-
-        :param variants: Optional list of ImageVariant objects to render Containerfiles for each variant.
-        :param regex_filters: Optional list of regex patterns to filter which templates to render.
-
-        :raises BakeryFileError: If the template path does not exist.
-        :raises BakeryRenderError: If a template fails to render.
-        :raises BakeryRenderErrorGroup: If multiple templates fail to render.
-        """
-        # Check that template path exists
-        if not self.parent.template_path.is_dir():
-            raise BakeryFileError(f"Image '{self.parent.name}' template path does not exist", self.parent.template_path)
-
-        # Create new version directory
-        if not self.path.is_dir():
-            log.debug(f"Creating new image version directory [bold]{self.path}")
-            self.path.mkdir(parents=True)
-
-        env = jinja2_env(
-            loader=jinja2.ChoiceLoader(
-                [
-                    jinja2.FileSystemLoader(self.parent.template_path),
-                    jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
-                ]
-            ),
-            autoescape=True,
-            undefined=jinja2.StrictUndefined,
-            keep_trailing_newline=True,
-        )
-
-        exceptions = []
-
-        # Render templates to version directory
-        # This is using walk instead of list_templates to ensure that the macro files are not rendered into the version.
-        for root, dirs, files in self.parent.template_path.walk():
-            for file in files:
-                tpl_full_path = (Path(root) / file).resolve()
-                tpl_rel_path = str(tpl_full_path.relative_to(self.parent.template_path))
-
-                for regex in regex_filters or []:
-                    if not re.match(regex, tpl_rel_path):
-                        log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
-                        continue
-                try:
-                    tpl = env.get_template(tpl_rel_path)
-                except jinja2.TemplateError as e:
-                    log.error(f"Failed to load template [bold]{tpl_rel_path}[/] for image '{self.parent.name}'")
-                    exceptions.append(
-                        BakeryRenderError(
-                            cause=e,
-                            context=self.parent.parent.path,
-                            image=self.parent.name,
-                            version=self.name,
-                            template=Path(tpl_full_path),
-                        )
-                    )
-                    continue
-
-                # Enable trim_blocks for Containerfile templates
-                render_kwargs = {}
-                if tpl_rel_path.startswith("Containerfile"):
-                    render_kwargs["trim_blocks"] = True
-
-                # If variants are specified, render Containerfile for each variant
-                if tpl_rel_path.startswith("Containerfile") and variants:
-                    containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
-
-                    # Attempt to match the OS from the Containerfile name
-                    os_ext = containerfile_base_name.split(".")[-1]
-                    containerfile_os = None
-                    for _os in self.os:
-                        if _os.extension == os_ext:
-                            containerfile_os = _os
-                            break
-
-                    for variant in variants:
-                        template_values = self.generate_template_values(variant, containerfile_os)
-                        containerfile: Path = self.path / f"{containerfile_base_name}.{variant.extension}"
-                        try:
-                            rendered = tpl.render(**template_values, **render_kwargs)
-                        except (jinja2.TemplateError, BakeryTemplateError) as e:
-                            log.error(
-                                f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' "
-                                f"version '{self.name}' variant '{variant.name}'"
-                            )
-                            exceptions.append(
-                                BakeryRenderError(
-                                    cause=e,
-                                    context=self.parent.parent.path,
-                                    image=self.parent.name,
-                                    version=self.name,
-                                    variant=variant.name,
-                                    template=Path(tpl_full_path),
-                                    destination=Path(containerfile),
-                                )
-                            )
-                            continue
-                        with open(containerfile, "w") as f:
-                            log.debug(f"[bright_black]Rendering [bold]{containerfile}")
-                            f.write(rendered)
-
-                # Render other templates once
-                else:
-                    rel_path = tpl_rel_path.removesuffix(".jinja2")
-                    output_file = self.path / rel_path
-                    output_file.parent.mkdir(parents=True, exist_ok=True)
-                    template_values = self.generate_template_values()
-                    try:
-                        rendered = tpl.render(**template_values, **render_kwargs)
-                    except (jinja2.TemplateError, BakeryTemplateError) as e:
-                        log.error(
-                            f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' "
-                            f"version '{self.name}'"
-                        )
-                        exceptions.append(
-                            BakeryRenderError(
-                                cause=e,
-                                context=self.parent.parent.path,
-                                image=self.parent.name,
-                                version=self.name,
-                                template=Path(tpl_rel_path),
-                                destination=output_file,
-                            )
-                        )
-                        continue
-                    with open(output_file, "w") as f:
-                        log.debug(f"[bright_black]Rendering [bold]{output_file}")
-                        f.write(rendered)
-
-        if exceptions:
-            if len(exceptions) == 1:
-                raise exceptions[0]
-            raise BakeryRenderErrorGroup("One or more template rendering errors occurred", exceptions)

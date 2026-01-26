@@ -283,7 +283,7 @@ class TestImageMatrix:
         """Test that only one of extraRegistries or overrideRegistries can be defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name pattern 'go_version{{ Values.go_version }}'.",
+            match="Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix 'go_version{{ Values.go_version }}'.",
         ):
             ImageMatrix(
                 values={"go_version": ["1.24", "1.25"]},

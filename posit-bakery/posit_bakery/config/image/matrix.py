@@ -1,27 +1,23 @@
 import itertools
 import logging
-import re
 from copy import deepcopy
-from pathlib import Path
-from typing import Annotated, Union, Self, Any, Literal
+from typing import Annotated, Any, Literal, Union
 
-import jinja2
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import (
-    DependencyVersionsField,
     DependencyConstraintField,
-    get_dependency_versions_class,
     DependencyVersions,
+    DependencyVersionsField,
+    get_dependency_versions_class,
 )
-from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
-from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 from .variant import ImageVariant
 from .version import ImageVersion
+from .version_matrix_base import VersionMatrixMixin
 from .version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
@@ -40,11 +36,13 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
 
     pattern = ""
     for dependency in dependencies:
-        pattern += dependency.dependency + "{{ " + f"Dependencies.{dependency.dependency}" + " }}-"
+        # Handle both dict and object forms
+        dep_name = dependency.get("dependency") if isinstance(dependency, dict) else dependency.dependency
+        pattern += dep_name + "{{ " + f"Dependencies.{dep_name}" + " }}-"
     for dependency_constraint in dependency_constraints:
-        pattern += (
-            dependency_constraint.dependency + "{{ " + f"Dependencies.{dependency_constraint.dependency}" + " }}-"
-        )
+        # Handle both dict and object forms
+        dc_name = dependency_constraint.get("dependency") if isinstance(dependency_constraint, dict) else dependency_constraint.dependency
+        pattern += dc_name + "{{ " + f"Dependencies.{dc_name}" + " }}-"
     for key in sorted(values.keys()):
         pattern += key + "{{ " + f"Values.{key}" + " }}-"
     pattern = pattern.rstrip("-")
@@ -55,11 +53,16 @@ def generate_default_name_pattern(data: dict[str, Any]) -> str:
     return pattern
 
 
-class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
-    """Model representing a matrix of a image value combinations to build."""
+class ImageMatrix(VersionMatrixMixin, BakeryPathMixin, BakeryYAMLModel):
+    """Model representing a matrix of image value combinations to build."""
 
+    # Fields are defined in order to maintain YAML serialization compatibility.
+    # The expected serialization order is: subpath, dependencyConstraints, dependencies, os, etc.
     parent: Annotated[
         Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
+    ]
+    namePattern: Annotated[
+        str, Field(default="", description="A pattern to use for image names.")
     ]
     subpath: Annotated[
         str,
@@ -85,25 +88,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             description="Dependency to install, pinned to a list of versions.",
         ),
     ]
-    values: Annotated[
-        dict[str, str | list],
-        Field(
-            default_factory=dict,
-            validate_default=True,
-            description="Arbitrary key-value pairs used in template rendering.",
-        ),
-    ]
-    namePattern: Annotated[
-        str, Field(description="A pattern to use for image names.", default_factory=generate_default_name_pattern)
-    ]
-    os: Annotated[
-        list[ImageVersionOS],
-        Field(
-            default_factory=list,
-            validate_default=True,
-            description="List of supported ImageVersionOS objects for this image version.",
-        ),
-    ]
     extraRegistries: Annotated[
         list[Registry | BaseRegistry],
         Field(
@@ -119,6 +103,64 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             description="List of registries to use in place of registries defined globally or for the image.",
         ),
     ]
+    os: Annotated[
+        list[ImageVersionOS],
+        Field(
+            default_factory=list,
+            validate_default=True,
+            description="List of supported ImageVersionOS objects for this image version.",
+        ),
+    ]
+    values: Annotated[
+        dict[str, Any],
+        Field(
+            default_factory=dict,
+            validate_default=True,
+            description="Arbitrary key-value pairs used in template rendering.",
+        ),
+    ]
+
+    @classmethod
+    def _get_entity_name(cls) -> str:
+        """Returns a human-readable name for this entity type."""
+        return "image matrix"
+
+    def _get_version_identifier(self) -> str:
+        """Returns the version identifier for error messages."""
+        return self.namePattern
+
+    def _get_image_template_values(self) -> dict[str, Any]:
+        """Returns image-specific template values to add to the Image dict."""
+        return {}  # Matrix doesn't include Version or IsDevelopmentVersion
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def compute_default_name_pattern(cls, data, handler) -> "ImageMatrix":
+        """Compute the default namePattern if not provided.
+
+        Uses wrap mode to compute the default before validation and then
+        remove namePattern from fields_set if it was computed (not explicitly provided).
+        """
+        # If data is already an ImageMatrix instance (e.g., from model_validate), just run handler
+        if isinstance(data, ImageMatrix):
+            return handler(data)
+
+        # Track if user explicitly provided namePattern (data is a dict)
+        user_provided_name_pattern = bool(data.get("namePattern"))
+
+        # Compute default if not provided
+        if not user_provided_name_pattern:
+            data["namePattern"] = generate_default_name_pattern(data)
+
+        # Run the rest of validation
+        instance = handler(data)
+
+        # If namePattern was computed (not user-provided), remove from fields_set
+        # so it won't be serialized with exclude_unset=True
+        if not user_provided_name_pattern and "namePattern" in instance.__pydantic_fields_set__:
+            instance.__pydantic_fields_set__.discard("namePattern")
+
+        return instance
 
     @model_validator(mode="before")
     @classmethod
@@ -135,110 +177,93 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         return data
 
+    @model_validator(mode="before")
+    @classmethod
+    def log_duplicates_before_dedup(cls, data: dict) -> dict:
+        """Log duplicate registries and OSes before they are deduplicated."""
+        # For ImageMatrix, we need to compute the namePattern first to include it in the log message
+        # Try to get the namePattern from data, or compute it
+        name_pattern = data.get("namePattern")
+        if not name_pattern:
+            # Compute a temporary name pattern for logging purposes
+            try:
+                name_pattern = generate_default_name_pattern(data)
+            except ValueError:
+                # Can't compute name pattern, skip logging
+                return data
+
+        # Check for duplicate registries
+        extra_registries = data.get("extraRegistries", [])
+        override_registries = data.get("overrideRegistries", [])
+        seen = set()
+        for reg in extra_registries + override_registries:
+            if isinstance(reg, dict):
+                key = (reg.get("host"), reg.get("namespace"), reg.get("repository"))
+                base_url = f"{reg.get('host')}/{reg.get('namespace')}"
+                if reg.get("repository"):
+                    base_url += f"/{reg.get('repository')}"
+            else:
+                key = (getattr(reg, "host", None), getattr(reg, "namespace", None), getattr(reg, "repository", None))
+                base_url = reg.base_url if hasattr(reg, "base_url") else f"{key[0]}/{key[1]}"
+            if key in seen:
+                log.warning(
+                    f"Duplicate registry defined in config for image matrix with name pattern "
+                    f"'{name_pattern}': {base_url}"
+                )
+            seen.add(key)
+
+        # Check for duplicate OSes
+        os_list = data.get("os", [])
+        seen_os = set()
+        for os_item in os_list:
+            if isinstance(os_item, dict):
+                os_name = os_item.get("name")
+            else:
+                os_name = getattr(os_item, "name", None)
+            if os_name in seen_os:
+                log.warning(
+                    f"Duplicate OS defined in config for image matrix with name pattern "
+                    f"'{name_pattern}': {os_name}"
+                )
+            seen_os.add(os_name)
+
+        return data
+
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
     def deduplicate_registries(
-        cls, registries: list[Registry | BaseRegistry], info: ValidationInfo
+        cls, registries: list[Registry | BaseRegistry]
     ) -> list[Registry | BaseRegistry]:
-        """Ensures that the registries list is unique and warns on duplicates.
+        """Ensures that the registries list is unique.
 
         :param registries: List of registries to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
 
         :return: A list of unique registries.
         """
-        unique_registries = set(registries)
-        for unique_registry in unique_registries:
-            if registries.count(unique_registry) > 1:
-                log.warning(
-                    "Duplicate registry defined in config for image matrix with name pattern "
-                    f"'{info.data['namePattern']}': {unique_registry.base_url}"
-                )
-        return sorted(list(unique_registries), key=lambda r: r.base_url)
+        return sorted(list(set(registries)), key=lambda r: r.base_url)
 
     @field_validator("os", mode="after")
     @classmethod
-    def check_os_not_empty(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is not empty.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The unmodified list of ImageVersionOS objects.
-        """
-        # Check that name is defined since it will already propagate a validation error if not.
-        if info.data.get("namePattern") and not os:
-            log.warning(
-                f"No OSes defined for image matrix with name pattern '{info.data['namePattern']}'. At least one OS "
-                "should be defined for complete tagging and labeling of images."
-            )
-
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def deduplicate_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that the os list is unique and warns on duplicates.
+    def deduplicate_os(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
+        """Ensures that the os list is unique.
 
         :param os: List of ImageVersionOS objects to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
 
         :return: A list of unique ImageVersionOS objects.
         """
-        unique_oses = set(os)
-        for unique_os in unique_oses:
-            if info.data.get("namePattern") and os.count(unique_os) > 1:
-                log.warning(
-                    "Duplicate OS defined in config for image matrix with name pattern "
-                    f"'{info.data['namePattern']}': {unique_os.name}"
-                )
-
-        return sorted(list(unique_oses), key=lambda o: o.name)
+        return sorted(list(set(os)), key=lambda o: o.name)
 
     @field_validator("os", mode="after")
     @classmethod
-    def make_single_os_primary(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
+    def make_single_os_primary(cls, os: list[ImageVersionOS]) -> list[ImageVersionOS]:
+        """Ensures that if only one OS is defined, it is marked as primary.
 
         :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
 
-        :return: The list of ImageVersionOS objects with at most one primary OS.
+        :return: The list of ImageVersionOS objects with single OS marked primary.
         """
-        # If there's only one OS, mark it as primary by default.
         if len(os) == 1:
-            # Skip warning if name already propagates an error.
-            if info.data.get("namePattern") and not os[0].primary:
-                log.info(
-                    "Only one OS, {os[0].name}, defined for image matrix with name pattern "
-                    f"{info.data['namePattern']}. Marking it as primary OS."
-                )
             os[0].primary = True
-        return os
-
-    @field_validator("os", mode="after")
-    @classmethod
-    def max_one_primary_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:
-        """Ensures that at most one OS is marked as primary.
-
-        :param os: List of ImageVersionOS objects to check.
-        :param info: ValidationInfo containing the data being validated.
-
-        :return: The list of ImageVersionOS objects with at most one primary OS.
-
-        :raises ValueError: If more than one OS is marked as primary.
-        """
-        primary_os_count = sum(1 for o in os if o.primary)
-        if info.data.get("namePattern") and primary_os_count > 1:
-            raise ValueError(
-                f"Only one OS can be marked as primary for image matrix with name pattern "
-                f"'{info.data['namePattern']}'. Found {primary_os_count} OSes marked primary."
-            )
-        elif info.data.get("namePattern") and primary_os_count == 0:
-            log.warning(
-                f"No OS marked as primary for image matrix with name pattern '{info.data['namePattern']}'. "
-                "At least one OS should be marked as primary for complete tagging and labeling of images."
-            )
         return os
 
     @field_validator("dependencyConstraints", mode="after")
@@ -260,7 +285,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for dc in dependency_constraints:
             if dc.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency constraints found in image matrix:\n"
+                    error_message = "Duplicate dependency constraints found in image matrix:\n"
                 error_message += f" - {dc.dependency}\n"
             seen_dependencies.add(dc.dependency)
         if error_message:
@@ -273,7 +298,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """Ensures that the dependencies list is unique and errors on duplicates.
 
         :param dependencies: List of dependencies to deduplicate.
-        :param info: ValidationInfo containing the data being validated.
 
         :return: A list of unique dependencies.
 
@@ -284,7 +308,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency definition found in image matrix:\n"
+                    error_message = "Duplicate dependency definition found in image matrix:\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
 
@@ -294,20 +318,53 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return dependencies
 
     @model_validator(mode="after")
-    def extra_registries_or_override_registries(self) -> Self:
+    def validate_os_settings(self) -> "ImageMatrix":
+        """Validate OS settings after all fields are available."""
+        # Check if OS list is empty
+        if not self.os:
+            log.warning(
+                f"No OSes defined for image matrix with name pattern '{self.namePattern}'. At least one OS "
+                "should be defined for complete tagging and labeling of images."
+            )
+            return self
+
+        # Check primary OS count
+        primary_os_count = sum(1 for o in self.os if o.primary)
+        if primary_os_count > 1:
+            raise ValueError(
+                f"Only one OS can be marked as primary for image matrix with name pattern "
+                f"'{self.namePattern}'. Found {primary_os_count} OSes marked primary."
+            )
+        elif primary_os_count == 0:
+            log.warning(
+                f"No OS marked as primary for image matrix with name pattern '{self.namePattern}'. "
+                "At least one OS should be marked as primary for complete tagging and labeling of images."
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def extra_registries_or_override_registries(self) -> "ImageMatrix":
         """Ensures that only one of extraRegistries or overrideRegistries is defined.
 
         :raises ValueError: If both extraRegistries and overrideRegistries are defined.
         """
         if self.extraRegistries and self.overrideRegistries:
             raise ValueError(
-                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image matrix with name "
-                f"pattern '{self.namePattern}'."
+                f"Only one of 'extraRegistries' or 'overrideRegistries' can be defined for "
+                f"image matrix '{self.namePattern}'."
             )
         return self
 
     @model_validator(mode="after")
-    def check_no_conflicting_dependency_definitions(self) -> Self:
+    def resolve_parentage(self) -> "ImageMatrix":
+        """Sets the parent for all OSes in this image matrix."""
+        for version_os in self.os:
+            version_os.parent = self
+        return self
+
+    @model_validator(mode="after")
+    def check_no_conflicting_dependency_definitions(self) -> "ImageMatrix":
         """Ensures that no dependencies are defined in both dependencies and dependencyConstraints.
 
         :raises ValueError: If a dependency is defined in both dependencies and dependencyConstraints.
@@ -324,39 +381,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return self
 
     @property
-    def path(self) -> Path | None:
-        """Returns the path to the image version directory.
-
-        :raises ValueError: If the parent image does not have a valid path.
-        """
-        if self.parent is None or self.parent.path is None:
-            raise ValueError("Parent image must resolve a valid path.")
-        return Path(self.parent.path) / Path(self.subpath)
-
-    @model_validator(mode="after")
-    def resolve_parentage(self) -> Self:
-        """Sets the parent for all OSes in this image version."""
-        for version_os in self.os:
-            version_os.parent = self
-        return self
-
-    @property
-    def supported_platforms(self) -> list[TargetPlatform]:
-        """Returns a list of supported target platforms for this image version.
-        :return: A list of TargetPlatform objects supported by this image version.
-        """
-        if not self.os:
-            return DEFAULT_PLATFORMS
-
-        platforms = []
-
-        for version_os in self.os:
-            for platform in version_os.platforms:
-                if platform not in platforms:
-                    platforms.append(platform)
-        return platforms
-
-    @property
     def resolved_dependencies(self) -> list[DependencyVersions]:
         """Returns the list of resolved dependencies for this image version.
 
@@ -367,175 +391,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             resolved.append(dc.resolve_versions())
 
         return resolved
-
-    def generate_template_values(
-        self,
-        variant: Union["ImageVariant", None] = None,
-        version_os: Union["ImageVersionOS", None] = None,
-    ) -> dict[str, Any]:
-        """Generates the template values for rendering.
-
-        :param variant: The ImageVariant object.
-        :param version_os: The ImageVersionOS object, if applicable.
-
-        :return: A dictionary of values to use for rendering version templates.
-        """
-        values = {
-            "Image": {
-                "Name": self.parent.name,
-                "DisplayName": self.parent.displayName,
-            },
-            "Path": {
-                "Base": ".",
-                "Image": str(self.parent.path.relative_to(self.parent.parent.path)),
-                "Version": str(Path(self.parent.path / self.subpath).relative_to(self.parent.parent.path)),
-            },
-        }
-        if variant is not None:
-            values["Image"]["Variant"] = variant.name
-        if version_os is not None:
-            values["Image"]["OS"] = {
-                "Name": version_os.buildOS.name,
-                "Family": version_os.buildOS.family.value,
-                "Version": version_os.buildOS.version,
-                "Codename": version_os.buildOS.codename,
-            }
-
-        return values
-
-    def render_files(self, variants: list[ImageVariant] | None = None, regex_filters: list[str] | None = None):
-        """Render matrix file definitions from templates.
-
-        :param variants: Optional list of ImageVariant objects to render Containerfiles for each variant.
-        :param regex_filters: Optional list of regex patterns to filter which templates to render.
-
-        :raises BakeryFileError: If the template path does not exist.
-        :raises BakeryRenderError: If a template fails to render.
-        :raises BakeryRenderErrorGroup: If multiple templates fail to render.
-        """
-        # Check that template path exists
-        if not self.parent.template_path.is_dir():
-            raise BakeryFileError(f"Image '{self.parent.name}' template path does not exist", self.parent.template_path)
-
-        # Create new version directory
-        if not self.path.is_dir():
-            log.debug(f"Creating new image version directory [bold]{self.path}")
-            self.path.mkdir(parents=True)
-
-        env = jinja2_env(
-            loader=jinja2.ChoiceLoader(
-                [
-                    jinja2.FileSystemLoader(self.parent.template_path),
-                    jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
-                ]
-            ),
-            autoescape=True,
-            undefined=jinja2.StrictUndefined,
-            keep_trailing_newline=True,
-        )
-
-        exceptions = []
-
-        # Render templates to version directory
-        # This is using walk instead of list_templates to ensure that the macro files are not rendered into the version.
-        for root, dirs, files in self.parent.template_path.walk():
-            for file in files:
-                tpl_full_path = (Path(root) / file).resolve()
-                tpl_rel_path = str(tpl_full_path.relative_to(self.parent.template_path))
-
-                for regex in regex_filters or []:
-                    if not re.match(regex, tpl_rel_path):
-                        log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
-                        continue
-                try:
-                    tpl = env.get_template(tpl_rel_path)
-                except jinja2.TemplateError as e:
-                    log.error(f"Failed to load template [bold]{tpl_rel_path}[/] for image '{self.parent.name}'")
-                    exceptions.append(
-                        BakeryRenderError(
-                            cause=e,
-                            context=self.parent.parent.path,
-                            image=self.parent.name,
-                            version=DEFAULT_MATRIX_SUBPATH,
-                            template=Path(tpl_full_path),
-                        )
-                    )
-                    continue
-
-                # Enable trim_blocks for Containerfile templates
-                render_kwargs = {}
-                if tpl_rel_path.startswith("Containerfile"):
-                    render_kwargs["trim_blocks"] = True
-
-                # If variants are specified, render Containerfile for each variant
-                if tpl_rel_path.startswith("Containerfile") and variants:
-                    containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
-
-                    # Attempt to match the OS from the Containerfile name
-                    os_ext = containerfile_base_name.split(".")[-1]
-                    containerfile_os = None
-                    for _os in self.os:
-                        if _os.extension == os_ext:
-                            containerfile_os = _os
-                            break
-
-                    for variant in variants:
-                        template_values = self.generate_template_values(variant, containerfile_os)
-                        containerfile: Path = self.path / f"{containerfile_base_name}.{variant.extension}"
-                        try:
-                            rendered = tpl.render(**template_values, **render_kwargs)
-                        except (jinja2.TemplateError, BakeryTemplateError) as e:
-                            log.error(
-                                f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' "
-                                f"matrix variant '{variant.name}'"
-                            )
-                            exceptions.append(
-                                BakeryRenderError(
-                                    cause=e,
-                                    context=self.parent.parent.path,
-                                    image=self.parent.name,
-                                    version=DEFAULT_MATRIX_SUBPATH,
-                                    variant=variant.name,
-                                    template=Path(tpl_full_path),
-                                    destination=Path(containerfile),
-                                )
-                            )
-                            continue
-                        with open(containerfile, "w") as f:
-                            log.debug(f"[bright_black]Rendering [bold]{containerfile}")
-                            f.write(rendered)
-
-                # Render other templates once
-                else:
-                    rel_path = tpl_rel_path.removesuffix(".jinja2")
-                    output_file = self.path / rel_path
-                    output_file.parent.mkdir(parents=True, exist_ok=True)
-                    template_values = self.generate_template_values()
-                    try:
-                        rendered = tpl.render(**template_values, **render_kwargs)
-                    except (jinja2.TemplateError, BakeryTemplateError) as e:
-                        log.error(
-                            f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' matrix"
-                        )
-                        exceptions.append(
-                            BakeryRenderError(
-                                cause=e,
-                                context=self.parent.parent.path,
-                                image=self.parent.name,
-                                version=DEFAULT_MATRIX_SUBPATH,
-                                template=Path(tpl_rel_path),
-                                destination=output_file,
-                            )
-                        )
-                        continue
-                    with open(output_file, "w") as f:
-                        log.debug(f"[bright_black]Rendering [bold]{output_file}")
-                        f.write(rendered)
-
-        if exceptions:
-            if len(exceptions) == 1:
-                raise exceptions[0]
-            raise BakeryRenderErrorGroup("One or more template rendering errors occurred", exceptions)
 
     @staticmethod
     def _render_name_pattern(
@@ -561,12 +416,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return rendered_name
 
     @staticmethod
-    def _flatten_dependencies(dependencies: list[DependencyVersionsField]) -> list[DependencyVersionsField]:
+    def _flatten_dependencies(dependencies: list[DependencyVersionsField]) -> list[list[DependencyVersionsField]]:
         """Flattens the dependency versions into a list of single-version DependencyVersionsField objects.
 
         :param dependencies: List of DependencyVersionsField objects.
 
-        :return: A flattened list of DependencyVersionsField objects.
+        :return: A flattened list of lists of DependencyVersionsField objects.
         """
         flattened = []
         for dependency in dependencies:
@@ -580,12 +435,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return flattened
 
     @staticmethod
-    def _flatten_values(values: dict[str, Any]) -> list[dict[str, Any]]:
-        """Flattens the values into a dictionary of lists.
+    def _flatten_values(values: dict[str, Any]) -> list[list[dict[str, Any]]]:
+        """Flattens the values into a list of lists of single-value dictionaries.
 
         :param values: Dictionary of values.
 
-        :return: A flattened dictionary of values.
+        :return: A flattened list of lists of dictionaries.
         """
         flattened = []
         for key, value in values.items():
@@ -605,7 +460,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         :param dependencies: List of DependencyVersionsField objects.
         :param values: Dictionary of values.
 
-        :return: A tuple containing a list of dependency combinations and a dictionary of value combinations.
+        :return: A list of dictionaries, each containing 'dependencies' (list) and 'values' (dict) keys.
         """
         flattened_dependencies = ImageMatrix._flatten_dependencies(dependencies)
         flattened_values = ImageMatrix._flatten_values(values)
@@ -614,7 +469,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         grouped_products = []
         for product in products:
-            grouped = {"dependencies": [], "values": {}}
+            grouped: dict[str, list | dict] = {"dependencies": [], "values": {}}
             for item in product:
                 if isinstance(item, DependencyVersions):
                     grouped["dependencies"].append(item)
