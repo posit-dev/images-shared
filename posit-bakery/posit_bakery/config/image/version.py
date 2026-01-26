@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, Any, Union
+from typing import Annotated, Any, Union, TYPE_CHECKING
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -11,6 +11,9 @@ from .variant import ImageVariant
 from .version_matrix_base import VersionMatrixMixin
 from .version_os import ImageVersionOS
 
+if TYPE_CHECKING:
+    from .image import Image
+
 log = logging.getLogger(__name__)
 
 
@@ -19,7 +22,7 @@ class ImageVersion(VersionMatrixMixin, BakeryPathMixin, BakeryYAMLModel):
 
     # Fields are defined in the original order to maintain serialization compatibility
     parent: Annotated[
-        Union[BakeryYAMLModel, None], Field(exclude=True, default=None, description="Parent Image object.")
+        Union["Image", None], Field(exclude=True, default=None, description="Parent Image object.")
     ]
     name: Annotated[str, Field(description="The full image version.")]
     subpath: Annotated[
