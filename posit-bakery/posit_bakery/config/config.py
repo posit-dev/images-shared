@@ -16,7 +16,7 @@ from ruamel.yaml import YAML
 
 from posit_bakery import util
 from posit_bakery.config.dependencies import DependencyConstraint, DependencyVersions
-from posit_bakery.config.image import Image
+from posit_bakery.config.image import Image, ImageVersion
 from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
@@ -242,7 +242,10 @@ class BakerySettings(BaseModel):
     """Container for global settings that can be applied to the BakeryConfig."""
 
     filter: BakeryConfigFilter = Field(
-        default_factory=BakeryConfigFilter, description="Filter(s) to apply when generating image targets."
+        default_factory=lambda: BakeryConfigFilter(
+            image_name=None, image_variant=None, image_version=None, image_os=None, image_platform=[]
+        ),
+        description="Filter(s) to apply when generating image targets.",
     )
     dev_versions: Annotated[
         DevVersionInclusionEnum,
@@ -284,7 +287,16 @@ class BakeryConfig:
         :raises FileNotFoundError: If the config file does not exist.
         """
         if settings is None:
-            settings = BakerySettings()
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=None, image_variant=None, image_version=None, image_os=None, image_platform=[]
+                ),
+                dev_versions=DevVersionInclusionEnum.EXCLUDE,
+                matrix_versions=MatrixVersionInclusionEnum.EXCLUDE,
+                clean_temporary=True,
+                cache_registry=None,
+                temp_registry=None,
+            )
         self.settings = settings
 
         self.yaml = YAML()
@@ -323,7 +335,16 @@ class BakeryConfig:
         :raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.
         """
         if settings is None:
-            settings = BakerySettings()
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=None, image_variant=None, image_version=None, image_os=None, image_platform=[]
+                ),
+                dev_versions=DevVersionInclusionEnum.EXCLUDE,
+                matrix_versions=MatrixVersionInclusionEnum.EXCLUDE,
+                clean_temporary=True,
+                cache_registry=None,
+                temp_registry=None,
+            )
 
         context = Path(context).resolve()
         search_paths = [context / "bakery.yaml", context / "bakery.yml"]
@@ -639,7 +660,9 @@ class BakeryConfig:
 
         :raises BakeryFileError: If any errors occur while regenerating version files.
         """
-        _filter = _filter or BakeryConfigFilter()
+        _filter = _filter or BakeryConfigFilter(
+            image_name=None, image_variant=None, image_version=None, image_os=None, image_platform=[]
+        )
         regex_filters = regex_filters or []
         exceptions = []
 
@@ -717,11 +740,22 @@ class BakeryConfig:
         # Remove the version from the model.
         image.versions.remove(version)
 
-    def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
+    def generate_image_targets(self, settings: BakerySettings | None = None) -> list[ImageTarget]:
         """Generates image targets from the images defined in the config.
 
         :param settings: Optional settings to apply when generating image targets. If None, all images will be included.
         """
+        if settings is None:
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=None, image_variant=None, image_version=None, image_os=None, image_platform=[]
+                ),
+                dev_versions=DevVersionInclusionEnum.EXCLUDE,
+                matrix_versions=MatrixVersionInclusionEnum.EXCLUDE,
+                clean_temporary=True,
+                cache_registry=None,
+                temp_registry=None,
+            )
         targets: list[ImageTarget] = []
         for image in self.model.images:
             if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
