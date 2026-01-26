@@ -14,6 +14,7 @@ from posit_bakery.config.dependencies import (
     QuartoDependencyConstraint,
 )
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
+from posit_bakery.config import BakeryConfigDocument, ImageVariant
 
 
 @pytest.mark.parametrize(
@@ -383,161 +384,15 @@ class TestImageMatrix:
                 ],
             )
 
-    def test__render_name_pattern(self):
-        """Test that _render_name_pattern correctly renders the name pattern."""
-        rendered_name = ImageMatrix._render_name_pattern(
-            name_pattern="python{{ Dependencies.python }}-R{{ Dependencies.R }}-go_version{{ Values.go_version }}",
-            dependencies=[
-                PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-                RDependencyVersions(dependency="R", versions=["4.1.3"]),
-            ],
-            values={"go_version": "1.25"},
-        )
-
-        assert rendered_name == "python3.12.11-R4.1.3-go_version1.25"
-
-    def test__flatten_dependencies(self):
-        """Test that _flatten_dependencies correctly flattens dependencies."""
-        matrix = ImageMatrix(
-            values={"go_version": ["1.24", "1.25"]},
-            dependencies=[
-                {
-                    "dependency": "python",
-                    "versions": ["3.13.7", "3.12.11"],
-                },
-                {
-                    "dependency": "R",
-                    "versions": ["4.2.3", "4.1.3", "4.0.5"],
-                },
-                {
-                    "dependency": "quarto",
-                    "versions": ["1.7.34"],
-                },
-            ],
-        )
-
-        flat_deps = matrix._flatten_dependencies(matrix.dependencies)
-        assert flat_deps == [
-            [
-                PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
-                PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-            ],
-            [
-                RDependencyVersions(dependency="R", versions=["4.2.3"]),
-                RDependencyVersions(dependency="R", versions=["4.1.3"]),
-                RDependencyVersions(dependency="R", versions=["4.0.5"]),
-            ],
-            [
-                QuartoDependencyVersions(dependency="quarto", versions=["1.7.34"]),
-            ],
-        ]
-
-    def test__flatten_values(self):
-        """Test that _flatten_values correctly flattens values."""
-        matrix = ImageMatrix(
-            values={
-                "go_version": ["1.24", "1.25"],
-                "pro_drivers_version": ["2025.07.0", "2025.08.0"],
-            },
-        )
-
-        flat_values = matrix._flatten_values(matrix.values)
-        assert flat_values == [
-            [
-                {"go_version": "1.24"},
-                {"go_version": "1.25"},
-            ],
-            [
-                {"pro_drivers_version": "2025.07.0"},
-                {"pro_drivers_version": "2025.08.0"},
-            ],
-        ]
-
-    def test__cartesian_product(self):
-        """Test that _cartesian_product correctly computes the cartesian product of dependencies and values."""
-        matrix = ImageMatrix(
-            values={
-                "go_version": ["1.24", "1.25"],
-                "pro_drivers_version": "2025.07.0",
-            },
-            dependencies=[
-                {
-                    "dependency": "python",
-                    "versions": ["3.13.7", "3.12.11"],
-                },
-                {
-                    "dependency": "R",
-                    "versions": ["4.2.3", "4.1.3"],
-                },
-            ],
-        )
-
-        product = matrix._cartesian_product(matrix.resolved_dependencies, matrix.values)
-
-        assert len(product) == 8  # 2 python * 2 R * 2 go_version * 1 pro_drivers_version
-        expected_combinations = [
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
-                    RDependencyVersions(dependency="R", versions=["4.2.3"]),
-                ],
-                "values": {"go_version": "1.24", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
-                    RDependencyVersions(dependency="R", versions=["4.1.3"]),
-                ],
-                "values": {"go_version": "1.24", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-                    RDependencyVersions(dependency="R", versions=["4.2.3"]),
-                ],
-                "values": {"go_version": "1.24", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-                    RDependencyVersions(dependency="R", versions=["4.1.3"]),
-                ],
-                "values": {"go_version": "1.24", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
-                    RDependencyVersions(dependency="R", versions=["4.2.3"]),
-                ],
-                "values": {"go_version": "1.25", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.13.7"]),
-                    RDependencyVersions(dependency="R", versions=["4.1.3"]),
-                ],
-                "values": {"go_version": "1.25", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-                    RDependencyVersions(dependency="R", versions=["4.2.3"]),
-                ],
-                "values": {"go_version": "1.25", "pro_drivers_version": "2025.07.0"},
-            },
-            {
-                "dependencies": [
-                    PythonDependencyVersions(dependency="python", versions=["3.12.11"]),
-                    RDependencyVersions(dependency="R", versions=["4.1.3"]),
-                ],
-                "values": {"go_version": "1.25", "pro_drivers_version": "2025.07.0"},
-            },
-        ]
-        for combination in expected_combinations:
-            assert combination in product
-
     def test_to_image_versions(self, patch_requests_get):
-        """Test that to_image_versions correctly generates image versions from the matrix."""
+        """Test that to_image_versions correctly generates image versions from the matrix.
+
+        This test verifies the full public API behavior including:
+        - Cartesian product of dependencies and values produces correct count
+        - Each generated version has single-version dependencies (flattened from multi-version input)
+        - Values are correctly distributed across versions
+        - Name pattern rendering produces expected version names
+        """
         matrix = ImageMatrix(
             values={
                 "go_version": ["1.24", "1.25"],
@@ -557,15 +412,26 @@ class TestImageMatrix:
 
         image_versions = matrix.to_image_versions()
 
-        assert len(image_versions) == 8  # 2 python * 2 R * 2 go_version * 1 pro_drivers_version
+        # Verify cartesian product produces correct count: 2 python * 2 R * 2 go_version * 1 pro_drivers_version
+        assert len(image_versions) == 8
+
         for image_version in image_versions:
+            # Verify each version has the expected dependencies
             assert len(image_version.dependencies) == 2
-            assert "python" in [dep.dependency for dep in image_version.dependencies]
-            assert "R" in [dep.dependency for dep in image_version.dependencies]
+            dep_names = [dep.dependency for dep in image_version.dependencies]
+            assert "python" in dep_names
+            assert "R" in dep_names
+
+            # Verify dependencies are flattened to single versions (not multi-version lists)
+            for dep in image_version.dependencies:
+                assert len(dep.versions) == 1, "Each dependency should have exactly one version per image version"
+
+            # Verify values are correctly assigned
             assert image_version.values["pro_drivers_version"] == "2025.07.0"
             assert image_version.values["go_version"] in ["1.24", "1.25"]
             assert image_version.isMatrixVersion
 
+        # Verify name pattern rendering produces all expected combinations
         expected_names = [
             "python3.13.7-R4.2.3-go_version1.24-pro_drivers_version2025.07.0",
             "python3.13.7-R4.2.3-go_version1.25-pro_drivers_version2025.07.0",
@@ -577,4 +443,139 @@ class TestImageMatrix:
             "python3.12.11-R4.1.3-go_version1.25-pro_drivers_version2025.07.0",
         ]
         actual_names = [iv.name for iv in image_versions]
-        assert expected_names.sort() == actual_names.sort()
+        assert sorted(expected_names) == sorted(actual_names)
+
+    def test_to_image_versions_with_three_dependencies(self, patch_requests_get):
+        """Test to_image_versions with three dependencies and multiple multi-valued keys."""
+        matrix = ImageMatrix(
+            values={
+                "go_version": ["1.24", "1.25"],
+                "pro_drivers_version": ["2025.07.0", "2025.08.0"],
+            },
+            dependencies=[
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "R", "versions": ["4.2.3", "4.1.3", "4.0.5"]},
+                {"dependency": "quarto", "versions": ["1.7.34"]},
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+
+        # 2 python * 3 R * 1 quarto * 2 go_version * 2 pro_drivers_version = 24
+        assert len(image_versions) == 24
+
+        for image_version in image_versions:
+            # Verify all three dependencies present
+            dep_names = [dep.dependency for dep in image_version.dependencies]
+            assert sorted(dep_names) == ["R", "python", "quarto"]
+
+            # Verify each dependency is single-version
+            for dep in image_version.dependencies:
+                assert len(dep.versions) == 1
+
+            # Verify both values are assigned
+            assert image_version.values["go_version"] in ["1.24", "1.25"]
+            assert image_version.values["pro_drivers_version"] in ["2025.07.0", "2025.08.0"]
+
+    def test_check_duplicate_dependency_constraints(self):
+        """Test that duplicate dependency constraints raise error."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependency constraints found in image matrix",
+        ):
+            ImageMatrix(
+                values={"go_version": ["1.24", "1.25"]},
+                dependencyConstraints=[
+                    {
+                        "dependency": "python",
+                        "constraint": {"latest": True, "count": 2},
+                    },
+                    {
+                        "dependency": "python",  # Duplicate
+                        "constraint": {"latest": True, "count": 3},
+                    },
+                ],
+            )
+
+    def test_generate_template_values_with_variant_and_os(self):
+        """Test generate_template_values includes variant and OS info."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = Path("/tmp/path/test-image")
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24"]},
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            parent=mock_image_parent,
+        )
+
+        variant = ImageVariant(name="Standard", extension="std", primary=True)
+
+        values = matrix.generate_template_values(variant, matrix.os[0])
+
+        assert values["Image"]["Name"] == "test-image"
+        assert values["Image"]["DisplayName"] == "Test Image"
+        assert values["Image"]["Variant"] == "Standard"
+        assert values["Image"]["OS"]["Name"] == "ubuntu"
+        assert values["Image"]["OS"]["Family"] == "debian"
+
+    def test_generate_template_values_without_variant_or_os(self):
+        """Test generate_template_values without variant and OS."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = Path("/tmp/path/test-image")
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24"]},
+            parent=mock_image_parent,
+        )
+
+        values = matrix.generate_template_values()
+
+        assert values["Image"]["Name"] == "test-image"
+        assert "Variant" not in values["Image"]
+        assert "OS" not in values["Image"]
+
+    def test_render_files_creates_directory(self, tmp_path):
+        """Test that render_files creates the matrix directory."""
+        # Create minimal template structure
+        image_dir = tmp_path / "test-image"
+        template_dir = image_dir / "template"
+        template_dir.mkdir(parents=True)
+
+        # Create a simple template that doesn't require Image.Version
+        simple_template = template_dir / "simple.txt.jinja2"
+        simple_template.write_text("Image: {{ Image.Name }}\n")
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = tmp_path
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = image_dir
+        mock_image_parent.template_path = template_dir
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            parent=mock_image_parent,
+            values={"go_version": ["1.24"]},
+        )
+
+        matrix.render_files()
+
+        expected_path = image_dir / "matrix"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "simple.txt").is_file()
+        content = (expected_path / "simple.txt").read_text()
+        assert "Image: test-image" in content
