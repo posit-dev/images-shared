@@ -24,12 +24,12 @@ class BakeryRenderError(BakeryError):
     def __init__(
         self,
         cause: TemplateError | BakeryTemplateError,
-        context: Path = None,
-        image: str = None,
-        version: str = None,
-        variant: str = None,
-        template: Path = None,
-        destination: Path = None,
+        context: Path | None = None,
+        image: str | None = None,
+        version: str | None = None,
+        variant: str | None = None,
+        template: Path | None = None,
+        destination: Path | None = None,
     ) -> None:
         super().__init__(str(cause))
         self.__cause__ = cause
@@ -42,10 +42,12 @@ class BakeryRenderError(BakeryError):
 
     def __str__(self) -> str:
         s = f"Error rendering template"
-        if self.template:
+        if self.template and self.context:
             s += f" {self.template.relative_to(self.context)}"
-        if isinstance(self.__cause__, TemplateError) and hasattr(self.__cause__, "lineno") and self.__cause__.lineno:
-            s += f", line {self.__cause__.lineno}"
+        if isinstance(self.__cause__, TemplateError):
+            lineno = getattr(self.__cause__, "lineno", None)
+            if lineno:
+                s += f", line {lineno}"
         s += f": {self.__cause__}\n"
         if self.image:
             s += f"  - Image: {self.image}\n"
@@ -53,7 +55,7 @@ class BakeryRenderError(BakeryError):
             s += f"  - Version: {self.version}\n"
         if self.variant:
             s += f"  - Variant: {self.variant}\n"
-        if self.destination:
+        if self.destination and self.context:
             s += f"  - Destination: {self.destination.relative_to(self.context)}\n"
         return s
 
@@ -76,8 +78,8 @@ class BakeryFileError(BakeryError):
 
     def __init__(
         self,
-        message: str = None,
-        filepath: Union[str, bytes, os.PathLike] | List[Union[str, bytes, os.PathLike]] = None,
+        message: str | None = None,
+        filepath: Union[str, bytes, os.PathLike] | List[Union[str, bytes, os.PathLike]] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -96,7 +98,7 @@ class BakeryFileError(BakeryError):
 class BakeryToolError(BakeryError):
     """Generic error for external tool issues"""
 
-    def __init__(self, message: str = None, tool_name: str = None) -> None:
+    def __init__(self, message: str | None = None, tool_name: str | None = None) -> None:
         super().__init__(message)
         self.message = message
         self.tool_name = tool_name
@@ -111,9 +113,9 @@ class BakeryToolNotFoundError(BakeryToolError):
 class BakeryToolRuntimeError(BakeryToolError):
     def __init__(
         self,
-        message: str = None,
-        tool_name: str = None,
-        cmd: List[str] = None,
+        message: str | None = None,
+        tool_name: str | None = None,
+        cmd: List[str] | None = None,
         stdout: str | bytes | None = None,
         stderr: str | bytes | None = None,
         exit_code: int = 1,
@@ -145,7 +147,8 @@ class BakeryToolRuntimeError(BakeryToolError):
     def __str__(self) -> str:
         s = f"{self.message}'\n"
         s += f"  - Exit code: {self.exit_code}\n"
-        s += f"  - Command executed: {' '.join(self.cmd)}\n"
+        if self.cmd:
+            s += f"  - Command executed: {' '.join(self.cmd)}\n"
         if self.metadata:
             s += "  - Metadata:\n"
             for key, value in self.metadata.items():
@@ -156,13 +159,13 @@ class BakeryToolRuntimeError(BakeryToolError):
 class BakeryDGossError(BakeryToolRuntimeError):
     def __init__(
         self,
-        message: str = None,
-        tool_name: str = None,
-        cmd: List[str] = None,
+        message: str | None = None,
+        tool_name: str | None = None,
+        cmd: List[str] | None = None,
         stdout: str | bytes | None = None,
         stderr: str | bytes | None = None,
         exit_code: int = 1,
-        parse_error: Exception = None,
+        parse_error: Exception | None = None,
         metadata: dict | None = None,
     ) -> None:
         super().__init__(
@@ -180,7 +183,8 @@ class BakeryDGossError(BakeryToolRuntimeError):
         s = f"{self.message}'\n"
         s += f"  - Exit code: {self.exit_code}\n"
         s += f"  - Command output: \n{textwrap.indent(self.dump_stdout(), '      ')}\n"
-        s += f"  - Command executed: {' '.join(self.cmd)}\n"
+        if self.cmd:
+            s += f"  - Command executed: {' '.join(self.cmd)}\n"
         if self.metadata:
             s += "  - Metadata:\n"
             for key, value in self.metadata.items():
@@ -205,16 +209,19 @@ class BakeryBuildErrorGroup(ExceptionGroup):
     """Group of tool runtime errors"""
 
     def __str__(self) -> str:
-        s = f""
+        s = ""
         for e in self.exceptions:
-            s += f"{e.message}\n"
             if isinstance(e, BakeryToolRuntimeError):
-                s += f"  - Command executed: '{' '.join(e.cmd)}'\n"
+                s += f"{e.message}\n"
+                if e.cmd:
+                    s += f"  - Command executed: '{' '.join(e.cmd)}'\n"
                 if e.metadata:
                     s += "  - Metadata:\n"
                     for key, value in e.metadata.items():
                         s += f"    - {key}: {value}\n"
                 s += "\n"
+            else:
+                s += f"{e}\n"
         s += "\n"
         s += f"{len(self.exceptions)} build(s) returned errors\n"
 
