@@ -35,7 +35,7 @@ version = "0.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.12.9,<1.0.0"
-mypy = "~=1.17.1"
+pyright = ">=1.1.400"
 pytest = "~=8.4.1"
 pytest-bdd = "~=8.1.0"
 pytest-cov = "~=6.2.1"
@@ -54,6 +54,14 @@ select = [
 unfixable = [
     "T201",  # https://docs.astral.sh/ruff/rules/print/
 ]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+include = ["posit_bakery"]
+reportPrivateUsage = "none"
+reportUnnecessaryIsInstance = "none"
+reportImportCycles = "none"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
