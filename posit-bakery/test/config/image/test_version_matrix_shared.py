@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from posit_bakery.config import BakeryConfigDocument, Image, ImageVariant, ImageVersion
+from posit_bakery.config import BakeryConfigDocument, Image, ImageVersion
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.matrix import ImageMatrix
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryRenderErrorGroup
@@ -43,14 +43,6 @@ def version_or_matrix_factory(request):
     if request.param == "version":
         return VersionMatrixFactory.create_version
     return VersionMatrixFactory.create_matrix
-
-
-@pytest.fixture(params=["version", "matrix"])
-def version_or_matrix_type(request):
-    """Returns the class type being tested."""
-    if request.param == "version":
-        return ImageVersion
-    return ImageMatrix
 
 
 class TestPathResolution:
@@ -153,5 +145,6 @@ class TestRenderFiles:
 
         instance = version_or_matrix_factory(parent=image)
 
-        with pytest.raises(BakeryRenderError):
+        with pytest.raises(BakeryRenderError) as exc_info:
             instance.render_files()
+        assert not isinstance(exc_info.value, BakeryRenderErrorGroup)
