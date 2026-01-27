@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Posit Bakery is a command-line tool for building, testing, and managing containerized images. It provides a structured approach to create, build, and test Docker images with variant support (e.g., Standard vs Minimal),
-         + version management, OS variants, and dependency constraints.
+Posit Bakery is a command-line tool for building, testing, and managing containerized images. It provides a structured approach to create, build, and test Docker images with variant support (e.g., Standard vs Minimal), version management, OS variants, and dependency constraints.
 
 The tool uses a YAML configuration file (`bakery.yaml`) and Jinja2 templates to define image builds, with support for parallel building via Docker Buildx Bake.
 
 ## Development Environment Setup
+
+Run these commands from the `posit-bakery/` directory:
 
 ```bash
 # Install dependencies
@@ -26,13 +27,20 @@ just test
 just test-all
 ```
 
-## Project Structure
+## Repository Structure
 
-- `posit_bakery/` - Core package
-- `cli/` - Command-line interface implementation
-- `config/` - Configuration handling and validation
-  - `templating/` - Jinja2 template definitions and macros
-- `image/` - Image building and management and other tool implementations
+This is a monorepo containing multiple projects:
+
+- `posit-bakery/` - The main Posit Bakery CLI tool
+  - `posit_bakery/` - Core Python package
+    - `cli/` - Command-line interface implementation
+    - `config/` - Configuration handling and validation
+      - `templating/` - Jinja2 template definitions and macros
+    - `image/` - Image building and management
+  - `test/` - Test suite
+- `setup-bakery/` - Bakery setup utilities
+- `setup-goss/` - Goss testing setup utilities
+- `presentations/` - Project presentations
 
 ## Key Commands
 
@@ -150,15 +158,15 @@ Template variables available:
 3. Invokes Docker Buildx to build images in parallel
 4. Optionally loads images into Docker or pushes to registries
 
- ## Testing Process
+## Testing Process
 
 1. `bakery run dgoss` finds images to test based on configuration
 2. Executes dgoss tests against each image with appropriate test files
 3. Collects and reports test results
 
- ## Image Tagging
+## Image Tagging
 
- Bakery automatically applies tag patterns based on:
+Bakery automatically applies tag patterns based on:
 - Version (`<version>-<os>-<type>`)
 - Latest version markers (`<os>-<type>`, `latest`)
 - Primary OS and variant combinations
