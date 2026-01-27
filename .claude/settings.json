@@ -1,0 +1,21 @@
+{
+  "lsp": {
+    "pyright": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(bakery build:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git show:*)",
+      "Bash(just test:*)",
+      "Bash(ls:*)",
+      "Bash(poetry run:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
