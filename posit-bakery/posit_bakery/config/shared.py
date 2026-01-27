@@ -10,6 +10,9 @@ from pydantic import BaseModel, ConfigDict
 
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 
+# Prefix for Containerfile templates.
+CONTAINERFILE_PREFIX = "Containerfile"
+
 # Shared field configuration for file extensions.
 ExtensionField = Annotated[
     str,
