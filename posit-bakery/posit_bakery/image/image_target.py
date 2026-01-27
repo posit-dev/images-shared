@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Iterator
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field
@@ -70,7 +70,7 @@ class ImageTarget(BaseModel):
     metadata_file: Annotated[
         MetadataFile | None, Field(default=None, description="Build metadata for the image target.")
     ]
-    settings: Annotated[ImageTargetSettings, Field(default_factory=ImageTargetSettings)]
+    settings: Annotated[ImageTargetSettings, Field(default_factory=lambda: ImageTargetSettings(temp_registry=None, cache_registry=None))]
 
     @classmethod
     def new_image_target(
@@ -91,8 +91,22 @@ class ImageTarget(BaseModel):
 
         :return: A new ImageTarget representing the given combination of configurations.
         """
+        if image_version.parent is None:
+            raise ValueError("Image version must have a parent image.")
+        if image_version.parent.parent is None:
+            raise ValueError("Image must have a parent config.")
+        if image_version.parent.path is None:
+            raise ValueError("Image must have a valid path.")
+
+        # Access parent.parent with type cast since we know it's a BakeryConfigDocument
+        from posit_bakery.config.shared import BakeryPathMixin
+        from typing import cast
+        config = cast(BakeryPathMixin, image_version.parent.parent)
+        if config.path is None:
+            raise ValueError("Config must have a valid path.")
+
         context = ImageTargetContext(
-            base_path=image_version.parent.parent.path,
+            base_path=config.path,
             image_path=image_version.parent.path,
             version_path=image_version.path,
         )
@@ -103,7 +117,8 @@ class ImageTarget(BaseModel):
             image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
-            settings=settings or ImageTargetSettings(),
+            metadata_file=None,
+            settings=settings or ImageTargetSettings(temp_registry=None, cache_registry=None),
         )
 
     def __str__(self):
@@ -130,6 +145,8 @@ class ImageTarget(BaseModel):
     @property
     def image_name(self) -> str:
         """Return the name of the image."""
+        if self.image_version.parent is None:
+            raise ValueError("Image version must have a parent image.")
         return self.image_version.parent.name
 
     @property
@@ -185,6 +202,8 @@ class ImageTarget(BaseModel):
     @property
     def tag_patterns(self) -> list[TagPattern]:
         """Ensure tag patterns are unique."""
+        if self.image_version.parent is None:
+            raise ValueError("Image version must have a parent image.")
         patterns = self.image_version.parent.tagPatterns.copy()
         if self.image_variant:
             patterns.extend(self.image_variant.tagPatterns)
@@ -225,17 +244,18 @@ class ImageTarget(BaseModel):
     @property
     def tags(self) -> list[str]:
         """Generate tags for the image based on tag patterns."""
+        from posit_bakery.config.registry import Registry
         tags = []
         if self.image_version.all_registries:
             for registry in self.image_version.all_registries:
                 for suffix in self.tag_suffixes:
-                    if hasattr(registry, "repository"):
+                    if isinstance(registry, Registry):
                         tags.append(f"{registry.base_url}/{registry.repository}:{suffix}")
                     else:
-                        tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
+                        tags.append(f"{registry.base_url}/{self.image_name}:{suffix}")
         else:
             for suffix in self.tag_suffixes:
-                tags.append(f"{self.image_version.parent.name}:{suffix}")
+                tags.append(f"{self.image_name}:{suffix}")
 
         return sorted(tags)
 
@@ -243,33 +263,38 @@ class ImageTarget(BaseModel):
     @property
     def build_args(self) -> dict[str, str]:
         """Generate build arguments for the image based on its properties."""
-        build_args = {}
+        build_args: dict[str, str] = {}
         if self.image_version.isMatrixVersion:
             for dependency in self.image_version.dependencies:
                 build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
-            for value in self.image_version.values:
-                build_args[value.name.upper()] = value.value
+            for key, val in self.image_version.values.items():
+                build_args[key.upper()] = str(val)
         return build_args
 
     @computed_field
     @property
     def ref(self) -> str:
         """Returns a reference to the image, preferring a build metadata digest if available."""
-        if self.metadata_file is not None:
-            return self.metadata_file.metadata.image_ref
+        if self.metadata_file is not None and self.metadata_file.metadata is not None:
+            image_ref = self.metadata_file.metadata.image_ref
+            if image_ref is not None:
+                return image_ref
         return self.tags[0]
 
     @computed_field
     @property
     def labels(self) -> dict[str, str]:
         """Generate labels for the image based on its properties."""
+        if self.image_version.parent is None:
+            raise ValueError("Image version must have a parent image.")
+        parent = self.image_version.parent
         labels = {
             f"{OCI_LABEL_PREFIX}.created": datetime.now().isoformat(),
             f"{OCI_LABEL_PREFIX}.source": str(self.repository.url),
-            f"{OCI_LABEL_PREFIX}.title": self.image_version.parent.displayName,
+            f"{OCI_LABEL_PREFIX}.title": parent.displayName,
             f"{OCI_LABEL_PREFIX}.vendor": self.repository.vendor,
             f"{POSIT_LABEL_PREFIX}.maintainer": str(self.repository.maintainer),
-            f"{POSIT_LABEL_PREFIX}.name": self.image_version.parent.displayName,
+            f"{POSIT_LABEL_PREFIX}.name": parent.displayName,
         }
         if len(self.repository.authors) > 0:
             labels[f"{OCI_LABEL_PREFIX}.authors"] = ", ".join([str(author) for author in self.repository.authors])
@@ -279,10 +304,10 @@ class ImageTarget(BaseModel):
             labels[f"{prefix}.version"] = self.image_version.name
             if self.repository.revision:
                 labels[f"{prefix}.revision"] = self.repository.revision
-            if self.image_version.parent.description:
-                labels[f"{prefix}.description"] = self.image_version.parent.description
-            if self.image_version.parent.documentationUrl:
-                labels[f"{prefix}.documentation"] = str(self.image_version.parent.documentationUrl)
+            if parent.description:
+                labels[f"{prefix}.description"] = parent.description
+            if parent.documentationUrl:
+                labels[f"{prefix}.documentation"] = str(parent.documentationUrl)
 
         if self.image_variant:
             labels[f"{POSIT_LABEL_PREFIX}.variant"] = self.image_variant.name
@@ -326,9 +351,9 @@ class ImageTarget(BaseModel):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
-    def load_build_metadata_from_file(self, metadata_file: Path):
+    def load_build_metadata_from_file(self, metadata_file: Path) -> None:
         """Load build metadata from a given file."""
-        self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
+        self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file, metadata=None)
 
     def build(
         self,
@@ -337,7 +362,7 @@ class ImageTarget(BaseModel):
         cache: bool = True,
         platforms: list[str] | None = None,
         metadata_file: Path | bool | None = None,
-    ) -> python_on_whales.Image | None:
+    ) -> python_on_whales.Image | Iterator[str] | None:
         """Build the image using the Containerfile and return the built image."""
         if not (self.context.base_path / self.containerfile).is_file():
             raise BakeryFileError(
@@ -352,8 +377,11 @@ class ImageTarget(BaseModel):
             cache_from = f"type=registry,ref={self.cache_name}"
             cache_to = f"{cache_from},mode=max"
 
+        metadata_file_path: Path | None = None
         if isinstance(metadata_file, bool) and metadata_file:
-            metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
+            metadata_file_path = SETTINGS.temporary_storage / f"{self.uid}.json"
+        elif isinstance(metadata_file, Path):
+            metadata_file_path = metadata_file
 
         tags = self.tags
         output = {}
@@ -369,6 +397,9 @@ class ImageTarget(BaseModel):
         with contextlib.chdir(self.context.base_path):
             log.info(f"Building image '{str(self)}'")
             try:
+                build_platforms: list[str] | None = platforms
+                if build_platforms is None and self.image_os is not None:
+                    build_platforms = [str(p) for p in self.image_os.platforms]
                 image = python_on_whales.docker.build(
                     context_path=self.context.base_path,
                     file=self.containerfile,
@@ -381,8 +412,8 @@ class ImageTarget(BaseModel):
                     cache=cache,
                     cache_from=cache_from,
                     cache_to=cache_to,
-                    metadata_file=metadata_file,
-                    platforms=platforms or self.image_os.platforms,
+                    metadata_file=metadata_file_path,
+                    platforms=build_platforms,
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
@@ -397,13 +428,13 @@ class ImageTarget(BaseModel):
 
         log.info(f"Successfully built image '{str(self)}'")
 
-        if isinstance(metadata_file, Path):
-            log.debug(f"Loading in build metadata from file {str(metadata_file)}")
-            self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
+        if metadata_file_path is not None:
+            log.debug(f"Loading in build metadata from file {str(metadata_file_path)}")
+            self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file_path, metadata=None)
 
         return image
 
-    def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
+    def merge(self, sources: list[str], dry_run: bool = False) -> Manifest | None:
         """Merge multiple images into a single image, tag, and push."""
         # For dry-runs, `imagetools create` produces effectively the same result as the steps below.
         if dry_run:
