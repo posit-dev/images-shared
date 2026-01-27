@@ -35,14 +35,28 @@ This is a monorepo containing multiple projects:
   - `posit_bakery/` - Core Python package
     - `cli/` - Command-line interface implementation
     - `config/` - Configuration handling and validation
+      - `dependencies/` - Dependency management (Python, R, Quarto versions)
+      - `image/` - Image configuration models (variants, versions, matrices)
       - `templating/` - Jinja2 template definitions and macros
+      - `tools/` - Tool configurations (goss)
     - `image/` - Image building and management
+      - `bake/` - Docker Buildx Bake integration
+      - `goss/` - Goss testing integration
+    - `registry_management/` - Registry APIs (DockerHub, GHCR)
+    - `services/` - Registry container services
   - `test/` - Test suite
 - `setup-bakery/` - Bakery setup utilities
 - `setup-goss/` - Goss testing setup utilities
 - `presentations/` - Project presentations
 
 ## Key Commands
+
+Commands support aliases for convenience:
+- `build` → `b`, `bake`
+- `create` → `c`, `new`
+- `run` → `r`
+- `update` → `u`, `up`
+- `remove` → `rm`
 
 ### Creating a New Project
 
@@ -112,6 +126,64 @@ bakery run dgoss
 bakery run dgoss --image-name <image-name>
 ```
 
+### Updating Files and Versions
+
+```bash
+# Re-render templates to version files
+bakery update files
+
+# Re-render templates for a specific image/version
+bakery update files --image-name <image-name> --image-version <version>
+
+# Patch an existing version to a new version (preserves config)
+bakery update version patch <image-name> <old-version> <new-version>
+```
+
+### Removing Images and Versions
+
+```bash
+# Remove an entire image and its configuration
+bakery remove image <image-name>
+
+# Remove a specific version from an image
+bakery remove version <image-name> <version>
+```
+
+### CI/CD Operations
+
+```bash
+# Generate a JSON matrix for CI workflows
+bakery ci matrix
+
+# Generate matrix for a specific image
+bakery ci matrix <image-name>
+
+# Merge multi-platform build metadata files
+bakery ci merge <metadata-file1> <metadata-file2> ...
+```
+
+### Registry Cleanup
+
+```bash
+# Clean dangling build caches in GHCR
+bakery clean cache-registry <registry>
+
+# Clean temporary images in GHCR
+bakery clean temp-registry <registry>
+
+# Dry run to preview what would be deleted
+bakery clean cache-registry <registry> --dry-run
+```
+
+### Creating a Matrix-Based Image
+
+```bash
+# Create a matrix configuration for multi-dimensional builds
+bakery create matrix <image-name> \
+  --dependency-constraint '{"dependency": "R", "latest": true, "count": 2}' \
+  --dependency-constraint '{"dependency": "Python", "latest": true, "count": 2}'
+```
+
 ## Architecture Concepts
 
 ### Project Structure
@@ -150,6 +222,14 @@ Template variables available:
 - `Image`: Information about the current image, version, variant, and OS
 - `Path`: Directory paths in the build context
 - `Dependencies`: Versions of dependencies like Python, R, and Quarto
+
+Custom Jinja2 filters:
+- `tagSafe`: Make strings safe for image tags (replaces invalid characters)
+- `stripMetadata`: Remove version metadata (e.g., `1.0.0+build` → `1.0.0`)
+- `condense`: Remove spaces, dots, and dashes
+- `regexReplace`: Regex-based string replacement
+- `quote`: Wrap string in double quotes
+- `split`: Split string by separator
 
 ## Build Process
 
@@ -203,3 +283,37 @@ tagPatterns:
     only:
       - "primaryVariant"
 ```
+
+### Image Matrices
+
+For images that need multiple dependency combinations (e.g., different R and Python versions), use image matrices instead of individual versions:
+
+```yaml
+images:
+  - name: my-image
+    matrix:
+      namePattern: "r{{ R }}-py{{ Python }}"
+      subpath: matrix
+      dependencies:
+        - dependency: R
+          versions: ["4.3.3", "4.4.1"]
+        - dependency: Python
+          versions: ["3.11", "3.12"]
+```
+
+This generates versions for each combination of dependencies.
+
+### Multi-Platform Builds
+
+For CI workflows using native builders (instead of QEMU emulation):
+
+1. Build for each platform separately with `--temp-registry`:
+   ```bash
+   bakery build --strategy build --platform linux/amd64 --metadata-file amd64.json --temp-registry ghcr.io/org
+   bakery build --strategy build --platform linux/arm64 --metadata-file arm64.json --temp-registry ghcr.io/org
+   ```
+
+2. Merge the metadata files into multi-platform manifests:
+   ```bash
+   bakery ci merge amd64.json arm64.json
+   ```
