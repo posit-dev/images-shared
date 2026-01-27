@@ -1,11 +1,17 @@
 from pydantic import BaseModel
 import pytest
 
-from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersionsField, DependencyVersions
+from posit_bakery.config.dependencies import (
+    DependencyConstraintField,
+    DependencyVersionsField,
+    DependencyVersions,
+    get_dependency_versions_class,
+    get_dependency_constraint_class,
+)
 from posit_bakery.config.dependencies.dependency import Dependency
-from posit_bakery.config.dependencies.python import PythonDependencyVersions
-from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
-from posit_bakery.config.dependencies.r import RDependencyVersions
+from posit_bakery.config.dependencies.python import PythonDependencyVersions, PythonDependencyConstraint
+from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions, QuartoDependencyConstraint
+from posit_bakery.config.dependencies.r import RDependencyVersions, RDependencyConstraint
 
 
 pytestmark = [
@@ -162,3 +168,71 @@ class TestDependencyVersions:
         """Test that version serialization works as expected."""
         serialized = versions_obj.model_dump(exclude_unset=True, exclude_defaults=True, exclude_none=True)
         assert serialized == expected_dict
+
+
+class TestGetDependencyVersionsClass:
+    """Tests for the get_dependency_versions_class helper function."""
+
+    @pytest.mark.parametrize(
+        "dependency_name,expected_class",
+        [
+            pytest.param("python", PythonDependencyVersions, id="python"),
+            pytest.param("R", RDependencyVersions, id="R"),
+            pytest.param("quarto", QuartoDependencyVersions, id="quarto"),
+        ],
+    )
+    def test_valid_dependency_names(self, dependency_name: str, expected_class: type):
+        """Test that valid dependency names return the correct class."""
+        result = get_dependency_versions_class(dependency_name)
+        assert result is expected_class
+
+    @pytest.mark.parametrize(
+        "invalid_name",
+        [
+            pytest.param("Python", id="wrong_case_python"),
+            pytest.param("r", id="wrong_case_r"),
+            pytest.param("Quarto", id="wrong_case_quarto"),
+            pytest.param("node", id="unsupported_node"),
+            pytest.param("rust", id="unsupported_rust"),
+            pytest.param("", id="empty_string"),
+            pytest.param("invalid", id="invalid_name"),
+        ],
+    )
+    def test_invalid_dependency_name_raises(self, invalid_name: str):
+        """Test that invalid dependency names raise ValueError."""
+        with pytest.raises(ValueError, match=f"Unsupported dependency name: {invalid_name}"):
+            get_dependency_versions_class(invalid_name)
+
+
+class TestGetDependencyConstraintClass:
+    """Tests for the get_dependency_constraint_class helper function."""
+
+    @pytest.mark.parametrize(
+        "dependency_name,expected_class",
+        [
+            pytest.param("python", PythonDependencyConstraint, id="python"),
+            pytest.param("R", RDependencyConstraint, id="R"),
+            pytest.param("quarto", QuartoDependencyConstraint, id="quarto"),
+        ],
+    )
+    def test_valid_dependency_names(self, dependency_name: str, expected_class: type):
+        """Test that valid dependency names return the correct class."""
+        result = get_dependency_constraint_class(dependency_name)
+        assert result is expected_class
+
+    @pytest.mark.parametrize(
+        "invalid_name",
+        [
+            pytest.param("Python", id="wrong_case_python"),
+            pytest.param("r", id="wrong_case_r"),
+            pytest.param("Quarto", id="wrong_case_quarto"),
+            pytest.param("java", id="unsupported_java"),
+            pytest.param("go", id="unsupported_go"),
+            pytest.param("", id="empty_string"),
+            pytest.param("unknown", id="unknown_name"),
+        ],
+    )
+    def test_invalid_dependency_name_raises(self, invalid_name: str):
+        """Test that invalid dependency names raise ValueError."""
+        with pytest.raises(ValueError, match=f"Unsupported dependency name: {invalid_name}"):
+            get_dependency_constraint_class(invalid_name)
