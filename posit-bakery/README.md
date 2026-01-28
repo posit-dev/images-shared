@@ -56,7 +56,7 @@ bakery --help
 bakery help
 ```
 
-### Step 1. Create a project
+### Step 1. Create a project {#create-project}
 
 * Create a new project
 
@@ -64,7 +64,7 @@ bakery help
     bakery create project
     ```
 
-    This command will create a new project configuration file in the bakery context.
+    This command creates a new project configuration file in the bakery context.
 
 * Make changes to the `bakery.yaml` file
 
@@ -74,7 +74,7 @@ bakery help
     * Document the source code [Repository](./CONFIGURATION.md#repository)
     * Configure image [Registry](./CONFIGURATION.md#registry) entries to tag and push images to specific registries
 
-### Step 2. Create an image
+### Step 2. Create an image {#create-image}
 
 * Create a new image
 
@@ -108,7 +108,7 @@ bakery help
 
     Template files must end with the `.jinja2` file extension.
 
-### Step 3. Create an image version
+### Step 3. Create an image version {#create-image-version}
 
 * Create a new version of the image
 
@@ -135,7 +135,7 @@ bakery help
 
     * Set [Dependency Versions](./CONFIGURATION.md#dependencyversions)
 
-### Step 4. Build the image(s)
+### Step 4. Build the image(s) {#build-images}
 
 * Preview the [bake plan](https://docs.docker.com/build/bake/reference/) [OPTIONAL]
 
@@ -151,7 +151,7 @@ bakery help
     bakery build
     ```
 
-### Step 5. Run the tests
+### Step 5. Run the tests {#run-tests}
 
 * Run the `dgoss` tests against all the images
 
@@ -159,14 +159,14 @@ bakery help
     bakery run dgoss
     ```
 
-    Additional run options can be specified using Goss options in `bakery.yaml` on a per image or per variant basis
+    You can specify additional run options using Goss options in `bakery.yaml` on a per image or per variant basis.
 
 ## Bakery Concepts
 
 ### Project Structure
 
 Bakery establishes a directory structure, referred to as a **project**.
-The **project** configuration is stored in the `bakery.yaml`.
+The `bakery.yaml` file stores the **project** configuration.
 
 By default, bakery uses the invocation directory as the project **context**.
 You can use the `--context` flag to override the default behavior.

@@ -1,6 +1,6 @@
 # Configuration Overview
 
-This document provides an overview of the configuration schema for Bakery, a tool for managing container images. The configuration is defined in a YAML file named `bakery.yaml`. A template for this file can be created using `bakery create project`.
+This document provides an overview of the configuration schema for Bakery, a tool for managing container images. You define the configuration in a YAML file named `bakery.yaml`. Create a template for this file using `bakery create project`.
 
 Fields marked as "*Required*" must be provided in the configuration file.
 
@@ -117,8 +117,7 @@ images:
 
 ### Repository
 
-A Repository stores the metadata of the parent source code repository of the project. It is primarily used
-for labeling images.
+A Repository stores the metadata of the parent source code repository of the project. Bakery primarily uses it for labeling images.
 
 | Field                                                           | Description                                                                                                             | Default Value                         | Example                                                                                           |
 |-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------|
@@ -138,9 +137,9 @@ A BaseRegistry represents a container image registry. It does not specify the re
 
 ### Registry
 
-A Registry represents a container image registry and includes the name or repository of the image. It is a subclass of BaseRegistry.
+A Registry represents a container image registry and includes the name or repository of the image. Registry extends BaseRegistry.
 
-This type can be specified for an image or version, but cannot be specified at the top level of the bakery configuration.
+You can specify this type for an image or version, but you cannot specify it at the top level of the bakery configuration.
 
 A common use is pushing images to a repository name that is different from the name of the image.
 
@@ -154,7 +153,7 @@ A common use is pushing images to a repository name that is different from the n
 
 ### Image
 
-An Image represents a container image managed by the project. Each image has one or more versions and optionally can have one or more variants and operating systems. New images can be created using the `bakery create image` command.
+An Image represents a container image managed by the project. Each image has one or more versions and optionally can have one or more variants and operating systems. Create new images using the `bakery create image` command.
 
 | Field                                                                                   | Description                                                                                                                         | Default Value                             | Example                                                                                               |
 |-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------|
@@ -231,8 +230,7 @@ images:
 
 ### ImageVariant
 
-An ImageVariant represents a variant of an image, such as standard or minimal builds. Each variant is expected have its
-own `Containerfile.<os>.<variant>`.
+An ImageVariant represents a variant of an image, such as standard or minimal builds. Each variant should have its own `Containerfile.<os>.<variant>`.
 
 | Field                                | Description                                                                                                                                                          | Default Value                                                                                          | Example                                                                                                                    |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
@@ -245,7 +243,7 @@ own `Containerfile.<os>.<variant>`.
 
 #### Common Image Variants
 
-By default, the image variants for an [Image](#image) will be set to an empty list `[]` f no `variants` are otherwise specified for the [Image](#image).
+By default, Bakery sets the image variants for an [Image](#image) to an empty list `[]` if you do not specify `variants` for the [Image](#image).
 
 A common pattern is to build a minimal image containing fewer dependencies, and a standard image that builds dependencies into the container.
 
@@ -262,9 +260,9 @@ variants:
 
 ### DependencyConstraint
 
-Dependencies represents a list software dependencies that is installed in a specific image.
+Dependencies represent software that Bakery installs in a specific image.
 
-At the image level, these are specified through a VersionConstraint.
+At the image level, you specify these through a VersionConstraint.
 
 | Field | Description | Default Value | Example |
 |-------|-------------|---------------|---------|
@@ -283,7 +281,7 @@ The versions can be defined explicitly as an array of strings, or in terms of a 
 | `max`<br/>*string* | Maximum version to include. | | `3.13.7`, `3.11`, `3` |
 | `min`<br/>*string* | Minimum version to include. | | `4.2.1`, `4.3`, `4` |
 
-At least one of `latest` or `max` must be specified.
+You must specify at least one of `latest` or `max`.
 
 If `latest` is `true` and no other fields are set, `count` defaults to `1`.
 
@@ -311,7 +309,7 @@ dependencyConstraints:
 
 ### ImageVersion
 
-An ImageVersion represents a specific version of an image. Each version should be rendered from templates using the `bakery create version` command.
+An ImageVersion represents a specific version of an image. Render each version from templates using the `bakery create version` command.
 
 | Field                                                                                   | Description                                                                                                                                                                                                                                                          | Default Value                                                                                                                   | Example                                                                        |
 |-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
@@ -365,9 +363,9 @@ os:
 
 ### DependencyVersions
 
-Dependencies represents a list software dependencies that is installed in a specific image.
+Dependencies represent software that Bakery installs in a specific image.
 
-At the image level, these are specified by an array of strings.
+At the image level, you specify these as an array of strings.
 
 | Field | Description | Default Value | Example |
 |-------|-------------|---------------|---------|
@@ -405,7 +403,7 @@ A NameEmail represents a name and email address pair.
 
 ### TagPattern
 
-A TagPattern represents a pattern for tagging images. It can include placeholders that are replaced with actual values when generating tags.
+A TagPattern represents a pattern for tagging images. It can include placeholders that Bakery replaces with actual values when generating tags.
 
 | Field                                                    | Description                                                                                                                                           |
 |----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -414,7 +412,7 @@ A TagPattern represents a pattern for tagging images. It can include placeholder
 
 #### Pattern Templating
 
-All [TagPattern](#tagpattern) `patterns` should be valid Jinja2 template strings.
+All [TagPattern](#tagpattern) `patterns` must be valid Jinja2 template strings.
 
 The following variables are available for use in `patterns`:
 - `{{ Version }}`: The version of the image.
