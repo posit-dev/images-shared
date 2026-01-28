@@ -3,7 +3,7 @@
 This document outlines the available Jinja2 macros in the Posit Bakery templating system for creating Docker images with
 package installations.
 
-Macros must be explicitly imported in every file in which they are used.
+You must explicitly import macros in every file where you use them.
 
 References:
 - [Source Code](./posit_bakery/config/templating/macros)
@@ -20,10 +20,10 @@ References:
   - [Quarto Installation and Management](#quarto-installation-and-management)
 
 ## Available Variables
-The following variables are available by default for use in an image's Jinja2 templates. Additional values passed using
-`--value` to `bakery create` or specified in the `values` field of an image version will also be available.
+You can use the following variables by default in an image's Jinja2 templates. Additional values passed using
+`--value` to `bakery create` or specified in the `values` field of an image version are also available.
 
-Currently, `Containerfile` templates render as a unique file for each variant and OS. Using variant and OS based Jinja2 conditionals outside of `Containerfile` templates is not currently supported and will lead to unexpected results or errors.
+Currently, `Containerfile` templates render as a unique file for each variant and OS. Bakery does not currently support using variant and OS based Jinja2 conditionals outside of `Containerfile` templates, and doing so leads to unexpected results or errors.
 
 - `Image`: A dictionary containing information about the current image, version, variant, and OS.
   - `Image.Name`: The name field of the image, e.g. `package-manager`, `workbench`, `connect`.
@@ -74,7 +74,7 @@ To wrap `setup()` in a Docker RUN statement, use:
 #### Setup Posit Cloudsmith Apt Repositories
 Renders commands to set up Posit Cloudsmith apt repositories. Requires `curl` to be installed prior to execution.
 
-**NOTE:** This macro is included in `apt.setup()` or `apt.run_setup()`, so it does not need to be called separately unless `apt.setup()` is not used.
+**NOTE:** `apt.setup()` and `apt.run_setup()` include this macro, so you do not need to call it separately unless you skip `apt.setup()`.
 
 ```jinja2
 {{ apt.setup_posit_cloudsmith() }}
@@ -87,8 +87,7 @@ To wrap `setup_posit_cloudsmith()` in a Docker RUN statement, use:
 ```
 
 #### Apt Clean Commands
-Renders commands to clean and remove the apt cache to ensure minimal image layers. Clean commands should be run at the end of any RUN
-statement that modifies packages, but it is implicitly included in most other macros that modify packages.
+Renders commands to clean and remove the apt cache to ensure minimal image layers. Run clean commands at the end of any RUN statement that modifies packages. Most other macros that modify packages implicitly include clean commands.
 
 ```jinja2
 {{ apt.clean_command() }}
@@ -97,7 +96,7 @@ statement that modifies packages, but it is implicitly included in most other ma
 #### Apt Update and Upgrade
 Renders commands to update the apt cache, upgrade packages, run dist-upgrade, and remove unneeded packages. Pass `False` to the `clean` argument to skip cleaning the cache if you want to append additional commands. Clean is `True` by default.
 
-**NOTE:** This macro is called by `apt.setup()` and `apt.run_setup()`, so it does not need to be called separately unless `apt.setup()` is not used.
+**NOTE:** `apt.setup()` and `apt.run_setup()` call this macro, so you do not need to call it separately unless you skip `apt.setup()`.
 
 ```jinja2
 {{ apt.update_upgrade(clean = True) }}
@@ -154,7 +153,7 @@ To wrap `setup()` in a Docker RUN statement, use:
 #### Setup Posit Cloudsmith DNF Repositories
 Renders commands to set up Posit Cloudsmith DNF repositories. Requires `curl` to be installed prior to execution.
 
-**NOTE:** This macro is included in `dnf.setup()` or `dnf.run_setup()`, so it does not need to be called separately unless `dnf.setup()` is not used.
+**NOTE:** `dnf.setup()` and `dnf.run_setup()` include this macro, so you do not need to call it separately unless you skip `dnf.setup()`.
 
 ```jinja2
 {{ dnf.setup_posit_cloudsmith() }}
@@ -167,8 +166,7 @@ To wrap `setup_posit_cloudsmith()` in a Docker RUN statement, use:
 ```
 
 #### DNF Clean Command
-Renders commands to clean the dnf package cache. Clean commands should be run at the end of any RUN
-statement that modifies packages, but it is implicitly included in most other macros that modify packages.
+Renders commands to clean the dnf package cache. Run clean commands at the end of any RUN statement that modifies packages. Most other macros that modify packages implicitly include clean commands.
 
 ```jinja2
 {{ dnf.clean_command() }}
@@ -177,7 +175,7 @@ statement that modifies packages, but it is implicitly included in most other ma
 #### DNF Update and Upgrade
 Renders commands to upgrade packages, remove unneeded packages, and clean the cache. Pass `False` to the `clean` argument to skip cleaning the cache if you want to append additional commands. Clean is `True` by default.
 
-**NOTE:** This macro is called by `dnf.setup()` and `dnf.run_setup()`, so it does not need to be called separately unless `dnf.setup()` is not used.
+**NOTE:** `dnf.setup()` and `dnf.run_setup()` call this macro, so you do not need to call it separately unless you skip `dnf.setup()`.
 
 ```jinja2
 {{ dnf.update_upgrade(clean = True) }}
