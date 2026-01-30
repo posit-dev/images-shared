@@ -14,6 +14,7 @@ from posit_bakery.config.dependencies import (
     QuartoDependencyConstraint,
 )
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
+from posit_bakery.config import BakeryConfigDocument, ImageVariant
 
 
 @pytest.mark.parametrize(
@@ -578,3 +579,106 @@ class TestImageMatrix:
         ]
         actual_names = [iv.name for iv in image_versions]
         assert expected_names.sort() == actual_names.sort()
+
+    def test_check_duplicate_dependency_constraints(self):
+        """Test that duplicate dependency constraints raise error."""
+        with pytest.raises(
+            ValidationError,
+            match="Duplicate dependency constraints found in image matrix",
+        ):
+            ImageMatrix(
+                values={"go_version": ["1.24", "1.25"]},
+                dependencyConstraints=[
+                    {
+                        "dependency": "python",
+                        "constraint": {"latest": True, "count": 2},
+                    },
+                    {
+                        "dependency": "python",  # Duplicate
+                        "constraint": {"latest": True, "count": 3},
+                    },
+                ],
+            )
+
+    def test_generate_template_values_with_variant_and_os(self):
+        """Test generate_template_values includes variant and OS info."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = Path("/tmp/path/test-image")
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24"]},
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+            parent=mock_image_parent,
+        )
+
+        variant = ImageVariant(name="Standard", extension="std", primary=True)
+
+        values = matrix.generate_template_values(variant, matrix.os[0])
+
+        assert values["Image"]["Name"] == "test-image"
+        assert values["Image"]["DisplayName"] == "Test Image"
+        assert values["Image"]["Variant"] == "Standard"
+        assert values["Image"]["OS"]["Name"] == "ubuntu"
+        assert values["Image"]["OS"]["Family"] == "debian"
+
+    def test_generate_template_values_without_variant_or_os(self):
+        """Test generate_template_values without variant and OS."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = Path("/tmp/path/test-image")
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24"]},
+            parent=mock_image_parent,
+        )
+
+        values = matrix.generate_template_values()
+
+        assert values["Image"]["Name"] == "test-image"
+        assert "Variant" not in values["Image"]
+        assert "OS" not in values["Image"]
+
+    def test_render_files_creates_directory(self, tmp_path):
+        """Test that render_files creates the matrix directory."""
+        # Create minimal template structure
+        image_dir = tmp_path / "test-image"
+        template_dir = image_dir / "template"
+        template_dir.mkdir(parents=True)
+
+        # Create a simple template that doesn't require Image.Version
+        simple_template = template_dir / "simple.txt.jinja2"
+        simple_template.write_text("Image: {{ Image.Name }}\n")
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = tmp_path
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = image_dir
+        mock_image_parent.template_path = template_dir
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            parent=mock_image_parent,
+            values={"go_version": ["1.24"]},
+        )
+
+        matrix.render_files()
+
+        expected_path = image_dir / "matrix"
+        assert expected_path.exists() and expected_path.is_dir()
+        assert (expected_path / "simple.txt").is_file()
+        content = (expected_path / "simple.txt").read_text()
+        assert "Image: test-image" in content

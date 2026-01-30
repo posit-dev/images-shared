@@ -140,21 +140,17 @@ class GossJsonReport(BaseModel):
 
     @property
     def test_failures(self) -> list[GossResult]:
-        """Returns a list of test results that failed or were skipped."""
-        tests = []
-        for result in self.results:
-            if not result.successful and not result.skipped:
-                tests.append(result)
-        return tests
+        """Returns a list of test results that failed (excluding skipped)."""
+        if self.results is None:
+            return []
+        return [r for r in self.results if not r.successful and not r.skipped]
 
     @property
     def test_skips(self) -> list[GossResult]:
         """Returns a list of test results that were skipped."""
-        tests = []
-        for result in self.results:
-            if result.skipped:
-                tests.append(result)
-        return tests
+        if self.results is None:
+            return []
+        return [r for r in self.results if r.skipped]
 
 
 class GossJsonReportCollection(dict):
@@ -208,7 +204,6 @@ class GossJsonReportCollection(dict):
                 results["total"]["skipped"] += report.summary.skipped_count
                 results["total"]["total_tests"] += report.summary.test_count
                 results["total"]["duration"] += report.summary.total_duration
-        results["total"]["duration"] = results["total"]["duration"]
         return results
 
     def table(self) -> Table:
