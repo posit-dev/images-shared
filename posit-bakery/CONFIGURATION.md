@@ -168,7 +168,8 @@ An Image represents a container image managed by the project. Each image has one
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*                                     | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns) | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
 | `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array*       | List of dependencies to install in the image. Versions are are calcuated from a [VersionConstraint](#versionconstraint)             | `[]`                                      | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre>                |
 | `variants`<br/>*[ImageVariant](#imagevariant) array*                                    | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | `[]`                                      | `- name: Minimal`                                                                                     |
-| `versions`<br/>*[ImageVersion](#imageversion) array*                                    | *(Required)* The list of versions for the image. Each version should have its own directory under the image's `subpath`.            | `[]`                                      | `- name: 2025.07.0`                                                                                   |
+| `versions`<br/>*[ImageVersion](#imageversion) array*                                    | The list of versions for the image. Each version should have its own directory under the image's `subpath`. Cannot be used with `matrix`. | `[]`                                      | `- name: 2025.07.0`                                                                                   |
+| `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`. | | See [ImageMatrix](#imagematrix) |
 | `options`<br/>*[ToolOptions](#tooloptions) array*                                       | A list of options to pass to a supported tool when performing an action against the image.                                          | `[]`                                      | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
 
 #### Example Image
@@ -259,6 +260,52 @@ variants:
     extension: min
     tagDisplayName: min
 ```
+
+### ImageMatrix
+
+An ImageMatrix generates multiple image versions from combinations of dependency versions and custom values. This is useful when you need to build an image that lacks a singular component to version on or that requires different dependency combinations (e.g., multiple R and Python version combinations).
+
+**Note:** An image can have either `versions` or `matrix`, but not both.
+
+| Field | Description | Default Value | Example |
+|-------|-------------|---------------|---------|
+| `namePattern`<br/>*string* | A Jinja2 pattern for generating version names. Available variables: `Dependencies.<name>` for each dependency and `Values.<key>` for each value. | Auto-generated from dependencies and values | `"r{{ Dependencies.R }}-py{{ Dependencies.python }}"` |
+| `subpath`<br/>*string* | The subpath relative from the image's `subpath` where matrix files are stored. | `matrix` | `builds`, `versions` |
+| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyconstraint) array* | Dependencies to install, with versions calculated from constraints. | `[]` | See [DependencyConstraint](#dependencyconstraint) |
+| `dependencies`<br/>*[DependencyVersions](#dependencyversions) array* | Dependencies to install, with explicit version lists. | `[]` | See [DependencyVersions](#dependencyversions) |
+| `values`<br/>*map[string, string \| list]* | Custom key-value pairs for template rendering. Lists generate multiple combinations. | `{}` | `edition: ["community", "pro"]` |
+| `os`<br/>*[ImageVersionOS](#imageversionos) array* | The list of operating systems supported by this matrix. | `[]` | See [ImageVersionOS](#imageversionos) |
+| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Additional registries to push matrix images to. | `[]` | |
+| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Registries to use instead of global/image registries. Cannot be used with `extraRegistries`. | `[]` | |
+
+At least one of `dependencyConstraints`, `dependencies`, or `values` must be defined.
+
+#### Example ImageMatrix
+
+```yaml
+images:
+  - name: r-session
+    displayName: R Session
+    matrix:
+      namePattern: "r{{ Dependencies.R }}-py{{ Dependencies.python }}"
+      subpath: matrix
+      dependencies:
+        - dependency: R
+          versions: ["4.4.3", "4.3.3"]
+        - dependency: python
+          versions: ["3.12", "3.11"]
+      os:
+        - name: Ubuntu 24.04
+          primary: true
+          extension: ubuntu2404
+          tagDisplayName: ubuntu24.04
+```
+
+This generates four image versions:
+- `r4.4.3-py3.12`
+- `r4.4.3-py3.11`
+- `r4.3.3-py3.12`
+- `r4.3.3-py3.11`
 
 ### DependencyConstraint
 
