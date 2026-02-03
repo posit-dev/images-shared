@@ -394,7 +394,7 @@ If `with_tinytex` is `True`, `tinytex_update_path` can be set to `True` to appen
 To install multiple Quarto versions and wrap them in `RUN` statements, use:
 
 ```jinja2
-{{ quarto.run_install(["1.8.24", "1.9.0"], with_tinytex=True, tinytex_update_path=True) }}
+{{ quarto.run_install(["1.8.24", "1.9.0"], with_tinytex=True) }}
 ```
 
 Usually, this should be called with `Dependencies.quarto` to dynamically specify versions based on the image's `dependencyConstraints` field:
