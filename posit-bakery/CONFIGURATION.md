@@ -120,11 +120,11 @@ images:
 A Repository stores the metadata of the parent source code repository of the project. It is primarily used
 for labeling images.
 
-| Field                                                           | Description                                                                                                             | Default Value                         | Example                                                                                           |
-|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------|
-| `url`<br/>*HttpUrl*                                             | *(Required)* The URL of the image source code repository. If a protocol is not specified, `https://` will be prepended. |                                       | "https://github.com/posit-dev/images-shared"                                                      |
-| `vendor`<br/>*string*                                           | The vendor or organization name.                                                                                        | `Posit Software, PBC`                 | `Example Organization, LLC`                                                                       |
-| `maintainer`<br/>*[NameEmail](#nameemail)* or *string*          | The maintainer of the repository/project.                                                                               | `Posit Docker Team <docker@posit.co>` | `Jane Doe <jane.doe@example.com>`                                                                 |
+| Field                                                           | Description                                                                                                             | Default Value                         | Example                                                        |
+|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|---------------------------------------|----------------------------------------------------------------|
+| `url`<br/>*HttpUrl*                                             | *(Required)* The URL of the image source code repository. If a protocol is not specified, `https://` will be prepended. |                                       | "https://github.com/posit-dev/images-shared"                   |
+| `vendor`<br/>*string*                                           | The vendor or organization name.                                                                                        | `Posit Software, PBC`                 | `Example Organization, LLC`                                    |
+| `maintainer`<br/>*[NameEmail](#nameemail)* or *string*          | The maintainer of the repository/project.                                                                               | `Posit Docker Team <docker@posit.co>` | `Jane Doe <jane.doe@example.com>`                              |
 | `authors`<br/>*[NameEmail](#nameemail) array* or *string array* | The credited authors of the repository/project.                                                                         | `[]`                                  | <pre>- name: Author One<br/>  email: author1@example.com</pre> |
 
 ### BaseRegistry
@@ -156,21 +156,21 @@ A common use is pushing images to a repository name that is different from the n
 
 An Image represents a container image managed by the project. Each image has one or more versions and optionally can have one or more variants and operating systems. New images can be created using the `bakery create image` command.
 
-| Field                                                                                   | Description                                                                                                                         | Default Value                             | Example                                                                                               |
-|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `name`<br/>*string*                                                                     | The name of the image. Used as the image name in tags.                                                                              |                                           | `my-image`, `workbench`                                                                               |
-| `displayName`<br/>*string*                                                              | A human-friendly name for the image. Used in labeling.                                                                              | `<name>.replace("-", " ").title()`        | `My Image`                                                                                            |
-| `description`<br/>*string*                                                              | A description of the image. Used in labeling.                                                                                       |                                           | `An example image.`                                                                                   |
-| `documentationUrl`<br/>*HttpUrl*                                                        | A URL to additional image or product documentation. Used in labeling.                                                               |                                           | `https://docs.example.com/my-image`                                                                   |
-| `subpath`<br/>*string*                                                                  | The subpath relative from the project root directory where the image's versions and templates are stored.                           | `<name>`                                  | `my_image`, `my/image`                                                                                |
-| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).         | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
-| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries. | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
-| `tagPatterns`<br/>*[TagPattern](#tagpattern) array*                                     | The list of tag patterns to apply to all versions of this image.                                                                    | [Default Tag Patterns](#default-patterns) | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
-| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array*       | List of dependencies to install in the image. Versions are are calcuated from a [VersionConstraint](#versionconstraint)             | `[]`                                      | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre>                |
-| `variants`<br/>*[ImageVariant](#imagevariant) array*                                    | The list of variants for the image. Each variant should have its own `Containerfile`.                                               | `[]`                                      | `- name: Minimal`                                                                                     |
+| Field                                                                                   | Description                                                                                                                               | Default Value                             | Example                                                                                               |
+|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `name`<br/>*string*                                                                     | The name of the image. Used as the image name in tags.                                                                                    |                                           | `my-image`, `workbench`                                                                               |
+| `displayName`<br/>*string*                                                              | A human-friendly name for the image. Used in labeling.                                                                                    | `<name>.replace("-", " ").title()`        | `My Image`                                                                                            |
+| `description`<br/>*string*                                                              | A description of the image. Used in labeling.                                                                                             |                                           | `An example image.`                                                                                   |
+| `documentationUrl`<br/>*HttpUrl*                                                        | A URL to additional image or product documentation. Used in labeling.                                                                     |                                           | `https://docs.example.com/my-image`                                                                   |
+| `subpath`<br/>*string*                                                                  | The subpath relative from the project root directory where the image's versions and templates are stored.                                 | `<name>`                                  | `my_image`, `my/image`                                                                                |
+| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array*    | Additional registries to push this image to in addition to the global `registries` in [bakery.yaml](#bakery-configuration).               | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
+| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries.       | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
+| `tagPatterns`<br/>*[TagPattern](#tagpattern) array*                                     | The list of tag patterns to apply to all versions of this image.                                                                          | [Default Tag Patterns](#default-patterns) | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
+| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array*       | List of dependencies to install in the image. Versions are calcuated from a [VersionConstraint](#versionconstraint)                       | `[]`                                      | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre>                |
+| `variants`<br/>*[ImageVariant](#imagevariant) array*                                    | The list of variants for the image. Each variant should have its own `Containerfile`.                                                     | `[]`                                      | `- name: Minimal`                                                                                     |
 | `versions`<br/>*[ImageVersion](#imageversion) array*                                    | The list of versions for the image. Each version should have its own directory under the image's `subpath`. Cannot be used with `matrix`. | `[]`                                      | `- name: 2025.07.0`                                                                                   |
-| `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`. | | See [ImageMatrix](#imagematrix) |
-| `options`<br/>*[ToolOptions](#tooloptions) array*                                       | A list of options to pass to a supported tool when performing an action against the image.                                          | `[]`                                      | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
+| `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`.               |                                           | See [ImageMatrix](#imagematrix)                                                                       |
+| `options`<br/>*[ToolOptions](#tooloptions) array*                                       | A list of options to pass to a supported tool when performing an action against the image.                                                | `[]`                                      | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
 
 #### Example Image
 
@@ -235,14 +235,14 @@ images:
 An ImageVariant represents a variant of an image, such as standard or minimal builds. Each variant is expected have its
 own `Containerfile.<os>.<variant>`.
 
-| Field                                | Description                                                                                                                                                          | Default Value                                                                                          | Example                                                                                                                    |
-|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `name`<br/>*string*                  | *(Required)* The full human-readable name of the image variant. Used in labeling.                                                                                    |                                                                                                        | `Standard`, `Minimal`                                                                                                      |
-| `primary`<br/>*bool*                 | Indicates if this is the primary variant of the image. Only one variant should be marked as primary.                                                                 | `false`                                                                                                | `true`                                                                                                                     |
-| `extension`<br/>*string*             | The file extension for the `Containerfile` for this variant.                                                                                                         | `name` with special characters removed and lower-cased.                                                | `min`, `minimal`                                                                                                           |
-| `tagDisplayName`<br/>*string*        | The display name of the variant to be used in tags. This value is passed in as the `{{ Variant }}` variable in Jinja2 when rendering [TagPatterns](#tagpattern).     | `name` with disallowed tag characters changed to "-" and lower-cased.                                  | `min`, `minimal`                                                                                                           |
-| `tagPatterns`<br/>*TagPattern array* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                                                   | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
-| `options`<br/>*ToolOptions array*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre> | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
+| Field                                | Description                                                                                                                                                          | Default Value                                                         | Example                                                                                 |
+|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `name`<br/>*string*                  | *(Required)* The full human-readable name of the image variant. Used in labeling.                                                                                    |                                                                       | `Standard`, `Minimal`                                                                   |
+| `primary`<br/>*bool*                 | Indicates if this is the primary variant of the image. Only one variant should be marked as primary.                                                                 | `false`                                                               | `true`                                                                                  |
+| `extension`<br/>*string*             | The file extension for the `Containerfile` for this variant.                                                                                                         | `name` with special characters removed and lower-cased.               | `min`, `minimal`                                                                        |
+| `tagDisplayName`<br/>*string*        | The display name of the variant to be used in tags. This value is passed in as the `{{ Variant }}` variable in Jinja2 when rendering [TagPatterns](#tagpattern).     | `name` with disallowed tag characters changed to "-" and lower-cased. | `min`, `minimal`                                                                        |
+| `tagPatterns`<br/>*TagPattern array* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                  | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
+| `options`<br/>*ToolOptions array*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre>   | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
 
 #### Common Image Variants
 
@@ -267,16 +267,16 @@ An ImageMatrix generates multiple image versions from combinations of dependency
 
 **Note:** An image can have either `versions` or `matrix`, but not both.
 
-| Field | Description | Default Value | Example |
-|-------|-------------|---------------|---------|
-| `namePattern`<br/>*string* | A Jinja2 pattern for generating version names. Available variables: `Dependencies.<name>` for each dependency and `Values.<key>` for each value. | Auto-generated from dependencies and values | `"r{{ Dependencies.R }}-py{{ Dependencies.python }}"` |
-| `subpath`<br/>*string* | The subpath relative from the image's `subpath` where matrix files are stored. | `matrix` | `builds`, `versions` |
-| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyconstraint) array* | Dependencies to install, with versions calculated from constraints. | `[]` | See [DependencyConstraint](#dependencyconstraint) |
-| `dependencies`<br/>*[DependencyVersions](#dependencyversions) array* | Dependencies to install, with explicit version lists. | `[]` | See [DependencyVersions](#dependencyversions) |
-| `values`<br/>*map[string, string \| list]* | Custom key-value pairs for template rendering. Lists generate multiple combinations. | `{}` | `edition: ["community", "pro"]` |
-| `os`<br/>*[ImageVersionOS](#imageversionos) array* | The list of operating systems supported by this matrix. | `[]` | See [ImageVersionOS](#imageversionos) |
-| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Additional registries to push matrix images to. | `[]` | |
-| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Registries to use instead of global/image registries. Cannot be used with `extraRegistries`. | `[]` | |
+| Field                                                                                   | Description                                                                                                                                      | Default Value                               | Example                                               |
+|-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|-------------------------------------------------------|
+| `namePattern`<br/>*string*                                                              | A Jinja2 pattern for generating version names. Available variables: `Dependencies.<name>` for each dependency and `Values.<key>` for each value. | Auto-generated from dependencies and values | `"r{{ Dependencies.R }}-py{{ Dependencies.python }}"` |
+| `subpath`<br/>*string*                                                                  | The subpath relative from the image's `subpath` where matrix files are stored.                                                                   | `matrix`                                    | `builds`, `versions`                                  |
+| `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyconstraint) array*       | Dependencies to install, with versions calculated from constraints.                                                                              | `[]`                                        | See [DependencyConstraint](#dependencyconstraint)     |
+| `dependencies`<br/>*[DependencyVersions](#dependencyversions) array*                    | Dependencies to install, with explicit version lists.                                                                                            | `[]`                                        | See [DependencyVersions](#dependencyversions)         |
+| `values`<br/>*map[string, string \| list]*                                              | Custom key-value pairs for template rendering. Lists generate multiple combinations.                                                             | `{}`                                        | `edition: ["community", "pro"]`                       |
+| `os`<br/>*[ImageVersionOS](#imageversionos) array*                                      | The list of operating systems supported by this matrix.                                                                                          | `[]`                                        | See [ImageVersionOS](#imageversionos)                 |
+| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array*    | Additional registries to push matrix images to.                                                                                                  | `[]`                                        |                                                       |
+| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Registries to use instead of global/image registries. Cannot be used with `extraRegistries`.                                                     | `[]`                                        |                                                       |
 
 At least one of `dependencyConstraints`, `dependencies`, or `values` must be defined.
 
@@ -313,22 +313,22 @@ Dependencies represents a list software dependencies that is installed in a spec
 
 At the image level, these are specified through a VersionConstraint.
 
-| Field | Description | Default Value | Example |
-|-------|-------------|---------------|---------|
-| `dependency`<br/>*string* | *(Required)* The name of the dependency. | | `R`, `python`, `quarto` |
-| `constraint`<br/>*[VersionConstraint](#versionconstraint)* | *(Required)* Constraints to apply to calculate versions. | | <pre>latest: true<br/>count: 2</pre> |
+| Field                                                      | Description                                              | Default Value | Example                              |
+|------------------------------------------------------------|----------------------------------------------------------|---------------|--------------------------------------|
+| `dependency`<br/>*string*                                  | *(Required)* The name of the dependency.                 |               | `R`, `python`, `quarto`              |
+| `constraint`<br/>*[VersionConstraint](#versionconstraint)* | *(Required)* Constraints to apply to calculate versions. |               | <pre>latest: true<br/>count: 2</pre> |
 
 Each Dependency defines the dependency type, as well as the versions of the dependency that will be installed.
 The versions can be defined explicitly as an array of strings, or in terms of a version constraint.
 
 #### VersionConstraint
 
-| Field | Description | Default Value | Example |
-|-------|-------------|---------------|---------|
-| `latest`<br/>*bool* | Include the latest version. | | `true`, `false` |
-| `count`<br/>*int* | Number of minor versions to include. | | `2`, `4` |
-| `max`<br/>*string* | Maximum version to include. | | `3.13.7`, `3.11`, `3` |
-| `min`<br/>*string* | Minimum version to include. | | `4.2.1`, `4.3`, `4` |
+| Field               | Description                          | Default Value | Example               |
+|---------------------|--------------------------------------|---------------|-----------------------|
+| `latest`<br/>*bool* | Include the latest version.          |               | `true`, `false`       |
+| `count`<br/>*int*   | Number of minor versions to include. |               | `2`, `4`              |
+| `max`<br/>*string*  | Maximum version to include.          |               | `3.13.7`, `3.11`, `3` |
+| `min`<br/>*string*  | Minimum version to include.          |               | `4.2.1`, `4.3`, `4`   |
 
 At least one of `latest` or `max` must be specified.
 
@@ -416,11 +416,11 @@ Dependencies represents a list software dependencies that is installed in a spec
 
 At the image level, these are specified by an array of strings.
 
-| Field | Description | Default Value | Example |
-|-------|-------------|---------------|---------|
-| `dependency`<br/>*string* | *(Required)* The name of the dependency. | | `R`, `python`, `quarto` |
-| `version`<br/>*string* | Single exact version | | `3.13.7` |
-| `versions`<br/>*string array* | An array of explicit, exact versions | | <pre>- "4.5.1"<br/>- "4.4.3"</pre> |
+| Field                         | Description                              | Default Value | Example                            |
+|-------------------------------|------------------------------------------|---------------|------------------------------------|
+| `dependency`<br/>*string*     | *(Required)* The name of the dependency. |               | `R`, `python`, `quarto`            |
+| `version`<br/>*string*        | Single exact version                     |               | `3.13.7`                           |
+| `versions`<br/>*string array* | An array of explicit, exact versions     |               | <pre>- "4.5.1"<br/>- "4.4.3"</pre> |
 
 You must specify either `version` or `versions`.
 
