@@ -420,3 +420,46 @@ class TestImageVersion:
         assert (expected_path / "deps" / "ubuntu2204_optional_packages.txt").is_file()
         assert (expected_path / "test").is_dir()
         assert (expected_path / "test" / "goss.yaml").is_file()
+
+    def test_generate_template_values_with_artifact_url(self, patch_requests_get):
+        """Test that generate_template_values includes artifact download URL when present."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        i = Image(
+            parent=mock_config_parent,
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+        )
+        version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True, "artifactDownloadURL": "https://example.com/download"}],
+        )
+        variant = ImageVariant(name="Standard", extension="std", primary=True, parent=i)
+
+        values = version.generate_template_values(variant, version.os[0])
+        assert "DownloadURL" in values["Image"]
+        assert values["Image"]["DownloadURL"] == "https://example.com/download"
+
+    def test_generate_template_values_without_artifact_url(self, patch_requests_get):
+        """Test that generate_template_values excludes DownloadURL when not present."""
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+
+        i = Image(
+            parent=mock_config_parent,
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+        )
+        version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+        variant = ImageVariant(name="Standard", extension="std", primary=True, parent=i)
+
+        values = version.generate_template_values(variant, version.os[0])
+        assert "DownloadURL" not in values["Image"]
