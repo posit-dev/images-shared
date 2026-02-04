@@ -18,6 +18,8 @@ References:
   - [Python Installation and Package Management](#python-installation-and-package-management)
   - [R Installation and Package Management](#r-installation-and-package-management)
   - [Quarto Installation and Management](#quarto-installation-and-management)
+  - [Goss Testing](#goss-testing)
+  - [wait-for-it](#wait-for-it)
 
 ## Available Variables
 The following variables are available by default for use in an image's Jinja2 templates. Additional values passed using
@@ -228,6 +230,16 @@ Usually, this should be called with `Dependencies.python` to dynamically specify
 {{ python.build_stage(Dependencies.python) }}
 ```
 
+The macro accepts an optional `prerun` parameter to specify commands to run before the Python build. This is useful for declaring build args or executing prerequisite installations:
+
+```jinja2
+# Example prerun to declare a build argument
+{{ python.build_stage(Dependencies.python, prerun=python.declare_build_arg()) }}
+
+# Example prerun to install additional build dependencies
+{{ python.build_stage(Dependencies.python, prerun="RUN apt install -y make gcc") }}
+```
+
 To copy the Python installations from the build stage to the current stage, use:
 
 ```jinja2
@@ -246,6 +258,8 @@ Installs packages to a Python version from a list of packages or requirements fi
 
 If `clean` is `True`, requirements files will be removed after they are installed. Clean is `True` by default.
 
+If `break_system_packages` is `True`, the `--break-system-packages` flag will be passed to pip, allowing installation of packages that may conflict with system-managed packages. This is `True` by default for compatibility with externally managed Python environments.
+
 One of `packages` or `requirements_files` must be provided. `packages` can be a list, a comma-separated string, or a single string. `requirements_files` can be a list, a comma-separated string, or single string. Positional arguments are accepted for `packages` and `requirements_files`, but keyword arguments are recommended for clarity.
 
 ```jinja2
@@ -263,6 +277,12 @@ Or, to install to all Python versions defined in `Dependencies.python`:
 
 ```jinja2
 {{ python.run_install_packages(Dependencies.python, packages=["numpy", "pandas"], requirements_file="/tmp/requirements.txt") }}
+```
+
+To disable the `--break-system-packages` flag:
+
+```jinja2
+{{ python.run_install_packages(Dependencies.python, packages=["numpy"], break_system_packages=False) }}
 ```
 
 #### Create Symlinks
@@ -368,7 +388,7 @@ The macro takes an optional `with_tinytex` argument to include the command to in
 If `with_tinytex` is `True`, `tinytex_update_path` can be set to `True` to append the `--update-path` option to the install command. This will add TinyTeX binaries to the system `PATH`.
 
 ```jinja2
-{{ quarto.install("1.8.24", with_tinytex=True) }}
+{{ quarto.install("1.8.24", with_tinytex=True, tinytex_update_path=True) }}
 ```
 
 To install multiple Quarto versions and wrap them in `RUN` statements, use:
@@ -413,6 +433,24 @@ Creates a symlink to a Quarto binary by name.
 ```jinja2
 {{ quarto.symlink_binary(version="1.8.24", bin_name="quarto", target="/usr/local/bin/quarto") }}
 ```
+
+### Goss Testing
+
+#### Importing
+To use the Goss macros, import the `goss` module in your Jinja2 template:
+
+```jinja2
+{%- import "goss.j2" as goss -%}
+```
+
+#### Build Argument Environment Variable
+Returns a reference to a build argument passed as an environment variable to Goss tests. This is useful for accessing build-time values in Goss test templates.
+
+```jinja2
+{{ goss.build_arg_env_var("PYTHON_VERSION") }}
+```
+
+This outputs `{{ .Env.BUILD_ARG_PYTHON_VERSION }}` which Goss will substitute with the value of the `BUILD_ARG_PYTHON_VERSION` environment variable at test runtime.
 
 ### wait-for-it
 
