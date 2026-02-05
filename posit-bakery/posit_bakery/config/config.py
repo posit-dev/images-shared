@@ -730,18 +730,38 @@ class BakeryConfig:
                 )
                 continue
             versions = image.versions
+            image_name_filter_matched = settings.filter.image_name is not None and re.search(
+                settings.filter.image_name, image.name
+            )
             if (image.matrix is None and settings.matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
                 image.matrix is not None and settings.matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
             ):
+                if image_name_filter_matched:
+                    reason = (
+                        "matrix image excluded by default (use --matrix-versions include)"
+                        if image.matrix is not None
+                        else "non-matrix image excluded by --matrix-versions only"
+                    )
+                    log.warning(f"Image '{image.name}' matches --image-name filter but is being skipped: {reason}")
                 continue
             elif image.matrix is not None and settings.matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
                 versions = image.matrix.to_image_versions()
+            targets_before = len(targets)
             for version in versions:
+                version_filter_matched = settings.filter.image_version is not None and re.search(
+                    settings.filter.image_version, version.name
+                )
                 if settings.dev_versions == DevVersionInclusionEnum.ONLY and not version.isDevelopmentVersion:
-                    log.debug(
-                        f"Skipping image version '{version.name}' in image '{image.name}' due to not being a "
-                        f"development version."
-                    )
+                    if version_filter_matched:
+                        log.warning(
+                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
+                            f"but is being skipped: not a development version (excluded by --dev-versions only)"
+                        )
+                    else:
+                        log.debug(
+                            f"Skipping image version '{version.name}' in image '{image.name}' due to not being a "
+                            f"development version."
+                        )
                     continue
                 if (
                     settings.filter.image_version is not None
@@ -794,6 +814,11 @@ class BakeryConfig:
                                 ),
                             )
                         )
+            if image_name_filter_matched and len(targets) == targets_before:
+                log.warning(
+                    f"Image '{image.name}' matches --image-name filter but yielded no targets after applying "
+                    f"other filters (--image-version, --image-variant, --image-os, --image-platform, --dev-versions)"
+                )
 
         targets = sorted(targets, key=lambda t: str(t))
         self.targets = targets
