@@ -785,7 +785,7 @@ class BakeryConfig:
                     for _os in version.os or [None]:
                         if settings.filter.image_os is not None and _os is None:
                             log.warning(
-                                "Image '{image.name}' version '{version.name}' has no OS defined but --image-os "
+                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-os "
                                 "filter is set. --image-os filter will be ignored for this image version."
                             )
                         elif (
@@ -799,7 +799,7 @@ class BakeryConfig:
                             continue
                         if settings.filter.image_platform and _os is None:
                             log.warning(
-                                "Image '{image.name}' version '{version.name}' has no OS defined but --image-platform "
+                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-platform "
                                 "filter is set. --image-platform filter will be ignored for this image version."
                             )
                         elif settings.filter.image_platform and all(
