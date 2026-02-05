@@ -955,9 +955,10 @@ class TestDnfMacros:
                 textwrap.dedent(
                     """\
                     dnf upgrade -yq && \\
-                    dnf install -yq \\
+                    dnf install -yq --allowerasing \\
                         curl \\
                         ca-certificates \\
+                        findutils \\
                         gnupg \\
                         tar && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \\
@@ -971,9 +972,10 @@ class TestDnfMacros:
                 textwrap.dedent(
                     """\
                     dnf upgrade -yq && \\
-                    dnf install -yq \\
+                    dnf install -yq --allowerasing \\
                         curl \\
                         ca-certificates \\
+                        findutils \\
                         gnupg \\
                         tar && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
@@ -994,9 +996,10 @@ class TestDnfMacros:
         expected = textwrap.dedent(
             """\
             RUN dnf upgrade -yq && \\
-                dnf install -yq \\
+                dnf install -yq --allowerasing \\
                     curl \\
                     ca-certificates \\
+                    findutils \\
                     gnupg \\
                     tar && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \\
