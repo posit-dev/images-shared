@@ -92,7 +92,7 @@ class DGossCommand(BaseModel):
         if self.image_target.image_os:
             e["IMAGE_OS"] = self.image_target.image_os.name
             e["IMAGE_OS_NAME"] = self.image_target.image_os.buildOS.name
-            e["IMAGE_OS_CODENAME"] = self.image_target.image_os.buildOS.codename
+            e["IMAGE_OS_CODENAME"] = self.image_target.image_os.buildOS.codename or ""
             e["IMAGE_OS_FAMILY"] = self.image_target.image_os.buildOS.family.value
             e["IMAGE_OS_VERSION"] = self.image_target.image_os.buildOS.version
         if self.image_target.build_args:
@@ -151,8 +151,9 @@ class DGossCommand(BaseModel):
         for mount in self.volume_mounts:
             cmd.extend(["-v", f"{mount[0]}:{mount[1]}"])
         for env_var, value in self.image_environment.items():
-            env_value = re.sub(r"([\"\'\\$`!*?&#()|<>;\[\]{}\s])", r"\\\1", value)
-            cmd.extend(["-e", f"{env_var}={env_value}"])
+            if value is not None:
+                env_value = re.sub(r"([\"\'\\$`!*?&#()|<>;\[\]{}\s])", r"\\\1", value)
+                cmd.extend(["-e", f"{env_var}={env_value}"])
         cmd.append("--init")
         if self.runtime_options:
             # TODO: We may want to validate this to ensure options are not duplicated.
