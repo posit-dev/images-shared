@@ -112,9 +112,10 @@ essential packages like curl, ca-certificates, gnupg, and tar.
 #}
 {% macro setup(clean = True) -%}
 dnf upgrade {{ global_options }} && \
-dnf install {{ global_options }} \
+dnf install {{ global_options }} --allowerasing \
     curl \
     ca-certificates \
+    findutils \
     gnupg \
     tar && \
 {{ setup_posit_cloudsmith() }}{% if clean %} && \
