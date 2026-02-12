@@ -534,3 +534,9 @@ A GossOption represents options for `dgoss` tests against an image target.
 | `runtimeOptions`<br/>*string*      | Additional runtime options to pass to the `dgoss` container instantiation when running tests.                                                                 |                                                                                                                    | `--privileged`   |
 | `command`<br/>*string*             |                                                                                                                                                               | The command to run within the `dgoss` container. This can be used to start a service in the container for testing. | `sleep infinity` | `start-server` |
 | `wait`<br/>*int*                   | The number of seconds to wait after container startup before running tests. Useful if there is a service that needs to complete its startup prior to testing. | `0`                                                                                                                | `30`             |
+
+## See Also
+
+- [Templating Documentation](./TEMPLATING.md) — Jinja2 macros and variables available in image templates
+- [Architecture Diagrams](./ARCHITECTURE.md) — Detailed tool behavior and flow diagrams
+- [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — Real-world `bakery.yaml` files and step-by-step tutorials

@@ -1,5 +1,10 @@
 # Bakery CI
 
+These workflows are used by the following product image repositories:
+- [images-connect](https://github.com/posit-dev/images-connect)
+- [images-package-manager](https://github.com/posit-dev/images-package-manager)
+- [images-workbench](https://github.com/posit-dev/images-workbench)
+
 ## Shared Workflows
 
 This repository provides two Github Action workflows for building, testing, and pushing images:
