@@ -470,3 +470,9 @@ To wrap `install()` in a Docker RUN statement, use:
 ```jinja2
 {{ waitforit.run_install() }}
 ```
+
+## See Also
+
+- [Configuration Documentation](./CONFIGURATION.md) — `bakery.yaml` schema reference
+- [Architecture Diagrams](./ARCHITECTURE.md) — Detailed tool behavior and flow diagrams
+- [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — Step-by-step tutorials, including the managed dependencies and matrix images examples

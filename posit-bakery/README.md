@@ -41,6 +41,14 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
     pipx install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
     ```
 
+## Examples
+
+See the [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) repository for step-by-step tutorials on creating and managing container image projects with Bakery.
+
+## CI Integration
+
+Bakery provides shared GitHub Actions workflows for building, testing, and pushing images. See the [CI Workflows](../CI.md) documentation for usage details.
+
 ## Usage
 
 >[!TIP]
@@ -159,7 +167,7 @@ bakery help
     bakery run dgoss
     ```
 
-    Additional run options can be specified using Goss options in `bakery.yaml` on a per image or per variant basis
+    Additional run options can be specified using [Goss options](./CONFIGURATION.md#gossoptions) in `bakery.yaml` on a per image or per variant basis
 
 ## Bakery Concepts
 
@@ -176,7 +184,7 @@ bakery --context /path/to/directory
 ```
 
 A bakery **project** can include one or more **image**s.
-Each **image** can optionally have one or more **variant**s. By default, there are two variants: Standard and Minimal.
+Each **image** can optionally have one or more [**variant**](./CONFIGURATION.md#imagevariant)s. By default, there are two variants: Standard and Minimal.
 Each **image** should have one or more **version**s.
 Each **version** can have one or more **OS**es.
 
