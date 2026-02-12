@@ -14,8 +14,8 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
-from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
-from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError, BakeryError
+from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
 from posit_bakery.image.util import inspect_image
 from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
@@ -67,8 +67,8 @@ class ImageTarget(BaseModel):
     image_version: Annotated[ImageVersion, Field(description="ImageVersion of the image target.")]
     image_variant: Annotated[ImageVariant | None, Field(default=None, description="ImageVariant of the image target.")]
     image_os: Annotated[ImageVersionOS | None, Field(default=None, description="ImageVersionOS of the image target.")]
-    metadata_file: Annotated[
-        MetadataFile | None, Field(default=None, description="Build metadata for the image target.")
+    build_metadata: Annotated[
+        list[BuildMetadata], Field(default_factory=list, description="Build metadata for the image target.")
     ]
     settings: Annotated[ImageTargetSettings, Field(default_factory=ImageTargetSettings)]
 
@@ -251,12 +251,21 @@ class ImageTarget(BaseModel):
                 build_args[value.name.upper()] = value.value
         return build_args
 
-    @computed_field
-    @property
-    def ref(self) -> str:
-        """Returns a reference to the image, preferring a build metadata digest if available."""
-        if self.metadata_file is not None:
-            return self.metadata_file.metadata.image_ref
+    def ref(self, platform: str = f"linux/{SETTINGS.architecture}") -> str:
+        """Returns a reference to the image, preferring a build metadata digest if available.
+
+        :param platform: The platform to reference, used for selecting the appropriate build metadata in multi-platform
+            builds. Defaults to the host architecture.
+
+        :return: A string reference to the image, using the build metadata digest if available, otherwise falling back
+            to the first tag.
+        """
+        if self.build_metadata:
+            sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
+            for metadata in sorted_metadata:
+                if metadata.platform == platform:
+                    return metadata.image_ref
+
         return self.tags[0]
 
     @computed_field
@@ -326,9 +335,16 @@ class ImageTarget(BaseModel):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
 
-    def load_build_metadata_from_file(self, metadata_file: Path):
+    def load_build_metadata_from_file(self, metadata_file: MetadataFile) -> BuildMetadata | None:
         """Load build metadata from a given file."""
-        self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
+        target_metadata = metadata_file.get_target_metadata_by_uid(self.uid)
+        if target_metadata is None:
+            log.debug(f"No build metadata found for UID '{self.uid}' in '{metadata_file.filepath}'.")
+            return None
+
+        self.build_metadata.append(target_metadata)
+
+        return target_metadata
 
     def build(
         self,
@@ -399,12 +415,34 @@ class ImageTarget(BaseModel):
 
         if isinstance(metadata_file, Path):
             log.debug(f"Loading in build metadata from file {str(metadata_file)}")
-            self.metadata_file = MetadataFile(target_uid=self.uid, filepath=metadata_file)
+            with open(metadata_file, "r") as f:
+                metadata = BuildMetadata.model_validate_json(f.read())
+            self.build_metadata.append(metadata)
 
         return image
 
-    def merge(self, sources: list[str], dry_run: bool = False) -> Manifest:
+    def _get_merge_sources(self) -> list[str]:
+        """Get the list of source image references to use for merging.
+
+        Sources collected will be the most recent artifact for each platform represented in the build metadata.
+        """
+        sources = []
+        sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
+        collected_platforms = set()
+        for metadata in sorted_metadata:
+            if metadata.platform not in collected_platforms:
+                sources.append(metadata.image_ref)
+                collected_platforms.add(metadata.platform)
+
+        if not sources:
+            raise BakeryError(f"No valid sources found in metadata for '{str(self)}', cannot perform merge.")
+
+        return sources
+
+    def merge(self, dry_run: bool = False) -> Manifest:
         """Merge multiple images into a single image, tag, and push."""
+        sources = self._get_merge_sources()
+
         # For dry-runs, `imagetools create` produces effectively the same result as the steps below.
         if dry_run:
             return python_on_whales.docker.buildx.imagetools.create(

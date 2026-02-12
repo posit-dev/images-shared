@@ -172,44 +172,28 @@ def merge(
     log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
 
     files_ok = True
-    image_digests: dict[str, list[str]] = {}
+    loaded_targets: list[str] = []
     for file in metadata_file:
-        if not file.is_file():
-            log.error(f"Metadata file '{file}' does not exist")
+        try:
+            loaded_targets.extend(config.load_build_metadata_from_file(file))
+        except Exception as e:
+            log.error(f"Failed to load metadata from file '{file}'")
+            log.error(str(e))
             files_ok = False
-            continue
-        with open(file, "r") as f:
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError as e:
-                log.error(f"Metadata file '{file}' is not valid JSON: {str(e)}")
-                files_ok = False
-                continue
-        for uid, metadata in data.items():
-            image_name = metadata.get("image.name")
-            if not image_name:
-                log.error(f"Metadata file '{file}' is missing 'image.name' for image UID '{uid}'")
-                files_ok = False
-                continue
-            digest = metadata.get("containerimage.digest")
-            if not digest:
-                log.error(f"Metadata file '{file}' is missing 'containerimage.digest' for image UID '{uid}'")
-                files_ok = False
-                continue
-            image_digests.setdefault(uid, []).append(f"{image_name}@{digest}")
+    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
 
     if not files_ok:
         log.error("One or more metadata files are invalid, aborting merge.")
         raise typer.Exit(code=1)
 
-    log.info(f"Found {len(image_digests.keys())} targets")
-    log.debug(json.dumps(image_digests, indent=2, sort_keys=True))
+    log.info(f"Found {len(loaded_targets)} targets")
+    log.debug(", ".join(loaded_targets))
 
-    for uid, sources in image_digests.items():
+    for uid in loaded_targets:
         target = config.get_image_target_by_uid(uid)
-        log.info(f"Merging {len(sources)} sources for image UID '{uid}'")
+        log.info(f"Merging sources for image UID '{uid}'")
         try:
-            manifest = target.merge(sources=sources, dry_run=dry_run)
+            manifest = target.merge(dry_run=dry_run)
             stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
         except DockerException as e:
             log.error(f"Error merging sources for UID '{uid}'")

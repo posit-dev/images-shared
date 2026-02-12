@@ -158,7 +158,10 @@ class DGossCommand(BaseModel):
         if self.runtime_options:
             # TODO: We may want to validate this to ensure options are not duplicated.
             cmd.extend(self.runtime_options.split())
-        cmd.append(self.image_target.ref)
+        if self.platform:
+            cmd.append(self.image_target.ref(self.platform))
+        else:
+            cmd.append(self.image_target.ref())
         cmd.extend(self.image_command.split())
 
         return cmd

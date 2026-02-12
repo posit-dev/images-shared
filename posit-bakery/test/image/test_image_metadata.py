@@ -54,35 +54,18 @@ class TestBuildMetadata:
 
 class TestMetadataFile:
     def test_metadata_file_from_file(self, image_testdata_path):
-        metadata_filepath = image_testdata_path / "single-target.json"
-        metadata_file = MetadataFile(target_uid="test-multi-1-0-0-minimal-ubuntu-22-04", filepath=metadata_filepath)
-        assert metadata_file.metadata is not None
-        assert (
-            metadata_file.metadata.container_image_digest
-            == "sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
-        )
-        assert (
-            metadata_file.metadata.image_name
-            == "docker.io/posit/test-multi:1.0.0-min,docker.io/posit/test-multi:1.0.0-ubuntu-22.04-min,docker.io/posit/test-multi:min,docker.io/posit/test-multi:ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:1.0.0-min,ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:min,ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
-        )
+        metadata_filepath = image_testdata_path / "multi-target.json"
+        metadata_file = MetadataFile.load(metadata_filepath)
+        assert len(metadata_file.metadata_map.root.keys()) == 4
+        assert metadata_file.filepath == metadata_filepath
 
     def test_metadata_file_from_direct_data(self, image_testdata_path):
-        with open(image_testdata_path / "single-target.json") as f:
-            data = json.load(f)
+        with open(image_testdata_path / "multi-target.json") as f:
+            metadata_file = MetadataFile.loads(f.read())
 
-        metadata = BuildMetadata.model_validate(data)
-        metadata_file = MetadataFile(target_uid="test-multi-1-0-0-minimal-ubuntu-22-04", metadata=metadata)
-        assert metadata_file.metadata is not None
+        assert len(metadata_file.metadata_map.root.keys()) == 4
         assert metadata_file.filepath is None
-        assert (
-            metadata_file.metadata.container_image_digest
-            == "sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
-        )
-        assert (
-            metadata_file.metadata.image_name
-            == "docker.io/posit/test-multi:1.0.0-min,docker.io/posit/test-multi:1.0.0-ubuntu-22.04-min,docker.io/posit/test-multi:min,docker.io/posit/test-multi:ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:1.0.0-min,ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min,ghcr.io/posit-dev/test-multi:min,ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
-        )
 
     def test_metadata_file_no_filepath_or_metadata_value_error(self):
         with pytest.raises(ValueError):
-            MetadataFile(target_uid="test-multi-1-0-0-minimal-ubuntu-22-04")
+            MetadataFile()

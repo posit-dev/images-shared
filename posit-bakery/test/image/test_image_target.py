@@ -1,3 +1,4 @@
+import datetime
 import re
 from unittest.mock import patch, MagicMock
 
@@ -8,7 +9,7 @@ from python_on_whales.components.buildx.imagetools.models import Manifest
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
-from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
@@ -427,16 +428,15 @@ class TestImageTarget:
     def test_ref(self, request, target_name, expected_ref):
         """Test the tag_suffixes property of an ImageTarget."""
         target = request.getfixturevalue(target_name)
-        assert target.ref.endswith(expected_ref)
+        assert target.ref().endswith(expected_ref)
 
     def test_ref_from_metadata(self, basic_standard_image_target):
         """Test the tag_suffixes property of an ImageTarget."""
-        mock_metadata_file = MagicMock(spec=MetadataFile)
-        mock_metadata = MagicMock()
-        mock_metadata_file.metadata = mock_metadata
-        mock_metadata_file.metadata.image_ref = "test-image@sha256:1234567890abcdef"
-        basic_standard_image_target.metadata_file = mock_metadata_file
-        assert basic_standard_image_target.ref == "test-image@sha256:1234567890abcdef"
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image@sha256:1234567890abcdef"
+        basic_standard_image_target.build_metadata = [mock_metadata]
+        assert basic_standard_image_target.ref() == "test-image@sha256:1234567890abcdef"
 
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
@@ -606,18 +606,32 @@ class TestImageTarget:
 
             metadata_file = SETTINGS.temporary_storage / f"{target.uid}.json"
             assert metadata_file.is_file()
-            metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_file)
-            assert metadata_file.metadata.image_tags.sort() == target.tags.sort()
+            with open(metadata_file) as f:
+                data = f.read()
+            metadata = BuildMetadata.model_validate_json(data)
+            assert metadata.image_tags.sort() == target.tags.sort()
 
             remove_images(target)
 
     def test_merge_dry_run(self, patch_imagetools_create, basic_standard_image_target):
         """Test the merge method of an ImageTarget in dry-run mode."""
-        sources = ["image1:tag", "image2:tag"]
-        manifest = basic_standard_image_target.merge(sources=sources, dry_run=True)
+        # Set up fake build metadata for two platforms
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
+        expected_sources = ["image1:tag", "image2:tag"]
+
+        manifest = basic_standard_image_target.merge(dry_run=True)
 
         patch_imagetools_create.assert_called_once_with(
-            sources=sources,
+            sources=expected_sources,
             tags=basic_standard_image_target.tags,
             dry_run=True,
         )
@@ -635,15 +649,27 @@ class TestImageTarget:
         patch_docker_push,
     ):
         """Test the merge method of an ImageTarget."""
-        sources = ["image1:tag", "image2:tag"]
-        manifest = basic_standard_image_target.merge(sources=sources)
+        # Set up fake build metadata for two platforms
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
+        expected_sources = ["image1:tag", "image2:tag"]
+
+        manifest = basic_standard_image_target.merge()
 
         patch_registry_container.assert_called_once()
         registry_url = patch_registry_container.return_value.__enter__.return_value.url
 
         expected_temp_tag = f"{registry_url}/{basic_standard_image_target.uid}:latest"
         patch_imagetools_create.assert_called_once_with(
-            sources=sources,
+            sources=expected_sources,
             tags=[expected_temp_tag],
             dry_run=False,
         )
