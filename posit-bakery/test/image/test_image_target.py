@@ -427,17 +427,64 @@ class TestImageTarget:
         ],
     )
     def test_ref(self, request, target_name, expected_ref):
-        """Test the tag_suffixes property of an ImageTarget."""
+        """Test ref returns first tag when no build metadata exists."""
         target = request.getfixturevalue(target_name)
         assert target.ref().endswith(expected_ref)
 
     def test_ref_from_metadata(self, basic_standard_image_target):
-        """Test the tag_suffixes property of an ImageTarget."""
+        """Test ref returns image_ref from metadata when platform matches."""
         mock_metadata = MagicMock(spec=BuildMetadata)
         mock_metadata.platform = f"linux/{SETTINGS.architecture}"
         mock_metadata.image_ref = "test-image@sha256:1234567890abcdef"
         basic_standard_image_target.build_metadata = [mock_metadata]
         assert basic_standard_image_target.ref() == "test-image@sha256:1234567890abcdef"
+
+    def test_ref_from_metadata_platform_mismatch(self, basic_standard_image_target):
+        """Test ref falls back to first tag when metadata exists but platform doesn't match."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = "linux/arm64"  # Different from default
+        mock_metadata.image_ref = "test-image@sha256:arm64digest"
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+        # Should fall back to first tag since platform doesn't match
+        assert basic_standard_image_target.ref().endswith("docker.io/posit/test-image:1.0.0")
+
+    def test_ref_from_metadata_explicit_platform(self, basic_standard_image_target):
+        """Test ref returns correct image_ref when explicit platform is specified."""
+        mock_metadata_amd64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_amd64.platform = "linux/amd64"
+        mock_metadata_amd64.image_ref = "test-image@sha256:amd64digest"
+        mock_metadata_amd64.created_at = datetime.datetime.now()
+
+        mock_metadata_arm64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_arm64.platform = "linux/arm64"
+        mock_metadata_arm64.image_ref = "test-image@sha256:arm64digest"
+        mock_metadata_arm64.created_at = datetime.datetime.now()
+
+        basic_standard_image_target.build_metadata = [mock_metadata_amd64, mock_metadata_arm64]
+
+        assert basic_standard_image_target.ref(platform="linux/amd64") == "test-image@sha256:amd64digest"
+        assert basic_standard_image_target.ref(platform="linux/arm64") == "test-image@sha256:arm64digest"
+
+    def test_ref_from_metadata_uses_most_recent(self, basic_standard_image_target):
+        """Test ref returns image_ref from most recent metadata when multiple exist for same platform."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        mock_metadata_old = MagicMock(spec=BuildMetadata)
+        mock_metadata_old.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata_old.image_ref = "test-image@sha256:olddigest"
+        mock_metadata_old.created_at = older_time
+
+        mock_metadata_new = MagicMock(spec=BuildMetadata)
+        mock_metadata_new.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata_new.image_ref = "test-image@sha256:newdigest"
+        mock_metadata_new.created_at = newer_time
+
+        # Add in reverse order to verify sorting
+        basic_standard_image_target.build_metadata = [mock_metadata_old, mock_metadata_new]
+
+        assert basic_standard_image_target.ref() == "test-image@sha256:newdigest"
 
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
