@@ -213,10 +213,6 @@ class MetadataFile(BaseModel):
     filepath: Annotated[Path | None, Field(description="The path to the metadata file.", default=None)]
     metadata_map: Annotated[BuildMetadataMap, Field(description="The build metadata.")]
 
-    def __str__(self):
-        """Returns a string representation of the metadata file."""
-        return self.filepath.absolute()
-
     def __repr__(self):
         """Returns a string representation of the metadata file."""
         return f"MetadataFile(filepath={self.filepath.absolute()}, metadata_map={self.metadata_map})"
