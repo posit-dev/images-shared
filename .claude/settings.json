@@ -1,8 +1,15 @@
 {
-  "lsp": {
-    "pyright": true
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
   },
   "permissions": {
+    "additionalDirectories": [
+      "../images",
+      "../images-examples",
+      "../images-connect",
+      "../images-package-manager",
+      "../images-workbench"
+    ],
     "allow": [
       "Bash(bakery build:*)",
       "Bash(find:*)",
@@ -12,6 +19,7 @@
       "Bash(just test:*)",
       "Bash(ls:*)",
       "Bash(poetry run:*)",
+      "Bash(python3:*)",
       "Bash(tree:*)",
       "Bash(wc:*)",
       "WebFetch(domain:github.com)",
