@@ -9,6 +9,7 @@ from python_on_whales.components.buildx.imagetools.models import Manifest
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.settings import SETTINGS
@@ -612,6 +613,77 @@ class TestImageTarget:
             assert metadata.image_tags.sort() == target.tags.sort()
 
             remove_images(target)
+
+    def test_get_merge_sources_multiple_platforms(self, basic_standard_image_target):
+        """Test _get_merge_sources returns most recent source for each platform."""
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1@sha256:amd64digest"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2@sha256:arm64digest"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert len(sources) == 2
+        assert "image1@sha256:amd64digest" in sources
+        assert "image2@sha256:arm64digest" in sources
+
+    def test_get_merge_sources_duplicate_platforms_uses_most_recent(self, basic_standard_image_target):
+        """Test _get_merge_sources returns only most recent source when platform appears multiple times."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        # Older amd64 build
+        basic_standard_image_target.build_metadata[0].created_at = older_time
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[0].image_ref = "old-amd64@sha256:old"
+        # Newer amd64 build
+        basic_standard_image_target.build_metadata[1].created_at = newer_time
+        basic_standard_image_target.build_metadata[1].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].image_ref = "new-amd64@sha256:new"
+        # arm64 build
+        basic_standard_image_target.build_metadata[2].created_at = older_time
+        basic_standard_image_target.build_metadata[2].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[2].image_ref = "arm64@sha256:arm"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert len(sources) == 2
+        assert "new-amd64@sha256:new" in sources
+        assert "old-amd64@sha256:old" not in sources
+        assert "arm64@sha256:arm" in sources
+
+    def test_get_merge_sources_empty_metadata_raises_error(self, basic_standard_image_target):
+        """Test _get_merge_sources raises BakeryError when no metadata exists."""
+        basic_standard_image_target.build_metadata = []
+
+        with pytest.raises(BakeryError) as exc_info:
+            basic_standard_image_target._get_merge_sources()
+
+        assert "No valid sources found in metadata" in str(exc_info.value)
+
+    def test_get_merge_sources_single_platform(self, basic_standard_image_target):
+        """Test _get_merge_sources works with single platform."""
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image@sha256:digest"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert sources == ["image@sha256:digest"]
 
     def test_merge_dry_run(self, patch_imagetools_create, basic_standard_image_target):
         """Test the merge method of an ImageTarget in dry-run mode."""
