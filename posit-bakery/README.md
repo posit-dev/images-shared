@@ -10,8 +10,6 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 * [pipx](https://pipx.pypa.io/stable/installation/)
 * [docker buildx bake](https://github.com/docker/buildx#installing)
 * [just](https://just.systems/man/en/prerequisites.html)
-* [gh](https://github.com/cli/cli#installation) (required while repositories are private)
-
 ### 3rd Party Tools
 
 | Tool                                                                                                                                                                      | Used By                         | Purpose                                                            |
@@ -28,14 +26,7 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 
 ### CLI Installation
 
-1. Authorize w/ GitHub, since the repository is private
-
-    ```bash
-    gh auth login
-    gh auth setup-git
-    ```
-
-2. Install `bakery` using `pipx`
+1. Install `bakery` using `pipx`
 
     ```bash
     pipx install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
