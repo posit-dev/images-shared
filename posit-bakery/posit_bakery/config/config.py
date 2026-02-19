@@ -895,9 +895,7 @@ class BakeryConfig:
             bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
             set_opts = None
             if self.settings.temp_registry is not None and push:
-                set_opts = {
-                    "*.output": [{"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}]
-                }
+                set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
             bake_plan.build(
                 load=load,
                 push=push,

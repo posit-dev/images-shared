@@ -188,6 +188,24 @@ class BakePlan(BaseModel):
         """Delete the bake plan file if it exists."""
         self.bake_file.unlink(missing_ok=True)
 
+    @staticmethod
+    def _set_opts_dict_to_str(set_opts: dict[str, Any]) -> dict[str, str]:
+        """Convert a dictionary of set options to a comma-delimited, key=value string format for Docker Buildx Bake.
+
+        :param set_opts: A dictionary of set options to convert.
+
+        :return: A dictionary of set options with string values.
+        """
+        for opt, data in set_opts.items():
+            if isinstance(data, list):
+                set_opts[opt] = ",".join(data)
+            elif isinstance(data, dict):
+                set_opts[opt] = ",".join(f"{k}={v}" for k, v in data.items())
+            else:
+                set_opts[opt] = str(data)
+
+        return set_opts
+
     def build(
         self,
         load: bool = True,
@@ -214,6 +232,7 @@ class BakePlan(BaseModel):
             _set["*.cache-to"] = cache_to
         if set_opts:
             _set.update(set_opts)
+        _set = self._set_opts_dict_to_str(_set)
 
         python_on_whales.docker.buildx.bake(files=[self.bake_file.name], load=load, push=push, cache=cache, set=_set)
         if clean_bakefile:
