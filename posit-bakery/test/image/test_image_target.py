@@ -524,6 +524,7 @@ class TestImageTarget:
     def test_build_args_cache_registry(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
         basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
@@ -534,8 +535,8 @@ class TestImageTarget:
             "push": False,
             "output": {},
             "cache": True,
-            "cache_from": f"type=registry,ref={basic_standard_image_target.cache_name}",
-            "cache_to": f"type=registry,ref={basic_standard_image_target.cache_name},mode=max",
+            "cache_from": f"type=registry,ref={cache_name}",
+            "cache_to": f"type=registry,ref={cache_name},mode=max",
             "metadata_file": None,
             "platforms": ["linux/amd64"],
         }
