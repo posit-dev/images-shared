@@ -319,9 +319,6 @@ class OrasMergeWorkflow(BaseModel):
 
         sources = target._get_merge_sources()
 
-        # Convert labels to annotations
-        annotations = {k: v for k, v in target.labels.items()}
-
         # Get target registries - extract base URLs from registries
         target_registries = []
         for registry in target.image_version.all_registries:
@@ -337,5 +334,5 @@ class OrasMergeWorkflow(BaseModel):
             image_name=target.image_name,
             tag_suffixes=target.tag_suffixes,
             target_registries=target_registries,
-            annotations=annotations,
+            annotations=target.labels.items(),
         )
