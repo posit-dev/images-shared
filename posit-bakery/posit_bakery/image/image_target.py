@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Annotated
 
 import python_on_whales
-from pydantic import BaseModel, computed_field, ConfigDict, Field
+from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
+from posit_bakery.config import Registry, BaseRegistry
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.repository import Repository
@@ -22,6 +23,87 @@ from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
+
+
+class Tag(BaseModel):
+    """Model representing a fully rendered image tag, including its registry, repository, and suffix."""
+
+    registry: Annotated[
+        Registry | BaseRegistry | None,
+        Field(
+            default=None,
+            description="Registry associated with the tag. If None, the tag is considered registry-less.",
+        ),
+    ]
+    repository: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Repository associated with the tag. If None, the tag is considered repository-less.",
+        ),
+    ]
+    suffix: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Suffix of the tag (the part after the colon). If None, the tag is considered suffix-less.",
+        ),
+    ]
+    digest: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Digest of the tag (the part after the @). If None, the tag is considered digest-less.",
+        ),
+    ]
+
+    @model_validator(mode="after")
+    def validate(self):
+        """Ensure at least one of registry, repository, or suffix is present to form a valid tag."""
+        if not self.registry and not self.repository and not self.suffix:
+            raise ValueError("At least one of registry, repository, or suffix must be provided for a valid tag.")
+        return self
+
+    def __hash__(self):
+        return hash((self.registry.base_url, self.repository, self.suffix, self.digest))
+
+    def __str__(self):
+        tag = ""
+        if self.registry:
+            tag += self.registry.base_url
+        if self.repository:
+            if len(tag) > 0 and not tag.endswith("/"):
+                tag += "/"
+            tag += f"{self.repository}"
+        if self.suffix:
+            if len(tag) > 0:
+                tag += ":"
+            tag += self.suffix
+        if self.digest:
+            if len(tag) > 0:
+                tag += "@"
+            tag += self.digest
+        return tag
+
+    def __ge__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() >= other.__str__()
+
+    def __gt__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() > other.__str__()
+
+    def __le__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() <= other.__str__()
+
+    def __lt__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() < other.__str__()
 
 
 class ImageBuildStrategy(str, Enum):
@@ -224,19 +306,18 @@ class ImageTarget(BaseModel):
 
     @computed_field
     @property
-    def tags(self) -> list[str]:
+    def tags(self) -> list[Tag]:
         """Generate tags for the image based on tag patterns."""
         tags = []
-        if self.image_version.all_registries:
-            for registry in self.image_version.all_registries:
-                for suffix in self.tag_suffixes:
-                    if hasattr(registry, "repository"):
-                        tags.append(f"{registry.base_url}/{registry.repository}:{suffix}")
-                    else:
-                        tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
-        else:
+        for registry in self.image_version.all_registries or [None]:
             for suffix in self.tag_suffixes:
-                tags.append(f"{self.image_version.parent.name}:{suffix}")
+                tags.append(
+                    Tag(
+                        registry=registry,
+                        repository=getattr(registry, "repository", self.image_version.parent.name),
+                        suffix=suffix,
+                    )
+                )
 
         return sorted(tags)
 
@@ -267,7 +348,7 @@ class ImageTarget(BaseModel):
                 if metadata.platform == platform:
                     return metadata.image_ref
 
-        return self.tags[0]
+        return str(self.tags[0])
 
     @computed_field
     @property
