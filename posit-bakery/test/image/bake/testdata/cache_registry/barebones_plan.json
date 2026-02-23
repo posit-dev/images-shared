@@ -41,13 +41,13 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch"
+          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch-amd64"
         }
       ],
       "cache_to": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch",
+          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch-amd64",
           "mode": "max"
         }
       ]

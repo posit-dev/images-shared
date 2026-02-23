@@ -892,7 +892,9 @@ class BakeryConfig:
         :param fail_fast: If True, stop building targets on the first failure.
         """
         if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+            bake_plan = BakePlan.from_image_targets(
+                context=self.base_path, image_targets=self.targets, platforms=platforms
+            )
             set_opts = None
             if self.settings.temp_registry is not None and push:
                 set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
@@ -953,7 +955,7 @@ class BakeryConfig:
         :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
         :param dry_run: If True, print what would be deleted without actually deleting anything.
         """
-        target_caches = list(set([target.cache_name.split(":")[0] for target in self.targets]))
+        target_caches = list(set([cn.split(":")[0] for target in self.targets if (cn := target.cache_name())]))
 
         errors = []
         for target_cache in target_caches:

@@ -11,6 +11,7 @@ from pydantic import BaseModel, computed_field, ConfigDict, Field
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
+from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
@@ -295,21 +296,27 @@ class ImageTarget(BaseModel):
 
         return labels
 
-    @property
-    def cache_name(self) -> str | None:
-        """Generate the image name and tag to use for a build cache."""
+    def cache_name(self, platform: str | None = None) -> str | None:
+        """Generate the image name and tag to use for a build cache.
+
+        :param platform: Optional platform string (e.g., "linux/amd64") to include in the cache tag
+            for platform-specific cache differentiation.
+        """
         if not self.settings.cache_registry:
             return None
 
-        tag = re.sub(r"[+-].*", "", self.image_version.name)
+        tag = re.sub(r"\+.*", "", self.image_version.name)
+
         tag = re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", tag).strip("-._")
         if self.image_os:
             tag += f"-{self.image_os.tagDisplayName}"
         if self.image_variant:
             tag += f"-{self.image_variant.tagDisplayName}"
-        cache_name = f"{self.settings.cache_registry}/{self.image_name}/cache:{tag}"
+        if platform:
+            platform_suffix = platform.removeprefix("linux/").replace("/", "-")
+            tag += f"-{platform_suffix}"
 
-        return cache_name
+        return f"{self.settings.cache_registry}/{self.image_name}/cache:{tag}"
 
     @property
     def temp_name(self) -> str | None:
@@ -348,8 +355,11 @@ class ImageTarget(BaseModel):
 
         cache_from = None
         cache_to = None
-        if self.cache_name is not None:
-            cache_from = f"type=registry,ref={self.cache_name}"
+        build_platforms = platforms or (self.image_os.platforms if self.image_os else DEFAULT_PLATFORMS)
+        cache_platform = build_platforms[0] if build_platforms and len(build_platforms) == 1 else None
+        cache_name = self.cache_name(platform=cache_platform)
+        if cache_name is not None:
+            cache_from = f"type=registry,ref={cache_name}"
             cache_to = f"{cache_from},mode=max"
 
         if isinstance(metadata_file, bool) and metadata_file:
