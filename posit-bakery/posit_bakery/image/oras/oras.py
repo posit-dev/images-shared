@@ -1,18 +1,9 @@
-"""ORAS CLI integration for multi-platform manifest management.
-
-This module provides an alternative to `docker buildx imagetools create` for merging
-multi-platform images. It uses the oras CLI to create manifest indexes and copy them
-to target registries, avoiding authentication issues that affect Docker's imagetools
-when performing cross-registry operations.
-"""
-
 import logging
 import subprocess
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Annotated, Self
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -319,7 +310,6 @@ class OrasMergeWorkflow(BaseModel):
         :raises ValueError: If the target is missing required settings.
         """
         # Import here to avoid circular imports
-        from posit_bakery.image.image_target import ImageTarget
 
         if not target.settings.temp_registry:
             raise ValueError("ImageTarget must have temp_registry set in settings for ORAS merge workflow.")
