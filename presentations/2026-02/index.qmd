@@ -1,0 +1,219 @@
+---
+title: "Posit Container Images"
+subtitle: "Ecosystem Overview"
+author: Ben Schwedler
+date: "2026-02-19"
+format:
+  revealjs:
+    theme: moon
+    width: 1280
+    height: 720
+    center: true
+---
+
+> A developer screamed, "This is crazy!"
+>
+> The matrix of builds left me hazy.
+>
+> One file, one run,
+>
+> And Bakery's done—
+>
+> Now I sip my coffee, lazy.
+>
+> -- Claude Sonnet 4.5
+
+## The Ecosystem at a Glance {.smaller}
+
+6 repos, 7 images, one CLI
+
+| Repository | Images |
+|:-----------|:-------|
+| [images](https://github.com/posit-dev/images) | Meta repo, design principles, GitHub Discussions  |
+| [images-connect](https://github.com/posit-dev/images-connect) | `connect`, `connect-content`, `connect-content-init` |
+| [images-package-manager](https://github.com/posit-dev/images-package-manager) | `package-manager` |
+| [images-workbench](https://github.com/posit-dev/images-workbench) | `workbench`, `workbench-session`, `workbench-session-init` |
+| [images-shared](https://github.com/posit-dev/images-shared) | `bakery` CLI, shared CI workflows & Actions |
+| [images-examples](https://github.com/posit-dev/images-examples) | Tutorials & extending examples |
+
+Each product repo is independent -- one `bakery.yaml`, static Containerfiles, own CI.
+
+[Ecosystem overview & docs index](https://github.com/posit-dev/images)
+
+## What's New Since September 2025 {.smaller}
+
+:::: {.columns}
+::: {.column width="50%"}
+
+**Images**
+
+* Ubuntu 24.04 primary OS for latest releases
+* ARM64 native builds for Package Manager
+* `connect-content` matrix image (R × Python)
+* `workbench-session` matrix image (R × Python)
+* Dev streams -- daily/preview auto-publish
+
+:::
+::: {.column width="50%"}
+
+**Bakery & CI**
+
+* Matrix builds w/ dynamic dependency resolution
+* Native multi-platform CI (build per arch, merge manifests)
+* Split CI workflows (production vs development)
+* Registry cache cleanup automation
+
+:::
+::::
+
+## Image Variants {.smaller}
+
+Each image ships with use-case-specific variants:
+
+| Image | Variants | Purpose |
+|:------|:---------|:--------|
+| `connect` | `std` / `min` | Server ± R, Python, Quarto |
+| `package-manager` | `std` / `min` | Server ± R, Python |
+| `workbench` | `std` / `min` | IDE server ± R, Python |
+| `connect-content` | `base` / `pro` | Runtime ± Pro Drivers |
+| `workbench-session` | *(none)* | R × Python matrix |
+| `*-init` | *(none)* | Init containers |
+
+**Standard** = runs out of the box.
+
+**Minimal** = [extend](https://github.com/posit-dev/images-examples/tree/main/extending) with what you need.
+
+[Image Variant docs](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/CONFIGURATION.md#imagevariant)
+
+## Image Matrices {.smaller}
+
+`bakery` generates versions from the cartesian product of R × Python combinations:
+
+```yaml
+matrix:
+  namePattern: "R{{ Dependencies.R }}-python{{ Dependencies.python }}"
+  dependencyConstraints:
+    - dependency: R
+      constraint: { min: "4.3", latest: true }
+    - dependency: python
+      constraint: { min: "3.11", latest: true }
+```
+
+[Constraints](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/CONFIGURATION.md#dependencyconstraint) dynamically resolve explicit [versions](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/CONFIGURATION.md#dependencyversions) from external sources (uv, Posit CDN, quarto.org).
+
+Versions can also be specified explicitly:
+
+```yaml
+matrix:
+  namePattern: "R{{ Dependencies.R }}-python{{ Dependencies.python }}"
+  dependencies:
+    - dependency: R
+      versions: ["4.5.2", "4.4.3", "4.3.3"]
+    - dependency: python
+      versions: ["3.14.3", "3.13.12", "3.12.12", "3.11.14"]
+```
+
+Used by `connect-content` and `workbench-session` — [matrix docs](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/CONFIGURATION.md#imagematrix) | [example](https://github.com/posit-dev/images-examples/tree/main/bakery/06-matrix-images)
+
+## How Bakery Works {.smaller}
+
+:::: {.columns}
+::: {.column width="50%"}
+
+**[Templates](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/TEMPLATING.md)** (Jinja2)
+
+* Macros for APT/DNF, Python (via uv), R (via r-install), Quarto
+* Rendered per version × variant × OS
+* Output: static `Containerfile`
+* Build images with docker/buildah/podman
+
+:::
+::: {.column width="50%"}
+
+**[Build](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/ARCHITECTURE.md)**
+
+* Multiple build strategies
+  * Parallel builds from a Buildx Bake plan (JSON)
+  * Sequential builds with docker or builders like podman/buildah
+* Registry-based layer caching
+* Automatic tag generation
+
+:::
+::::
+
+```text
+connect/
+├── template/                        # Jinja2 source
+│   └── Containerfile.jinja2
+├── 2025.12/                         # Rendered output
+│   ├── Containerfile.ubuntu2404.std
+│   └── Containerfile.ubuntu2404.min
+└── 2026.01/
+```
+
+## Registries & Tags {.smaller}
+
+Published to **[Docker Hub](https://hub.docker.com/u/posit)** (`docker.io/posit/`) and **[GHCR](https://github.com/orgs/posit-dev/packages)** (`ghcr.io/posit-dev/`).
+
+| Tag | Example |
+|:----|:--------|
+| `<version>-<os>-<variant>` | `2026.01.1-ubuntu-24.04-std` |
+| `<version>-<os>` | `2026.01.1-ubuntu-24.04` |
+| `<version>` | `2026.01.1` |
+| `latest` | Latest primary variant + primary OS |
+
+[Tag pattern docs](https://github.com/posit-dev/images-shared/blob/main/posit-bakery/CONFIGURATION.md#tagpattern)
+
+Short tags (without `-std`/`-min`) resolve to the **primary** variant.
+
+Preview/daily builds push under `*-preview` names.
+
+## CI Workflows {.smaller}
+
+Shared workflow patterns in `images-shared` ([CI docs](https://github.com/posit-dev/images-shared/blob/main/CI.md)):
+
+| Workflow | Method |
+|:-----|:-------|
+| `bakery-build-native.yml` | Native ARM + AMD runners, merge manifests |
+| `bakery-build.yml` | QEMU emulation |
+
+Both support:
+
+* **Production** -- build, test, push on merge to `main`
+* **Development** -- auto-publish daily/preview streams
+* **Weekly rebuilds** for OS security patches
+* **Registry cleanup** -- purge dangling caches and temp images
+
+## Extending Images {.smaller}
+
+[images-examples](https://github.com/posit-dev/images-examples) provides patterns for extending Minimal images and tutorials for Bakery.
+
+**[Extending](https://github.com/posit-dev/images-examples/tree/main/extending)**
+
+Plain Containerfiles that layer onto Minimal images:
+
+* Custom CA certificates and pip configuration
+* Python and R version installation with package lists
+* System dependencies for additional libraries
+
+**[Bakery](https://github.com/posit-dev/images-examples/tree/main/bakery)**
+
+* A progressive tutorial starting from a single image build
+* Shows adding multiple versions, variants, and OS targets
+* Demonstrates managed dependencies and matrix images
+
+## What's Next {.smaller}
+
+[GitHub Milestones](https://github.com/orgs/posit-dev/projects/17/views/8)
+
+| Milestone | Description |
+|:----------|:------------|
+| Ubuntu 24.04 in preview | Public preview of 24.04 images |
+| Connect ARM support | Multi-platform images for Connect |
+| Product dogfood/CI adoption | Product teams adopt images in CI |
+| Helm deployments | CI auto-deploys to K8s via Helm |
+| Out of preview | Public repos, official support |
+| Workbench ARM images | Multi-platform images for Workbench |
+| Image security scans | Scanning as quality gate before push |
+
+Feedback & questions: [GitHub Discussions](https://github.com/posit-dev/images/discussions) | `#platform-images`
