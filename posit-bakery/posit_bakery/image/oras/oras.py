@@ -1,6 +1,6 @@
+import hashlib
 import logging
 import subprocess
-import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Annotated, Self
@@ -207,11 +207,7 @@ class OrasMergeWorkflow(BaseModel):
     """
 
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
-    sources: Annotated[list[str], Field(description="List of source image references (one per platform).")]
-    temp_registry: Annotated[str, Field(description="Registry to use for temporary index storage.")]
-    image_name: Annotated[str, Field(description="Name of the image (used for temp tag).")]
-    tag_suffixes: Annotated[list[str], Field(description="Tag suffixes to apply to the final image.")]
-    target_registries: Annotated[list[str], Field(description="Target registries to push to.")]
+    image_target: Annotated["ImageTarget", Field(description="The image target of the sources.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict, description="Annotations for the index.")]
 
     @model_validator(mode="after")
@@ -224,79 +220,65 @@ class OrasMergeWorkflow(BaseModel):
     @property
     def temp_index_tag(self) -> str:
         """Generate a unique temporary index tag."""
-        uid = str(uuid.uuid4())[:8]
-        return f"{self.temp_registry}/{self.image_name}/tmp:{uid}"
+        source_hash = hashlib.sha256("".join(self.image_target._get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
+        return (
+            f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
+        )
 
-    def _get_destinations(self) -> list[str]:
-        """Generate all destination references."""
-        destinations = []
-        for registry in self.target_registries:
-            for suffix in self.tag_suffixes:
-                # Check if registry already includes a repository path
-                if "/" in registry.split(":", 1)[0].split("/", 1)[-1]:
-                    # Registry includes repository (e.g., "ghcr.io/org/repo")
-                    destinations.append(f"{registry}:{suffix}")
-                else:
-                    # Registry is just the host (e.g., "ghcr.io")
-                    destinations.append(f"{registry}/{self.image_name}:{suffix}")
-        return destinations
-
-    def execute(self, dry_run: bool = False) -> OrasMergeWorkflowResult:
-        """Execute the merge workflow.
+    def run(self, dry_run: bool = False) -> OrasMergeWorkflowResult:
+        """Run the merge workflow.
 
         :param dry_run: If True, log commands without executing them.
         :return: Result of the workflow execution.
         """
-        temp_ref = self.temp_index_tag
-        destinations = self._get_destinations()
 
-        log.info(f"Starting ORAS merge workflow for {self.image_name}")
-        log.debug(f"Sources: {self.sources}")
-        log.debug(f"Temporary index: {temp_ref}")
-        log.debug(f"Destinations: {destinations}")
+        log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
+        log.debug(f"Sources: {self.image_target.sources}")
+        log.debug(f"Temporary index: {self.temp_index_tag}")
+        log.debug(f"Destinations: {self.image_target.tags}")
 
         try:
             # Step 1: Create the manifest index
-            log.info(f"Creating manifest index at {temp_ref}")
+            log.info(f"Creating manifest index at {self.temp_index_tag}")
             create_cmd = OrasManifestIndexCreate(
                 oras_bin=self.oras_bin,
-                sources=self.sources,
-                destination=temp_ref,
+                sources=self.image_target._get_merge_sources(),
+                destination=self.temp_index_tag,
                 annotations=self.annotations,
             )
             create_cmd.run(dry_run=dry_run)
 
             # Step 2: Copy to all destinations
-            for dest in destinations:
+            for dest in self.image_target.tags:
                 log.info(f"Copying index to {dest}")
                 copy_cmd = OrasCopy(
                     oras_bin=self.oras_bin,
-                    source=temp_ref,
+                    source=self.temp_index_tag,
                     destination=dest,
                 )
                 copy_cmd.run(dry_run=dry_run)
 
             # Step 3: Delete the temporary index
-            log.info(f"Cleaning up temporary index {temp_ref}")
+            log.info(f"Cleaning up temporary index {self.temp_index_tag}")
             delete_cmd = OrasManifestDelete(
                 oras_bin=self.oras_bin,
-                reference=temp_ref,
+                reference=self.temp_index_tag,
             )
             delete_cmd.run(dry_run=dry_run)
 
             log.info(f"ORAS merge workflow completed successfully")
             return OrasMergeWorkflowResult(
                 success=True,
-                temp_index_ref=temp_ref,
-                destinations=destinations,
+                temp_index_ref=self.temp_index_tag,
+                destinations=self.image_target.tags,
             )
 
         except BakeryToolRuntimeError as e:
             log.error(f"ORAS merge workflow failed: {e}")
             return OrasMergeWorkflowResult(
                 success=False,
-                temp_index_ref=temp_ref,
-                destinations=destinations,
+                temp_index_ref=self.temp_index_tag,
+                destinations=self.image_target.tags,
                 error=str(e),
             )
 
@@ -317,22 +299,8 @@ class OrasMergeWorkflow(BaseModel):
         if oras_bin is None:
             oras_bin = find_oras_bin(target.context.base_path)
 
-        sources = target._get_merge_sources()
-
-        # Get target registries - extract base URLs from registries
-        target_registries = []
-        for registry in target.image_version.all_registries:
-            if hasattr(registry, "repository"):
-                target_registries.append(f"{registry.base_url}/{registry.repository}")
-            else:
-                target_registries.append(f"{registry.base_url}/{target.image_name}")
-
         return cls(
             oras_bin=oras_bin,
-            sources=sources,
-            temp_registry=target.settings.temp_registry,
-            image_name=target.image_name,
-            tag_suffixes=target.tag_suffixes,
-            target_registries=target_registries,
+            image_target=target,
             annotations=target.labels.items(),
         )

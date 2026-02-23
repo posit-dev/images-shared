@@ -307,7 +307,7 @@ class TestOrasMergeWorkflow:
         """Test successful workflow execution."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-            result = basic_workflow.execute()
+            result = basic_workflow.run()
 
         assert result.success is True
         assert result.error is None
@@ -321,7 +321,7 @@ class TestOrasMergeWorkflow:
     def test_execute_dry_run(self, basic_workflow):
         """Test dry run mode."""
         with patch("subprocess.run") as mock_run:
-            result = basic_workflow.execute(dry_run=True)
+            result = basic_workflow.run(dry_run=True)
 
         mock_run.assert_not_called()
         assert result.success is True
@@ -333,7 +333,7 @@ class TestOrasMergeWorkflow:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=1, stdout=b"", stderr=b"failed to create index"
             )
-            result = basic_workflow.execute()
+            result = basic_workflow.run()
 
         assert result.success is False
         assert result.error is not None
@@ -353,7 +353,7 @@ class TestOrasMergeWorkflow:
             return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
 
         with patch("subprocess.run", side_effect=side_effect):
-            result = basic_workflow.execute()
+            result = basic_workflow.run()
 
         assert result.success is False
         assert result.error is not None
