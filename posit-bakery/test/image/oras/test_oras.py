@@ -268,40 +268,69 @@ class TestOrasMergeWorkflow:
     """Tests for the OrasMergeWorkflow orchestrator."""
 
     @pytest.fixture
-    def basic_workflow(self):
+    def mock_image_target(self):
+        """Create a mock ImageTarget for testing."""
+        mock_target = MagicMock()
+        mock_target.image_name = "test-image"
+        mock_target.uid = "test-image-1-0-0"
+        mock_target.temp_registry = "ghcr.io/posit-dev"
+        mock_target._get_merge_sources.return_value = [
+            "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
+            "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
+        ]
+        mock_target.labels = {
+            "org.opencontainers.image.title": "Test Image",
+        }
+
+        # Create mock tags
+        mock_tag1 = MagicMock()
+        mock_tag1.destination = "ghcr.io/posit-dev/test-image"
+        mock_tag1.suffix = "1.0.0"
+        mock_tag1.__str__ = lambda self: "ghcr.io/posit-dev/test-image:1.0.0"
+
+        mock_tag2 = MagicMock()
+        mock_tag2.destination = "ghcr.io/posit-dev/test-image"
+        mock_tag2.suffix = "latest"
+        mock_tag2.__str__ = lambda self: "ghcr.io/posit-dev/test-image:latest"
+
+        mock_tag3 = MagicMock()
+        mock_tag3.destination = "docker.io/posit/test-image"
+        mock_tag3.suffix = "1.0.0"
+        mock_tag3.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
+
+        mock_tag4 = MagicMock()
+        mock_tag4.destination = "docker.io/posit/test-image"
+        mock_tag4.suffix = "latest"
+        mock_tag4.__str__ = lambda self: "docker.io/posit/test-image:latest"
+
+        mock_target.tags = [mock_tag1, mock_tag2, mock_tag3, mock_tag4]
+
+        return mock_target
+
+    @pytest.fixture
+    def basic_workflow(self, mock_image_target):
         """Return a basic workflow configuration."""
         return OrasMergeWorkflow(
             oras_bin="oras",
-            sources=[
-                "ghcr.io/posit/test/tmp@sha256:amd64digest",
-                "ghcr.io/posit/test/tmp@sha256:arm64digest",
-            ],
-            temp_registry="ghcr.io/posit-dev",
-            image_name="test-image",
-            tag_suffixes=["1.0.0", "latest"],
-            target_registries=["ghcr.io/posit-dev/test-image", "docker.io/posit/test-image"],
+            image_target=mock_image_target,
             annotations={"org.opencontainers.image.title": "Test Image"},
         )
 
     def test_temp_index_tag_generation(self, basic_workflow):
         """Test that temporary index tag is generated with unique ID."""
         tag = basic_workflow.temp_index_tag
-        assert tag.startswith("ghcr.io/posit-dev/test-image/tmp:")
-        # Should have an 8-character UUID suffix
+        assert tag.startswith("ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0")
+        # Should have a 10-character hash suffix after the uid
         suffix = tag.split(":")[-1]
-        assert len(suffix) == 8
+        assert suffix.startswith("test-image-1-0-0")
+        assert len(suffix) == len("test-image-1-0-0") + 10
 
-    def test_destinations_generation(self, basic_workflow):
-        """Test that destinations are generated correctly."""
-        destinations = basic_workflow._get_destinations()
-
-        expected = [
-            "ghcr.io/posit-dev/test-image:1.0.0",
-            "ghcr.io/posit-dev/test-image:latest",
-            "docker.io/posit/test-image:1.0.0",
-            "docker.io/posit/test-image:latest",
-        ]
-        assert destinations == expected
+    def test_sources_property(self, basic_workflow):
+        """Test that sources property returns image target's merge sources."""
+        sources = basic_workflow.sources
+        assert len(sources) == 2
+        assert "ghcr.io/posit-dev/test/tmp@sha256:amd64digest" in sources
+        assert "ghcr.io/posit-dev/test/tmp@sha256:arm64digest" in sources
 
     def test_execute_success(self, basic_workflow):
         """Test successful workflow execution."""
@@ -315,8 +344,8 @@ class TestOrasMergeWorkflow:
         assert result.temp_index_ref is not None
 
         # Should have called:
-        # 1 create + 4 copy + 1 delete = 6 calls
-        assert mock_run.call_count == 6
+        # 1 create + 2 copy (grouped by destination) + 1 delete = 4 calls
+        assert mock_run.call_count == 4
 
     def test_execute_dry_run(self, basic_workflow):
         """Test dry run mode."""
@@ -360,14 +389,13 @@ class TestOrasMergeWorkflow:
 
     def test_validates_sources_required(self):
         """Test that validation fails when no sources are provided."""
+        mock_target = MagicMock()
+        mock_target._get_merge_sources.return_value = []
+
         with pytest.raises(ValidationError) as exc_info:
             OrasMergeWorkflow(
                 oras_bin="oras",
-                sources=[],
-                temp_registry="ghcr.io/posit-dev",
-                image_name="test-image",
-                tag_suffixes=["latest"],
-                target_registries=["ghcr.io/posit-dev/test-image"],
+                image_target=mock_target,
             )
 
         assert "at least one source" in str(exc_info.value).lower()
@@ -381,8 +409,10 @@ class TestOrasMergeWorkflowFromImageTarget:
         """Create a mock ImageTarget for testing."""
         mock_target = MagicMock()
         mock_target.image_name = "test-image"
+        mock_target.uid = "test-image-1-0-0"
         mock_target.context.base_path = Path("/project")
         mock_target.settings.temp_registry = "ghcr.io/posit-dev"
+        mock_target.temp_registry = "ghcr.io/posit-dev"
         mock_target._get_merge_sources.return_value = [
             "ghcr.io/posit-dev/test/tmp@sha256:amd64",
             "ghcr.io/posit-dev/test/tmp@sha256:arm64",
@@ -391,18 +421,19 @@ class TestOrasMergeWorkflowFromImageTarget:
             "org.opencontainers.image.title": "Test Image",
             "org.opencontainers.image.version": "1.0.0",
         }
-        mock_target.tag_suffixes = ["1.0.0", "latest"]
 
-        # Mock registries
-        mock_registry1 = MagicMock()
-        mock_registry1.base_url = "ghcr.io"
-        mock_registry1.repository = "posit-dev/test-image"
+        # Create mock tags
+        mock_tag1 = MagicMock()
+        mock_tag1.destination = "ghcr.io/posit-dev/test-image"
+        mock_tag1.suffix = "1.0.0"
+        mock_tag1.__str__ = lambda self: "ghcr.io/posit-dev/test-image:1.0.0"
 
-        mock_registry2 = MagicMock()
-        mock_registry2.base_url = "docker.io"
-        del mock_registry2.repository  # Simulate registry without repository
+        mock_tag2 = MagicMock()
+        mock_tag2.destination = "ghcr.io/posit-dev/test-image"
+        mock_tag2.suffix = "latest"
+        mock_tag2.__str__ = lambda self: "ghcr.io/posit-dev/test-image:latest"
 
-        mock_target.image_version.all_registries = [mock_registry1, mock_registry2]
+        mock_target.tags = [mock_tag1, mock_tag2]
 
         return mock_target
 
@@ -412,11 +443,8 @@ class TestOrasMergeWorkflowFromImageTarget:
             workflow = OrasMergeWorkflow.from_image_target(mock_image_target)
 
         assert workflow.oras_bin == "oras"
-        assert workflow.image_name == "test-image"
-        assert workflow.temp_registry == "ghcr.io/posit-dev"
+        assert workflow.image_target is mock_image_target
         assert len(workflow.sources) == 2
-        assert workflow.tag_suffixes == ["1.0.0", "latest"]
-        assert len(workflow.target_registries) == 2
         assert "org.opencontainers.image.title" in workflow.annotations
 
     def test_from_image_target_missing_temp_registry(self, mock_image_target):

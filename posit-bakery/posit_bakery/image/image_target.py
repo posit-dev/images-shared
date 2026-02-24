@@ -66,6 +66,18 @@ class Tag(BaseModel):
             raise ValueError("At least one of registry, repository, or suffix must be provided for a valid tag.")
         return self
 
+    @property
+    def destination(self):
+        """Return the destination portion of the tag (registry and repository) without the suffix or digest."""
+        destination = ""
+        if self.registry:
+            destination += self.registry.base_url
+        if self.repository:
+            if len(destination) > 0 and not destination.endswith("/"):
+                destination += "/"
+            destination += self.repository
+        return destination
+
     def __hash__(self):
         return hash((self.registry.base_url if self.registry else None, self.repository, self.suffix, self.digest))
 

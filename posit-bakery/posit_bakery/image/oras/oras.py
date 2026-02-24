@@ -1,11 +1,15 @@
 import hashlib
+import itertools
 import logging
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Any, Self, TYPE_CHECKING
 
-from pydantic import BaseModel, Field, model_validator
+if TYPE_CHECKING:
+    from posit_bakery.image.image_target import ImageTarget
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.util import find_bin
@@ -206,16 +210,23 @@ class OrasMergeWorkflow(BaseModel):
     3. Deletes the temporary index
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
-    image_target: Annotated["ImageTarget", Field(description="The image target of the sources.")]
+    image_target: Annotated[Any, Field(description="The image target of the sources.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict, description="Annotations for the index.")]
 
     @model_validator(mode="after")
     def validate_sources(self) -> Self:
         """Validate that sources are provided."""
-        if not self.sources:
+        if not self.image_target._get_merge_sources():
             raise ValueError("At least one source is required.")
         return self
+
+    @property
+    def sources(self) -> list[str]:
+        """Get the list of source image references from the image target."""
+        return self.image_target._get_merge_sources()
 
     @property
     def temp_index_tag(self) -> str:
@@ -233,7 +244,7 @@ class OrasMergeWorkflow(BaseModel):
         """
 
         log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
-        log.debug(f"Sources: {self.image_target.sources}")
+        log.debug(f"Sources: {self.sources}")
         log.debug(f"Temporary index: {self.temp_index_tag}")
         log.debug(f"Destinations: {self.image_target.tags}")
 
@@ -249,12 +260,13 @@ class OrasMergeWorkflow(BaseModel):
             create_cmd.run(dry_run=dry_run)
 
             # Step 2: Copy to all destinations
-            for dest in self.image_target.tags:
-                log.info(f"Copying index to {dest}")
+            for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
+                log.info(f"Copying index to {destination}")
+                combine_tag_str = destination + ":" + ",".join(tag.suffix for tag in tags)
                 copy_cmd = OrasCopy(
                     oras_bin=self.oras_bin,
                     source=self.temp_index_tag,
-                    destination=dest,
+                    destination=combine_tag_str,
                 )
                 copy_cmd.run(dry_run=dry_run)
 
@@ -270,7 +282,7 @@ class OrasMergeWorkflow(BaseModel):
             return OrasMergeWorkflowResult(
                 success=True,
                 temp_index_ref=self.temp_index_tag,
-                destinations=self.image_target.tags,
+                destinations=[str(tag) for tag in self.image_target.tags],
             )
 
         except BakeryToolRuntimeError as e:
@@ -278,7 +290,7 @@ class OrasMergeWorkflow(BaseModel):
             return OrasMergeWorkflowResult(
                 success=False,
                 temp_index_ref=self.temp_index_tag,
-                destinations=self.image_target.tags,
+                destinations=[str(tag) for tag in self.image_target.tags],
                 error=str(e),
             )
 
@@ -302,5 +314,5 @@ class OrasMergeWorkflow(BaseModel):
         return cls(
             oras_bin=oras_bin,
             image_target=target,
-            annotations=target.labels.items(),
+            annotations=target.labels,
         )
