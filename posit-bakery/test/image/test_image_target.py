@@ -318,7 +318,7 @@ class TestImageTarget:
         ]
 
         assert len(expected_tags) == len(target.tags)
-        assert all(tag in target.tags for tag in expected_tags)
+        assert all(tag in [str(t) for t in target.tags] for tag in expected_tags)
 
     @pytest.mark.parametrize(
         "is_matrix,dependencies,values,expected_args",
@@ -521,7 +521,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": basic_standard_image_target.tags,
+            "tags": [str(t) for t in basic_standard_image_target.tags],
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -551,7 +551,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
-            "tags": basic_standard_image_target.tags,
+            "tags": [str(t) for t in basic_standard_image_target.tags],
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -577,7 +577,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": basic_standard_image_target.tags,
+            "tags": [str(t) for t in basic_standard_image_target.tags],
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -629,9 +629,10 @@ class TestImageTarget:
         for target in image_targets:
             target.build()
             for tag in target.tags:
-                assert python_on_whales.docker.image.exists(tag)
+                tag_str = str(tag)
+                assert python_on_whales.docker.image.exists(tag_str)
                 for key, value in target.labels.items():
-                    meta = python_on_whales.docker.image.inspect(tag)
+                    meta = python_on_whales.docker.image.inspect(tag_str)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
 
@@ -647,9 +648,10 @@ class TestImageTarget:
         for target in image_targets:
             target.build(metadata_file=True)
             for tag in target.tags:
-                assert python_on_whales.docker.image.exists(tag)
+                tag_str = str(tag)
+                assert python_on_whales.docker.image.exists(tag_str)
                 for key, value in target.labels.items():
-                    meta = python_on_whales.docker.image.inspect(tag)
+                    meta = python_on_whales.docker.image.inspect(tag_str)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
 
@@ -658,7 +660,7 @@ class TestImageTarget:
             with open(metadata_file) as f:
                 data = f.read()
             metadata = BuildMetadata.model_validate_json(data)
-            assert metadata.image_tags.sort() == target.tags.sort()
+            assert metadata.image_tags.sort() == [str(t) for t in target.tags].sort()
 
             remove_images(target)
 

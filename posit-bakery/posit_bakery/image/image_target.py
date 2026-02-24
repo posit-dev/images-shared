@@ -10,7 +10,7 @@ import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
-from posit_bakery.config import Registry, BaseRegistry
+from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.repository import Repository
@@ -27,6 +27,8 @@ log = logging.getLogger(__name__)
 
 class Tag(BaseModel):
     """Model representing a fully rendered image tag, including its registry, repository, and suffix."""
+
+    model_config = ConfigDict(frozen=True)
 
     registry: Annotated[
         Registry | BaseRegistry | None,
@@ -65,7 +67,12 @@ class Tag(BaseModel):
         return self
 
     def __hash__(self):
-        return hash((self.registry.base_url, self.repository, self.suffix, self.digest))
+        return hash((self.registry.base_url if self.registry else None, self.repository, self.suffix, self.digest))
+
+    def __eq__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() == other.__str__()
 
     def __str__(self):
         tag = ""
@@ -83,6 +90,7 @@ class Tag(BaseModel):
             if len(tag) > 0:
                 tag += "@"
             tag += self.digest
+
         return tag
 
     def __ge__(self, other):
@@ -419,6 +427,7 @@ class ImageTarget(BaseModel):
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
         for tag in self.tags:
+            tag = str(tag)
             if python_on_whales.docker.image.exists(tag):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
@@ -470,6 +479,7 @@ class ImageTarget(BaseModel):
             if push:
                 output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
                 push = False
+        tags = [str(tag) for tag in tags]
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.

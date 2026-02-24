@@ -98,7 +98,7 @@ class BakeTarget(BaseModel):
         :param platforms: Optional platform override (e.g., from CLI --platform flag). When provided, this takes
             precedence over the image target's OS platform configuration for cache tag generation.
         """
-        kwargs = {"tags": image_target.tags}
+        kwargs = {"tags": [str(tag) for tag in image_target.tags]}
         effective_platforms = platforms or (
             image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS
         )
