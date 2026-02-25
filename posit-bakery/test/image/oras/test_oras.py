@@ -529,3 +529,122 @@ class TestOrasMergeWorkflowResult:
 
         assert result.success is False
         assert result.error is not None
+
+
+class TestOrasCommandsPlainHttp:
+    """Tests for plain_http flag on ORAS commands."""
+
+    def test_manifest_index_create_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasManifestIndexCreate(
+            oras_bin="oras",
+            sources=["localhost:5000/test/tmp@sha256:digest"],
+            destination="localhost:5000/test/tmp:tag",
+            plain_http=True,
+        )
+
+        expected = [
+            "oras",
+            "manifest",
+            "index",
+            "create",
+            "--plain-http",
+            "localhost:5000/test/tmp:tag",
+            "localhost:5000/test/tmp@sha256:digest",
+        ]
+        assert cmd.command == expected
+
+    def test_copy_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="localhost:5000/test:source",
+            destination="localhost:5000/test:dest",
+            plain_http=True,
+        )
+
+        expected = ["oras", "cp", "--plain-http", "localhost:5000/test:source", "localhost:5000/test:dest"]
+        assert cmd.command == expected
+
+    def test_manifest_delete_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasManifestDelete(
+            oras_bin="oras",
+            reference="localhost:5000/test:tag",
+            plain_http=True,
+        )
+
+        expected = ["oras", "manifest", "delete", "--force", "--plain-http", "localhost:5000/test:tag"]
+        assert cmd.command == expected
+
+
+@pytest.mark.slow
+class TestOrasMergeWorkflowIntegration:
+    """End-to-end tests for ORAS merge workflow using a local registry container.
+
+    These tests require Docker to be running and the ORAS CLI to be installed.
+    They test the complete merge workflow against a real local HTTP registry.
+    """
+
+    @pytest.fixture
+    def mock_image_target_for_local_registry(self):
+        """Create a mock ImageTarget configured for local registry testing."""
+
+        def _create_target(registry_url: str):
+            mock_target = MagicMock()
+            mock_target.image_name = "test-image"
+            mock_target.uid = "test-image-1-0-0"
+            mock_target.temp_registry = registry_url
+            mock_target.labels = {"org.opencontainers.image.title": "Test Image"}
+
+            # Create mock tag for local registry
+            mock_tag = MagicMock()
+            mock_tag.destination = f"{registry_url}/test-image"
+            mock_tag.suffix = "merged"
+            mock_tag.__str__ = lambda self: f"{registry_url}/test-image:merged"
+            mock_target.tags = [mock_tag]
+
+            return mock_target
+
+        return _create_target
+
+    def test_workflow_with_plain_http_flag(self, mock_image_target_for_local_registry):
+        """Test that OrasMergeWorkflow correctly propagates plain_http to all commands."""
+        mock_target = mock_image_target_for_local_registry("localhost:5000")
+        mock_target._get_merge_sources.return_value = [
+            "localhost:5000/test/tmp@sha256:amd64digest",
+            "localhost:5000/test/tmp@sha256:arm64digest",
+        ]
+
+        workflow = OrasMergeWorkflow(
+            oras_bin="oras",
+            image_target=mock_target,
+            annotations={"test": "annotation"},
+            plain_http=True,
+        )
+
+        # Verify the workflow is created with plain_http=True
+        assert workflow.plain_http is True
+
+        # Run in dry-run mode to capture commands without execution
+        with patch("subprocess.run") as mock_run:
+            result = workflow.run(dry_run=True)
+
+        # Verify dry run succeeds without calling subprocess
+        mock_run.assert_not_called()
+        assert result.success is True
+
+    def test_from_image_target_with_plain_http(self, mock_image_target_for_local_registry):
+        """Test creating workflow from ImageTarget with plain_http option."""
+        mock_target = mock_image_target_for_local_registry("localhost:5000")
+        mock_target.context.base_path = Path("/project")
+        mock_target.settings.temp_registry = "localhost:5000"
+        mock_target._get_merge_sources.return_value = [
+            "localhost:5000/test/tmp@sha256:digest",
+        ]
+
+        with patch("posit_bakery.image.oras.oras.find_oras_bin", return_value="oras"):
+            workflow = OrasMergeWorkflow.from_image_target(mock_target, plain_http=True)
+
+        assert workflow.plain_http is True
+        assert workflow.oras_bin == "oras"

@@ -6,6 +6,11 @@ log = logging.getLogger(__name__)
 
 
 class RegistryContainer:
+    """A context manager for running a local Docker registry container.
+
+    This is used for testing ORAS merge workflows against a local HTTP registry.
+    """
+
     _CONTAINER_PORT = 5000
 
     def __init__(self, image: str = "docker.io/registry:3", port: int | None = None, restart_policy: str = "always"):

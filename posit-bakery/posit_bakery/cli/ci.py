@@ -12,6 +12,7 @@ from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.error import BakeryError
 from posit_bakery.log import stdout_console
 from posit_bakery.util import auto_path
 
@@ -195,7 +196,8 @@ def merge(
         log.info(f"Merging sources for image UID '{uid}'")
         try:
             manifest = target.merge(dry_run=dry_run)
-            stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
-        except DockerException as e:
+            if manifest is not None:
+                stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+        except (DockerException, BakeryError, ValueError) as e:
             log.error(f"Error merging sources for UID '{uid}'")
             log.error(str(e))

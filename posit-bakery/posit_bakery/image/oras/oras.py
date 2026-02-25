@@ -83,6 +83,7 @@ class OrasCommand(BaseModel, ABC):
     """Base class for oras CLI commands."""
 
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    plain_http: Annotated[bool, Field(default=False, description="Use plain HTTP for registry connections.")]
 
     @property
     @abstractmethod
@@ -153,7 +154,10 @@ class OrasManifestIndexCreate(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras manifest index create command."""
-        cmd = [self.oras_bin, "manifest", "index", "create", self.destination]
+        cmd = [self.oras_bin, "manifest", "index", "create"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.append(self.destination)
         cmd.extend(self.sources)
 
         for key, value in self.annotations.items():
@@ -175,7 +179,11 @@ class OrasCopy(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras cp command."""
-        return [self.oras_bin, "cp", self.source, self.destination]
+        cmd = [self.oras_bin, "cp"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.extend([self.source, self.destination])
+        return cmd
 
 
 class OrasManifestDelete(OrasCommand):
@@ -189,7 +197,11 @@ class OrasManifestDelete(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras manifest delete command."""
-        return [self.oras_bin, "manifest", "delete", "--force", self.reference]
+        cmd = [self.oras_bin, "manifest", "delete", "--force"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.append(self.reference)
+        return cmd
 
 
 class OrasMergeWorkflowResult(BaseModel):
@@ -215,6 +227,7 @@ class OrasMergeWorkflow(BaseModel):
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
     image_target: Annotated[Any, Field(description="The image target of the sources.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict, description="Annotations for the index.")]
+    plain_http: Annotated[bool, Field(default=False, description="Use plain HTTP for registry connections.")]
 
     @model_validator(mode="after")
     def validate_sources(self) -> Self:
@@ -256,6 +269,7 @@ class OrasMergeWorkflow(BaseModel):
                 sources=self.image_target._get_merge_sources(),
                 destination=self.temp_index_tag,
                 annotations=self.annotations,
+                plain_http=self.plain_http,
             )
             create_cmd.run(dry_run=dry_run)
 
@@ -267,6 +281,7 @@ class OrasMergeWorkflow(BaseModel):
                     oras_bin=self.oras_bin,
                     source=self.temp_index_tag,
                     destination=combine_tag_str,
+                    plain_http=self.plain_http,
                 )
                 copy_cmd.run(dry_run=dry_run)
 
@@ -275,6 +290,7 @@ class OrasMergeWorkflow(BaseModel):
             delete_cmd = OrasManifestDelete(
                 oras_bin=self.oras_bin,
                 reference=self.temp_index_tag,
+                plain_http=self.plain_http,
             )
             delete_cmd.run(dry_run=dry_run)
 
@@ -295,11 +311,14 @@ class OrasMergeWorkflow(BaseModel):
             )
 
     @classmethod
-    def from_image_target(cls, target: "ImageTarget", oras_bin: str | None = None) -> "OrasMergeWorkflow":
+    def from_image_target(
+        cls, target: "ImageTarget", oras_bin: str | None = None, plain_http: bool = False
+    ) -> "OrasMergeWorkflow":
         """Create an OrasMergeWorkflow from an ImageTarget.
 
         :param target: The ImageTarget to merge.
         :param oras_bin: Path to the oras binary. If not provided, will be discovered.
+        :param plain_http: Use plain HTTP for registry connections (useful for local registries).
         :return: A configured OrasMergeWorkflow instance.
         :raises ValueError: If the target is missing required settings.
         """
@@ -315,4 +334,5 @@ class OrasMergeWorkflow(BaseModel):
             oras_bin=oras_bin,
             image_target=target,
             annotations=target.labels,
+            plain_http=plain_http,
         )
