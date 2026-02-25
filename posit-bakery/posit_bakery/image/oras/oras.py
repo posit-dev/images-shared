@@ -4,12 +4,11 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Any, Self, TYPE_CHECKING
+from typing import Annotated, Self
 
-if TYPE_CHECKING:
-    from posit_bakery.image.image_target import ImageTarget
+from pydantic import BaseModel, ConfigDict, Field, model_validator, SkipValidation
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from posit_bakery.image.image_target import ImageTarget
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.util import find_bin
@@ -225,26 +224,26 @@ class OrasMergeWorkflow(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
-    image_target: Annotated[Any, Field(description="The image target of the sources.")]
+    image_target: Annotated[ImageTarget, Field(description="The image target of the sources.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict, description="Annotations for the index.")]
     plain_http: Annotated[bool, Field(default=False, description="Use plain HTTP for registry connections.")]
 
     @model_validator(mode="after")
     def validate_sources(self) -> Self:
         """Validate that sources are provided."""
-        if not self.image_target._get_merge_sources():
+        if not self.image_target.get_merge_sources():
             raise ValueError("At least one source is required.")
         return self
 
     @property
     def sources(self) -> list[str]:
         """Get the list of source image references from the image target."""
-        return self.image_target._get_merge_sources()
+        return self.image_target.get_merge_sources()
 
     @property
     def temp_index_tag(self) -> str:
         """Generate a unique temporary index tag."""
-        source_hash = hashlib.sha256("".join(self.image_target._get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
+        source_hash = hashlib.sha256("".join(self.image_target.get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
         return (
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
@@ -266,7 +265,7 @@ class OrasMergeWorkflow(BaseModel):
             log.info(f"Creating manifest index at {self.temp_index_tag}")
             create_cmd = OrasManifestIndexCreate(
                 oras_bin=self.oras_bin,
-                sources=self.image_target._get_merge_sources(),
+                sources=self.image_target.get_merge_sources(),
                 destination=self.temp_index_tag,
                 annotations=self.annotations,
                 plain_http=self.plain_http,
