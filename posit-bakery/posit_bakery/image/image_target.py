@@ -8,7 +8,6 @@ from typing import Annotated
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
@@ -18,7 +17,6 @@ from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError, BakeryError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
-from posit_bakery.image.oras import OrasMergeWorkflow
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
@@ -557,7 +555,7 @@ class ImageTarget(BaseModel):
 
         return image
 
-    def _get_merge_sources(self) -> list[str]:
+    def get_merge_sources(self) -> list[str]:
         """Get the list of source image references to use for merging.
 
         Sources collected will be the most recent artifact for each platform represented in the build metadata.
@@ -570,35 +568,4 @@ class ImageTarget(BaseModel):
                 sources.append(metadata.image_ref)
                 collected_platforms.add(metadata.platform)
 
-        if not sources:
-            raise BakeryError(f"No valid sources found in metadata for '{str(self)}', cannot perform merge.")
-
         return sources
-
-    def merge(self, dry_run: bool = False) -> Manifest | None:
-        """Merge multiple images into a single image, tag, and push using ORAS.
-
-        This method uses the ORAS CLI to create a manifest index from platform-specific
-        source images, then copies the index to all target registries and tags.
-
-        :param dry_run: If True, log commands without executing them.
-        :return: The manifest of the merged image, or None for dry-run.
-        :raises ValueError: If temp_registry is not configured.
-        :raises BakeryError: If the ORAS merge workflow fails.
-        """
-        if not self.settings.temp_registry:
-            raise ValueError(
-                f"Cannot merge '{str(self)}': temp_registry must be configured in settings for merge operations."
-            )
-
-        workflow = OrasMergeWorkflow.from_image_target(self)
-        result = workflow.run(dry_run=dry_run)
-
-        if not result.success:
-            raise BakeryError(f"ORAS merge workflow failed for '{str(self)}': {result.error}")
-
-        if dry_run:
-            return None
-
-        # Return the final manifest for the merged image as a sanity check.
-        return python_on_whales.docker.buildx.imagetools.inspect(str(self.tags[0]))

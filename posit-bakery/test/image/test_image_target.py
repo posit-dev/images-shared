@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
@@ -12,7 +11,6 @@ from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
-from posit_bakery.image.oras import OrasMergeWorkflow, OrasMergeWorkflowResult
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
@@ -681,7 +679,7 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].image_ref = "image1@sha256:amd64digest"
         basic_standard_image_target.build_metadata[1].image_ref = "image2@sha256:arm64digest"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert len(sources) == 2
         assert "image1@sha256:amd64digest" in sources
@@ -710,7 +708,7 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[2].platform = "linux/arm64"
         basic_standard_image_target.build_metadata[2].image_ref = "arm64@sha256:arm"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert len(sources) == 2
         assert "new-amd64@sha256:new" in sources
@@ -722,7 +720,7 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata = []
 
         with pytest.raises(BakeryError) as exc_info:
-            basic_standard_image_target._get_merge_sources()
+            basic_standard_image_target.get_merge_sources()
 
         assert "No valid sources found in metadata" in str(exc_info.value)
 
@@ -735,113 +733,6 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[0].image_ref = "image@sha256:digest"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert sources == ["image@sha256:digest"]
-
-    def test_merge_dry_run(self, basic_standard_image_target):
-        """Test the merge method of an ImageTarget in dry-run mode."""
-        # Set up fake build metadata for two platforms
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
-        # Set temp_registry for the ORAS workflow
-        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
-
-        mock_workflow = MagicMock(spec=OrasMergeWorkflow)
-        mock_workflow.run.return_value = OrasMergeWorkflowResult(
-            success=True,
-            temp_index_ref="ghcr.io/posit-dev/test-image/tmp:test",
-            destinations=[str(t) for t in basic_standard_image_target.tags],
-        )
-
-        with patch.object(OrasMergeWorkflow, "from_image_target", return_value=mock_workflow):
-            result = basic_standard_image_target.merge(dry_run=True)
-
-        mock_workflow.run.assert_called_once_with(dry_run=True)
-        assert result is None
-
-    def test_merge(self, basic_standard_image_target, patch_imagetools_inspect):
-        """Test the merge method of an ImageTarget."""
-        # Set up fake build metadata for two platforms
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
-        # Set temp_registry for the ORAS workflow
-        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
-
-        mock_workflow = MagicMock(spec=OrasMergeWorkflow)
-        mock_workflow.run.return_value = OrasMergeWorkflowResult(
-            success=True,
-            temp_index_ref="ghcr.io/posit-dev/test-image/tmp:test",
-            destinations=[str(t) for t in basic_standard_image_target.tags],
-        )
-
-        with patch.object(OrasMergeWorkflow, "from_image_target", return_value=mock_workflow):
-            manifest = basic_standard_image_target.merge()
-
-        mock_workflow.run.assert_called_once_with(dry_run=False)
-        patch_imagetools_inspect.assert_called_once_with(str(basic_standard_image_target.tags[0]))
-        assert isinstance(manifest, Manifest)
-
-    def test_merge_oras_workflow_failure(self, basic_standard_image_target):
-        """Test that merge raises BakeryError when ORAS workflow fails."""
-        # Set up fake build metadata for two platforms
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
-        # Set temp_registry for the ORAS workflow
-        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
-
-        mock_workflow = MagicMock(spec=OrasMergeWorkflow)
-        mock_workflow.run.return_value = OrasMergeWorkflowResult(
-            success=False,
-            temp_index_ref="ghcr.io/posit-dev/test-image/tmp:test",
-            destinations=[],
-            error="oras command failed with exit code 1",
-        )
-
-        with patch.object(OrasMergeWorkflow, "from_image_target", return_value=mock_workflow):
-            with pytest.raises(BakeryError) as exc_info:
-                basic_standard_image_target.merge()
-
-        assert "ORAS merge workflow failed" in str(exc_info.value)
-        assert "oras command failed" in str(exc_info.value)
-
-    def test_merge_missing_temp_registry(self, basic_standard_image_target):
-        """Test that merge raises ValueError when temp_registry is not set."""
-        # Set up fake build metadata
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        # Ensure temp_registry is not set
-        basic_standard_image_target.settings = ImageTargetSettings(temp_registry=None)
-
-        with pytest.raises(ValueError) as exc_info:
-            basic_standard_image_target.merge()
-
-        assert "temp_registry must be configured" in str(exc_info.value)

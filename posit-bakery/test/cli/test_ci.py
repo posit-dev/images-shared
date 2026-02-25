@@ -4,7 +4,7 @@ import re
 from pytest_bdd import scenarios, then, parsers, given
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
-from posit_bakery.image import ImageTarget
+from posit_bakery.config import BakeryConfig
 
 scenarios(
     "cli/ci/matrix.feature",
@@ -39,14 +39,24 @@ def copy_ci_testdata_to_context(bakery_command, ci_testdata, testdata_path):
 def patch_image_target_merge_method(mocker):
     calls = []
 
-    def patched_merge_method(self, dry_run: bool = False) -> Manifest:
-        calls.append((self._get_merge_sources(), dry_run))
-        return Manifest(
-            schemaVersion=2,
-            mediaType="application/vnd.docker.distribution.manifest.v2+json",
-        )
+    def patched_merge_targets(self, dry_run: bool = False):
+        results = []
+        for target in self.targets:
+            try:
+                sources = target.get_merge_sources()
+            except Exception:
+                continue
+            if not sources:
+                continue
+            calls.append((sources, dry_run))
+            manifest = Manifest(
+                schemaVersion=2,
+                mediaType="application/vnd.docker.distribution.manifest.v2+json",
+            )
+            results.append((target.uid, manifest, None))
+        return results
 
-    mocker.patch.object(ImageTarget, "merge", patched_merge_method)
+    mocker.patch.object(BakeryConfig, "merge_targets", patched_merge_targets)
     return calls
 
 
