@@ -1,3 +1,1 @@
-from posit_bakery.services.registry_container import RegistryContainer
-
-__all__ = ["RegistryContainer"]
+# Services module - registry container has been moved to test/helpers
