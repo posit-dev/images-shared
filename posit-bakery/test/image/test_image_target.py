@@ -318,7 +318,7 @@ class TestImageTarget:
         ]
 
         assert len(expected_tags) == len(target.tags)
-        assert all(tag in [str(t) for t in target.tags] for tag in expected_tags)
+        assert all(tag in target.tags.as_strings() for tag in expected_tags)
 
     @pytest.mark.parametrize(
         "is_matrix,dependencies,values,expected_args",
@@ -521,7 +521,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": [str(t) for t in basic_standard_image_target.tags],
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -551,7 +551,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
-            "tags": [str(t) for t in basic_standard_image_target.tags],
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -577,7 +577,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": [str(t) for t in basic_standard_image_target.tags],
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -628,11 +628,10 @@ class TestImageTarget:
         image_targets = get_targets(suite)
         for target in image_targets:
             target.build()
-            for tag in target.tags:
-                tag_str = str(tag)
-                assert python_on_whales.docker.image.exists(tag_str)
+            for tag in target.tags.as_strings():
+                assert python_on_whales.docker.image.exists(tag)
                 for key, value in target.labels.items():
-                    meta = python_on_whales.docker.image.inspect(tag_str)
+                    meta = python_on_whales.docker.image.inspect(tag)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
 
@@ -647,11 +646,10 @@ class TestImageTarget:
         image_targets = get_targets(suite)
         for target in image_targets:
             target.build(metadata_file=True)
-            for tag in target.tags:
-                tag_str = str(tag)
-                assert python_on_whales.docker.image.exists(tag_str)
+            for tag in target.tags.as_strings():
+                assert python_on_whales.docker.image.exists(tag)
                 for key, value in target.labels.items():
-                    meta = python_on_whales.docker.image.inspect(tag_str)
+                    meta = python_on_whales.docker.image.inspect(tag)
                     assert key in meta.config.labels
                     assert value == meta.config.labels[key]
 
@@ -660,7 +658,8 @@ class TestImageTarget:
             with open(metadata_file) as f:
                 data = f.read()
             metadata = BuildMetadata.model_validate_json(data)
-            assert metadata.image_tags.sort() == [str(t) for t in target.tags].sort()
+            metadata.image_tags.sort()
+            assert metadata.image_tags == target.tags.as_strings()
 
             remove_images(target)
 
@@ -754,7 +753,7 @@ class TestImageTarget:
 
         patch_imagetools_create.assert_called_once_with(
             sources=expected_sources,
-            tags=basic_standard_image_target.tags,
+            tags=basic_standard_image_target.tags.as_strings(),
             dry_run=True,
         )
         assert isinstance(manifest, Manifest)
@@ -810,17 +809,17 @@ class TestImageTarget:
             quiet=True,
         )
 
-        for tag in basic_standard_image_target.tags:
+        for tag in basic_standard_image_target.tags.as_strings():
             patch_docker_tag.assert_any_call(
                 f"{expected_temp_tag}@{inspection_manifest.digest}",
                 tag,
             )
 
         patch_docker_push.assert_called_once_with(
-            basic_standard_image_target.tags,
+            basic_standard_image_target.tags.as_strings(),
             quiet=True,
         )
 
-        patch_imagetools_inspect.assert_called_once_with(basic_standard_image_target.tags[0])
+        patch_imagetools_inspect.assert_called_once_with(str(basic_standard_image_target.tags[0]))
 
         assert isinstance(manifest, Manifest)

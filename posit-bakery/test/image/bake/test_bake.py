@@ -66,7 +66,7 @@ class TestBakeTarget:
         assert bake_target.image_os == "Ubuntu 22.04"
         assert bake_target.dockerfile == basic_standard_image_target.containerfile
         assert bake_target.labels == basic_standard_image_target.labels
-        assert bake_target.tags == [str(t) for t in basic_standard_image_target.tags]
+        assert bake_target.tags == basic_standard_image_target.tags.as_strings()
 
 
 class TestBakePlan:

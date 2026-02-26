@@ -55,14 +55,13 @@ def remove_images(obj: BakeryConfig | ImageTarget | None = None):
     """Remove any images created during testing."""
     if isinstance(obj, BakeryConfig):
         for target in obj.targets:
-            for tag in target.tags:
-                tag = str(tag)
+            for tag in target.tags.as_strings():
                 try:
                     python_on_whales.docker.image.remove(tag)
                 except python_on_whales.exceptions.DockerException:
                     pass
     elif isinstance(obj, ImageTarget):
-        for tag in obj.tags:
+        for tag in obj.tags.as_strings():
             try:
                 python_on_whales.docker.image.remove(tag)
             except python_on_whales.exceptions.DockerException:

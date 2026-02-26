@@ -93,6 +93,9 @@ class Tag(BaseModel):
 
         return tag
 
+    def __repr__(self):
+        return self.__str__()
+
     def __ge__(self, other):
         if not isinstance(other, Tag):
             return NotImplemented
@@ -112,6 +115,14 @@ class Tag(BaseModel):
         if not isinstance(other, Tag):
             return NotImplemented
         return self.__str__() < other.__str__()
+
+
+class StringableList(list):
+    """A list that can convert all its items to strings"""
+
+    def as_strings(self) -> list[str]:
+        """Convert all items in the list to their string representation."""
+        return [str(item) for item in self]
 
 
 class ImageBuildStrategy(str, Enum):
@@ -312,11 +323,10 @@ class ImageTarget(BaseModel):
 
         return tags
 
-    @computed_field
     @property
-    def tags(self) -> list[Tag]:
+    def tags(self) -> StringableList[Tag]:
         """Generate tags for the image based on tag patterns."""
-        tags = []
+        tags: StringableList[Tag] = StringableList()
         for registry in self.image_version.all_registries or [None]:
             for suffix in self.tag_suffixes:
                 tags.append(
@@ -327,7 +337,8 @@ class ImageTarget(BaseModel):
                     )
                 )
 
-        return sorted(tags)
+        tags.sort()
+        return tags
 
     @computed_field
     @property
@@ -426,8 +437,7 @@ class ImageTarget(BaseModel):
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
-        for tag in self.tags:
-            tag = str(tag)
+        for tag in self.tags.as_strings():
             if python_on_whales.docker.image.exists(tag):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
@@ -471,7 +481,7 @@ class ImageTarget(BaseModel):
         if isinstance(metadata_file, bool) and metadata_file:
             metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
 
-        tags = self.tags
+        tags = self.tags.as_strings()
         output = {}
         if self.temp_name is not None:
             tags = [self.temp_name]
@@ -479,7 +489,6 @@ class ImageTarget(BaseModel):
             if push:
                 output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
                 push = False
-        tags = [str(tag) for tag in tags]
 
         # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
         # directory change should be managed at a higher level.
@@ -548,7 +557,7 @@ class ImageTarget(BaseModel):
         if dry_run:
             return python_on_whales.docker.buildx.imagetools.create(
                 sources=sources,
-                tags=self.tags,
+                tags=self.tags.as_strings(),
                 dry_run=dry_run,
             )
 
@@ -586,13 +595,15 @@ class ImageTarget(BaseModel):
 
             # Tag the index reference appropriately with each target tag.
             log.debug("Applying tags...")
-            for tag in self.tags:
+            for tag in self.tags.as_strings():
                 python_on_whales.docker.image.tag(index_ref, tag)
 
             # Push each tag to the target registries. Since every individual piece of the image has been pulled locally,
             # Docker will push all the component manifests as well as the index.
             log.info(f"Pushing image {self.uid}...")
-            python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+            python_on_whales.docker.image.push(
+                self.tags.as_strings(), quiet=False if SETTINGS.log_level == logging.DEBUG else True
+            )
 
         # Return the final manifest for the merged image as a sanity check.
-        return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
+        return python_on_whales.docker.buildx.imagetools.inspect(str(self.tags[0]))
