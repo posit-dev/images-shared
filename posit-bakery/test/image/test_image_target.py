@@ -8,7 +8,6 @@ import python_on_whales
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
-from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.settings import SETTINGS
@@ -667,7 +666,7 @@ class TestImageTarget:
             remove_images(target)
 
     def test_get_merge_sources_multiple_platforms(self, basic_standard_image_target):
-        """Test _get_merge_sources returns most recent source for each platform."""
+        """Test get_merge_sources returns most recent source for each platform."""
         basic_standard_image_target.build_metadata = [
             MagicMock(spec=BuildMetadata),
             MagicMock(spec=BuildMetadata),
@@ -686,7 +685,7 @@ class TestImageTarget:
         assert "image2@sha256:arm64digest" in sources
 
     def test_get_merge_sources_duplicate_platforms_uses_most_recent(self, basic_standard_image_target):
-        """Test _get_merge_sources returns only most recent source when platform appears multiple times."""
+        """Test get_merge_sources returns only most recent source when platform appears multiple times."""
         older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
         newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
 
@@ -715,17 +714,14 @@ class TestImageTarget:
         assert "old-amd64@sha256:old" not in sources
         assert "arm64@sha256:arm" in sources
 
-    def test_get_merge_sources_empty_metadata_raises_error(self, basic_standard_image_target):
-        """Test _get_merge_sources raises BakeryError when no metadata exists."""
+    def test_get_merge_sources_empty_metadata_no_sources(self, basic_standard_image_target):
+        """Test get_merge_source with empty metadata returns no sources."""
         basic_standard_image_target.build_metadata = []
 
-        with pytest.raises(BakeryError) as exc_info:
-            basic_standard_image_target.get_merge_sources()
-
-        assert "No valid sources found in metadata" in str(exc_info.value)
+        assert len(basic_standard_image_target.get_merge_sources()) == 0
 
     def test_get_merge_sources_single_platform(self, basic_standard_image_target):
-        """Test _get_merge_sources works with single platform."""
+        """Test get_merge_sources works with single platform."""
         basic_standard_image_target.build_metadata = [
             MagicMock(spec=BuildMetadata),
         ]
