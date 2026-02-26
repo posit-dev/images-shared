@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
+from posit_bakery.image.image_target import StringableList
 from posit_bakery.image.oras import (
     find_oras_bin,
     get_repository_from_ref,
@@ -303,8 +304,7 @@ class TestOrasMergeWorkflow:
         mock_tag4.suffix = "latest"
         mock_tag4.__str__ = lambda self: "docker.io/posit/test-image:latest"
 
-        mock_target.tags = [mock_tag1, mock_tag2, mock_tag3, mock_tag4]
-
+        mock_target.tags = StringableList([mock_tag1, mock_tag2, mock_tag3, mock_tag4])
         return mock_target
 
     @pytest.fixture

@@ -246,7 +246,7 @@ class OrasMergeWorkflow(BaseModel):
         log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
         log.debug(f"Sources: {self.sources}")
         log.debug(f"Temporary index: {self.temp_index_tag}")
-        log.debug(f"Destinations: {self.image_target.tags}")
+        log.debug(f"Destinations: {', '.join(self.image_target.tags.as_strings())}")
 
         try:
             # Step 1: Create the manifest index
@@ -282,7 +282,7 @@ class OrasMergeWorkflow(BaseModel):
             return OrasMergeWorkflowResult(
                 success=True,
                 temp_index_ref=self.temp_index_tag,
-                destinations=[str(tag) for tag in self.image_target.tags],
+                destinations=self.image_target.tags.as_strings(),
             )
 
         except BakeryToolRuntimeError as e:
@@ -290,7 +290,7 @@ class OrasMergeWorkflow(BaseModel):
             return OrasMergeWorkflowResult(
                 success=False,
                 temp_index_ref=self.temp_index_tag,
-                destinations=[str(tag) for tag in self.image_target.tags],
+                destinations=self.image_target.tags.as_strings(),
                 error=str(e),
             )
 
