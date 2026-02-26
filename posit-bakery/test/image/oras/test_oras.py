@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
-from posit_bakery.image.image_target import StringableList
+from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings
 from posit_bakery.image.oras import (
     find_oras_bin,
     get_repository_from_ref,
@@ -271,11 +271,11 @@ class TestOrasMergeWorkflow:
     @pytest.fixture
     def mock_image_target(self):
         """Create a mock ImageTarget for testing."""
-        mock_target = MagicMock()
+        mock_target = MagicMock(spec=ImageTarget)
         mock_target.image_name = "test-image"
         mock_target.uid = "test-image-1-0-0"
         mock_target.temp_registry = "ghcr.io/posit-dev"
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
             "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
         ]
@@ -389,8 +389,8 @@ class TestOrasMergeWorkflow:
 
     def test_validates_sources_required(self):
         """Test that validation fails when no sources are provided."""
-        mock_target = MagicMock()
-        mock_target._get_merge_sources.return_value = []
+        mock_target = MagicMock(spec=ImageTarget)
+        mock_target.get_merge_sources.return_value = []
 
         with pytest.raises(ValidationError) as exc_info:
             OrasMergeWorkflow(
@@ -407,13 +407,15 @@ class TestOrasMergeWorkflowFromImageTarget:
     @pytest.fixture
     def mock_image_target(self):
         """Create a mock ImageTarget for testing."""
-        mock_target = MagicMock()
+        mock_target = MagicMock(spec=ImageTarget)
         mock_target.image_name = "test-image"
         mock_target.uid = "test-image-1-0-0"
+        mock_target.context = MagicMock(spec=ImageTargetContext)
         mock_target.context.base_path = Path("/project")
+        mock_target.settings = MagicMock(spec=ImageTargetSettings)
         mock_target.settings.temp_registry = "ghcr.io/posit-dev"
         mock_target.temp_registry = "ghcr.io/posit-dev"
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "ghcr.io/posit-dev/test/tmp@sha256:amd64",
             "ghcr.io/posit-dev/test/tmp@sha256:arm64",
         ]
@@ -591,7 +593,7 @@ class TestOrasMergeWorkflowIntegration:
         """Create a mock ImageTarget configured for local registry testing."""
 
         def _create_target(registry_url: str):
-            mock_target = MagicMock()
+            mock_target = MagicMock(spec=ImageTarget)
             mock_target.image_name = "test-image"
             mock_target.uid = "test-image-1-0-0"
             mock_target.temp_registry = registry_url
@@ -602,7 +604,7 @@ class TestOrasMergeWorkflowIntegration:
             mock_tag.destination = f"{registry_url}/test-image"
             mock_tag.suffix = "merged"
             mock_tag.__str__ = lambda self: f"{registry_url}/test-image:merged"
-            mock_target.tags = [mock_tag]
+            mock_target.tags = StringableList([mock_tag])
 
             return mock_target
 
@@ -611,7 +613,7 @@ class TestOrasMergeWorkflowIntegration:
     def test_workflow_with_plain_http_flag(self, mock_image_target_for_local_registry):
         """Test that OrasMergeWorkflow correctly propagates plain_http to all commands."""
         mock_target = mock_image_target_for_local_registry("localhost:5000")
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "localhost:5000/test/tmp@sha256:amd64digest",
             "localhost:5000/test/tmp@sha256:arm64digest",
         ]
@@ -637,9 +639,11 @@ class TestOrasMergeWorkflowIntegration:
     def test_from_image_target_with_plain_http(self, mock_image_target_for_local_registry):
         """Test creating workflow from ImageTarget with plain_http option."""
         mock_target = mock_image_target_for_local_registry("localhost:5000")
+        mock_target.context = MagicMock(spec=ImageTargetContext)
         mock_target.context.base_path = Path("/project")
+        mock_target.settings = MagicMock(spec=ImageTargetSettings)
         mock_target.settings.temp_registry = "localhost:5000"
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "localhost:5000/test/tmp@sha256:digest",
         ]
 
