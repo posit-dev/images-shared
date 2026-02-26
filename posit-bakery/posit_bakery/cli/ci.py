@@ -133,6 +133,13 @@ def merge(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Temporary registry to use for multiplatform split/merge builds.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = None,
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
@@ -157,6 +164,7 @@ def merge(
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
+        temp_registry=temp_registry,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
