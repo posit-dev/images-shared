@@ -191,8 +191,14 @@ def merge(
 
     results = config.merge_targets(dry_run=dry_run)
 
+    error_flag = False
     for uid, manifest, error in results:
         if error:
             log.error(f"Error merging sources for UID '{uid}': {error}")
+            error_flag = True
         elif manifest is not None:
             stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+
+    if error_flag:
+        log.error("One or more errors occurred during merge.")
+        raise typer.Exit(code=1)
