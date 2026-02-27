@@ -877,6 +877,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\
@@ -920,6 +922,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\

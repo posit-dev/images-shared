@@ -19,7 +19,8 @@ LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
 ### ARG declarations ###
 ARG DEBIAN_FRONTEND=noninteractive
 ARG IMAGE_VERSION="{{ Image.Version }}"
-ARG TARGETARCH
+ARG BUILDARCH
+ARG TARGETARCH=${BUILDARCH}
 
 ### Install Apt Packages ###
 {{ apt.run_setup() }}
