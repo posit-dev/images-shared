@@ -15,6 +15,7 @@ LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
 
 ### ARG declarations ###
 ARG DEBIAN_FRONTEND=noninteractive
+ARG TARGETARCH
 ARG R_VERSION
 ARG PYTHON_VERSION
 ARG QUARTO_VERSION
