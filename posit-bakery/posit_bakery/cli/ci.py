@@ -156,6 +156,7 @@ def merge(
     """
     settings = BakerySettings(
         dev_versions=DevVersionInclusionEnum.INCLUDE,
+        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
