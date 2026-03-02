@@ -463,3 +463,61 @@ class TestImageVersion:
 
         values = version.generate_template_values(variant, version.os[0])
         assert "DownloadURL" not in values["Image"]
+
+    def test_render_files_copies_non_template_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files copies non-template files verbatim without Jinja2 processing."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+
+        # Test that static file is copied verbatim
+        static_file = expected_path / "static_file.txt"
+        assert static_file.is_file()
+        content = static_file.read_text()
+        # The Jinja2 syntax should be preserved literally, not rendered
+        assert "{{ Image.Name }}" in content
+        assert "This is a static file that should be copied verbatim." in content
+
+    def test_render_files_preserves_directory_structure(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files preserves directory structure for non-template files."""
+        context = get_tmpcontext("basic")
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+
+        # Test that nested script is copied with directory structure preserved
+        script_file = expected_path / "scripts" / "setup.sh"
+        assert script_file.is_file()
+        content = script_file.read_text()
+        # The Jinja2 syntax should be preserved literally
+        assert "{{ Image.Name }}" in content
+        assert "#!/bin/bash" in content
