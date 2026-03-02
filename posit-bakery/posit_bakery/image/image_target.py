@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Annotated
 
 import python_on_whales
-from pydantic import BaseModel, computed_field, ConfigDict, Field
+from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
+from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.repository import Repository
@@ -22,6 +23,106 @@ from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
+
+
+class Tag(BaseModel):
+    """Model representing a fully rendered image tag, including its registry, repository, and suffix."""
+
+    model_config = ConfigDict(frozen=True)
+
+    registry: Annotated[
+        Registry | BaseRegistry | None,
+        Field(
+            default=None,
+            description="Registry associated with the tag. If None, the tag is considered registry-less.",
+        ),
+    ]
+    repository: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Repository associated with the tag. If None, the tag is considered repository-less.",
+        ),
+    ]
+    suffix: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Suffix of the tag (the part after the colon). If None, the tag is considered suffix-less.",
+        ),
+    ]
+    digest: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Digest of the tag (the part after the @). If None, the tag is considered digest-less.",
+        ),
+    ]
+
+    @model_validator(mode="after")
+    def validate(self):
+        """Ensure at least one of registry, repository, or suffix is present to form a valid tag."""
+        if not self.registry and not self.repository and not self.suffix:
+            raise ValueError("At least one of registry, repository, or suffix must be provided for a valid tag.")
+        return self
+
+    def __hash__(self):
+        return hash((self.registry.base_url if self.registry else None, self.repository, self.suffix, self.digest))
+
+    def __eq__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() == other.__str__()
+
+    def __str__(self):
+        tag = ""
+        if self.registry:
+            tag += self.registry.base_url
+        if self.repository:
+            if len(tag) > 0 and not tag.endswith("/"):
+                tag += "/"
+            tag += f"{self.repository}"
+        if self.suffix:
+            if len(tag) > 0:
+                tag += ":"
+            tag += self.suffix
+        if self.digest:
+            if len(tag) > 0:
+                tag += "@"
+            tag += self.digest
+
+        return tag
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __ge__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() >= other.__str__()
+
+    def __gt__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() > other.__str__()
+
+    def __le__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() <= other.__str__()
+
+    def __lt__(self, other):
+        if not isinstance(other, Tag):
+            return NotImplemented
+        return self.__str__() < other.__str__()
+
+
+class StringableList(list):
+    """A list that can convert all its items to strings"""
+
+    def as_strings(self) -> list[str]:
+        """Convert all items in the list to their string representation."""
+        return [str(item) for item in self]
 
 
 class ImageBuildStrategy(str, Enum):
@@ -222,23 +323,22 @@ class ImageTarget(BaseModel):
 
         return tags
 
-    @computed_field
     @property
-    def tags(self) -> list[str]:
+    def tags(self) -> StringableList[Tag]:
         """Generate tags for the image based on tag patterns."""
-        tags = []
-        if self.image_version.all_registries:
-            for registry in self.image_version.all_registries:
-                for suffix in self.tag_suffixes:
-                    if hasattr(registry, "repository"):
-                        tags.append(f"{registry.base_url}/{registry.repository}:{suffix}")
-                    else:
-                        tags.append(f"{registry.base_url}/{self.image_version.parent.name}:{suffix}")
-        else:
+        tags: StringableList[Tag] = StringableList()
+        for registry in self.image_version.all_registries or [None]:
             for suffix in self.tag_suffixes:
-                tags.append(f"{self.image_version.parent.name}:{suffix}")
+                tags.append(
+                    Tag(
+                        registry=registry,
+                        repository=getattr(registry, "repository", self.image_version.parent.name),
+                        suffix=suffix,
+                    )
+                )
 
-        return sorted(tags)
+        tags.sort()
+        return tags
 
     @computed_field
     @property
@@ -267,7 +367,7 @@ class ImageTarget(BaseModel):
                 if metadata.platform == platform:
                     return metadata.image_ref
 
-        return self.tags[0]
+        return str(self.tags[0])
 
     @computed_field
     @property
@@ -337,7 +437,7 @@ class ImageTarget(BaseModel):
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
-        for tag in self.tags:
+        for tag in self.tags.as_strings():
             if python_on_whales.docker.image.exists(tag):
                 log.info(f"Deleting image '{tag}' from local cache.")
                 python_on_whales.docker.image.remove(tag, prune=prune, force=force)
@@ -381,7 +481,7 @@ class ImageTarget(BaseModel):
         if isinstance(metadata_file, bool) and metadata_file:
             metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"
 
-        tags = self.tags
+        tags = self.tags.as_strings()
         output = {}
         if self.temp_name is not None:
             tags = [self.temp_name]
@@ -457,7 +557,7 @@ class ImageTarget(BaseModel):
         if dry_run:
             return python_on_whales.docker.buildx.imagetools.create(
                 sources=sources,
-                tags=self.tags,
+                tags=self.tags.as_strings(),
                 dry_run=dry_run,
             )
 
@@ -495,13 +595,15 @@ class ImageTarget(BaseModel):
 
             # Tag the index reference appropriately with each target tag.
             log.debug("Applying tags...")
-            for tag in self.tags:
+            for tag in self.tags.as_strings():
                 python_on_whales.docker.image.tag(index_ref, tag)
 
             # Push each tag to the target registries. Since every individual piece of the image has been pulled locally,
             # Docker will push all the component manifests as well as the index.
             log.info(f"Pushing image {self.uid}...")
-            python_on_whales.docker.image.push(self.tags, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
+            python_on_whales.docker.image.push(
+                self.tags.as_strings(), quiet=False if SETTINGS.log_level == logging.DEBUG else True
+            )
 
         # Return the final manifest for the merged image as a sanity check.
-        return python_on_whales.docker.buildx.imagetools.inspect(self.tags[0])
+        return python_on_whales.docker.buildx.imagetools.inspect(str(self.tags[0]))
