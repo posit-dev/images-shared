@@ -429,7 +429,10 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                     jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
                 ]
             ),
-            autoescape=True,
+            autoescape=jinja2.select_autoescape(
+                default_for_string=False,
+                default=False,
+            ),
             undefined=jinja2.StrictUndefined,
             keep_trailing_newline=True,
         )

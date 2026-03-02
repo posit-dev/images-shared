@@ -1907,6 +1907,55 @@ class TestRMacros:
         rendered = environment_with_macros.from_string(template).render(os_release=_os)
         assert rendered == expected
 
+    @pytest.mark.parametrize(
+        "_os,expected",
+        [
+            pytest.param(
+                None,
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                id="no-os",
+            ),
+            pytest.param(
+                {"Name": "gentoo"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                id="unsupported-os",
+            ),
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "jammy"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE)\'',
+                id="ubuntu-jammy",
+            ),
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "noble"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)\'',
+                id="ubuntu-noble",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "bookworm"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE)\'',
+                id="debian-bookworm",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "trixie"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE)\'',
+                id="debian-trixie",
+            ),
+            pytest.param(
+                {"Name": "rhel", "Version": "8"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE)\'',
+                id="rhel-8",
+            ),
+        ],
+    )
+    def test_get_p3m_cran_repo_from_parent_template(self, environment_with_macros, _os, expected):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{- r.install_packages('4.4.3', packages=['dplyr', 'odbc'], _os=os_release) -}}"""
+        )
+        rendered = environment_with_macros.from_string(template).render(os_release=_os)
+        assert rendered.strip() == expected.strip()
+
     def test_r_expression(self, environment_with_macros):
         template = textwrap.dedent(
             """\
