@@ -1529,35 +1529,50 @@ class TestQuartoMacros:
         assert rendered == expected
 
     @pytest.mark.parametrize(
-        "update_path,expected",
+        "update_path,home_path,expected",
         [
             pytest.param(
                 True,
+                None,
                 "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path",
                 id="with-update-path",
             ),
             pytest.param(
                 False,
+                None,
                 "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet",
                 id="without-update-path",
             ),
+            pytest.param(
+                False,
+                "/root",
+                'HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
+                id="with-home-path",
+            ),
+            pytest.param(
+                True,
+                "/root",
+                'HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
+                id="with-home-path-and-update-path",
+            ),
         ],
     )
-    def test_install_tinytex_command(self, environment_with_macros, update_path, expected):
+    def test_install_tinytex_command(self, environment_with_macros, update_path, home_path, expected):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
-            {{ quarto.install_tinytex_command("/opt/quarto/1.8.24/bin/quarto", update_path) }}"""
+            {{ quarto.install_tinytex_command("/opt/quarto/1.8.24/bin/quarto", update_path, home_path) }}"""
         )
-        rendered = environment_with_macros.from_string(template).render(update_path=update_path)
+        rendered = environment_with_macros.from_string(template).render(update_path=update_path, home_path=home_path)
         assert rendered == expected
 
     @pytest.mark.parametrize(
-        "with_tinytex,tinytex_update_path,expected",
+        "with_tinytex,tinytex_update_path,tinytex_home_path,expected",
         [
             pytest.param(
                 False,
                 False,
+                None,
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
@@ -1568,6 +1583,7 @@ class TestQuartoMacros:
             pytest.param(
                 False,
                 True,
+                None,
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
@@ -1578,6 +1594,7 @@ class TestQuartoMacros:
             pytest.param(
                 True,
                 False,
+                None,
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
@@ -1589,6 +1606,7 @@ class TestQuartoMacros:
             pytest.param(
                 True,
                 True,
+                None,
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
@@ -1597,16 +1615,43 @@ class TestQuartoMacros:
                 ),
                 id="with-tinytex-update-path",
             ),
+            pytest.param(
+                True,
+                False,
+                "/root",
+                textwrap.dedent(
+                    """\
+                    mkdir -p /opt/quarto/1.8.24 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                    HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                ),
+                id="with-tinytex-home-path",
+            ),
+            pytest.param(
+                True,
+                True,
+                "/root",
+                textwrap.dedent(
+                    """\
+                    mkdir -p /opt/quarto/1.8.24 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                    HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                ),
+                id="with-tinytex-home-path-update-path",
+            ),
         ],
     )
-    def test_install(self, environment_with_macros, with_tinytex, tinytex_update_path, expected):
+    def test_install(self, environment_with_macros, with_tinytex, tinytex_update_path, tinytex_home_path, expected):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
-            {{ quarto.install(version, with_tinytex, tinytex_update_path) }}"""
+            {{ quarto.install(version, with_tinytex, tinytex_update_path, tinytex_home_path) }}"""
         )
         rendered = environment_with_macros.from_string(template).render(
-            version="1.8.24", with_tinytex=with_tinytex, tinytex_update_path=tinytex_update_path
+            version="1.8.24",
+            with_tinytex=with_tinytex,
+            tinytex_update_path=tinytex_update_path,
+            tinytex_home_path=tinytex_home_path,
         )
         assert rendered == expected
 
@@ -1614,7 +1659,7 @@ class TestQuartoMacros:
         "input,expected",
         [
             pytest.param(
-                (["1.8.24"], False, False),
+                (["1.8.24"], False, False, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1623,7 +1668,7 @@ class TestQuartoMacros:
                 id="single-version-no-tinytex",
             ),
             pytest.param(
-                (["1.8.24", "1.7.8"], False, False),
+                (["1.8.24", "1.7.8"], False, False, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1634,7 +1679,7 @@ class TestQuartoMacros:
                 id="multiple-versions-no-tinytex",
             ),
             pytest.param(
-                ("1.8.24,1.7.8", False, False),
+                ("1.8.24,1.7.8", False, False, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1645,7 +1690,7 @@ class TestQuartoMacros:
                 id="string-versions-no-tinytex",
             ),
             pytest.param(
-                (["1.8.24"], True, False),
+                (["1.8.24"], True, False, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1655,7 +1700,7 @@ class TestQuartoMacros:
                 id="single-version-with-tinytex",
             ),
             pytest.param(
-                (["1.8.24", "1.7.8"], True, False),
+                (["1.8.24", "1.7.8"], True, False, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1668,7 +1713,7 @@ class TestQuartoMacros:
                 id="multiple-versions-with-tinytex",
             ),
             pytest.param(
-                (["1.8.24"], True, True),
+                (["1.8.24"], True, True, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1678,7 +1723,7 @@ class TestQuartoMacros:
                 id="single-version-with-tinytex-update-path",
             ),
             pytest.param(
-                (["1.8.24", "1.7.8"], True, True),
+                (["1.8.24", "1.7.8"], True, True, None),
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
@@ -1689,6 +1734,52 @@ class TestQuartoMacros:
                         /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="multiple-versions-with-tinytex-update-path",
+            ),
+            pytest.param(
+                (["1.8.24"], True, False, "/root"),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                ),
+                id="single-version-with-tinytex-home-path",
+            ),
+            pytest.param(
+                (["1.8.24", "1.7.8"], True, False, "/root"),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
+                ),
+                id="multiple-versions-with-tinytex-home-path",
+            ),
+            pytest.param(
+                (["1.8.24"], True, True, "/root"),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                ),
+                id="single-version-with-tinytex-home-path-update-path",
+            ),
+            pytest.param(
+                (["1.8.24", "1.7.8"], True, True, "/root"),
+                textwrap.dedent(
+                    """\
+                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
+                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
+                        HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                ),
+                id="multiple-versions-with-tinytex-home-path-update-path",
             ),
         ],
     )
