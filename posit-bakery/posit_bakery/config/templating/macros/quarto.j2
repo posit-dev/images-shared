@@ -37,7 +37,7 @@ ${{ name }}
 #}
 {% macro install(version, with_tinytex = False, tinytex_update_path = False) -%}
 mkdir -p {{ get_version_directory(version) }} && \
-curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-amd64.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
+curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
 {{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto", tinytex_update_path) }}{% endif %}
 {%- endmacro %}
 

@@ -877,6 +877,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\
@@ -920,6 +922,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\
@@ -956,7 +960,7 @@ class TestBakeryConfig:
 
             # Install Quarto
             RUN mkdir -p /opt/quarto/1.8.24 && \\
-                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                 /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
         """)
         assert (
