@@ -26,3 +26,5 @@ REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN = r"[^a-zA-Z0-9_\-.]"
 DEFAULT_BASE_IMAGE = "docker.io/library/ubuntu:22.04"
 POSIT_LABEL_PREFIX = "co.posit.image"
 OCI_LABEL_PREFIX = "org.opencontainers.image"
+
+JINJA2_TEMPLATE_EXTENSIONS = {".jinja2", ".j2", ".jinja"}
