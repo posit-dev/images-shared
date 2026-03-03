@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from posit_bakery.config import BakeryConfigDocument, ImageVariant
 from posit_bakery.config import Image
 from posit_bakery.config.dependencies import (
     PythonDependencyVersions,
@@ -14,7 +15,6 @@ from posit_bakery.config.dependencies import (
     QuartoDependencyConstraint,
 )
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
-from posit_bakery.config import BakeryConfigDocument, ImageVariant
 
 
 @pytest.mark.parametrize(
@@ -579,3 +579,61 @@ class TestImageMatrix:
         assert (expected_path / "simple.txt").is_file()
         content = (expected_path / "simple.txt").read_text()
         assert "Image: test-image" in content
+
+    def test_render_files_copies_non_template_files(self, tmp_path):
+        """Test that render_files copies non-template files verbatim without Jinja2 processing."""
+        # Create minimal template structure
+        image_dir = tmp_path / "test-image"
+        template_dir = image_dir / "template"
+        template_dir.mkdir(parents=True)
+
+        # Create a Jinja2 template
+        jinja_template = template_dir / "config.txt.jinja2"
+        jinja_template.write_text("Image: {{ Image.Name }}\n")
+
+        # Create a non-template file that should be copied verbatim
+        static_file = template_dir / "static_file.txt"
+        static_file.write_text("This is static.\n{{ Image.Name }} should appear literally.\n")
+
+        # Create a nested non-template file
+        scripts_dir = template_dir / "scripts"
+        scripts_dir.mkdir()
+        script_file = scripts_dir / "setup.sh"
+        script_file.write_text("#!/bin/bash\necho '{{ Image.Name }}'\n")
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = tmp_path
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = image_dir
+        mock_image_parent.template_path = template_dir
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            parent=mock_image_parent,
+            values={"go_version": ["1.24"]},
+        )
+
+        matrix.render_files()
+
+        expected_path = image_dir / "matrix"
+
+        # Verify Jinja2 template was rendered
+        rendered_config = expected_path / "config.txt"
+        assert rendered_config.is_file()
+        assert "Image: test-image" in rendered_config.read_text()
+
+        # Verify static file was copied verbatim (Jinja2 syntax preserved)
+        copied_static = expected_path / "static_file.txt"
+        assert copied_static.is_file()
+        content = copied_static.read_text()
+        assert "{{ Image.Name }}" in content  # Should be literal, not rendered
+
+        # Verify nested script was copied with directory structure preserved
+        copied_script = expected_path / "scripts" / "setup.sh"
+        assert copied_script.is_file()
+        script_content = copied_script.read_text()
+        assert "{{ Image.Name }}" in script_content  # Should be literal
+        assert "#!/bin/bash" in script_content

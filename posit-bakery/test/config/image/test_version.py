@@ -1,3 +1,4 @@
+import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -463,3 +464,90 @@ class TestImageVersion:
 
         values = version.generate_template_values(variant, version.os[0])
         assert "DownloadURL" not in values["Image"]
+
+    def test_render_files_copies_non_template_files(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files copies non-template files verbatim without Jinja2 processing."""
+        context = get_tmpcontext("basic")
+
+        # Creates a static file in the template directory that should be copied verbatim without Jinja2 processing
+        static_file_template_path = context / "test-image" / "template" / "static_file.txt"
+        static_file_template_path.write_text(
+            textwrap.dedent(
+                """\
+                This is a static file that should be copied verbatim.
+                It should NOT be processed through Jinja2.
+                {{ Image.Name }} should appear literally, not be rendered.
+                """
+            )
+        )
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+
+        # Test that static file is copied verbatim
+        static_file = expected_path / "static_file.txt"
+        assert static_file.is_file()
+        content = static_file.read_text()
+        # The Jinja2 syntax should be preserved literally, not rendered
+        assert "{{ Image.Name }}" in content
+        assert "This is a static file that should be copied verbatim." in content
+
+    def test_render_files_preserves_directory_structure(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files preserves directory structure for non-template files."""
+        context = get_tmpcontext("basic")
+
+        # Creates a nested script file in the template directory that should be copied verbatim with directory structure
+        # preserved
+        setup_sh_template_path = context / "test-image" / "template" / "scripts" / "setup.sh"
+        setup_sh_template_path.parent.mkdir(parents=True, exist_ok=True)
+        setup_sh_template_path.write_text(
+            textwrap.dedent(
+                """\
+                #!/bin/bash
+                # This script should be copied verbatim
+                echo "Hello from setup.sh"
+                echo "{{ Image.Name }} should appear literally"
+                """
+            )
+        )
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+
+        # Test that nested script is copied with directory structure preserved
+        script_file = expected_path / "scripts" / "setup.sh"
+        assert script_file.is_file()
+        content = script_file.read_text()
+        # The Jinja2 syntax should be preserved literally
+        assert "{{ Image.Name }}" in content
+        assert "#!/bin/bash" in content
