@@ -1,5 +1,4 @@
 import logging
-import platform
 import re
 from enum import Enum
 from pathlib import Path
@@ -12,6 +11,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console
+from posit_bakery.settings import SETTINGS
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def dgoss(
     image_platform: Annotated[
         Optional[str],
         typer.Option(
-            show_default=platform.machine(),  # TODO: improve output to match docker platform format
+            show_default=SETTINGS.get_host_architecture(),
             help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
             "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
@@ -121,14 +121,8 @@ def dgoss(
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
     # Autoselect host architecture platform if not specified.
-    if image_platform is None:
-        machine = platform.machine()
-        arch_map = {
-            "x86_64": "amd64",
-            "aarch64": "arm64",
-        }
-        arch = arch_map.get(machine, "amd64")
-        image_platform = f"linux/{arch}"
+    image_platform = image_platform or SETTINGS.architecture
+    image_platform = f"linux/{image_platform}"
 
     settings = BakerySettings(
         filter=BakeryConfigFilter(

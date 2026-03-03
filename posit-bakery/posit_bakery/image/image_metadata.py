@@ -1,8 +1,12 @@
+import datetime
 import json
+import logging
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import ConfigDict, BaseModel, Field, model_validator
+from pydantic import ConfigDict, BaseModel, Field, RootModel
+
+log = logging.getLogger(__name__)
 
 
 class ImageToolsInspectionPlatformMetadata(BaseModel):
@@ -74,6 +78,49 @@ class BuildMetadataContainerImageDescriptor(BaseModel):
     ]
 
 
+class BuildMetadataBuildProvenanceMaterial(BaseModel):
+    """Representation of a material used in the build process."""
+
+    model_config = ConfigDict(extra="allow")
+
+    uri: Annotated[str | None, Field(description="The URI of the material.", default=None)]
+    digest: Annotated[dict[str, str] | None, Field(description="The digest of the material.", default=None)]
+
+
+class BuildMetadataBuildProvenanceInvocation(BaseModel):
+    """Representation of the invocation of the build process."""
+
+    model_config = ConfigDict(extra="allow")
+
+    config_source: Annotated[
+        dict,
+        Field(
+            description="The configuration source of the build invocation.", alias="configSource", default_factory=dict
+        ),
+    ]
+    parameters: Annotated[dict, Field(description="The parameters of the build invocation.", default_factory=dict)]
+    environment: Annotated[dict, Field(description="The environment of the build invocation.", default_factory=dict)]
+
+
+class BuildMetadataBuildProvenance(BaseModel):
+    """Representation of build provenance in build metadata."""
+
+    model_config = ConfigDict(extra="allow")
+
+    builder: Annotated[dict, Field(description="The builder used to build the image.", default_factory=dict)]
+    build_type: Annotated[
+        str | None, Field(description="The type of build performed.", alias="buildType", default=None)
+    ]
+    materials: Annotated[
+        list[BuildMetadataBuildProvenanceMaterial],
+        Field(description="The materials used in the build process.", default_factory=list),
+    ]
+    invocation: Annotated[
+        BuildMetadataBuildProvenanceInvocation | None,
+        Field(description="The invocation of the build process.", default=None),
+    ]
+
+
 class BuildMetadata(BaseModel):
     """Representation of build metadata produced by Docker builds."""
 
@@ -93,6 +140,10 @@ class BuildMetadata(BaseModel):
             default=None,
         ),
     ]
+    build_provenance: Annotated[
+        BuildMetadataBuildProvenance | None,
+        Field(description="The build provenance of the built image.", alias="buildx.build.provenance", default=None),
+    ]
 
     @property
     def image_tags(self) -> list[str]:
@@ -110,24 +161,82 @@ class BuildMetadata(BaseModel):
             return primary_tag
         return None
 
+    @property
+    def created_at(self) -> datetime.datetime:
+        """Returns the creation timestamp of the built image if available."""
+        if self.container_image_descriptor and self.container_image_descriptor.annotations:
+            dt_str = self.container_image_descriptor.annotations.get("org.opencontainers.image.created")
+            if dt_str:
+                try:
+                    return datetime.datetime.fromisoformat(dt_str)
+                except ValueError:
+                    pass
+        if self.build_provenance:
+            # If the creation timestamp is not available in the annotations, we can use the build start time from
+            # labels.
+            if self.build_provenance.invocation and self.build_provenance.invocation.parameters:
+                start_time_str = self.build_provenance.invocation.parameters.get("args", {}).get(
+                    "label:org.opencontainers.image.created"
+                )
+                if start_time_str:
+                    try:
+                        return datetime.datetime.fromisoformat(start_time_str)
+                    except ValueError:
+                        pass
+        log.debug("Creation timestamp not found in metadata, defaulting to current time.")
+        return datetime.datetime.now()
+
+    @property
+    def platform(self) -> str | None:
+        """Returns the platform of the built image if available."""
+        # First, check the platform information in the container image descriptor, as it is more likely to be accurate
+        # for multi-platform builds.
+        if self.container_image_descriptor and self.container_image_descriptor.platform:
+            platform = self.container_image_descriptor.platform
+            if platform.os and platform.architecture:
+                return f"{platform.os}/{platform.architecture}"
+        # If platform information is not available in the container image descriptor, we can check the build provenance
+        # invocation environment as that should match the image platform when unspecified.
+        if self.build_provenance and self.build_provenance.invocation and self.build_provenance.invocation.environment:
+            platform = self.build_provenance.invocation.environment.get("platform")
+            if platform:
+                return platform
+
+        return None
+
+
+class BuildMetadataMap(RootModel[dict[str, BuildMetadata]]):
+    """Representation of a mapping from target UIDs to build metadata."""
+
 
 class MetadataFile(BaseModel):
-    target_uid: Annotated[str, Field(description="The target UID associated with the metadata.")]
     filepath: Annotated[Path | None, Field(description="The path to the metadata file.", default=None)]
-    metadata: Annotated[BuildMetadata | None, Field(description="The build metadata.", default=None)]
+    metadata_map: Annotated[BuildMetadataMap, Field(description="The build metadata.")]
 
-    @model_validator(mode="after")
-    def validate_metadata(self) -> Self:
-        """Validates that metadata is provided."""
-        if self.metadata is None:
-            if self.filepath is None or not self.filepath.is_file():
-                raise ValueError("Either filepath or metadata must be provided.")
-            with open(self.filepath, "r") as f:
-                content = json.load(f)
-                if not isinstance(content, dict):
-                    raise ValueError("The metadata file does not contain a valid JSON object.")
-                if self.target_uid in content.keys():
-                    content = content[self.target_uid]
-                self.metadata = BuildMetadata.model_validate(content, by_alias=True)
+    def __repr__(self):
+        """Returns a string representation of the metadata file."""
+        return f"MetadataFile(filepath={self.filepath.absolute()}, metadata_map={self.metadata_map})"
 
-        return self
+    @classmethod
+    def load(cls, filepath: Path) -> Self:
+        """Creates a MetadataFile instance from a JSON file."""
+        if not filepath.is_file():
+            raise FileNotFoundError(f"Metadata file '{str(filepath)}' does not exist.")
+
+        with open(filepath, "r") as f:
+            data = json.load(f)
+
+        metadata_map = BuildMetadataMap.model_validate(data)
+        return cls(filepath=filepath, metadata_map=metadata_map)
+
+    @classmethod
+    def loads(cls, json_str: str) -> Self:
+        """Creates a MetadataFile instance from a JSON string."""
+        data = json.loads(json_str)
+
+        metadata_map = BuildMetadataMap.model_validate(data)
+        return cls(metadata_map=metadata_map)
+
+    def get_target_metadata_by_uid(self, target_uid: str) -> BuildMetadata | None:
+        """Returns the build metadata associated with a given target UID."""
+        return self.metadata_map.root.get(target_uid)
