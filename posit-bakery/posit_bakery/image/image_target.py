@@ -15,7 +15,7 @@ from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
-from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError, BakeryError
+from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
 from posit_bakery.settings import SETTINGS
 
@@ -62,6 +62,54 @@ class Tag(BaseModel):
         if not self.registry and not self.repository and not self.suffix:
             raise ValueError("At least one of registry, repository, or suffix must be provided for a valid tag.")
         return self
+
+    @classmethod
+    def from_string(cls, ref: str) -> "Tag":
+        """Parse an image reference string into a Tag instance.
+
+        :param ref: The image reference to parse (e.g., "registry.io/repo/image:tag" or
+            "registry.io/repo/image@sha256:digest").
+        :return: A Tag instance with the parsed components.
+        """
+        suffix = None
+        digest = None
+
+        # Handle digest references
+        if "@" in ref:
+            name_part, digest = ref.rsplit("@", 1)
+        elif ":" in ref:
+            # Handle tag references, but be careful with ports
+            parts = ref.rsplit(":", 1)
+            # Check if the last part looks like a port (all digits) or starts with sha256
+            if parts[-1].isdigit() or parts[-1].startswith("sha256"):
+                name_part = ref
+            else:
+                name_part = parts[0]
+                suffix = parts[1]
+        else:
+            name_part = ref
+
+        # Split registry from repository
+        if "/" in name_part:
+            first_part = name_part.split("/")[0]
+            # Check if first part looks like a registry (contains . or :)
+            if "." in first_part or ":" in first_part:
+                registry_host = first_part
+                repository = "/".join(name_part.split("/")[1:])
+            else:
+                # Default registry
+                registry_host = "docker.io"
+                repository = name_part
+        else:
+            registry_host = "docker.io"
+            repository = name_part
+
+        return cls(
+            registry=BaseRegistry(host=registry_host),
+            repository=repository,
+            suffix=suffix,
+            digest=digest,
+        )
 
     @property
     def destination(self):

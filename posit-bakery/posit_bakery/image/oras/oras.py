@@ -6,11 +6,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, SkipValidation
-
-from posit_bakery.image.image_target import ImageTarget
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
+from posit_bakery.image.image_target import ImageTarget, Tag
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
@@ -26,56 +25,14 @@ def find_oras_bin(context: Path) -> str:
     return find_bin(context, "oras", "ORAS_PATH") or "oras"
 
 
-def parse_image_reference(ref: str) -> tuple[str, str, str]:
-    """Parse an image reference into its components.
-
-    :param ref: The image reference to parse (e.g., "registry.io/repo/image@sha256:digest").
-    :return: A tuple of (registry, repository, tag_or_digest).
-    """
-    # Handle digest references
-    if "@" in ref:
-        name_part, digest = ref.rsplit("@", 1)
-        tag_or_digest = f"@{digest}"
-    elif ":" in ref and not ref.rsplit(":", 1)[-1].startswith("sha256"):
-        # Handle tag references, but be careful with ports
-        parts = ref.rsplit(":", 1)
-        # Check if the last part looks like a port (all digits)
-        if parts[-1].isdigit():
-            name_part = ref
-            tag_or_digest = ""
-        else:
-            name_part = parts[0]
-            tag_or_digest = f":{parts[1]}"
-    else:
-        name_part = ref
-        tag_or_digest = ""
-
-    # Split registry from repository
-    if "/" in name_part:
-        first_part = name_part.split("/")[0]
-        # Check if first part looks like a registry (contains . or :)
-        if "." in first_part or ":" in first_part:
-            registry = first_part
-            repository = "/".join(name_part.split("/")[1:])
-        else:
-            # Default registry
-            registry = "docker.io"
-            repository = name_part
-    else:
-        registry = "docker.io"
-        repository = name_part
-
-    return registry, repository, tag_or_digest
-
-
 def get_repository_from_ref(ref: str) -> str:
     """Extract the full repository (registry/repo) from an image reference.
 
     :param ref: The image reference.
     :return: The registry and repository portion (without tag or digest).
     """
-    registry, repository, _ = parse_image_reference(ref)
-    return f"{registry}/{repository}"
+    tag = Tag.from_string(ref)
+    return tag.destination
 
 
 class OrasCommand(BaseModel, ABC):
