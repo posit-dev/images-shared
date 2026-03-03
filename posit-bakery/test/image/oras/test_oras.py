@@ -96,10 +96,10 @@ class TestOrasManifestIndexCreate:
         cmd = OrasManifestIndexCreate(
             oras_bin="oras",
             sources=[
-                "ghcr.io/posit/test/tmp@sha256:amd64digest",
-                "ghcr.io/posit/test/tmp@sha256:arm64digest",
+                "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
+                "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
             ],
-            destination="ghcr.io/posit/test/tmp:merged",
+            destination="ghcr.io/posit-dev/test/tmp:merged",
             annotations={"org.opencontainers.image.title": "Test Image"},
         )
 
@@ -108,9 +108,9 @@ class TestOrasManifestIndexCreate:
             "manifest",
             "index",
             "create",
-            "ghcr.io/posit/test/tmp:merged",
-            "ghcr.io/posit/test/tmp@sha256:amd64digest",
-            "ghcr.io/posit/test/tmp@sha256:arm64digest",
+            "ghcr.io/posit-dev/test/tmp:merged",
+            "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
+            "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
             "--annotation",
             "org.opencontainers.image.title=Test Image",
         ]
@@ -120,8 +120,8 @@ class TestOrasManifestIndexCreate:
         """Test command construction without annotations."""
         cmd = OrasManifestIndexCreate(
             oras_bin="oras",
-            sources=["ghcr.io/posit/test/tmp@sha256:digest"],
-            destination="ghcr.io/posit/test/tmp:tag",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:digest"],
+            destination="ghcr.io/posit-dev/test/tmp:tag",
         )
 
         expected = [
@@ -129,8 +129,8 @@ class TestOrasManifestIndexCreate:
             "manifest",
             "index",
             "create",
-            "ghcr.io/posit/test/tmp:tag",
-            "ghcr.io/posit/test/tmp@sha256:digest",
+            "ghcr.io/posit-dev/test/tmp:tag",
+            "ghcr.io/posit-dev/test/tmp@sha256:digest",
         ]
         assert cmd.command == expected
 
@@ -140,10 +140,10 @@ class TestOrasManifestIndexCreate:
             OrasManifestIndexCreate(
                 oras_bin="oras",
                 sources=[
-                    "ghcr.io/posit/image1/tmp@sha256:digest1",
-                    "ghcr.io/posit/image2/tmp@sha256:digest2",
+                    "ghcr.io/posit-dev/image1/tmp@sha256:digest1",
+                    "ghcr.io/posit-dev/image2/tmp@sha256:digest2",
                 ],
-                destination="ghcr.io/posit/test/tmp:tag",
+                destination="ghcr.io/posit-dev/test/tmp:tag",
             )
 
         assert "same repository" in str(exc_info.value).lower()
@@ -154,7 +154,7 @@ class TestOrasManifestIndexCreate:
             OrasManifestIndexCreate(
                 oras_bin="oras",
                 sources=[],
-                destination="ghcr.io/posit/test/tmp:tag",
+                destination="ghcr.io/posit-dev/test/tmp:tag",
             )
 
         assert "at least one source" in str(exc_info.value).lower()
@@ -163,8 +163,8 @@ class TestOrasManifestIndexCreate:
         """Test successful command execution."""
         cmd = OrasManifestIndexCreate(
             oras_bin="oras",
-            sources=["ghcr.io/posit/test/tmp@sha256:digest"],
-            destination="ghcr.io/posit/test/tmp:tag",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:digest"],
+            destination="ghcr.io/posit-dev/test/tmp:tag",
         )
 
         with patch("subprocess.run") as mock_run:
@@ -178,8 +178,8 @@ class TestOrasManifestIndexCreate:
         """Test command execution failure."""
         cmd = OrasManifestIndexCreate(
             oras_bin="oras",
-            sources=["ghcr.io/posit/test/tmp@sha256:digest"],
-            destination="ghcr.io/posit/test/tmp:tag",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:digest"],
+            destination="ghcr.io/posit-dev/test/tmp:tag",
         )
 
         with patch("subprocess.run") as mock_run:
@@ -196,8 +196,8 @@ class TestOrasManifestIndexCreate:
         """Test dry run mode doesn't execute command."""
         cmd = OrasManifestIndexCreate(
             oras_bin="oras",
-            sources=["ghcr.io/posit/test/tmp@sha256:digest"],
-            destination="ghcr.io/posit/test/tmp:tag",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:digest"],
+            destination="ghcr.io/posit-dev/test/tmp:tag",
         )
 
         with patch("subprocess.run") as mock_run:
@@ -214,18 +214,18 @@ class TestOrasCopy:
         """Test that the command is constructed correctly."""
         cmd = OrasCopy(
             oras_bin="oras",
-            source="ghcr.io/posit/test/tmp:source",
+            source="ghcr.io/posit-dev/test/tmp:source",
             destination="docker.io/posit/test:dest",
         )
 
-        expected = ["oras", "cp", "ghcr.io/posit/test/tmp:source", "docker.io/posit/test:dest"]
+        expected = ["oras", "cp", "ghcr.io/posit-dev/test/tmp:source", "docker.io/posit/test:dest"]
         assert cmd.command == expected
 
     def test_run_success(self):
         """Test successful copy execution."""
         cmd = OrasCopy(
             oras_bin="oras",
-            source="ghcr.io/posit/test:source",
+            source="ghcr.io/posit-dev/test:source",
             destination="docker.io/posit/test:dest",
         )
 
@@ -244,17 +244,17 @@ class TestOrasManifestDelete:
         """Test that the command is constructed correctly."""
         cmd = OrasManifestDelete(
             oras_bin="oras",
-            reference="ghcr.io/posit/test/tmp:tag",
+            reference="ghcr.io/posit-dev/test/tmp:tag",
         )
 
-        expected = ["oras", "manifest", "delete", "--force", "ghcr.io/posit/test/tmp:tag"]
+        expected = ["oras", "manifest", "delete", "--force", "ghcr.io/posit-dev/test/tmp:tag"]
         assert cmd.command == expected
 
     def test_run_success(self):
         """Test successful delete execution."""
         cmd = OrasManifestDelete(
             oras_bin="oras",
-            reference="ghcr.io/posit/test/tmp:tag",
+            reference="ghcr.io/posit-dev/test/tmp:tag",
         )
 
         with patch("subprocess.run") as mock_run:
