@@ -9,13 +9,84 @@ from posit_bakery.config.dependencies import PythonDependencyVersions, RDependen
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
-from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
+from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
     pytest.mark.unit,
 ]
+
+
+class TestTag:
+    @pytest.mark.parametrize(
+        "ref,expected_registry,expected_repo,expected_suffix,expected_digest",
+        [
+            # Standard registry with digest
+            (
+                "ghcr.io/posit-dev/test/tmp@sha256:abc123",
+                "ghcr.io",
+                "posit-dev/test/tmp",
+                None,
+                "sha256:abc123",
+            ),
+            # Standard registry with tag
+            (
+                "ghcr.io/posit-dev/test:latest",
+                "ghcr.io",
+                "posit-dev/test",
+                "latest",
+                None,
+            ),
+            # Registry with port
+            (
+                "localhost:5000/repo/image:tag",
+                "localhost:5000",
+                "repo/image",
+                "tag",
+                None,
+            ),
+            # Docker Hub implicit registry
+            (
+                "library/ubuntu:22.04",
+                "docker.io",
+                "library/ubuntu",
+                "22.04",
+                None,
+            ),
+            # Simple image name (Docker Hub)
+            (
+                "ubuntu:22.04",
+                "docker.io",
+                "ubuntu",
+                "22.04",
+                None,
+            ),
+            # Azure Container Registry
+            (
+                "myregistry.azurecr.io/repo/image@sha256:def456",
+                "myregistry.azurecr.io",
+                "repo/image",
+                None,
+                "sha256:def456",
+            ),
+            # No tag or digest
+            (
+                "ghcr.io/posit-dev/image",
+                "ghcr.io",
+                "posit-dev/image",
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_tag_from_string(self, ref, expected_registry, expected_repo, expected_suffix, expected_digest):
+        """Test parsing various image reference formats."""
+        tag = Tag.from_string(ref)
+        assert tag.registry.base_url == expected_registry
+        assert tag.repository == expected_repo
+        assert tag.suffix == expected_suffix
+        assert tag.digest == expected_digest
 
 
 class TestImageTarget:

@@ -12,7 +12,6 @@ from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTa
 from posit_bakery.image.oras import (
     find_oras_bin,
     get_repository_from_ref,
-    parse_image_reference,
     OrasCopy,
     OrasManifestDelete,
     OrasManifestIndexCreate,
@@ -25,67 +24,19 @@ pytestmark = [
 ]
 
 
-class TestParseImageReference:
-    """Tests for the parse_image_reference function."""
-
-    @pytest.mark.parametrize(
-        "ref,expected",
-        [
-            # Standard registry with digest
-            (
-                "ghcr.io/posit-dev/test/tmp@sha256:abc123",
-                ("ghcr.io", "posit-dev/test/tmp", "@sha256:abc123"),
-            ),
-            # Standard registry with tag
-            (
-                "ghcr.io/posit-dev/test:latest",
-                ("ghcr.io", "posit-dev/test", ":latest"),
-            ),
-            # Registry with port
-            (
-                "localhost:5000/repo/image:tag",
-                ("localhost:5000", "repo/image", ":tag"),
-            ),
-            # Docker Hub implicit registry
-            (
-                "library/ubuntu:22.04",
-                ("docker.io", "library/ubuntu", ":22.04"),
-            ),
-            # Simple image name (Docker Hub)
-            (
-                "ubuntu:22.04",
-                ("docker.io", "ubuntu", ":22.04"),
-            ),
-            # Azure Container Registry
-            (
-                "myregistry.azurecr.io/repo/image@sha256:def456",
-                ("myregistry.azurecr.io", "repo/image", "@sha256:def456"),
-            ),
-            # No tag or digest
-            (
-                "ghcr.io/posit-dev/image",
-                ("ghcr.io", "posit-dev/image", ""),
-            ),
-        ],
-    )
-    def test_parse_image_reference(self, ref, expected):
-        """Test parsing various image reference formats."""
-        result = parse_image_reference(ref)
-        assert result == expected
-
-    @pytest.mark.parametrize(
-        "ref,expected_repo",
-        [
-            ("ghcr.io/posit-dev/test/tmp@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
-            ("ghcr.io/posit-dev/test:latest", "ghcr.io/posit-dev/test"),
-            ("localhost:5000/repo/image:tag", "localhost:5000/repo/image"),
-            ("docker.io/library/ubuntu:22.04", "docker.io/library/ubuntu"),
-        ],
-    )
-    def test_get_repository_from_ref(self, ref, expected_repo):
-        """Test extracting repository from image reference."""
-        result = get_repository_from_ref(ref)
-        assert result == expected_repo
+@pytest.mark.parametrize(
+    "ref,expected_repo",
+    [
+        ("ghcr.io/posit-dev/test/tmp@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
+        ("ghcr.io/posit-dev/test:latest", "ghcr.io/posit-dev/test"),
+        ("localhost:5000/repo/image:tag", "localhost:5000/repo/image"),
+        ("docker.io/library/ubuntu:22.04", "docker.io/library/ubuntu"),
+    ],
+)
+def test_get_repository_from_ref(ref, expected_repo):
+    """Test extracting repository from image reference."""
+    result = get_repository_from_ref(ref)
+    assert result == expected_repo
 
 
 class TestOrasManifestIndexCreate:
