@@ -1561,7 +1561,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
                 ),
                 id="without-tinytex",
             ),
@@ -1571,7 +1571,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
                 ),
                 id="without-tinytex-update-path-no-effect",
             ),
@@ -1581,7 +1581,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                     /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex",
@@ -1592,7 +1592,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                     /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-update-path",
@@ -1618,7 +1618,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
                 ),
                 id="single-version-no-tinytex",
             ),
@@ -1627,9 +1627,9 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
                 ),
                 id="multiple-versions-no-tinytex",
             ),
@@ -1638,9 +1638,9 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
                 ),
                 id="string-versions-no-tinytex",
             ),
@@ -1649,7 +1649,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                         /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex",
@@ -1659,10 +1659,10 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                         /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
                         /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="multiple-versions-with-tinytex",
@@ -1672,7 +1672,7 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                         /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-update-path",
@@ -1682,10 +1682,10 @@ class TestQuartoMacros:
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                         /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
                     RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
+                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
                         /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="multiple-versions-with-tinytex-update-path",
@@ -1906,6 +1906,55 @@ class TestRMacros:
         )
         rendered = environment_with_macros.from_string(template).render(os_release=_os)
         assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "_os,expected",
+        [
+            pytest.param(
+                None,
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                id="no-os",
+            ),
+            pytest.param(
+                {"Name": "gentoo"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                id="unsupported-os",
+            ),
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "jammy"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE)\'',
+                id="ubuntu-jammy",
+            ),
+            pytest.param(
+                {"Name": "ubuntu", "Codename": "noble"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)\'',
+                id="ubuntu-noble",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "bookworm"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE)\'',
+                id="debian-bookworm",
+            ),
+            pytest.param(
+                {"Name": "debian", "Codename": "trixie"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE)\'',
+                id="debian-trixie",
+            ),
+            pytest.param(
+                {"Name": "rhel", "Version": "8"},
+                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE)\'',
+                id="rhel-8",
+            ),
+        ],
+    )
+    def test_get_p3m_cran_repo_from_parent_template(self, environment_with_macros, _os, expected):
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{- r.install_packages('4.4.3', packages=['dplyr', 'odbc'], _os=os_release) -}}"""
+        )
+        rendered = environment_with_macros.from_string(template).render(os_release=_os)
+        assert rendered.strip() == expected.strip()
 
     def test_r_expression(self, environment_with_macros):
         template = textwrap.dedent(

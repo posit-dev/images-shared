@@ -62,7 +62,7 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
             for target_platform in target.image_os.platforms
         ):
             continue
-        for tag in target.tags:
+        for tag in target.tags.as_strings():
             python_on_whales.docker.image.exists(tag)
             for label, value in target.labels.items():
                 image = python_on_whales.docker.image.inspect(tag)
@@ -82,7 +82,7 @@ def check_multiplatform_build(resource_path, bakery_command, suite_name, get_con
 
     config = get_config_obj(suite_name)
     for target in config.targets:
-        for tag in target.tags:
+        for tag in target.tags.as_strings():
             for row in datatable:
                 platform = row[0]
                 if all(re.search(platform, target_platform) is None for target_platform in target.image_os.platforms):
@@ -103,7 +103,7 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
 
     config = get_config_obj(suite_name)
     for target in config.targets:
-        for tag in target.tags:
+        for tag in target.tags.as_strings():
             for row in datatable:
                 platform = row[0]
                 proc = subprocess.run([docker_path, "image", "inspect", "--platform", platform, tag])
@@ -117,7 +117,7 @@ def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, g
 
     config = get_config_obj(suite_name)
     for target in config.targets:
-        for tag in target.tags:
+        for tag in target.tags.as_strings():
             assert not python_on_whales.docker.image.exists(tag)
 
 
