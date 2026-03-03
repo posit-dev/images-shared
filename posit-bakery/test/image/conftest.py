@@ -6,7 +6,7 @@ from pytest_mock import MockFixture
 
 from posit_bakery.image import ImageTarget
 from posit_bakery.image.image_metadata import ImageToolsInspectionMetadata
-from posit_bakery.services import RegistryContainer
+from test.helpers import RegistryContainer
 
 
 @pytest.fixture

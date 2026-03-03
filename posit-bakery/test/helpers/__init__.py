@@ -10,6 +10,8 @@ import python_on_whales
 from posit_bakery.config import BakeryConfig
 from posit_bakery.image import ImageTarget
 
+from test.helpers.registry_container import RegistryContainer
+
 IMAGE_INDENT = " " * 2
 MATRIX_INDENT = " " * 4
 VERSION_INDENT = " " * 6
@@ -24,7 +26,7 @@ class FileTestResultEnum(str, enum.Enum):
 
 
 # Duplicate of entry in conftest.py, but required for this file
-TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
+TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 SUCCESS_SUITES = ["basic", "barebones", "multiplatform"]
 FAIL_SUITES = ["fail-fast"]
@@ -98,3 +100,19 @@ def assert_directories_match(dir1, dir2):
             mismatching.append(filename)
 
     assert not mismatching, f"Files with different content: {mismatching}"
+
+
+__all__ = [
+    "FileTestResultEnum",
+    "IMAGE_INDENT",
+    "MATRIX_INDENT",
+    "VERSION_INDENT",
+    "TEST_DIRECTORY",
+    "SUCCESS_SUITES",
+    "FAIL_SUITES",
+    "yaml_file_testcases",
+    "try_format_values",
+    "remove_images",
+    "assert_directories_match",
+    "RegistryContainer",
+]

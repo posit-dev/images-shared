@@ -3,7 +3,6 @@
 from posit_bakery.image.oras.oras import (
     find_oras_bin,
     get_repository_from_ref,
-    parse_image_reference,
     OrasCommand,
     OrasCopy,
     OrasManifestDelete,
@@ -15,7 +14,6 @@ from posit_bakery.image.oras.oras import (
 __all__ = [
     "find_oras_bin",
     "get_repository_from_ref",
-    "parse_image_reference",
     "OrasCommand",
     "OrasCopy",
     "OrasManifestDelete",

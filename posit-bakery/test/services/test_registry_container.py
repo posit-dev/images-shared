@@ -1,7 +1,7 @@
 import pytest
 import python_on_whales
 
-from posit_bakery.services import RegistryContainer
+from test.helpers import RegistryContainer
 
 pytestmark = [
     pytest.mark.unit,

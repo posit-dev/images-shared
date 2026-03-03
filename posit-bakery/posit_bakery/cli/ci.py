@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
-from python_on_whales import DockerException
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
@@ -134,6 +133,13 @@ def merge(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Temporary registry to use for multiplatform split/merge builds.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = None,
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
@@ -158,6 +164,7 @@ def merge(
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
+        temp_registry=temp_registry,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
@@ -190,12 +197,16 @@ def merge(
     log.info(f"Found {len(loaded_targets)} targets")
     log.debug(", ".join(loaded_targets))
 
-    for uid in loaded_targets:
-        target = config.get_image_target_by_uid(uid)
-        log.info(f"Merging sources for image UID '{uid}'")
-        try:
-            manifest = target.merge(dry_run=dry_run)
+    results = config.merge_targets(dry_run=dry_run)
+
+    error_flag = False
+    for uid, manifest, error in results:
+        if error:
+            log.error(f"Error merging sources for UID '{uid}': {error}")
+            error_flag = True
+        elif manifest is not None:
             stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
-        except DockerException as e:
-            log.error(f"Error merging sources for UID '{uid}'")
-            log.error(str(e))
+
+    if error_flag:
+        log.error("One or more errors occurred during merge.")
+        raise typer.Exit(code=1)
