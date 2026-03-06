@@ -874,6 +874,7 @@ class BakeryConfig:
         self,
         load: bool = True,
         push: bool = False,
+        pull: bool = False,
         cache: bool = True,
         platforms: list[str] | None = None,
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
@@ -884,6 +885,7 @@ class BakeryConfig:
 
         :param load: If True, load the built images into the local Docker daemon.
         :param push: If True, push the built images to the configured registries.
+        :param pull: If True, always pull the latest version of base images.
         :param cache: If True, use the build cache when building images.
         :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
             platform.
@@ -903,6 +905,7 @@ class BakeryConfig:
             bake_plan.build(
                 load=load,
                 push=push,
+                pull=pull,
                 cache=cache,
                 clean_bakefile=self.settings.clean_temporary,
                 platforms=platforms,
@@ -915,6 +918,7 @@ class BakeryConfig:
                     target.build(
                         load=load,
                         push=push,
+                        pull=pull,
                         cache=cache,
                         platforms=platforms,
                         metadata_file=True if metadata_file else False,

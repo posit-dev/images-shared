@@ -231,6 +231,7 @@ class TestBakePlan:
             "files": [str(plan.bake_file.name)],
             "load": True,
             "push": False,
+            "pull": False,
             "cache": True,
             "set": {},
         }

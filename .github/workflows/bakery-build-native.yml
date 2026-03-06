@@ -180,7 +180,7 @@ jobs:
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/} \
           bakery build \
-            --strategy build \
+            --strategy build --pull \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --image-platform ${{ matrix.img.platform }} \
