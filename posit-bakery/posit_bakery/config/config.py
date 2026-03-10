@@ -35,6 +35,7 @@ from posit_bakery.error import (
 from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
+from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.registry_management import ghcr
 
@@ -850,20 +851,27 @@ class BakeryConfig:
         """
         merged_metadata: dict[str, dict[str, Any]] = {}
         for target in self.targets:
-            if target.metadata_file is not None:
-                merged_metadata[target.uid] = target.metadata_file.metadata.model_dump(exclude_none=True, by_alias=True)
+            for build_metadata in target.build_metadata:
+                merged_metadata[target.uid] = build_metadata.model_dump(exclude_none=True, by_alias=True)
+
         return merged_metadata
 
-    def load_build_metadata_from_file(self, metadata_file: Path):
+    def load_build_metadata_from_file(self, metadata_file: Path) -> list[str]:
         """Loads build metadata from a given metadata file.
 
         :param metadata_file: Path to the metadata file to load.
-        :return: A dictionary containing the loaded metadata.
+        :return: A list of targets loaded.
         """
-        if not metadata_file.is_file():
-            raise FileNotFoundError(f"Metadata file '{str(metadata_file)}' does not exist.")
+        metadata_file = MetadataFile.load(metadata_file)
+
+        targets_loaded = []
         for target in self.targets:
-            target.load_build_metadata_from_file(metadata_file)
+            result = target.load_build_metadata_from_file(metadata_file)
+            if result is not None:
+                targets_loaded.append(target.uid)
+                log.info(f"Loaded build metadata for target '{target}' from file '{metadata_file.filepath}'.")
+
+        return targets_loaded
 
     def bake_plan_targets(self) -> str:
         """Generates a bake plan JSON string for the image targets defined in the config."""

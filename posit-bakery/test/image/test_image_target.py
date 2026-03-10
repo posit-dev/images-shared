@@ -1,3 +1,4 @@
+import datetime
 import re
 from unittest.mock import patch, MagicMock
 
@@ -8,7 +9,8 @@ from python_on_whales.components.buildx.imagetools.models import Manifest
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
-from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.error import BakeryError
+from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
@@ -316,7 +318,7 @@ class TestImageTarget:
         ]
 
         assert len(expected_tags) == len(target.tags)
-        assert all(tag in target.tags for tag in expected_tags)
+        assert all(tag in target.tags.as_strings() for tag in expected_tags)
 
     @pytest.mark.parametrize(
         "is_matrix,dependencies,values,expected_args",
@@ -425,18 +427,64 @@ class TestImageTarget:
         ],
     )
     def test_ref(self, request, target_name, expected_ref):
-        """Test the tag_suffixes property of an ImageTarget."""
+        """Test ref returns first tag when no build metadata exists."""
         target = request.getfixturevalue(target_name)
-        assert target.ref.endswith(expected_ref)
+        assert target.ref().endswith(expected_ref)
 
     def test_ref_from_metadata(self, basic_standard_image_target):
-        """Test the tag_suffixes property of an ImageTarget."""
-        mock_metadata_file = MagicMock(spec=MetadataFile)
-        mock_metadata = MagicMock()
-        mock_metadata_file.metadata = mock_metadata
-        mock_metadata_file.metadata.image_ref = "test-image@sha256:1234567890abcdef"
-        basic_standard_image_target.metadata_file = mock_metadata_file
-        assert basic_standard_image_target.ref == "test-image@sha256:1234567890abcdef"
+        """Test ref returns image_ref from metadata when platform matches."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image@sha256:1234567890abcdef"
+        basic_standard_image_target.build_metadata = [mock_metadata]
+        assert basic_standard_image_target.ref() == "test-image@sha256:1234567890abcdef"
+
+    def test_ref_from_metadata_platform_mismatch(self, basic_standard_image_target):
+        """Test ref falls back to first tag when metadata exists but platform doesn't match."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = "linux/arm64"  # Different from default
+        mock_metadata.image_ref = "test-image@sha256:arm64digest"
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+        # Should fall back to first tag since platform doesn't match
+        assert basic_standard_image_target.ref().endswith("docker.io/posit/test-image:1.0.0")
+
+    def test_ref_from_metadata_explicit_platform(self, basic_standard_image_target):
+        """Test ref returns correct image_ref when explicit platform is specified."""
+        mock_metadata_amd64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_amd64.platform = "linux/amd64"
+        mock_metadata_amd64.image_ref = "test-image@sha256:amd64digest"
+        mock_metadata_amd64.created_at = datetime.datetime.now()
+
+        mock_metadata_arm64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_arm64.platform = "linux/arm64"
+        mock_metadata_arm64.image_ref = "test-image@sha256:arm64digest"
+        mock_metadata_arm64.created_at = datetime.datetime.now()
+
+        basic_standard_image_target.build_metadata = [mock_metadata_amd64, mock_metadata_arm64]
+
+        assert basic_standard_image_target.ref(platform="linux/amd64") == "test-image@sha256:amd64digest"
+        assert basic_standard_image_target.ref(platform="linux/arm64") == "test-image@sha256:arm64digest"
+
+    def test_ref_from_metadata_uses_most_recent(self, basic_standard_image_target):
+        """Test ref returns image_ref from most recent metadata when multiple exist for same platform."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        mock_metadata_old = MagicMock(spec=BuildMetadata)
+        mock_metadata_old.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata_old.image_ref = "test-image@sha256:olddigest"
+        mock_metadata_old.created_at = older_time
+
+        mock_metadata_new = MagicMock(spec=BuildMetadata)
+        mock_metadata_new.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata_new.image_ref = "test-image@sha256:newdigest"
+        mock_metadata_new.created_at = newer_time
+
+        # Add in reverse order to verify sorting
+        basic_standard_image_target.build_metadata = [mock_metadata_old, mock_metadata_new]
+
+        assert basic_standard_image_target.ref() == "test-image@sha256:newdigest"
 
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
@@ -473,7 +521,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": basic_standard_image_target.tags,
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -504,7 +552,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
-            "tags": basic_standard_image_target.tags,
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -531,7 +579,7 @@ class TestImageTarget:
             "context_path": basic_standard_image_target.context.base_path,
             "file": basic_standard_image_target.containerfile,
             "build_args": {},
-            "tags": basic_standard_image_target.tags,
+            "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
             "load": True,
             "push": False,
@@ -584,7 +632,7 @@ class TestImageTarget:
         image_targets = get_targets(suite)
         for target in image_targets:
             target.build()
-            for tag in target.tags:
+            for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)
                 for key, value in target.labels.items():
                     meta = python_on_whales.docker.image.inspect(tag)
@@ -602,7 +650,7 @@ class TestImageTarget:
         image_targets = get_targets(suite)
         for target in image_targets:
             target.build(metadata_file=True)
-            for tag in target.tags:
+            for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)
                 for key, value in target.labels.items():
                     meta = python_on_whales.docker.image.inspect(tag)
@@ -611,19 +659,105 @@ class TestImageTarget:
 
             metadata_file = SETTINGS.temporary_storage / f"{target.uid}.json"
             assert metadata_file.is_file()
-            metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_file)
-            assert metadata_file.metadata.image_tags.sort() == target.tags.sort()
+            with open(metadata_file) as f:
+                data = f.read()
+            metadata = BuildMetadata.model_validate_json(data)
+            metadata.image_tags.sort()
+            assert metadata.image_tags == target.tags.as_strings()
 
             remove_images(target)
 
+    def test_get_merge_sources_multiple_platforms(self, basic_standard_image_target):
+        """Test _get_merge_sources returns most recent source for each platform."""
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1@sha256:amd64digest"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2@sha256:arm64digest"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert len(sources) == 2
+        assert "image1@sha256:amd64digest" in sources
+        assert "image2@sha256:arm64digest" in sources
+
+    def test_get_merge_sources_duplicate_platforms_uses_most_recent(self, basic_standard_image_target):
+        """Test _get_merge_sources returns only most recent source when platform appears multiple times."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        # Older amd64 build
+        basic_standard_image_target.build_metadata[0].created_at = older_time
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[0].image_ref = "old-amd64@sha256:old"
+        # Newer amd64 build
+        basic_standard_image_target.build_metadata[1].created_at = newer_time
+        basic_standard_image_target.build_metadata[1].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].image_ref = "new-amd64@sha256:new"
+        # arm64 build
+        basic_standard_image_target.build_metadata[2].created_at = older_time
+        basic_standard_image_target.build_metadata[2].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[2].image_ref = "arm64@sha256:arm"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert len(sources) == 2
+        assert "new-amd64@sha256:new" in sources
+        assert "old-amd64@sha256:old" not in sources
+        assert "arm64@sha256:arm" in sources
+
+    def test_get_merge_sources_empty_metadata_raises_error(self, basic_standard_image_target):
+        """Test _get_merge_sources raises BakeryError when no metadata exists."""
+        basic_standard_image_target.build_metadata = []
+
+        with pytest.raises(BakeryError) as exc_info:
+            basic_standard_image_target._get_merge_sources()
+
+        assert "No valid sources found in metadata" in str(exc_info.value)
+
+    def test_get_merge_sources_single_platform(self, basic_standard_image_target):
+        """Test _get_merge_sources works with single platform."""
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image@sha256:digest"
+
+        sources = basic_standard_image_target._get_merge_sources()
+
+        assert sources == ["image@sha256:digest"]
+
     def test_merge_dry_run(self, patch_imagetools_create, basic_standard_image_target):
         """Test the merge method of an ImageTarget in dry-run mode."""
-        sources = ["image1:tag", "image2:tag"]
-        manifest = basic_standard_image_target.merge(sources=sources, dry_run=True)
+        # Set up fake build metadata for two platforms
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
+        expected_sources = ["image1:tag", "image2:tag"]
+
+        manifest = basic_standard_image_target.merge(dry_run=True)
 
         patch_imagetools_create.assert_called_once_with(
-            sources=sources,
-            tags=basic_standard_image_target.tags,
+            sources=expected_sources,
+            tags=basic_standard_image_target.tags.as_strings(),
             dry_run=True,
         )
         assert isinstance(manifest, Manifest)
@@ -640,15 +774,27 @@ class TestImageTarget:
         patch_docker_push,
     ):
         """Test the merge method of an ImageTarget."""
-        sources = ["image1:tag", "image2:tag"]
-        manifest = basic_standard_image_target.merge(sources=sources)
+        # Set up fake build metadata for two platforms
+        basic_standard_image_target.build_metadata = [
+            MagicMock(spec=BuildMetadata),
+            MagicMock(spec=BuildMetadata),
+        ]
+        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
+        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
+        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
+        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
+        expected_sources = ["image1:tag", "image2:tag"]
+
+        manifest = basic_standard_image_target.merge()
 
         patch_registry_container.assert_called_once()
         registry_url = patch_registry_container.return_value.__enter__.return_value.url
 
         expected_temp_tag = f"{registry_url}/{basic_standard_image_target.uid}:latest"
         patch_imagetools_create.assert_called_once_with(
-            sources=sources,
+            sources=expected_sources,
             tags=[expected_temp_tag],
             dry_run=False,
         )
@@ -667,17 +813,17 @@ class TestImageTarget:
             quiet=True,
         )
 
-        for tag in basic_standard_image_target.tags:
+        for tag in basic_standard_image_target.tags.as_strings():
             patch_docker_tag.assert_any_call(
                 f"{expected_temp_tag}@{inspection_manifest.digest}",
                 tag,
             )
 
         patch_docker_push.assert_called_once_with(
-            basic_standard_image_target.tags,
+            basic_standard_image_target.tags.as_strings(),
             quiet=True,
         )
 
-        patch_imagetools_inspect.assert_called_once_with(basic_standard_image_target.tags[0])
+        patch_imagetools_inspect.assert_called_once_with(str(basic_standard_image_target.tags[0]))
 
         assert isinstance(manifest, Manifest)

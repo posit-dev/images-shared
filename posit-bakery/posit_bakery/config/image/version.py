@@ -2,6 +2,7 @@ import logging
 import re
 from copy import deepcopy
 from pathlib import Path
+from shutil import copy2
 from typing import Annotated, Union, Self, Any
 
 import jinja2
@@ -12,6 +13,7 @@ from posit_bakery.config.dependencies import DependencyVersionsField
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
+from posit_bakery.const import JINJA2_TEMPLATE_EXTENSIONS
 from .build_os import DEFAULT_PLATFORMS, TargetPlatform
 from .variant import ImageVariant
 from .version_os import ImageVersionOS
@@ -369,7 +371,10 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     jinja2.PackageLoader("posit_bakery.config.templating", "macros"),
                 ]
             ),
-            autoescape=True,
+            autoescape=jinja2.select_autoescape(
+                default_for_string=False,
+                default=False,
+            ),
             undefined=jinja2.StrictUndefined,
             keep_trailing_newline=True,
         )
@@ -387,6 +392,18 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     if not re.match(regex, tpl_rel_path):
                         log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
                         continue
+
+                # Check if this is a Jinja2 template file
+                is_jinja2_template = any(tpl_rel_path.endswith(ext) for ext in JINJA2_TEMPLATE_EXTENSIONS)
+
+                if not is_jinja2_template:
+                    # Copy non-template files verbatim
+                    output_file = self.path / tpl_rel_path
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    copy2(tpl_full_path, output_file)
+                    log.debug(f"[bright_black]Copying [bold]{output_file}")
+                    continue
+
                 try:
                     tpl = env.get_template(tpl_rel_path)
                 except jinja2.TemplateError as e:

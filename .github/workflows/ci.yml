@@ -62,6 +62,8 @@ jobs:
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
+      - uses: oras-project/setup-oras@v1
+
       - name: Install poetry
         working-directory: ./posit-bakery
         run: |

@@ -13,7 +13,7 @@ import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.image.image_metadata import BuildMetadata
 from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
     yaml_file_testcases,
@@ -877,6 +877,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\
@@ -920,6 +922,8 @@ class TestBakeryConfig:
             ### ARG declarations ###
             ARG DEBIAN_FRONTEND=noninteractive
             ARG IMAGE_VERSION="1.0.1"
+            ARG BUILDARCH
+            ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
             RUN apt-get update -yqq --fix-missing && \\
@@ -956,7 +960,7 @@ class TestBakeryConfig:
 
             # Install Quarto
             RUN mkdir -p /opt/quarto/1.8.24 && \\
-                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-amd64.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
+                curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
                 /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
         """)
         assert (
@@ -1607,7 +1611,7 @@ class TestBakeryConfig:
         config = get_config_obj("basic")
         for target in config.targets:
             metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / f"{target.uid}.json"
-            target.metadata_file = MetadataFile(target_uid=target.uid, filepath=metadata_filepath)
+            target.build_metadata.append(BuildMetadata.model_validate_json(metadata_filepath.read_text()))
 
         merged_metadata = config._merge_sequential_build_metadata_files()
         with open(CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json", "r") as f:
@@ -1622,11 +1626,10 @@ class TestBakeryConfig:
         config.load_build_metadata_from_file(metadata_filepath)
 
         for target in config.targets:
-            assert isinstance(target.metadata_file, MetadataFile)
-            assert target.metadata_file.filepath == metadata_filepath
-            assert target.metadata_file.metadata is not None
-            assert target.metadata_file.metadata.image_name is not None
-            assert target.metadata_file.metadata.container_image_digest is not None
+            assert len(target.build_metadata) == 1
+            assert target.build_metadata[0] is not None
+            assert target.build_metadata[0].image_name is not None
+            assert target.build_metadata[0].container_image_digest is not None
 
     @pytest.mark.parametrize(
         "untagged,older_than_days,expected_deletions",

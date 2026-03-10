@@ -39,8 +39,8 @@ def copy_ci_testdata_to_context(bakery_command, ci_testdata, testdata_path):
 def patch_image_target_merge_method(mocker):
     calls = []
 
-    def patched_merge_method(self, sources: list[str], dry_run: bool = False) -> Manifest:
-        calls.append((sources, dry_run))
+    def patched_merge_method(self, dry_run: bool = False) -> Manifest:
+        calls.append((self._get_merge_sources(), dry_run))
         return Manifest(
             schemaVersion=2,
             mediaType="application/vnd.docker.distribution.manifest.v2+json",
