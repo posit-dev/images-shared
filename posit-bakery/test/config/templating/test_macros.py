@@ -1111,7 +1111,7 @@ class TestPythonMacros:
         )
         expected = textwrap.dedent(
             """\
-            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+            FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
 
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
@@ -1134,7 +1134,7 @@ class TestPythonMacros:
         )
         expected = textwrap.dedent(
             """\
-            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+            FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
 
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
@@ -1157,7 +1157,7 @@ class TestPythonMacros:
         )
         expected = textwrap.dedent(
             """\
-            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+            FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
 
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python

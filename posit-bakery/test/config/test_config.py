@@ -907,7 +907,7 @@ class TestBakeryConfig:
         assert (context / "test-image" / "1.0.1" / "Containerfile.ubuntu2204.std").is_file()
         expected_std_containerfile = textwrap.dedent("""\
             # Build Python using uv in a separate stage
-            FROM ghcr.io/astral-sh/uv:bookworm-slim AS python-builder
+            FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
 
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
