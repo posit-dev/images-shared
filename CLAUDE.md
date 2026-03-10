@@ -8,6 +8,24 @@ Posit Bakery is a command-line tool for building, testing, and managing containe
 
 The tool uses a YAML configuration file (`bakery.yaml`) and Jinja2 templates to define image builds, with support for parallel building via Docker Buildx Bake.
 
+## Sibling Repositories
+
+This project is part of a multi-repo ecosystem for Posit container images. Sibling repos
+are configured as additional directories (see `.claude/settings.json`). **When making
+changes that affect bakery config, templates, macros, or CLI behavior, read the CLAUDE.md
+and `bakery.yaml` in each affected sibling repo before making changes there.**
+
+- `../images/` - Meta repository with documentation, design principles, and links across all image repos. No `bakery.yaml`; no buildable images.
+- `../images-connect/` - Posit Connect images: `connect` (Standard/Minimal variants), `connect-content` (matrix of R x Python), `connect-content-init`. Uses dependency constraints for R, Python, and Quarto.
+- `../images-package-manager/` - Posit Package Manager image: `package-manager` (Standard/Minimal variants). Supports multi-platform builds (amd64/arm64).
+- `../images-workbench/` - Posit Workbench images: `workbench` (Standard/Minimal variants), `workbench-session` (R x Python matrix), `workbench-session-init`. Uses Go for session init builds.
+- `../images-examples/` - Examples for using and extending Posit container images. Contains both Bakery-based examples (`bakery/`) and Containerfile-based extension examples (`extending/`). Has its own CLAUDE.md.
+
+All product image repos (`images-connect`, `images-package-manager`, `images-workbench`)
+share the same structure: a `bakery.yaml` at the root, image directories with `template/`
+subdirectories containing Jinja2 templates, and rendered version directories. They all use
+`posit-bakery` (from this repo) as their build tool and share the same CI workflows.
+
 ## Development Environment Setup
 
 Run these commands from the `posit-bakery/` directory:
