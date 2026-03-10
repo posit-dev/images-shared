@@ -206,6 +206,7 @@ class BakePlan(BaseModel):
         self,
         load: bool = True,
         push: bool = False,
+        pull: bool = False,
         cache: bool = True,
         cache_from: str | None = None,
         cache_to: str | None = None,
@@ -229,7 +230,9 @@ class BakePlan(BaseModel):
         if set_opts:
             _set.update(set_opts)
 
-        python_on_whales.docker.buildx.bake(files=[self.bake_file.name], load=load, push=push, cache=cache, set=_set)
+        python_on_whales.docker.buildx.bake(
+            files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
+        )
         if clean_bakefile:
             self.remove()
 

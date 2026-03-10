@@ -96,6 +96,13 @@ def build(
             rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
+    pull: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Always pull the latest version of base images.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = False,
     cache: Annotated[
         Optional[bool],
         typer.Option(
@@ -213,6 +220,7 @@ def build(
         config.build_targets(
             load=load,
             push=push,
+            pull=pull,
             cache=cache,
             platforms=image_platform,
             strategy=strategy,
