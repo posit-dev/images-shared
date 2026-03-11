@@ -1,0 +1,8 @@
+{
+  "scratch-1-0-0-scratch": [
+    "ghcr.io/posit-dev/scratch:1.0.0",
+    "ghcr.io/posit-dev/scratch:1.0.0-scratch",
+    "ghcr.io/posit-dev/scratch:latest",
+    "ghcr.io/posit-dev/scratch:scratch"
+  ]
+}
