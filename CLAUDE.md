@@ -20,11 +20,33 @@ and `bakery.yaml` in each affected sibling repo before making changes there.**
 - `../images-package-manager/` - Posit Package Manager image: `package-manager` (Standard/Minimal variants). Supports multi-platform builds (amd64/arm64).
 - `../images-workbench/` - Posit Workbench images: `workbench` (Standard/Minimal variants), `workbench-session` (R x Python matrix), `workbench-session-init`. Uses Go for session init builds.
 - `../images-examples/` - Examples for using and extending Posit container images. Contains both Bakery-based examples (`bakery/`) and Containerfile-based extension examples (`extending/`). Has its own CLAUDE.md.
+- `../helm/` - Helm charts for Posit products: Connect, Workbench, Package Manager, and Chronicle.
 
 All product image repos (`images-connect`, `images-package-manager`, `images-workbench`)
 share the same structure: a `bakery.yaml` at the root, image directories with `template/`
 subdirectories containing Jinja2 templates, and rendered version directories. They all use
 `posit-bakery` (from this repo) as their build tool and share the same CI workflows.
+
+### Worktrees for Cross-Repo Changes
+
+When making changes across repositories, use worktrees to isolate work from `main`. Multiple
+sessions may be running concurrently, so never work directly on `main` in any repo.
+
+- **Primary repo:** Use `EnterWorktree` with a descriptive name.
+- **Sibling repos:** Create worktrees via `git worktree add` before making changes. Store
+  them in `.claude/worktrees/<name>` within each repo (matching the `EnterWorktree` convention).
+
+```bash
+# Create a worktree in a sibling repo
+git -C ../images-connect worktree add .claude/worktrees/<name> -b <branch-name>
+```
+
+Read and write files via the worktree path (e.g., `../images-connect/.claude/worktrees/<name>/`)
+instead of the repo root. Clean up when finished:
+
+```bash
+git -C ../images-connect worktree remove .claude/worktrees/<name>
+```
 
 ## Development Environment Setup
 
