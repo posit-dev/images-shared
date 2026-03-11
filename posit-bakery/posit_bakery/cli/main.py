@@ -2,7 +2,7 @@ from enum import Enum
 
 import typer
 
-from posit_bakery.cli import ci, create, run, build, update, remove, clean, version
+from posit_bakery.cli import ci, create, run, build, update, remove, clean, version, get
 from posit_bakery.settings import SETTINGS
 
 
@@ -69,6 +69,14 @@ app.add_typer(
 )
 app.add_typer(remove.app, name="rm", hidden=True)
 app.add_typer(remove.app, name="r", hidden=True)
+
+# Import the "get" subcommand
+app.add_typer(
+    get.app,
+    name="get",
+    help="Get information about the bakery configuration",
+    rich_help_panel=RichHelpPanelEnum.PROJECT_MANAGEMENT,
+)
 
 # Import the "ci" subcommand
 app.add_typer(
