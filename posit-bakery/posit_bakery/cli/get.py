@@ -54,10 +54,10 @@ def _format_uid_output(targets: list) -> dict:
 @app.command()
 @with_verbosity_flags
 def tags(
-    image_name: Annotated[str | None, typer.Argument(help="The image name to isolate tags to.")] = None,
-    image_version: Annotated[str | None, typer.Argument(help="The image version to isolate tags to.")] = None,
-    image_variant: Annotated[str | None, typer.Argument(help="The image variant to isolate tags to.")] = None,
-    image_os: Annotated[str | None, typer.Argument(help="The image OS to isolate tags to.")] = None,
+    image_name: Annotated[str | None, typer.Option(help="The image name to isolate tags to.")] = None,
+    image_version: Annotated[str | None, typer.Option(help="The image version to isolate tags to.")] = None,
+    image_variant: Annotated[str | None, typer.Option(help="The image variant to isolate tags to.")] = None,
+    image_os: Annotated[str | None, typer.Option(help="The image OS to isolate tags to.")] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(
