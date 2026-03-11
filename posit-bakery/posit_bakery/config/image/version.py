@@ -439,7 +439,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                             log.debug(f"Matched OS extension [bold]{os_ext}[/] to version OS [bold]{_os.name}[/]")
                             containerfile_os = _os
                             break
-                    if os_ext != "Containerfile" and containerfile_os is None:
+                    if self.os and os_ext != "Containerfile" and containerfile_os is None:
                         log.info(
                             f"Skipping rendering '{tpl_rel_path}' for image version '{self.parent.name}/{self.name}' "
                             "since no matching os extension found in defined OS extensions "
