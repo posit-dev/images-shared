@@ -48,6 +48,11 @@ instead of the repo root. Clean up when finished:
 git -C ../images-connect worktree remove .claude/worktrees/<name>
 ```
 
+> **Note:** The `additionalDirectories` in `.claude/settings.json` point to the sibling repo
+> roots, not to worktree paths. File reads and writes via those directories will access the
+> repo root (typically on `main`). Always use the full worktree path when reading or writing
+> files in a sibling worktree.
+
 ## Development Environment Setup
 
 Run these commands from the `posit-bakery/` directory:
