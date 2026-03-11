@@ -10,9 +10,9 @@ import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
 from python_on_whales.components.buildx.imagetools.models import Manifest
 
-from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
+from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
@@ -359,9 +359,17 @@ class ImageTarget(BaseModel):
         build_args = {}
         if self.image_version.isMatrixVersion:
             for dependency in self.image_version.dependencies:
+                log.debug(
+                    f"[italic bright_black]\[{self.uid}][/italic bright_black] "
+                    f"Setting build arg {dependency.dependency.upper()}_VERSION='{dependency.versions[0]}'"
+                )
                 build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
-            for value in self.image_version.values:
-                build_args[value.name.upper()] = value.value
+            for key, value in self.image_version.values.items():
+                log.debug(
+                    f"[italic bright_black]\[{self.uid}][/italic bright_black] "
+                    f"Setting build arg {key.upper()}='{value}'"
+                )
+                build_args[key.upper()] = value
         return build_args
 
     def ref(self, platform: str = f"linux/{SETTINGS.architecture}") -> str:
