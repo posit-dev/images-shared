@@ -1,0 +1,30 @@
+{
+  "test-image-1-0-0-minimal-ubuntu-22-04": [
+    "docker.io/posit/test-image:1.0.0-min",
+    "docker.io/posit/test-image:1.0.0-ubuntu-22.04-min",
+    "docker.io/posit/test-image:min",
+    "docker.io/posit/test-image:ubuntu-22.04-min",
+    "ghcr.io/posit-dev/test-image:1.0.0-min",
+    "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04-min",
+    "ghcr.io/posit-dev/test-image:min",
+    "ghcr.io/posit-dev/test-image:ubuntu-22.04-min"
+  ],
+  "test-image-1-0-0-standard-ubuntu-22-04": [
+    "docker.io/posit/test-image:1.0.0",
+    "docker.io/posit/test-image:1.0.0-std",
+    "docker.io/posit/test-image:1.0.0-ubuntu-22.04",
+    "docker.io/posit/test-image:1.0.0-ubuntu-22.04-std",
+    "docker.io/posit/test-image:latest",
+    "docker.io/posit/test-image:std",
+    "docker.io/posit/test-image:ubuntu-22.04",
+    "docker.io/posit/test-image:ubuntu-22.04-std",
+    "ghcr.io/posit-dev/test-image:1.0.0",
+    "ghcr.io/posit-dev/test-image:1.0.0-std",
+    "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04",
+    "ghcr.io/posit-dev/test-image:1.0.0-ubuntu-22.04-std",
+    "ghcr.io/posit-dev/test-image:latest",
+    "ghcr.io/posit-dev/test-image:std",
+    "ghcr.io/posit-dev/test-image:ubuntu-22.04",
+    "ghcr.io/posit-dev/test-image:ubuntu-22.04-std"
+  ]
+}

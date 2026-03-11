@@ -1,0 +1,28 @@
+{
+  "test-multi-1-0-0-minimal-ubuntu-22-04": [
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-min",
+    "ghcr.io/posit-dev/test-multi:ubuntu-22.04-min"
+  ],
+  "test-multi-1-0-0-minimal-ubuntu-24-04": [
+    "ghcr.io/posit-dev/test-multi:1.0.0-min",
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-24.04-min",
+    "ghcr.io/posit-dev/test-multi:min",
+    "ghcr.io/posit-dev/test-multi:ubuntu-24.04-min"
+  ],
+  "test-multi-1-0-0-standard-ubuntu-22-04": [
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04",
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-22.04-std",
+    "ghcr.io/posit-dev/test-multi:ubuntu-22.04",
+    "ghcr.io/posit-dev/test-multi:ubuntu-22.04-std"
+  ],
+  "test-multi-1-0-0-standard-ubuntu-24-04": [
+    "ghcr.io/posit-dev/test-multi:1.0.0",
+    "ghcr.io/posit-dev/test-multi:1.0.0-std",
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-24.04",
+    "ghcr.io/posit-dev/test-multi:1.0.0-ubuntu-24.04-std",
+    "ghcr.io/posit-dev/test-multi:latest",
+    "ghcr.io/posit-dev/test-multi:std",
+    "ghcr.io/posit-dev/test-multi:ubuntu-24.04",
+    "ghcr.io/posit-dev/test-multi:ubuntu-24.04-std"
+  ]
+}

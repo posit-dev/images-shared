@@ -17,6 +17,13 @@ class MatrixVersionInclusionEnum(str, Enum):
     ONLY = "only"
 
 
+class GetTagsOutputFormat(str, Enum):
+    """Output format for get tags command."""
+
+    COMPONENT = "component"
+    UID = "uid"
+
+
 REGEX_FULL_IMAGE_TAG_PATTERN = (
     r"^(?P<repository>[\w.\-_]+((?::\d+|)(?=/[a-z0-9._-]+/[a-z0-9._-]+))|)"
     r"(?:/|)(?P<image>[a-z0-9.\-_]+(?:/[a-z0-9.\-_]+|))(:(?P<tag>[\w.\-_]{1,127})|)$"

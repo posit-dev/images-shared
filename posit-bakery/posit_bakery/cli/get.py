@@ -8,12 +8,47 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
-from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
 from posit_bakery.log import stdout_console
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
+
+
+def _format_component_output(targets: list) -> dict:
+    """Format tags output grouped by image components (name/version/variant/os)."""
+    data = {}
+    for target in targets:
+        image = target.image_name
+        version = target.image_version.name
+        tag_list = target.tags.as_strings()
+
+        image_node = data.setdefault(image, {})
+
+        if target.image_variant is None and target.image_os is None:
+            # No variant, no OS: tags directly under version
+            image_node.setdefault(version, []).extend(tag_list)
+        elif target.image_variant is None:
+            # No variant, has OS: tags under version -> os_name
+            version_node = image_node.setdefault(version, {})
+            version_node.setdefault(target.image_os.name, []).extend(tag_list)
+        elif target.image_os is None:
+            # Has variant, no OS: tags under version -> variant_name
+            version_node = image_node.setdefault(version, {})
+            version_node.setdefault(target.image_variant.name, []).extend(tag_list)
+        else:
+            # Has both variant and OS: full nesting
+            version_node = image_node.setdefault(version, {})
+            variant_node = version_node.setdefault(target.image_variant.name, {})
+            variant_node.setdefault(target.image_os.name, []).extend(tag_list)
+
+    return data
+
+
+def _format_uid_output(targets: list) -> dict:
+    """Format tags output keyed by target uid."""
+    return {target.uid: target.tags.as_strings() for target in targets}
 
 
 @app.command()
@@ -37,6 +72,13 @@ def tags(
             rich_help_panel="Filters",
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    output: Annotated[
+        Optional[GetTagsOutputFormat],
+        typer.Option(
+            help="Output format for tags.",
+            rich_help_panel="Output",
+        ),
+    ] = GetTagsOutputFormat.COMPONENT,
     context: Annotated[
         Path,
         typer.Option(
@@ -64,30 +106,10 @@ def tags(
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-        data = {}
-        for target in config.targets:
-            image = target.image_name
-            version = target.image_version.name
-            tag_list = target.tags.as_strings()
-
-            image_node = data.setdefault(image, {})
-
-            if target.image_variant is None and target.image_os is None:
-                # No variant, no OS: tags directly under version
-                image_node.setdefault(version, []).extend(tag_list)
-            elif target.image_variant is None:
-                # No variant, has OS: tags under version -> os_name
-                version_node = image_node.setdefault(version, {})
-                version_node.setdefault(target.image_os.name, []).extend(tag_list)
-            elif target.image_os is None:
-                # Has variant, no OS: tags under version -> variant_name
-                version_node = image_node.setdefault(version, {})
-                version_node.setdefault(target.image_variant.name, []).extend(tag_list)
-            else:
-                # Has both variant and OS: full nesting
-                version_node = image_node.setdefault(version, {})
-                variant_node = version_node.setdefault(target.image_variant.name, {})
-                variant_node.setdefault(target.image_os.name, []).extend(tag_list)
+        if output == GetTagsOutputFormat.UID:
+            data = _format_uid_output(config.targets)
+        else:
+            data = _format_component_output(config.targets)
 
         stdout_console.print(json.dumps(data, indent=2))
 
