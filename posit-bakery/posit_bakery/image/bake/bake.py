@@ -235,24 +235,24 @@ class BakePlan(BaseModel):
         """Run the bake plan to build all targets."""
         original_cwd = os.getcwd()
         os.chdir(self.context)
+        try:
+            self.write()
 
-        self.write()
+            _set = {}
+            if platforms:
+                _set["*.platform"] = ",".join(platforms)
+            if cache_from:
+                _set["*.cache-from"] = cache_from
+            if cache_to:
+                _set["*.cache-to"] = cache_to
+            if set_opts:
+                _set.update(set_opts)
+            _set = self._set_opts_dict_to_str(_set)
 
-        _set = {}
-        if platforms:
-            _set["*.platform"] = ",".join(platforms)
-        if cache_from:
-            _set["*.cache-from"] = cache_from
-        if cache_to:
-            _set["*.cache-to"] = cache_to
-        if set_opts:
-            _set.update(set_opts)
-        _set = self._set_opts_dict_to_str(_set)
-
-        python_on_whales.docker.buildx.bake(
-            files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
-        )
-        if clean_bakefile:
-            self.remove()
-
-        os.chdir(original_cwd)
+            python_on_whales.docker.buildx.bake(
+                files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
+            )
+            if clean_bakefile:
+                self.remove()
+        finally:
+            os.chdir(original_cwd)

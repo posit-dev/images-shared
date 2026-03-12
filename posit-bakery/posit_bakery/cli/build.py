@@ -58,6 +58,14 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
+    retry: Annotated[
+        int,
+        typer.Option(
+            min=0,
+            help="Number of times to retry a failed build.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = 0,
     plan: Annotated[
         Optional[bool],
         typer.Option(
@@ -225,6 +233,7 @@ def build(
             platforms=image_platform,
             strategy=strategy,
             fail_fast=fail_fast,
+            retry=retry,
             metadata_file=metadata_file,
         )
     except (python_on_whales.DockerException, BakeryToolRuntimeError):

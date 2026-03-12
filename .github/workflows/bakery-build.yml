@@ -33,6 +33,11 @@ on:
         default: false
         required: false
         type: boolean
+      retry:
+        description: "Number of times to retry a failed build [default: 1]"
+        default: 1
+        required: false
+        type: number
       runs-on:
         description: "The type of runner to use [default: ubuntu-latest]"
         default: "ubuntu-latest"
@@ -152,6 +157,7 @@ jobs:
         # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           bakery build --load --pull \
+            --retry ${{ inputs.retry }} \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \
@@ -179,6 +185,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           bakery build --push --pull \
+            --retry ${{ inputs.retry }} \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --dev-versions ${{ inputs.dev-versions }} \

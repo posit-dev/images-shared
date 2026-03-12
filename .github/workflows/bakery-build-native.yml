@@ -32,6 +32,11 @@ on:
         default: false
         required: false
         type: boolean
+      retry:
+        description: "Number of times to retry a failed build [default: 1]"
+        default: 1
+        required: false
+        type: number
       merge-builder:
         description: "The type of runner to use for merging. Larger images require expanded runners. [default: ubuntu-latest]"
         default: "ubuntu-latest"
@@ -184,6 +189,7 @@ jobs:
           PLATFORM=${BUILD_PLATFORM#linux/} \
           bakery build \
             --strategy build --pull \
+            --retry ${{ inputs.retry }} \
             --image-name '^${{ matrix.img.image }}$' \
             --image-version ${{ matrix.img.version }} \
             --image-platform ${{ matrix.img.platform }} \
