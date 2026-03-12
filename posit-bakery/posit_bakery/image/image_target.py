@@ -405,13 +405,13 @@ class ImageTarget(BaseModel):
         if self.image_version.isMatrixVersion:
             for dependency in self.image_version.dependencies:
                 log.debug(
-                    f"[italic bright_black]\[{self.uid}][/italic bright_black] "
+                    f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] "
                     f"Setting build arg {dependency.dependency.upper()}_VERSION='{dependency.versions[0]}'"
                 )
                 build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
             for key, value in self.image_version.values.items():
                 log.debug(
-                    f"[italic bright_black]\[{self.uid}][/italic bright_black] "
+                    f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] "
                     f"Setting build arg {key.upper()}='{value}'"
                 )
                 build_args[key.upper()] = value

@@ -11,6 +11,7 @@ default_theme = Theme(
         "error": "bright_red",
         "success": "green3",
         "quiet": "bright_black",
+        "quiet_italicized": "bright_black italic",
     }
 )
 
