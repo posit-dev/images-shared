@@ -4,14 +4,12 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Any, Self, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from posit_bakery.image.image_target import ImageTarget
+from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
+from posit_bakery.image.image_target import ImageTarget, Tag
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
@@ -27,62 +25,21 @@ def find_oras_bin(context: Path) -> str:
     return find_bin(context, "oras", "ORAS_PATH") or "oras"
 
 
-def parse_image_reference(ref: str) -> tuple[str, str, str]:
-    """Parse an image reference into its components.
-
-    :param ref: The image reference to parse (e.g., "registry.io/repo/image@sha256:digest").
-    :return: A tuple of (registry, repository, tag_or_digest).
-    """
-    # Handle digest references
-    if "@" in ref:
-        name_part, digest = ref.rsplit("@", 1)
-        tag_or_digest = f"@{digest}"
-    elif ":" in ref and not ref.rsplit(":", 1)[-1].startswith("sha256"):
-        # Handle tag references, but be careful with ports
-        parts = ref.rsplit(":", 1)
-        # Check if the last part looks like a port (all digits)
-        if parts[-1].isdigit():
-            name_part = ref
-            tag_or_digest = ""
-        else:
-            name_part = parts[0]
-            tag_or_digest = f":{parts[1]}"
-    else:
-        name_part = ref
-        tag_or_digest = ""
-
-    # Split registry from repository
-    if "/" in name_part:
-        first_part = name_part.split("/")[0]
-        # Check if first part looks like a registry (contains . or :)
-        if "." in first_part or ":" in first_part:
-            registry = first_part
-            repository = "/".join(name_part.split("/")[1:])
-        else:
-            # Default registry
-            registry = "docker.io"
-            repository = name_part
-    else:
-        registry = "docker.io"
-        repository = name_part
-
-    return registry, repository, tag_or_digest
-
-
 def get_repository_from_ref(ref: str) -> str:
     """Extract the full repository (registry/repo) from an image reference.
 
     :param ref: The image reference.
     :return: The registry and repository portion (without tag or digest).
     """
-    registry, repository, _ = parse_image_reference(ref)
-    return f"{registry}/{repository}"
+    tag = Tag.from_string(ref)
+    return tag.destination
 
 
 class OrasCommand(BaseModel, ABC):
     """Base class for oras CLI commands."""
 
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    plain_http: Annotated[bool, Field(default=False, description="Use plain HTTP for registry connections.")]
 
     @property
     @abstractmethod
@@ -153,7 +110,10 @@ class OrasManifestIndexCreate(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras manifest index create command."""
-        cmd = [self.oras_bin, "manifest", "index", "create", self.destination]
+        cmd = [self.oras_bin, "manifest", "index", "create"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.append(self.destination)
         cmd.extend(self.sources)
 
         for key, value in self.annotations.items():
@@ -175,7 +135,11 @@ class OrasCopy(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras cp command."""
-        return [self.oras_bin, "cp", self.source, self.destination]
+        cmd = [self.oras_bin, "cp"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.extend([self.source, self.destination])
+        return cmd
 
 
 class OrasManifestDelete(OrasCommand):
@@ -189,7 +153,11 @@ class OrasManifestDelete(OrasCommand):
     @property
     def command(self) -> list[str]:
         """Build the oras manifest delete command."""
-        return [self.oras_bin, "manifest", "delete", "--force", self.reference]
+        cmd = [self.oras_bin, "manifest", "delete", "--force"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        cmd.append(self.reference)
+        return cmd
 
 
 class OrasMergeWorkflowResult(BaseModel):
@@ -213,25 +181,26 @@ class OrasMergeWorkflow(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
-    image_target: Annotated[Any, Field(description="The image target of the sources.")]
+    image_target: Annotated[ImageTarget, Field(description="The image target of the sources.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict, description="Annotations for the index.")]
+    plain_http: Annotated[bool, Field(default=False, description="Use plain HTTP for registry connections.")]
 
     @model_validator(mode="after")
     def validate_sources(self) -> Self:
         """Validate that sources are provided."""
-        if not self.image_target._get_merge_sources():
+        if not self.image_target.get_merge_sources():
             raise ValueError("At least one source is required.")
         return self
 
     @property
     def sources(self) -> list[str]:
         """Get the list of source image references from the image target."""
-        return self.image_target._get_merge_sources()
+        return self.image_target.get_merge_sources()
 
     @property
     def temp_index_tag(self) -> str:
         """Generate a unique temporary index tag."""
-        source_hash = hashlib.sha256("".join(self.image_target._get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
+        source_hash = hashlib.sha256("".join(self.image_target.get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
         return (
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
@@ -253,9 +222,10 @@ class OrasMergeWorkflow(BaseModel):
             log.info(f"Creating manifest index at {self.temp_index_tag}")
             create_cmd = OrasManifestIndexCreate(
                 oras_bin=self.oras_bin,
-                sources=self.image_target._get_merge_sources(),
+                sources=self.image_target.get_merge_sources(),
                 destination=self.temp_index_tag,
                 annotations=self.annotations,
+                plain_http=self.plain_http,
             )
             create_cmd.run(dry_run=dry_run)
 
@@ -267,6 +237,7 @@ class OrasMergeWorkflow(BaseModel):
                     oras_bin=self.oras_bin,
                     source=self.temp_index_tag,
                     destination=combine_tag_str,
+                    plain_http=self.plain_http,
                 )
                 copy_cmd.run(dry_run=dry_run)
 
@@ -275,6 +246,7 @@ class OrasMergeWorkflow(BaseModel):
             delete_cmd = OrasManifestDelete(
                 oras_bin=self.oras_bin,
                 reference=self.temp_index_tag,
+                plain_http=self.plain_http,
             )
             delete_cmd.run(dry_run=dry_run)
 
@@ -295,11 +267,14 @@ class OrasMergeWorkflow(BaseModel):
             )
 
     @classmethod
-    def from_image_target(cls, target: "ImageTarget", oras_bin: str | None = None) -> "OrasMergeWorkflow":
+    def from_image_target(
+        cls, target: "ImageTarget", oras_bin: str | None = None, plain_http: bool = False
+    ) -> "OrasMergeWorkflow":
         """Create an OrasMergeWorkflow from an ImageTarget.
 
         :param target: The ImageTarget to merge.
         :param oras_bin: Path to the oras binary. If not provided, will be discovered.
+        :param plain_http: Use plain HTTP for registry connections (useful for local registries).
         :return: A configured OrasMergeWorkflow instance.
         :raises ValueError: If the target is missing required settings.
         """
@@ -315,4 +290,5 @@ class OrasMergeWorkflow(BaseModel):
             oras_bin=oras_bin,
             image_target=target,
             annotations=target.labels,
+            plain_http=plain_http,
         )

@@ -10,6 +10,7 @@ from typing import Annotated, Self, Any
 
 import jinja2
 import pydantic
+import python_on_whales
 from pydantic import Field, model_validator, field_validator, BaseModel
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
@@ -25,6 +26,7 @@ from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_
 from posit_bakery.config.templating.render import jinja2_env
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
+    BakeryError,
     BakeryToolRuntimeError,
     BakeryToolRuntimeErrorGroup,
     BakeryFileError,
@@ -37,6 +39,7 @@ from posit_bakery.image.goss.dgoss import DGossSuite
 from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
+from posit_bakery.image.oras import OrasMergeWorkflow
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
@@ -954,6 +957,53 @@ class BakeryConfig:
         """
         suite = DGossSuite(self.base_path, self.targets, platform=platform)
         return suite.run()
+
+    def merge_targets(
+        self,
+        dry_run: bool = False,
+    ) -> list[tuple[str, Any, str | None]]:
+        """Merge multi-platform images for all targets that have loaded build metadata.
+
+        Only targets with non-empty merge sources (from loaded metadata files) will be processed.
+
+        :param dry_run: If True, log commands without executing them.
+        :return: List of tuples containing (uid, manifest, error) for each processed target.
+        """
+        results: list[tuple[str, Any, str | None]] = []
+
+        for target in self.targets:
+            # Skip targets without merge sources (no metadata loaded)
+            sources = target.get_merge_sources()
+
+            if not sources:
+                log.debug(f"Skipping target '{str(target)}' because it has no merge sources (no metadata loaded).")
+                continue
+
+            # Check temp_registry is configured
+            if not target.settings.temp_registry:
+                results.append(
+                    (target.uid, None, f"Cannot merge '{str(target)}': temp_registry must be configured in settings.")
+                )
+                continue
+
+            log.info(f"Merging sources for image UID '{target.uid}'")
+
+            workflow = OrasMergeWorkflow.from_image_target(target)
+            result = workflow.run(dry_run=dry_run)
+
+            if not result.success:
+                results.append((target.uid, None, result.error))
+                continue
+
+            if dry_run:
+                results.append((target.uid, None, None))
+                continue
+
+            # Return the final manifest as a sanity check
+            manifest = python_on_whales.docker.buildx.imagetools.inspect(str(target.tags[0]))
+            results.append((target.uid, manifest, None))
+
+        return results
 
     def clean_caches(
         self,

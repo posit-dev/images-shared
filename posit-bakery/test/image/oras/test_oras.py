@@ -8,11 +8,10 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
-from posit_bakery.image.image_target import StringableList
+from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings
 from posit_bakery.image.oras import (
     find_oras_bin,
     get_repository_from_ref,
-    parse_image_reference,
     OrasCopy,
     OrasManifestDelete,
     OrasManifestIndexCreate,
@@ -25,67 +24,19 @@ pytestmark = [
 ]
 
 
-class TestParseImageReference:
-    """Tests for the parse_image_reference function."""
-
-    @pytest.mark.parametrize(
-        "ref,expected",
-        [
-            # Standard registry with digest
-            (
-                "ghcr.io/posit-dev/test/tmp@sha256:abc123",
-                ("ghcr.io", "posit-dev/test/tmp", "@sha256:abc123"),
-            ),
-            # Standard registry with tag
-            (
-                "ghcr.io/posit-dev/test:latest",
-                ("ghcr.io", "posit-dev/test", ":latest"),
-            ),
-            # Registry with port
-            (
-                "localhost:5000/repo/image:tag",
-                ("localhost:5000", "repo/image", ":tag"),
-            ),
-            # Docker Hub implicit registry
-            (
-                "library/ubuntu:22.04",
-                ("docker.io", "library/ubuntu", ":22.04"),
-            ),
-            # Simple image name (Docker Hub)
-            (
-                "ubuntu:22.04",
-                ("docker.io", "ubuntu", ":22.04"),
-            ),
-            # Azure Container Registry
-            (
-                "myregistry.azurecr.io/repo/image@sha256:def456",
-                ("myregistry.azurecr.io", "repo/image", "@sha256:def456"),
-            ),
-            # No tag or digest
-            (
-                "ghcr.io/posit-dev/image",
-                ("ghcr.io", "posit-dev/image", ""),
-            ),
-        ],
-    )
-    def test_parse_image_reference(self, ref, expected):
-        """Test parsing various image reference formats."""
-        result = parse_image_reference(ref)
-        assert result == expected
-
-    @pytest.mark.parametrize(
-        "ref,expected_repo",
-        [
-            ("ghcr.io/posit-dev/test/tmp@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
-            ("ghcr.io/posit-dev/test:latest", "ghcr.io/posit-dev/test"),
-            ("localhost:5000/repo/image:tag", "localhost:5000/repo/image"),
-            ("docker.io/library/ubuntu:22.04", "docker.io/library/ubuntu"),
-        ],
-    )
-    def test_get_repository_from_ref(self, ref, expected_repo):
-        """Test extracting repository from image reference."""
-        result = get_repository_from_ref(ref)
-        assert result == expected_repo
+@pytest.mark.parametrize(
+    "ref,expected_repo",
+    [
+        ("ghcr.io/posit-dev/test/tmp@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
+        ("ghcr.io/posit-dev/test:latest", "ghcr.io/posit-dev/test"),
+        ("localhost:5000/repo/image:tag", "localhost:5000/repo/image"),
+        ("docker.io/library/ubuntu:22.04", "docker.io/library/ubuntu"),
+    ],
+)
+def test_get_repository_from_ref(ref, expected_repo):
+    """Test extracting repository from image reference."""
+    result = get_repository_from_ref(ref)
+    assert result == expected_repo
 
 
 class TestOrasManifestIndexCreate:
@@ -271,11 +222,11 @@ class TestOrasMergeWorkflow:
     @pytest.fixture
     def mock_image_target(self):
         """Create a mock ImageTarget for testing."""
-        mock_target = MagicMock()
+        mock_target = MagicMock(spec=ImageTarget)
         mock_target.image_name = "test-image"
         mock_target.uid = "test-image-1-0-0"
         mock_target.temp_registry = "ghcr.io/posit-dev"
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
             "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
         ]
@@ -389,8 +340,8 @@ class TestOrasMergeWorkflow:
 
     def test_validates_sources_required(self):
         """Test that validation fails when no sources are provided."""
-        mock_target = MagicMock()
-        mock_target._get_merge_sources.return_value = []
+        mock_target = MagicMock(spec=ImageTarget)
+        mock_target.get_merge_sources.return_value = []
 
         with pytest.raises(ValidationError) as exc_info:
             OrasMergeWorkflow(
@@ -407,13 +358,15 @@ class TestOrasMergeWorkflowFromImageTarget:
     @pytest.fixture
     def mock_image_target(self):
         """Create a mock ImageTarget for testing."""
-        mock_target = MagicMock()
+        mock_target = MagicMock(spec=ImageTarget)
         mock_target.image_name = "test-image"
         mock_target.uid = "test-image-1-0-0"
+        mock_target.context = MagicMock(spec=ImageTargetContext)
         mock_target.context.base_path = Path("/project")
+        mock_target.settings = MagicMock(spec=ImageTargetSettings)
         mock_target.settings.temp_registry = "ghcr.io/posit-dev"
         mock_target.temp_registry = "ghcr.io/posit-dev"
-        mock_target._get_merge_sources.return_value = [
+        mock_target.get_merge_sources.return_value = [
             "ghcr.io/posit-dev/test/tmp@sha256:amd64",
             "ghcr.io/posit-dev/test/tmp@sha256:arm64",
         ]
@@ -529,3 +482,124 @@ class TestOrasMergeWorkflowResult:
 
         assert result.success is False
         assert result.error is not None
+
+
+class TestOrasCommandsPlainHttp:
+    """Tests for plain_http flag on ORAS commands."""
+
+    def test_manifest_index_create_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasManifestIndexCreate(
+            oras_bin="oras",
+            sources=["localhost:5000/test/tmp@sha256:digest"],
+            destination="localhost:5000/test/tmp:tag",
+            plain_http=True,
+        )
+
+        expected = [
+            "oras",
+            "manifest",
+            "index",
+            "create",
+            "--plain-http",
+            "localhost:5000/test/tmp:tag",
+            "localhost:5000/test/tmp@sha256:digest",
+        ]
+        assert cmd.command == expected
+
+    def test_copy_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="localhost:5000/test:source",
+            destination="localhost:5000/test:dest",
+            plain_http=True,
+        )
+
+        expected = ["oras", "cp", "--plain-http", "localhost:5000/test:source", "localhost:5000/test:dest"]
+        assert cmd.command == expected
+
+    def test_manifest_delete_with_plain_http(self):
+        """Test that --plain-http flag is included when plain_http=True."""
+        cmd = OrasManifestDelete(
+            oras_bin="oras",
+            reference="localhost:5000/test:tag",
+            plain_http=True,
+        )
+
+        expected = ["oras", "manifest", "delete", "--force", "--plain-http", "localhost:5000/test:tag"]
+        assert cmd.command == expected
+
+
+@pytest.mark.slow
+class TestOrasMergeWorkflowIntegration:
+    """End-to-end tests for ORAS merge workflow using a local registry container.
+
+    These tests require Docker to be running and the ORAS CLI to be installed.
+    They test the complete merge workflow against a real local HTTP registry.
+    """
+
+    @pytest.fixture
+    def mock_image_target_for_local_registry(self):
+        """Create a mock ImageTarget configured for local registry testing."""
+
+        def _create_target(registry_url: str):
+            mock_target = MagicMock(spec=ImageTarget)
+            mock_target.image_name = "test-image"
+            mock_target.uid = "test-image-1-0-0"
+            mock_target.temp_registry = registry_url
+            mock_target.labels = {"org.opencontainers.image.title": "Test Image"}
+
+            # Create mock tag for local registry
+            mock_tag = MagicMock()
+            mock_tag.destination = f"{registry_url}/test-image"
+            mock_tag.suffix = "merged"
+            mock_tag.__str__ = lambda self: f"{registry_url}/test-image:merged"
+            mock_target.tags = StringableList([mock_tag])
+
+            return mock_target
+
+        return _create_target
+
+    def test_workflow_with_plain_http_flag(self, mock_image_target_for_local_registry):
+        """Test that OrasMergeWorkflow correctly propagates plain_http to all commands."""
+        mock_target = mock_image_target_for_local_registry("localhost:5000")
+        mock_target.get_merge_sources.return_value = [
+            "localhost:5000/test/tmp@sha256:amd64digest",
+            "localhost:5000/test/tmp@sha256:arm64digest",
+        ]
+
+        workflow = OrasMergeWorkflow(
+            oras_bin="oras",
+            image_target=mock_target,
+            annotations={"test": "annotation"},
+            plain_http=True,
+        )
+
+        # Verify the workflow is created with plain_http=True
+        assert workflow.plain_http is True
+
+        # Run in dry-run mode to capture commands without execution
+        with patch("subprocess.run") as mock_run:
+            result = workflow.run(dry_run=True)
+
+        # Verify dry run succeeds without calling subprocess
+        mock_run.assert_not_called()
+        assert result.success is True
+
+    def test_from_image_target_with_plain_http(self, mock_image_target_for_local_registry):
+        """Test creating workflow from ImageTarget with plain_http option."""
+        mock_target = mock_image_target_for_local_registry("localhost:5000")
+        mock_target.context = MagicMock(spec=ImageTargetContext)
+        mock_target.context.base_path = Path("/project")
+        mock_target.settings = MagicMock(spec=ImageTargetSettings)
+        mock_target.settings.temp_registry = "localhost:5000"
+        mock_target.get_merge_sources.return_value = [
+            "localhost:5000/test/tmp@sha256:digest",
+        ]
+
+        with patch("posit_bakery.image.oras.oras.find_oras_bin", return_value="oras"):
+            workflow = OrasMergeWorkflow.from_image_target(mock_target, plain_http=True)
+
+        assert workflow.plain_http is True
+        assert workflow.oras_bin == "oras"

@@ -4,20 +4,89 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
-from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
-from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
+from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
     pytest.mark.unit,
 ]
+
+
+class TestTag:
+    @pytest.mark.parametrize(
+        "ref,expected_registry,expected_repo,expected_suffix,expected_digest",
+        [
+            # Standard registry with digest
+            (
+                "ghcr.io/posit-dev/test/tmp@sha256:abc123",
+                "ghcr.io",
+                "posit-dev/test/tmp",
+                None,
+                "sha256:abc123",
+            ),
+            # Standard registry with tag
+            (
+                "ghcr.io/posit-dev/test:latest",
+                "ghcr.io",
+                "posit-dev/test",
+                "latest",
+                None,
+            ),
+            # Registry with port
+            (
+                "localhost:5000/repo/image:tag",
+                "localhost:5000",
+                "repo/image",
+                "tag",
+                None,
+            ),
+            # Docker Hub implicit registry
+            (
+                "library/ubuntu:22.04",
+                "docker.io",
+                "library/ubuntu",
+                "22.04",
+                None,
+            ),
+            # Simple image name (Docker Hub)
+            (
+                "ubuntu:22.04",
+                "docker.io",
+                "ubuntu",
+                "22.04",
+                None,
+            ),
+            # Azure Container Registry
+            (
+                "myregistry.azurecr.io/repo/image@sha256:def456",
+                "myregistry.azurecr.io",
+                "repo/image",
+                None,
+                "sha256:def456",
+            ),
+            # No tag or digest
+            (
+                "ghcr.io/posit-dev/image",
+                "ghcr.io",
+                "posit-dev/image",
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_tag_from_string(self, ref, expected_registry, expected_repo, expected_suffix, expected_digest):
+        """Test parsing various image reference formats."""
+        tag = Tag.from_string(ref)
+        assert tag.registry.base_url == expected_registry
+        assert tag.repository == expected_repo
+        assert tag.suffix == expected_suffix
+        assert tag.digest == expected_digest
 
 
 class TestImageTarget:
@@ -668,7 +737,7 @@ class TestImageTarget:
             remove_images(target)
 
     def test_get_merge_sources_multiple_platforms(self, basic_standard_image_target):
-        """Test _get_merge_sources returns most recent source for each platform."""
+        """Test get_merge_sources returns most recent source for each platform."""
         basic_standard_image_target.build_metadata = [
             MagicMock(spec=BuildMetadata),
             MagicMock(spec=BuildMetadata),
@@ -680,14 +749,14 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].image_ref = "image1@sha256:amd64digest"
         basic_standard_image_target.build_metadata[1].image_ref = "image2@sha256:arm64digest"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert len(sources) == 2
         assert "image1@sha256:amd64digest" in sources
         assert "image2@sha256:arm64digest" in sources
 
     def test_get_merge_sources_duplicate_platforms_uses_most_recent(self, basic_standard_image_target):
-        """Test _get_merge_sources returns only most recent source when platform appears multiple times."""
+        """Test get_merge_sources returns only most recent source when platform appears multiple times."""
         older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
         newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
 
@@ -709,24 +778,21 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[2].platform = "linux/arm64"
         basic_standard_image_target.build_metadata[2].image_ref = "arm64@sha256:arm"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert len(sources) == 2
         assert "new-amd64@sha256:new" in sources
         assert "old-amd64@sha256:old" not in sources
         assert "arm64@sha256:arm" in sources
 
-    def test_get_merge_sources_empty_metadata_raises_error(self, basic_standard_image_target):
-        """Test _get_merge_sources raises BakeryError when no metadata exists."""
+    def test_get_merge_sources_empty_metadata_no_sources(self, basic_standard_image_target):
+        """Test get_merge_source with empty metadata returns no sources."""
         basic_standard_image_target.build_metadata = []
 
-        with pytest.raises(BakeryError) as exc_info:
-            basic_standard_image_target._get_merge_sources()
-
-        assert "No valid sources found in metadata" in str(exc_info.value)
+        assert len(basic_standard_image_target.get_merge_sources()) == 0
 
     def test_get_merge_sources_single_platform(self, basic_standard_image_target):
-        """Test _get_merge_sources works with single platform."""
+        """Test get_merge_sources works with single platform."""
         basic_standard_image_target.build_metadata = [
             MagicMock(spec=BuildMetadata),
         ]
@@ -734,96 +800,6 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[0].image_ref = "image@sha256:digest"
 
-        sources = basic_standard_image_target._get_merge_sources()
+        sources = basic_standard_image_target.get_merge_sources()
 
         assert sources == ["image@sha256:digest"]
-
-    def test_merge_dry_run(self, patch_imagetools_create, basic_standard_image_target):
-        """Test the merge method of an ImageTarget in dry-run mode."""
-        # Set up fake build metadata for two platforms
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
-        expected_sources = ["image1:tag", "image2:tag"]
-
-        manifest = basic_standard_image_target.merge(dry_run=True)
-
-        patch_imagetools_create.assert_called_once_with(
-            sources=expected_sources,
-            tags=basic_standard_image_target.tags.as_strings(),
-            dry_run=True,
-        )
-        assert isinstance(manifest, Manifest)
-
-    def test_merge(
-        self,
-        basic_standard_image_target,
-        patch_imagetools_create,
-        patch_imagetools_inspect,
-        patch_util_inspect_image,
-        patch_registry_container,
-        patch_docker_pull,
-        patch_docker_tag,
-        patch_docker_push,
-    ):
-        """Test the merge method of an ImageTarget."""
-        # Set up fake build metadata for two platforms
-        basic_standard_image_target.build_metadata = [
-            MagicMock(spec=BuildMetadata),
-            MagicMock(spec=BuildMetadata),
-        ]
-        basic_standard_image_target.build_metadata[1].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
-        basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
-        basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
-        basic_standard_image_target.build_metadata[0].image_ref = "image1:tag"
-        basic_standard_image_target.build_metadata[1].image_ref = "image2:tag"
-        expected_sources = ["image1:tag", "image2:tag"]
-
-        manifest = basic_standard_image_target.merge()
-
-        patch_registry_container.assert_called_once()
-        registry_url = patch_registry_container.return_value.__enter__.return_value.url
-
-        expected_temp_tag = f"{registry_url}/{basic_standard_image_target.uid}:latest"
-        patch_imagetools_create.assert_called_once_with(
-            sources=expected_sources,
-            tags=[expected_temp_tag],
-            dry_run=False,
-        )
-
-        patch_util_inspect_image.assert_called_once_with(expected_temp_tag)
-        inspection_manifest = patch_util_inspect_image.return_value
-
-        for platform in ["linux/amd64", "linux/arm64"]:
-            patch_docker_pull.assert_any_call(
-                expected_temp_tag,
-                quiet=True,
-                platform=platform,
-            )
-        patch_docker_pull.assert_any_call(
-            f"{expected_temp_tag}@{inspection_manifest.digest}",
-            quiet=True,
-        )
-
-        for tag in basic_standard_image_target.tags.as_strings():
-            patch_docker_tag.assert_any_call(
-                f"{expected_temp_tag}@{inspection_manifest.digest}",
-                tag,
-            )
-
-        patch_docker_push.assert_called_once_with(
-            basic_standard_image_target.tags.as_strings(),
-            quiet=True,
-        )
-
-        patch_imagetools_inspect.assert_called_once_with(str(basic_standard_image_target.tags[0]))
-
-        assert isinstance(manifest, Manifest)

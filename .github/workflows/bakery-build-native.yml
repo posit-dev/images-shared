@@ -123,6 +123,9 @@ jobs:
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Setup ORAS CLI
+        uses: oras-project/setup-oras@v1
+
       # Since secrets cannot be referenced in an `if` condition directly,
       # this step sets an output that we can reference later.
       - name: Filter Steps
@@ -287,6 +290,9 @@ jobs:
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Setup ORAS CLI
+        uses: oras-project/setup-oras@v1
+
       - name: Download Metadata
         uses: actions/download-artifact@v5
         with:
@@ -303,5 +309,6 @@ jobs:
         run: |
           bakery ci merge \
             --context ${{ inputs.context }} \
+            --temp-registry "ghcr.io/${{ github.repository_owner }}" \
             ${{ inputs.push && ' \' || '--dry-run \' }}
             *-metadata.json

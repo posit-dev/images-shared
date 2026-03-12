@@ -8,7 +8,6 @@ from typing import Annotated
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
@@ -16,10 +15,8 @@ from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
-from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError, BakeryError
+from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
-from posit_bakery.image.util import inspect_image
-from posit_bakery.services import RegistryContainer
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
@@ -65,6 +62,54 @@ class Tag(BaseModel):
         if not self.registry and not self.repository and not self.suffix:
             raise ValueError("At least one of registry, repository, or suffix must be provided for a valid tag.")
         return self
+
+    @classmethod
+    def from_string(cls, ref: str) -> "Tag":
+        """Parse an image reference string into a Tag instance.
+
+        :param ref: The image reference to parse (e.g., "registry.io/repo/image:tag" or
+            "registry.io/repo/image@sha256:digest").
+        :return: A Tag instance with the parsed components.
+        """
+        suffix = None
+        digest = None
+
+        # Handle digest references
+        if "@" in ref:
+            name_part, digest = ref.rsplit("@", 1)
+        elif ":" in ref:
+            # Handle tag references, but be careful with ports
+            parts = ref.rsplit(":", 1)
+            # Check if the last part looks like a port (all digits) or starts with sha256
+            if parts[-1].isdigit() or parts[-1].startswith("sha256"):
+                name_part = ref
+            else:
+                name_part = parts[0]
+                suffix = parts[1]
+        else:
+            name_part = ref
+
+        # Split registry from repository
+        if "/" in name_part:
+            first_part = name_part.split("/")[0]
+            # Check if first part looks like a registry (contains . or :)
+            if "." in first_part or ":" in first_part:
+                registry_host = first_part
+                repository = "/".join(name_part.split("/")[1:])
+            else:
+                # Default registry
+                registry_host = "docker.io"
+                repository = name_part
+        else:
+            registry_host = "docker.io"
+            repository = name_part
+
+        return cls(
+            registry=BaseRegistry(host=registry_host),
+            repository=repository,
+            suffix=suffix,
+            digest=digest,
+        )
 
     @property
     def destination(self):
@@ -455,6 +500,11 @@ class ImageTarget(BaseModel):
 
         return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
+    @property
+    def temp_registry(self) -> str | None:
+        """Get the temporary registry from settings."""
+        return self.settings.temp_registry
+
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""
         for tag in self.tags.as_strings():
@@ -553,7 +603,7 @@ class ImageTarget(BaseModel):
 
         return image
 
-    def _get_merge_sources(self) -> list[str]:
+    def get_merge_sources(self) -> list[str]:
         """Get the list of source image references to use for merging.
 
         Sources collected will be the most recent artifact for each platform represented in the build metadata.
@@ -566,66 +616,4 @@ class ImageTarget(BaseModel):
                 sources.append(metadata.image_ref)
                 collected_platforms.add(metadata.platform)
 
-        if not sources:
-            raise BakeryError(f"No valid sources found in metadata for '{str(self)}', cannot perform merge.")
-
         return sources
-
-    def merge(self, dry_run: bool = False) -> Manifest:
-        """Merge multiple images into a single image, tag, and push."""
-        sources = self._get_merge_sources()
-
-        # For dry-runs, `imagetools create` produces effectively the same result as the steps below.
-        if dry_run:
-            return python_on_whales.docker.buildx.imagetools.create(
-                sources=sources,
-                tags=self.tags.as_strings(),
-                dry_run=dry_run,
-            )
-
-        # This insanity originates from `docker buildx imagetools create` not supporting Docker's own authentication.
-        # Attempting to run `docker buildx imagetools create` with source images from a private repository will always
-        # result in a 4XX or 5XX HTTP error for registries other than the source registry because all operations happen
-        # server-side through API requests. If a smarter way of doing this comes along, replace this nonsense.
-        with RegistryContainer() as registry:
-            # Push the merged image to a temporary registry. This will allow us to pull and retag the image locally.
-            temp_tag = f"{registry.url}/{self.uid}:latest"
-            log.debug(f"Merging sources for {self.uid}...")
-            log.debug(f"Pushing merged image to temporary tag '{temp_tag}'...")
-            python_on_whales.docker.buildx.imagetools.create(
-                sources=sources,
-                tags=[temp_tag],
-                dry_run=dry_run,
-            )
-
-            # Identify the image's index reference and the platform it targets.
-            manifest = inspect_image(temp_tag)
-            index_ref = f"{temp_tag}@{manifest.digest}"
-            platforms = [str(m.platform) for m in manifest.manifests]
-
-            # Pull each platform-specific image and the index reference locally. Docker will automatically assume
-            # it should pull the platform matching the host architecture. No option currently exists to "pull all" so
-            # this must be done manually to ensure the final pushes are not partial.
-            log.debug("Pulling merged image...")
-            for platform in platforms:
-                python_on_whales.docker.image.pull(
-                    temp_tag,
-                    quiet=False if SETTINGS.log_level == logging.DEBUG else True,
-                    platform=platform,
-                )
-            python_on_whales.docker.image.pull(index_ref, quiet=False if SETTINGS.log_level == logging.DEBUG else True)
-
-            # Tag the index reference appropriately with each target tag.
-            log.debug("Applying tags...")
-            for tag in self.tags.as_strings():
-                python_on_whales.docker.image.tag(index_ref, tag)
-
-            # Push each tag to the target registries. Since every individual piece of the image has been pulled locally,
-            # Docker will push all the component manifests as well as the index.
-            log.info(f"Pushing image {self.uid}...")
-            python_on_whales.docker.image.push(
-                self.tags.as_strings(), quiet=False if SETTINGS.log_level == logging.DEBUG else True
-            )
-
-        # Return the final manifest for the merged image as a sanity check.
-        return python_on_whales.docker.buildx.imagetools.inspect(str(self.tags[0]))
