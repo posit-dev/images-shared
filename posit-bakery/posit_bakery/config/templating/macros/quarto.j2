@@ -24,9 +24,10 @@ ${{ name }}
 
 :param quarto_binary: The path to the Quarto binary.
 :param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
+:param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
-{% macro install_tinytex_command(quarto_binary, update_path = False) -%}
-{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
+{% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
+{% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well
@@ -34,24 +35,26 @@ ${{ name }}
 :param version: The Quarto version to install, e.g. "1.8.24"
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_update_path: Adds --update-path to the TinyTeX install command to add TinyTeX binaries to the PATH. Defaults to False.
+:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
-{% macro install(version, with_tinytex = False, tinytex_update_path = False) -%}
+{% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None) -%}
 mkdir -p {{ get_version_directory(version) }} && \
 curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
-{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto", tinytex_update_path) }}{% endif %}
+{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto", tinytex_update_path, tinytex_home_path) }}{% endif %}
 {%- endmacro %}
 
 {# Installs one or more versions of Quarto as separate RUN statements
 
 :param versions: A list of Quarto versions or a comma separated string of Quarto versions to install
 :param with_tinytex: Whether to install TinyTeX along with each Quarto version. Defaults to False.
+:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
-{% macro run_install(versions, with_tinytex = False, tinytex_update_path = False) -%}
+{% macro run_install(versions, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None) -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install(version, with_tinytex, tinytex_update_path) | indent(4) }}
+RUN {{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
