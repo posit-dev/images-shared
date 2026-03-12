@@ -8,7 +8,8 @@
       "../images-examples",
       "../images-connect",
       "../images-package-manager",
-      "../images-workbench"
+      "../images-workbench",
+      "../helm"
     ],
     "allow": [
       "Bash(bakery build:*)",
