@@ -241,14 +241,17 @@ class OrasMergeWorkflow(BaseModel):
                 )
                 copy_cmd.run(dry_run=dry_run)
 
-            # Step 3: Delete the temporary index
+            # Step 3: Delete the temporary index (non-fatal)
             log.info(f"Cleaning up temporary index {self.temp_index_tag}")
             delete_cmd = OrasManifestDelete(
                 oras_bin=self.oras_bin,
                 reference=self.temp_index_tag,
                 plain_http=self.plain_http,
             )
-            delete_cmd.run(dry_run=dry_run)
+            try:
+                delete_cmd.run(dry_run=dry_run)
+            except BakeryToolRuntimeError as e:
+                log.warning(f"Failed to clean up temporary index {self.temp_index_tag}: {e}")
 
             log.info(f"ORAS merge workflow completed successfully")
             return OrasMergeWorkflowResult(
