@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+import time
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated, Self, Any
@@ -43,6 +44,32 @@ from posit_bakery.image.oras import OrasMergeWorkflow
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
+
+_RETRY_DELAY_SECONDS = 5
+
+
+def _retry_build(fn, retry: int, label: str) -> None:
+    """Attempt fn() up to (retry + 1) times, re-raising on final failure.
+
+    :param fn: The function to call.
+    :param retry: Number of retries (0 means no retries, just one attempt).
+    :param label: A label for logging purposes.
+    """
+    for attempt in range(retry + 1):
+        try:
+            fn()
+            return
+        except BakeryFileError:
+            raise  # Never retry file errors
+        except (DockerException, BakeryToolRuntimeError) as e:
+            if attempt < retry:
+                log.warning(
+                    f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "
+                    f"Retrying in {_RETRY_DELAY_SECONDS}s..."
+                )
+                time.sleep(_RETRY_DELAY_SECONDS)
+            else:
+                raise
 
 
 class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
@@ -891,6 +918,7 @@ class BakeryConfig:
         strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
         metadata_file: Path | None = None,
         fail_fast: bool = False,
+        retry: int = 0,
     ):
         """Build image targets using the specified strategy.
 
@@ -903,6 +931,7 @@ class BakeryConfig:
         :param strategy: The strategy to use when building images.
         :param metadata_file: Optional path to a metadata file to write build metadata to.
         :param fail_fast: If True, stop building targets on the first failure.
+        :param retry: Number of times to retry a failed build (default 0, no retries).
         """
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
@@ -911,28 +940,36 @@ class BakeryConfig:
             set_opts = None
             if self.settings.temp_registry is not None and push:
                 set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
-            bake_plan.build(
-                load=load,
-                push=push,
-                pull=pull,
-                cache=cache,
-                clean_bakefile=self.settings.clean_temporary,
-                platforms=platforms,
-                set_opts=set_opts,
+            _retry_build(
+                lambda: bake_plan.build(
+                    load=load,
+                    push=push,
+                    pull=pull,
+                    cache=cache,
+                    clean_bakefile=self.settings.clean_temporary,
+                    platforms=platforms,
+                    set_opts=set_opts,
+                ),
+                retry=retry,
+                label="bake plan",
             )
         elif strategy == ImageBuildStrategy.BUILD:
             errors: list[Exception] = []
             for target in self.targets:
                 try:
-                    target.build(
-                        load=load,
-                        push=push,
-                        pull=pull,
-                        cache=cache,
-                        platforms=platforms,
-                        metadata_file=True if metadata_file else False,
+                    _retry_build(
+                        lambda t=target: t.build(
+                            load=load,
+                            push=push,
+                            pull=pull,
+                            cache=cache,
+                            platforms=platforms,
+                            metadata_file=True if metadata_file else False,
+                        ),
+                        retry=retry,
+                        label=str(target),
                     )
-                except (BakeryFileError, DockerException) as e:
+                except (BakeryFileError, DockerException, BakeryToolRuntimeError) as e:
                     log.error(f"Failed to build image target '{str(target)}'.")
                     if fail_fast:
                         log.info("--fail-fast is set, stopping builds...")
