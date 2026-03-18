@@ -345,12 +345,27 @@ Each product repo has 2-3 workflow files that call the shared workflows:
 3. Build artifacts push to a temp registry (`--temp-registry ghcr.io/posit-dev`)
 4. `bakery ci merge` creates multi-platform manifests and pushes final tags
 
+### Debugging CI failures
+
+Use the `gh` CLI to inspect workflow runs without leaving the terminal:
+
+```bash
+# List recent workflow runs
+gh run list -R posit-dev/images-connect
+
+# View a specific run (shows jobs and status)
+gh run view <run-id> -R posit-dev/images-connect
+
+# View logs for a failed job
+gh run view <run-id> -R posit-dev/images-connect --log-failed
+```
+
 ### Common CI failure modes
 
-- **Python version not in UV** — UV's release metadata may lag behind new CPython releases. Check UV's [download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json).
-- **Stale layer cache** — builds use `--cache-registry ghcr.io/posit-dev`. If a cached layer has outdated packages, the `clean.yml` workflow removes caches older than 14 days, but you may need to manually bust the cache.
+- **Python version not in UV** — When a new CPython minor version is released, UV's managed Python list may not include it yet. The `python.build_stage()` macro calls `uv python install` which fails if the version isn't available. Check UV's [download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json) to confirm availability. Fix: wait for UV to add the version, or pin to an available version in `bakery.yaml`.
+- **Stale UV base image cache** — The Python build stage uses `ghcr.io/astral-sh/uv:debian-slim` as its base image. Docker layer caching may preserve an older UV version that doesn't know about newer Python releases. Even if UV upstream supports a Python version, a cached builder layer may not. Fix: the `clean.yml` workflow removes caches older than 14 days, but you can force a fresh build by clearing the cache registry (`bakery clean cache-registry ghcr.io/posit-dev`).
 - **Registry auth failures** — Docker Hub requires `DOCKER_HUB_ACCESS_TOKEN` secret; ECR requires AWS OIDC (`id-token: write` permission + `AWS_ROLE` secret).
-- **ARM64 runner unavailable** — native builds use `ubuntu-24.04-arm64-4-core` runners which may have capacity limits.
+- **ARM64 runner unavailable** — Native builds use `ubuntu-24.04-arm64-4-core` runners which may have capacity limits.
 
 ## Advanced Usage
 
