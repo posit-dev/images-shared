@@ -53,6 +53,18 @@ git -C ../images-connect worktree remove .claude/worktrees/<name>
 > repo root (typically on `main`). Always use the full worktree path when reading or writing
 > files in a sibling worktree.
 
+## Posit Product Naming
+
+| Current Name | Legacy Name | ENV Prefix | Legacy Prefix | Helm Chart |
+|---|---|---|---|---|
+| Posit Connect | RStudio Connect | `PCT_` | `RSC_` | `rstudio-connect` |
+| Posit Workbench | RStudio Workbench | `PWB_` | `RSW_`, `RSP_` | `rstudio-workbench` |
+| Posit Package Manager | RStudio Package Manager | `PPM_` | `RSPM_` | `rstudio-pm` |
+
+Legacy env var prefixes are supported via fallback in each product's `startup.sh`.
+When adding or modifying env vars, always use the current prefix and maintain backward
+compatibility with the legacy prefix.
+
 ## Development Environment Setup
 
 Run these commands from the `posit-bakery/` directory:
@@ -257,24 +269,36 @@ The `bakery.yaml` file defines:
 
 ### Image Templating System
 
-Bakery uses Jinja2 for templating with specialized macros for:
-- APT/DNF package management
-- Python installation and package management
-- R installation and package management
-- Quarto installation and management
+**Always edit Jinja2 templates in `template/`, never the rendered files in version directories.**
+After changing templates, re-render with `bakery update files`.
+
+Bakery uses Jinja2 for templating with shared macros in `posit_bakery/config/templating/macros/`:
+
+| Macro | Purpose |
+|---|---|
+| `apt.j2` | APT package setup, install, and cleanup |
+| `dnf.j2` | DNF package management (RHEL) |
+| `python.j2` | Python installation via UV multi-stage builds |
+| `r.j2` | R installation via rstd.io/r-install |
+| `quarto.j2` | Quarto and TinyTeX installation |
+| `goss.j2` | Goss test helpers |
+| `wait-for-it.j2` | wait-for-it.sh script installation |
+
+Key Python/UV pattern — multi-stage build:
+```jinja2
+{{ python.build_stage(Dependencies.python) }}  {# Separate UV builder stage #}
+FROM base-image
+{{ python.copy_from_build_stage() }}           {# Copy /opt/python from builder #}
+```
+
+UV installs to `cpython-{version}-linux-{arch}/`; macros normalize paths to `/opt/python/{version}/`.
 
 Template variables available:
-- `Image`: Information about the current image, version, variant, and OS
-- `Path`: Directory paths in the build context
-- `Dependencies`: Versions of dependencies like Python, R, and Quarto
+- `Image.Version`, `Image.Variant`, `Image.OS` (with `.Name`, `.Family`, `.Version`, `.Codename`), `Image.IsDevelopmentVersion`
+- `Path.Base`, `Path.Image`, `Path.Version`
+- `Dependencies.python`, `Dependencies.R`, `Dependencies.quarto` (lists of version strings)
 
-Custom Jinja2 filters:
-- `tagSafe`: Make strings safe for image tags (replaces invalid characters)
-- `stripMetadata`: Remove version metadata (e.g., `1.0.0+build` → `1.0.0`)
-- `condense`: Remove spaces, dots, and dashes
-- `regexReplace`: Regex-based string replacement
-- `quote`: Wrap string in double quotes
-- `split`: Split string by separator
+Custom Jinja2 filters: `tagSafe`, `stripMetadata`, `condense`, `regexReplace`, `quote`, `split`
 
 ## Build Process
 
@@ -295,6 +319,38 @@ Bakery automatically applies tag patterns based on:
 - Version (`<version>-<os>-<type>`)
 - Latest version markers (`<os>-<type>`, `latest`)
 - Primary OS and variant combinations
+
+## CI/CD Architecture
+
+This repo provides shared reusable GitHub Actions workflows that all product image repos call:
+
+| Workflow | Purpose |
+|---|---|
+| `bakery-build-native.yml` | Native multi-platform builds (amd64/arm64 on separate runners), merges with `bakery ci merge` |
+| `bakery-build.yml` | QEMU-based builds (single runner, slower but simpler) |
+| `clean.yml` | Registry cleanup (dangling caches, temporary images) |
+
+### How product repos use these workflows
+
+Each product repo has 2-3 workflow files that call the shared workflows:
+
+- **production.yml** — weekly + PR + push to main. Builds release versions, pushes to Docker Hub + GHCR.
+- **development.yml** — daily/hourly + PR + push to main. Builds dev stream versions, pushes to GHCR/ECR.
+- **content.yml / session.yml** — weekly + PR + push to main. Builds matrix images (R x Python combinations).
+
+### Build pipeline flow
+
+1. `bakery ci matrix` generates a JSON matrix of image/version/platform combinations
+2. Each combination builds on a separate runner (`bakery build --strategy build --push`)
+3. Build artifacts push to a temp registry (`--temp-registry ghcr.io/posit-dev`)
+4. `bakery ci merge` creates multi-platform manifests and pushes final tags
+
+### Common CI failure modes
+
+- **Python version not in UV** — UV's release metadata may lag behind new CPython releases. Check UV's [download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json).
+- **Stale layer cache** — builds use `--cache-registry ghcr.io/posit-dev`. If a cached layer has outdated packages, the `clean.yml` workflow removes caches older than 14 days, but you may need to manually bust the cache.
+- **Registry auth failures** — Docker Hub requires `DOCKER_HUB_ACCESS_TOKEN` secret; ECR requires AWS OIDC (`id-token: write` permission + `AWS_ROLE` secret).
+- **ARM64 runner unavailable** — native builds use `ubuntu-24.04-arm64-4-core` runners which may have capacity limits.
 
 ## Advanced Usage
 
