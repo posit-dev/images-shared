@@ -21,12 +21,20 @@ QUARTO_PREVIOUS_VERSIONS_URL = (
     "https://raw.githubusercontent.com/quarto-dev/quarto-web/refs/heads/main/docs/download/_download-older.yml"
 )
 
+# All available Positron releases for Workbench
+# The URL contains an architecture segment: x86_64 or arm64.
+# TARGETARCH (amd64/arm64) must be mapped to the URL architecture.
+POSITRON_ARCH_MAP = {"amd64": "x86_64", "arm64": "arm64"}
+POSITRON_DEFAULT_ARCH = "amd64"
+POSITRON_RELEASES_URL_TEMPLATE = "https://cdn.posit.co/positron/releases/pwb/{arch}/all-releases.json"
+
 
 @yaml_object(yaml)
 class SupportedDependencies(enum.StrEnum):
     PYTHON = "python"
     R = "R"
     QUARTO = "quarto"
+    POSITRON = "positron"
 
     @classmethod
     def to_yaml(cls, representer, node):

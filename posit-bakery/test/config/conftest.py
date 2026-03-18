@@ -23,6 +23,7 @@ R_VERSIONS = DEPENDENCIES_TESTDATA_DIR / "r_versions.json"
 QUARTO_DOWNLOAD = DEPENDENCIES_TESTDATA_DIR / "quarto_download.json"
 QUARTO_PRERELEASE = DEPENDENCIES_TESTDATA_DIR / "quarto_prerelease.json"
 QUARTO_PREVIOUS_VERSIONS = DEPENDENCIES_TESTDATA_DIR / "quarto_download-older.yml"
+POSITRON_RELEASES = DEPENDENCIES_TESTDATA_DIR / "positron_releases.json"
 
 
 PRODUCT_TESTDATA_DIR = Path(os.path.dirname(__file__)) / "image" / "posit_products" / "testdata"
@@ -68,6 +69,10 @@ def patch_testdata_response(url: str):
     elif url == dependencies_const.QUARTO_PREVIOUS_VERSIONS_URL:
         mock_response.json.side_effect = FakeJSONDecodeError
         mock_response.text = QUARTO_PREVIOUS_VERSIONS.read_text()
+    elif url == dependencies_const.POSITRON_RELEASES_URL_TEMPLATE.format(
+        arch=dependencies_const.POSITRON_ARCH_MAP[dependencies_const.POSITRON_DEFAULT_ARCH]
+    ):
+        mock_response.json.return_value = json.loads(POSITRON_RELEASES.read_text())
     # Mock responses for Posit products
     elif url == product_const.DOWNLOADS_JSON_URL:
         mock_response.json.return_value = json.loads(DOWNLOADS_JSON.read_text())

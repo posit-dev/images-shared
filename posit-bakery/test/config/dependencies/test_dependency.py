@@ -8,6 +8,7 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
 )
 from posit_bakery.config.dependencies.dependency import Dependency
+from posit_bakery.config.dependencies.positron import PositronDependencyVersions
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
@@ -114,6 +115,7 @@ class TestDependencyVersions:
             pytest.param("python", PythonDependencyVersions, id="python"),
             pytest.param("R", RDependencyVersions, id="R"),
             pytest.param("quarto", QuartoDependencyVersions, id="quarto"),
+            pytest.param("positron", PositronDependencyVersions, id="positron"),
         ],
     )
     def test_dependency_discriminator(self, discriminator: str, expected_type: type[DependencyVersions]):
@@ -161,6 +163,16 @@ class TestDependencyVersions:
                 {"dependency": "quarto", "versions": ["1.7.34", "1.6.43"]},
                 id="quarto_multiple_versions",
             ),
+            pytest.param(
+                PositronDependencyVersions(dependency="positron", versions=["2026.03.0-212"]),
+                {"dependency": "positron", "version": "2026.03.0-212"},
+                id="positron_single_version",
+            ),
+            pytest.param(
+                PositronDependencyVersions(dependency="positron", versions=["2026.03.0-212", "2026.02.1-5"]),
+                {"dependency": "positron", "versions": ["2026.03.0-212", "2026.02.1-5"]},
+                id="positron_multiple_versions",
+            ),
         ],
     )
     def test_version_serialization(self, versions_obj: DependencyVersions, expected_dict: dict):
@@ -178,6 +190,7 @@ class TestGetDependencyVersionsClass:
             pytest.param("python", PythonDependencyVersions, id="python"),
             pytest.param("R", RDependencyVersions, id="R"),
             pytest.param("quarto", QuartoDependencyVersions, id="quarto"),
+            pytest.param("positron", PositronDependencyVersions, id="positron"),
         ],
     )
     def test_valid_dependency_names(self, dependency_name: str, expected_class: type):
@@ -191,6 +204,7 @@ class TestGetDependencyVersionsClass:
             pytest.param("Python", id="wrong_case_python"),
             pytest.param("r", id="wrong_case_r"),
             pytest.param("Quarto", id="wrong_case_quarto"),
+            pytest.param("Positron", id="wrong_case_positron"),
             pytest.param("node", id="unsupported_node"),
             pytest.param("rust", id="unsupported_rust"),
             pytest.param("", id="empty_string"),

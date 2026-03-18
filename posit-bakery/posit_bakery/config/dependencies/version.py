@@ -17,10 +17,15 @@ class DependencyVersion(Version):
 
     This class overrides the minor and micro properties to return None if
     they were not specified in the original version string.
+
+    The original version string is preserved for string representation, since
+    the packaging library normalizes versions (e.g. "2026.03.0-212" becomes
+    "2026.3.0.post212").
     """
 
     _has_minor: bool
     _has_micro: bool
+    _original: str
 
     def __init__(self, version: str):
         """Initialize the DepencencyVersion with a version string."""
@@ -32,10 +37,17 @@ class DependencyVersion(Version):
         # Initialize the parent class to catch any version parsing errors.
         super().__init__(version)
 
+        # Preserve the original version string for faithful string representation.
+        self._original = version
+
         # Track how the version was specified
         parts = version.split(".")
         self._has_minor = len(parts) > 1
         self._has_micro = len(parts) > 2
+
+    def __str__(self) -> str:
+        """Return the original version string."""
+        return self._original
 
     @property
     def minor(self) -> int | None:

@@ -83,6 +83,26 @@ class TestDependencyVersion:
         assert ver.micro == 3
 
     @pytest.mark.parametrize(
+        "version_str",
+        [
+            pytest.param("1.0.0", id="semver"),
+            pytest.param("3.13.7", id="python"),
+            pytest.param("4.4.3", id="r"),
+            pytest.param("2026.03.0-212", id="calver_with_build"),
+            pytest.param("2026.02.1-5", id="calver_with_build_short"),
+        ],
+    )
+    def test_str_preserves_original(self, version_str):
+        """Test that str() returns the original version string."""
+        ver = DependencyVersion(version_str)
+        assert str(ver) == version_str
+
+    def test_str_strips_v_prefix(self):
+        """Test that str() returns the version without the v prefix."""
+        ver = DependencyVersion("v1.2.3")
+        assert str(ver) == "1.2.3"
+
+    @pytest.mark.parametrize(
         "version_list",
         [
             pytest.param(PYTHON_VERSIONS, id="python-builds"),
