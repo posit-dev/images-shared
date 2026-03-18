@@ -5,14 +5,13 @@ from pydantic import ConfigDict
 
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
-from .const import (
-    POSITRON_ARCH_MAP,
-    POSITRON_DEFAULT_ARCH,
-    POSITRON_RELEASES_URL_TEMPLATE,
-    SupportedDependencies,
-)
+from .const import POSITRON_RELEASES_URL_TEMPLATE, SupportedDependencies
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
+
+# Mapping from Docker TARGETARCH values to Positron CDN architecture path segments.
+_ARCH_MAP = {"amd64": "x86_64", "arm64": "arm64"}
+_DEFAULT_ARCH = "amd64"
 
 
 class PositronDependency(BakeryYAMLModel, abc.ABC):
@@ -23,13 +22,13 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
     dependency: Literal[SupportedDependencies.POSITRON] = SupportedDependencies.POSITRON
 
     @staticmethod
-    def releases_url(target_arch: str = POSITRON_DEFAULT_ARCH) -> str:
+    def releases_url(target_arch: str = _DEFAULT_ARCH) -> str:
         """Return the releases URL for a given TARGETARCH value.
 
         :param target_arch: Docker TARGETARCH value (amd64 or arm64).
         :return: The fully-qualified releases URL.
         """
-        arch = POSITRON_ARCH_MAP[target_arch]
+        arch = _ARCH_MAP[target_arch]
         return POSITRON_RELEASES_URL_TEMPLATE.format(arch=arch)
 
     def _fetch_versions(self) -> list[DependencyVersion]:

@@ -22,10 +22,7 @@ QUARTO_PREVIOUS_VERSIONS_URL = (
 )
 
 # All available Positron releases for Workbench
-# The URL contains an architecture segment: x86_64 or arm64.
-# TARGETARCH (amd64/arm64) must be mapped to the URL architecture.
-POSITRON_ARCH_MAP = {"amd64": "x86_64", "arm64": "arm64"}
-POSITRON_DEFAULT_ARCH = "amd64"
+# The URL contains an architecture segment (x86_64 or arm64).
 POSITRON_RELEASES_URL_TEMPLATE = "https://cdn.posit.co/positron/releases/pwb/{arch}/all-releases.json"
 
 

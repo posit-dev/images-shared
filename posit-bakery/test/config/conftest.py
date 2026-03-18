@@ -69,9 +69,7 @@ def patch_testdata_response(url: str):
     elif url == dependencies_const.QUARTO_PREVIOUS_VERSIONS_URL:
         mock_response.json.side_effect = FakeJSONDecodeError
         mock_response.text = QUARTO_PREVIOUS_VERSIONS.read_text()
-    elif url == dependencies_const.POSITRON_RELEASES_URL_TEMPLATE.format(
-        arch=dependencies_const.POSITRON_ARCH_MAP[dependencies_const.POSITRON_DEFAULT_ARCH]
-    ):
+    elif url == dependencies_const.POSITRON_RELEASES_URL_TEMPLATE.format(arch="x86_64"):
         mock_response.json.return_value = json.loads(POSITRON_RELEASES.read_text())
     # Mock responses for Posit products
     elif url == product_const.DOWNLOADS_JSON_URL:
