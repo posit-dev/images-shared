@@ -2,6 +2,7 @@ import pytest
 
 
 from posit_bakery.config.dependencies import get_dependency_constraint_class
+from posit_bakery.config.dependencies.positron import PositronDependencyConstraint, PositronDependencyVersions
 from posit_bakery.config.dependencies.python import PythonDependencyConstraint, PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyConstraint, QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyConstraint, RDependencyVersions
@@ -112,6 +113,42 @@ class TestDependencyConstraint:
         vers = dep.resolve_versions()
         assert vers == expected_versions
 
+    # See ./testdata/positron_releases.json for versions in mocked response
+    @pytest.mark.parametrize(
+        "constraint,expected_versions",
+        [
+            pytest.param(
+                {"latest": True},
+                PositronDependencyVersions(versions=["2026.03.0-212"]),
+                id="latest_only",
+            ),
+            pytest.param(
+                {"latest": True, "count": 3},
+                PositronDependencyVersions(versions=["2026.03.0-212", "2026.02.1-5", "2026.01.0-50"]),
+                id="latest_count_3",
+            ),
+            pytest.param(
+                {"max": "2026.02", "count": 1},
+                PositronDependencyVersions(versions=["2026.02.1-5"]),
+                id="max_minor",
+            ),
+        ],
+    )
+    def test_positron_constraints(self, patch_requests_get, constraint, expected_versions):
+        """Test that a valid positron dependency constraint returns expected versions.
+
+        This test mocks the request to fetch available positron versions and checks
+        that the constraint filtering logic works as expected.
+        """
+
+        dep = PositronDependencyConstraint(
+            dependency="positron",
+            constraint=constraint,
+        )
+
+        vers = dep.resolve_versions()
+        assert vers == expected_versions
+
 
 class TestGetDependencyConstraintClass:
     """Tests for the get_dependency_constraint_class helper function."""
@@ -122,6 +159,7 @@ class TestGetDependencyConstraintClass:
             pytest.param("python", PythonDependencyConstraint, id="python"),
             pytest.param("R", RDependencyConstraint, id="R"),
             pytest.param("quarto", QuartoDependencyConstraint, id="quarto"),
+            pytest.param("positron", PositronDependencyConstraint, id="positron"),
         ],
     )
     def test_valid_dependency_names(self, dependency_name: str, expected_class: type):
@@ -135,6 +173,7 @@ class TestGetDependencyConstraintClass:
             pytest.param("Python", id="wrong_case_python"),
             pytest.param("r", id="wrong_case_r"),
             pytest.param("Quarto", id="wrong_case_quarto"),
+            pytest.param("Positron", id="wrong_case_positron"),
             pytest.param("java", id="unsupported_java"),
             pytest.param("go", id="unsupported_go"),
             pytest.param("", id="empty_string"),

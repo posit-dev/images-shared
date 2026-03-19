@@ -1,0 +1,49 @@
+{
+  "releases": [
+    {
+      "version": "2026.03.0-212",
+      "pub_date": "2026-03-02 18:26:46 UTC",
+      "name": "2026.03.0-212",
+      "url": "https://cdn.posit.co/positron/releases/pwb/x86_64/positron-workbench-linux-x64-2026.03.0-212.tar.gz",
+      "commit": "f3aae65e0a1a11d39226cd884520f49301daef82",
+      "sha256hash": "003ef150184561932b2253ae3dedcb4645df3a5d4bc4fcb8da0624fba7f5f7e3",
+      "codeoss_version": "1.108.0"
+    },
+    {
+      "version": "2026.02.1-5",
+      "pub_date": "2026-02-17 23:58:00 UTC",
+      "name": "2026.02.1-5",
+      "url": "https://cdn.posit.co/positron/releases/pwb/x86_64/positron-workbench-linux-x64-2026.02.1-5.tar.gz",
+      "commit": "693b6d13ba5d61566bec7f5a4a46126eff7bbbe1",
+      "sha256hash": "2746ab0c6b58063596131ee5772c504ef303203b82998e3e834eca663cc14ea6",
+      "codeoss_version": "1.106.0"
+    },
+    {
+      "version": "2026.02.0-100",
+      "pub_date": "2026-02-01 12:00:00 UTC",
+      "name": "2026.02.0-100",
+      "url": "https://cdn.posit.co/positron/releases/pwb/x86_64/positron-workbench-linux-x64-2026.02.0-100.tar.gz",
+      "commit": "abcdef1234567890abcdef1234567890abcdef12",
+      "sha256hash": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      "codeoss_version": "1.105.0"
+    },
+    {
+      "version": "2026.01.0-50",
+      "pub_date": "2026-01-15 10:00:00 UTC",
+      "name": "2026.01.0-50",
+      "url": "https://cdn.posit.co/positron/releases/pwb/x86_64/positron-workbench-linux-x64-2026.01.0-50.tar.gz",
+      "commit": "1234567890abcdef1234567890abcdef12345678",
+      "sha256hash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+      "codeoss_version": "1.104.0"
+    },
+    {
+      "version": "2025.12.0-30",
+      "pub_date": "2025-12-01 08:00:00 UTC",
+      "name": "2025.12.0-30",
+      "url": "https://cdn.posit.co/positron/releases/pwb/x86_64/positron-workbench-linux-x64-2025.12.0-30.tar.gz",
+      "commit": "0987654321fedcba0987654321fedcba09876543",
+      "sha256hash": "0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba",
+      "codeoss_version": "1.103.0"
+    }
+  ]
+}

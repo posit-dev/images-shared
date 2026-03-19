@@ -4,16 +4,17 @@ from pydantic import Field
 
 from . import const
 from .dependency import DependencyVersion, DependencyConstraint, DependencyVersions
+from .positron import PositronDependencyConstraint, PositronDependencyVersions
 from .python import PythonDependencyConstraint, PythonDependencyVersions
 from .quarto import QuartoDependencyConstraint, QuartoDependencyVersions
 from .r import RDependencyConstraint, RDependencyVersions
 
 DependencyConstraintField = Annotated[
-    Union[PythonDependencyConstraint, RDependencyConstraint, QuartoDependencyConstraint],
+    Union[PythonDependencyConstraint, RDependencyConstraint, QuartoDependencyConstraint, PositronDependencyConstraint],
     Field(discriminator="dependency"),
 ]
 DependencyVersionsField = Annotated[
-    Union[PythonDependencyVersions, RDependencyVersions, QuartoDependencyVersions],
+    Union[PythonDependencyVersions, RDependencyVersions, QuartoDependencyVersions, PositronDependencyVersions],
     Field(discriminator="dependency"),
 ]
 
@@ -31,6 +32,7 @@ def get_dependency_versions_class(dependency_name: str) -> type[DependencyVersio
         const.SupportedDependencies.PYTHON: PythonDependencyVersions,
         const.SupportedDependencies.R: RDependencyVersions,
         const.SupportedDependencies.QUARTO: QuartoDependencyVersions,
+        const.SupportedDependencies.POSITRON: PositronDependencyVersions,
     }
 
     try:
@@ -52,6 +54,7 @@ def get_dependency_constraint_class(dependency_name: str) -> type[DependencyCons
         const.SupportedDependencies.PYTHON: PythonDependencyConstraint,
         const.SupportedDependencies.R: RDependencyConstraint,
         const.SupportedDependencies.QUARTO: QuartoDependencyConstraint,
+        const.SupportedDependencies.POSITRON: PositronDependencyConstraint,
     }
 
     try:
