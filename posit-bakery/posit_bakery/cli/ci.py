@@ -12,6 +12,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stdout_console
+from posit_bakery.registry_management.dockerhub.readme import push_readmes
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
@@ -206,6 +207,9 @@ def merge(
             error_flag = True
         elif manifest is not None:
             stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+
+    if not dry_run:
+        push_readmes(config.targets)
 
     if error_flag:
         log.error("One or more errors occurred during merge.")
