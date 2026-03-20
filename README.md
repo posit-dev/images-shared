@@ -1,9 +1,14 @@
 # Posit Images Shared Tools
 
-> [!IMPORTANT]
-> These images are under active development and testing and are not yet supported by Posit.
->
-> Please see [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products) for officially supported images.
+> [!NOTE]
+> These images are in preview as Posit migrates container images from [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products). The existing images remain supported.
+
+This repository contains shared build tooling and CI workflows used by the Posit Container Image repositories. **If you want to run pre-built Posit product containers**, see the product repositories instead:
+
+- [Posit Connect](https://github.com/posit-dev/images-connect/blob/main/connect/README.md)
+- [Posit Package Manager](https://github.com/posit-dev/images-package-manager/blob/main/package-manager/README.md)
+- [Posit Workbench](https://github.com/posit-dev/images-workbench/blob/main/workbench/README.md)
+- [Ecosystem overview](https://github.com/posit-dev/images)
 
 ## Code Repositories
 
@@ -19,9 +24,9 @@
 
 ### Bakery
 
-The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to managed a matrix of container image builds.
+The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to manage a matrix of container image builds.
 
->[!TIP]
+> [!TIP]
 > - [Get started with `bakery`](./posit-bakery/README.md#getting-started)
 > - [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — step-by-step tutorials
 
