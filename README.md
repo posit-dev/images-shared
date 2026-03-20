@@ -7,9 +7,9 @@
 
 This repository contains shared build tooling and CI workflows used by the Posit Container Image repositories. **If you want to run pre-built Posit product containers**, see the product repositories instead:
 
-- [Posit Connect](https://github.com/posit-dev/images-connect/tree/main/connect)
-- [Posit Package Manager](https://github.com/posit-dev/images-package-manager/tree/main/package-manager)
-- [Posit Workbench](https://github.com/posit-dev/images-workbench/tree/main/workbench)
+- [Posit Connect](https://github.com/posit-dev/images-connect/blob/main/connect/README.md)
+- [Posit Package Manager](https://github.com/posit-dev/images-package-manager/blob/main/package-manager/README.md)
+- [Posit Workbench](https://github.com/posit-dev/images-workbench/blob/main/workbench/README.md)
 - [Ecosystem overview](https://github.com/posit-dev/images)
 
 ## Code Repositories
