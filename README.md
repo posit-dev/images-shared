@@ -24,9 +24,9 @@ This repository contains shared build tooling and CI workflows used by the Posit
 
 ### Bakery
 
-The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to managed a matrix of container image builds.
+The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to manage a matrix of container image builds.
 
->[!TIP]
+> [!TIP]
 > - [Get started with `bakery`](./posit-bakery/README.md#getting-started)
 > - [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — step-by-step tutorials
 
