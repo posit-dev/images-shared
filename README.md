@@ -5,6 +5,13 @@
 >
 > Please see [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products) for officially supported images.
 
+This repository contains shared build tooling and CI workflows used by the Posit Container Image repositories. **If you want to run pre-built Posit product containers**, see the product repositories instead:
+
+- [Posit Connect](https://github.com/posit-dev/images-connect/tree/main/connect)
+- [Posit Package Manager](https://github.com/posit-dev/images-package-manager/tree/main/package-manager)
+- [Posit Workbench](https://github.com/posit-dev/images-workbench/tree/main/workbench)
+- [Ecosystem overview](https://github.com/posit-dev/images)
+
 ## Code Repositories
 
 | Repository | Description |
