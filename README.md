@@ -1,9 +1,7 @@
 # Posit Images Shared Tools
 
-> [!IMPORTANT]
-> These images are under active development and testing and are not yet supported by Posit.
->
-> Please see [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products) for officially supported images.
+> [!NOTE]
+> These images are in preview as Posit migrates container images from [rstudio/rstudio-docker-products](https://github.com/rstudio/rstudio-docker-products). The existing images remain supported.
 
 This repository contains shared build tooling and CI workflows used by the Posit Container Image repositories. **If you want to run pre-built Posit product containers**, see the product repositories instead:
 
