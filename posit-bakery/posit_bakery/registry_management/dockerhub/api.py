@@ -6,13 +6,13 @@ import requests
 
 
 class DockerhubClient:
-    BASE_URL = "https://hub.docker.com/v2"
+    BASE_URL = "https://hub.docker.com/v2/"
     ENDPOINTS = {
-        "auth": "/auth/token",
-        "repositories": "/namespaces/{namespace}/repositories",
-        "repository": "/namespaces/{namespace}/repositories/{repository}",
-        "tags": "/namespaces/{namespace}/repositories/{repository}/tags",
-        "tag": "/namespaces/{namespace}/repositories/{repository}/tags/{tag}",
+        "auth": "auth/token",
+        "repositories": "namespaces/{namespace}/repositories",
+        "repository": "namespaces/{namespace}/repositories/{repository}",
+        "tags": "namespaces/{namespace}/repositories/{repository}/tags",
+        "tag": "namespaces/{namespace}/repositories/{repository}/tags/{tag}",
     }
 
     def __init__(self, identifier: str | None = None, secret: str | None = None):
