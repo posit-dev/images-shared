@@ -52,6 +52,12 @@ on:
       DOCKER_HUB_ACCESS_TOKEN:
         description: "Docker Hub Access Token [required if pushing to Docker Hub]"
         required: false
+      DOCKER_HUB_README_USERNAME:
+        description: "Docker Hub username for pushing READMEs (PAT required, OAT not supported)"
+        required: false
+      DOCKER_HUB_README_PASSWORD:
+        description: "Docker Hub PAT for pushing READMEs"
+        required: false
       AWS_ROLE:
         description: "AWS Role to assume [required if pushing to ECR]"
         required: false
@@ -191,3 +197,29 @@ jobs:
             --dev-versions ${{ inputs.dev-versions }} \
             --matrix-versions ${{ inputs.matrix-versions }} \
             --context ${{ inputs.context }}
+
+  readme:
+    name: Push READMEs
+    if: ${{ inputs.push }}
+    needs:
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Push READMEs to Docker Hub
+        env:
+          DOCKER_HUB_README_USERNAME: ${{ secrets.DOCKER_HUB_README_USERNAME }}
+          DOCKER_HUB_README_PASSWORD: ${{ secrets.DOCKER_HUB_README_PASSWORD }}
+        run: |
+          bakery ci readme \
+            --context ${{ inputs.context }} \
+            --dev-versions ${{ inputs.dev-versions }} \
+            --matrix-versions ${{ inputs.matrix-versions }}

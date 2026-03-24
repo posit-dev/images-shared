@@ -6,13 +6,13 @@ import requests
 
 
 class DockerhubClient:
-    BASE_URL = "https://hub.docker.com/v2"
+    BASE_URL = "https://hub.docker.com/v2/"
     ENDPOINTS = {
-        "auth": "/auth/token",
-        "repositories": "/namespaces/{namespace}/repositories",
-        "repository": "/namespaces/{namespace}/repositories/{repository}",
-        "tags": "/namespaces/{namespace}/repositories/{repository}/tags",
-        "tag": "/namespaces/{namespace}/repositories/{repository}/tags/{tag}",
+        "auth": "auth/token",
+        "repositories": "namespaces/{namespace}/repositories",
+        "repository": "namespaces/{namespace}/repositories/{repository}",
+        "tags": "namespaces/{namespace}/repositories/{repository}/tags",
+        "tag": "namespaces/{namespace}/repositories/{repository}/tags/{tag}",
     }
 
     def __init__(self, identifier: str | None = None, secret: str | None = None):
@@ -134,3 +134,28 @@ class DockerhubClient:
 
         response = requests.delete(target, headers=self._get_headers())
         response.raise_for_status()
+
+    def update_full_description(
+        self, namespace: str | None = None, repository: str | None = None, full_description: str | None = None
+    ) -> dict:
+        """Update the full description (README) of a Docker Hub repository.
+
+        :param namespace: The namespace (organization or user) of the repository.
+        :param repository: The name of the repository.
+        :param full_description: The full description content (typically README.md contents).
+            Docker Hub limits this to 25,000 bytes.
+
+        :return: The updated repository data from Docker Hub.
+        """
+        if namespace is None:
+            namespace = self.identifier
+        if repository is None:
+            raise ValueError("Repository name must be provided.")
+        if full_description is None:
+            raise ValueError("Full description must be provided.")
+        target = self.endpoint("repository", namespace=namespace, repository=repository)
+
+        response = requests.patch(target, headers=self._get_headers(), json={"full_description": full_description})
+        response.raise_for_status()
+
+        return response.json()

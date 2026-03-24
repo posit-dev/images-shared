@@ -11,7 +11,7 @@ from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-from posit_bakery.log import stdout_console
+from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
@@ -210,3 +210,62 @@ def merge(
     if error_flag:
         log.error("One or more errors occurred during merge.")
         raise typer.Exit(code=1)
+
+
+@app.command()
+@with_verbosity_flags
+def readme(
+    context: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
+    ] = auto_path(),
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude development versions defined in config.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = DevVersionInclusionEnum.INCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude versions defined in image matrix.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.INCLUDE,
+) -> None:
+    """Push image READMEs to Docker Hub.
+
+    Pushes the README.md from each image directory to the corresponding Docker Hub
+    repository description. Only pushes for eligible images: latest versions,
+    matrix versions, and non-development versions with Docker Hub registries configured.
+
+    Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment
+    variables to be set with a Personal Access Token (PAT). Organization Access Tokens
+    cannot update repository descriptions.
+    """
+    from posit_bakery.registry_management.dockerhub.readme import push_readmes
+
+    settings = BakerySettings(
+        dev_versions=dev_versions,
+        matrix_versions=matrix_versions,
+    )
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    try:
+        count = push_readmes(config.targets)
+    except (ValueError, RuntimeError) as e:
+        stderr_console.print(f"❌ {e}", style="error")
+        raise typer.Exit(code=1)
+
+    if count > 0:
+        stderr_console.print(f"✅ Pushed {count} README(s) to Docker Hub", style="success")
+    else:
+        stderr_console.print("No READMEs pushed", style="dim")
