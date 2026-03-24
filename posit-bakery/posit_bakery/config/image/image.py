@@ -351,6 +351,19 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return None
 
+    def get_version_by_subpath(self, subpath: str) -> ImageVersion | None:
+        """Returns an image version by subpath, or None if not found.
+
+        :param subpath: The subpath to match against.
+
+        :return: The ImageVersion object if found, otherwise None.
+        """
+        for version in self.versions:
+            if version.subpath == subpath:
+                return version
+
+        return None
+
     def create_version(
         self,
         version_name: str,
