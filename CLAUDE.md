@@ -53,6 +53,10 @@ git -C ../images-connect worktree remove .claude/worktrees/<name>
 > repo root (typically on `main`). Always use the full worktree path when reading or writing
 > files in a sibling worktree.
 
+> **Bash commands:** Use `git -C <path>` instead of `cd <path> && git ...` for sibling repo
+> operations. The sandbox restricts `cd` to parent/sibling directories, but `git -C` runs
+> git from a target directory without changing the working directory.
+
 ## Posit Product Naming
 
 | Current Name | Legacy Name | ENV Prefix | Legacy Prefix | Helm Chart |

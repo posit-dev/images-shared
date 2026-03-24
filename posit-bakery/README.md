@@ -1,13 +1,13 @@
 # Bakery
 
-The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](#3rd-party-tools) to manage a matrixed build of container images.
+The [bakery](./posit_bakery/) command line interface (CLI) binds together various [tools](#3rd-party-tools) to manage a matrixed build of container images.
 
 ## Getting Started
 
 ### Prerequisites
 
 * [python](https://docs.astral.sh/uv/guides/install-python/)
-* [pipx](https://pipx.pypa.io/stable/installation/)
+* [pipx](https://pipx.pypa.io/stable/how-to/install-pipx/)
 * [docker buildx bake](https://github.com/docker/buildx#installing)
 * [just](https://just.systems/man/en/prerequisites.html)
 ### 3rd Party Tools
@@ -19,8 +19,8 @@ The [bakery](./posit-bakery/) command line interface (CLI) binds together variou
 | [dgoss](https://github.com/goss-org/goss#installation)                                                                                                                    | `bakery run dgoss`              | Test container images for expected content & behavior              |
 | [hadolint](https://github.com/hadolint/hadolint#install)                                                                                                                  | to be implemented               | Lint Dockerfile/Containerfile                                      |
 | [openscap](https://static.open-scap.org/)                                                                                                                                 | to be implemented               | Scan container images for secure configuration and vulnerabilities |
-| [trivy](https://trivy.dev/dev/getting-started/installation/)                                                                                                              | to be implemented               | Scan container images for vulnerabilities                          |
-| [wizcli](https://github.com/bshandley/wizcli_install)                                                                                                                     | to be implemented               | Scan container images for vulnerabilities                          |
+| trivy                                                                                                                                                                      | to be implemented               | Scan container images for vulnerabilities                          |
+| wizcli                                                                                                                                                                     | to be implemented               | Scan container images for vulnerabilities                          |
 
 ## Installation
 
