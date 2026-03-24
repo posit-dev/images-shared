@@ -39,15 +39,16 @@ def push_readmes(targets: list[ImageTarget]) -> int:
     :return: Number of READMEs pushed.
     :raises RuntimeError: If one or more README pushes fail.
     """
-    eligible: list[ImageTarget] = []
+    eligible: list[tuple[ImageTarget, set[tuple[str, str]]]] = []
     for target in targets:
         if target.image_version.isDevelopmentVersion:
             continue
         if not target.image_version.isMatrixVersion and not target.is_latest:
             continue
-        if not _get_dockerhub_repos(target):
+        repos = _get_dockerhub_repos(target)
+        if not repos:
             continue
-        eligible.append(target)
+        eligible.append((target, repos))
 
     if not eligible:
         log.info("No eligible targets for Docker Hub README push.")
@@ -63,11 +64,14 @@ def push_readmes(targets: list[ImageTarget]) -> int:
         )
         return 0
 
-    client = DockerhubClient(identifier=username, secret=password)
+    try:
+        client = DockerhubClient(identifier=username, secret=password)
+    except Exception as e:
+        raise RuntimeError(f"Failed to authenticate with Docker Hub: {e}") from e
 
     pushed: set[str] = set()
     errors: list[str] = []
-    for target in eligible:
+    for target, repos in eligible:
         readme_path = target.context.image_path / "README.md"
         if not readme_path.is_file():
             log.debug(f"No README.md found at {readme_path}")
@@ -75,7 +79,7 @@ def push_readmes(targets: list[ImageTarget]) -> int:
 
         readme_content = readme_path.read_text()
 
-        for namespace, repository in _get_dockerhub_repos(target):
+        for namespace, repository in repos:
             key = f"{namespace}/{repository}"
             if key in pushed:
                 continue

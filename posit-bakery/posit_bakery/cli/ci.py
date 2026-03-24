@@ -247,7 +247,7 @@ def readme(
     repository description. Only pushes for eligible images: latest versions,
     matrix versions, and non-development versions with Docker Hub registries configured.
 
-    Requires DOCKERHUB_README_USERNAME and DOCKERHUB_README_PASSWORD environment
+    Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment
     variables to be set with a Personal Access Token (PAT). Organization Access Tokens
     cannot update repository descriptions.
     """
