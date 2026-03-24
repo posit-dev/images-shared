@@ -14,7 +14,6 @@ from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEn
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
-from posit_bakery.registry_management.dockerhub.readme import push_readmes
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
@@ -240,8 +239,5 @@ def build(
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print(f"❌ Build failed", style="error")
         raise typer.Exit(code=1)
-
-    if push and not temp_registry:
-        push_readmes(config.targets)
 
     stderr_console.print("✅ Build completed", style="success")
