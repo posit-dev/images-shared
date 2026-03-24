@@ -72,14 +72,33 @@ class TestPushReadmes:
             push_readmes(basic_targets)
             mock_client_cls.assert_not_called()
 
-    def test_skips_non_latest_targets(self, tmp_targets, readme_env, monkeypatch):
+    def test_skips_non_latest_non_matrix_targets(self, tmp_targets, readme_env, monkeypatch):
         monkeypatch.setenv("GITHUB_REF_NAME", "main")
         for target in tmp_targets:
             target.image_version.latest = False
+            target.image_version.isMatrixVersion = False
 
         with patch("posit_bakery.registry_management.dockerhub.readme.DockerhubClient") as mock_client_cls:
             push_readmes(tmp_targets)
             mock_client_cls.assert_not_called()
+
+    def test_allows_matrix_versions_without_latest(self, tmp_targets, readme_env, monkeypatch):
+        monkeypatch.setenv("GITHUB_REF_NAME", "main")
+        for target in tmp_targets:
+            target.image_version.latest = False
+            target.image_version.isMatrixVersion = True
+            readme_path = target.context.image_path / "README.md"
+            readme_path.parent.mkdir(parents=True, exist_ok=True)
+            readme_path.write_text("# Matrix Image")
+
+        mock_client = MagicMock()
+        with patch(
+            "posit_bakery.registry_management.dockerhub.readme.DockerhubClient",
+            return_value=mock_client,
+        ):
+            push_readmes(tmp_targets)
+
+        mock_client.update_full_description.assert_called_once_with("posit", "test-image", "# Matrix Image")
 
     def test_skips_dev_versions(self, tmp_targets, readme_env, monkeypatch):
         monkeypatch.setenv("GITHUB_REF_NAME", "main")

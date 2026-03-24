@@ -48,10 +48,12 @@ def push_readmes(targets: list[ImageTarget]) -> None:
     repository description. Only pushes when all conditions are met:
 
     - The current branch is main
-    - The image version is marked as latest
+    - The image version is marked as latest, or is a matrix version
     - The image version is not a development version
     - The image has Docker Hub registry tags
     - Docker Hub README credentials are configured
+
+    Pushes once per Docker Hub repository, regardless of how many targets share it.
 
     Failures are logged as warnings and do not raise exceptions.
 
@@ -63,9 +65,9 @@ def push_readmes(targets: list[ImageTarget]) -> None:
 
     eligible: list[ImageTarget] = []
     for target in targets:
-        if not target.is_latest:
-            continue
         if target.image_version.isDevelopmentVersion:
+            continue
+        if not target.image_version.isMatrixVersion and not target.is_latest:
             continue
         if not _get_dockerhub_repos(target):
             continue
