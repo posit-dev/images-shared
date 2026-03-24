@@ -61,10 +61,10 @@ on:
       DOCKER_HUB_ACCESS_TOKEN:
         description: "Docker Hub Access Token [required if pushing]"
         required: false
-      DOCKERHUB_README_USERNAME:
+      DOCKER_HUB_README_USERNAME:
         description: "Docker Hub username for pushing READMEs (PAT required, OAT not supported)"
         required: false
-      DOCKERHUB_README_PASSWORD:
+      DOCKER_HUB_README_PASSWORD:
         description: "Docker Hub PAT for pushing READMEs"
         required: false
       AWS_ROLE:
@@ -343,8 +343,8 @@ jobs:
 
       - name: Push READMEs to Docker Hub
         env:
-          DOCKERHUB_README_USERNAME: ${{ secrets.DOCKERHUB_README_USERNAME }}
-          DOCKERHUB_README_PASSWORD: ${{ secrets.DOCKERHUB_README_PASSWORD }}
+          DOCKER_HUB_README_USERNAME: ${{ secrets.DOCKER_HUB_README_USERNAME }}
+          DOCKER_HUB_README_PASSWORD: ${{ secrets.DOCKER_HUB_README_PASSWORD }}
         run: |
           bakery ci readme \
             --context ${{ inputs.context }} \

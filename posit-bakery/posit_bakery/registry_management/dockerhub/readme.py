@@ -6,8 +6,8 @@ from posit_bakery.registry_management.dockerhub.api import DockerhubClient
 
 log = logging.getLogger(__name__)
 
-DOCKERHUB_README_USERNAME_ENV = "DOCKERHUB_README_USERNAME"
-DOCKERHUB_README_PASSWORD_ENV = "DOCKERHUB_README_PASSWORD"
+DOCKER_HUB_README_USERNAME_ENV = "DOCKER_HUB_README_USERNAME"
+DOCKER_HUB_README_PASSWORD_ENV = "DOCKER_HUB_README_PASSWORD"
 
 
 def _get_dockerhub_repos(target: ImageTarget) -> set[tuple[str, str]]:
@@ -31,7 +31,7 @@ def push_readmes(targets: list[ImageTarget]) -> int:
 
     Pushes once per Docker Hub repository, regardless of how many targets share it.
 
-    Requires DOCKERHUB_README_USERNAME and DOCKERHUB_README_PASSWORD environment
+    Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment
     variables to be set. Skips gracefully if credentials are not configured.
     Raises on authentication or push failures.
 
@@ -53,12 +53,12 @@ def push_readmes(targets: list[ImageTarget]) -> int:
         log.info("No eligible targets for Docker Hub README push.")
         return 0
 
-    username = os.getenv(DOCKERHUB_README_USERNAME_ENV)
-    password = os.getenv(DOCKERHUB_README_PASSWORD_ENV)
+    username = os.getenv(DOCKER_HUB_README_USERNAME_ENV)
+    password = os.getenv(DOCKER_HUB_README_PASSWORD_ENV)
     if not username or not password:
         log.warning(
             f"Docker Hub README credentials not configured "
-            f"({DOCKERHUB_README_USERNAME_ENV}, {DOCKERHUB_README_PASSWORD_ENV}). "
+            f"({DOCKER_HUB_README_USERNAME_ENV}, {DOCKER_HUB_README_PASSWORD_ENV}). "
             f"Skipping README push."
         )
         return 0

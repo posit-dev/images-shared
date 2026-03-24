@@ -5,8 +5,8 @@ import pytest
 from posit_bakery.registry_management.dockerhub.readme import (
     _get_dockerhub_repos,
     push_readmes,
-    DOCKERHUB_README_USERNAME_ENV,
-    DOCKERHUB_README_PASSWORD_ENV,
+    DOCKER_HUB_README_USERNAME_ENV,
+    DOCKER_HUB_README_PASSWORD_ENV,
 )
 
 
@@ -24,8 +24,8 @@ def tmp_targets(get_tmpconfig):
 @pytest.fixture
 def readme_env(monkeypatch):
     """Set Docker Hub README credentials in the environment."""
-    monkeypatch.setenv(DOCKERHUB_README_USERNAME_ENV, "testuser")
-    monkeypatch.setenv(DOCKERHUB_README_PASSWORD_ENV, "testpass")
+    monkeypatch.setenv(DOCKER_HUB_README_USERNAME_ENV, "testuser")
+    monkeypatch.setenv(DOCKER_HUB_README_PASSWORD_ENV, "testpass")
 
 
 class TestGetDockerhubRepos:
@@ -43,8 +43,8 @@ class TestGetDockerhubRepos:
 
 class TestPushReadmes:
     def test_skips_when_no_credentials(self, basic_targets, monkeypatch):
-        monkeypatch.delenv(DOCKERHUB_README_USERNAME_ENV, raising=False)
-        monkeypatch.delenv(DOCKERHUB_README_PASSWORD_ENV, raising=False)
+        monkeypatch.delenv(DOCKER_HUB_README_USERNAME_ENV, raising=False)
+        monkeypatch.delenv(DOCKER_HUB_README_PASSWORD_ENV, raising=False)
         with patch("posit_bakery.registry_management.dockerhub.readme.DockerhubClient") as mock_client_cls:
             push_readmes(basic_targets)
             mock_client_cls.assert_not_called()
