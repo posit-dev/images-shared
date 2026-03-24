@@ -260,9 +260,12 @@ def readme(
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     try:
-        push_readmes(config.targets)
+        count = push_readmes(config.targets)
     except (ValueError, RuntimeError) as e:
         stderr_console.print(f"❌ {e}", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print("✅ READMEs pushed to Docker Hub", style="success")
+    if count > 0:
+        stderr_console.print(f"✅ Pushed {count} README(s) to Docker Hub", style="success")
+    else:
+        stderr_console.print("No READMEs pushed", style="dim")

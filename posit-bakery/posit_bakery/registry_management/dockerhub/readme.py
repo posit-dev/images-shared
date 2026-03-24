@@ -19,7 +19,7 @@ def _get_dockerhub_repos(target: ImageTarget) -> set[tuple[str, str]]:
     return repos
 
 
-def push_readmes(targets: list[ImageTarget]) -> None:
+def push_readmes(targets: list[ImageTarget]) -> int:
     """Push READMEs to Docker Hub for eligible image targets.
 
     Pushes the README.md from each image directory to the corresponding Docker Hub
@@ -36,6 +36,7 @@ def push_readmes(targets: list[ImageTarget]) -> None:
     Raises on authentication or push failures.
 
     :param targets: List of image targets to evaluate.
+    :return: Number of READMEs pushed.
     :raises RuntimeError: If one or more README pushes fail.
     """
     eligible: list[ImageTarget] = []
@@ -50,7 +51,7 @@ def push_readmes(targets: list[ImageTarget]) -> None:
 
     if not eligible:
         log.info("No eligible targets for Docker Hub README push.")
-        return
+        return 0
 
     username = os.getenv(DOCKERHUB_README_USERNAME_ENV)
     password = os.getenv(DOCKERHUB_README_PASSWORD_ENV)
@@ -60,7 +61,7 @@ def push_readmes(targets: list[ImageTarget]) -> None:
             f"({DOCKERHUB_README_USERNAME_ENV}, {DOCKERHUB_README_PASSWORD_ENV}). "
             f"Skipping README push."
         )
-        return
+        return 0
 
     client = DockerhubClient(identifier=username, secret=password)
 
@@ -89,3 +90,5 @@ def push_readmes(targets: list[ImageTarget]) -> None:
 
     if errors:
         raise RuntimeError(f"Failed to push READMEs for: {', '.join(errors)}")
+
+    return len(pushed)
