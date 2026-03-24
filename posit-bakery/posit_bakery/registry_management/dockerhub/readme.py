@@ -32,10 +32,11 @@ def push_readmes(targets: list[ImageTarget]) -> None:
     Pushes once per Docker Hub repository, regardless of how many targets share it.
 
     Requires DOCKERHUB_README_USERNAME and DOCKERHUB_README_PASSWORD environment
-    variables to be set. Raises if credentials are missing or authentication fails.
+    variables to be set. Skips gracefully if credentials are not configured.
+    Raises on authentication or push failures.
 
     :param targets: List of image targets to evaluate.
-    :raises ValueError: If Docker Hub README credentials are not configured.
+    :raises RuntimeError: If one or more README pushes fail.
     """
     eligible: list[ImageTarget] = []
     for target in targets:
@@ -54,10 +55,12 @@ def push_readmes(targets: list[ImageTarget]) -> None:
     username = os.getenv(DOCKERHUB_README_USERNAME_ENV)
     password = os.getenv(DOCKERHUB_README_PASSWORD_ENV)
     if not username or not password:
-        raise ValueError(
-            f"Docker Hub README credentials not configured. "
-            f"Set {DOCKERHUB_README_USERNAME_ENV} and {DOCKERHUB_README_PASSWORD_ENV} environment variables."
+        log.warning(
+            f"Docker Hub README credentials not configured "
+            f"({DOCKERHUB_README_USERNAME_ENV}, {DOCKERHUB_README_PASSWORD_ENV}). "
+            f"Skipping README push."
         )
+        return
 
     client = DockerhubClient(identifier=username, secret=password)
 

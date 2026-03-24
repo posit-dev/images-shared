@@ -42,11 +42,12 @@ class TestGetDockerhubRepos:
 
 
 class TestPushReadmes:
-    def test_raises_when_no_credentials(self, basic_targets, monkeypatch):
+    def test_skips_when_no_credentials(self, basic_targets, monkeypatch):
         monkeypatch.delenv(DOCKERHUB_README_USERNAME_ENV, raising=False)
         monkeypatch.delenv(DOCKERHUB_README_PASSWORD_ENV, raising=False)
-        with pytest.raises(ValueError, match="credentials not configured"):
+        with patch("posit_bakery.registry_management.dockerhub.readme.DockerhubClient") as mock_client_cls:
             push_readmes(basic_targets)
+            mock_client_cls.assert_not_called()
 
     def test_skips_non_latest_non_matrix_targets(self, tmp_targets, readme_env):
         for target in tmp_targets:
