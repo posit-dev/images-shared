@@ -601,6 +601,7 @@ class TestImageTarget:
             "cache_to": None,
             "metadata_file": None,
             "platforms": ["linux/amd64"],
+            "target": None,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -632,6 +633,7 @@ class TestImageTarget:
             "cache_to": None,
             "metadata_file": None,
             "platforms": ["linux/amd64"],
+            "target": None,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -659,6 +661,7 @@ class TestImageTarget:
             "cache_to": f"type=registry,ref={cache_name},mode=max",
             "metadata_file": None,
             "platforms": ["linux/amd64"],
+            "target": None,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -685,10 +688,39 @@ class TestImageTarget:
             "cache_to": None,
             "metadata_file": None,
             "platforms": ["linux/amd64"],
+            "target": None,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
             basic_standard_image_target.build(push=True)
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_with_target(self, basic_standard_image_target):
+        """Test the build property of an ImageTarget when a target stage is specified."""
+        basic_standard_image_target.image_version.target = "my-stage"
+
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "build_args": {},
+            "tags": basic_standard_image_target.tags.as_strings(),
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "pull": False,
+            "output": {},
+            "cache": True,
+            "cache_from": None,
+            "cache_to": None,
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+            "target": "my-stage",
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
 
         mock_build.assert_called_once_with(**expected_build_args)
 

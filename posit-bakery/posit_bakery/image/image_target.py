@@ -501,6 +501,11 @@ class ImageTarget(BaseModel):
         return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
     @property
+    def target(self) -> str | None:
+        """Return the target build stage, if configured."""
+        return self.image_version.target
+
+    @property
     def temp_registry(self) -> str | None:
         """Get the temporary registry from settings."""
         return self.settings.temp_registry
@@ -581,6 +586,7 @@ class ImageTarget(BaseModel):
                     cache_to=cache_to,
                     metadata_file=metadata_file,
                     platforms=platforms or self.image_os.platforms,
+                    target=self.target,
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(
