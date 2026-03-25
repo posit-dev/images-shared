@@ -18,30 +18,29 @@ _default:
 
 # Set up local dev environment
 setup:
-    just _setup-poetry
+    just _setup-uv
 
 [private]
-_setup-poetry:
-    poetry --version || just _python-executable poetry
+_setup-uv:
+    uv --version || just _python-executable uv
 
 ################
 # Commands
 
 # Install the posit-bakery python project
 install:
-    poetry install \
+    uv sync \
         --directory={{ CWD }}
 
 alias package := build
 # Build the posit-bakery python project
 build:
-    poetry build \
-        --directory={{ CWD }} \
-        --clean
+    uv build \
+        --directory={{ CWD }}
 
 [private]
 _pytest *ARGS:
-    poetry run -- pytest \
+    uv run pytest \
         -n auto \
         --dist loadgroup \
         --cov=posit_bakery \
