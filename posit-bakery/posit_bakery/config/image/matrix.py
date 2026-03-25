@@ -121,6 +121,10 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             description="List of registries to use in place of registries defined globally or for the image.",
         ),
     ]
+    target: Annotated[
+        str | None,
+        Field(default=None, description="Target build stage for the Docker --target flag."),
+    ]
 
     @model_validator(mode="before")
     @classmethod
@@ -660,6 +664,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 dependencies=product["dependencies"],
                 values=product["values"],
                 isMatrixVersion=True,
+                target=self.target,
             )
             image_versions.append(image_version)
 
