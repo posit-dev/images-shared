@@ -75,7 +75,6 @@ Run these commands from the `posit-bakery/` directory:
 
 ```bash
 # Install dependencies
-pipx install 'poetry>=2'
 just setup
 
 # Install the project locally
