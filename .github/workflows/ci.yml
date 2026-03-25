@@ -41,6 +41,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup goss
         uses: ./setup-goss
@@ -66,28 +69,22 @@ jobs:
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@v1
 
-      - name: Install poetry
-        working-directory: ./posit-bakery
-        run: |
-          pipx install poetry
-
-      - name: Setup python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version-file: "posit-bakery/pyproject.toml"
-          cache: "poetry"
 
-      - name : Install dependencies
+      - name: Install dependencies
         working-directory: ./posit-bakery
         run: |
-          poetry install
+          uv sync
 
       - name: Run pytest
         working-directory: ./posit-bakery
         run: |
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          poetry run pytest -n auto \
+          uv run pytest -n auto \
             --dist loadgroup \
             --cov=posit_bakery \
             --cov-report=xml \
@@ -97,7 +94,7 @@ jobs:
       - name: Build
         working-directory: ./posit-bakery
         run: |
-          poetry build
+          uv build
 
       - name: Publish results
         if: always()
@@ -180,26 +177,20 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Install poetry
-        run: |
-          pipx install poetry
-          pipx inject poetry "poetry-dynamic-versioning[plugin]"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version-file: "posit-bakery/pyproject.toml"
-          cache: "poetry"
 
       - name: Install dependencies
         working-directory: ./posit-bakery
         run: |
-          poetry install
+          uv sync
 
       - name: Build
         working-directory: ./posit-bakery
         run: |
-          poetry build
+          uv build
 
       - name: Upload snapshot artifacts
         if: github.event_name == 'pull_request'
