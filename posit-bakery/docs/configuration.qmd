@@ -1,4 +1,6 @@
-# Configuration Overview
+---
+title: "Configuration"
+---
 
 This document provides an overview of the configuration schema for Bakery, a tool for managing container images. The configuration is defined in a YAML file named `bakery.yaml`. A template for this file can be created using `bakery create project`.
 
@@ -477,7 +479,7 @@ In addition to the default Jinja2 filter functions, the following custom filters
 
 #### Default Patterns
 
-By default, the following tag patterns will be used for an [Image](#image) if no `tagPatterns` are otherwise specified for the [Image](#image) or [ImageVariant](#imagevariant). These patterns mirror the behavior noted in the [Image Tags](./README.md#image-tags) section of the README.
+By default, the following tag patterns will be used for an [Image](#image) if no `tagPatterns` are otherwise specified for the [Image](#image) or [ImageVariant](#imagevariant). These patterns mirror the behavior noted in the [Image Tags](index.qmd#image-tags) section of the README.
 
 ```yaml
 - patterns: ["{{ Version }}-{{ OS }}-{{ Variant }}", "{{ Version | stripMetadata }}-{{ OS }}-{{ Variant }}"]
@@ -537,6 +539,6 @@ A GossOption represents options for `dgoss` tests against an image target.
 
 ## See Also
 
-- [Templating Documentation](./TEMPLATING.md) — Jinja2 macros and variables available in image templates
-- [Architecture Diagrams](./ARCHITECTURE.md) — Detailed tool behavior and flow diagrams
+- [Templating Documentation](templating.qmd) — Jinja2 macros and variables available in image templates
+- [Architecture Diagrams](architecture.qmd) — Detailed tool behavior and flow diagrams
 - [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — Real-world `bakery.yaml` files and step-by-step tutorials
