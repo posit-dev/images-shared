@@ -699,7 +699,7 @@ class TestImageTarget:
     @pytest.mark.build
     def test_build_args_with_target(self, basic_standard_image_target):
         """Test the build property of an ImageTarget when a target stage is specified."""
-        basic_standard_image_target.image_version.target = "my-stage"
+        basic_standard_image_target.image_version.buildTarget = "my-stage"
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,

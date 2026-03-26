@@ -106,7 +106,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="Arbitrary key-value pairs used in template rendering.",
         ),
     ]
-    target: Annotated[
+    buildTarget: Annotated[
         str | None,
         Field(default=None, description="Target build stage for the Docker --target flag."),
     ]

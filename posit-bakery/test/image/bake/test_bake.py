@@ -71,7 +71,7 @@ class TestBakeTarget:
 
     def test_from_image_target_with_target(self, basic_standard_image_target):
         """Test that BakeTarget propagates the target stage from ImageTarget."""
-        basic_standard_image_target.image_version.target = "my-stage"
+        basic_standard_image_target.image_version.buildTarget = "my-stage"
         bake_target = BakeTarget.from_image_target(basic_standard_image_target)
         assert bake_target.target == "my-stage"
 
@@ -83,7 +83,7 @@ class TestBakeTarget:
 
     def test_target_included_in_json_when_set(self, basic_standard_image_target):
         """Test that target is included in bake JSON when set."""
-        basic_standard_image_target.image_version.target = "my-stage"
+        basic_standard_image_target.image_version.buildTarget = "my-stage"
         bake_target = BakeTarget.from_image_target(basic_standard_image_target)
         json_data = bake_target.model_dump(exclude_none=True)
         assert json_data["target"] == "my-stage"
