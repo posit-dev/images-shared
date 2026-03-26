@@ -1,10 +1,12 @@
-# Bakery Architecture
+---
+title: "Architecture"
+---
 
 ## Process Diagrams
 
 ### Legend
 
-```mermaid
+```{mermaid}
 flowchart TB
 
     subgraph Legend
@@ -39,7 +41,7 @@ flowchart TB
 
 ### Workflow
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     create[["bakery create"]]
@@ -73,7 +75,7 @@ flowchart TD
 
 ### Create
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     subgraph "bakery"
@@ -124,7 +126,7 @@ flowchart TD
 
 ### Build
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     subgraph "Project"
@@ -154,7 +156,7 @@ flowchart TD
 
 ### Run Tests
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     subgraph "Container Artifacts"
@@ -193,7 +195,7 @@ flowchart TD
 
 ### Run Security Scans
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     image[/"Container Image(s)"/]
@@ -229,7 +231,7 @@ flowchart TD
 
 ### Publish
 
-```mermaid
+```{mermaid}
 flowchart TD
 
     image[/"Container Image(s)"/]
