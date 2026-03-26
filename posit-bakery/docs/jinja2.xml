@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<!--
+  Jinja2 template syntax highlighting for Pandoc/Quarto.
+  Covers Jinja2 expressions, statements, and comments,
+  plus common Dockerfile keywords since Bakery templates
+  are Jinja2-in-Dockerfile.
+-->
+<language name="Jinja2" section="Markup" version="1" kateversion="5.0"
+          extensions="*.j2;*.jinja;*.jinja2"
+          mimetype="text/x-jinja2"
+          author="Posit Bakery" license="MIT">
+  <highlighting>
+    <list name="dockerfile_keywords">
+      <item>FROM</item>
+      <item>RUN</item>
+      <item>CMD</item>
+      <item>LABEL</item>
+      <item>EXPOSE</item>
+      <item>ENV</item>
+      <item>ADD</item>
+      <item>COPY</item>
+      <item>ENTRYPOINT</item>
+      <item>VOLUME</item>
+      <item>USER</item>
+      <item>WORKDIR</item>
+      <item>ARG</item>
+      <item>ONBUILD</item>
+      <item>STOPSIGNAL</item>
+      <item>HEALTHCHECK</item>
+      <item>SHELL</item>
+      <item>AS</item>
+    </list>
+    <list name="jinja_keywords">
+      <item>for</item>
+      <item>endfor</item>
+      <item>if</item>
+      <item>elif</item>
+      <item>else</item>
+      <item>endif</item>
+      <item>block</item>
+      <item>endblock</item>
+      <item>macro</item>
+      <item>endmacro</item>
+      <item>call</item>
+      <item>endcall</item>
+      <item>filter</item>
+      <item>endfilter</item>
+      <item>set</item>
+      <item>endset</item>
+      <item>extends</item>
+      <item>include</item>
+      <item>import</item>
+      <item>from</item>
+      <item>as</item>
+      <item>with</item>
+      <item>endwith</item>
+      <item>raw</item>
+      <item>endraw</item>
+      <item>is</item>
+      <item>in</item>
+      <item>not</item>
+      <item>and</item>
+      <item>or</item>
+      <item>true</item>
+      <item>false</item>
+      <item>none</item>
+      <item>True</item>
+      <item>False</item>
+      <item>None</item>
+    </list>
+    <contexts>
+      <context name="Normal" attribute="Normal Text" lineBeginContext="#stay" lineEndContext="#stay">
+        <!-- Jinja2 comment -->
+        <Detect2Chars char="{" char1="#" attribute="Comment" context="JinjaComment" />
+        <!-- Jinja2 expression -->
+        <Detect2Chars char="{" char1="{" attribute="Delimiter" context="JinjaExpression" />
+        <!-- Jinja2 statement -->
+        <Detect2Chars char="{" char1="%" attribute="Delimiter" context="JinjaStatement" />
+        <!-- Dockerfile keywords at line start -->
+        <keyword String="dockerfile_keywords" attribute="Keyword" context="#stay" beginRegion="dockerfile" firstNonSpace="true" />
+        <!-- Shell variable -->
+        <RegExpr String="\$\{[^}]+\}" attribute="Variable" context="#stay" />
+        <RegExpr String="\$[A-Za-z_][A-Za-z0-9_]*" attribute="Variable" context="#stay" />
+        <!-- Strings -->
+        <DetectChar char="&quot;" attribute="String" context="DoubleQuoteString" />
+        <DetectChar char="'" attribute="String" context="SingleQuoteString" />
+        <!-- Line continuation -->
+        <RegExpr String="\\$" attribute="Normal Text" context="#stay" />
+      </context>
+
+      <!-- Jinja2 {{ expression }} -->
+      <context name="JinjaExpression" attribute="Normal Text" lineBeginContext="#stay" lineEndContext="#stay">
+        <Detect2Chars char="}" char1="}" attribute="Delimiter" context="#pop" />
+        <keyword String="jinja_keywords" attribute="Keyword" context="#stay" />
+        <!-- Function/method call: identifier followed by ( -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()" attribute="Function" context="#stay" />
+        <!-- Object/module name: identifier followed by . -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\.)" attribute="Variable" context="#stay" />
+        <!-- Standalone identifier (e.g. argument names) -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*\b" attribute="Identifier" context="#stay" />
+        <DetectChar char="&quot;" attribute="String" context="JinjaString" />
+        <DetectChar char="'" attribute="String" context="JinjaSingleString" />
+        <RegExpr String="\b[0-9]+(\.[0-9]+)?\b" attribute="Number" context="#stay" />
+        <DetectChar char="|" attribute="Filter" context="#stay" />
+        <DetectChar char="." attribute="Operator" context="#stay" />
+        <DetectChar char="(" attribute="Operator" context="#stay" />
+        <DetectChar char=")" attribute="Operator" context="#stay" />
+        <DetectChar char="," attribute="Operator" context="#stay" />
+        <DetectChar char="=" attribute="Operator" context="#stay" />
+      </context>
+
+      <!-- Jinja2 {% statement %} -->
+      <context name="JinjaStatement" attribute="Normal Text" lineBeginContext="#stay" lineEndContext="#stay">
+        <Detect2Chars char="%" char1="}" attribute="Delimiter" context="#pop" />
+        <keyword String="jinja_keywords" attribute="Keyword" context="#stay" />
+        <!-- Function/method call -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()" attribute="Function" context="#stay" />
+        <!-- Object/module name before dot -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\.)" attribute="Variable" context="#stay" />
+        <!-- Standalone identifier -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*\b" attribute="Identifier" context="#stay" />
+        <DetectChar char="&quot;" attribute="String" context="JinjaString" />
+        <DetectChar char="'" attribute="String" context="JinjaSingleString" />
+        <RegExpr String="\b[0-9]+(\.[0-9]+)?\b" attribute="Number" context="#stay" />
+        <DetectChar char="|" attribute="Filter" context="#stay" />
+        <DetectChar char="." attribute="Operator" context="#stay" />
+        <DetectChar char="=" attribute="Operator" context="#stay" />
+      </context>
+
+      <!-- Jinja2 {# comment #} -->
+      <context name="JinjaComment" attribute="Comment" lineBeginContext="#stay" lineEndContext="#stay">
+        <Detect2Chars char="#" char1="}" attribute="Comment" context="#pop" />
+      </context>
+
+      <!-- Strings inside Jinja2 -->
+      <context name="JinjaString" attribute="String" lineBeginContext="#stay" lineEndContext="#stay">
+        <DetectChar char="&quot;" attribute="String" context="#pop" />
+        <RegExpr String="\\." attribute="String" context="#stay" />
+      </context>
+      <context name="JinjaSingleString" attribute="String" lineBeginContext="#stay" lineEndContext="#stay">
+        <DetectChar char="'" attribute="String" context="#pop" />
+        <RegExpr String="\\." attribute="String" context="#stay" />
+      </context>
+
+      <!-- Normal strings outside Jinja2 -->
+      <context name="DoubleQuoteString" attribute="String" lineBeginContext="#stay" lineEndContext="#stay">
+        <DetectChar char="&quot;" attribute="String" context="#pop" />
+        <RegExpr String="\\." attribute="String" context="#stay" />
+        <RegExpr String="\$\{[^}]+\}" attribute="Variable" context="#stay" />
+        <RegExpr String="\$[A-Za-z_][A-Za-z0-9_]*" attribute="Variable" context="#stay" />
+      </context>
+      <context name="SingleQuoteString" attribute="String" lineBeginContext="#stay" lineEndContext="#stay">
+        <DetectChar char="'" attribute="String" context="#pop" />
+        <RegExpr String="\\." attribute="String" context="#stay" />
+      </context>
+    </contexts>
+
+    <itemDatas>
+      <itemData name="Normal Text" defStyleNum="dsNormal" />
+      <itemData name="Keyword" defStyleNum="dsKeyword" bold="true" />
+      <itemData name="Delimiter" defStyleNum="dsSpecialChar" />
+      <itemData name="Function" defStyleNum="dsFunction" />
+      <itemData name="Identifier" defStyleNum="dsNormal" />
+      <itemData name="Operator" defStyleNum="dsOperator" />
+      <itemData name="Comment" defStyleNum="dsComment" italic="true" />
+      <itemData name="String" defStyleNum="dsString" />
+      <itemData name="Number" defStyleNum="dsDecVal" />
+      <itemData name="Variable" defStyleNum="dsVariable" />
+      <itemData name="Filter" defStyleNum="dsBuiltIn" />
+    </itemDatas>
+  </highlighting>
+  <general>
+    <comments>
+      <comment name="multiLine" start="{#" end="#}" />
+    </comments>
+  </general>
+</language>

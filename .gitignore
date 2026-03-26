@@ -195,3 +195,5 @@ out/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/plans/
+.superpowers/
+docs/superpowers/
