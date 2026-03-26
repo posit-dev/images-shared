@@ -1,5 +1,10 @@
 project:
   type: posit-docs
+  render:
+    - index.qmd
+    - configuration.qmd
+    - templating.qmd
+    - architecture.qmd
 
 website:
   title: "Posit Bakery"
