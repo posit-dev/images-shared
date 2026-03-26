@@ -1,4 +1,6 @@
-# Posit Bakery Template Documentation
+---
+title: "Templating"
+---
 
 This document outlines the available Jinja2 macros in the Posit Bakery templating system for creating Docker images with
 package installations.
@@ -473,6 +475,6 @@ To wrap `install()` in a Docker RUN statement, use:
 
 ## See Also
 
-- [Configuration Documentation](./CONFIGURATION.md) — `bakery.yaml` schema reference
-- [Architecture Diagrams](./ARCHITECTURE.md) — Detailed tool behavior and flow diagrams
+- [Configuration Documentation](configuration.qmd) — `bakery.yaml` schema reference
+- [Architecture Diagrams](architecture.qmd) — Detailed tool behavior and flow diagrams
 - [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — Step-by-step tutorials, including the managed dependencies and matrix images examples
