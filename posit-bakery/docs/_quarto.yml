@@ -27,3 +27,7 @@ website:
     right:
       - text: "GitHub"
         href: "https://github.com/posit-dev/images-shared"
+
+highlight-style: github
+syntax-definitions:
+  - jinja2.xml
