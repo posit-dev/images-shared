@@ -22,7 +22,3 @@ website:
     right:
       - text: "GitHub"
         href: "https://github.com/posit-dev/images-shared"
-
-format:
-  html:
-    toc: true
