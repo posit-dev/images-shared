@@ -103,6 +103,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             description="Matrix configuration for generating image versions.",
         ),
     ]
+    buildTarget: Annotated[
+        str | None,
+        Field(default=None, description="Target build stage for the Docker --target flag."),
+    ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
     @field_validator("documentationUrl", mode="before")

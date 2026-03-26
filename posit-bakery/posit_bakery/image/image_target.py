@@ -502,8 +502,17 @@ class ImageTarget(BaseModel):
 
     @property
     def build_target(self) -> str | None:
-        """Return the target build stage, if configured."""
-        return self.image_version.buildTarget
+        """Return the target build stage, if configured.
+
+        Resolves hierarchically: ImageVersion > ImageMatrix > Image.
+        Matrix values are propagated to versions at creation time, so
+        the fallback here is version -> parent image.
+        """
+        if self.image_version.buildTarget is not None:
+            return self.image_version.buildTarget
+        if self.image_version.parent is not None:
+            return self.image_version.parent.buildTarget
+        return None
 
     @property
     def temp_registry(self) -> str | None:
