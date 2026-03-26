@@ -1,0 +1,28 @@
+project:
+  type: posit-docs
+
+website:
+  title: "Posit Bakery"
+  sidebar:
+    - title: "Posit Bakery"
+      contents:
+        - index.qmd
+        - configuration.qmd
+        - templating.qmd
+        - architecture.qmd
+        - text: "Examples"
+          href: https://github.com/posit-dev/images-examples/tree/main/bakery
+
+  page-footer:
+    left:
+      - text: <img src="/images/posit-logos-2024_horiz-full-color.svg" alt="Posit" width="65px" class="light-content posit-footer-logo">
+        href: "https://posit.co"
+      - Copyright &copy; 2000-2026 Posit Software, PBC
+    center: "Posit Bakery"
+    right:
+      - text: "GitHub"
+        href: "https://github.com/posit-dev/images-shared"
+
+format:
+  html:
+    toc: true
