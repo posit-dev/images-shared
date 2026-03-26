@@ -74,9 +74,9 @@
         <!-- Jinja2 comment -->
         <Detect2Chars char="{" char1="#" attribute="Comment" context="JinjaComment" />
         <!-- Jinja2 expression -->
-        <Detect2Chars char="{" char1="{" attribute="Expression" context="JinjaExpression" />
+        <Detect2Chars char="{" char1="{" attribute="Delimiter" context="JinjaExpression" />
         <!-- Jinja2 statement -->
-        <Detect2Chars char="{" char1="%" attribute="Statement" context="JinjaStatement" />
+        <Detect2Chars char="{" char1="%" attribute="Delimiter" context="JinjaStatement" />
         <!-- Dockerfile keywords at line start -->
         <keyword String="dockerfile_keywords" attribute="Keyword" context="#stay" beginRegion="dockerfile" firstNonSpace="true" />
         <!-- Shell variable -->
@@ -90,27 +90,42 @@
       </context>
 
       <!-- Jinja2 {{ expression }} -->
-      <context name="JinjaExpression" attribute="Expression" lineBeginContext="#stay" lineEndContext="#stay">
-        <Detect2Chars char="}" char1="}" attribute="Expression" context="#pop" />
-        <keyword String="jinja_keywords" attribute="Statement" context="#stay" />
+      <context name="JinjaExpression" attribute="Normal Text" lineBeginContext="#stay" lineEndContext="#stay">
+        <Detect2Chars char="}" char1="}" attribute="Delimiter" context="#pop" />
+        <keyword String="jinja_keywords" attribute="Keyword" context="#stay" />
+        <!-- Function/method call: identifier followed by ( -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()" attribute="Function" context="#stay" />
+        <!-- Object/module name: identifier followed by . -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\.)" attribute="Variable" context="#stay" />
+        <!-- Standalone identifier (e.g. argument names) -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*\b" attribute="Identifier" context="#stay" />
         <DetectChar char="&quot;" attribute="String" context="JinjaString" />
         <DetectChar char="'" attribute="String" context="JinjaSingleString" />
         <RegExpr String="\b[0-9]+(\.[0-9]+)?\b" attribute="Number" context="#stay" />
         <DetectChar char="|" attribute="Filter" context="#stay" />
-        <DetectChar char="(" attribute="Normal Text" context="#stay" />
-        <DetectChar char=")" attribute="Normal Text" context="#stay" />
-        <DetectChar char="." attribute="Normal Text" context="#stay" />
-        <DetectChar char="," attribute="Normal Text" context="#stay" />
+        <DetectChar char="." attribute="Operator" context="#stay" />
+        <DetectChar char="(" attribute="Operator" context="#stay" />
+        <DetectChar char=")" attribute="Operator" context="#stay" />
+        <DetectChar char="," attribute="Operator" context="#stay" />
+        <DetectChar char="=" attribute="Operator" context="#stay" />
       </context>
 
       <!-- Jinja2 {% statement %} -->
-      <context name="JinjaStatement" attribute="Statement" lineBeginContext="#stay" lineEndContext="#stay">
-        <Detect2Chars char="%" char1="}" attribute="Statement" context="#pop" />
+      <context name="JinjaStatement" attribute="Normal Text" lineBeginContext="#stay" lineEndContext="#stay">
+        <Detect2Chars char="%" char1="}" attribute="Delimiter" context="#pop" />
         <keyword String="jinja_keywords" attribute="Keyword" context="#stay" />
+        <!-- Function/method call -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()" attribute="Function" context="#stay" />
+        <!-- Object/module name before dot -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*(?=\.)" attribute="Variable" context="#stay" />
+        <!-- Standalone identifier -->
+        <RegExpr String="\b[A-Za-z_][A-Za-z0-9_]*\b" attribute="Identifier" context="#stay" />
         <DetectChar char="&quot;" attribute="String" context="JinjaString" />
         <DetectChar char="'" attribute="String" context="JinjaSingleString" />
         <RegExpr String="\b[0-9]+(\.[0-9]+)?\b" attribute="Number" context="#stay" />
         <DetectChar char="|" attribute="Filter" context="#stay" />
+        <DetectChar char="." attribute="Operator" context="#stay" />
+        <DetectChar char="=" attribute="Operator" context="#stay" />
       </context>
 
       <!-- Jinja2 {# comment #} -->
@@ -144,8 +159,10 @@
     <itemDatas>
       <itemData name="Normal Text" defStyleNum="dsNormal" />
       <itemData name="Keyword" defStyleNum="dsKeyword" bold="true" />
-      <itemData name="Expression" defStyleNum="dsSpecialString" />
-      <itemData name="Statement" defStyleNum="dsControlFlow" />
+      <itemData name="Delimiter" defStyleNum="dsSpecialChar" />
+      <itemData name="Function" defStyleNum="dsFunction" />
+      <itemData name="Identifier" defStyleNum="dsNormal" />
+      <itemData name="Operator" defStyleNum="dsOperator" />
       <itemData name="Comment" defStyleNum="dsComment" italic="true" />
       <itemData name="String" defStyleNum="dsString" />
       <itemData name="Number" defStyleNum="dsDecVal" />
