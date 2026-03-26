@@ -38,8 +38,8 @@ on:
         required: false
         type: number
       merge-builder:
-        description: "The type of runner to use for merging. Larger images require expanded runners. [default: ubuntu-latest]"
-        default: "ubuntu-latest"
+        description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
+        default: "ubuntu-latest-4x"
         required: false
         type: string
       amd64-builder:
