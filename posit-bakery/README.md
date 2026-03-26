@@ -7,7 +7,7 @@ The [bakery](./posit_bakery/) command line interface (CLI) binds together variou
 ### Prerequisites
 
 * [python](https://docs.astral.sh/uv/guides/install-python/)
-* [pipx](https://pipx.pypa.io/stable/how-to/install-pipx/)
+* [uv](https://docs.astral.sh/uv/getting-started/installation/)
 * [docker buildx bake](https://github.com/docker/buildx#installing)
 * [just](https://just.systems/man/en/prerequisites.html)
 ### 3rd Party Tools
@@ -26,10 +26,10 @@ The [bakery](./posit_bakery/) command line interface (CLI) binds together variou
 
 ### CLI Installation
 
-1. Install `bakery` using `pipx`
+1. Install `bakery` using `uv tool`
 
     ```bash
-    pipx install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
+    uv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
     ```
 
 ## Examples
@@ -226,8 +226,4 @@ Bakery also adds the following tags to the latest image version:
     just
     ```
 
-- [poetry](https://python-poetry.org/docs/#installing-with-pipx)
-
-    ```bash
-    pipx install 'poetry>=2'
-    ```
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)

@@ -19,7 +19,7 @@ setup:
 
 [private]
 _python-executable executable:
-    echo -e "\n{{ executable }} not found, please install it using one of\n  pipx install {{ executable }}\n  uvx install {{ executable }}\n"
+    echo -e "\n{{ executable }} not found, please install it with\n  uv tool install {{ executable }}\n"
     exit 1
 
 [private]
