@@ -1,0 +1,7 @@
+package:
+  ca-certificates:
+    installed: true
+  curl:
+    installed: true
+  cmake:
+    installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}

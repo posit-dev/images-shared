@@ -347,6 +347,19 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return None
 
+    def get_version_by_subpath(self, subpath: str) -> ImageVersion | None:
+        """Returns an image version by subpath, or None if not found.
+
+        :param subpath: The subpath to match against.
+
+        :return: The ImageVersion object if found, otherwise None.
+        """
+        for version in self.versions:
+            if version.subpath == subpath:
+                return version
+
+        return None
+
     def create_version(
         self,
         version_name: str,
@@ -376,14 +389,15 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         # Logic for creating a new version.
         if image_version is None:
-            # Copy the latest OS and registries if they exist and unset latest on all other versions.
+            # Copy the latest OS and registries if they exist.
             os = None
             registries = None
             for v in self.versions:
                 if v.latest:
                     if v.os:
                         os = deepcopy(v.os)
-                v.latest = False
+                    if latest:
+                        v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
             dependency_versions = self.resolve_dependency_versions()

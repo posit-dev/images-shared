@@ -6,6 +6,7 @@ from posit_bakery.cli.common import (
     __make_value_map as make_value_map,
     __parse_dependency_constraint as parse_dependency_constraint,
     __parse_dependency_versions as parse_dependency_versions,
+    extract_edition,
 )
 from posit_bakery.config.dependencies import (
     PythonDependencyConstraint,
@@ -19,6 +20,33 @@ from posit_bakery.config.dependencies import (
 pytestmark = [
     pytest.mark.unit,
 ]
+
+
+class TestExtractEdition:
+    """Tests for the extract_edition function"""
+
+    def test_calver_basic(self):
+        assert extract_edition("2026.03.0") == "2026.03"
+
+    def test_calver_patch(self):
+        assert extract_edition("2026.02.1") == "2026.02"
+
+    def test_calver_with_build_metadata(self):
+        assert extract_edition("2026.01.1+403.pro11") == "2026.01"
+
+    def test_calver_with_hyphen_build(self):
+        assert extract_edition("2025.12.0-14") == "2025.12"
+
+    def test_two_segments_only(self):
+        assert extract_edition("2026.03") == "2026.03"
+
+    def test_single_segment_raises(self):
+        with pytest.raises(ValueError, match="at least two"):
+            extract_edition("2026")
+
+    def test_empty_string_raises(self):
+        with pytest.raises(ValueError, match="at least two"):
+            extract_edition("")
 
 
 class TestMakeValueMap:
