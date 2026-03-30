@@ -17,10 +17,10 @@ from posit_bakery.error import (
     BakeryToolError,
     BakeryToolNotFoundError,
     BakeryToolRuntimeError,
-    BakeryDGossError,
     BakeryToolRuntimeErrorGroup,
     BakeryBuildErrorGroup,
 )
+from posit_bakery.plugins.builtin.dgoss.errors import BakeryDGossError
 
 
 pytestmark = [pytest.mark.unit]
