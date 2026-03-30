@@ -30,6 +30,9 @@ dynamic = ["version"]
 [project.scripts]
 bakery = "posit_bakery.cli.main:app"
 
+[project.entry-points."bakery.plugins"]
+dgoss = "posit_bakery.plugins.builtin.dgoss:DGossPlugin"
+
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
