@@ -41,3 +41,30 @@ class TestGetPlugin:
         """get_plugin should raise KeyError for unknown plugin names."""
         with pytest.raises(KeyError, match="no-such-plugin"):
             get_plugin("no-such-plugin")
+
+
+from posit_bakery.plugins.builtin.dgoss import DGossPlugin
+
+
+class TestDGossPlugin:
+    def test_satisfies_protocol(self):
+        """DGossPlugin must satisfy BakeryToolPlugin protocol."""
+        plugin = DGossPlugin()
+        assert isinstance(plugin, BakeryToolPlugin)
+
+    def test_has_required_attributes(self):
+        """DGossPlugin must have name and description."""
+        plugin = DGossPlugin()
+        assert plugin.name == "dgoss"
+        assert isinstance(plugin.description, str)
+        assert len(plugin.description) > 0
+
+    def test_register_cli_creates_command_group(self):
+        """register_cli should add a 'dgoss' command group to the app."""
+        import typer
+        app = typer.Typer()
+        plugin = DGossPlugin()
+        plugin.register_cli(app)
+        # Verify a command group was registered — typer stores registered groups internally
+        group_names = [info.name for info in app.registered_groups]
+        assert "dgoss" in group_names
