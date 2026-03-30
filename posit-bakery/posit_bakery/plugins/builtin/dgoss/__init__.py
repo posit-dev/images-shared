@@ -13,6 +13,7 @@ from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEn
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.log import stderr_console
+from posit_bakery.plugins.builtin.dgoss.options import GossOptions
 from posit_bakery.plugins.builtin.dgoss.report import GossJsonReportCollection
 from posit_bakery.plugins.builtin.dgoss.suite import DGossSuite
 from posit_bakery.plugins.protocol import ToolCallResult
@@ -31,6 +32,7 @@ class RichHelpPanelEnum(str, Enum):
 class DGossPlugin:
     name: str = "dgoss"
     description: str = "Run Goss tests against container images"
+    tool_options_class = GossOptions
 
     def register_cli(self, app: typer.Typer) -> None:
         """Register the dgoss CLI commands with the given Typer app."""

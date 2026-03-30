@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable, TYPE_CHECKING
 
 import typer
 from pydantic import BaseModel
 
-from posit_bakery.image.image_target import ImageTarget
+if TYPE_CHECKING:
+    from posit_bakery.image.image_target import ImageTarget
 
 
 class ToolCallResult(BaseModel):
@@ -12,7 +15,7 @@ class ToolCallResult(BaseModel):
 
     exit_code: int
     tool_name: str
-    target: ImageTarget
+    target: Any  # ImageTarget at runtime, but using Any to avoid circular import at module load
     stdout: str
     stderr: str
     artifacts: dict[str, Any] | None = None
