@@ -195,3 +195,10 @@ out/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/plans/
+
+# Claude playwright-cli files
+.playwright-cli/
+
+# Claude superpowers
+.superpowers/
+docs/superpowers/
