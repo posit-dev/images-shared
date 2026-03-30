@@ -28,8 +28,8 @@ flowchart TB
         bakery -- "call" --> external -.-> reg
     end
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -62,8 +62,8 @@ flowchart TD
     image -.-> reg
     results -.-> sec
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -116,8 +116,8 @@ flowchart TD
         config -.-> createVersion
     end
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -145,8 +145,8 @@ flowchart TD
     plan & containerfile -.-> bake
     build --> bake -.-> image
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -180,8 +180,8 @@ flowchart TD
     runDgoss --> dgoss
     dgoss -.-> results
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -216,8 +216,8 @@ flowchart TD
     runOpenscap --> openscap
     image -.-> openscap -.-> results
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -246,8 +246,8 @@ flowchart TD
     image -.-> push -.-> reg
     results -.-> push -.-> sec
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 

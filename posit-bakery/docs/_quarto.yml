@@ -1,4 +1,5 @@
 project:
+  title: "Posit Bakery"
   type: posit-docs
   render:
     - "*.qmd"
