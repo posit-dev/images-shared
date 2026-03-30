@@ -1,5 +1,6 @@
 import logging
 import re
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -11,6 +12,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console
+from posit_bakery.plugins.registry import get_plugin
 from posit_bakery.settings import SETTINGS
 from posit_bakery.util import auto_path
 
@@ -109,6 +111,9 @@ def dgoss(
     """Runs dgoss tests against images in the context path
 
     \b
+    DEPRECATED: Use 'bakery dgoss run' instead.
+
+    \b
     If no options are provided, the command test all images in the project and write test results to the `results/`
     directory in the context path.
 
@@ -120,6 +125,15 @@ def dgoss(
     Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
+    warnings.warn(
+        "'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    stderr_console.print(
+        "[yellow]Warning: 'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.[/yellow]"
+    )
+
     # Autoselect host architecture platform if not specified.
     image_platform = image_platform or SETTINGS.architecture
     image_platform = f"linux/{image_platform}"
@@ -141,21 +155,32 @@ def dgoss(
     if metadata_file:
         c.load_build_metadata_from_file(metadata_file)
 
-    results, err = c.dgoss_targets(platform=image_platform)
+    dgoss_plugin = get_plugin("dgoss")
+    results = dgoss_plugin.execute(c.base_path, c.targets, platform=image_platform)
 
-    stderr_console.print(results.table())
-    if results.test_failures:
+    # Reconstruct report collection for table display
+    from posit_bakery.plugins.builtin.dgoss.report import GossJsonReportCollection
+
+    report_collection = GossJsonReportCollection()
+    has_errors = False
+    for result in results:
+        if result.artifacts and "report" in result.artifacts:
+            report_collection.add_report(result.target, result.artifacts["report"])
+        if result.exit_code != 0 and result.artifacts and result.artifacts.get("execution_error"):
+            has_errors = True
+
+    stderr_console.print(report_collection.table())
+    if report_collection.test_failures:
         stderr_console.print("-" * 80)
-        for uid, failures in results.test_failures.items():
+        for uid, failures in report_collection.test_failures.items():
             stderr_console.print(f"{uid} test failures:", style="error")
             for failed_result in failures:
                 stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
         stderr_console.print(f"❌ dgoss test(s) failed", style="error")
-    if err:
+    if has_errors:
         stderr_console.print("-" * 80)
-        stderr_console.print(err, style="error")
         stderr_console.print(f"❌ dgoss command(s) failed to execute", style="error")
-    if results.test_failures or err:
+    if report_collection.test_failures or has_errors:
         raise typer.Exit(code=1)
 
     stderr_console.print(f"✅ Tests completed", style="success")
