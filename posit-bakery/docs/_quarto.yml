@@ -1,22 +1,30 @@
 project:
   type: posit-docs
   render:
-    - index.qmd
-    - configuration.qmd
-    - templating.qmd
-    - architecture.qmd
+    - "*.qmd"
 
 website:
   title: "Posit Bakery"
+  page-navigation: true
+  back-to-top-navigation: true
+  bread-crumbs: true
+  navbar:
+    left:
+    - text: "Home"
+      href: index.qmd
+    - text: "Examples"
+      href: https://github.com/posit-dev/images-examples/
   sidebar:
-    - title: "Posit Bakery"
-      contents:
-        - index.qmd
-        - configuration.qmd
-        - templating.qmd
-        - architecture.qmd
-        - text: "Examples"
-          href: https://github.com/posit-dev/images-examples/tree/main/bakery
+    collapse-level: 1
+    contents:
+      - text: "Getting Started"
+        href: "index.qmd"
+      - text: "Configuration"
+        href: "configuration.qmd"
+      - text: "Templating"
+        href: "templating.qmd"
+      - text: "Architecture"
+        href: "architecture.qmd"
 
   page-footer:
     left:

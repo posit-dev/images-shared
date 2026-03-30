@@ -43,7 +43,7 @@ See the [architecture diagrams](architecture.qmd) for detailed tool behavior.
 
 Show the commands available in `bakery`.
 
-```shell
+```bash
 bakery --help
 
 # or
