@@ -8,20 +8,8 @@ package installations.
 Macros must be explicitly imported in every file in which they are used.
 
 References:
-- [Source Code](./posit_bakery/config/templating/macros)
+- [Source Code](https://github.com/posit-dev/images-shared/tree/main/posit-bakery/posit_bakery/config/templating/macros)
 - [Jinja2 Template Designer Documentation](https://jinja.palletsprojects.com/en/stable/templates/)
-
-## Table of Contents
-
-- [Available Variables](#available-variables)
-- [Templating Macros](#templating-macros)
-  - [APT Package Management](#apt-package-management)
-  - [DNF Package Management](#dnf-package-management)
-  - [Python Installation and Package Management](#python-installation-and-package-management)
-  - [R Installation and Package Management](#r-installation-and-package-management)
-  - [Quarto Installation and Management](#quarto-installation-and-management)
-  - [Goss Testing](#goss-testing)
-  - [wait-for-it](#wait-for-it)
 
 ## Available Variables
 The following variables are available by default for use in an image's Jinja2 templates. Additional values passed using
@@ -36,10 +24,11 @@ Currently, `Containerfile` templates render as a unique file for each variant an
   - `Image.Variant`: The current variant being rendered, e.g. `Standard`, `Minimal`.
   - `Image.OS`: A dictionary containing information about the current OS being rendered.
     - `Image.OS.Name`: The name field of the OS, e.g. `ubuntu`, `debian`, `rhel`.
-    - `Image.OS.Family`: The generalized family of the OS, e.g. `debian`, `rhel`.
+    - `Image.OS.Family`: The generalized family of the OS, e.g. `debian` (includes Ubuntu), `rhel`.
     - `Image.OS.Version`: The version field of the OS, e.g. `22.04`, `20.04`, `9`, `8`, `8.6`, `7`.
     - `Image.OS.Codename`: The codename of the OS version if defined, e.g. `jammy`, `noble`, `bookworm`.
   - `Image.DownloadURL`: The URL to download a development version artifact for installation. Only defined for development version builds.
+  - `Image.IsDevelopmentVersion`: A boolean indicating whether the current version is a development version.
 - `Path`: A dictionary containing paths relative to the root build context.
   - `Path.Base`: The base path for the build context. Usually the parent directory of `bakery.yaml`.
   - `Path.Image`: The path to the current image's directory.
@@ -48,6 +37,17 @@ Currently, `Containerfile` templates render as a unique file for each variant an
   - `Dependencies.python`: A list of Python versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no Python version constraints are specified.
   - `Dependencies.R`: A list of R versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no R version constraints are specified.
   - `Dependencies.quarto`: A list of Quarto versions retrieved based on the version's `dependencies` field (preferred if the version exists) or the image's `dependencyConstraints` field in the `bakery.yaml` configuration. Undefined if no Quarto version constraints are specified.
+
+## Custom Jinja2 Filters
+
+In addition to the built-in Jinja2 filters, the following custom filters are available in all templates:
+
+- `tagSafe`: Replaces disallowed characters in a tag with a hyphen (`-`).
+- `stripMetadata`: Removes trailing metadata suffixes that start with `-` or `+` (e.g. `1.2.3-rc1` becomes `1.2.3`).
+- `condense`: Removes spaces, periods, and hyphens.
+- `regexReplace <find> <replace>`: Replaces occurrences of the `find` regex with `replace`.
+- `quote`: Wraps a string in double quotes.
+- `split`: Splits a string by a separator (e.g. `{{ "a,b,c" | split(",") }}`).
 
 ## Templating Macros
 
@@ -248,6 +248,27 @@ To copy the Python installations from the build stage to the current stage, use:
 {{ python.copy_from_build_stage() }}
 ```
 
+#### Declare Build Argument
+Declares a Docker `ARG` for a Python version. Useful as a `prerun` parameter to `build_stage()` or in Containerfiles that need a Python version as a build argument.
+
+The `name` parameter defaults to `PYTHON_VERSION`. The `default` parameter sets a default value for the argument.
+
+```jinja2
+{{ python.declare_build_arg() }}
+```
+
+To declare with a custom name and default:
+
+```jinja2
+{{ python.declare_build_arg(name="PY_VER", default="3.12") }}
+```
+
+To reference the build argument in a Containerfile:
+
+```jinja2
+{{ python.build_arg() }}
+```
+
 #### Get Version Directory
 Returns the expected directory for a Python version built with uv.
 
@@ -286,6 +307,10 @@ To disable the `--break-system-packages` flag:
 ```jinja2
 {{ python.run_install_packages(Dependencies.python, packages=["numpy"], break_system_packages=False) }}
 ```
+
+::: {.callout-note}
+The `install_packages` macro uses `requirements_files` (plural), while `run_install_packages` uses `requirements_file` (singular). Both accept a list, a comma-separated string, or a single string.
+:::
 
 #### Create Symlinks
 Render a command to symlink to a Python version directory.
