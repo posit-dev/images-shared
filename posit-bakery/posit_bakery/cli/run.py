@@ -157,30 +157,4 @@ def dgoss(
 
     dgoss_plugin = get_plugin("dgoss")
     results = dgoss_plugin.execute(c.base_path, c.targets, platform=image_platform)
-
-    # Reconstruct report collection for table display
-    from posit_bakery.plugins.builtin.dgoss.report import GossJsonReportCollection
-
-    report_collection = GossJsonReportCollection()
-    has_errors = False
-    for result in results:
-        if result.artifacts and "report" in result.artifacts:
-            report_collection.add_report(result.target, result.artifacts["report"])
-        if result.exit_code != 0 and result.artifacts and result.artifacts.get("execution_error"):
-            has_errors = True
-
-    stderr_console.print(report_collection.table())
-    if report_collection.test_failures:
-        stderr_console.print("-" * 80)
-        for uid, failures in report_collection.test_failures.items():
-            stderr_console.print(f"{uid} test failures:", style="error")
-            for failed_result in failures:
-                stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
-        stderr_console.print(f"❌ dgoss test(s) failed", style="error")
-    if has_errors:
-        stderr_console.print("-" * 80)
-        stderr_console.print(f"❌ dgoss command(s) failed to execute", style="error")
-    if report_collection.test_failures or has_errors:
-        raise typer.Exit(code=1)
-
-    stderr_console.print(f"✅ Tests completed", style="success")
+    dgoss_plugin.display_results(results)

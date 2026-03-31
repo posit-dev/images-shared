@@ -160,35 +160,7 @@ class DGossPlugin:
                 c.load_build_metadata_from_file(metadata_file)
 
             results = plugin.execute(c.base_path, c.targets, platform=platform)
-
-            # Reconstruct a GossJsonReportCollection from results for display
-            report_collection = GossJsonReportCollection()
-            has_errors = False
-            errors = []
-            for result in results:
-                if result.artifacts and "report" in result.artifacts:
-                    report_collection.add_report(result.target, result.artifacts["report"])
-                if result.artifacts and "execution_error" in result.artifacts:
-                    has_errors = True
-                    errors.append(result.artifacts["execution_error"])
-
-            stderr_console.print(report_collection.table())
-            if report_collection.test_failures:
-                stderr_console.print("-" * 80)
-                for uid, failures in report_collection.test_failures.items():
-                    stderr_console.print(f"{uid} test failures:", style="error")
-                    for failed_result in failures:
-                        stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
-                stderr_console.print(f"\u274c dgoss test(s) failed", style="error")
-            if has_errors:
-                stderr_console.print("-" * 80)
-                for err in errors:
-                    stderr_console.print(err, style="error")
-                stderr_console.print(f"\u274c dgoss command(s) failed to execute", style="error")
-            if report_collection.test_failures or has_errors:
-                raise typer.Exit(code=1)
-
-            stderr_console.print(f"\u2705 Tests completed", style="success")
+            plugin.display_results(results)
 
         app.add_typer(dgoss_app, name="dgoss", help="Run Goss tests against container images")
 
@@ -251,3 +223,37 @@ class DGossPlugin:
             )
 
         return results
+
+    def display_results(self, results: list[ToolCallResult]) -> None:
+        """Display dgoss results as a table and raise typer.Exit(1) on failures.
+
+        Reconstructs a GossJsonReportCollection from ToolCallResult artifacts
+        and prints the summary table, test failures, and execution errors.
+        """
+        report_collection = GossJsonReportCollection()
+        has_errors = False
+        errors = []
+        for result in results:
+            if result.artifacts and "report" in result.artifacts:
+                report_collection.add_report(result.target, result.artifacts["report"])
+            if result.artifacts and "execution_error" in result.artifacts:
+                has_errors = True
+                errors.append(result.artifacts["execution_error"])
+
+        stderr_console.print(report_collection.table())
+        if report_collection.test_failures:
+            stderr_console.print("-" * 80)
+            for uid, failures in report_collection.test_failures.items():
+                stderr_console.print(f"{uid} test failures:", style="error")
+                for failed_result in failures:
+                    stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
+            stderr_console.print(f"\u274c dgoss test(s) failed", style="error")
+        if has_errors:
+            stderr_console.print("-" * 80)
+            for err in errors:
+                stderr_console.print(err, style="error")
+            stderr_console.print(f"\u274c dgoss command(s) failed to execute", style="error")
+        if report_collection.test_failures or has_errors:
+            raise typer.Exit(code=1)
+
+        stderr_console.print(f"\u2705 Tests completed", style="success")
