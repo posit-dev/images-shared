@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import typer
 
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext, ImageTargetSettings, StringableList
 from posit_bakery.plugins.builtin.oras import OrasPlugin
@@ -151,3 +152,13 @@ class TestOrasPluginExecute:
         # Only the target with sources should produce a result
         assert len(results) == 1
         assert results[0].target is mock_target_with_sources
+
+
+class TestOrasPluginCLI:
+    def test_register_cli_adds_oras_command(self, plugin):
+        app = typer.Typer()
+        plugin.register_cli(app)
+
+        # Verify the oras group was registered
+        group_names = [g.name for g in app.registered_groups]
+        assert "oras" in group_names

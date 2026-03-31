@@ -16,8 +16,85 @@ class OrasPlugin(BakeryToolPlugin):
 
     def register_cli(self, app: typer.Typer) -> None:
         """Register the oras CLI commands with the given Typer app."""
-        # CLI registration implemented in Task 3
-        pass
+        import glob as glob_module
+        from typing import Annotated, Optional
+
+        from posit_bakery.cli.common import with_verbosity_flags
+        from posit_bakery.config.config import BakeryConfig, BakerySettings
+        from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+        from posit_bakery.util import auto_path
+
+        oras_app = typer.Typer(no_args_is_help=True)
+        plugin = self
+
+        @oras_app.command()
+        @with_verbosity_flags
+        def merge(
+            metadata_file: Annotated[
+                list[Path], typer.Argument(help="Path to input build metadata JSON file(s) to merge.")
+            ],
+            context: Annotated[
+                Path,
+                typer.Option(help="The root path to use. Defaults to the current working directory where invoked."),
+            ] = auto_path(),
+            temp_registry: Annotated[
+                Optional[str],
+                typer.Option(
+                    help="Temporary registry to use for multiplatform split/merge builds.",
+                    rich_help_panel="Build Configuration & Outputs",
+                ),
+            ] = None,
+            dry_run: Annotated[
+                bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
+            ] = False,
+        ):
+            """Merge multi-platform images from build metadata files using ORAS.
+
+            \b
+            Takes one or more build metadata JSON files (produced by `bakery build --strategy build`)
+            and merges platform-specific images into multi-platform manifest indexes.
+            """
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.INCLUDE,
+                matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
+                clean_temporary=False,
+                temp_registry=temp_registry,
+            )
+            config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+            # Resolve glob patterns in metadata_file arguments
+            resolved_files: list[Path] = []
+            for file in metadata_file:
+                if "*" in str(file) or "?" in str(file) or "[" in str(file):
+                    resolved_files.extend(sorted(Path(x).absolute() for x in glob_module.glob(str(file))))
+                else:
+                    resolved_files.append(file.absolute())
+            metadata_file = resolved_files
+
+            log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
+
+            files_ok = True
+            loaded_targets: list[str] = []
+            for file in metadata_file:
+                try:
+                    loaded_targets.extend(config.load_build_metadata_from_file(file))
+                except Exception as e:
+                    log.error(f"Failed to load metadata from file '{file}'")
+                    log.error(str(e))
+                    files_ok = False
+            loaded_targets = list(set(loaded_targets))
+
+            if not files_ok:
+                log.error("One or more metadata files are invalid, aborting merge.")
+                raise typer.Exit(code=1)
+
+            log.info(f"Found {len(loaded_targets)} targets")
+            log.debug(", ".join(loaded_targets))
+
+            results = plugin.execute(config.base_path, config.targets, dry_run=dry_run)
+            plugin.display_results(results)
+
+        app.add_typer(oras_app, name="oras", help="Merge multi-platform images using ORAS")
 
     def execute(
         self,
