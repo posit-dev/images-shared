@@ -1,10 +1,10 @@
 import json
 import re
+from unittest.mock import MagicMock
 
 from pytest_bdd import scenarios, then, parsers, given
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
-from posit_bakery.config import BakeryConfig
+from posit_bakery.plugins.protocol import ToolCallResult
 
 scenarios(
     "cli/ci/matrix.feature",
@@ -39,24 +39,34 @@ def copy_ci_testdata_to_context(bakery_command, ci_testdata, testdata_path):
 def patch_image_target_merge_method(mocker):
     calls = []
 
-    def patched_merge_targets(self, dry_run: bool = False):
+    def patched_execute(base_path, targets, platform=None, **kwargs):
         results = []
-        for target in self.targets:
+        for target in targets:
             try:
                 sources = target.get_merge_sources()
             except Exception:
                 continue
             if not sources:
                 continue
+            dry_run = kwargs.get("dry_run", False)
             calls.append((sources, dry_run))
-            manifest = Manifest(
-                schemaVersion=2,
-                mediaType="application/vnd.docker.distribution.manifest.v2+json",
+            results.append(
+                ToolCallResult(
+                    exit_code=0,
+                    tool_name="oras",
+                    target=target,
+                    stdout="",
+                    stderr="",
+                    artifacts={"workflow_result": MagicMock(success=True, destinations=[])},
+                )
             )
-            results.append((target.uid, manifest, None))
         return results
 
-    mocker.patch.object(BakeryConfig, "merge_targets", patched_merge_targets)
+    mock_plugin = MagicMock()
+    mock_plugin.execute = patched_execute
+    mock_plugin.display_results = MagicMock()
+
+    mocker.patch("posit_bakery.plugins.registry.get_plugin", return_value=mock_plugin)
     return calls
 
 
