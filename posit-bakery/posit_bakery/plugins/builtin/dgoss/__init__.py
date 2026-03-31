@@ -16,7 +16,7 @@ from posit_bakery.log import stderr_console
 from posit_bakery.plugins.builtin.dgoss.options import GossOptions
 from posit_bakery.plugins.builtin.dgoss.report import GossJsonReportCollection
 from posit_bakery.plugins.builtin.dgoss.suite import DGossSuite
-from posit_bakery.plugins.protocol import ToolCallResult
+from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
 from posit_bakery.settings import SETTINGS
 from posit_bakery.util import auto_path
 
@@ -29,7 +29,7 @@ class RichHelpPanelEnum(str, Enum):
     FILTERS = "Filters"
 
 
-class DGossPlugin:
+class DGossPlugin(BakeryToolPlugin):
     name: str = "dgoss"
     description: str = "Run Goss tests against container images"
     tool_options_class = GossOptions
