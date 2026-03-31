@@ -38,7 +38,7 @@ from posit_bakery.error import (
 from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
-from posit_bakery.image.oras import OrasMergeWorkflow
+from posit_bakery.plugins.builtin.oras.oras import OrasMergeWorkflow
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
