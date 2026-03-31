@@ -197,19 +197,23 @@ def merge(
     log.info(f"Found {len(loaded_targets)} targets")
     log.debug(", ".join(loaded_targets))
 
-    results = config.merge_targets(dry_run=dry_run)
+    from posit_bakery.plugins.registry import get_plugin
 
-    error_flag = False
-    for uid, manifest, error in results:
-        if error:
-            log.error(f"Error merging sources for UID '{uid}': {error}")
-            error_flag = True
-        elif manifest is not None:
-            stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+    oras = get_plugin("oras")
+    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
 
-    if error_flag:
-        log.error("One or more errors occurred during merge.")
-        raise typer.Exit(code=1)
+    # CI-specific: verify final manifests with imagetools inspect
+    if not dry_run:
+        import python_on_whales
+
+        for result in results:
+            if result.exit_code == 0 and result.artifacts:
+                workflow_result = result.artifacts.get("workflow_result")
+                if workflow_result and workflow_result.destinations:
+                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
+                    stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+
+    oras.display_results(results)
 
 
 @app.command()
