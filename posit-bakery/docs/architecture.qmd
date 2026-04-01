@@ -267,3 +267,34 @@ flowchart TD
     %% Mark what we are working on and is in flight %%
     class results,sign todo
 ```
+For multiplatform builds, we prefer to build and test images on their native platforms rather than emulating all builds on a single platform. The resulting single platform images are pushed to a temporary registry, pulled in a dependent stage, and merged to an OCI index using [ORAS](https://oras.land/) before pushing to the final registry.
+
+```{mermaid}
+%%| fig-cap: "Bakery Multiplatform Publishing Workflow"
+flowchart TD
+
+    amd64_image[/"Container Image (AMD64)"/]
+    arm64_image[/"Container Image (ARM64)"/]
+    results[/"Test & Scan Results"/]
+
+    sign["Sign Image(s)"]
+    push_temp["Push to Temporary Registry"]
+    merge["Merge to OCI Index"]
+    push["Push Artifacts to Final Registry & Reporting Platform"]
+    amd64_image -.-> push_temp
+    arm64_image -.-> push_temp
+    push_temp -.-> merge -.-> sign --> push
+
+    reg[("Image Registries")]
+    sec[("Reporting Platform(s)")]
+    push -.-> reg
+    results -.-> push -.-> sec
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    %% Mark what we are working on and is in flight %%
+    class results,sign todo
+```
