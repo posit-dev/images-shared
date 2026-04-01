@@ -1,0 +1,20 @@
+.mermaid-lightbox-target a.glightbox {
+  cursor: pointer;
+  display: inline-block;
+  transition: box-shadow 0.2s ease;
+}
+
+.mermaid-lightbox-target a.glightbox:hover {
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Override GLightbox's calculated fixed height so the panel
+   shrink-wraps to the actual SVG content size */
+.glightbox-container .gslide-inline {
+  height: auto !important;
+  max-height: calc(100vh - 40px);
+}
+
+.glightbox-container .ginlined-content {
+  height: auto !important;
+}

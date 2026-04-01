@@ -1,5 +1,7 @@
 ---
 title: "Architecture"
+filters:
+    - mermaid-lightbox
 ---
 
 This page shows how Bakery's commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.
@@ -9,6 +11,7 @@ This page shows how Bakery's commands, tools, and artifacts connect across the i
 ### Legend
 
 ```{mermaid}
+%%| fig-cap: "Legend for Diagrams"
 flowchart TB
 
     subgraph Legend
@@ -44,6 +47,7 @@ flowchart TB
 ### Workflow
 
 ```{mermaid}
+%%| fig-cap: "Bakery Workflow Overview"
 flowchart TD
 
     create[["bakery create"]]
@@ -78,6 +82,7 @@ flowchart TD
 ### Create
 
 ```{mermaid}
+%%| fig-cap: "Bakery Project Creation Workflow"
 flowchart TD
 
     subgraph "bakery"
@@ -129,6 +134,7 @@ flowchart TD
 ### Build
 
 ```{mermaid}
+%%| fig-cap: "Bakery Build Workflow"
 flowchart TD
 
     subgraph "Project"
@@ -159,6 +165,7 @@ flowchart TD
 ### Run Tests
 
 ```{mermaid}
+%%| fig-cap: "Bakery Testing Workflow"
 flowchart TD
 
     subgraph "Container Artifacts"
@@ -198,6 +205,7 @@ flowchart TD
 ### Run Security Scans
 
 ```{mermaid}
+%%| fig-cap: "Bakery Scanning Workflow"
 flowchart TD
 
     image[/"Container Image(s)"/]
@@ -236,6 +244,7 @@ flowchart TD
 Image signing and coordinated publishing to registries and reporting platforms are planned. Currently, images are pushed during `bakery build --push` or through CI workflows.
 
 ```{mermaid}
+%%| fig-cap: "Bakery Publishing Workflow"
 flowchart TD
 
     image[/"Container Image(s)"/]
