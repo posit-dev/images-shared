@@ -31,7 +31,7 @@ def with_verbosity_flags(fn):
         **kwargs,
     ):
         if verbose and quiet:
-            raise typer.BadParameter("Cannot set both --debug and --quiet flags.")
+            raise typer.BadParameter("Cannot set both --verbose and --quiet flags.")
 
         if verbose:
             SETTINGS.log_level = logging.DEBUG
