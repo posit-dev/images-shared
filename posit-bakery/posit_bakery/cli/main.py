@@ -3,6 +3,7 @@ from enum import Enum
 import typer
 
 from posit_bakery.cli import ci, create, run, build, update, remove, clean, version, get
+from posit_bakery.plugins.registry import discover_plugins
 from posit_bakery.settings import SETTINGS
 
 
@@ -97,5 +98,6 @@ app.add_typer(
 # Import the "version" subcommand
 app.command(name="version", help="Show the Posit Bakery version")(version.version)
 
-# Import the "version" subcommand
-app.command(name="version", help="Show the Posit Bakery version")(version.version)
+# Discover and register plugins
+for _name, _plugin in discover_plugins().items():
+    _plugin.register_cli(app)

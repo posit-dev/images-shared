@@ -7,6 +7,12 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_mock import MockFixture
 
+# Discover plugins before any config models are used. This registers tool options
+# (e.g., GossOptions) and rebuilds config models with proper discriminated unions.
+from posit_bakery.plugins.registry import discover_plugins
+
+discover_plugins()
+
 from posit_bakery.config import BakeryConfig
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))

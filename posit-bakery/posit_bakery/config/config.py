@@ -36,8 +36,6 @@ from posit_bakery.error import (
     BakeryRenderErrorGroup,
 )
 from posit_bakery.image.bake.bake import BakePlan
-from posit_bakery.image.goss.dgoss import DGossSuite
-from posit_bakery.image.goss.report import GossJsonReportCollection
 from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.image.oras import OrasMergeWorkflow
@@ -983,17 +981,6 @@ class BakeryConfig:
                 with open(metadata_file, "w") as f:
                     log.info(f"Writing build metadata to '{str(metadata_file)}'.")
                     json.dump(self._merge_sequential_build_metadata_files(), f, indent=2)
-
-    def dgoss_targets(
-        self,
-        platform: str | None = None,
-    ) -> tuple[GossJsonReportCollection, BakeryToolRuntimeError | BakeryToolRuntimeErrorGroup | None]:
-        """Run dgoss tests for all image targets.
-
-        :return: A tuple containing the GossJsonReportCollection and any errors encountered during the tests.
-        """
-        suite = DGossSuite(self.base_path, self.targets, platform=platform)
-        return suite.run()
 
     def merge_targets(
         self,

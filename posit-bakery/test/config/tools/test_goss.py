@@ -1,7 +1,7 @@
 import pytest
 from _pytest.mark import ParameterSet
 
-from posit_bakery.config.tools import GossOptions
+from posit_bakery.plugins.builtin.dgoss.options import GossOptions
 
 pytestmark = [
     pytest.mark.unit,
