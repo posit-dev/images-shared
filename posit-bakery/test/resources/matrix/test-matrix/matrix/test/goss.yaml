@@ -5,6 +5,8 @@ package:
     installed: true
   git:
     installed: true
+  xz-utils:
+    installed: true
 file:
   python-{{ .Env.BUILD_ARG_PYTHON_VERSION }}:
     exists: true
