@@ -4,6 +4,15 @@ filters:
     - mermaid-lightbox
 ---
 
+```{=html}
+<style>
+.cell.mermaid-lightbox-target a.glightbox {
+  display: block;
+  width: 100%;
+}
+</style>
+```
+
 This page shows how Bakery's commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.
 
 ## Process Diagrams
