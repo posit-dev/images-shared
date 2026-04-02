@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import __make_value_map, extract_edition, with_verbosity_flags
+from posit_bakery.cli.common import __make_value_map, with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
@@ -102,10 +102,17 @@ def version(
         str,
         typer.Argument(
             show_default=False,
-            help="The new image version. The edition (first two segments, e.g. 2026.03) is used to find the "
-            "existing version to patch.",
+            help="The new image version name.",
         ),
     ],
+    target_version: Annotated[
+        Optional[str],
+        typer.Option(
+            "--target-version",
+            show_default=False,
+            help="The existing version name to patch. If not specified, the latest version is used.",
+        ),
+    ] = None,
     context: Annotated[
         Path,
         typer.Option(help="The root path to use. Defaults to the current working directory where invoked."),
@@ -122,14 +129,17 @@ def version(
     """Update an existing image version with a new version number.
 
     \b
-    Auto-detects the existing version by extracting the edition (e.g. 2026.03) from the
-    new version string and matching it against version subpaths in bakery.yaml. All existing
-    configuration (dependencies, OS, latest flag) is preserved.
+    Patches the target version with the new version name. If --target-version is not
+    specified, the version marked as latest is used. All existing configuration
+    (dependencies, OS, latest flag) is preserved.
 
     \b
-    Example:
+    Examples:
       bakery update version connect 2026.03.1
-      # Finds the version with subpath '2026.03' and updates it to '2026.03.1'
+      # Patches the latest version to '2026.03.1'
+
+      bakery update version connect 2026.03.1 --target-version 2026.03.0
+      # Explicitly patches '2026.03.0' to '2026.03.1'
     """
     value_map, errors = __make_value_map(value)
     if errors:
@@ -139,22 +149,26 @@ def version(
         raise typer.Exit(code=1)
 
     try:
-        edition = extract_edition(new_version)
         c = BakeryConfig.from_context(context)
 
         image = c.model.get_image(image_name)
         if image is None:
             raise ValueError(f"Image '{image_name}' does not exist in the config.")
 
-        old_version_obj = image.get_version_by_subpath(edition)
-        if old_version_obj is None:
-            raise ValueError(
-                f"No existing version found with subpath '{edition}' for image '{image_name}'. "
-                f"Use `bakery create version` instead."
-            )
+        if target_version:
+            old_version_obj = image.get_version(target_version)
+            if old_version_obj is None:
+                raise ValueError(f"Version '{target_version}' does not exist for image '{image_name}'.")
+        else:
+            old_version_obj = next((v for v in image.versions if v.latest), None)
+            if old_version_obj is None:
+                raise ValueError(
+                    f"No latest version found for image '{image_name}'. "
+                    f"Use --target-version to specify the version to patch."
+                )
 
         old_version_name = old_version_obj.name
-        log.info(f"Auto-detected existing version: {old_version_name}")
+        log.info(f"Target version: {old_version_name}")
 
         c.patch_version(image_name, old_version_name, new_version, values=value_map, clean=clean)
     except Exception as e:

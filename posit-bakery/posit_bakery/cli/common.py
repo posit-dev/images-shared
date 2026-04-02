@@ -90,23 +90,6 @@ def with_temporary_storage(fn):
     return wrapper
 
 
-def extract_edition(version_string: str) -> str:
-    """Extract the edition (first two dot-separated segments) from a version string.
-
-    Strips build metadata (+ suffix) and pre-release identifiers (- suffix) before
-    extracting segments. This matches the CalVer subpath convention used in product repos.
-
-    :param version_string: Full version string (e.g., "2026.03.0", "2026.01.1+403.pro11", "2025.12.0-14")
-    :return: Edition string (e.g., "2026.03", "2026.01", "2025.12")
-    :raises ValueError: If the version string has fewer than two dot-separated segments.
-    """
-    base = version_string.split("+")[0].split("-")[0]
-    parts = base.split(".")
-    if len(parts) < 2:
-        raise ValueError(f"Version string '{version_string}' does not have at least two dot-separated segments.")
-    return f"{parts[0]}.{parts[1]}"
-
-
 def __make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exception]]:
     """Parses key=value option pairs into a dictionary"""
     value_map = dict()

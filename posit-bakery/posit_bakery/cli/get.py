@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import extract_edition, with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
@@ -128,19 +128,19 @@ def version(
             help="The image name to query.",
         ),
     ],
-    version_string: Annotated[
+    subpath: Annotated[
         Optional[str],
-        typer.Argument(
+        typer.Option(
+            "--subpath",
             show_default=False,
-            help="A version string to match by edition. The edition (first two segments, e.g. 2026.03) is extracted "
-            "and matched against existing version subpaths.",
+            help="Find the version with this subpath.",
         ),
     ] = None,
     latest: Annotated[
         bool,
         typer.Option(
             "--latest",
-            help="Find the version marked as latest.",
+            help="Find the version marked as latest. This is the default when no other filter is given.",
         ),
     ] = False,
     context: Annotated[
@@ -156,19 +156,25 @@ def version(
         ),
     ] = auto_path(),
 ) -> None:
-    """Get a version name by edition match or latest flag.
+    """Get a version name from bakery.yaml.
+
+    \b
+    Returns the latest version by default. Use --subpath to find a version by its
+    configured subpath instead.
 
     \b
     Examples:
-      bakery get version connect 2026.03.0    Find version with subpath '2026.03'
-      bakery get version connect --latest      Find the version marked latest
+      bakery get version connect                    Find the latest version
+      bakery get version connect --latest           Same as above (explicit)
+      bakery get version connect --subpath 2026.03  Find version with subpath '2026.03'
     """
-    if latest and version_string:
-        stderr_console.print("Cannot specify both a version string and --latest.", style="error")
+    if latest and subpath:
+        stderr_console.print("Cannot specify both --subpath and --latest.", style="error")
         raise typer.Exit(code=1)
-    if not latest and not version_string:
-        stderr_console.print("Must specify either a version string or --latest.", style="error")
-        raise typer.Exit(code=1)
+
+    # Default to latest when no filter is given.
+    if not subpath:
+        latest = True
 
     try:
         config = BakeryConfig.from_context(context)
@@ -185,11 +191,10 @@ def version(
             stderr_console.print(f"No latest version found for image '{image_name}'.", style="error")
             raise typer.Exit(code=1)
 
-        edition = extract_edition(version_string)
-        found = image.get_version_by_subpath(edition)
+        found = image.get_version_by_subpath(subpath)
         if found is None:
             stderr_console.print(
-                f"No version found with subpath '{edition}' for image '{image_name}'.",
+                f"No version found with subpath '{subpath}' for image '{image_name}'.",
                 style="error",
             )
             raise typer.Exit(code=1)
