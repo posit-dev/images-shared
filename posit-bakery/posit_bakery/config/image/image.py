@@ -103,6 +103,10 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             description="Matrix configuration for generating image versions.",
         ),
     ]
+    buildTarget: Annotated[
+        str | None,
+        Field(default=None, description="Target build stage for the Docker --target flag."),
+    ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
     @field_validator("documentationUrl", mode="before")
@@ -376,14 +380,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         # Logic for creating a new version.
         if image_version is None:
-            # Copy the latest OS and registries if they exist and unset latest on all other versions.
+            # Copy the latest OS from the current latest version.
             os = None
             registries = None
             for v in self.versions:
-                if v.latest:
-                    if v.os:
-                        os = deepcopy(v.os)
-                v.latest = False
+                if v.latest and v.os:
+                    os = deepcopy(v.os)
+
+            # Only unset existing latest flags when the new version will be latest.
+            if latest:
+                for v in self.versions:
+                    v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
             dependency_versions = self.resolve_dependency_versions()

@@ -7,6 +7,8 @@ package:
     installed: true
   cmake:
     installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
+  xz-utils:
+    installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
 
 file:
   python-3.13.7:

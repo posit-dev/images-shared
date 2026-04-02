@@ -1,4 +1,3 @@
-import json
 import shutil
 from pathlib import Path
 from unittest.mock import patch
@@ -7,10 +6,8 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
-from posit_bakery.image import DGossSuite
-from posit_bakery.image.goss.dgoss import DGossCommand, find_dgoss_bin
+from posit_bakery.plugins.builtin.dgoss.command import DGossCommand, find_dgoss_bin
 from posit_bakery.image.image_metadata import MetadataFile
-from test.helpers import remove_images
 
 pytestmark = [
     pytest.mark.unit,
@@ -70,7 +67,7 @@ class TestDGossCommand:
 
     def test_validate_no_dgoss(self, basic_standard_image_target):
         """Test that DGossCommand validate checks the test path."""
-        with patch("posit_bakery.image.goss.dgoss.find_dgoss_bin") as mock_find_dgoss_bin:
+        with patch("posit_bakery.plugins.builtin.dgoss.command.find_dgoss_bin") as mock_find_dgoss_bin:
             mock_find_dgoss_bin.return_value = None
             with pytest.raises(ValidationError, match="dgoss binary path must be specified"):
                 DGossCommand.from_image_target(image_target=basic_standard_image_target)
@@ -291,35 +288,3 @@ class TestDGossCommand:
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),
         ]
         assert dgoss_command.command == expected_command
-
-
-class TestDGossSuite:
-    def test_init(self, get_config_obj):
-        """Test that DGossSuite initializes with the correct attributes."""
-        basic_config_obj = get_config_obj("basic")
-        dgoss_suite = DGossSuite(basic_config_obj.base_path, basic_config_obj.targets)
-        assert dgoss_suite.context == basic_config_obj.base_path
-        assert dgoss_suite.image_targets == basic_config_obj.targets
-        assert len(dgoss_suite.dgoss_commands) == 2
-
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
-    def test_run(self, get_tmpconfig):
-        """Test that DGossSuite run executes the DGoss commands."""
-        basic_tmpconfig = get_tmpconfig("basic")
-        basic_tmpconfig.build_targets()
-
-        dgoss_suite = DGossSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
-
-        report_collection, errors = dgoss_suite.run()
-
-        assert errors is None
-        assert len(report_collection.test_failures) == 0
-        assert len(report_collection.get("test-image")) == 2
-        for target in dgoss_suite.image_targets:
-            results_file = target.context.base_path / "results" / "dgoss" / target.image_name / f"{target.uid}.json"
-            assert results_file.exists()
-            with open(results_file) as f:
-                json.load(f)
-
-        remove_images(basic_tmpconfig)

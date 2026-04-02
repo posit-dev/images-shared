@@ -1,4 +1,4 @@
-"""Tests for posit_bakery.image.goss.report module.
+"""Tests for posit_bakery.plugins.builtin.dgoss.report module.
 
 Tests cover the Goss report parsing and aggregation functionality.
 """
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from posit_bakery.image.goss.report import (
+from posit_bakery.plugins.builtin.dgoss.report import (
     GossMatcherResult,
     GossResult,
     GossSummary,

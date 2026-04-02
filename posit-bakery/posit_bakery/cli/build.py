@@ -11,7 +11,7 @@ from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-from posit_bakery.error import BakeryToolRuntimeError
+from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -236,8 +236,12 @@ def build(
             retry=retry,
             metadata_file=metadata_file,
         )
+    except BakeryBuildErrorGroup as e:
+        stderr_console.print(str(e))
+        stderr_console.print("❌ Build failed", style="error")
+        raise typer.Exit(code=1)
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
-        stderr_console.print(f"❌ Build failed", style="error")
+        stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
     stderr_console.print("✅ Build completed", style="success")
