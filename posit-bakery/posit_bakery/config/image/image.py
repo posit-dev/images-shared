@@ -380,14 +380,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         # Logic for creating a new version.
         if image_version is None:
-            # Copy the latest OS and registries if they exist and unset latest on all other versions.
+            # Copy the latest OS from the current latest version.
             os = None
             registries = None
             for v in self.versions:
-                if v.latest:
-                    if v.os:
-                        os = deepcopy(v.os)
-                v.latest = False
+                if v.latest and v.os:
+                    os = deepcopy(v.os)
+
+            # Only unset existing latest flags when the new version will be latest.
+            if latest:
+                for v in self.versions:
+                    v.latest = False
 
             # Setup the arguments for the new version. Leave out fields that are None so they are defaulted.
             dependency_versions = self.resolve_dependency_versions()
