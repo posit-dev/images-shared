@@ -11,6 +11,8 @@ package:
     installed: true
   cmake:
     installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+  xz-utils:
+    installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
 
 file:
   {% for python_version in Dependencies.python -%}
