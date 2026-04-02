@@ -48,6 +48,10 @@ class BakeTarget(BaseModel):
     labels: Annotated[dict[str, str], Field(description="Labels to apply to the image.")]
     tags: Annotated[list[str], Field(description="Tags to apply to the image.")]
     args: Annotated[dict[str, str], Field(default_factory=dict, description="Build arguments for the image build.")]
+    target: Annotated[
+        str | None,
+        Field(default=None, description="Target build stage for the Docker --target flag."),
+    ]
     platforms: Annotated[
         list[TargetPlatform],
         Field(default=DEFAULT_PLATFORMS, description="Target platforms to build the image for."),
@@ -119,6 +123,7 @@ class BakeTarget(BaseModel):
             dockerfile=image_target.containerfile,
             labels=image_target.labels,
             args=image_target.build_args,
+            target=image_target.build_target,
             platforms=image_target.image_os.platforms if image_target.image_os is not None else DEFAULT_PLATFORMS,
             **kwargs,
         )
@@ -235,24 +240,24 @@ class BakePlan(BaseModel):
         """Run the bake plan to build all targets."""
         original_cwd = os.getcwd()
         os.chdir(self.context)
-        try:
-            self.write()
 
-            _set = {}
-            if platforms:
-                _set["*.platform"] = ",".join(platforms)
-            if cache_from:
-                _set["*.cache-from"] = cache_from
-            if cache_to:
-                _set["*.cache-to"] = cache_to
-            if set_opts:
-                _set.update(set_opts)
-            _set = self._set_opts_dict_to_str(_set)
+        self.write()
 
-            python_on_whales.docker.buildx.bake(
-                files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
-            )
-            if clean_bakefile:
-                self.remove()
-        finally:
-            os.chdir(original_cwd)
+        _set = {}
+        if platforms:
+            _set["*.platform"] = ",".join(platforms)
+        if cache_from:
+            _set["*.cache-from"] = cache_from
+        if cache_to:
+            _set["*.cache-to"] = cache_to
+        if set_opts:
+            _set.update(set_opts)
+        _set = self._set_opts_dict_to_str(_set)
+
+        python_on_whales.docker.buildx.bake(
+            files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
+        )
+        if clean_bakefile:
+            self.remove()
+
+        os.chdir(original_cwd)

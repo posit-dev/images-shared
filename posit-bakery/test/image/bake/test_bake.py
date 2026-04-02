@@ -67,6 +67,26 @@ class TestBakeTarget:
         assert bake_target.dockerfile == basic_standard_image_target.containerfile
         assert bake_target.labels == basic_standard_image_target.labels
         assert bake_target.tags == basic_standard_image_target.tags.as_strings()
+        assert bake_target.target is None
+
+    def test_from_image_target_with_target(self, basic_standard_image_target):
+        """Test that BakeTarget propagates the target stage from ImageTarget."""
+        basic_standard_image_target.image_version.buildTarget = "my-stage"
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        assert bake_target.target == "my-stage"
+
+    def test_target_excluded_from_json_when_none(self, basic_standard_image_target):
+        """Test that target is excluded from bake JSON when None."""
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        json_data = bake_target.model_dump(exclude_none=True)
+        assert "target" not in json_data
+
+    def test_target_included_in_json_when_set(self, basic_standard_image_target):
+        """Test that target is included in bake JSON when set."""
+        basic_standard_image_target.image_version.buildTarget = "my-stage"
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        json_data = bake_target.model_dump(exclude_none=True)
+        assert json_data["target"] == "my-stage"
 
 
 class TestBakePlan:
