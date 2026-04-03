@@ -782,13 +782,12 @@ class TestImageTarget:
         mock_build.assert_called_once_with(**expected_build_args)
 
     @pytest.mark.build
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_build(self, suite, get_targets):
+    def test_build(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
-        image_targets = get_targets(suite)
-        for target in image_targets:
+        config_obj = get_tmpconfig(suite)
+        for target in config_obj.targets:
             target.build()
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)
@@ -800,13 +799,12 @@ class TestImageTarget:
             remove_images(target)
 
     @pytest.mark.build
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_build_metadata_file(self, suite, get_targets):
+    def test_build_metadata_file(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
-        image_targets = get_targets(suite)
-        for target in image_targets:
+        config_obj = get_tmpconfig(suite)
+        for target in config_obj.targets:
             target.build(metadata_file=True)
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)

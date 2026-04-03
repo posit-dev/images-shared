@@ -20,8 +20,7 @@ Feature: build
         * the bake plan is valid
         * the targets include the commit hash
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images from a project using bake
         Given I call bakery build
         * in a temp basic context
@@ -32,8 +31,7 @@ Feature: build
         * the basic test suite is built
         * the basic images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images from a project using sequential build
         Given I call bakery build
         * in a temp basic context
@@ -46,8 +44,7 @@ Feature: build
         * the basic test suite is built
         * the basic images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images from a project using sequential build with --fail-fast
         Given I call bakery build
         * in a temp fail-fast context
@@ -60,8 +57,7 @@ Feature: build
         * the fail-fast test suite is not built
         * the fail-fast images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images that utilize Bakery's macros
         Given I call bakery build
         * in a temp with-macros context
@@ -72,8 +68,7 @@ Feature: build
         * the with-macros test suite is built
         * the with-macros images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images that are multiplatform
         Given I call bakery build
         * in a temp multiplatform context
@@ -87,8 +82,7 @@ Feature: build
             | linux/arm64 |
         * the multiplatform images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images that are multiplatform (sequential build)
         Given I call bakery build
         * in a temp multiplatform context
@@ -104,8 +98,7 @@ Feature: build
             | linux/arm64 |
         * the multiplatform images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms
         Given I call bakery build
         * in a temp multiplatform context
@@ -121,8 +114,7 @@ Feature: build
             | linux/amd64 |
         * the multiplatform images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images that are multiplatform with the platform flag overrides set platforms (sequential build)
         Given I call bakery build
         * in a temp multiplatform context
@@ -138,8 +130,7 @@ Feature: build
             | linux/amd64 |
         * the multiplatform images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images and outputting to a metadata file (sequential build)
         Given I call bakery build
         * in a temp basic context
@@ -166,8 +157,7 @@ Feature: build
         * the bake plan is valid
         * the bake plan has 4 targets
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Building images from a project using bake with a matrix
         Given I call bakery build
         * in a temp matrix context

@@ -48,13 +48,13 @@ def check_revision_label(bakery_command):
 
 
 @then(parsers.parse("the {suite_name} test suite is built"))
-def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_obj):
+def check_build_artifacts(resource_path, bakery_command, suite_name, get_tmpconfig):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
     filtered_platforms = [bakery_command.args[i + 1] for i, x in enumerate(bakery_command.args) if x == "--platform"]
 
-    config = get_config_obj(suite_name)
+    config = get_tmpconfig(suite_name)
     for target in config.targets:
         if filtered_platforms and all(
             re.search(filter_platform, target_platform) is None
@@ -71,7 +71,7 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_config_
 
 
 @then(parsers.parse("the {suite_name} test suite built for platforms:"))
-def check_multiplatform_build(resource_path, bakery_command, suite_name, get_config_obj, datatable):
+def check_multiplatform_build(resource_path, bakery_command, suite_name, get_tmpconfig, datatable):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
@@ -80,7 +80,7 @@ def check_multiplatform_build(resource_path, bakery_command, suite_name, get_con
     #                     See https://github.com/gabrieldemarmiesse/python-on-whales/issues/692
     docker_path = which("docker")
 
-    config = get_config_obj(suite_name)
+    config = get_tmpconfig(suite_name)
     for target in config.targets:
         for tag in target.tags.as_strings():
             for row in datatable:
@@ -92,7 +92,7 @@ def check_multiplatform_build(resource_path, bakery_command, suite_name, get_con
 
 
 @then(parsers.parse("the {suite_name} test suite did not build for platforms:"))
-def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_config_obj, datatable):
+def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_tmpconfig, datatable):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
@@ -101,7 +101,7 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
     #                     See https://github.com/gabrieldemarmiesse/python-on-whales/issues/692
     docker_path = which("docker")
 
-    config = get_config_obj(suite_name)
+    config = get_tmpconfig(suite_name)
     for target in config.targets:
         for tag in target.tags.as_strings():
             for row in datatable:
@@ -111,25 +111,25 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
 
 
 @then(parsers.parse("the {suite_name} test suite is not built"))
-def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, get_config_obj):
+def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, get_tmpconfig):
     suite_path = resource_path / suite_name
     assert suite_path.is_dir()
 
-    config = get_config_obj(suite_name)
+    config = get_tmpconfig(suite_name)
     for target in config.targets:
         for tag in target.tags.as_strings():
             assert not python_on_whales.docker.image.exists(tag)
 
 
 @then(parsers.parse("{metadata_file} contains build metadata for the {suite_name} test suite"))
-def check_build_metadata(resource_path, bakery_command, metadata_file, suite_name, get_config_obj):
+def check_build_metadata(resource_path, bakery_command, metadata_file, suite_name, get_tmpconfig):
     metadata_path = bakery_command.context / metadata_file
     assert metadata_path.is_file()
 
     with open(metadata_path, "r") as f:
         data = json.load(f)
 
-    config = get_config_obj(suite_name)
+    config = get_tmpconfig(suite_name)
 
     expected_uids = [target.uid for target in config.targets].sort()
     actual_uids = list(data.keys()).sort()

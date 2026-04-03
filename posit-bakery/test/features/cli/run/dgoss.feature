@@ -1,8 +1,7 @@
 @functional
 Feature: dgoss
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Running dgoss tests against basic images
         Given I call bakery build
         * in a temp basic context
@@ -20,8 +19,7 @@ Feature: dgoss
             | results/dgoss/test-image/test-image-1-0-0-standard-ubuntu-22-04.json |
         * the basic images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Running dgoss tests against with-macros images
         Given I call bakery build
         * in a temp with-macros context
@@ -39,8 +37,7 @@ Feature: dgoss
             | results/dgoss/test-image/test-image-1-0-0-standard-ubuntu-22-04.json |
         * the with-macros images are removed
 
-    @slow
-    @xdist-build
+    @image_build
     Scenario: Running dgoss tests against matrix images
         Given I call bakery build
         * in a temp matrix context
