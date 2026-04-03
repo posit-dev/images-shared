@@ -11,6 +11,7 @@ from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
+from posit_bakery.config.tag import default_matrix_tag_patterns, default_tag_patterns
 
 pytestmark = [
     pytest.mark.unit,
@@ -36,11 +37,48 @@ class TestImage:
         assert i.parent is None
         assert i.subpath == "my-image"
         assert len(i.extraRegistries) == 0
-        assert len(i.tagPatterns) == 8
+        assert i.tagPatterns == default_tag_patterns()
         assert len(i.variants) == 0
         assert len(i.versions) == 1
         for version in i.versions:
             assert version.parent is i
+
+    def test_default_tag_patterns_for_matrix_image(self):
+        """Test that an image with a matrix gets default_matrix_tag_patterns instead of default_tag_patterns.
+
+        Matrix images use composite version names (e.g., "R4.3.3-python3.11.15") where the
+        stripMetadata filter in default_tag_patterns would strip from the last hyphen, causing
+        tag collisions across matrix combinations.
+        """
+        i = Image(
+            name="my-matrix-image",
+            matrix={
+                "namePattern": "R{{ Dependencies.R }}-python{{ Dependencies.python }}",
+                "dependencies": [
+                    {"dependency": "R", "versions": ["4.3.3"]},
+                    {"dependency": "python", "versions": ["3.11.15"]},
+                ],
+            },
+        )
+
+        assert i.tagPatterns == default_matrix_tag_patterns()
+
+    def test_explicit_tag_patterns_not_overridden_by_matrix(self):
+        """Test that explicitly provided tagPatterns are not overridden when a matrix is defined."""
+        custom_patterns = [{"patterns": ["{{ Version }}-{{ OS }}"]}]
+        i = Image(
+            name="my-matrix-image",
+            tagPatterns=custom_patterns,
+            matrix={
+                "namePattern": "R{{ Dependencies.R }}",
+                "dependencies": [
+                    {"dependency": "R", "versions": ["4.3.3"]},
+                ],
+            },
+        )
+
+        assert len(i.tagPatterns) == 1
+        assert i.tagPatterns[0].patterns == ["{{ Version }}-{{ OS }}"]
 
     def test_valid(self):
         """Test creating a valid Image object with all fields."""
