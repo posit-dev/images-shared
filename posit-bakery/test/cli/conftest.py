@@ -17,16 +17,6 @@ def ci_testdata():
     return Path(__file__).parent / "testdata"
 
 
-def pytest_bdd_apply_tag(tag, function):
-    """Modify scenario tags to be pytest-compatible."""
-    if tag == "xdist-build":
-        marker = pytest.mark.xdist_group("build")
-        marker(function)
-        return True
-    else:
-        return None
-
-
 @pytest.fixture
 def bakery_command():
     return BakeryCommand()
@@ -175,6 +165,5 @@ def check_context(bakery_command, datatable):
 
 
 @then(parsers.parse("the {suite_name} images are removed"))
-def remove_build_artifacts(request, resource_path, bakery_command, suite_name, get_config_obj):
-    config_obj = get_config_obj(suite_name)
-    remove_images(config_obj)
+def remove_build_artifacts(bakery_command, suite_name, get_tmpconfig):
+    remove_images(get_tmpconfig(suite_name))

@@ -20,8 +20,7 @@ class TestDGossSuite:
         assert dgoss_suite.image_targets == basic_config_obj.targets
         assert len(dgoss_suite.dgoss_commands) == 2
 
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.image_build
     def test_run(self, get_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
         basic_tmpconfig = get_tmpconfig("basic")

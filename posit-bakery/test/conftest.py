@@ -1,10 +1,12 @@
 import datetime
 import os
 import shutil
+import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from ruamel.yaml import YAML
 from pytest_mock import MockFixture
 
 # Discover plugins before any config models are used. This registers tool options
@@ -127,14 +129,41 @@ def get_config_obj(get_config_file):
     return _get_config_obj
 
 
+def _isolate_registry_namespace(bakery_yaml_path: Path, suffix: str):
+    """Rewrite registry namespaces in a bakery.yaml to include a unique suffix.
+
+    This prevents image tag collisions when multiple tests build from the
+    same suite concurrently (e.g., under pytest-xdist).
+    """
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    data = yaml.load(bakery_yaml_path)
+    for reg in data.get("registries", []):
+        ns = reg.get("namespace")
+        reg["namespace"] = f"{ns}/t-{suffix}" if ns else f"t-{suffix}"
+    yaml.dump(data, bakery_yaml_path)
+
+
 @pytest.fixture
-def get_tmpcontext(tmpdir, get_context):
-    """Return a function that can get a temporary copy of a test suite context by name"""
+def get_tmpcontext(request, tmpdir, get_context):
+    """Return a function that can get a temporary copy of a test suite context by name.
+
+    For image_build tests (which build real Docker images), each copy gets a
+    unique registry namespace suffix to prevent image tag collisions under
+    pytest-xdist.
+    """
+    builds_images = any(m.name == "image_build" for m in request.node.iter_markers())
+    suffix = uuid.uuid4().hex[:8] if builds_images else None
+    created = set()
 
     def _get_tmpcontext(suite_name: str) -> Path:
         tmpcontext = Path(tmpdir) / suite_name
-        tmpcontext.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(get_context(suite_name), tmpcontext, dirs_exist_ok=True)
+        if suite_name not in created:
+            tmpcontext.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(get_context(suite_name), tmpcontext, dirs_exist_ok=True)
+            if suffix:
+                _isolate_registry_namespace(tmpcontext / "bakery.yaml", suffix)
+            created.add(suite_name)
         return tmpcontext
 
     return _get_tmpcontext

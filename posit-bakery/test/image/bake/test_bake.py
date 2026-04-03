@@ -265,9 +265,8 @@ class TestBakePlan:
         patch_bakeplan_write.assert_called_once()
         patch_bakeplan_remove.assert_called_once()
 
-    @pytest.mark.slow
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    @pytest.mark.xdist_group(name="build")
     def test_build(self, suite, get_tmpconfig):
         """Test that the build arguments are constructed correctly."""
         config_obj = get_tmpconfig(suite)
