@@ -75,6 +75,31 @@ def patch_temporary_directory(request, tmp_path):
         SETTINGS.temporary_storage = tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _disable_image_build_cache(request, mocker: MockFixture):
+    """Disable Docker layer caching for image_build tests.
+
+    Ensures templates and macros are tested end-to-end without stale layers.
+    """
+    if not any(m.name == "image_build" for m in request.node.iter_markers()):
+        return
+
+    from posit_bakery.image.image_target import ImageTarget
+    from posit_bakery.image.bake import BakePlan
+
+    original_it_build = ImageTarget.build
+    original_bp_build = BakePlan.build
+
+    def it_build_uncached(self, *args, cache=False, **kwargs):
+        return original_it_build(self, *args, cache=cache, **kwargs)
+
+    def bp_build_uncached(self, *args, cache=False, **kwargs):
+        return original_bp_build(self, *args, cache=cache, **kwargs)
+
+    mocker.patch.object(ImageTarget, "build", it_build_uncached)
+    mocker.patch.object(BakePlan, "build", bp_build_uncached)
+
+
 @pytest.fixture(scope="session")
 def project_path():
     """Return the path to the test directory"""
