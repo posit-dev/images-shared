@@ -10,7 +10,7 @@ from pydantic_core.core_schema import ValidationInfo
 from posit_bakery.config.dependencies import DependencyConstraintField, DependencyVersions, DependencyConstraint
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
-from posit_bakery.config.tag import default_tag_patterns, TagPattern
+from posit_bakery.config.tag import default_matrix_tag_patterns, default_tag_patterns, TagPattern
 from posit_bakery.config.tools import ToolField, ToolOptions
 from .dev_version import DevelopmentVersionField
 from .matrix import ImageMatrix
@@ -63,14 +63,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             description="List of registries to use in place of registries defined globally or for the image.",
         ),
     ]
-    tagPatterns: Annotated[
-        list[TagPattern],
-        Field(
-            default_factory=default_tag_patterns,
-            validate_default=True,
-            description="List of tag patterns for this image.",
-        ),
-    ]
     dependencyConstraints: Annotated[
         list[DependencyConstraintField],
         Field(
@@ -101,6 +93,16 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             default=None,
             validate_default=True,
             description="Matrix configuration for generating image versions.",
+        ),
+    ]
+    tagPatterns: Annotated[
+        list[TagPattern],
+        Field(
+            default_factory=lambda data: default_matrix_tag_patterns()
+            if data.get("matrix") is not None
+            else default_tag_patterns(),
+            validate_default=True,
+            description="List of tag patterns for this image.",
         ),
     ]
     buildTarget: Annotated[
