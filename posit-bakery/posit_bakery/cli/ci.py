@@ -213,7 +213,7 @@ def merge(
                     manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
                     stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
 
-    oras.display_results(results)
+    oras.results(results)
 
 
 @app.command()

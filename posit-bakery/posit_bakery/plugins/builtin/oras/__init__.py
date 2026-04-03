@@ -92,7 +92,7 @@ class OrasPlugin(BakeryToolPlugin):
             log.debug(", ".join(loaded_targets))
 
             results = plugin.execute(config.base_path, config.targets, dry_run=dry_run)
-            plugin.display_results(results)
+            plugin.results(results)
 
         app.add_typer(oras_app, name="oras", help="Merge multi-platform images using ORAS")
 
@@ -143,7 +143,7 @@ class OrasPlugin(BakeryToolPlugin):
 
         return results
 
-    def display_results(self, results: list[ToolCallResult]) -> None:
+    def results(self, results: list[ToolCallResult]) -> None:
         """Display ORAS merge results and exit non-zero on failures."""
         from posit_bakery.log import stderr_console
 

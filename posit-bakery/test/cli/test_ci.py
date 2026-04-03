@@ -64,7 +64,7 @@ def patch_image_target_merge_method(mocker):
 
     mock_plugin = MagicMock()
     mock_plugin.execute = patched_execute
-    mock_plugin.display_results = MagicMock()
+    mock_plugin.results = MagicMock()
 
     mocker.patch("posit_bakery.plugins.registry.get_plugin", return_value=mock_plugin)
     return calls

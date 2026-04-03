@@ -38,3 +38,7 @@ class BakeryToolPlugin(Protocol):
     ) -> list[ToolCallResult]:
         """Execute the plugin's tools against the given ImageTarget objects."""
         ...
+
+    def results(self, results: list[ToolCallResult]) -> None:
+        """Display the results of the plugin's execution and exit non-zero on failures."""
+        ...

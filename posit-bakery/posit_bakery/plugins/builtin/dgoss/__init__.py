@@ -160,7 +160,7 @@ class DGossPlugin(BakeryToolPlugin):
                 c.load_build_metadata_from_file(metadata_file)
 
             results = plugin.execute(c.base_path, c.targets, platform=platform)
-            plugin.display_results(results)
+            plugin.results(results)
 
         app.add_typer(dgoss_app, name="dgoss", help="Run Goss tests against container images")
 
@@ -225,7 +225,7 @@ class DGossPlugin(BakeryToolPlugin):
 
         return results
 
-    def display_results(self, results: list[ToolCallResult]) -> None:
+    def results(self, results: list[ToolCallResult]) -> None:
         """Display dgoss results as a table and raise typer.Exit(1) on failures.
 
         Reconstructs a GossJsonReportCollection from ToolCallResult artifacts
