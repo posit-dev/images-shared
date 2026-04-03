@@ -66,6 +66,7 @@ class HadolintSuite:
                     HadolintReport(
                         filepath=results_file,
                         containerfile=target.containerfile,
+                        exit_code=exit_code,
                         results=result_data,
                     ),
                 )

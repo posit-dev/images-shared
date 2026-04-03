@@ -287,8 +287,8 @@ class HadolintPlugin(BakeryToolPlugin):
             exit_code = 0
             if target_error is not None:
                 exit_code = getattr(target_error, "exit_code", 1)
-            elif report is not None and report.error_count > 0:
-                exit_code = 1
+            elif report is not None:
+                exit_code = report.exit_code
 
             artifacts = {}
             if report is not None:

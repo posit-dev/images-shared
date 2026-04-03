@@ -25,6 +25,7 @@ class HadolintReport(BaseModel):
 
     filepath: Annotated[Path | None, Field(default=None, exclude=True, description="Path to the results JSON file.")]
     containerfile: Annotated[Path, Field(description="Relative path to the Containerfile.")]
+    exit_code: Annotated[int, Field(default=0, exclude=True, description="Hadolint process exit code.")]
     results: Annotated[list[HadolintResult], Field(default_factory=list, description="List of lint issues.")]
 
     @classmethod
