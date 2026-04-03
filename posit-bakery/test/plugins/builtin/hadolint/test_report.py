@@ -72,6 +72,21 @@ class TestHadolintReport:
         assert report.total_count == 3
         assert report.filepath == report_file
 
+    def test_errors_property(self, sample_results_data):
+        report = HadolintReport(
+            containerfile=Path("Containerfile"),
+            results=[HadolintResult.model_validate(r) for r in sample_results_data],
+        )
+        assert len(report.errors) == 0
+
+    def test_warnings_property(self, sample_results_data):
+        report = HadolintReport(
+            containerfile=Path("Containerfile"),
+            results=[HadolintResult.model_validate(r) for r in sample_results_data],
+        )
+        assert len(report.warnings) == 2
+        assert all(r.level == "warning" for r in report.warnings)
+
     def test_by_level(self, sample_results_data):
         report = HadolintReport(
             containerfile=Path("Containerfile"),
@@ -164,3 +179,27 @@ class TestHadolintReportCollection:
         collection = HadolintReportCollection()
         table = collection.table()
         assert table.title == "Hadolint Results"
+
+    def test_issues_by_level_warning(self, mock_target, report_with_issues):
+        """Test issues_by_level returns warnings and errors when threshold is warning."""
+        collection = HadolintReportCollection()
+        collection.add_report(mock_target, report_with_issues)
+        issues = collection.issues_by_level("warning")
+        assert mock_target.uid in issues
+        assert len(issues[mock_target.uid]) == 2  # 2 warnings, 0 errors
+        assert all(r.level in ("error", "warning") for r in issues[mock_target.uid])
+
+    def test_issues_by_level_error(self, mock_target, report_with_issues):
+        """Test issues_by_level returns only errors when threshold is error."""
+        collection = HadolintReportCollection()
+        collection.add_report(mock_target, report_with_issues)
+        issues = collection.issues_by_level("error")
+        assert issues == {}  # No errors in sample data
+
+    def test_issues_by_level_style(self, mock_target, report_with_issues):
+        """Test issues_by_level returns all levels when threshold is style."""
+        collection = HadolintReportCollection()
+        collection.add_report(mock_target, report_with_issues)
+        issues = collection.issues_by_level("style")
+        assert mock_target.uid in issues
+        assert len(issues[mock_target.uid]) == 3  # 2 warnings + 1 info

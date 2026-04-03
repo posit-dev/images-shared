@@ -56,9 +56,22 @@ class HadolintReport(BaseModel):
     def total_count(self) -> int:
         return len(self.results)
 
+    @property
+    def errors(self) -> list[HadolintResult]:
+        """Return results with error level."""
+        return [r for r in self.results if r.level == "error"]
+
+    @property
+    def warnings(self) -> list[HadolintResult]:
+        """Return results with warning level."""
+        return [r for r in self.results if r.level == "warning"]
+
     def by_level(self, level: str) -> list[HadolintResult]:
         """Return results filtered to a specific severity level."""
         return [r for r in self.results if r.level == level]
+
+
+SEVERITY_ORDER = ["error", "warning", "info", "style"]
 
 
 class HadolintReportCollection(dict):
@@ -76,6 +89,18 @@ class HadolintReportCollection(dict):
                 if report.total_count > 0:
                     return True
         return False
+
+    def issues_by_level(self, threshold: str) -> dict[str, list[HadolintResult]]:
+        """Return issues at or above the given severity threshold, keyed by UID."""
+        threshold_idx = SEVERITY_ORDER.index(threshold) if threshold in SEVERITY_ORDER else 0
+        included_levels = set(SEVERITY_ORDER[: threshold_idx + 1])
+        result = {}
+        for image_name, targets in self.items():
+            for uid, (_, report) in targets.items():
+                issues = [r for r in report.results if r.level in included_levels]
+                if issues:
+                    result[uid] = issues
+        return result
 
     def table(self) -> Table:
         """Generate a Rich table summarizing lint results."""

@@ -105,10 +105,11 @@ class HadolintPlugin(BakeryToolPlugin):
                 typer.Option(
                     "--failure-threshold",
                     help="Exit with failure if any rule at or above this severity is violated. "
-                    "One of: error, warning, info, style, ignore, none.",
+                    "One of: error, warning, info, style, ignore, none. [default: error]",
+                    show_default=False,
                     rich_help_panel=RichHelpPanelEnum.HADOLINT,
                 ),
-            ] = "error",
+            ] = None,
             ignore: Annotated[
                 Optional[list[str]],
                 typer.Option(

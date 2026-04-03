@@ -36,6 +36,13 @@ class TestHadolintCommand:
         )
         assert cmd.command[-1] == expected_path
 
+    def test_command_default_failure_threshold(self, basic_standard_image_target):
+        """Test that the default failure threshold is 'error' when no options are provided."""
+        cmd = HadolintCommand.from_image_target(basic_standard_image_target)
+        assert "--failure-threshold" in cmd.command
+        idx = cmd.command.index("--failure-threshold")
+        assert cmd.command[idx + 1] == "error"
+
     def test_command_verbose_when_debug(self, basic_standard_image_target):
         """Test that --verbose is included when log level is DEBUG."""
         with patch("posit_bakery.plugins.builtin.hadolint.command.SETTINGS") as mock_settings:

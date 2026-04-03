@@ -44,6 +44,10 @@ class HadolintCommand(BaseModel):
         else:
             options = HadolintOptions()
 
+        # Apply default failure threshold if no source provided one
+        if options.failureThreshold is None:
+            options = options.model_copy(update={"failureThreshold": "error"})
+
         return cls(
             image_target=image_target,
             hadolint_bin=hadolint_bin,
