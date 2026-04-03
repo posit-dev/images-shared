@@ -34,7 +34,6 @@ class BakeryToolPlugin(Protocol):
         self,
         base_path: Path,
         targets: list[ImageTarget],
-        platform: str | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:
         """Execute the plugin's tools against the given ImageTarget objects."""

@@ -168,6 +168,7 @@ class DGossPlugin(BakeryToolPlugin):
         self,
         base_path: Path,
         targets: list[ImageTarget],
+        *,
         platform: str | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:

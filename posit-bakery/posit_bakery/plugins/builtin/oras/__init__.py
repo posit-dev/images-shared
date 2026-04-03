@@ -100,11 +100,11 @@ class OrasPlugin(BakeryToolPlugin):
         self,
         base_path: Path,
         targets: list[ImageTarget],
-        platform: str | None = None,
+        *,
+        dry_run: bool = False,
         **kwargs,
     ) -> list[ToolCallResult]:
         """Execute ORAS merge workflow against the given image targets."""
-        dry_run = kwargs.get("dry_run", False)
         results = []
 
         for target in targets:
