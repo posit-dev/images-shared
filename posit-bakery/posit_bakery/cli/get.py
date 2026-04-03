@@ -136,13 +136,6 @@ def version(
             help="Find the version with this subpath.",
         ),
     ] = None,
-    latest: Annotated[
-        bool,
-        typer.Option(
-            "--latest",
-            help="Find the version marked as latest. This is the default when no other filter is given.",
-        ),
-    ] = False,
     context: Annotated[
         Path,
         typer.Option(
@@ -165,17 +158,8 @@ def version(
     \b
     Examples:
       bakery get version connect                    Find the latest version
-      bakery get version connect --latest           Same as above (explicit)
       bakery get version connect --subpath 2026.03  Find version with subpath '2026.03'
     """
-    if latest and subpath:
-        stderr_console.print("Cannot specify both --subpath and --latest.", style="error")
-        raise typer.Exit(code=1)
-
-    # Default to latest when no filter is given.
-    if not subpath:
-        latest = True
-
     try:
         config = BakeryConfig.from_context(context)
         image = config.model.get_image(image_name)
@@ -183,7 +167,7 @@ def version(
             stderr_console.print(f"Image '{image_name}' does not exist in the config.", style="error")
             raise typer.Exit(code=1)
 
-        if latest:
+        if not subpath:
             for v in image.versions:
                 if v.latest:
                     stdout_console.print(v.name, highlight=False)

@@ -11,17 +11,6 @@ Feature: get version
         * the stdout output includes:
             | 2026.02.0 |
 
-    Scenario: Get latest version with explicit flag
-        Given I call bakery get version
-        * in a temp calver context
-        * with the arguments:
-            | test-image |
-            | --latest |
-        When I execute the command
-        Then The command succeeds
-        * the stdout output includes:
-            | 2026.02.0 |
-
     Scenario: Get version by subpath
         Given I call bakery get version
         * in a temp calver context
