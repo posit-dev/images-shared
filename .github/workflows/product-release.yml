@@ -59,8 +59,11 @@ jobs:
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
           EDITION: ${{ steps.parse.outputs.edition }}
         run: |
-          LATEST_CHANGED=false
-          OLD_DISPLAY_VERSION=""
+          FIRST_IMAGE=$(echo "$IMAGES" | awk '{print $1}')
+
+          # Capture the current latest version before any modifications.
+          OLD_LATEST=$(bakery get version "$FIRST_IMAGE" 2>/dev/null || true)
+          OLD_DISPLAY_VERSION="${OLD_LATEST%%[+-]*}"
 
           for IMAGE in $IMAGES; do
             EXISTING=$(bakery get version "$IMAGE" --subpath "$EDITION" 2>/dev/null || true)
@@ -88,18 +91,17 @@ jobs:
             fi
           done
 
-          # Check if latest changed by comparing before/after.
-          FIRST_IMAGE=$(echo "$IMAGES" | awk '{print $1}')
+          # Check if the latest version changed. This happens when:
+          # - A new edition is created that becomes latest (2026.02.1 → 2026.03.0)
+          # - The current latest edition is patched (2026.02.1 → 2026.02.2)
+          # It does NOT happen when patching an older edition (2026.01.1 → 2026.01.3).
           NEW_LATEST=$(bakery get version "$FIRST_IMAGE" 2>/dev/null || true)
-          NEW_LATEST_DISPLAY="${NEW_LATEST%%[+-]*}"
+          NEW_DISPLAY_VERSION="${NEW_LATEST%%[+-]*}"
 
-          if [ "$NEW_LATEST_DISPLAY" = "$DISPLAY_VERSION" ]; then
+          if [ "$NEW_DISPLAY_VERSION" != "$OLD_DISPLAY_VERSION" ]; then
             LATEST_CHANGED=true
-            # Find the old latest from git diff of bakery.yaml.
-            OLD_LATEST=$(git diff bakery.yaml | grep -E '^\-.*latest: true' -B5 | grep '^\-.*name:' | head -1 | sed 's/.*name: //')
-            if [ -n "$OLD_LATEST" ]; then
-              OLD_DISPLAY_VERSION="${OLD_LATEST%%[+-]*}"
-            fi
+          else
+            LATEST_CHANGED=false
           fi
 
           echo "latest_changed=$LATEST_CHANGED" >> "$GITHUB_OUTPUT"
@@ -133,6 +135,7 @@ jobs:
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
         run: |
           BRANCH="release/${DISPLAY_VERSION}"
+          git fetch origin "$BRANCH" 2>/dev/null || true
           git checkout -B "$BRANCH"
           git add -A
           git config user.name "github-actions[bot]"
