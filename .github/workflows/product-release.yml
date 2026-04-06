@@ -135,6 +135,7 @@ jobs:
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
         run: |
           BRANCH="release/${DISPLAY_VERSION}"
+          git fetch origin "$BRANCH" 2>/dev/null || true
           git checkout -B "$BRANCH"
           git add -A
           git config user.name "github-actions[bot]"
