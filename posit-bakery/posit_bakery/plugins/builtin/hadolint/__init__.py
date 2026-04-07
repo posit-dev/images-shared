@@ -236,16 +236,24 @@ class HadolintPlugin(BakeryToolPlugin):
                     else:
                         label_schema[name] = "text"
 
-            options_override = HadolintOptions(
-                failureThreshold=failure_threshold,
-                ignored=ignore,
-                labelSchema=label_schema,
-                noFail=no_fail,
-                override=override_dict if override_dict else None,
-                strictLabels=strict_labels,
-                disableIgnorePragma=disable_ignore_pragma,
-                trustedRegistries=trusted_registry,
-            )
+            options_kwargs: dict = {}
+            if failure_threshold is not None:
+                options_kwargs["failureThreshold"] = failure_threshold
+            if ignore is not None:
+                options_kwargs["ignored"] = ignore
+            if label_schema is not None:
+                options_kwargs["labelSchema"] = label_schema
+            if no_fail is not None:
+                options_kwargs["noFail"] = no_fail
+            if override_dict:
+                options_kwargs["override"] = override_dict
+            if strict_labels is not None:
+                options_kwargs["strictLabels"] = strict_labels
+            if disable_ignore_pragma is not None:
+                options_kwargs["disableIgnorePragma"] = disable_ignore_pragma
+            if trusted_registry is not None:
+                options_kwargs["trustedRegistries"] = trusted_registry
+            options_override = HadolintOptions(**options_kwargs)
 
             results = plugin.execute(c.base_path, c.targets, options_override=options_override)
             plugin.results(results)
