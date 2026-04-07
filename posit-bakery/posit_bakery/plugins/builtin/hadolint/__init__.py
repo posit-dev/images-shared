@@ -345,11 +345,10 @@ class HadolintPlugin(BakeryToolPlugin):
             stderr_console.print("-" * 80)
             for image_name, uid_reports in report_collection.items():
                 for uid, (target, report) in uid_reports.items():
-                    stderr_console.print(f"=== {report.containerfile} ===", style="bold")
                     if report.total_count == 0:
-                        stderr_console.print("  No issues found.", style="green3")
-                    else:
-                        for issue in report.results:
+                        continue
+                    stderr_console.print(f"\n=== {report.containerfile} ===", style="bold")
+                    for issue in report.results:
                             level_style = {
                                 "error": "bright_red",
                                 "warning": "yellow",
