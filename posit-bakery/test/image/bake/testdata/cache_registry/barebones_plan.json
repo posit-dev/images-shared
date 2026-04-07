@@ -48,7 +48,9 @@
         {
           "type": "registry",
           "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch-amd64",
-          "mode": "max"
+          "mode": "max",
+          "compression": "zstd",
+          "oci-mediatypes": "true"
         }
       ]
     }

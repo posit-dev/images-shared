@@ -561,7 +561,7 @@ class ImageTarget(BaseModel):
         if cache_name is not None:
             cache_from = f"type=registry,ref={cache_name}"
             if push:
-                cache_to = f"{cache_from},mode=max"
+                cache_to = f"{cache_from},mode=max,compression=zstd,oci-mediatypes=true"
 
         if isinstance(metadata_file, bool) and metadata_file:
             metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"

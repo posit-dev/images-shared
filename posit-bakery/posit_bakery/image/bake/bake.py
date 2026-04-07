@@ -114,7 +114,15 @@ class BakeTarget(BaseModel):
         if cache_name is not None:
             kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
             if push:
-                kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+                kwargs["cache_to"] = [
+                    {
+                        "type": "registry",
+                        "ref": cache_name,
+                        "mode": "max",
+                        "compression": "zstd",
+                        "oci-mediatypes": "true",
+                    }
+                ]
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]

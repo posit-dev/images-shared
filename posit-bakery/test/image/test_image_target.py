@@ -686,7 +686,7 @@ class TestImageTarget:
             "output": {},
             "cache": True,
             "cache_from": f"type=registry,ref={cache_name}",
-            "cache_to": f"type=registry,ref={cache_name},mode=max",
+            "cache_to": f"type=registry,ref={cache_name},mode=max,compression=zstd,oci-mediatypes=true",
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
