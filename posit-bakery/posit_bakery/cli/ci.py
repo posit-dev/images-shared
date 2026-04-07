@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import python_on_whales
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -12,6 +13,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
+from posit_bakery.registry_management.dockerhub.readme import push_readmes
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
@@ -197,19 +199,22 @@ def merge(
     log.info(f"Found {len(loaded_targets)} targets")
     log.debug(", ".join(loaded_targets))
 
-    results = config.merge_targets(dry_run=dry_run)
+    # Imported locally for patching in CLI tests
+    from posit_bakery.plugins.registry import get_plugin
 
-    error_flag = False
-    for uid, manifest, error in results:
-        if error:
-            log.error(f"Error merging sources for UID '{uid}': {error}")
-            error_flag = True
-        elif manifest is not None:
-            stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+    oras = get_plugin("oras")
+    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
 
-    if error_flag:
-        log.error("One or more errors occurred during merge.")
-        raise typer.Exit(code=1)
+    # CI-specific: verify final manifests with imagetools inspect
+    if not dry_run:
+        for result in results:
+            if result.exit_code == 0 and result.artifacts:
+                workflow_result = result.artifacts.get("workflow_result")
+                if workflow_result and workflow_result.destinations:
+                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
+                    stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+
+    oras.results(results)
 
 
 @app.command()
@@ -251,8 +256,6 @@ def readme(
     variables to be set with a Personal Access Token (PAT). Organization Access Tokens
     cannot update repository descriptions.
     """
-    from posit_bakery.registry_management.dockerhub.readme import push_readmes
-
     settings = BakerySettings(
         dev_versions=dev_versions,
         matrix_versions=matrix_versions,
