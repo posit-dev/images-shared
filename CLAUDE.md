@@ -160,6 +160,20 @@ Template variables available:
 
 Custom Jinja2 filters: `tagSafe`, `stripMetadata`, `condense`, `regexReplace`, `quote`, `split`
 
+## Python Coding Conventions
+
+### Imports
+
+Prefer file-level (top-of-file) imports over locally-scoped imports. Local imports should
+only be used when there is a legitimate reason, such as:
+
+- Avoiding a circular import
+- Avoiding importing a large or optional dependency unless it is actually needed
+- Deferring an import for performance in a rarely-used code path
+
+When a local import is used, add a comment explaining why it is local rather than at the
+top of the file.
+
 ## CI/CD Architecture
 
 This repo provides shared reusable GitHub Actions workflows that all product image repos call:
