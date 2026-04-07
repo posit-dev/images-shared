@@ -162,7 +162,7 @@ class OrasPlugin(BakeryToolPlugin):
                 )
 
         if has_errors:
-            stderr_console.print("\u274c ORAS merge(s) failed", style="error")
+            stderr_console.print("❌ ORAS merge(s) failed", style="error")
             raise typer.Exit(code=1)
 
-        stderr_console.print("\u2705 ORAS merge completed", style="success")
+        stderr_console.print("✅ ORAS merge completed", style="success")

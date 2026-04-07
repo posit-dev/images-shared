@@ -248,13 +248,13 @@ class DGossPlugin(BakeryToolPlugin):
                 stderr_console.print(f"{uid} test failures:", style="error")
                 for failed_result in failures:
                     stderr_console.print(f"  - {failed_result.summary_line_compact}", style="error")
-            stderr_console.print(f"\u274c dgoss test(s) failed", style="error")
+            stderr_console.print(f"❌ dgoss test(s) failed", style="error")
         if has_errors:
             stderr_console.print("-" * 80)
             for err in errors:
                 stderr_console.print(err, style="error")
-            stderr_console.print(f"\u274c dgoss command(s) failed to execute", style="error")
+            stderr_console.print(f"❌ dgoss command(s) failed to execute", style="error")
         if report_collection.test_failures or has_errors:
             raise typer.Exit(code=1)
 
-        stderr_console.print(f"\u2705 Tests completed", style="success")
+        stderr_console.print(f"✅ Tests completed", style="success")
