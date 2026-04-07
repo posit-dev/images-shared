@@ -13,7 +13,6 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
-from posit_bakery.plugins.registry import get_plugin
 from posit_bakery.registry_management.dockerhub.readme import push_readmes
 from posit_bakery.util import auto_path
 
@@ -199,6 +198,9 @@ def merge(
 
     log.info(f"Found {len(loaded_targets)} targets")
     log.debug(", ".join(loaded_targets))
+
+    # Imported locally for patching in CLI tests
+    from posit_bakery.plugins.registry import get_plugin
 
     oras = get_plugin("oras")
     results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
