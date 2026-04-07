@@ -272,41 +272,48 @@ class HadolintPlugin(BakeryToolPlugin):
                 error_list = [errors]
 
         results = []
-        for target in targets:
-            report = None
-            if target.image_name in report_collection:
-                target_reports = report_collection[target.image_name]
-                if target.uid in target_reports:
-                    _, report = target_reports[target.uid]
+        for image_name, uid_reports in report_collection.items():
+            for uid, (target, report) in uid_reports.items():
+                target_error = None
+                for err in error_list:
+                    if hasattr(err, "message") and str(target) in err.message:
+                        target_error = err
+                        break
 
-            target_error = None
-            for err in error_list:
-                if hasattr(err, "message") and str(target) in err.message:
-                    target_error = err
-                    break
-
-            exit_code = 0
-            if target_error is not None:
-                exit_code = getattr(target_error, "exit_code", 1)
-            elif report is not None:
                 exit_code = report.exit_code
+                if target_error is not None:
+                    exit_code = getattr(target_error, "exit_code", 1)
 
-            artifacts = {}
-            if report is not None:
-                artifacts["report"] = report
-            if target_error is not None:
-                artifacts["execution_error"] = target_error
+                artifacts = {"report": report}
+                if target_error is not None:
+                    artifacts["execution_error"] = target_error
 
-            results.append(
-                ToolCallResult(
-                    exit_code=exit_code,
-                    tool_name="hadolint",
-                    target=target,
-                    stdout="",
-                    stderr="",
-                    artifacts=artifacts if artifacts else None,
+                results.append(
+                    ToolCallResult(
+                        exit_code=exit_code,
+                        tool_name="hadolint",
+                        target=target,
+                        stdout="",
+                        stderr="",
+                        artifacts=artifacts,
+                    )
                 )
-            )
+
+        # Include execution errors for targets that failed before producing a report
+        reported_targets = {r.target.uid for r in results}
+        for err in error_list:
+            for target in targets:
+                if target.uid not in reported_targets and hasattr(err, "message") and str(target) in err.message:
+                    results.append(
+                        ToolCallResult(
+                            exit_code=getattr(err, "exit_code", 1),
+                            tool_name="hadolint",
+                            target=target,
+                            stdout="",
+                            stderr="",
+                            artifacts={"execution_error": err},
+                        )
+                    )
 
         return results
 
@@ -325,14 +332,12 @@ class HadolintPlugin(BakeryToolPlugin):
         # Summary table
         stderr_console.print(report_collection.table())
 
-        # Detailed results by image and UID
+        # Detailed results by Containerfile
         if report_collection.has_issues:
             stderr_console.print("-" * 80)
-            for image_name, targets in report_collection.items():
-                stderr_console.print(f"=== {image_name} ===", style="bold")
-                for uid, (target, report) in targets.items():
-                    stderr_console.print(f"--- {uid} ---")
-                    stderr_console.print(f"  Containerfile: {report.containerfile}")
+            for image_name, uid_reports in report_collection.items():
+                for uid, (target, report) in uid_reports.items():
+                    stderr_console.print(f"=== {report.containerfile} ===", style="bold")
                     if report.total_count == 0:
                         stderr_console.print("  No issues found.", style="green3")
                     else:

@@ -172,6 +172,7 @@ class TestHadolintReportCollection:
         assert table.title == "Hadolint Results"
         column_names = [col.header for col in table.columns]
         assert "Image Name" in column_names
+        assert "Containerfile" in column_names
         assert "Errors" in column_names
         assert "Warnings" in column_names
 

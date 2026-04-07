@@ -26,6 +26,10 @@ class HadolintReport(BaseModel):
     filepath: Annotated[Path | None, Field(default=None, exclude=True, description="Path to the results JSON file.")]
     containerfile: Annotated[Path, Field(description="Relative path to the Containerfile.")]
     exit_code: Annotated[int, Field(default=0, exclude=True, description="Hadolint process exit code.")]
+    version_label: Annotated[
+        str | None,
+        Field(default=None, exclude=True, description="Display label for the version column. Overrides the target version when set."),
+    ]
     results: Annotated[list[HadolintResult], Field(default_factory=list, description="List of lint issues.")]
 
     @classmethod
@@ -109,6 +113,7 @@ class HadolintReportCollection(dict):
         table.add_column("Version", justify="left")
         table.add_column("OS", justify="left")
         table.add_column("Variant", justify="left")
+        table.add_column("Containerfile", justify="left")
         table.add_column("Errors", justify="right", header_style="bright_red")
         table.add_column("Warnings", justify="right", header_style="yellow")
         table.add_column("Info", justify="right", header_style="bright_blue")
@@ -125,7 +130,7 @@ class HadolintReportCollection(dict):
             for uid, (target, report) in targets.items():
                 variant_name = target.image_variant.name if target.image_variant else ""
                 os_name = target.image_os.name if target.image_os else ""
-                version_name = target.image_version.name
+                version_name = report.version_label or target.image_version.name
 
                 error_style = "bright_red bold" if report.error_count > 0 else "bright_black italic"
                 warning_style = "yellow bold" if report.warning_count > 0 else "bright_black italic"
@@ -137,6 +142,7 @@ class HadolintReportCollection(dict):
                     version_name,
                     os_name,
                     variant_name,
+                    str(report.containerfile),
                     Text(str(report.error_count), style=error_style),
                     Text(str(report.warning_count), style=warning_style),
                     Text(str(report.info_count), style=info_style),
@@ -152,7 +158,7 @@ class HadolintReportCollection(dict):
 
         table.add_section()
         table.add_row(
-            "Total", "", "", "",
+            "Total", "", "", "", "",
             str(total_errors),
             str(total_warnings),
             str(total_info),
