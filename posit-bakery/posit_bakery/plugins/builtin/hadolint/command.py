@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, computed_field
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.hadolint.options import HadolintOptions
+from posit_bakery.plugins.builtin.hadolint.options import DEFAULT_IGNORED_RULES, HadolintOptions
 from posit_bakery.settings import SETTINGS
 from posit_bakery.util import find_bin
 
@@ -47,6 +47,10 @@ class HadolintCommand(BaseModel):
         # Apply default failure threshold if no source provided one
         if options.failureThreshold is None:
             options = options.model_copy(update={"failureThreshold": "error"})
+
+        # Apply default ignored rules if no source provided any
+        if options.ignored is None and "ignored" not in options.model_fields_set:
+            options = options.model_copy(update={"ignored": list(DEFAULT_IGNORED_RULES)})
 
         return cls(
             image_target=image_target,

@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field
 
 from posit_bakery.config.tools.base import ToolOptions
 
+# Package-pinning rules ignored by default since Posit images do not pin
+# OS-level package versions. Users can override by setting `ignored` explicitly;
+# setting `ignored: []` clears the defaults entirely.
+DEFAULT_IGNORED_RULES: list[str] = ["DL3008", "DL3018", "DL3033", "DL3037", "DL3041"]
+
 
 class HadolintOverride(BaseModel):
     """Override the default severity level of specific hadolint rules."""

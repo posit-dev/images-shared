@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from posit_bakery.plugins.builtin.hadolint.command import HadolintCommand
-from posit_bakery.plugins.builtin.hadolint.options import HadolintOptions
+from posit_bakery.plugins.builtin.hadolint.options import DEFAULT_IGNORED_RULES, HadolintOptions
 
 pytestmark = [
     pytest.mark.unit,
@@ -65,14 +65,29 @@ class TestHadolintCommand:
         idx = cmd.command.index("--failure-threshold")
         assert cmd.command[idx + 1] == "warning"
 
+    def test_command_default_ignored_rules(self, basic_standard_image_target):
+        """Test that default ignored rules are applied when none are specified."""
+        cmd = HadolintCommand.from_image_target(basic_standard_image_target)
+        ignore_indices = [i for i, v in enumerate(cmd.command) if v == "--ignore"]
+        assert len(ignore_indices) == len(DEFAULT_IGNORED_RULES)
+        ignored_values = [cmd.command[i + 1] for i in ignore_indices]
+        assert ignored_values == DEFAULT_IGNORED_RULES
+
     def test_command_with_ignored_rules(self, basic_standard_image_target):
-        """Test that --ignore is repeated for each ignored rule."""
+        """Test that user-provided ignored rules replace the defaults."""
         options = HadolintOptions(ignored=["DL3008", "DL3009"])
         cmd = HadolintCommand.from_image_target(basic_standard_image_target, options_override=options)
         ignore_indices = [i for i, v in enumerate(cmd.command) if v == "--ignore"]
         assert len(ignore_indices) == 2
         assert cmd.command[ignore_indices[0] + 1] == "DL3008"
         assert cmd.command[ignore_indices[1] + 1] == "DL3009"
+
+    def test_command_with_empty_ignored_rules(self, basic_standard_image_target):
+        """Test that explicitly setting ignored to [] clears the defaults."""
+        options = HadolintOptions(ignored=[])
+        cmd = HadolintCommand.from_image_target(basic_standard_image_target, options_override=options)
+        ignore_indices = [i for i, v in enumerate(cmd.command) if v == "--ignore"]
+        assert len(ignore_indices) == 0
 
     def test_command_with_no_fail(self, basic_standard_image_target):
         """Test that --no-fail is included when set."""
