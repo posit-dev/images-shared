@@ -87,6 +87,16 @@ just test
 just test-all
 ```
 
+**Always use `uv` instead of `python`** for invoking Python commands, running scripts, or
+executing tools like `pytest`. For example:
+
+- `uv run pytest` instead of `python -m pytest` or `pytest`
+- `uv run python script.py` instead of `python script.py`
+- `uv run bakery ...` instead of `bakery ...` (when running outside of `just`)
+
+This ensures the correct virtual environment and dependencies are used automatically
+without requiring manual activation.
+
 ## Repository Structure
 
 This is a monorepo containing multiple projects:
