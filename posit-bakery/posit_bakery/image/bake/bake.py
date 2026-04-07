@@ -95,12 +95,15 @@ class BakeTarget(BaseModel):
         return str(value)
 
     @classmethod
-    def from_image_target(cls, image_target: ImageTarget, platforms: list[str] | None = None) -> "BakeTarget":
+    def from_image_target(
+        cls, image_target: ImageTarget, platforms: list[str] | None = None, push: bool = False
+    ) -> "BakeTarget":
         """Create a BakeTarget from an ImageTarget.
 
         :param image_target: The ImageTarget to create a BakeTarget from.
         :param platforms: Optional platform override (e.g., from CLI --platform flag). When provided, this takes
             precedence over the image target's OS platform configuration for cache tag generation.
+        :param push: If True, include cache-to in the target to push cache layers to the registry.
         """
         kwargs = {"tags": image_target.tags.as_strings()}
         effective_platforms = platforms or (
@@ -110,7 +113,8 @@ class BakeTarget(BaseModel):
         cache_name = image_target.cache_name(platform=cache_platform)
         if cache_name is not None:
             kwargs["cache_from"] = [{"type": "registry", "ref": cache_name}]
-            kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
+            if push:
+                kwargs["cache_to"] = [{"type": "registry", "ref": cache_name, "mode": "max"}]
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
@@ -169,7 +173,7 @@ class BakePlan(BaseModel):
 
     @classmethod
     def from_image_targets(
-        cls, context: Path, image_targets: list[ImageTarget], platforms: list[str] | None = None
+        cls, context: Path, image_targets: list[ImageTarget], platforms: list[str] | None = None, push: bool = False
     ) -> "BakePlan":
         """Create a BakePlan from a list of ImageTarget objects.
 
@@ -177,6 +181,7 @@ class BakePlan(BaseModel):
         :param image_targets: A list of ImageTarget objects to include in the bake plan.
         :param platforms: Optional platform override (e.g., from CLI --platform flag). When provided, this takes
             precedence over each image target's OS platform configuration for cache tag generation.
+        :param push: If True, include cache-to in bake targets to push cache layers to the registry.
 
         :return: A BakePlan object containing the context, groups, and targets.
         """
@@ -186,7 +191,7 @@ class BakePlan(BaseModel):
         targets: dict[str, BakeTarget] = {}
 
         for image_target in image_targets:
-            bake_target = BakeTarget.from_image_target(image_target=image_target, platforms=platforms)
+            bake_target = BakeTarget.from_image_target(image_target=image_target, platforms=platforms, push=push)
             groups = cls.update_groups(
                 groups=groups,
                 uid=image_target.uid,

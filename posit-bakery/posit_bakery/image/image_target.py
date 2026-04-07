@@ -411,8 +411,7 @@ class ImageTarget(BaseModel):
                 build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
             for key, value in self.image_version.values.items():
                 log.debug(
-                    f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] "
-                    f"Setting build arg {key.upper()}='{value}'"
+                    f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] Setting build arg {key.upper()}='{value}'"
                 )
                 build_args[key.upper()] = value
         return build_args
@@ -561,7 +560,8 @@ class ImageTarget(BaseModel):
         cache_name = self.cache_name(platform=cache_platform)
         if cache_name is not None:
             cache_from = f"type=registry,ref={cache_name}"
-            cache_to = f"{cache_from},mode=max"
+            if push:
+                cache_to = f"{cache_from},mode=max"
 
         if isinstance(metadata_file, bool) and metadata_file:
             metadata_file = SETTINGS.temporary_storage / f"{self.uid}.json"

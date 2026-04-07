@@ -643,7 +643,7 @@ class TestImageTarget:
 
     @pytest.mark.build
     def test_build_args_cache_registry(self, basic_standard_image_target):
-        """Test the build property of an ImageTarget."""
+        """Test that cache-from is set but cache-to is omitted when not pushing."""
         basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
         cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
         expected_build_args = {
@@ -658,7 +658,7 @@ class TestImageTarget:
             "output": {},
             "cache": True,
             "cache_from": f"type=registry,ref={cache_name}",
-            "cache_to": f"type=registry,ref={cache_name},mode=max",
+            "cache_to": None,
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
@@ -666,6 +666,34 @@ class TestImageTarget:
 
         with patch("python_on_whales.docker.build") as mock_build:
             basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_cache_registry_push(self, basic_standard_image_target):
+        """Test that cache-to is set when pushing with a cache registry."""
+        basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "build_args": {},
+            "tags": basic_standard_image_target.tags.as_strings(),
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": True,
+            "pull": False,
+            "output": {},
+            "cache": True,
+            "cache_from": f"type=registry,ref={cache_name}",
+            "cache_to": f"type=registry,ref={cache_name},mode=max",
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+            "target": None,
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build(push=True)
 
         mock_build.assert_called_once_with(**expected_build_args)
 

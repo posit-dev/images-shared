@@ -190,7 +190,7 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
-        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
+        # Cache-to is conditional on --push (handled by bakery internally)
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/} \
           bakery build \

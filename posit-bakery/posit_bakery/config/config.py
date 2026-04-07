@@ -900,9 +900,13 @@ class BakeryConfig:
 
         return targets_loaded
 
-    def bake_plan_targets(self) -> str:
-        """Generates a bake plan JSON string for the image targets defined in the config."""
-        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets)
+    def bake_plan_targets(self, push: bool = False) -> str:
+        """Generates a bake plan JSON string for the image targets defined in the config.
+
+        :param push: When True, include cache-to exports in the bake plan so that
+            cache layers are written to the registry alongside the built images.
+        """
+        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets, push=push)
         return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     def build_targets(
@@ -932,7 +936,7 @@ class BakeryConfig:
         """
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, platforms=platforms
+                context=self.base_path, image_targets=self.targets, platforms=platforms, push=push
             )
             set_opts = None
             if self.settings.temp_registry is not None and push:
