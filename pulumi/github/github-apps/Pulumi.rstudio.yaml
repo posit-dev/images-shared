@@ -22,3 +22,10 @@ config:
         - APP_PRIVATE_KEY
       repositories:
         - helm
+    platform-bot:
+      installationId: ""
+      secrets:
+        - APP_ID
+        - APP_PRIVATE_KEY
+      repositories:
+        - helm

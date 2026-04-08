@@ -24,7 +24,7 @@ container image ecosystem.
 | connect-bot | images-connect | helm |
 | workbench-bot | images-workbench | helm |
 | ppm-bot | images-package-manager | helm |
-| platform-bot | images-shared | — |
+| platform-bot | images-shared | helm |
 
 | Line | Meaning |
 |---|---|
@@ -50,6 +50,7 @@ graph TD
     PB -->|app + secrets| HELM
 
     PLB -->|app + secrets| IS["posit-dev/<br/>images-shared"]
+    PLB -->|app + secrets| HELM
 ```
 
 ### Connect Bot
@@ -89,6 +90,7 @@ graph TD
     BOT["**Platform Bot** 🤖"]
 
     BOT -->|app + secrets| IS["posit-dev/images-shared"]
+    BOT -->|app + secrets| HELM["rstudio/helm"]
 ```
 
 ## Usage
