@@ -65,12 +65,12 @@ graph TD
     WORKBENCH_BOT -.->|"workflow_dispatch release.yml"| IMG_WORKBENCH
     PPM_BOT -.->|"workflow_dispatch release.yml"| IMG_PM
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
+    SHARED["**posit-dev/images-shared**<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
 
     subgraph "Image Repos"
-        IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
-        IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
-        IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
+        IMG_CONNECT["**posit-dev/images-connect**<br/>production<br/>content<br/>release"]
+        IMG_WORKBENCH["**posit-dev/images-workbench**<br/>production<br/>session<br/>release"]
+        IMG_PM["**posit-dev/images-package-manager**<br/>production<br/>release"]
     end
 
     IMG_CONNECT -.->|workflow_call| SHARED
@@ -91,7 +91,7 @@ graph TD
     IMG_WORKBENCH -.->|"workflow_dispatch product-release.yml"| HELM
     IMG_PM -.->|"workflow_dispatch product-release.yml"| HELM
 
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
+    HELM["**rstudio/helm**<br/>product-release<br/>chart-releaser"]
     HELM -->|Flux sync| K8S
 
     K8S["K8s Dogfood Sites"]
@@ -101,11 +101,11 @@ graph TD
 
 ```mermaid
 graph TD
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
+    SHARED["**posit-dev/images-shared**<br/>bakery-build-native<br/>bakery-build"]
 
-    IMG_CONNECT["posit-dev/images-connect<br/>development"]
-    IMG_WORKBENCH["posit-dev/images-workbench<br/>development"]
-    IMG_PM["posit-dev/images-package-manager<br/>development"]
+    IMG_CONNECT["**posit-dev/images-connect**<br/>development"]
+    IMG_WORKBENCH["**posit-dev/images-workbench**<br/>development"]
+    IMG_PM["**posit-dev/images-package-manager**<br/>development"]
 
     IMG_CONNECT -.->|workflow_call| SHARED
     IMG_WORKBENCH -.->|workflow_call| SHARED
