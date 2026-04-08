@@ -1,0 +1,197 @@
+name: Slack Build Notification
+description: |
+  Sends Slack notifications on build state transitions on main.
+  Notifies when a previously-passing workflow starts failing,
+  and when a previously-failing workflow recovers.
+
+inputs:
+  result:
+    description: Current build result (success or failure)
+    required: true
+  slack-webhook-url:
+    description: Slack incoming webhook URL
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Notify Slack on state transition
+      if: inputs.slack-webhook-url != ''
+      uses: actions/github-script@v7
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+        CURRENT_RESULT: ${{ inputs.result }}
+      with:
+        script: |
+          const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+          const currentResult = process.env.CURRENT_RESULT;
+
+          // Get the current run to find the workflow ID
+          const { data: currentRun } = await github.rest.actions.getWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+
+          const workflowId = currentRun.workflow_id;
+          const workflowName = currentRun.name;
+          const repo = `${context.repo.owner}/${context.repo.repo}`;
+
+          // Get previous completed runs of the same workflow on main
+          const { data: { workflow_runs: runs } } = await github.rest.actions.listWorkflowRuns({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: workflowId,
+            branch: 'main',
+            status: 'completed',
+            per_page: 50,
+            exclude_pull_requests: true,
+          });
+
+          // Filter out the current run and cancelled runs
+          const previousRuns = runs
+            .filter(r => r.id !== context.runId && r.conclusion !== 'cancelled')
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+          if (previousRuns.length === 0) {
+            core.info('No previous completed runs found, skipping notification');
+            return;
+          }
+
+          const previousRun = previousRuns[0];
+          const currentFailed = currentResult !== 'success';
+          const previousFailed = previousRun.conclusion !== 'success';
+
+          if (currentFailed === previousFailed) {
+            core.info(`No state transition (current: ${currentResult}, previous: ${previousRun.conclusion}), skipping`);
+            return;
+          }
+
+          const runUrl = currentRun.html_url;
+          let blocks;
+
+          if (currentFailed) {
+            // === Build just broke ===
+
+            // Get failed job details from the current run
+            const { data: { jobs } } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+
+            const failedJobs = jobs.filter(j => j.conclusion === 'failure');
+
+            let failureLines = [];
+            for (const job of failedJobs) {
+              const failedSteps = (job.steps || []).filter(s => s.conclusion === 'failure');
+              const jobUrl = job.html_url;
+              if (failedSteps.length > 0) {
+                for (const step of failedSteps) {
+                  failureLines.push(`  <${jobUrl}|${job.name}> \u2014 ${step.name}`);
+                }
+              } else {
+                failureLines.push(`  <${jobUrl}|${job.name}>`);
+              }
+            }
+
+            const commitSha = currentRun.head_sha?.substring(0, 7) || '';
+            const commitMsg = currentRun.head_commit?.message?.split('\n')[0] || '';
+            const commitUrl = `https://github.com/${repo}/commit/${currentRun.head_sha}`;
+            const actor = currentRun.actor?.login || 'unknown';
+            const trigger = currentRun.event === 'schedule' ? 'scheduled' : currentRun.event;
+
+            blocks = [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `:red_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build failed`
+                }
+              },
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `*Failed:*\n${failureLines.join('\n')}`
+                }
+              },
+              {
+                type: 'context',
+                elements: [
+                  {
+                    type: 'mrkdwn',
+                    text: `${trigger} \u2022 <${commitUrl}|\`${commitSha}\`> ${commitMsg} \u2022 ${actor}`
+                  }
+                ]
+              },
+              {
+                type: 'actions',
+                elements: [
+                  {
+                    type: 'button',
+                    text: { type: 'plain_text', text: 'View Run' },
+                    url: runUrl
+                  }
+                ]
+              }
+            ];
+          } else {
+            // === Build recovered ===
+
+            // Count consecutive failures before this recovery
+            let failedCount = 0;
+            let firstFailureRun = null;
+            for (const run of previousRuns) {
+              if (run.conclusion !== 'success') {
+                failedCount++;
+                firstFailureRun = run;
+              } else {
+                break;
+              }
+            }
+
+            blocks = [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `:large_green_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build recovered`
+                }
+              },
+              {
+                type: 'context',
+                elements: [
+                  {
+                    type: 'mrkdwn',
+                    text: `Failed for ${failedCount} consecutive run${failedCount !== 1 ? 's' : ''}` +
+                      (firstFailureRun ? ` since <${firstFailureRun.html_url}|${new Date(firstFailureRun.created_at).toISOString().split('T')[0]}>` : '')
+                  }
+                ]
+              },
+              {
+                type: 'actions',
+                elements: [
+                  {
+                    type: 'button',
+                    text: { type: 'plain_text', text: 'View Run' },
+                    url: runUrl
+                  }
+                ]
+              }
+            ];
+          }
+
+          // Send Slack message
+          const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ blocks }),
+          });
+
+          if (!response.ok) {
+            const body = await response.text();
+            core.warning(`Slack notification failed: ${response.status} ${body}`);
+          } else {
+            core.info(`Slack ${currentFailed ? 'failure' : 'recovery'} notification sent`);
+          }
