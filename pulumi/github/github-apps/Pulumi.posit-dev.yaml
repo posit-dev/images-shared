@@ -4,29 +4,29 @@ config:
     connect-bot:
       installationId: ""
       secrets:
-        APP_ID: ""
-        APP_PRIVATE_KEY: ""
+        - APP_ID
+        - APP_PRIVATE_KEY
       repositories:
         - connect
         - images-connect
     workbench-bot:
       installationId: ""
       secrets:
-        APP_ID: ""
-        APP_PRIVATE_KEY: ""
+        - APP_ID
+        - APP_PRIVATE_KEY
       repositories:
         - images-workbench
     ppm-bot:
       installationId: ""
       secrets:
-        APP_ID: ""
-        APP_PRIVATE_KEY: ""
+        - APP_ID
+        - APP_PRIVATE_KEY
       repositories:
         - images-package-manager
     platform-bot:
       installationId: ""
       secrets:
-        APP_ID: ""
-        APP_PRIVATE_KEY: ""
+        - APP_ID
+        - APP_PRIVATE_KEY
       repositories:
         - images-shared
