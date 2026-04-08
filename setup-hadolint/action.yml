@@ -10,6 +10,10 @@ inputs:
     description: "The system architecture (e.g., x86_64, arm64). If not set, it will be detected automatically."
     required: false
     default: ""
+  base_path:
+    description: "The base path to install hadolint (default: CWD)"
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -33,5 +37,5 @@ runs:
             arch="arm64"
         fi
 
-        curl -fsSL https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download/hadolint-linux-${arch} -o tools/hadolint
-        chmod +rx tools/hadolint
+        curl -fsSL https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download/hadolint-linux-${arch} -o ${{ inputs.base_path }}/tools/hadolint
+        chmod +rx ${{ inputs.base_path }}/tools/hadolint

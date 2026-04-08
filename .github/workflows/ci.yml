@@ -72,6 +72,9 @@ jobs:
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@v1
 
+      - name: Add tools/ to path
+        run: echo "${GITHUB_WORKSPACE}/tools" >> $GITHUB_PATH
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
