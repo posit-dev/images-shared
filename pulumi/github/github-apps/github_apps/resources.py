@@ -49,7 +49,7 @@ def manage_app(app: AppConfig):
         selected_repositories=all_repos,
     )
 
-    if not app.secrets:
+    if not app.secrets or not app.repositories:
         return
 
     # Resolve repository IDs for secret sharing (excludes dispatch-only repos).
