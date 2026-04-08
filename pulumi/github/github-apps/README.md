@@ -22,8 +22,8 @@ container image ecosystem.
 | App | posit-dev repos | rstudio repos |
 |---|---|---|
 | connect-bot | connect, images-connect | helm |
-| workbench-bot | images-workbench | rstudio-pro, helm |
-| ppm-bot | images-package-manager | package-manager, helm |
+| workbench-bot | images-workbench | rstudio-pro, helm (app only) |
+| ppm-bot | images-package-manager | package-manager, helm (app only) |
 | platform-bot | images-shared | helm |
 
 | Line | Meaning |
@@ -42,15 +42,15 @@ graph TD
 
     CB ==> PCT["posit-dev/<br/>connect"]
     CB ==> IC["posit-dev/<br/>images-connect"]
-    CB ==> HELM["rstudio/helm"]
+    CB --> HELM["rstudio/helm"]
 
     WB ==> IW["posit-dev/<br/>images-workbench"]
     WB ==> RSP["rstudio/<br/>rstudio-pro"]
-    WB ==> HELM
+    WB --> HELM
 
     PB ==> IP["posit-dev/<br/>images-package-manager"]
     PB ==> PPM["rstudio/<br/>package-manager"]
-    PB ==> HELM
+    PB --> HELM
 
     PLB ==> IS["posit-dev/<br/>images-shared"]
     PLB ==> HELM
@@ -64,7 +64,7 @@ graph TD
 
     BOT ==> PCT["posit-dev/connect"]
     BOT ==> IC["posit-dev/images-connect"]
-    BOT ==> HELM["rstudio/helm"]
+    BOT --> HELM["rstudio/helm"]
 ```
 
 ### Workbench Bot
@@ -75,7 +75,7 @@ graph TD
 
     BOT ==> IW["posit-dev/images-workbench"]
     BOT ==> RSP["rstudio/rstudio-pro"]
-    BOT ==> HELM["rstudio/helm"]
+    BOT --> HELM["rstudio/helm"]
 ```
 
 ### PPM Bot
@@ -86,7 +86,7 @@ graph TD
 
     BOT ==> IP["posit-dev/images-package-manager"]
     BOT ==> PPM["rstudio/package-manager"]
-    BOT ==> HELM["rstudio/helm"]
+    BOT --> HELM["rstudio/helm"]
 ```
 
 ### Platform Bot

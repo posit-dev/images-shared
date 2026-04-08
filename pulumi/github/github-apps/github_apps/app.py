@@ -18,6 +18,7 @@ class AppConfig:
     installation_id: str
     secrets: list[str] = field(default_factory=list)
     repositories: list[str] = field(default_factory=list)
+    dispatch_only: list[str] = field(default_factory=list)
 
 
 def manage_app(owner: str, app: AppConfig):
@@ -35,17 +36,18 @@ def manage_app(owner: str, app: AppConfig):
         )
         return
 
-    # Manage which repos this app is installed on.
+    # Install the app on all repos (both secret-sharing and dispatch-only).
+    all_repos = app.repositories + app.dispatch_only
     AppInstallationRepositories(
         f"{app.name}-repos",
         installation_id=app.installation_id,
-        selected_repositories=app.repositories,
+        selected_repositories=all_repos,
     )
 
     if not app.secrets:
         return
 
-    # Resolve repository IDs for secret sharing.
+    # Resolve repository IDs for secret sharing (excludes dispatch-only repos).
     repo_ids = []
     for repo_name in app.repositories:
         repo = get_repository(name=repo_name)

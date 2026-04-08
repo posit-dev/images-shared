@@ -16,5 +16,6 @@ def deploy():
             installation_id=app_def["installationId"],
             secrets=app_def.get("secrets", []),
             repositories=app_def.get("repositories", []),
+            dispatch_only=app_def.get("dispatchOnly", []),
         )
         manage_app(owner, app_config)

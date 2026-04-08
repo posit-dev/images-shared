@@ -3,10 +3,7 @@ config:
   github-apps:apps:
     connect-bot:
       installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
+      dispatchOnly:
         - helm
     workbench-bot:
       installationId: ""
@@ -15,6 +12,7 @@ config:
         - APP_PRIVATE_KEY
       repositories:
         - rstudio-pro
+      dispatchOnly:
         - helm
     ppm-bot:
       installationId: ""
@@ -23,6 +21,7 @@ config:
         - APP_PRIVATE_KEY
       repositories:
         - package-manager
+      dispatchOnly:
         - helm
     platform-bot:
       installationId: ""
