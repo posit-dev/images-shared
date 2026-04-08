@@ -24,7 +24,7 @@ container image ecosystem.
 | connect-bot | images-connect | helm |
 | workbench-bot | images-workbench | helm |
 | ppm-bot | images-package-manager | helm |
-| platform-bot | images-shared, images-connect, images-workbench, images-package-manager | — |
+| platform-bot | images-shared | — |
 
 ### Connect Bot
 
@@ -81,16 +81,10 @@ graph TD
     BOT["**Platform Bot** 🤖"]
 
     BOT -.->|"workflow_dispatch"| IS["posit-dev/images-shared"]
-    BOT -.->|"workflow_dispatch"| IC["posit-dev/images-connect"]
-    BOT -.->|"workflow_dispatch"| IW["posit-dev/images-workbench"]
-    BOT -.->|"workflow_dispatch"| IP["posit-dev/images-package-manager"]
 
     SECRET["posit-dev org secrets<br/>PLATFORM_BOT_APP_ID<br/>PLATFORM_BOT_APP_PRIVATE_KEY"]
 
     SECRET -->|shared with| IS
-    SECRET -->|shared with| IC
-    SECRET -->|shared with| IW
-    SECRET -->|shared with| IP
 ```
 
 ## Usage

@@ -29,6 +29,3 @@ config:
         - APP_PRIVATE_KEY
       repositories:
         - images-shared
-        - images-connect
-        - images-workbench
-        - images-package-manager
