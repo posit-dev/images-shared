@@ -21,7 +21,7 @@ class AppConfig:
     dispatch_only: list[str] = field(default_factory=list)
 
 
-def manage_app(owner: str, app: AppConfig):
+def manage_app(app: AppConfig):
     """Manage a GitHub App's repository installations and secret sharing.
 
     For each app:
@@ -64,7 +64,7 @@ def manage_app(owner: str, app: AppConfig):
         # Create the org secret as a placeholder. The actual value must be
         # set out-of-band (gh secret set, GitHub UI, etc.) because Pulumi
         # would store it in state. We use a sentinel to create the resource.
-        ActionsOrganizationSecret(
+        secret = ActionsOrganizationSecret(
             f"{app.name}-secret-{secret_name}",
             secret_name=org_secret_name,
             visibility="selected",
@@ -78,6 +78,7 @@ def manage_app(owner: str, app: AppConfig):
             f"{app.name}-secret-{secret_name}-repos",
             secret_name=org_secret_name,
             selected_repository_ids=repo_ids,
+            opts=ResourceOptions(depends_on=[secret]),
         )
 
 
