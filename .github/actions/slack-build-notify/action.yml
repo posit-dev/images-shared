@@ -16,7 +16,7 @@ runs:
   using: composite
   steps:
     - name: Notify Slack on state transition
-      if: inputs.slack-webhook-url != ''
+      if: inputs.slack-webhook-url != '' && github.repository_owner == 'posit-dev'
       uses: actions/github-script@v7
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
@@ -61,6 +61,10 @@ runs:
 
             const previousRun = previousRuns[0];
             const currentFailed = currentResult !== 'success';
+            // NOTE: currentResult reflects the CI meta-job's alls-green outcome (typically
+            // just the build job), while previousRun.conclusion reflects the entire workflow
+            // (including clean, etc). A clean-only failure followed by a clean recovery can
+            // produce a false recovery notification. Acceptable for now.
             const previousFailed = previousRun.conclusion !== 'success';
 
             if (currentFailed === previousFailed) {
