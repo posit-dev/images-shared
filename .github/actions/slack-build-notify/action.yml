@@ -112,9 +112,17 @@ runs:
                 }
               }
 
-              const failureDetail = failureLines.length > 0
-                ? failureLines.join('\n')
-                : '  _No individual job failures identified \u2014 check the run for details_';
+              const maxShown = 5;
+              let failureDetail;
+              if (failureLines.length === 0) {
+                failureDetail = '  _No individual job failures identified \u2014 check the run for details_';
+              } else if (failureLines.length <= maxShown) {
+                failureDetail = failureLines.join('\n');
+              } else {
+                const hidden = failureLines.length - maxShown;
+                failureDetail = failureLines.slice(0, maxShown).join('\n') +
+                  `\n  _… and ${hidden} more_`;
+              }
 
               const commitSha = currentRun.head_sha?.substring(0, 7) || '';
               // Escape Slack mrkdwn special characters to prevent injection (e.g. <!here>)
@@ -129,7 +137,8 @@ runs:
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: `:red_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build failed`
+                    text: `:red_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build failed` +
+                      (failedJobs.length > 0 ? ` (${failedJobs.length} job${failedJobs.length !== 1 ? 's' : ''})` : '')
                   }
                 },
                 {
