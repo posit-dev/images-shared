@@ -87,9 +87,9 @@ graph TD
     DOCKERHUB["Docker Hub"]
     GHCR["GHCR"]
 
-    CONNECT_BOT -.->|"workflow_dispatch product-release.yml"| HELM
-    WORKBENCH_BOT -.->|"workflow_dispatch product-release.yml"| HELM
-    PPM_BOT -.->|"workflow_dispatch product-release.yml"| HELM
+    IMG_CONNECT -.->|"workflow_dispatch product-release.yml"| HELM
+    IMG_WORKBENCH -.->|"workflow_dispatch product-release.yml"| HELM
+    IMG_PM -.->|"workflow_dispatch product-release.yml"| HELM
 
     HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
     HELM -->|Flux sync| K8S
