@@ -111,24 +111,15 @@ graph TD
 
     SHARED["posit-dev/images-shared<br/>bakery-build-native · bakery-build"]
 
-    IMG_CONNECT -->|dev push| GHCR
-    IMG_WORKBENCH -->|dev push| GHCR
-    IMG_WORKBENCH -->|preview push| ECR_WB
-    IMG_PM -->|dev push| GHCR
-    IMG_PM -->|preview push| ECR_PPM
+    IMG_CONNECT -->|preview push| GHCR
+    IMG_WORKBENCH -->|preview push| GHCR
+    IMG_PM -->|preview push| GHCR
 
-    GHCR["GHCR"]
-    ECR_PPM["AWS ECR<br/>package-manager-preview"]
-    ECR_WB["AWS ECR<br/>workbench-preview<br/>workbench-session-init-preview"]
+    GHCR["GHCR<br/>connect-preview<br/>workbench-preview<br/>package-manager-preview"]
 
-    ECR_PPM --> K8S
-    ECR_WB --> K8S
-    ECR_WB --> FUZZBUCKET
-    ECR_WB --> EKS_REF
-
-    ECR_PPM -.->|"hourly poll (legacy)"| HELM_PM
-    HELM_PM["rstudio/helm-package-manager<br/>build.yml"]
-    HELM_PM -->|Flux sync| K8S
+    GHCR --> K8S
+    GHCR --> FUZZBUCKET
+    GHCR --> EKS_REF
 
     K8S["K8s Dogfood Sites"]
     FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
@@ -140,11 +131,11 @@ graph TD
 | Repository | Role | Deploy Target |
 |---|---|---|
 | `posit-dev/images-connect` | Build Connect images | Docker Hub, GHCR |
-| `posit-dev/images-workbench` | Build Workbench images | Docker Hub, GHCR, ECR |
-| `posit-dev/images-package-manager` | Build PPM images | Docker Hub, GHCR, ECR |
+| `posit-dev/images-workbench` | Build Workbench images | Docker Hub, GHCR |
+| `posit-dev/images-package-manager` | Build PPM images | Docker Hub, GHCR |
 | `posit-dev/images-shared` | Shared build workflows | — |
 | `rstudio/helm` | Helm charts for all products | K8s dogfood (Flux) |
-| `rstudio/helm-package-manager` | Legacy PPM Helm chart | K8s dogfood (Flux) |
+| `rstudio/helm-package-manager` | Legacy PPM Helm chart (retiring) | K8s dogfood (Flux) |
 
 ### External Repos (Product Source)
 
@@ -158,6 +149,6 @@ graph TD
 
 | Environment | Consumes | Source |
 |---|---|---|
-| K8s Dogfood | PPM preview, Workbench preview, Helm charts | ECR, Flux |
-| Fuzzbucket | Workbench session images | ECR |
-| EKS Reference Architecture | Workbench images | ECR |
+| K8s Dogfood | PPM preview, Workbench preview, Helm charts | GHCR, Flux |
+| Fuzzbucket | Workbench session images | GHCR |
+| EKS Reference Architecture | Workbench images | GHCR |
