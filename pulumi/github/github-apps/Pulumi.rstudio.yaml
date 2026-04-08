@@ -1,8 +1,0 @@
-config:
-  github:owner: rstudio
-  github-apps:installationIds:
-    connect-bot: ""
-    workbench-bot: ""
-    ppm-bot: ""
-    platform-bot: ""
-    posit-docs: ""
