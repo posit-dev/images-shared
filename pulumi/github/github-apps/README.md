@@ -28,8 +28,8 @@ container image ecosystem.
 
 | Line | Meaning |
 |---|---|
-| Solid | App installed + secrets shared |
-| Dashed | App installed only |
+| **Thick** (`==>`) | App installed + secrets shared |
+| **Thin** (`-->`) | App installed only |
 
 ### Full Ecosystem
 
@@ -40,17 +40,17 @@ graph TD
     PB["**PPM Bot** 🤖"]
     PLB["**Platform Bot** 🤖"]
 
-    CB -->|app + secrets| IC["posit-dev/<br/>images-connect"]
-    CB -->|app + secrets| HELM["rstudio/helm"]
+    CB ==>|app + secrets| IC["posit-dev/<br/>images-connect"]
+    CB ==>|app + secrets| HELM["rstudio/helm"]
 
-    WB -->|app + secrets| IW["posit-dev/<br/>images-workbench"]
-    WB -->|app + secrets| HELM
+    WB ==>|app + secrets| IW["posit-dev/<br/>images-workbench"]
+    WB ==>|app + secrets| HELM
 
-    PB -->|app + secrets| IP["posit-dev/<br/>images-package-manager"]
-    PB -->|app + secrets| HELM
+    PB ==>|app + secrets| IP["posit-dev/<br/>images-package-manager"]
+    PB ==>|app + secrets| HELM
 
-    PLB -->|app + secrets| IS["posit-dev/<br/>images-shared"]
-    PLB -->|app + secrets| HELM
+    PLB ==>|app + secrets| IS["posit-dev/<br/>images-shared"]
+    PLB ==>|app + secrets| HELM
 ```
 
 ### Connect Bot
@@ -59,8 +59,8 @@ graph TD
 graph TD
     BOT["**Connect Bot** 🤖"]
 
-    BOT -->|app + secrets| IC["posit-dev/images-connect"]
-    BOT -->|app + secrets| HELM["rstudio/helm"]
+    BOT ==>|app + secrets| IC["posit-dev/images-connect"]
+    BOT ==>|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### Workbench Bot
@@ -69,8 +69,8 @@ graph TD
 graph TD
     BOT["**Workbench Bot** 🤖"]
 
-    BOT -->|app + secrets| IW["posit-dev/images-workbench"]
-    BOT -->|app + secrets| HELM["rstudio/helm"]
+    BOT ==>|app + secrets| IW["posit-dev/images-workbench"]
+    BOT ==>|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### PPM Bot
@@ -79,8 +79,8 @@ graph TD
 graph TD
     BOT["**PPM Bot** 🤖"]
 
-    BOT -->|app + secrets| IP["posit-dev/images-package-manager"]
-    BOT -->|app + secrets| HELM["rstudio/helm"]
+    BOT ==>|app + secrets| IP["posit-dev/images-package-manager"]
+    BOT ==>|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### Platform Bot
@@ -89,8 +89,8 @@ graph TD
 graph TD
     BOT["**Platform Bot** 🤖"]
 
-    BOT -->|app + secrets| IS["posit-dev/images-shared"]
-    BOT -->|app + secrets| HELM["rstudio/helm"]
+    BOT ==>|app + secrets| IS["posit-dev/images-shared"]
+    BOT ==>|app + secrets| HELM["rstudio/helm"]
 ```
 
 ## Usage
