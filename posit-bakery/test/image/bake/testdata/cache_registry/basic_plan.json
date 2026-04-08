@@ -66,7 +66,9 @@
         {
           "type": "registry",
           "ref": "ghcr.io/posit-dev/test-image/cache:1.0.0-ubuntu-22.04-min-amd64",
-          "mode": "max"
+          "mode": "max",
+          "compression": "zstd",
+          "oci-mediatypes": "true"
         }
       ]
     },
@@ -120,7 +122,9 @@
         {
           "type": "registry",
           "ref": "ghcr.io/posit-dev/test-image/cache:1.0.0-ubuntu-22.04-std-amd64",
-          "mode": "max"
+          "mode": "max",
+          "compression": "zstd",
+          "oci-mediatypes": "true"
         }
       ]
     }
