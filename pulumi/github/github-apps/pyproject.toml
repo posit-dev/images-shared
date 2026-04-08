@@ -1,0 +1,19 @@
+[project]
+name = "github-apps"
+version = "0.1.0"
+description = "Manage GitHub App installations and org-level secret sharing."
+requires-python = ">=3.10,<4"
+dependencies = [
+    "pulumi>=3.64.0,<4",
+    "pulumi-github>=6.0.0,<7",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["github_apps"]
+
+[tool.hatch.build.targets.wheel]
+include = ["github_apps"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

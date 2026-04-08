@@ -1,0 +1,7 @@
+name: platform-github-apps
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    virtualenv: .venv
+description: Manage GitHub App installations and org-level secret sharing for Posit container image repos

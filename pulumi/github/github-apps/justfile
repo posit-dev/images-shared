@@ -1,0 +1,19 @@
+#!/usr/bin/env just --justfile
+
+setup:
+  uv sync
+
+_set-stack org:
+  pulumi stack select platform-github-apps/{{org}} 2>/dev/null || pulumi stack init platform-github-apps/{{org}}
+
+preview org:
+  just _set-stack {{org}}
+  uv run pulumi preview --diff
+
+up org:
+  just _set-stack {{org}}
+  uv run pulumi up
+
+destroy org:
+  just _set-stack {{org}}
+  uv run pulumi destroy
