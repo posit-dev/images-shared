@@ -26,20 +26,40 @@ container image ecosystem.
 | ppm-bot | images-package-manager | helm |
 | platform-bot | images-shared | — |
 
+| Line | Meaning |
+|---|---|
+| Solid | App installed + secrets shared |
+| Dashed | App installed only |
+
+### Full Ecosystem
+
+```mermaid
+graph TD
+    CB["**Connect Bot** 🤖"]
+    WB["**Workbench Bot** 🤖"]
+    PB["**PPM Bot** 🤖"]
+    PLB["**Platform Bot** 🤖"]
+
+    CB -->|app + secrets| IC["posit-dev/<br/>images-connect"]
+    CB -->|app + secrets| HELM["rstudio/helm"]
+
+    WB -->|app + secrets| IW["posit-dev/<br/>images-workbench"]
+    WB -->|app + secrets| HELM
+
+    PB -->|app + secrets| IP["posit-dev/<br/>images-package-manager"]
+    PB -->|app + secrets| HELM
+
+    PLB -->|app + secrets| IS["posit-dev/<br/>images-shared"]
+```
+
 ### Connect Bot
 
 ```mermaid
 graph TD
     BOT["**Connect Bot** 🤖"]
 
-    BOT -.->|"workflow_dispatch"| IC["posit-dev/images-connect"]
-    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
-
-    SECRET_PD["posit-dev org secrets<br/>CONNECT_BOT_APP_ID<br/>CONNECT_BOT_APP_PRIVATE_KEY"]
-    SECRET_RS["rstudio org secrets<br/>CONNECT_BOT_APP_ID<br/>CONNECT_BOT_APP_PRIVATE_KEY"]
-
-    SECRET_PD -->|shared with| IC
-    SECRET_RS -->|shared with| HELM
+    BOT -->|app + secrets| IC["posit-dev/images-connect"]
+    BOT -->|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### Workbench Bot
@@ -48,14 +68,8 @@ graph TD
 graph TD
     BOT["**Workbench Bot** 🤖"]
 
-    BOT -.->|"workflow_dispatch"| IW["posit-dev/images-workbench"]
-    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
-
-    SECRET_PD["posit-dev org secrets<br/>WORKBENCH_BOT_APP_ID<br/>WORKBENCH_BOT_APP_PRIVATE_KEY"]
-    SECRET_RS["rstudio org secrets<br/>WORKBENCH_BOT_APP_ID<br/>WORKBENCH_BOT_APP_PRIVATE_KEY"]
-
-    SECRET_PD -->|shared with| IW
-    SECRET_RS -->|shared with| HELM
+    BOT -->|app + secrets| IW["posit-dev/images-workbench"]
+    BOT -->|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### PPM Bot
@@ -64,14 +78,8 @@ graph TD
 graph TD
     BOT["**PPM Bot** 🤖"]
 
-    BOT -.->|"workflow_dispatch"| IP["posit-dev/images-package-manager"]
-    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
-
-    SECRET_PD["posit-dev org secrets<br/>PPM_BOT_APP_ID<br/>PPM_BOT_APP_PRIVATE_KEY"]
-    SECRET_RS["rstudio org secrets<br/>PPM_BOT_APP_ID<br/>PPM_BOT_APP_PRIVATE_KEY"]
-
-    SECRET_PD -->|shared with| IP
-    SECRET_RS -->|shared with| HELM
+    BOT -->|app + secrets| IP["posit-dev/images-package-manager"]
+    BOT -->|app + secrets| HELM["rstudio/helm"]
 ```
 
 ### Platform Bot
@@ -80,11 +88,7 @@ graph TD
 graph TD
     BOT["**Platform Bot** 🤖"]
 
-    BOT -.->|"workflow_dispatch"| IS["posit-dev/images-shared"]
-
-    SECRET["posit-dev org secrets<br/>PLATFORM_BOT_APP_ID<br/>PLATFORM_BOT_APP_PRIVATE_KEY"]
-
-    SECRET -->|shared with| IS
+    BOT -->|app + secrets| IS["posit-dev/images-shared"]
 ```
 
 ## Usage
