@@ -61,11 +61,20 @@ runs:
 
             const previousRun = previousRuns[0];
             const currentFailed = currentResult !== 'success';
-            // NOTE: currentResult reflects the CI meta-job's alls-green outcome (typically
-            // just the build job), while previousRun.conclusion reflects the entire workflow
-            // (including clean, etc). A clean-only failure followed by a clean recovery can
-            // produce a false recovery notification. Acceptable for now.
-            const previousFailed = previousRun.conclusion !== 'success';
+
+            // Compare against the previous run's CI job conclusion (not the workflow
+            // conclusion) so that clean-job flaps don't trigger false notifications.
+            // Falls back to workflow conclusion if the CI job isn't found.
+            const { data: { jobs: prevJobs } } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: previousRun.id,
+              per_page: 100,
+            });
+            const prevCiJob = prevJobs.find(j => j.name === 'CI');
+            const previousFailed = prevCiJob
+              ? prevCiJob.conclusion !== 'success'
+              : previousRun.conclusion !== 'success';
 
             if (currentFailed === previousFailed) {
               core.info(`No state transition (current: ${currentResult}, previous: ${previousRun.conclusion}), skipping`);
