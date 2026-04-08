@@ -120,7 +120,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@ci-native-multiplatform"
+        uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@v5
