@@ -16,6 +16,7 @@ class AppConfig:
 
     name: str
     installation_id: str
+    secret_prefix: str = ""
     secrets: list[str] = field(default_factory=list)
     repositories: list[str] = field(default_factory=list)
     dispatch_only: list[str] = field(default_factory=list)
@@ -57,8 +58,9 @@ def manage_app(app: AppConfig):
         repo = get_repository(name=repo_name)
         repo_ids.append(repo.repo_id)
 
+    prefix = app.secret_prefix or _secret_prefix(app.name)
     for secret_name in app.secrets:
-        org_secret_name = f"{_secret_prefix(app.name)}_{secret_name}"
+        org_secret_name = f"{prefix}_{secret_name}"
 
         # Pulumi manages the resource and repo sharing. The actual value
         # is set out-of-band via gh secret set to avoid storing secrets

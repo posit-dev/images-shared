@@ -25,6 +25,7 @@ container image ecosystem.
 | workbench-bot | images-workbench | rstudio-pro, helm (app only) |
 | ppm-bot | images-package-manager | package-manager, helm (app only) |
 | platform-bot | images-shared | helm |
+| posit-docs | connect, troubleshooting, data-sources | docs.rstudio.com, package-manager |
 
 | Line | Meaning |
 |---|---|
@@ -54,6 +55,13 @@ graph TD
 
     PLB ==> IS["posit-dev/<br/>images-shared"]
     PLB ==> HELM
+
+    PD["**Posit Docs** 🤖"]
+    PD ==> PCT
+    PD ==> TS["posit-dev/<br/>troubleshooting"]
+    PD ==> DS["posit-dev/<br/>data-sources"]
+    PD ==> DOCS["rstudio/<br/>docs.rstudio.com"]
+    PD ==> PPM
 ```
 
 ### Connect Bot
@@ -97,6 +105,19 @@ graph TD
 
     BOT ==> IS["posit-dev/images-shared"]
     BOT ==> HELM["rstudio/helm"]
+```
+
+### Posit Docs
+
+```mermaid
+graph TD
+    BOT["**Posit Docs** 🤖"]
+
+    BOT ==> PCT["posit-dev/connect"]
+    BOT ==> TS["posit-dev/troubleshooting"]
+    BOT ==> DS["posit-dev/data-sources"]
+    BOT ==> DOCS["rstudio/docs.rstudio.com"]
+    BOT ==> PPM["rstudio/package-manager"]
 ```
 
 ## Usage
