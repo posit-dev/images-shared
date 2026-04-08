@@ -1,45 +1,8 @@
 config:
   github:owner: rstudio
-  # Connect-bot has no secrets here because posit-dev/connect is in the
-  # posit-dev org. The images-connect workflow uses posit-dev org secrets
-  # with actions/create-github-app-token (owner: rstudio) to generate a
-  # token scoped to rstudio/helm. The app just needs to be installed.
-  github-apps:apps:
-    connect-bot:
-      installationId: ""
-      dispatchOnly:
-        - helm
-    workbench-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - rstudio-pro
-      dispatchOnly:
-        - helm
-    ppm-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - package-manager
-      dispatchOnly:
-        - helm
-    platform-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - helm
-    posit-docs:
-      installationId: ""
-      secretPrefix: POSIT_DOCS
-      secrets:
-        - APP_ID
-        - PEM
-      repositories:
-        - docs.rstudio.com
-        - package-manager
+  github-apps:installationIds:
+    connect-bot: ""
+    workbench-bot: ""
+    ppm-bot: ""
+    platform-bot: ""
+    posit-docs: ""

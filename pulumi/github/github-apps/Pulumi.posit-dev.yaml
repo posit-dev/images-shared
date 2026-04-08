@@ -1,44 +1,8 @@
 config:
   github:owner: posit-dev
-  github-apps:apps:
-    connect-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - connect
-        - images-connect
-    workbench-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - images-workbench
-    ppm-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - images-package-manager
-    platform-bot:
-      installationId: ""
-      secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
-      repositories:
-        - images-shared
-    posit-docs:
-      installationId: ""
-      secretPrefix: POSIT_DOCS
-      secrets:
-        - APP_ID
-        - PEM
-      repositories:
-        - connect
-        - troubleshooting
-        - data-sources
-      dispatchOnly:
-        - doc-reviewer
+  github-apps:installationIds:
+    connect-bot: ""
+    workbench-bot: ""
+    ppm-bot: ""
+    platform-bot: ""
+    posit-docs: ""
