@@ -26,6 +26,73 @@ container image ecosystem.
 | ppm-bot | images-package-manager | helm |
 | platform-bot | images-shared, images-connect, images-workbench, images-package-manager | — |
 
+### Connect Bot
+
+```mermaid
+graph TD
+    BOT["**Connect Bot** 🤖"]
+
+    BOT -.->|"workflow_dispatch"| IC["posit-dev/images-connect"]
+    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
+
+    SECRET_PD["posit-dev org secrets<br/>CONNECT_BOT_APP_ID<br/>CONNECT_BOT_APP_PRIVATE_KEY"]
+    SECRET_RS["rstudio org secrets<br/>CONNECT_BOT_APP_ID<br/>CONNECT_BOT_APP_PRIVATE_KEY"]
+
+    SECRET_PD -->|shared with| IC
+    SECRET_RS -->|shared with| HELM
+```
+
+### Workbench Bot
+
+```mermaid
+graph TD
+    BOT["**Workbench Bot** 🤖"]
+
+    BOT -.->|"workflow_dispatch"| IW["posit-dev/images-workbench"]
+    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
+
+    SECRET_PD["posit-dev org secrets<br/>WORKBENCH_BOT_APP_ID<br/>WORKBENCH_BOT_APP_PRIVATE_KEY"]
+    SECRET_RS["rstudio org secrets<br/>WORKBENCH_BOT_APP_ID<br/>WORKBENCH_BOT_APP_PRIVATE_KEY"]
+
+    SECRET_PD -->|shared with| IW
+    SECRET_RS -->|shared with| HELM
+```
+
+### PPM Bot
+
+```mermaid
+graph TD
+    BOT["**PPM Bot** 🤖"]
+
+    BOT -.->|"workflow_dispatch"| IP["posit-dev/images-package-manager"]
+    BOT -.->|"workflow_dispatch"| HELM["rstudio/helm"]
+
+    SECRET_PD["posit-dev org secrets<br/>PPM_BOT_APP_ID<br/>PPM_BOT_APP_PRIVATE_KEY"]
+    SECRET_RS["rstudio org secrets<br/>PPM_BOT_APP_ID<br/>PPM_BOT_APP_PRIVATE_KEY"]
+
+    SECRET_PD -->|shared with| IP
+    SECRET_RS -->|shared with| HELM
+```
+
+### Platform Bot
+
+```mermaid
+graph TD
+    BOT["**Platform Bot** 🤖"]
+
+    BOT -.->|"workflow_dispatch"| IS["posit-dev/images-shared"]
+    BOT -.->|"workflow_dispatch"| IC["posit-dev/images-connect"]
+    BOT -.->|"workflow_dispatch"| IW["posit-dev/images-workbench"]
+    BOT -.->|"workflow_dispatch"| IP["posit-dev/images-package-manager"]
+
+    SECRET["posit-dev org secrets<br/>PLATFORM_BOT_APP_ID<br/>PLATFORM_BOT_APP_PRIVATE_KEY"]
+
+    SECRET -->|shared with| IS
+    SECRET -->|shared with| IC
+    SECRET -->|shared with| IW
+    SECRET -->|shared with| IP
+```
+
 ## Usage
 
 ```bash
