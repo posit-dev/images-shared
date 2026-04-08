@@ -1,6 +1,6 @@
 import pulumi
 
-from github_apps.app import AppConfig, manage_app
+from github_apps.resources import AppConfig, manage_app
 from github_apps.apps import APPS
 
 
