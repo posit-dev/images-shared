@@ -65,17 +65,17 @@ graph TD
     WORKBENCH_BOT -.->|"workflow_dispatch release.yml"| IMG_WORKBENCH
     PPM_BOT -.->|"workflow_dispatch release.yml"| IMG_PM
 
+    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
+
+    SHARED -->|workflow_call| IMG_CONNECT
+    SHARED -->|workflow_call| IMG_WORKBENCH
+    SHARED -->|workflow_call| IMG_PM
+
     subgraph "Image Repos"
         IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
         IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
         IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
     end
-
-    IMG_CONNECT -->|workflow_call| SHARED
-    IMG_WORKBENCH -->|workflow_call| SHARED
-    IMG_PM -->|workflow_call| SHARED
-
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
 
     IMG_CONNECT -->|push| DOCKERHUB
     IMG_CONNECT -->|push| GHCR
@@ -101,15 +101,15 @@ graph TD
 
 ```mermaid
 graph TD
+    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
+
+    SHARED -->|workflow_call| IMG_CONNECT
+    SHARED -->|workflow_call| IMG_WORKBENCH
+    SHARED -->|workflow_call| IMG_PM
+
     IMG_CONNECT["posit-dev/images-connect<br/>development"]
     IMG_WORKBENCH["posit-dev/images-workbench<br/>development"]
     IMG_PM["posit-dev/images-package-manager<br/>development"]
-
-    IMG_CONNECT -->|workflow_call| SHARED
-    IMG_WORKBENCH -->|workflow_call| SHARED
-    IMG_PM -->|workflow_call| SHARED
-
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
 
     IMG_CONNECT -->|preview push| GHCR
     IMG_WORKBENCH -->|preview push| GHCR
