@@ -66,16 +66,16 @@ graph TD
     PPM_BOT -.->|"workflow_dispatch release.yml"| IMG_PM
 
     subgraph "Image Repos"
-        IMG_CONNECT["posit-dev/images-connect<br/>production · content · release"]
-        IMG_WORKBENCH["posit-dev/images-workbench<br/>production · session · release"]
-        IMG_PM["posit-dev/images-package-manager<br/>production · release"]
+        IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
+        IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
+        IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
     end
 
     IMG_CONNECT -->|workflow_call| SHARED
     IMG_WORKBENCH -->|workflow_call| SHARED
     IMG_PM -->|workflow_call| SHARED
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native · bakery-build<br/>product-release · clean"]
+    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
 
     IMG_CONNECT -->|push| DOCKERHUB
     IMG_CONNECT -->|push| GHCR
@@ -91,7 +91,7 @@ graph TD
     WORKBENCH_BOT -.->|"workflow_dispatch product-release.yml"| HELM
     PPM_BOT -.->|"workflow_dispatch product-release.yml"| HELM
 
-    HELM["rstudio/helm<br/>product-release · chart-releaser"]
+    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
     HELM -->|Flux sync| K8S
 
     K8S["K8s Dogfood Sites"]
@@ -109,13 +109,13 @@ graph TD
     IMG_WORKBENCH -->|workflow_call| SHARED
     IMG_PM -->|workflow_call| SHARED
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native · bakery-build"]
+    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
 
     IMG_CONNECT -->|preview push| GHCR
     IMG_WORKBENCH -->|preview push| GHCR
     IMG_PM -->|preview push| GHCR
 
-    GHCR["GHCR<br/>connect-preview<br/>workbench-preview<br/>package-manager-preview"]
+    GHCR["GHCR<br/>connect-preview<br/>workbench-preview<br/>workbench-session-init-preview<br/>package-manager-preview"]
 
     GHCR --> K8S
     GHCR --> FUZZBUCKET
