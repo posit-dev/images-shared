@@ -101,6 +101,24 @@ graph TD
 
 ```mermaid
 graph TD
+    subgraph "Product Repos"
+        CONNECT_PROD["**posit-dev/connect**"]
+        WORKBENCH_PROD["**rstudio/rstudio-pro**"]
+        PPM_PROD["**rstudio/package-manager**"]
+    end
+
+    CONNECT_BOT["Connect Bot 🤖"]
+    WORKBENCH_BOT["Workbench Bot 🤖"]
+    PPM_BOT["PPM Bot 🤖"]
+
+    CONNECT_PROD -.-> CONNECT_BOT
+    WORKBENCH_PROD -.-> WORKBENCH_BOT
+    PPM_PROD -.-> PPM_BOT
+
+    CONNECT_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_CONNECT
+    WORKBENCH_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_WORKBENCH
+    PPM_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_PM
+
     SHARED["**posit-dev/images-shared**<br/>bakery-build-native<br/>bakery-build"]
 
     IMG_CONNECT["**posit-dev/images-connect**<br/>development"]
