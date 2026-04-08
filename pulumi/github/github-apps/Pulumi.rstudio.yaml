@@ -12,8 +12,8 @@ config:
     workbench-bot:
       installationId: ""
       secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
+        APP_ID: ""
+        APP_PRIVATE_KEY: ""
       repositories:
         - rstudio-pro
       dispatchOnly:
@@ -21,8 +21,8 @@ config:
     ppm-bot:
       installationId: ""
       secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
+        APP_ID: ""
+        APP_PRIVATE_KEY: ""
       repositories:
         - package-manager
       dispatchOnly:
@@ -30,7 +30,7 @@ config:
     platform-bot:
       installationId: ""
       secrets:
-        - APP_ID
-        - APP_PRIVATE_KEY
+        APP_ID: ""
+        APP_PRIVATE_KEY: ""
       repositories:
         - helm

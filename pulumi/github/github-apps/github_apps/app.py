@@ -16,7 +16,7 @@ class AppConfig:
 
     name: str
     installation_id: str
-    secrets: list[str] = field(default_factory=list)
+    secrets: dict[str, str] = field(default_factory=dict)
     repositories: list[str] = field(default_factory=list)
     dispatch_only: list[str] = field(default_factory=list)
 
@@ -57,25 +57,14 @@ def manage_app(app: AppConfig):
         repo = get_repository(name=repo_name)
         repo_ids.append(repo.repo_id)
 
-    # For each secret this app declares, ensure the org-level secret is
-    # shared with the app's repositories. The secret value itself is
-    # managed outside of Pulumi (stored in the org, set via gh CLI or UI).
-    # We only manage *which repos* can access it.
-    for secret_name in app.secrets:
-        # Namespace the secret per app so each bot has its own credentials.
+    for secret_name, secret_value in app.secrets.items():
         org_secret_name = f"{_secret_prefix(app.name)}_{secret_name}"
 
-        # Create the org secret as a placeholder. The actual value must be
-        # set out-of-band (gh secret set, GitHub UI, etc.) because Pulumi
-        # would store it in state. We use a sentinel to create the resource.
         secret = ActionsOrganizationSecret(
             f"{app.name}-secret-{secret_name}",
             secret_name=org_secret_name,
             visibility="selected",
-            plaintext_value="PLACEHOLDER_SET_VIA_GH_CLI",
-            opts=ResourceOptions(
-                ignore_changes=["plaintext_value", "encrypted_value"],
-            ),
+            plaintext_value=secret_value,
         )
 
         ActionsOrganizationSecretRepositories(

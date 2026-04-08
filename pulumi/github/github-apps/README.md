@@ -111,19 +111,24 @@ just up rstudio
 
 ## Setting secret values
 
-After `pulumi up` creates the org-level secrets, set the actual values:
+Secret values are managed by Pulumi, not set manually. Use `--path --secret`
+to set values under each app's config:
 
 ```bash
-gh secret set CONNECT_BOT_APP_ID --org posit-dev --body "<app-id>"
-gh secret set CONNECT_BOT_APP_PRIVATE_KEY --org posit-dev --body "<pem-contents>"
+pulumi config set --path --secret "github-apps:apps.connect-bot.secrets.APP_ID" "<app-id>"
+pulumi config set --path --secret "github-apps:apps.connect-bot.secrets.APP_PRIVATE_KEY" "<pem-contents>"
 ```
 
-The naming convention is `{APP_NAME}_{SECRET_NAME}`, e.g., `CONNECT_BOT_APP_ID`.
+Pulumi encrypts values in the stack config file and sends them to GitHub's
+API encrypted with the org's public key. Plaintext never touches disk or logs.
+
+The org-level secret naming convention is `{APP_NAME}_{SECRET_NAME}`,
+e.g., `CONNECT_BOT_APP_ID`.
 
 ## Adding a new app
 
 1. Create the GitHub App in the GitHub UI
 2. Install it on the target org(s)
 3. Add the app config to `Pulumi.{org}.yaml` with the `installationId`
-4. Run `just up {org}`
-5. Set the secret values via `gh secret set`
+4. Set secret values: `pulumi config set --path --secret "github-apps:apps.<name>.secrets.<key>" "<value>"`
+5. Run `just up {org}`
