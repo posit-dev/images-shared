@@ -31,12 +31,12 @@ graph TD
 
 ### GitHub Apps
 
-| Bot | Scope | Role |
+| Bot | Installed on | Role |
 |---|---|---|
-| **Connect Bot** 🤖 | `posit-dev/connect` | Dispatches downstream from Connect releases |
-| **Workbench Bot** 🤖 | `rstudio/rstudio-pro` | Dispatches downstream from Workbench releases |
-| **PPM Bot** 🤖 | `rstudio/package-manager` | Dispatches downstream from PPM releases |
-| **Platform Bot** 🤖 | `posit-dev/images-*`, `rstudio/helm` | Platform team operations, centralized dispatch (future) |
+| **Connect Bot** 🤖 | `posit-dev/connect`, `images-connect`, `rstudio/helm` | Dispatches downstream from Connect releases |
+| **Workbench Bot** 🤖 | `posit-dev/images-workbench`, `rstudio/rstudio-pro`, `rstudio/helm` | Dispatches downstream from Workbench releases |
+| **PPM Bot** 🤖 | `posit-dev/images-package-manager`, `rstudio/package-manager`, `rstudio/helm` | Dispatches downstream from PPM releases |
+| **Platform Bot** 🤖 | `posit-dev/images-shared`, `rstudio/helm` | Platform team operations, centralized dispatch (future) |
 
 Product bots own the dispatch chain from product release through to Helm
 chart update. The Platform Bot handles platform-team-owned operations

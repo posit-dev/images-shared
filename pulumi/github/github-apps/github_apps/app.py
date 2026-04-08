@@ -38,6 +38,10 @@ def manage_app(app: AppConfig):
 
     # Install the app on all repos (both secret-sharing and dispatch-only).
     all_repos = app.repositories + app.dispatch_only
+    if not all_repos:
+        pulumi.warn(f"Skipping {app.name}: no repositories or dispatchOnly configured.")
+        return
+
     AppInstallationRepositories(
         f"{app.name}-repos",
         installation_id=app.installation_id,
