@@ -60,6 +60,7 @@ graph TD
     PD ==> PCT
     PD ==> TS["posit-dev/<br/>troubleshooting"]
     PD ==> DS["posit-dev/<br/>data-sources"]
+    PD --> DR["posit-dev/<br/>doc-reviewer"]
     PD ==> DOCS["rstudio/<br/>docs.rstudio.com"]
     PD ==> PPM
 ```
@@ -116,6 +117,7 @@ graph TD
     BOT ==> PCT["posit-dev/connect"]
     BOT ==> TS["posit-dev/troubleshooting"]
     BOT ==> DS["posit-dev/data-sources"]
+    BOT --> DR["posit-dev/doc-reviewer"]
     BOT ==> DOCS["rstudio/docs.rstudio.com"]
     BOT ==> PPM["rstudio/package-manager"]
 ```

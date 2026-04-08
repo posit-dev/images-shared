@@ -40,3 +40,5 @@ config:
         - connect
         - troubleshooting
         - data-sources
+      dispatchOnly:
+        - doc-reviewer
