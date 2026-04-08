@@ -1,0 +1,24 @@
+config:
+  github:owner: rstudio
+  github-apps:apps:
+    connect-bot:
+      installationId: ""
+      secrets:
+        - APP_ID
+        - APP_PRIVATE_KEY
+      repositories:
+        - helm
+    workbench-bot:
+      installationId: ""
+      secrets:
+        - APP_ID
+        - APP_PRIVATE_KEY
+      repositories:
+        - helm
+    ppm-bot:
+      installationId: ""
+      secrets:
+        - APP_ID
+        - APP_PRIVATE_KEY
+      repositories:
+        - helm
