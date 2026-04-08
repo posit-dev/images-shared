@@ -117,7 +117,9 @@ runs:
                 : '  _No individual job failures identified \u2014 check the run for details_';
 
               const commitSha = currentRun.head_sha?.substring(0, 7) || '';
-              const commitMsg = currentRun.head_commit?.message?.split('\n')[0] || '';
+              // Escape Slack mrkdwn special characters to prevent injection (e.g. <!here>)
+              const rawMsg = currentRun.head_commit?.message?.split('\n')[0] || '';
+              const commitMsg = rawMsg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
               const commitUrl = `https://github.com/${repo}/commit/${currentRun.head_sha}`;
               const actor = currentRun.actor?.login || 'unknown';
               const trigger = currentRun.event === 'schedule' ? 'scheduled' : currentRun.event;
