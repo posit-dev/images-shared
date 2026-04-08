@@ -21,7 +21,7 @@ container image ecosystem.
 
 | App | posit-dev repos | rstudio repos |
 |---|---|---|
-| connect-bot | connect, images-connect | helm |
+| connect-bot | connect, images-connect | helm (app only) |
 | workbench-bot | images-workbench | rstudio-pro, helm (app only) |
 | ppm-bot | images-package-manager | package-manager, helm (app only) |
 | platform-bot | images-shared | helm |
