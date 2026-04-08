@@ -13,7 +13,7 @@ Related issues:
 
 ```mermaid
 graph TD
-    A["Repository"] -->|"workflow_call"| B["Repository"]
+    A["Repository"] -.->|"workflow_call"| B["Repository"]
     C["Repository"] -->|"push"| D["Registry / Environment"]
     E["Repository"] -.->|"workflow_dispatch (planned)"| F["Repository"]
     G["Bot 🤖"] -.->|"triggers (planned)"| H["Repository"]
@@ -21,9 +21,9 @@ graph TD
 
 | Symbol | Meaning |
 |---|---|
-| Solid line | Active today |
-| Dashed line | Planned / in progress |
-| `workflow_call` | Reusable workflow invocation (same run) |
+| Solid line | Direct action (push, sync) |
+| Dashed line | Cross-repo invocation (workflow_call, workflow_dispatch) or planned |
+| `workflow_call` | Reusable workflow invocation (caller → shared) |
 | `workflow_dispatch` | Cross-repo trigger via GitHub App |
 | `push` | Image push to registry |
 | `Flux sync` | GitOps pull from Helm chart repo |
@@ -67,15 +67,15 @@ graph TD
 
     SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
 
-    SHARED -->|workflow_call| IMG_CONNECT
-    SHARED -->|workflow_call| IMG_WORKBENCH
-    SHARED -->|workflow_call| IMG_PM
-
     subgraph "Image Repos"
         IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
         IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
         IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
     end
+
+    IMG_CONNECT -.->|workflow_call| SHARED
+    IMG_WORKBENCH -.->|workflow_call| SHARED
+    IMG_PM -.->|workflow_call| SHARED
 
     IMG_CONNECT -->|push| DOCKERHUB
     IMG_CONNECT -->|push| GHCR
@@ -103,13 +103,13 @@ graph TD
 graph TD
     SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
 
-    SHARED -->|workflow_call| IMG_CONNECT
-    SHARED -->|workflow_call| IMG_WORKBENCH
-    SHARED -->|workflow_call| IMG_PM
-
     IMG_CONNECT["posit-dev/images-connect<br/>development"]
     IMG_WORKBENCH["posit-dev/images-workbench<br/>development"]
     IMG_PM["posit-dev/images-package-manager<br/>development"]
+
+    IMG_CONNECT -.->|workflow_call| SHARED
+    IMG_WORKBENCH -.->|workflow_call| SHARED
+    IMG_PM -.->|workflow_call| SHARED
 
     IMG_CONNECT -->|preview push| GHCR
     IMG_WORKBENCH -->|preview push| GHCR
