@@ -72,12 +72,13 @@ runs:
               per_page: 100,
             });
             const prevCiJob = prevJobs.find(j => j.name === 'CI');
-            const previousFailed = prevCiJob
-              ? prevCiJob.conclusion !== 'success'
-              : previousRun.conclusion !== 'success';
+            const previousConclusion = prevCiJob
+              ? prevCiJob.conclusion
+              : previousRun.conclusion;
+            const previousFailed = previousConclusion !== 'success';
 
             if (currentFailed === previousFailed) {
-              core.info(`No state transition (current: ${currentResult}, previous: ${previousRun.conclusion}), skipping`);
+              core.info(`No state transition (current: ${currentResult}, previous: ${previousConclusion}), skipping`);
               return;
             }
 
