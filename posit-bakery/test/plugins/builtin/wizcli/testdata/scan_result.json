@@ -1,0 +1,2195 @@
+{
+  "id": "0069d6c0-7d0b-85d5-9028-affa6e2f8001",
+  "projects": [
+    {
+      "id": "eaeecb85-17f3-5333-8085-6854a76529de"
+    }
+  ],
+  "createdAt": "2026-04-08T20:55:00.839782642Z",
+  "startedAt": "2026-04-08T20:54:21.99673949Z",
+  "createdBy": {
+    "serviceAccount": {
+      "id": "nj6laqgt3vftfcxw5e6pbn2xu3dvznswdytvvlnuxmaegjofgi6wy"
+    }
+  },
+  "status": {
+    "state": "SUCCESS",
+    "verdict": "WARN_BY_POLICY"
+  },
+  "policies": [
+    {
+      "id": "28c72789-e439-4c18-83ad-f54146634a43",
+      "name": "Wiz-CLI vulnerabilities policy",
+      "description": null,
+      "type": "VULNERABILITIES",
+      "builtin": false,
+      "projects": null,
+      "policyLifecycleEnforcements": [
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CLI"
+        },
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CODE"
+        }
+      ],
+      "ignoreRules": null,
+      "lifecycleTargets": [
+        "BUILD",
+        "CODE"
+      ],
+      "Default": false,
+      "params": {
+        "__typename": "cicdscanpolicyparamsvulnerabilities",
+        "vulnerabilityTypes": null,
+        "severity": "INFORMATIONAL",
+        "packageCountThreshold": 1,
+        "ignoreUnfixed": false,
+        "ignoreUnfixedExcludeEOLTechnologies": false,
+        "packageAllowList": null,
+        "detectionMethods": null,
+        "vulnerabilities": null,
+        "fixGracePeriodHours": 0,
+        "publishGracePeriodHours": 0,
+        "eolGracePeriodHours": 0,
+        "ignoreTransitiveVulnerabilities": false
+      }
+    },
+    {
+      "id": "60474221-64c1-486f-8997-2e76f57488bb",
+      "name": "Wiz-CLI secrets policy",
+      "description": null,
+      "type": "SECRETS",
+      "builtin": false,
+      "projects": null,
+      "policyLifecycleEnforcements": [
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CLI"
+        },
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CODE"
+        }
+      ],
+      "ignoreRules": null,
+      "lifecycleTargets": [
+        "BUILD",
+        "CODE"
+      ],
+      "Default": false,
+      "params": {
+        "__typename": "cicdscanpolicyparamssecrets",
+        "countThreshold": 1,
+        "pathAllowList": null,
+        "secretFindingSeverityThreshold": "INFORMATIONAL",
+        "disallowedValidationStatus": null
+      }
+    },
+    {
+      "id": "10eecea0-0b05-4426-8b54-83349cdb41cf",
+      "name": "Wiz-CLI sensitive data policy",
+      "description": "Default built-in policy for sensitive data scanning",
+      "type": "SENSITIVE_DATA",
+      "builtin": false,
+      "projects": null,
+      "policyLifecycleEnforcements": [
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CLI"
+        },
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CODE"
+        }
+      ],
+      "ignoreRules": null,
+      "lifecycleTargets": [
+        "BUILD",
+        "CODE"
+      ],
+      "Default": false,
+      "params": {
+        "__typename": "cicdscanpolicyparamssensitivedata",
+        "dataFindingSeverityThreshold": "INFO",
+        "countThreshold": 1
+      }
+    },
+    {
+      "id": "4a5e821d-dd26-4d64-8729-7ae38d4b08f2",
+      "name": "Wiz-CLI malware policy",
+      "description": null,
+      "type": "MALWARE",
+      "builtin": false,
+      "projects": null,
+      "policyLifecycleEnforcements": [
+        {
+          "enforcementMethod": "AUDIT",
+          "deploymentLifecycle": "CLI"
+        }
+      ],
+      "ignoreRules": null,
+      "lifecycleTargets": [
+        "BUILD"
+      ],
+      "Default": false,
+      "params": {
+        "__typename": "cicdscanpolicyparamsmalware",
+        "malwareFindingSeverityThreshold": "LOW",
+        "malwareFindingConfidenceLevelThreshold": "MEDIUM",
+        "countThreshold": 1
+      }
+    }
+  ],
+  "extraInfo": {
+    "clientName": "WizCLI",
+    "clientVersion": "1.39.0-7097d8a",
+    "buildParams": {
+      "platform": "UNKNOWN",
+      "extraDetails": {
+        "__typename": "CICDBuildParamsContainerImage",
+        "dockerfilePath": null,
+        "dockerfileContents": null
+      }
+    }
+  },
+  "tags": null,
+  "outdatedPolicies": null,
+  "taggedResource": null,
+  "associatedBaselineScans": null,
+  "outputMessages": null,
+  "scanOriginResource": {
+    "__typename": "CICDScanOriginContainerImage",
+    "name": "docker.io/posit/workbench-session-init:2026.01.2",
+    "id": "sha256:03f19b188e47fc8353886cfa32eac6e3151e3c35b6b6dbf9f5f307299207fccd",
+    "digest": "sha256:03f19b188e47fc8353886cfa32eac6e3151e3c35b6b6dbf9f5f307299207fccd",
+    "imageLabels": null
+  },
+  "result": {
+    "__typename": "CICDDiskScanResult",
+    "osPackages": null,
+    "libraries": null,
+    "applications": null,
+    "endOfLifeTechnologies": null,
+    "cpes": null,
+    "secrets": null,
+    "dataFindings": null,
+    "vulnerableSBOMArtifactsByNameVersion": [
+      {
+        "id": "9199bd92-0e99-5d5f-9555-ad4bb404618e",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.22.2",
+        "filePath": "/opt/session-components/bin/session-init",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 1,
+            "highCount": 16,
+            "mediumCount": 21,
+            "lowCount": 2,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "9c88a31c-43e6-5c73-8a27-2b6bc4a80c7c",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "fast-xml-parser",
+        "version": "5.2.5",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/@aws-sdk/xml-builder/node_modules/fast-xml-parser/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 1,
+            "highCount": 3,
+            "mediumCount": 1,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "5.5.7",
+          "remediation": "npm update fast-xml-parser",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "06bec7a8-c0fa-51cc-945e-b357d8a66672",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "fast-xml-parser",
+        "version": "5.3.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/@azure/core-xml/node_modules/fast-xml-parser/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 1,
+            "highCount": 3,
+            "mediumCount": 1,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "5.5.7",
+          "remediation": "npm update fast-xml-parser",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "38abbe0e-0a7a-5997-a1cb-2b61f17f61a3",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "fast-xml-parser",
+        "version": "4.5.3",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/fast-xml-parser/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 1,
+            "highCount": 2,
+            "mediumCount": 1,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "5.5.7",
+          "remediation": "npm update fast-xml-parser",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "f58a9501-9ad2-53ab-93eb-d9fef29a52ba",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.23.8",
+        "filePath": "/opt/session-components/bin/positron-server/quarto/bin/tools/x86_64/esbuild",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 13,
+            "mediumCount": 13,
+            "lowCount": 2,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "32cbcba7-9ba2-5928-9b3c-86affe3b09dc",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.23.8",
+        "filePath": "/opt/session-components/bin/quarto/bin/tools/x86_64/esbuild",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 13,
+            "mediumCount": 13,
+            "lowCount": 2,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "a6bb4a71-e168-5621-aaf1-71ff23e924c3",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.24.5",
+        "filePath": "/opt/session-components/bin/git-credential-pwb",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 12,
+            "mediumCount": 11,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "0e7d3dfe-b590-51ba-8c8b-c981ce1e0413",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.24.5",
+        "filePath": "/opt/session-components/bin/pwb-inspector",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 12,
+            "mediumCount": 11,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "edc6c0e8-bb0d-5f58-aeb5-f914cab5ad9e",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.24.5",
+        "filePath": "/opt/session-components/bin/pwb-supervisor",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 12,
+            "mediumCount": 11,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "84d724a4-db93-5954-a936-df80e7a6d6d7",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/rstudio.rstudio-workbench/res/linux-arm64/pwb-session-agent",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "d7726330-fd1e-5478-9045-26673f035147",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/rstudio.rstudio-workbench/res/linux-arm64/wbjs",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "d99e378d-e6ce-5ae7-bdfe-e7987a22d42b",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/rstudio.rstudio-workbench/res/linux-x64/pwb-session-agent",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "a5bc1558-e98e-5022-8c13-3fbbf2e32964",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/rstudio.rstudio-workbench/res/linux-x64/wbjs",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "49f348e2-11cf-55ac-af14-a122023199bf",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/pwb-code-server/extensions/rstudio.rstudio-workbench/res/linux-arm64/pwb-session-agent",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "1db765f9-3b92-5158-8c75-afe765528233",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/pwb-code-server/extensions/rstudio.rstudio-workbench/res/linux-arm64/wbjs",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "08e99061-e2c7-51ac-9f30-c2f3933dbddc",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/pwb-code-server/extensions/rstudio.rstudio-workbench/res/linux-x64/pwb-session-agent",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "e4a55d58-b4f5-5083-ab61-4970e6d3f1dc",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "GO",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "golang-stdlib",
+        "version": "1.25.1",
+        "filePath": "/opt/session-components/bin/pwb-code-server/extensions/rstudio.rstudio-workbench/res/linux-x64/wbjs",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 11,
+            "mediumCount": 10,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.25.8",
+          "remediation": "go get -u golang-stdlib",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "f9682263-2136-5541-852e-b2b591579e41",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "undici",
+        "version": "7.3.0",
+        "filePath": "/opt/session-components/bin/positron-server/node_modules/undici/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 3,
+            "mediumCount": 3,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "7.24.0",
+          "remediation": "npm update undici",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "27bc2f10-c986-5053-b97c-a0a499f51fe5",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "undici",
+        "version": "7.9.0",
+        "filePath": "/opt/session-components/bin/pwb-code-server/node_modules/undici/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 3,
+            "mediumCount": 3,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "7.24.0",
+          "remediation": "npm update undici",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "8374381f-d804-5eb5-a1f1-6d2bde6c893b",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "urllib3",
+        "version": "1.26.20",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 3,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.6.3",
+          "remediation": "uv pip install --upgrade urllib3",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "eadaedf6-3ae3-54c9-bc4b-435ed44215a0",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "minimatch",
+        "version": "9.0.5",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/minimatch/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 3,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "9.0.7",
+          "remediation": "npm update minimatch",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "3fa7eddd-faed-58d9-b679-0e577167043b",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "tornado",
+        "version": "6.5.4",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/lib/ipykernel/x64/cp3/tornado-6.5.4.dist-info/METADATA",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 2,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "6.5.5",
+          "remediation": "pip install --upgrade tornado",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "377b605b-a8cc-5232-b8b7-2f79d9667ac5",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "tornado",
+        "version": "6.5.4",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 2,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "6.5.5",
+          "remediation": "uv pip install --upgrade tornado",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "9543b1cf-0e81-57b2-980f-dcdb4dd72595",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "lodash",
+        "version": "4.17.21",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-ipywidgets/renderer/package-lock.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 2,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "4.18.0",
+          "remediation": "npm update lodash",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "48827f27-8a86-57d5-94e5-ecd2faca4aec",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "lodash-es",
+        "version": "4.17.21",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-ipywidgets/renderer/package-lock.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 2,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "4.18.0",
+          "remediation": "npm update lodash-es",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "bccaebb1-4f6d-5368-92d9-af7d9ea73364",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "picomatch",
+        "version": "2.3.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-proxy/node_modules/picomatch/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.3.2",
+          "remediation": "npm update picomatch",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "8f6ac292-6695-593a-a342-8f56877fa960",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "picomatch",
+        "version": "2.3.1",
+        "filePath": "/opt/session-components/bin/positron-server/node_modules/picomatch/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.3.2",
+          "remediation": "npm update picomatch",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "0ae22bda-9e09-58dc-88ed-5a140e9c5bc9",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "picomatch",
+        "version": "2.3.1",
+        "filePath": "/opt/session-components/bin/pwb-code-server/node_modules/picomatch/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.3.2",
+          "remediation": "npm update picomatch",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "bee7e0d3-7b12-5466-8f10-c661b26a02d4",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "cryptography",
+        "version": "46.0.3",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "46.0.6",
+          "remediation": "uv pip install --upgrade cryptography",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "955326c4-bfd2-59e2-a2f6-eabb25063d21",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pyopenssl",
+        "version": "25.3.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "26.0.0",
+          "remediation": "uv pip install --upgrade pyopenssl",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "9896327e-9f13-51db-82e7-e0d18cf71d18",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "axios",
+        "version": "1.12.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/axios/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.13.5",
+          "remediation": "npm update axios",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "1a2d3f02-b617-5f5d-bcfe-28bd265d5c03",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "geopandas",
+        "version": "1.0.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.1.2",
+          "remediation": "uv pip install --upgrade geopandas",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "4dcdfb35-416e-5a11-9f56-1ffbe8cbd893",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "glob",
+        "version": "10.4.5",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/glob/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "10.5.0",
+          "remediation": "npm update glob",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "e8ef0c30-2914-5cec-b22d-e5a04abd93fc",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "jws",
+        "version": "3.2.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/jsonwebtoken/node_modules/jws/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.2.3",
+          "remediation": "npm update jws",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "9a377aac-8d1f-52dd-8827-f2383115dbf3",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "jws",
+        "version": "4.0.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/jws/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "4.0.1",
+          "remediation": "npm update jws",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "19214f64-61ee-5493-bdac-a95ec826c2cb",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "path-to-regexp",
+        "version": "0.1.12",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-proxy/node_modules/path-to-regexp/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "0.1.13",
+          "remediation": "npm update path-to-regexp",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "4b2fad20-5c22-59d5-b7f7-7e0f82a0d18e",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pillow",
+        "version": "11.3.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "12.1.1",
+          "remediation": "uv pip install --upgrade pillow",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "1b7d313b-ebac-50c4-ae2a-218ae9abd498",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pillow",
+        "version": "12.1.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "12.1.1",
+          "remediation": "uv pip install --upgrade pillow",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "1a7f9d26-a447-59e6-8402-35f8506d60f8",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "protobuf",
+        "version": "6.33.4",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "6.33.5",
+          "remediation": "uv pip install --upgrade protobuf",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "02e7e0c2-fab9-52d9-8141-9bbc404dadb1",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pyasn1",
+        "version": "0.6.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "0.6.3",
+          "remediation": "uv pip install --upgrade pyasn1",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "ae880a3a-9dcb-543b-b673-889c18563cb9",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pyjwt",
+        "version": "2.10.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.12.0",
+          "remediation": "uv pip install --upgrade pyjwt",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "931b2249-19c5-5a22-88a2-fff12fda0267",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "tar-fs",
+        "version": "2.1.3",
+        "filePath": "/opt/session-components/bin/positron-server/node_modules/tar-fs/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.1.4",
+          "remediation": "npm update tar-fs",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "5cdc6c9e-97b2-50ba-87aa-69022b369ee2",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "underscore",
+        "version": "1.13.7",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-ipywidgets/renderer/package-lock.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 1,
+            "mediumCount": 0,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "1.13.8",
+          "remediation": "npm update underscore",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "cd0948c6-81b6-5e2e-a049-4115e2a9bd6a",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "aiohttp",
+        "version": "3.13.3",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 3,
+            "lowCount": 6,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.13.4",
+          "remediation": "uv pip install --upgrade aiohttp",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "93d538cb-4c01-561d-b0b2-7ab6b4ae3b55",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "filelock",
+        "version": "3.19.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 2,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.20.3",
+          "remediation": "uv pip install --upgrade filelock",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "364283f1-80a0-5d6e-998e-b0fa3133004c",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "http-proxy-middleware",
+        "version": "3.0.3",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-proxy/node_modules/http-proxy-middleware/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 2,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.0.5",
+          "remediation": "npm update http-proxy-middleware",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "4d42f8b1-e112-5fcd-b0e3-c66146c95669",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "brace-expansion",
+        "version": "2.0.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/brace-expansion/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.0.3",
+          "remediation": "npm update brace-expansion",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "520255ef-0588-5054-9003-b36b7236571d",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "qs",
+        "version": "6.13.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-proxy/node_modules/qs/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "6.14.2",
+          "remediation": "npm update qs",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "67678d0d-3e77-5fb2-882a-87618e665d85",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "@babel/runtime",
+        "version": "7.25.0",
+        "filePath": "/opt/session-components/bin/positron-server/node_modules/@babel/runtime/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "7.26.10",
+          "remediation": "npm update @babel/runtime",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "e13fc224-06ea-583b-8d5f-9dc234f3b7b1",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "ajv",
+        "version": "8.17.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-ipywidgets/renderer/package-lock.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "8.18.0",
+          "remediation": "npm update ajv",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "4a237190-76e6-5579-b608-42af6e857a77",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "bn.js",
+        "version": "4.12.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/bn.js/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "4.12.3",
+          "remediation": "npm update bn.js",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "0dad436f-1f2b-5587-81f4-f1647d7c2ae6",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "bn.js",
+        "version": "5.2.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/snowflake-sdk/node_modules/bn.js/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "5.2.3",
+          "remediation": "npm update bn.js",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "743e7b8c-92de-5323-8406-b5dc3734e33a",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "bokeh",
+        "version": "3.4.3",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.8.2",
+          "remediation": "uv pip install --upgrade bokeh",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "55c16414-a427-5d91-9d2c-0d974ba29700",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "fonttools",
+        "version": "4.60.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "4.61.0",
+          "remediation": "uv pip install --upgrade fonttools",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "9dbbd1b0-56e1-5c4a-a73e-70f7e3f28032",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "requests",
+        "version": "2.32.5",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 1,
+            "lowCount": 0,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.33.0",
+          "remediation": "uv pip install --upgrade requests",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "7556b311-f213-523d-af07-d7f7ccb0c39c",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "@tootallnate/once",
+        "version": "2.0.0",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-catalog-explorer/node_modules/@tootallnate/once/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.0.1",
+          "remediation": "npm update @tootallnate/once",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "f9e1f9ae-4a23-5a94-adda-8a5d81d66163",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "@tootallnate/once",
+        "version": "3.0.0",
+        "filePath": "/opt/session-components/bin/positron-server/node_modules/@tootallnate/once/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.0.1",
+          "remediation": "npm update @tootallnate/once",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "fdf5f776-c1d4-5d1b-b14d-4a901f200bfc",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "@tootallnate/once",
+        "version": "3.0.0",
+        "filePath": "/opt/session-components/bin/pwb-code-server/node_modules/@tootallnate/once/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "3.0.1",
+          "remediation": "npm update @tootallnate/once",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "de1a2c29-3eec-550c-8b30-be0ba96e6a22",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pygments",
+        "version": "2.19.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/lib/ipykernel/py3/pygments-2.19.2.dist-info/METADATA",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.20.0",
+          "remediation": "pip install --upgrade pygments",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "c20dd312-0769-5a84-b03e-d9a79d837124",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pygments",
+        "version": "2.19.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/positron/_vendor/pygments-2.19.2.dist-info/METADATA",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.20.0",
+          "remediation": "pip install --upgrade pygments",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "ac7360ca-855f-5d1d-a35d-ebe768e8c0dd",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pygments",
+        "version": "2.19.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/posit/uv.lock",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.20.0",
+          "remediation": "uv pip install --upgrade pygments",
+          "fileRemediation": null,
+          "findings": null
+        }
+      },
+      {
+        "id": "7c7e947f-467b-51c6-8632-786ed78dd8dd",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "PYTHON",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "pygments",
+        "version": "2.19.2",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/positron_requirements/requirements.txt",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "2.20.0",
+          "remediation": "In file /opt/session-components/bin/positron-server/extensions/positron-python/python_files/positron_requirements/requirements.txt, update library pygments to version 2.20.0 at line 79.",
+          "fileRemediation": {
+            "filePath": "/opt/session-components/bin/positron-server/extensions/positron-python/python_files/positron_requirements/requirements.txt",
+            "remediationType": "UPDATE",
+            "startLine": 79,
+            "endLine": 79,
+            "startPos": null,
+            "endPos": null,
+            "before": "pygments==2.19.2 \\",
+            "after": "pygments==2.20.0 \\"
+          },
+          "findings": null
+        }
+      },
+      {
+        "id": "f73bff24-50ad-5846-a3f5-9cfdcd0553ec",
+        "type": {
+          "group": "CODE_LIBRARY",
+          "codeLibraryLanguage": "JAVASCRIPT",
+          "osPackageManager": null,
+          "hostedTechnology": null,
+          "plugin": null,
+          "custom": null,
+          "ciComponent": null
+        },
+        "name": "qs",
+        "version": "6.14.1",
+        "filePath": "/opt/session-components/bin/positron-server/extensions/positron-proxy/node_modules/express/node_modules/qs/package.json",
+        "layerMetadata": null,
+        "vulnerabilityFindings": {
+          "severities": {
+            "criticalCount": 0,
+            "highCount": 0,
+            "mediumCount": 0,
+            "lowCount": 1,
+            "infoCount": 0
+          },
+          "fixedVersion": "6.14.2",
+          "remediation": "npm update qs",
+          "fileRemediation": null,
+          "findings": null
+        }
+      }
+    ],
+    "hostConfiguration": {
+      "hostConfigurationFrameworks": null,
+      "hostConfigurationFindings": null,
+      "analytics": {
+        "severity": {
+          "infoCount": 0,
+          "lowCount": 0,
+          "mediumCount": 0,
+          "highCount": 0,
+          "criticalCount": 0
+        },
+        "status": {
+          "passCount": 0,
+          "failCount": 0,
+          "errorCount": 0,
+          "notAssessedCount": 0,
+          "totalCount": 0
+        }
+      }
+    },
+    "failedPolicyMatches": [
+      {
+        "policy": {
+          "id": "28c72789-e439-4c18-83ad-f54146634a43",
+          "name": "Wiz-CLI vulnerabilities policy",
+          "description": null,
+          "type": "VULNERABILITIES",
+          "builtin": false,
+          "projects": null,
+          "policyLifecycleEnforcements": [
+            {
+              "enforcementMethod": "AUDIT",
+              "deploymentLifecycle": "CLI",
+              "enforcementConfig": null
+            },
+            {
+              "enforcementMethod": "AUDIT",
+              "deploymentLifecycle": "CODE",
+              "enforcementConfig": null
+            }
+          ],
+          "ignoreRules": null,
+          "lifecycleTargets": [
+            "BUILD",
+            "CODE"
+          ],
+          "Default": false,
+          "params": {
+            "__typename": "cicdscanpolicyparamsvulnerabilities",
+            "vulnerabilityTypes": null,
+            "severity": "INFORMATIONAL",
+            "packageCountThreshold": 1,
+            "ignoreUnfixed": false,
+            "ignoreUnfixedExcludeEOLTechnologies": false,
+            "packageAllowList": null,
+            "detectionMethods": null,
+            "vulnerabilities": null,
+            "fixGracePeriodHours": 0,
+            "publishGracePeriodHours": 0,
+            "eolGracePeriodHours": 0,
+            "ignoreTransitiveVulnerabilities": false
+          }
+        },
+        "ignoreReason": null,
+        "matchedIgnoreRules": null
+      },
+      {
+        "policy": {
+          "id": "60474221-64c1-486f-8997-2e76f57488bb",
+          "name": "Wiz-CLI secrets policy",
+          "description": null,
+          "type": "SECRETS",
+          "builtin": false,
+          "projects": null,
+          "policyLifecycleEnforcements": [
+            {
+              "enforcementMethod": "AUDIT",
+              "deploymentLifecycle": "CLI",
+              "enforcementConfig": null
+            },
+            {
+              "enforcementMethod": "AUDIT",
+              "deploymentLifecycle": "CODE",
+              "enforcementConfig": null
+            }
+          ],
+          "ignoreRules": null,
+          "lifecycleTargets": [
+            "BUILD",
+            "CODE"
+          ],
+          "Default": false,
+          "params": {
+            "__typename": "cicdscanpolicyparamssecrets",
+            "countThreshold": 1,
+            "pathAllowList": null,
+            "secretFindingSeverityThreshold": "INFORMATIONAL",
+            "disallowedValidationStatus": null
+          }
+        },
+        "ignoreReason": null,
+        "matchedIgnoreRules": null
+      }
+    ],
+    "analytics": {
+      "vulnerabilities": {
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0,
+        "unfixedCount": 0,
+        "totalCount": 0
+      },
+      "secrets": {
+        "privateKeyCount": 0,
+        "publicKeyCount": 0,
+        "passwordCount": 0,
+        "certificateCount": 0,
+        "cloudKeyCount": 0,
+        "sshAuthorizedKeyCount": 0,
+        "dbConnectionStringCount": 0,
+        "gitCredentialCount": 0,
+        "presignedURLCount": 0,
+        "saasAPIKeyCount": 0,
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0,
+        "totalCount": 0
+      },
+      "hostConfiguration": {
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0
+      },
+      "malware": {
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0,
+        "totalCount": 0
+      },
+      "softwareSupplyChain": {
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0,
+        "totalCount": 0
+      },
+      "aiModel": null,
+      "sast": {
+        "infoCount": 0,
+        "lowCount": 0,
+        "mediumCount": 0,
+        "highCount": 0,
+        "criticalCount": 0,
+        "totalCount": 0
+      },
+      "filesScannedCount": 30119,
+      "directoriesScannedCount": 5838
+    },
+    "sbomOutput": "",
+    "malwares": null,
+    "softwareSupplyChain": null,
+    "aiModels": null,
+    "sast": null,
+    "iac": null,
+    "ruleMatches": null,
+    "scanStatistics": null,
+    "fileTypes": null,
+    "discoveredResources": null
+  },
+  "reportUrl": "This scan did not generate a report in the Wiz portal"
+}
