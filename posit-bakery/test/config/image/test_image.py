@@ -704,8 +704,8 @@ class TestImage:
         assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
         assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
 
-    def test_load_dev_versions_release_stream_filter(self):
-        """Test that load_dev_versions filters by release_stream when provided."""
+    def test_load_dev_versions_dev_stream_filter(self):
+        """Test that load_dev_versions filters by dev_stream when provided."""
         context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
@@ -733,7 +733,7 @@ class TestImage:
                 ],
                 versions=[{"name": "1.0.0"}],
             )
-            i.load_dev_versions(release_stream="daily")
+            i.load_dev_versions(dev_stream="daily")
 
         # Only the daily stream should be loaded; preview should be skipped.
         # 1.0.0 (release) + daily dev version = 2 total. Preview is filtered out.

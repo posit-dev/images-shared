@@ -27,7 +27,7 @@ on:
         default: "exclude"
         required: false
         type: string
-      release-stream:
+      dev-stream:
         description: "Filter dev versions to a specific release stream (e.g. 'daily', 'preview')"
         default: ""
         required: false
@@ -111,10 +111,10 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           CONTEXT: ${{ inputs.context }}
-          RELEASE_STREAM: ${{ inputs.release-stream }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
         run: |
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
-          [[ -n "$RELEASE_STREAM" ]] && ARGS+=(--release-stream "$RELEASE_STREAM")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
           echo "platform_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
       - name: Images by Version
         id: images-by-version
@@ -122,10 +122,10 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           CONTEXT: ${{ inputs.context }}
-          RELEASE_STREAM: ${{ inputs.release-stream }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
         run: |
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$CONTEXT")
-          [[ -n "$RELEASE_STREAM" ]] && ARGS+=(--release-stream "$RELEASE_STREAM")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
           echo "versions_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build-test:
