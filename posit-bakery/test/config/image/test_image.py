@@ -704,6 +704,44 @@ class TestImage:
         assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
         assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
 
+    def test_load_dev_versions_release_stream_filter(self):
+        """Test that load_dev_versions filters by release_stream when provided."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        stream_version = "1.1.0"
+        stream_url = "https://example.com/image-daily.tar.gz"
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "package-manager",
+                        "stream": "daily",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                    {
+                        "sourceType": "stream",
+                        "product": "package-manager",
+                        "stream": "preview",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                ],
+                versions=[{"name": "1.0.0"}],
+            )
+            i.load_dev_versions(release_stream="daily")
+
+        # Only the daily stream should be loaded; preview should be skipped.
+        # 1.0.0 (release) + daily dev version = 2 total. Preview is filtered out.
+        assert len(i.versions) == 2
+        assert i.get_version("1.0.0") is not None
+        assert i.get_version(stream_version) is not None
+        assert i.get_version(stream_version).isDevelopmentVersion
+
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
         context = get_tmpcontext("basic")
