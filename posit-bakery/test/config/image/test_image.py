@@ -775,6 +775,39 @@ class TestImage:
         assert dev_ver is not None
         assert dev_ver.values["channel"] == "apple-blossom"
 
+    def test_load_dev_versions_values_override_channel_url(self):
+        """Test that a channel override propagates to get_product_artifact_by_stream as metadata."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        stream_version = "2026.04.0-daily+313.pro27"
+        stream_url = "https://dailies.rstudio.com/rstudio/globemaster-allium/workbench.deb"
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="workbench",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "stream": "daily",
+                        "os": [{"name": "Ubuntu 24.04", "primary": True}],
+                        "values": {"channel": "latest"},
+                    },
+                ],
+                versions=[{"name": "2026.03.0"}],
+            )
+            i.load_dev_versions(values={"channel": "globemaster-allium"})
+
+        # The override should replace config default.
+        assert i.devVersions[0].values["channel"] == "globemaster-allium"
+        # The overridden value should be passed to get_product_artifact_by_stream.
+        for call in mock_get.call_args_list:
+            if call.kwargs.get("values"):
+                assert call.kwargs["values"]["channel"] == "globemaster-allium"
+
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
         context = get_tmpcontext("basic")
