@@ -97,11 +97,12 @@ runs:
                 per_page: 100,
               });
 
-              const failedJobs = jobs.filter(j => j.conclusion === 'failure');
+              const badConclusions = new Set(['failure', 'timed_out', 'action_required']);
+              const failedJobs = jobs.filter(j => badConclusions.has(j.conclusion));
 
               let failureLines = [];
               for (const job of failedJobs) {
-                const failedSteps = (job.steps || []).filter(s => s.conclusion === 'failure');
+                const failedSteps = (job.steps || []).filter(s => badConclusions.has(s.conclusion));
                 const jobUrl = job.html_url;
                 if (failedSteps.length > 0) {
                   for (const step of failedSteps) {
