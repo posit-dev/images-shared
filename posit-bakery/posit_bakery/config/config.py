@@ -264,6 +264,13 @@ class BakeryConfigFilter(BaseModel):
     image_platform: Annotated[
         list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
     ]
+    release_stream: Annotated[
+        str | None,
+        Field(
+            description="Release stream to filter development versions by (e.g. 'daily', 'preview').",
+            default=None,
+        ),
+    ]
 
 
 class BakerySettings(BaseModel):
@@ -331,7 +338,7 @@ class BakeryConfig:
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
-                image.load_dev_versions()
+                image.load_dev_versions(release_stream=self.settings.filter.release_stream)
                 image.render_ephemeral_version_files()
                 if self.settings.clean_temporary:
                     atexit.register(image.remove_ephemeral_version_files)

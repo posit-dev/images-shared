@@ -27,6 +27,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      release-stream:
+        description: "Filter dev versions to a specific release stream (e.g. 'daily', 'preview')"
+        default: ""
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -95,11 +100,11 @@ jobs:
       - name: Images by Version/Platform
         id: images-by-platform
         run: |
-          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} ${{ inputs.release-stream && format('--release-stream {0}', inputs.release-stream) || '' }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
       - name: Images by Version
         id: images-by-version
         run: |
-          echo "versions_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "versions_matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} ${{ inputs.release-stream && format('--release-stream {0}', inputs.release-stream) || '' }} --exclude platform --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
