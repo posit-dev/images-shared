@@ -804,9 +804,10 @@ class TestImage:
         # The override should replace config default.
         assert i.devVersions[0].values["channel"] == "globemaster-allium"
         # The overridden value should be passed to get_product_artifact_by_stream.
-        for call in mock_get.call_args_list:
-            if call.kwargs.get("values"):
-                assert call.kwargs["values"]["channel"] == "globemaster-allium"
+        assert mock_get.called
+        assert any(
+            call.kwargs.get("values", {}).get("channel") == "globemaster-allium" for call in mock_get.call_args_list
+        )
 
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
