@@ -33,6 +33,11 @@ on:
         default: ""
         required: false
         type: string
+      dev-channel:
+        description: "Upstream channel reference (e.g. branch codename for Workbench preview)"
+        default: ""
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -102,9 +107,11 @@ jobs:
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           CONTEXT: ${{ inputs.context }}
           DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
           echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
