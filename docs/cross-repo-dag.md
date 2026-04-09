@@ -188,7 +188,7 @@ graph TD
 
 ```mermaid
 graph TD
-    PROD["**posit-dev/connect**<br/>release-scripts.yml"]
+    PROD["**posit-dev/connect**<br/>ci.yml (push to main)"]
     BOT["Connect Bot 🤖"]
 
     PROD -.-> BOT
@@ -253,7 +253,7 @@ graph TD
 
 ```mermaid
 graph TD
-    PROD["**rstudio/rstudio-pro**<br/>release-all.yml"]
+    PROD["**rstudio/rstudio-pro**<br/>release-nightly-test.yml"]
     BOT["Workbench Bot 🤖"]
 
     PROD -.-> BOT
@@ -317,7 +317,7 @@ graph TD
 
 ```mermaid
 graph TD
-    PROD["**rstudio/package-manager**<br/>ci.yml (tag push)"]
+    PROD["**rstudio/package-manager**<br/>ci.yml (push to main)"]
     BOT["PPM Bot 🤖"]
 
     PROD -.-> BOT
@@ -353,9 +353,9 @@ graph TD
 
 | Repository | Trigger Mechanism |
 |---|---|
-| `posit-dev/connect` | `publish_release.py` dispatches downstream |
-| `rstudio/rstudio-pro` | `release-all.yml` dispatches sub-workflows |
-| `rstudio/package-manager` | Tag push triggers `ci.yml` publish job |
+| `posit-dev/connect` | Release: `publish_release.py` dispatches `release.yml`. Dev: `ci.yml` dispatches `development.yml` on push to main |
+| `rstudio/rstudio-pro` | Release: `release-all.yml` dispatches sub-workflows. Dev: `release-nightly-test.yml` dispatches `development.yml` daily |
+| `rstudio/package-manager` | Release: tag push triggers `ci.yml` publish. Dev: `ci.yml` dispatches `development.yml` on push to main |
 
 ### Internal Environments
 
