@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, __make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -56,6 +56,13 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    value: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            help="Override a devVersion value (key=value). Can be specified multiple times.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -92,8 +99,13 @@ def matrix(
         exclude = []
 
     try:
+        value_map, errors = __make_value_map(value)
+        if errors:
+            for e in errors:
+                log.error(e)
+            raise typer.Exit(code=1)
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name, dev_stream=dev_stream),
+            filter=BakeryConfigFilter(image_name=image_name, dev_stream=dev_stream, values=value_map),
             dev_versions=dev_versions,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
