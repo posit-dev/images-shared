@@ -33,7 +33,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         :return: The version string from the product stream.
         """
         _os = self.get_primary_os()
-        result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
+        result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS, values=self.values)
 
         return result.version
 
@@ -44,7 +44,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         """
         url_by_os = {}
         for _os in self.os:
-            result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
+            result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS, values=self.values)
             if generalize_architecture:
                 url_by_os[_os.name] = str(result.architecture_generalized_download_url)
             else:

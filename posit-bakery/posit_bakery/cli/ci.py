@@ -49,7 +49,7 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
-    release_stream: Annotated[
+    dev_stream: Annotated[
         Optional[str],
         typer.Option(
             help="Filter development versions to a specific release stream (e.g. 'daily', 'preview').",
@@ -93,7 +93,7 @@ def matrix(
 
     try:
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name, release_stream=release_stream),
+            filter=BakeryConfigFilter(image_name=image_name, dev_stream=dev_stream),
             dev_versions=dev_versions,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)

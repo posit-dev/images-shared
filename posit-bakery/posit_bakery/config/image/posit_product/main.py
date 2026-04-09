@@ -43,8 +43,9 @@ class ReleaseStreamPath:
 
     def get(self, metadata: dict) -> ReleaseStreamResult:
         """Fetches data from the stream URL and resolves the data using the given resolvers."""
+        stream_url = self.stream_url.format_map(metadata)
         session = cached_session()
-        response = session.get(self.stream_url)
+        response = session.get(stream_url)
         response.raise_for_status()
         try:
             data = response.json()
@@ -281,7 +282,11 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
 
 
 def get_product_artifact_by_stream(
-    product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
+    product: ProductEnum,
+    stream: ReleaseStreamEnum,
+    os: BuildOS,
+    generalize_arch: bool = True,
+    values: dict[str, str] | None = None,
 ) -> ReleaseStreamResult:
     """Fetches the version and download URL for a given product, release stream, and OS."""
     if product not in product_release_stream_url_map:
@@ -290,5 +295,7 @@ def get_product_artifact_by_stream(
         raise ValueError(f"Stream {stream} is not supported for product {product}.")
 
     metadata = _make_resolver_metadata(os, product)
+    if values:
+        metadata.update(values)
 
     return product_release_stream_url_map[product][stream].get(metadata)

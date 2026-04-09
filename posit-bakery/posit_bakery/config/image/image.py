@@ -573,17 +573,17 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         return patched_image_version
 
-    def load_dev_versions(self, release_stream: str | None = None):
+    def load_dev_versions(self, dev_stream: str | None = None):
         """Load the development versions for this image.
 
-        :param release_stream: If provided, only load dev versions from this stream.
+        :param dev_stream: If provided, only load dev versions from this stream.
         """
         for dev_version in self.devVersions:
-            if release_stream is not None and hasattr(dev_version, "stream"):
-                if dev_version.stream.value != release_stream:
+            if dev_stream is not None and hasattr(dev_version, "stream"):
+                if dev_version.stream.value != dev_stream:
                     log.info(
                         f"Skipping {self.name} dev version {repr(dev_version)}: "
-                        f"stream '{dev_version.stream.value}' does not match filter '{release_stream}'"
+                        f"stream '{dev_version.stream.value}' does not match filter '{dev_stream}'"
                     )
                     continue
 
