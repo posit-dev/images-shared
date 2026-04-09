@@ -95,10 +95,13 @@ jobs:
       - name: Images
         id: images
         env:
-          DEV_STREAM_FLAG: ${{ inputs['dev-stream'] != '' && format('--dev-stream {0}', inputs['dev-stream']) || '' }}
-          DEV_CHANNEL_FLAG: ${{ inputs['dev-channel'] != '' && format('--value channel={0}', inputs['dev-channel']) || '' }}
+          DEV_STREAM: ${{ inputs['dev-stream'] }}
+          DEV_CHANNEL: ${{ inputs['dev-channel'] }}
         run: |
-          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} $DEV_STREAM_FLAG $DEV_CHANNEL_FLAG --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          ARGS=(--quiet --dev-versions "${{ inputs.dev-versions }}" --matrix-versions "${{ inputs.matrix-versions }}" --context "${{ inputs.context }}")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
