@@ -28,6 +28,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      release-stream:
+        description: "Filter dev versions to a specific release stream (e.g. 'daily', 'preview')"
+        default: ""
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -96,8 +101,11 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           CONTEXT: ${{ inputs.context }}
+          RELEASE_STREAM: ${{ inputs.release-stream }}
         run: |
-          echo "matrix=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT" | jq --compact-output .)" >> $GITHUB_OUTPUT
+          ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
+          [[ -n "$RELEASE_STREAM" ]] && ARGS+=(--release-stream "$RELEASE_STREAM")
+          echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"

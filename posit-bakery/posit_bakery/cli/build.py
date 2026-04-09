@@ -186,6 +186,13 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    release_stream: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter development versions to a specific release stream (e.g. 'daily', 'preview').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
 ) -> None:
     """Builds images in the context path
 
@@ -203,6 +210,7 @@ def build(
             image_variant=image_variant,
             image_os=image_os,
             image_platform=image_platform or [],
+            release_stream=release_stream,
         ),
         dev_versions=dev_versions,
         matrix_versions=matrix_versions,
