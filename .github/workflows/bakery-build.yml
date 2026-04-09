@@ -33,6 +33,11 @@ on:
         default: ""
         required: false
         type: string
+      dev-channel:
+        description: "Upstream channel reference (e.g. branch codename for Workbench preview)"
+        default: ""
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -89,8 +94,11 @@ jobs:
 
       - name: Images
         id: images
+        env:
+          DEV_STREAM_FLAG: ${{ inputs['dev-stream'] != '' && format('--dev-stream {0}', inputs['dev-stream']) || '' }}
+          DEV_CHANNEL_FLAG: ${{ inputs['dev-channel'] != '' && format('--value channel={0}', inputs['dev-channel']) || '' }}
         run: |
-          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} ${{ inputs['dev-stream'] != '' && format('--dev-stream {0}', inputs['dev-stream']) || '' }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} $DEV_STREAM_FLAG $DEV_CHANNEL_FLAG --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
