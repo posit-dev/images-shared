@@ -264,6 +264,20 @@ class BakeryConfigFilter(BaseModel):
     image_platform: Annotated[
         list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
     ]
+    dev_stream: Annotated[
+        str | None,
+        Field(
+            description="Development stream to filter by (e.g. 'daily', 'preview').",
+            default=None,
+        ),
+    ]
+    values: Annotated[
+        dict[str, str],
+        Field(
+            description="Key-value pairs to override in devVersion values (e.g. channel=apple-blossom).",
+            default_factory=dict,
+        ),
+    ]
 
 
 class BakerySettings(BaseModel):
@@ -331,7 +345,10 @@ class BakeryConfig:
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
-                image.load_dev_versions()
+                image.load_dev_versions(
+                    dev_stream=self.settings.filter.dev_stream,
+                    values=self.settings.filter.values,
+                )
                 image.render_ephemeral_version_files()
                 if self.settings.clean_temporary:
                     atexit.register(image.remove_ephemeral_version_files)

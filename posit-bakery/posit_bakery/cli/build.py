@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, __make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -186,6 +186,20 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter development versions to a specific release stream (e.g. 'daily', 'preview').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    value: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            help="Override a devVersion value (key=value). Can be specified multiple times.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
 ) -> None:
     """Builds images in the context path
 
@@ -196,6 +210,11 @@ def build(
 
     Requires Docker, Podman, or nerdctl to be installed and running for `--strategy build`.
     """
+    value_map, errors = __make_value_map(value)
+    if errors:
+        for e in errors:
+            log.error(e)
+        raise typer.Exit(code=1)
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
@@ -203,6 +222,8 @@ def build(
             image_variant=image_variant,
             image_os=image_os,
             image_platform=image_platform or [],
+            dev_stream=dev_stream,
+            values=value_map,
         ),
         dev_versions=dev_versions,
         matrix_versions=matrix_versions,

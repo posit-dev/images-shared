@@ -704,6 +704,111 @@ class TestImage:
         assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
         assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
 
+    def test_load_dev_versions_dev_stream_filter(self):
+        """Test that load_dev_versions filters by dev_stream when provided."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        stream_version = "1.1.0"
+        stream_url = "https://example.com/image-daily.tar.gz"
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "package-manager",
+                        "stream": "daily",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                    {
+                        "sourceType": "stream",
+                        "product": "package-manager",
+                        "stream": "preview",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                ],
+                versions=[{"name": "1.0.0"}],
+            )
+            i.load_dev_versions(dev_stream="daily")
+
+        # Only the daily stream should be loaded; preview should be skipped.
+        # 1.0.0 (release) + daily dev version = 2 total. Preview is filtered out.
+        assert len(i.versions) == 2
+        assert i.get_version("1.0.0") is not None
+        assert i.get_version(stream_version) is not None
+        assert i.get_version(stream_version).isDevelopmentVersion
+
+    def test_load_dev_versions_values_override(self):
+        """Test that load_dev_versions applies value overrides to dev versions."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        stream_version = "1.1.0"
+        stream_url = "https://example.com/image-daily.tar.gz"
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "stream": "daily",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                        "values": {"channel": "latest"},
+                    },
+                ],
+                versions=[{"name": "1.0.0"}],
+            )
+            i.load_dev_versions(values={"channel": "apple-blossom"})
+
+        # The override should have replaced the config value.
+        assert i.devVersions[0].values["channel"] == "apple-blossom"
+        # The override should flow through to the image version.
+        dev_ver = i.get_version(stream_version)
+        assert dev_ver is not None
+        assert dev_ver.values["channel"] == "apple-blossom"
+
+    def test_load_dev_versions_values_override_channel_url(self):
+        """Test that a channel override propagates to get_product_artifact_by_stream as metadata."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        stream_version = "2026.04.0-daily+313.pro27"
+        stream_url = "https://dailies.rstudio.com/rstudio/globemaster-allium/workbench.deb"
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="workbench",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "stream": "daily",
+                        "os": [{"name": "Ubuntu 24.04", "primary": True}],
+                        "values": {"channel": "latest"},
+                    },
+                ],
+                versions=[{"name": "2026.03.0"}],
+            )
+            i.load_dev_versions(values={"channel": "globemaster-allium"})
+
+        # The override should replace config default.
+        assert i.devVersions[0].values["channel"] == "globemaster-allium"
+        # The overridden value should be passed to get_product_artifact_by_stream.
+        assert mock_get.called
+        assert any(
+            call.kwargs.get("values", {}).get("channel") == "globemaster-allium" for call in mock_get.call_args_list
+        )
+
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
         context = get_tmpcontext("basic")
