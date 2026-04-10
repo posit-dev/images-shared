@@ -1,0 +1,33 @@
+name: 'Setup wizcli'
+description: 'Installs wizcli to tools/'
+
+inputs:
+  architecture:
+    description: "The system architecture (e.g., amd64, arm64). If not set, it will be detected automatically."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Make tools directory
+      shell: bash
+      run: mkdir -p tools
+    - name: Install wizcli
+      shell: bash
+      run: |
+        # Determine architecture if not provided
+        arch="${{ inputs.architecture }}"
+        if [ -z "$arch" ]; then
+          arch=$(uname -m)
+        fi
+
+        # Map architecture names
+        if [ "$arch" = "x86_64" ]; then
+            arch="amd64"
+        elif [ "$arch" = "aarch64" ]; then
+            arch="arm64"
+        fi
+
+        curl -fsSL https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${arch} -o tools/wizcli
+        chmod +rx tools/wizcli
