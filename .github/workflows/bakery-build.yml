@@ -78,7 +78,8 @@ jobs:
   matrix:
     name: Image Matrix
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.images.outputs.matrix }}
 
@@ -105,6 +106,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: matrix
     runs-on: ${{ inputs.runs-on }}
     strategy:

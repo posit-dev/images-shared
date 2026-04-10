@@ -87,7 +87,8 @@ jobs:
   matrix:
     name: Image Matrix
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
       versions-matrix: ${{ steps.images-by-version.outputs.versions_matrix }}
@@ -123,6 +124,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: matrix
     strategy:
       fail-fast: false
@@ -260,6 +262,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs:
       - matrix
       - build-test
