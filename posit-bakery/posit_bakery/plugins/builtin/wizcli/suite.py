@@ -114,10 +114,17 @@ class WizCLISuite:
                     )
                     parse_err = e
 
-            if exit_code != 0 and report is None:
-                log.error(
-                    f"wizcli for '{str(wizcli_command.image_target)}' exited with code {exit_code}"
-                )
+            # Unlike dgoss (where exit code 1 + valid JSON = test failures, not an error),
+            # all non-zero wizcli exit codes are true failures that must be surfaced.
+            if exit_code != 0:
+                if exit_code == WIZCLI_EXIT_CODE_POLICY_VIOLATION:
+                    log.warning(
+                        f"[yellow bold]Security policy violation for '{str(wizcli_command.image_target)}'"
+                    )
+                else:
+                    log.error(
+                        f"wizcli for '{str(wizcli_command.image_target)}' exited with code {exit_code}"
+                    )
                 errors.append(
                     BakeryWizCLIError(
                         f"wizcli scan failed for '{str(wizcli_command.image_target)}'",
@@ -128,17 +135,9 @@ class WizCLISuite:
                         exit_code=exit_code,
                     )
                 )
-            elif exit_code == 0:
-                log.info(f"[bright_green bold]Scan passed for '{str(wizcli_command.image_target)}'")
-            elif exit_code == WIZCLI_EXIT_CODE_POLICY_VIOLATION:
-                log.warning(
-                    f"[yellow bold]Security policy violation for '{str(wizcli_command.image_target)}'"
-                )
             else:
-                log.warning(
-                    f"[yellow bold]Scan completed with issues for '{str(wizcli_command.image_target)}' "
-                    f"(exit code {exit_code})"
-                )
+                log.info(f"[bright_green bold]Scan passed for '{str(wizcli_command.image_target)}'")
+
 
         if errors:
             if len(errors) == 1:
