@@ -102,7 +102,9 @@ jobs:
           uv build
 
       - name: Publish results
-        if: always()
+        # Dependabot and fork PRs get a restricted GITHUB_TOKEN without
+        # checks:write. Skip rather than switch to pull_request_target.
+        if: always() && github.actor != 'dependabot[bot]'
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
