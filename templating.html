@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Templating – Posit Bakery</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./architecture.html" rel="next">
+<link href="./configuration.html" rel="prev">
+<link href="site_libs/quarto-contrib/quarto-project/posit-dev/posit-docs/assets/images/favicon.svg" rel="icon" type="image/svg+xml">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-0dd6cd67919e2c41bb2dcdcbfca5a3a1.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-97436e1ffffeef4364cd3da8de43bea7.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-0dd6cd67919e2c41bb2dcdcbfca5a3a1.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-6bda98905bb078aad7433ede987ca2b5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-31d27577132def0e191cc63a0dce3162.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-6bda98905bb078aad7433ede987ca2b5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": true,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": true,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<!-- Google Tag Manager -->
+<script type="text/javascript">
+    const sURL = window.location.href;
+    if (sURL.includes("docs.posit.co") || sURL.includes("netlify.app")) {
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-KHBDBW7');
+    }
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Display cookie icon in footer in docs.posit.co/netlify.app URLs; hide icon on other URLs -->
+<script type="text/javascript">
+window.onload = function () {
+    // target the <li> instead of the icon to allow screenreaders to properly
+    // calculate the size of the list when the icon is hidden
+    const prefCenter = document.querySelector("li:has(#open_preferences_center)");
+    if (prefCenter) { // Test for prefCenter ID presence
+        const sURL = window.location.href;
+        // Show the icon only if the URL contains "docs.posit.co" or "netlify.app"
+        if (sURL.includes("docs.posit.co") || sURL.includes("netlify.app")) {
+            prefCenter.style.display = "inline";
+            prefCenter.style.visibility = "visible";
+        } else {
+            // Hide the icon for all other URLs
+            prefCenter.style.display = "none";
+            prefCenter.style.visibility = "hidden";
+        }
+    }
+};
+</script>
+<!-- End display/hide cookie icon -->
+
+
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
+    <img src="site_libs/quarto-contrib/quarto-project/posit-dev/posit-docs/assets/images/posit-icon-fullcolor.svg" alt="Posit Documentation" class="navbar-logo light-content">
+    <img src="site_libs/quarto-contrib/quarto-project/posit-dev/posit-docs/assets/images/posit-icon-fullcolor.svg" alt="Posit Documentation" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Posit Bakery</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/posit-dev/images-examples/"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-help" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Help</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-help">    
+        <li>
+    <a class="dropdown-item" href="https://docs.posit.co">
+ <span class="dropdown-text">Return to Posit Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://support.posit.co/hc/en-us/">
+ <span class="dropdown-text">Posit Support</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./templating.html">Templating</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Getting Started</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./configuration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Configuration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./templating.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Templating</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Architecture</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./cross-repo-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cross-Repository Workflows</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#available-variables" id="toc-available-variables" class="nav-link active" data-scroll-target="#available-variables">Available Variables</a></li>
+  <li><a href="#custom-jinja2-filters" id="toc-custom-jinja2-filters" class="nav-link" data-scroll-target="#custom-jinja2-filters">Custom Jinja2 Filters</a></li>
+  <li><a href="#templating-macros" id="toc-templating-macros" class="nav-link" data-scroll-target="#templating-macros">Templating Macros</a>
+  <ul class="collapse">
+  <li><a href="#apt-package-management" id="toc-apt-package-management" class="nav-link" data-scroll-target="#apt-package-management">APT Package Management</a></li>
+  <li><a href="#dnf-package-management" id="toc-dnf-package-management" class="nav-link" data-scroll-target="#dnf-package-management">DNF Package Management</a></li>
+  <li><a href="#python-installation-and-package-management" id="toc-python-installation-and-package-management" class="nav-link" data-scroll-target="#python-installation-and-package-management">Python Installation and Package Management</a></li>
+  <li><a href="#r-installation-and-package-management" id="toc-r-installation-and-package-management" class="nav-link" data-scroll-target="#r-installation-and-package-management">R Installation and Package Management</a></li>
+  <li><a href="#quarto-installation-and-management" id="toc-quarto-installation-and-management" class="nav-link" data-scroll-target="#quarto-installation-and-management">Quarto Installation and Management</a></li>
+  <li><a href="#goss-testing" id="toc-goss-testing" class="nav-link" data-scroll-target="#goss-testing">Goss Testing</a></li>
+  <li><a href="#wait-for-it" id="toc-wait-for-it" class="nav-link" data-scroll-target="#wait-for-it">wait-for-it</a></li>
+  </ul></li>
+  <li><a href="#see-also" id="toc-see-also" class="nav-link" data-scroll-target="#see-also">See Also</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Templating</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>This document outlines the available Jinja2 macros in the Posit Bakery templating system for creating Docker images with package installations.</p>
+<p>Macros must be explicitly imported in every file in which they are used.</p>
+<p>References: - <a href="https://github.com/posit-dev/images-shared/tree/main/posit-bakery/posit_bakery/config/templating/macros">Source Code</a> - <a href="https://jinja.palletsprojects.com/en/stable/templates/">Jinja2 Template Designer Documentation</a></p>
+<section id="available-variables" class="level2">
+<h2 class="anchored" data-anchor-id="available-variables">Available Variables</h2>
+<p>The following variables are available by default for use in an image’s Jinja2 templates. Additional values passed using <code>--value</code> to <code>bakery create</code> or specified in the <code>values</code> field of an image version will also be available.</p>
+<p>Currently, <code>Containerfile</code> templates render as a unique file for each variant and OS. Using variant and OS based Jinja2 conditionals outside of <code>Containerfile</code> templates is not currently supported and will lead to unexpected results or errors.</p>
+<ul>
+<li><code>Image</code>: A dictionary containing information about the current image, version, variant, and OS.
+<ul>
+<li><code>Image.Name</code>: The name field of the image, e.g.&nbsp;<code>package-manager</code>, <code>workbench</code>, <code>connect</code>.</li>
+<li><code>Image.DisplayName</code>: The display name field of the image, e.g.&nbsp;<code>Package Manager</code>, <code>Workbench</code>, <code>Connect</code>.</li>
+<li><code>Image.Version</code>: The current version being rendered, e.g.&nbsp;<code>2025.08.0</code>.</li>
+<li><code>Image.Variant</code>: The current variant being rendered, e.g.&nbsp;<code>Standard</code>, <code>Minimal</code>.</li>
+<li><code>Image.OS</code>: A dictionary containing information about the current OS being rendered.
+<ul>
+<li><code>Image.OS.Name</code>: The name field of the OS, e.g.&nbsp;<code>ubuntu</code>, <code>debian</code>, <code>rhel</code>.</li>
+<li><code>Image.OS.Family</code>: The generalized family of the OS, e.g.&nbsp;<code>debian</code> (includes Ubuntu), <code>rhel</code>.</li>
+<li><code>Image.OS.Version</code>: The version field of the OS, e.g.&nbsp;<code>22.04</code>, <code>20.04</code>, <code>9</code>, <code>8</code>, <code>8.6</code>, <code>7</code>.</li>
+<li><code>Image.OS.Codename</code>: The codename of the OS version if defined, e.g.&nbsp;<code>jammy</code>, <code>noble</code>, <code>bookworm</code>.</li>
+</ul></li>
+<li><code>Image.DownloadURL</code>: The URL to download a development version artifact for installation. Only defined for development version builds.</li>
+<li><code>Image.IsDevelopmentVersion</code>: A boolean indicating whether the current version is a development version.</li>
+</ul></li>
+<li><code>Path</code>: A dictionary containing paths relative to the root build context.
+<ul>
+<li><code>Path.Base</code>: The base path for the build context. Usually the parent directory of <code>bakery.yaml</code>.</li>
+<li><code>Path.Image</code>: The path to the current image’s directory.</li>
+<li><code>Path.Version</code>: The path to the current image version’s directory.</li>
+</ul></li>
+<li><code>Dependencies</code>: A dictionary containing retrieved dependency versions to be used in the image version rendering.
+<ul>
+<li><code>Dependencies.python</code>: A list of Python versions retrieved based on the version’s <code>dependencies</code> field (preferred if the version exists) or the image’s <code>dependencyConstraints</code> field in the <code>bakery.yaml</code> configuration. Undefined if no Python version constraints are specified.</li>
+<li><code>Dependencies.R</code>: A list of R versions retrieved based on the version’s <code>dependencies</code> field (preferred if the version exists) or the image’s <code>dependencyConstraints</code> field in the <code>bakery.yaml</code> configuration. Undefined if no R version constraints are specified.</li>
+<li><code>Dependencies.quarto</code>: A list of Quarto versions retrieved based on the version’s <code>dependencies</code> field (preferred if the version exists) or the image’s <code>dependencyConstraints</code> field in the <code>bakery.yaml</code> configuration. Undefined if no Quarto version constraints are specified.</li>
+</ul></li>
+</ul>
+</section>
+<section id="custom-jinja2-filters" class="level2">
+<h2 class="anchored" data-anchor-id="custom-jinja2-filters">Custom Jinja2 Filters</h2>
+<p>In addition to the built-in Jinja2 filters, the following custom filters are available in all templates:</p>
+<ul>
+<li><code>tagSafe</code>: Replaces disallowed characters in a tag with a hyphen (<code>-</code>).</li>
+<li><code>stripMetadata</code>: Removes trailing metadata suffixes that start with <code>-</code> or <code>+</code> (e.g.&nbsp;<code>1.2.3-rc1</code> becomes <code>1.2.3</code>).</li>
+<li><code>condense</code>: Removes spaces, periods, and hyphens.</li>
+<li><code>regexReplace &lt;find&gt; &lt;replace&gt;</code>: Replaces occurrences of the <code>find</code> regex with <code>replace</code>.</li>
+<li><code>quote</code>: Wraps a string in double quotes.</li>
+<li><code>split</code>: Splits a string by a separator (e.g.&nbsp;<code>{ "a,b,c" | split(",") }</code>).</li>
+</ul>
+</section>
+<section id="templating-macros" class="level2">
+<h2 class="anchored" data-anchor-id="templating-macros">Templating Macros</h2>
+<section id="apt-package-management" class="level3">
+<h3 class="anchored" data-anchor-id="apt-package-management">APT Package Management</h3>
+<section id="importing" class="level4">
+<h4 class="anchored" data-anchor-id="importing">Importing</h4>
+<p>To use the APT macros, import the <code>apt</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"apt.j2"</span> <span class="kw">as</span> apt -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="apt-setup" class="level4">
+<h4 class="anchored" data-anchor-id="apt-setup">Apt Setup</h4>
+<p>Performs initial setup, including update, upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, purging removed packages, and cleaning the apt cache.</p>
+<p>Essential packages include <code>ca-certificates</code>, <code>curl</code>, <code>gnupg</code>, and <code>tar</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">setup</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>setup()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">run_setup</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="setup-posit-cloudsmith-apt-repositories" class="level4">
+<h4 class="anchored" data-anchor-id="setup-posit-cloudsmith-apt-repositories">Setup Posit Cloudsmith Apt Repositories</h4>
+<p>Renders commands to set up Posit Cloudsmith apt repositories. Requires <code>curl</code> to be installed prior to execution.</p>
+<p><strong>NOTE:</strong> This macro is included in <code>apt.setup()</code> or <code>apt.run_setup()</code>, so it does not need to be called separately unless <code>apt.setup()</code> is not used.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">setup_posit_cloudsmith</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>setup_posit_cloudsmith()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">run_setup_posit_cloudsmith</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="apt-clean-commands" class="level4">
+<h4 class="anchored" data-anchor-id="apt-clean-commands">Apt Clean Commands</h4>
+<p>Renders commands to clean and remove the apt cache to ensure minimal image layers. Clean commands should be run at the end of any RUN statement that modifies packages, but it is implicitly included in most other macros that modify packages.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">clean_command</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="apt-update-and-upgrade" class="level4">
+<h4 class="anchored" data-anchor-id="apt-update-and-upgrade">Apt Update and Upgrade</h4>
+<p>Renders commands to update the apt cache, upgrade packages, run dist-upgrade, and remove unneeded packages. Pass <code>False</code> to the <code>clean</code> argument to skip cleaning the cache if you want to append additional commands. Clean is <code>True</code> by default.</p>
+<p><strong>NOTE:</strong> This macro is called by <code>apt.setup()</code> and <code>apt.run_setup()</code>, so it does not need to be called separately unless <code>apt.setup()</code> is not used.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">update_upgrade</span><span class="op">(</span>clean <span class="op">=</span> <span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>update_upgrade()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">run_update_upgrade</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-packages" class="level4">
+<h4 class="anchored" data-anchor-id="install-packages">Install Packages</h4>
+<p>Renders commands to install all packages from given list and files.</p>
+<p>If <code>update</code> is <code>True</code>, the apt cache will be updated before installation. If <code>clean</code> is <code>True</code>, the apt cache will be cleaned after installation. Both are <code>True</code> by default.</p>
+<p>One of <code>packages</code> or <code>files</code> must be provided. <code>packages</code> can be a list, a comma-separated string, or a single string. <code>files</code> can be a list, a comma-separated string, or single string. Positional arguments are accepted for <code>packages</code> and <code>files</code>, but keyword arguments are recommended for clarity.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="sc">{{</span> <span class="va">Path</span><span class="op">.</span>Version <span class="sc">}}</span>/deps/packages.txt /tmp/packages.txt  # Example copy command</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">install</span><span class="op">(</span>packages<span class="op">=</span>[<span class="st">"git"</span><span class="op">,</span> <span class="st">"curl"</span>]<span class="op">,</span> files<span class="op">=</span>[<span class="st">"/tmp/packages.txt"</span>]<span class="op">,</span> update<span class="op">=</span><span class="kw">True</span><span class="op">,</span> clean<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>install()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">apt</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span>packages<span class="op">=</span><span class="st">"git,curl"</span><span class="op">,</span> files<span class="op">=</span><span class="st">"/tmp/packages.txt"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="dnf-package-management" class="level3">
+<h3 class="anchored" data-anchor-id="dnf-package-management">DNF Package Management</h3>
+<section id="importing-1" class="level4">
+<h4 class="anchored" data-anchor-id="importing-1">Importing</h4>
+<p>To use the DNF macros, import the <code>dnf</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"dnf.j2"</span> <span class="kw">as</span> dnf -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="dnf-setup" class="level4">
+<h4 class="anchored" data-anchor-id="dnf-setup">DNF Setup</h4>
+<p>Performs initial setup, including upgrade, installation of essential packages, installation of Posit Cloudsmith repositories, removal of unneeded packages, and cleaning the dnf cache.</p>
+<p>Essential packages include <code>ca-certificates</code>, <code>curl</code>, <code>gnupg</code>, and <code>tar</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">setup</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>setup()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">run_setup</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="setup-posit-cloudsmith-dnf-repositories" class="level4">
+<h4 class="anchored" data-anchor-id="setup-posit-cloudsmith-dnf-repositories">Setup Posit Cloudsmith DNF Repositories</h4>
+<p>Renders commands to set up Posit Cloudsmith DNF repositories. Requires <code>curl</code> to be installed prior to execution.</p>
+<p><strong>NOTE:</strong> This macro is included in <code>dnf.setup()</code> or <code>dnf.run_setup()</code>, so it does not need to be called separately unless <code>dnf.setup()</code> is not used.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">setup_posit_cloudsmith</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>setup_posit_cloudsmith()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">run_setup_posit_cloudsmith</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="dnf-clean-command" class="level4">
+<h4 class="anchored" data-anchor-id="dnf-clean-command">DNF Clean Command</h4>
+<p>Renders commands to clean the dnf package cache. Clean commands should be run at the end of any RUN statement that modifies packages, but it is implicitly included in most other macros that modify packages.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">clean_command</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="dnf-update-and-upgrade" class="level4">
+<h4 class="anchored" data-anchor-id="dnf-update-and-upgrade">DNF Update and Upgrade</h4>
+<p>Renders commands to upgrade packages, remove unneeded packages, and clean the cache. Pass <code>False</code> to the <code>clean</code> argument to skip cleaning the cache if you want to append additional commands. Clean is <code>True</code> by default.</p>
+<p><strong>NOTE:</strong> This macro is called by <code>dnf.setup()</code> and <code>dnf.run_setup()</code>, so it does not need to be called separately unless <code>dnf.setup()</code> is not used.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">update_upgrade</span><span class="op">(</span>clean <span class="op">=</span> <span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>update_upgrade()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">run_update_upgrade</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-packages-1" class="level4">
+<h4 class="anchored" data-anchor-id="install-packages-1">Install Packages</h4>
+<p>Renders commands to install all packages from given list and files.</p>
+<p>If <code>clean</code> is <code>True</code>, the dnf cache will be cleaned after installation. Clean is <code>True</code> by default.</p>
+<p>One of <code>packages</code> or <code>files</code> must be provided. <code>packages</code> can be a list, a comma-separated string, or a single string. <code>files</code> can be a list, a comma-separated string, or single string. Positional arguments are accepted for <code>packages</code> and <code>files</code>, but keyword arguments are recommended for clarity.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">install</span><span class="op">(</span>packages<span class="op">=</span>[<span class="st">"git"</span><span class="op">,</span> <span class="st">"curl"</span>]<span class="op">,</span> files<span class="op">=</span>[<span class="st">"/tmp/packages.txt"</span>]<span class="op">,</span> clean<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>install()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">dnf</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span>packages<span class="op">=</span><span class="st">"git,curl"</span><span class="op">,</span> files<span class="op">=</span><span class="st">"/tmp/packages.txt"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="python-installation-and-package-management" class="level3">
+<h3 class="anchored" data-anchor-id="python-installation-and-package-management">Python Installation and Package Management</h3>
+<section id="importing-2" class="level4">
+<h4 class="anchored" data-anchor-id="importing-2">Importing</h4>
+<p>To use the Python macros, import the <code>python</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"python.j2"</span> <span class="kw">as</span> python -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="build-and-install-python-using-uv" class="level4">
+<h4 class="anchored" data-anchor-id="build-and-install-python-using-uv">Build and Install Python using UV</h4>
+<p>Adds a build stage to build Python versions using <code>uv</code>. This should only be called prior to the final stage of the build, typically the first call in a Containerfile.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">build_stage</span><span class="op">(</span>[<span class="st">"3.11"</span><span class="op">,</span> <span class="st">"3.12"</span>]<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Usually, this should be called with <code>Dependencies.python</code> to dynamically specify versions based on the image’s <code>dependencyConstraints</code> field:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">build_stage</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>python<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The macro accepts an optional <code>prerun</code> parameter to specify commands to run before the Python build. This is useful for declaring build args or executing prerequisite installations:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a># Example prerun to declare a build argument</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">build_stage</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>python<span class="op">,</span> prerun<span class="op">=</span><span class="va">python</span><span class="op">.</span><span class="fu">declare_build_arg</span><span class="op">())</span> <span class="sc">}}</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a># Example prerun to install additional build dependencies</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">build_stage</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>python<span class="op">,</span> prerun<span class="op">=</span><span class="st">"RUN apt install -y make gcc"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To copy the Python installations from the build stage to the current stage, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">copy_from_build_stage</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="declare-build-argument" class="level4">
+<h4 class="anchored" data-anchor-id="declare-build-argument">Declare Build Argument</h4>
+<p>Declares a Docker <code>ARG</code> for a Python version. Useful as a <code>prerun</code> parameter to <code>build_stage()</code> or in Containerfiles that need a Python version as a build argument.</p>
+<p>The <code>name</code> parameter defaults to <code>PYTHON_VERSION</code>. The <code>default</code> parameter sets a default value for the argument.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">declare_build_arg</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To declare with a custom name and default:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">declare_build_arg</span><span class="op">(</span>name<span class="op">=</span><span class="st">"PY_VER"</span><span class="op">,</span> default<span class="op">=</span><span class="st">"3.12"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To reference the build argument in a Containerfile:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">build_arg</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="get-version-directory" class="level4">
+<h4 class="anchored" data-anchor-id="get-version-directory">Get Version Directory</h4>
+<p>Returns the expected directory for a Python version built with uv.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">get_version_directory</span><span class="op">(</span><span class="st">"3.12.11"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-packages-2" class="level4">
+<h4 class="anchored" data-anchor-id="install-packages-2">Install Packages</h4>
+<p>Installs packages to a Python version from a list of packages or requirements files.</p>
+<p>If <code>clean</code> is <code>True</code>, requirements files will be removed after they are installed. Clean is <code>True</code> by default.</p>
+<p>If <code>break_system_packages</code> is <code>True</code>, the <code>--break-system-packages</code> flag will be passed to pip, allowing installation of packages that may conflict with system-managed packages. This is <code>True</code> by default for compatibility with externally managed Python environments.</p>
+<p>One of <code>packages</code> or <code>requirements_files</code> must be provided. <code>packages</code> can be a list, a comma-separated string, or a single string. <code>requirements_files</code> can be a list, a comma-separated string, or single string. Positional arguments are accepted for <code>packages</code> and <code>requirements_files</code>, but keyword arguments are recommended for clarity.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="sc">{{</span> <span class="va">Path</span><span class="op">.</span>Version <span class="sc">}}</span>/deps/requirements.txt /tmp/requirements.txt  # Example copy command</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">install_packages</span><span class="op">(</span><span class="st">"3.12.11"</span><span class="op">,</span> packages<span class="op">=</span><span class="st">"numpy,pandas"</span><span class="op">,</span> requirements_files<span class="op">=</span><span class="st">"/tmp/requirements.txt"</span><span class="op">,</span> clean<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To install the same packages to multiple versions and wrap the commands with a <code>RUN</code> statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">run_install_packages</span><span class="op">(</span>[<span class="st">"3.13.7"</span><span class="op">,</span> <span class="st">"3.12.11"</span>]<span class="op">,</span> packages<span class="op">=</span>[<span class="st">"numpy"</span><span class="op">,</span> <span class="st">"pandas"</span>]<span class="op">,</span> requirements_file<span class="op">=</span><span class="st">"/tmp/requirements.txt"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or, to install to all Python versions defined in <code>Dependencies.python</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">run_install_packages</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>python<span class="op">,</span> packages<span class="op">=</span>[<span class="st">"numpy"</span><span class="op">,</span> <span class="st">"pandas"</span>]<span class="op">,</span> requirements_file<span class="op">=</span><span class="st">"/tmp/requirements.txt"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To disable the <code>--break-system-packages</code> flag:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">run_install_packages</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>python<span class="op">,</span> packages<span class="op">=</span>[<span class="st">"numpy"</span>]<span class="op">,</span> break_system_packages<span class="op">=</span><span class="kw">False</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <code>install_packages</code> macro uses <code>requirements_files</code> (plural), while <code>run_install_packages</code> uses <code>requirements_file</code> (singular). Both accept a list, a comma-separated string, or a single string.</p>
+</div>
+</div>
+</section>
+<section id="create-symlinks" class="level4">
+<h4 class="anchored" data-anchor-id="create-symlinks">Create Symlinks</h4>
+<p>Render a command to symlink to a Python version directory.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">symlink_version</span><span class="op">(</span>version<span class="op">=</span><span class="st">"3.12.11"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/opt/python/default"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Render a command to symlink to a Python binary by name.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">python</span><span class="op">.</span><span class="fu">symlink_binary</span><span class="op">(</span>version<span class="op">=</span><span class="st">"3.12.11"</span><span class="op">,</span> bin_name<span class="op">=</span><span class="st">"python"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/usr/local/bin/python3.12"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="r-installation-and-package-management" class="level3">
+<h3 class="anchored" data-anchor-id="r-installation-and-package-management">R Installation and Package Management</h3>
+<section id="importing-3" class="level4">
+<h4 class="anchored" data-anchor-id="importing-3">Importing</h4>
+<p>To use the R macros, import the <code>r</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"r.j2"</span> <span class="kw">as</span> r -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-r" class="level4">
+<h4 class="anchored" data-anchor-id="install-r">Install R</h4>
+<p>Renders a command to download and runs the Posit <code>r-install</code> script for a given version of R. Requires <code>curl</code> to be installed prior to execution.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">install</span><span class="op">(</span><span class="st">"4.4.3"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To install multiple R versions and wrap them in <code>RUN</code> statements, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span>[<span class="st">"4.4.3"</span><span class="op">,</span> <span class="st">"4.5.0"</span>]<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Usually, this should be called with <code>Dependencies.R</code> to dynamically specify versions based on the image’s <code>dependencyConstraints</code> field:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>R<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="get-version-directory-1" class="level4">
+<h4 class="anchored" data-anchor-id="get-version-directory-1">Get Version Directory</h4>
+<p>Returns the expected installation directory for an R version.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">get_version_directory</span><span class="op">(</span><span class="st">"4.4.3"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-packages-3" class="level4">
+<h4 class="anchored" data-anchor-id="install-packages-3">Install Packages</h4>
+<p>Render commands to install R packages from lists and files to the given R version.</p>
+<p>One of <code>packages</code> or <code>package_list_files</code> must be provided. <code>packages</code> can be a list, a comma-separated string, or a single string. <code>package_list_files</code> can be a list, a comma-separated string, or single string. Positional arguments are accepted for <code>packages</code> and <code>package_list_files</code>, but keyword arguments are recommended for clarity.</p>
+<p>The macro takes a <code>_os</code> argument to specify the target OS. The OS information is used to find a suitable p3m.dev repository URL for binary packages. If no OS is provided or does not appear supported, source packages will be used by default. It is suggested to always pass <code>_os=Image.OS</code> to reduce build times and image size.</p>
+<p>If <code>clean=True</code> and <code>package_list_files</code> is provided, the files will be removed after installation. Clean is <code>True</code> by default.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="sc">{{</span> <span class="va">Path</span><span class="op">.</span>Version <span class="sc">}}</span>/deps/packages.txt /tmp/packages.txt  # Example copy command</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">install_packages</span><span class="op">(</span><span class="st">"4.4.3"</span><span class="op">,</span> packages<span class="op">=</span><span class="st">"ggplot2,dplyr"</span><span class="op">,</span> package_list_files<span class="op">=</span><span class="st">"/tmp/packages.txt"</span><span class="op">,</span> _os<span class="op">=</span><span class="va">Image</span><span class="op">.</span>OS<span class="op">,</span> clean<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To install the same packages to multiple R versions and wrap the commands with a <code>RUN</code> statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">run_install_packages</span><span class="op">(</span>[<span class="st">"4.4.3"</span><span class="op">,</span> <span class="st">"4.5.0"</span>]<span class="op">,</span> packages<span class="op">=</span><span class="st">"ggplot2,dplyr"</span><span class="op">,</span> _os<span class="op">=</span><span class="va">Image</span><span class="op">.</span>OS<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or, to install to all R versions defined in <code>Dependencies.R</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">run_install_packages</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>R<span class="op">,</span> packages<span class="op">=</span><span class="st">"ggplot2,dplyr"</span><span class="op">,</span> _os<span class="op">=</span><span class="va">Image</span><span class="op">.</span>OS<span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="create-symlinks-1" class="level4">
+<h4 class="anchored" data-anchor-id="create-symlinks-1">Create Symlinks</h4>
+<p>Render a command to symlink to an R version directory.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">symlink_version</span><span class="op">(</span>version<span class="op">=</span><span class="st">"4.4.3"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/opt/R/default"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Render a command to symlink to an R binary by name.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">r</span><span class="op">.</span><span class="fu">symlink_binary</span><span class="op">(</span>version<span class="op">=</span><span class="st">"4.4.3"</span><span class="op">,</span> bin_name<span class="op">=</span><span class="st">"R"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/usr/local/bin/R"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="quarto-installation-and-management" class="level3">
+<h3 class="anchored" data-anchor-id="quarto-installation-and-management">Quarto Installation and Management</h3>
+<section id="importing-4" class="level4">
+<h4 class="anchored" data-anchor-id="importing-4">Importing</h4>
+<p>To use the Quarto macros, import the <code>quarto</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"quarto.j2"</span> <span class="kw">as</span> quarto -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-quarto" class="level4">
+<h4 class="anchored" data-anchor-id="install-quarto">Install Quarto</h4>
+<p>Returns the command to download and install a Quarto version. Requires <code>curl</code> to be installed prior to execution.</p>
+<p>The macro takes an optional <code>with_tinytex</code> argument to include the command to install TinyTeX using the installed Quarto binary. Default is <code>False</code>.</p>
+<p>If <code>with_tinytex</code> is <code>True</code>, <code>tinytex_update_path</code> can be set to <code>True</code> to append the <code>--update-path</code> option to the install command. This will add TinyTeX binaries to the system <code>PATH</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">install</span><span class="op">(</span><span class="st">"1.8.24"</span><span class="op">,</span> with_tinytex<span class="op">=</span><span class="kw">True</span><span class="op">,</span> tinytex_update_path<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To install multiple Quarto versions and wrap them in <code>RUN</code> statements, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span>[<span class="st">"1.8.24"</span><span class="op">,</span> <span class="st">"1.9.0"</span>]<span class="op">,</span> with_tinytex<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Usually, this should be called with <code>Dependencies.quarto</code> to dynamically specify versions based on the image’s <code>dependencyConstraints</code> field:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">run_install</span><span class="op">(</span><span class="va">Dependencies</span><span class="op">.</span>quarto<span class="op">,</span> with_tinytex<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="get-version-directory-2" class="level4">
+<h4 class="anchored" data-anchor-id="get-version-directory-2">Get Version Directory</h4>
+<p>Returns the expected directory for an installed Quarto version.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb50"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">get_version_directory</span><span class="op">(</span><span class="st">"1.8.24"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-tinytex" class="level4">
+<h4 class="anchored" data-anchor-id="install-tinytex">Install TinyTeX</h4>
+<p>Returns the command to install TinyTeX using a given Quarto binary.</p>
+<p>This command takes a full path to the Quarto binary, which can be constructed using <code>quarto.get_version_directory()</code>. Workbench manages its own installation of Quarto and thus must specify its own full path to the Quarto binary.</p>
+<p>If <code>update_path</code> is <code>True</code>, the command will have <code>--update-path</code> appended to add TinyTeX binaries to the system <code>PATH</code>. Default is <code>False</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">install_tinytex_command</span><span class="op">(</span><span class="va">quarto</span><span class="op">.</span><span class="fu">get_version_directory</span><span class="op">(</span><span class="st">"1.8.24"</span><span class="op">),</span> update_path<span class="op">=</span><span class="kw">True</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="create-symlinks-2" class="level4">
+<h4 class="anchored" data-anchor-id="create-symlinks-2">Create Symlinks</h4>
+<p>Creates a symlink to a Quarto version directory.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb52"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">symlink_version</span><span class="op">(</span>version<span class="op">=</span><span class="st">"1.8.24"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/opt/quarto/default"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Creates a symlink to a Quarto binary by name.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">quarto</span><span class="op">.</span><span class="fu">symlink_binary</span><span class="op">(</span>version<span class="op">=</span><span class="st">"1.8.24"</span><span class="op">,</span> bin_name<span class="op">=</span><span class="st">"quarto"</span><span class="op">,</span> target<span class="op">=</span><span class="st">"/usr/local/bin/quarto"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="goss-testing" class="level3">
+<h3 class="anchored" data-anchor-id="goss-testing">Goss Testing</h3>
+<section id="importing-5" class="level4">
+<h4 class="anchored" data-anchor-id="importing-5">Importing</h4>
+<p>To use the Goss macros, import the <code>goss</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb54"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"goss.j2"</span> <span class="kw">as</span> goss -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="build-argument-environment-variable" class="level4">
+<h4 class="anchored" data-anchor-id="build-argument-environment-variable">Build Argument Environment Variable</h4>
+<p>Returns a reference to a build argument passed as an environment variable to Goss tests. This is useful for accessing build-time values in Goss test templates.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb55"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">goss</span><span class="op">.</span><span class="fu">build_arg_env_var</span><span class="op">(</span><span class="st">"PYTHON_VERSION"</span><span class="op">)</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This outputs <code>{ .Env.BUILD_ARG_PYTHON_VERSION }</code> which Goss will substitute with the value of the <code>BUILD_ARG_PYTHON_VERSION</code> environment variable at test runtime.</p>
+</section>
+</section>
+<section id="wait-for-it" class="level3">
+<h3 class="anchored" data-anchor-id="wait-for-it">wait-for-it</h3>
+<section id="importing-6" class="level4">
+<h4 class="anchored" data-anchor-id="importing-6">Importing</h4>
+<p>To use the wait-for-it macros, import the <code>wait-for-it</code> module in your Jinja2 template:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb56"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{%</span>- <span class="kw">import</span> <span class="st">"wait-for-it.j2"</span> <span class="kw">as</span> waitforit -<span class="sc">%}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="install-wait-for-it" class="level4">
+<h4 class="anchored" data-anchor-id="install-wait-for-it">Install wait-for-it</h4>
+<p>Returns the command to download and install the <code>wait-for-it</code> script. Requires <code>curl</code> to be installed prior to execution.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb57"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">waitforit</span><span class="op">.</span><span class="fu">install</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To wrap <code>install()</code> in a Docker RUN statement, use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="sc">{{</span> <span class="va">waitforit</span><span class="op">.</span><span class="fu">run_install</span><span class="op">()</span> <span class="sc">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+</section>
+<section id="see-also" class="level2">
+<h2 class="anchored" data-anchor-id="see-also">See Also</h2>
+<ul>
+<li><a href="./configuration.html">Configuration Documentation</a> — <code>bakery.yaml</code> schema reference</li>
+<li><a href="./architecture.html">Architecture Diagrams</a> — Detailed tool behavior and flow diagrams</li>
+<li><a href="https://github.com/posit-dev/images-examples/tree/main/bakery">Bakery Examples</a> — Step-by-step tutorials, including the managed dependencies and matrix images examples</li>
+</ul>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/posit-dev\.github\.io\/images-shared\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+            // target, if specified
+            link.setAttribute("target", "_blank");
+            if (link.getAttribute("rel") === null) {
+              link.setAttribute("rel", "noopener");
+            }
+            // default icon
+            link.classList.add("external");
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./configuration.html" class="pagination-link" aria-label="Configuration">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Configuration</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./architecture.html" class="pagination-link" aria-label="Architecture">
+        <span class="nav-page-text">Architecture</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://posit.co">
+<p><img src="./images/posit-logos-2024_horiz-full-color.svg" alt="Posit" width="65px" class="light-content posit-footer-logo"></p>
+</a>
+  </li>  
+    <li class="nav-item">
+ Copyright © 2000-2026 Posit Software, PBC
+  </li>  
+</ul>
+    </div>   
+    <div class="nav-footer-center">
+<p>Posit Bakery</p>
+</div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/posit-dev/images-shared">
+<p>GitHub</p>
+</a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
