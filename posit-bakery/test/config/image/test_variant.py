@@ -30,7 +30,7 @@ class TestImageVariant:
         assert i.extension == "variant1"
         assert i.tagDisplayName == "variant-1"
         assert len(i.tagPatterns) == 0
-        assert len(i.options) == 1
+        assert len(i.options) == 2
 
     def test_custom_options(self):
         """Test creating an ImageVariant with custom options."""

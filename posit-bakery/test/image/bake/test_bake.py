@@ -150,7 +150,7 @@ class TestBakePlan:
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_from_image_targets_with_cache_registry(self, get_expected_plan, get_config_obj, suite, resource_path):
-        """Test that bake plans generate as expected with a cache registry."""
+        """Test that cache-from is set but cache-to is omitted when not pushing."""
         expected_plan = get_expected_plan("cache_registry", suite)
         config_obj = get_config_obj(suite)
 
@@ -159,6 +159,30 @@ class TestBakePlan:
             target.settings = settings
 
         plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        output = plan.model_dump_json(indent=2, exclude_none=True)
+
+        # Strip cache_to from expected plan — without push, only cache_from should be set
+        import json
+
+        expected_data = json.loads(expected_plan.read_text())
+        for target in expected_data.get("target", {}).values():
+            target.pop("cache_to", None)
+        expected_output = json.dumps(expected_data, indent=2)
+
+        assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
+        assert expected_output == output
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_from_image_targets_with_cache_registry_push(self, get_expected_plan, get_config_obj, suite, resource_path):
+        """Test that cache-to is set when pushing with a cache registry."""
+        expected_plan = get_expected_plan("cache_registry", suite)
+        config_obj = get_config_obj(suite)
+
+        settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        for target in config_obj.targets:
+            target.settings = settings
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets, push=True)
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
@@ -265,9 +289,8 @@ class TestBakePlan:
         patch_bakeplan_write.assert_called_once()
         patch_bakeplan_remove.assert_called_once()
 
-    @pytest.mark.slow
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    @pytest.mark.xdist_group(name="build")
     def test_build(self, suite, get_tmpconfig):
         """Test that the build arguments are constructed correctly."""
         config_obj = get_tmpconfig(suite)

@@ -28,7 +28,7 @@ class BakeryDGossError(BakeryToolRuntimeError):
         self.parse_error = parse_error
 
     def __str__(self) -> str:
-        s = f"{self.message}'\n"
+        s = f"{self.message}\n"
         s += f"  - Exit code: {self.exit_code}\n"
         s += f"  - Command output: \n{textwrap.indent(self.dump_stdout(), '      ')}\n"
         s += f"  - Command executed: {' '.join(self.cmd)}\n"

@@ -718,6 +718,45 @@ class TestBakeryConfig:
         assert (context / "test-image" / "2.0" / "test").is_dir()
         assert (context / "test-image" / "2.0" / "test" / "goss.yaml").is_file()
 
+    def test_create_version_no_mark_latest(self, get_tmpcontext):
+        """Test that --no-mark-latest preserves the existing latest flag."""
+        context = get_tmpcontext("basic")
+        config = BakeryConfig.from_context(context)
+        image = config.model.images[0]
+        assert image.versions[0].latest is True
+
+        config.create_version("test-image", "2.0.0", subpath="2.0", latest=False)
+
+        # The old version should still be latest in both the model and YAML.
+        assert image.get_version("1.0.0").latest is True
+        assert image.get_version("2.0.0").latest is False
+
+        yaml_text = (context / "bakery.yaml").read_text()
+        expected_old = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 1.0.0
+                latest: true
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_old in yaml_text
+
+        # The new version should NOT have latest in the YAML.
+        expected_new = textwrap.indent(
+            textwrap.dedent("""\
+              - name: 2.0.0
+                subpath: '2.0'
+                os:
+                  - name: Ubuntu 22.04
+                    primary: true
+        """),
+            VERSION_INDENT,
+        )
+        assert expected_new in yaml_text
+
     def test_patch_version(self, get_tmpcontext):
         """Test patching an existing version in the BakeryConfig."""
         context = get_tmpcontext("basic")

@@ -14,8 +14,6 @@ from posit_bakery.util import auto_path
 log = logging.getLogger(__name__)
 
 app = typer.Typer(no_args_is_help=True)
-update_version = typer.Typer(no_args_is_help=True)
-app.add_typer(update_version, name="version", help="Update image versions managed by Posit Bakery")
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -90,22 +88,34 @@ def files(
     stderr_console.print(f"✅ Files updated successfully", style="success")
 
 
-@update_version.command()
+@app.command()
 @with_verbosity_flags
-def patch(
+def version(
     image_name: Annotated[
         str,
         typer.Argument(
             show_default=False,
-            help="The image directory to render. This should be the path above the template directory.",
+            help="The image name to update.",
         ),
     ],
-    old_version: Annotated[str, typer.Argument(show_default=False, help="The existing image version to be patched.")],
     new_version: Annotated[
-        str, typer.Argument(show_default=False, help="The new image version to replace the old version with.")
+        str,
+        typer.Argument(
+            show_default=False,
+            help="The new image version name.",
+        ),
     ],
+    target_version: Annotated[
+        Optional[str],
+        typer.Option(
+            "--target-version",
+            show_default=False,
+            help="The existing version name to patch. If not specified, the latest version is used.",
+        ),
+    ] = None,
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(help="The root path to use. Defaults to the current working directory where invoked."),
     ] = auto_path(),
     value: Annotated[
         list[str],
@@ -116,16 +126,20 @@ def patch(
         typer.Option(help="Remove all existing version files before rendering from templates."),
     ] = True,
 ) -> None:
-    """Patches an existing image version with the given new image version.
+    """Update an existing image version with a new version number.
 
     \b
-    This command will replace the existing old_version in the bakery.yaml file with the new_version, preserving all
-    existing configuration details for the version such as dependencies, variants, and the latest flag. Existing files
-    for the old_version will be rerendered to reflect the new_version.
+    Patches the target version with the new version name. If --target-version is not
+    specified, the version marked as latest is used. All existing configuration
+    (dependencies, OS, latest flag) is preserved.
 
     \b
-    If clean is true, the existing version files for old_version will be removed prior to rendering the new_version
-    files.
+    Examples:
+      bakery update version connect 2026.03.1
+      # Patches the latest version to '2026.03.1'
+
+      bakery update version connect 2026.03.1 --target-version 2026.03.0
+      # Explicitly patches '2026.03.0' to '2026.03.1'
     """
     value_map, errors = __make_value_map(value)
     if errors:
@@ -136,14 +150,32 @@ def patch(
 
     try:
         c = BakeryConfig.from_context(context)
-        c.patch_version(image_name, old_version, new_version, values=value_map, clean=clean)
+
+        image = c.model.get_image(image_name)
+        if image is None:
+            raise ValueError(f"Image '{image_name}' does not exist in the config.")
+
+        if target_version:
+            old_version_obj = image.get_version(target_version)
+            if old_version_obj is None:
+                raise ValueError(f"Version '{target_version}' does not exist for image '{image_name}'.")
+        else:
+            old_version_obj = next((v for v in image.versions if v.latest), None)
+            if old_version_obj is None:
+                raise ValueError(
+                    f"No latest version found for image '{image_name}'. "
+                    f"Use --target-version to specify the version to patch."
+                )
+
+        old_version_name = old_version_obj.name
+        log.info(f"Target version: {old_version_name}")
+
+        c.patch_version(image_name, old_version_name, new_version, values=value_map, clean=clean)
     except Exception as e:
         stderr_console.print(e, style="error")
-        stderr_console.print(
-            f"❌ Failed to patch version '{image_name}/{old_version}' to '{image_name}/{new_version}'", style="error"
-        )
+        stderr_console.print(f"❌ Failed to update version for '{image_name}' to '{new_version}'", style="error")
         raise typer.Exit(code=1)
 
     stderr_console.print(
-        f"✅ Successfully patched version '{image_name}/{old_version}' to '{image_name}/{new_version}'", style="success"
+        f"✅ Successfully updated '{image_name}' from '{old_version_name}' to '{new_version}'", style="success"
     )

@@ -1,19 +1,34 @@
 @functional
-Feature: update version patch
+Feature: update version
 
-    Scenario: Updating a version patch
-        Given I call bakery update version patch
-        * in a temp basic context
+    Scenario: Updating the latest version by default
+        Given I call bakery update version
+        * in a temp calver context
         * with the arguments:
             | test-image |
-            | 1.0.0 |
-            | 1.0.1 |
+            | 2026.02.1 |
         When I execute the command
         Then The command succeeds
         * the image "test-image" exists
-        * the version "1.0.1" exists
-        * the version "1.0.1" does not exist
-        * the default rendered templates exist
+        * the version "2026.02.1" exists in the "2026.02" subpath
+        * the default rendered templates exist in the "2026.02" subpath
         * the stderr output includes:
-            | Successfully patched version |
-            | 'test-image/1.0.0' to 'test-image/1.0.1' |
+            | Successfully updated |
+            | '2026.02.0' to '2026.02.1' |
+
+    Scenario: Updating a version with explicit target
+        Given I call bakery update version
+        * in a temp calver context
+        * with the arguments:
+            | test-image |
+            | 2026.02.1 |
+            | --target-version |
+            | 2026.02.0 |
+        When I execute the command
+        Then The command succeeds
+        * the image "test-image" exists
+        * the version "2026.02.1" exists in the "2026.02" subpath
+        * the default rendered templates exist in the "2026.02" subpath
+        * the stderr output includes:
+            | Successfully updated |
+            | '2026.02.0' to '2026.02.1' |

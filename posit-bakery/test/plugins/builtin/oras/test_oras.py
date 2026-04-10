@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings
-from posit_bakery.image.oras import (
+from posit_bakery.plugins.builtin.oras.oras import (
     find_oras_bin,
     get_repository_from_ref,
     OrasCopy,
@@ -392,7 +392,7 @@ class TestOrasMergeWorkflowFromImageTarget:
 
     def test_from_image_target(self, mock_image_target):
         """Test creating workflow from ImageTarget."""
-        with patch("posit_bakery.image.oras.oras.find_oras_bin", return_value="oras"):
+        with patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"):
             workflow = OrasMergeWorkflow.from_image_target(mock_image_target)
 
         assert workflow.oras_bin == "oras"
@@ -598,7 +598,7 @@ class TestOrasMergeWorkflowIntegration:
             "localhost:5000/test/tmp@sha256:digest",
         ]
 
-        with patch("posit_bakery.image.oras.oras.find_oras_bin", return_value="oras"):
+        with patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"):
             workflow = OrasMergeWorkflow.from_image_target(mock_target, plain_http=True)
 
         assert workflow.plain_http is True
