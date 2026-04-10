@@ -70,7 +70,7 @@ jobs:
         uses: ./setup-hadolint
 
       - name: Setup ORAS CLI
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@v2
 
       - name: Add tools/ to path
         run: echo "${GITHUB_WORKSPACE}/tools" >> $GITHUB_PATH
