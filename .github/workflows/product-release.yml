@@ -19,6 +19,12 @@ on:
         description: "GitHub App private key for creating tokens"
         required: true
 
+# Security policy: No ${{ }} expressions in `run:` blocks.
+# All expression values are assigned to `env:` and referenced as
+# shell variables. This prevents script injection from runtime values
+# (matrix outputs, secrets) and keeps the rule enforceable by zizmor
+# without per-expression exceptions.
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,8 +48,10 @@ jobs:
 
       - name: Parse version
         id: parse
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="$INPUT_VERSION"
           DISPLAY_VERSION="${VERSION%%[+-]*}"
           EDITION="${DISPLAY_VERSION%.*}"
 
@@ -133,6 +141,8 @@ jobs:
           IMAGES: ${{ inputs.images }}
           VERSION: ${{ steps.parse.outputs.version }}
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
+          LATEST_CHANGED: ${{ steps.release.outputs.latest_changed }}
+          OLD_DISPLAY: ${{ steps.release.outputs.old_display_version }}
         run: |
           BRANCH="release/${DISPLAY_VERSION}"
           git fetch origin "$BRANCH" 2>/dev/null || true
@@ -145,8 +155,8 @@ jobs:
 
           BODY="Updates images to version \`${VERSION}\`."
           BODY+=$'\n\n'"**Images:** $(echo $IMAGES | tr ' ' ', ')"
-          if [ "${{ steps.release.outputs.latest_changed }}" = "true" ]; then
-            BODY+=$'\n'"**Latest changed:** \`${{ steps.release.outputs.old_display_version }}\` → \`${DISPLAY_VERSION}\`"
+          if [ "$LATEST_CHANGED" = "true" ]; then
+            BODY+=$'\n'"**Latest changed:** \`${OLD_DISPLAY}\` → \`${DISPLAY_VERSION}\`"
           fi
 
           gh pr create \

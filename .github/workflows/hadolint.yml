@@ -1,0 +1,56 @@
+name: hadolint.yml
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "The version of the Posit Bakery tool to install"
+        default: "main"
+        required: false
+        type: string
+      hadolint-version:
+        description: "The hadolint release version to install (e.g., v2.12.0)"
+        default: "latest"
+        required: false
+        type: string
+      context:
+        description: "The Bakery context to use (directory)"
+        default: "."
+        required: false
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+# Security policy: No ${{ }} expressions in `run:` blocks.
+# All expression values are assigned to `env:` and referenced as
+# shell variables. This prevents script injection from runtime values
+# (matrix outputs, secrets) and keeps the rule enforceable by zizmor
+# without per-expression exceptions.
+
+jobs:
+  hadolint:
+    name: Hadolint
+    runs-on: "ubuntu-latest"
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Setup hadolint
+        uses: "posit-dev/images-shared/setup-hadolint@main"
+        with:
+          version: ${{ inputs.hadolint-version }}
+          base_path: ${{ inputs.context }}
+
+      - name: Run hadolint
+        env:
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          bakery hadolint run --matrix-versions include --dev-versions include \
+            --context "$CONTEXT"
