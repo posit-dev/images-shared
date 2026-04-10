@@ -201,4 +201,4 @@ out/
 
 # Claude superpowers
 .superpowers/
-docs/superpowers/
+**/docs/superpowers/

@@ -1,0 +1,44 @@
+project:
+  title: "Posit Bakery"
+  type: posit-docs
+  render:
+    - "*.qmd"
+
+website:
+  title: "Posit Bakery"
+  page-navigation: true
+  back-to-top-navigation: true
+  bread-crumbs: true
+  navbar:
+    left:
+    - text: "Home"
+      href: index.qmd
+    - text: "Examples"
+      href: https://github.com/posit-dev/images-examples/
+  sidebar:
+    collapse-level: 1
+    contents:
+      - text: "Getting Started"
+        href: "index.qmd"
+      - text: "Configuration"
+        href: "configuration.qmd"
+      - text: "Templating"
+        href: "templating.qmd"
+      - text: "Architecture"
+        href: "architecture.qmd"
+      - text: "Cross-Repository Workflows"
+        href: "cross-repo-workflows.qmd"
+
+  page-footer:
+    left:
+      - text: <img src="/images/posit-logos-2024_horiz-full-color.svg" alt="Posit" width="65px" class="light-content posit-footer-logo">
+        href: "https://posit.co"
+      - Copyright &copy; 2000-2026 Posit Software, PBC
+    center: "Posit Bakery"
+    right:
+      - text: "GitHub"
+        href: "https://github.com/posit-dev/images-shared"
+
+highlight-style: github
+syntax-definitions:
+  - jinja2.xml

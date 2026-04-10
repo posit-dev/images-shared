@@ -4,7 +4,7 @@ from typing import List
 from posit_bakery.error import BakeryToolRuntimeError
 
 
-class BakeryDGossError(BakeryToolRuntimeError):
+class BakeryHadolintError(BakeryToolRuntimeError):
     def __init__(
         self,
         message: str = None,

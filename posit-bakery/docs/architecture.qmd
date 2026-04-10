@@ -1,10 +1,26 @@
-# Bakery Architecture
+---
+title: "Architecture"
+filters:
+    - mermaid-lightbox
+---
+
+```{=html}
+<style>
+.cell.mermaid-lightbox-target a.glightbox {
+  display: block;
+  width: 100%;
+}
+</style>
+```
+
+This page shows how Bakery's commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.
 
 ## Process Diagrams
 
 ### Legend
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Legend for Diagrams"
 flowchart TB
 
     subgraph Legend
@@ -26,8 +42,8 @@ flowchart TB
         bakery -- "call" --> external -.-> reg
     end
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -39,7 +55,8 @@ flowchart TB
 
 ### Workflow
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Bakery Workflow Overview"
 flowchart TD
 
     create[["bakery create"]]
@@ -60,8 +77,8 @@ flowchart TD
     image -.-> reg
     results -.-> sec
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -73,7 +90,8 @@ flowchart TD
 
 ### Create
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Bakery Project Creation Workflow"
 flowchart TD
 
     subgraph "bakery"
@@ -114,8 +132,8 @@ flowchart TD
         config -.-> createVersion
     end
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -124,7 +142,8 @@ flowchart TD
 
 ### Build
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Bakery Build Workflow"
 flowchart TD
 
     subgraph "Project"
@@ -143,8 +162,8 @@ flowchart TD
     plan & containerfile -.-> bake
     build --> bake -.-> image
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -154,7 +173,8 @@ flowchart TD
 
 ### Run Tests
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Bakery Testing Workflow"
 flowchart TD
 
     subgraph "Container Artifacts"
@@ -178,8 +198,8 @@ flowchart TD
     runDgoss --> dgoss
     dgoss -.-> results
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -193,7 +213,8 @@ flowchart TD
 
 ### Run Security Scans
 
-```mermaid
+```{mermaid}
+%%| fig-cap: "Bakery Scanning Workflow"
 flowchart TD
 
     image[/"Container Image(s)"/]
@@ -214,8 +235,8 @@ flowchart TD
     runOpenscap --> openscap
     image -.-> openscap -.-> results
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
@@ -229,7 +250,10 @@ flowchart TD
 
 ### Publish
 
-```mermaid
+Image signing and coordinated publishing to registries and reporting platforms are planned. Currently, images are pushed during `bakery build --push` or through CI workflows.
+
+```{mermaid}
+%%| fig-cap: "Bakery Publishing Workflow"
 flowchart TD
 
     image[/"Container Image(s)"/]
@@ -244,8 +268,39 @@ flowchart TD
     image -.-> push -.-> reg
     results -.-> push -.-> sec
 
-    classDef tooling fill:#7494B1
-    classDef external fill:grey
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    %% Mark what we are working on and is in flight %%
+    class results,sign todo
+```
+For multiplatform builds, we prefer to build and test images on their native platforms rather than emulating all builds on a single platform. The resulting single platform images are pushed to a temporary registry, pulled in a dependent stage, and merged to an OCI index using [ORAS](https://oras.land/) before pushing to the final registry.
+
+```{mermaid}
+%%| fig-cap: "Bakery Multiplatform Publishing Workflow"
+flowchart TD
+
+    amd64_image[/"Container Image (AMD64)"/]
+    arm64_image[/"Container Image (ARM64)"/]
+    results[/"Test & Scan Results"/]
+
+    sign["Sign Image(s)"]
+    push_temp["Push to Temporary Registry"]
+    merge["Merge to OCI Index"]
+    push["Push Artifacts to Final Registry & Reporting Platform"]
+    amd64_image -.-> push_temp
+    arm64_image -.-> push_temp
+    push_temp -.-> merge -.-> sign --> push
+
+    reg[("Image Registries")]
+    sec[("Reporting Platform(s)")]
+    push -.-> reg
+    results -.-> push -.-> sec
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
 
