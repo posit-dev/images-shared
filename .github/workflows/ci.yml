@@ -29,10 +29,12 @@ jobs:
       - bakery
       - bakery-native
       - release
+      - zizmor
 
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # release/v1
         with:
+          allowed-skips: zizmor
           jobs: ${{ toJSON(needs) }}
 
   test:
@@ -141,6 +143,18 @@ jobs:
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
+
+  zizmor:
+    name: Zizmor
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8  # v0.5.2
 
   with-macros-clean-caches:
     name: Clean Caches (with-macros suite)

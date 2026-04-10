@@ -1,0 +1,9 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # First-party composite actions are kept at branch refs
+        # (e.g. @main) intentionally; SHA-pinning them would
+        # defeat the purpose of reusable shared actions.
+        "posit-dev/images-shared/*": ref-pin
+        "*": hash-pin
