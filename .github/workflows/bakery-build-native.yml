@@ -122,7 +122,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
     needs: matrix
     strategy:
       fail-fast: false
@@ -260,7 +259,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
     needs:
       - matrix
       - build-test
