@@ -25,18 +25,34 @@ runs:
         if [ -z "$arch" ]; then
           arch=$(uname -m)
         fi
-        
+
         # Map architecture names to goss naming conventions
         if [ "$arch" = "x86_64" ]; then
             arch="amd64"
         elif [ "$arch" = "aarch64" ]; then
             arch="arm64"
         fi
-        
-        curl -fsSL https://github.com/goss-org/goss/releases/${{ inputs.version }}/download/goss-linux-${arch} -o tools/goss
+
+        release_url="https://github.com/goss-org/goss/releases/${{ inputs.version }}/download"
+        binary="goss-linux-${arch}"
+
+        curl -fsSL "${release_url}/${binary}" -o "tools/${binary}"
+
+        curl -fsSL "${release_url}/${binary}.sha256" -o "tools/${binary}.sha256"
+        (cd tools && sha256sum -c "${binary}.sha256")
+        rm -f "tools/${binary}.sha256"
+
+        mv "tools/${binary}" tools/goss
         chmod +rx tools/goss
     - name: Install dgoss
       shell: bash
       run: |
-        curl -fsSL https://github.com/goss-org/goss/releases/${{ inputs.version }}/download/dgoss -o tools/dgoss
+        release_url="https://github.com/goss-org/goss/releases/${{ inputs.version }}/download"
+
+        curl -fsSL "${release_url}/dgoss" -o tools/dgoss
+
+        curl -fsSL "${release_url}/dgoss.sha256" -o tools/dgoss.sha256
+        (cd tools && sha256sum -c dgoss.sha256)
+        rm -f tools/dgoss.sha256
+
         chmod +rx tools/dgoss
