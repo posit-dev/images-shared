@@ -66,6 +66,12 @@ defaults:
   run:
     shell: bash
 
+# Security policy: No ${{ }} expressions in `run:` blocks.
+# All expression values are assigned to `env:` and referenced as
+# shell variables. This prevents script injection from runtime values
+# (matrix outputs, secrets) and keeps the rule enforceable by zizmor
+# without per-expression exceptions.
+
 jobs:
   matrix:
     name: Image Matrix
@@ -84,8 +90,12 @@ jobs:
 
       - name: Images
         id: images
+        env:
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
         run: |
-          echo "matrix=$(bakery ci matrix --quiet --dev-versions ${{ inputs.dev-versions }} --matrix-versions ${{ inputs.matrix-versions }} --context ${{ inputs.context }} | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT" | jq --compact-output .)" >> $GITHUB_OUTPUT
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
@@ -115,18 +125,12 @@ jobs:
       # this step sets an output that we can reference later.
       - name: Filter Steps
         id: filter-steps
+        env:
+          HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
+          HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
         run: |
-          if [ -n "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" ] ; then
-            echo "docker-hub=true" >> $GITHUB_OUTPUT
-          else
-            echo "docker-hub=false" >> $GITHUB_OUTPUT
-          fi
-
-          if [ -n "${{ secrets.AWS_ROLE }}" ] ; then
-            echo "ecr=true" >> $GITHUB_OUTPUT
-          else
-            echo "ecr=false" >> $GITHUB_OUTPUT
-          fi
+          echo "docker-hub=$HAS_DOCKER_HUB" >> $GITHUB_OUTPUT
+          echo "ecr=$HAS_AWS_ROLE" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -160,26 +164,39 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
+          RETRY: ${{ inputs.retry }}
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          CONTEXT: ${{ inputs.context }}
         run: |
           bakery build --load --pull \
-            --retry ${{ inputs.retry }} \
-            --image-name '^${{ matrix.img.image }}$' \
-            --image-version ${{ matrix.img.version }} \
-            --dev-versions ${{ inputs.dev-versions }} \
-            --matrix-versions ${{ inputs.matrix-versions }} \
-            --cache-registry "ghcr.io/${{ github.repository_owner }}" \
-            --context ${{ inputs.context }}
+            --retry "$RETRY" \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --cache-registry "$REGISTRY" \
+            --context "$CONTEXT"
 
       - name: Test
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
         run: |
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery run dgoss \
-            --image-name '^${{ matrix.img.image }}$' \
-            --image-version ${{ matrix.img.version }} \
-            --dev-versions ${{ inputs.dev-versions }} \
-            --matrix-versions ${{ inputs.matrix-versions }} \
-            --context ${{ inputs.context }}
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$CONTEXT"
 
       - name: Push
         # Since this is a reusable workflow, we need to be very explicit about
@@ -188,14 +205,20 @@ jobs:
         if: ${{ inputs.push }}
         env:
           GIT_SHA: ${{ github.sha }}
+          RETRY: ${{ inputs.retry }}
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
         run: |
           bakery build --push --pull \
-            --retry ${{ inputs.retry }} \
-            --image-name '^${{ matrix.img.image }}$' \
-            --image-version ${{ matrix.img.version }} \
-            --dev-versions ${{ inputs.dev-versions }} \
-            --matrix-versions ${{ inputs.matrix-versions }} \
-            --context ${{ inputs.context }}
+            --retry "$RETRY" \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$CONTEXT"
 
   readme:
     name: Push READMEs
@@ -217,8 +240,11 @@ jobs:
         env:
           DOCKER_HUB_README_USERNAME: ${{ secrets.DOCKER_HUB_README_USERNAME }}
           DOCKER_HUB_README_PASSWORD: ${{ secrets.DOCKER_HUB_README_PASSWORD }}
+          CONTEXT: ${{ inputs.context }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
         run: |
           bakery ci readme \
-            --context ${{ inputs.context }} \
-            --dev-versions ${{ inputs.dev-versions }} \
-            --matrix-versions ${{ inputs.matrix-versions }}
+            --context "$CONTEXT" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS"
