@@ -28,11 +28,13 @@ jobs:
       - test
       - bakery
       - bakery-native
+      - bakery-pr
       - release
 
     steps:
       - uses: re-actors/alls-green@release/v1
         with:
+          allowed-skips: bakery-pr
           jobs: ${{ toJSON(needs) }}
 
   test:
@@ -136,6 +138,19 @@ jobs:
       packages: write
 
     uses: "./.github/workflows/bakery-build-native.yml"
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      context: "./posit-bakery/test/resources/multiplatform/"
+      dev-versions: include
+
+  bakery-pr:
+    name: Bakery PR Build
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    uses: "./.github/workflows/bakery-build-pr.yml"
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
