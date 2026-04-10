@@ -28,13 +28,11 @@ jobs:
       - test
       - bakery
       - bakery-native
-      - bakery-pr
       - release
 
     steps:
       - uses: re-actors/alls-green@release/v1
         with:
-          allowed-skips: bakery-pr
           jobs: ${{ toJSON(needs) }}
 
   test:
@@ -143,20 +141,6 @@ jobs:
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
-  bakery-pr:
-    name: Bakery PR Build
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-
-    uses: "./.github/workflows/bakery-build-pr.yml"
-    with:
-      # Don't pass version — default "main" is correct here. The head_ref
-      # pattern used by other jobs breaks on fork PRs because the fork's
-      # branch doesn't exist in posit-dev/images-shared.
-      context: "./posit-bakery/test/resources/multiplatform/"
-      dev-versions: include
 
   with-macros-clean-caches:
     name: Clean Caches (with-macros suite)
