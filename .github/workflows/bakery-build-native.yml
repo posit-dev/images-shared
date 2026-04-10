@@ -183,7 +183,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@a89a83ec143615402a01f672b6e172b7b1875000  # v6
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37  # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
@@ -248,7 +248,7 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
       - name: Upload Metadata
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata"
           path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
@@ -314,7 +314,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@a89a83ec143615402a01f672b6e172b7b1875000  # v6
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37  # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
