@@ -160,7 +160,6 @@ jobs:
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
-        # FIXME: Currently pushes to ghcr.io for caching. Needs to be conditional
         run: |
           bakery build --load --pull \
             --retry ${{ inputs.retry }} \
