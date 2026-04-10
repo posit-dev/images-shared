@@ -110,7 +110,10 @@ jobs:
       - name: Publish results
         # Dependabot and fork PRs get a restricted GITHUB_TOKEN without
         # checks:write. Skip rather than switch to pull_request_target.
-        if: always() && github.actor != 'dependabot[bot]'
+        if: >-
+          always()
+          && github.actor != 'dependabot[bot]'
+          && github.event.pull_request.head.repo.fork != true
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
