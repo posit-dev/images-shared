@@ -91,7 +91,7 @@ class WizCLICommand(BaseModel):
         )
 
     @model_validator(mode="after")
-    def validate(self) -> Self:
+    def check_wizcli_bin(self) -> Self:
         if not self.wizcli_bin:
             raise ValueError(
                 "wizcli binary path must be specified with the `WIZCLI_PATH` environment variable if it cannot be "
