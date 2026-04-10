@@ -152,7 +152,9 @@ jobs:
 
     uses: "./.github/workflows/bakery-build-pr.yml"
     with:
-      version: ${{ github.head_ref || github.ref_name }}
+      # Don't pass version — default "main" is correct here. The head_ref
+      # pattern used by other jobs breaks on fork PRs because the fork's
+      # branch doesn't exist in posit-dev/images-shared.
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
