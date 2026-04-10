@@ -20,7 +20,7 @@ runs:
   steps:
     - name: Make tools directory
       shell: bash
-      run: mkdir -p "${{ inputs.base_path }}/tools"
+      run: mkdir -p tools
     - name: Install hadolint
       shell: bash
       run: |
@@ -37,5 +37,12 @@ runs:
             arch="arm64"
         fi
 
-        curl -fsSL https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download/hadolint-linux-${arch} -o ${{ inputs.base_path }}/tools/hadolint
-        chmod +rx ${{ inputs.base_path }}/tools/hadolint
+        release_url="https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download"
+        binary="hadolint-linux-${arch}"
+        dest="${{ inputs.base_path }}/tools"
+
+        curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}"
+        curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256"
+        (cd "${dest}" && sha256sum -c "${binary}.sha256")
+        mv "${dest}/${binary}" "${dest}/hadolint"
+        chmod +rx "${dest}/hadolint"
