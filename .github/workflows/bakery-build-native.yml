@@ -81,10 +81,13 @@ defaults:
 # (matrix outputs, secrets) and keeps the rule enforceable by zizmor
 # without per-expression exceptions.
 
+permissions: {}
+
 jobs:
   matrix:
     name: Image Matrix
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
       versions-matrix: ${{ steps.images-by-version.outputs.versions_matrix }}
@@ -117,6 +120,9 @@ jobs:
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
+    permissions:
+      contents: read
+      packages: write
     needs: matrix
     strategy:
       fail-fast: false
@@ -251,6 +257,9 @@ jobs:
 
   merge:
     name: "Merge/Push ${{ matrix.img.image }}:${{ matrix.img.version }}"
+    permissions:
+      contents: read
+      packages: write
     needs:
       - matrix
       - build-test
@@ -348,6 +357,8 @@ jobs:
 
   readme:
     name: Push READMEs
+    permissions:
+      contents: read
     if: ${{ inputs.push }}
     needs:
       - merge

@@ -28,10 +28,14 @@ defaults:
 # (matrix outputs, secrets) and keeps the rule enforceable by zizmor
 # without per-expression exceptions.
 
+permissions: {}
+
 jobs:
   hadolint:
     name: Hadolint
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read
     steps:
 
       - name: Checkout

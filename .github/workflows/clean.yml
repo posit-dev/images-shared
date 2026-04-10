@@ -72,10 +72,15 @@ defaults:
 # (matrix outputs, secrets) and keeps the rule enforceable by zizmor
 # without per-expression exceptions.
 
+permissions: {}
+
 jobs:
   clean-caches:
     name: Clean Caches
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read
+      packages: write
     if: ${{ inputs.clean-caches == true }}
     steps:
 
@@ -119,6 +124,9 @@ jobs:
   clean-temp:
     name: Clean Temporary Images
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read
+      packages: write
     if: ${{ inputs.clean-temporary-images == true }}
     steps:
 
