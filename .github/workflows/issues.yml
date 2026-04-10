@@ -4,8 +4,11 @@ on:
     types:
       - opened
 
+permissions: {}
+
 jobs:
   issue:
+    permissions: {}
     # only run in posit-dev/images-shared.
     if: github.repository == 'posit-dev/images-shared'
     runs-on: ubuntu-latest

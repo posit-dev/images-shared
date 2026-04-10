@@ -12,10 +12,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions: {}
 
 jobs:
   ci:
     name: CI
+    permissions: {}
     # This should be the only action checked as required in the repo settings.
     #
     # This is a meta-job, here to express the conditions we require
@@ -37,6 +39,8 @@ jobs:
 
   test:
     name: Test
+    permissions:
+      contents: read
     runs-on: ubuntu-latest-8x
     steps:
       - name: Checkout
@@ -163,6 +167,8 @@ jobs:
 
   release:
     name: Release/Snapshot
+    permissions:
+      contents: write
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request' || github.event_name == 'merge_group')
     needs:
       - test
