@@ -12,10 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
-
 jobs:
   ci:
     name: CI
+    permissions: {}
     # This should be the only action checked as required in the repo settings.
     #
     # This is a meta-job, here to express the conditions we require
@@ -37,6 +37,10 @@ jobs:
 
   test:
     name: Test
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     runs-on: ubuntu-latest-8x
     steps:
       - name: Checkout
@@ -103,7 +107,12 @@ jobs:
           uv build
 
       - name: Publish results
-        if: always()
+        # Dependabot and fork PRs get a restricted GITHUB_TOKEN without
+        # checks:write. Skip rather than switch to pull_request_target.
+        if: >-
+          always()
+          && github.actor != 'dependabot[bot]'
+          && github.event.pull_request.head.repo.fork != true
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./posit-bakery/results.xml
@@ -169,6 +178,8 @@ jobs:
 
   release:
     name: Release/Snapshot
+    permissions:
+      contents: write
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request' || github.event_name == 'merge_group')
     needs:
       - test
@@ -211,10 +222,11 @@ jobs:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          gh release create ${{ github.ref_name }} \
+          gh release create "$REF_NAME" \
             --draft \
             --generate-notes \
             --latest
-          gh release upload ${{ github.ref_name }} \
+          gh release upload "$REF_NAME" \
             ./posit-bakery/dist/*

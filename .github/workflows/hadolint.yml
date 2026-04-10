@@ -22,10 +22,18 @@ defaults:
   run:
     shell: bash
 
+# Security policy: No ${{ }} expressions in `run:` blocks.
+# All expression values are assigned to `env:` and referenced as
+# shell variables. This prevents script injection from runtime values
+# (matrix outputs, secrets) and keeps the rule enforceable by zizmor
+# without per-expression exceptions.
+
 jobs:
   hadolint:
     name: Hadolint
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read
     steps:
 
       - name: Checkout
@@ -43,6 +51,8 @@ jobs:
           base_path: ${{ inputs.context }}
 
       - name: Run hadolint
+        env:
+          CONTEXT: ${{ inputs.context }}
         run: |
           bakery hadolint run --matrix-versions include --dev-versions include \
-            --context ${{ inputs.context }}
+            --context "$CONTEXT"
