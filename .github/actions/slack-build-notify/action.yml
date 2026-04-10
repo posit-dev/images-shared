@@ -139,7 +139,7 @@ runs:
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: `:red_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build failed` +
+                    text: `:x: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build failed` +
                       (failedJobs.length > 0 ? ` (${failedJobs.length} job${failedJobs.length !== 1 ? 's' : ''})` : '')
                   }
                 },
@@ -191,7 +191,7 @@ runs:
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: `:large_green_circle: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build recovered`
+                    text: `:white_check_mark: *<https://github.com/${repo}|${repo}>* / *${workflowName}* build recovered`
                   }
                 },
                 {
