@@ -69,6 +69,9 @@ jobs:
       - name: Setup hadolint
         uses: ./setup-hadolint
 
+      - name: Setup wizcli
+        uses: ./setup-wizcli
+
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@v1
 

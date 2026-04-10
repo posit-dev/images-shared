@@ -5,6 +5,7 @@ from _pytest.mark import ParameterSet
 from pydantic import ValidationError
 
 from posit_bakery.config import ImageVariant, Image
+from posit_bakery.config.tools.registry import get_tool_options_classes
 from posit_bakery.plugins.builtin.dgoss.options import GossOptions
 
 pytestmark = [
@@ -30,7 +31,7 @@ class TestImageVariant:
         assert i.extension == "variant1"
         assert i.tagDisplayName == "variant-1"
         assert len(i.tagPatterns) == 0
-        assert len(i.options) == 2
+        assert len(i.options) == len(get_tool_options_classes())
 
     def test_custom_options(self):
         """Test creating an ImageVariant with custom options."""
