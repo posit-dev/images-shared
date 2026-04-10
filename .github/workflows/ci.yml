@@ -32,7 +32,7 @@ jobs:
       - zizmor
 
     steps:
-      - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # release/v1
+      - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # v1.2.2
         with:
           allowed-skips: zizmor
           jobs: ${{ toJSON(needs) }}
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest-8x
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -55,7 +55,7 @@ jobs:
         uses: ./setup-goss
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d  # v5
+        uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d  # v5.0.0
         with:
           daemon-config: |
             {
@@ -65,24 +65,24 @@ jobs:
             }
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4.0.0
         with:
           platforms: linux/amd64,linux/arm64
 
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
 
       - name: Setup hadolint
         uses: ./setup-hadolint
 
       - name: Setup ORAS CLI
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2
+        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
 
       - name: Add tools/ to path
         run: echo "${GITHUB_WORKSPACE}/tools" >> $GITHUB_PATH
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           python-version-file: "posit-bakery/pyproject.toml"
 
@@ -204,13 +204,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           python-version-file: "posit-bakery/pyproject.toml"
 
@@ -226,7 +226,7 @@ jobs:
 
       - name: Upload snapshot artifacts
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: bakery-snapshot-pr${{ github.event.pull_request.number }}
           path: ./posit-bakery/dist
