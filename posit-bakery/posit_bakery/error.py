@@ -142,7 +142,7 @@ class BakeryToolRuntimeError(BakeryToolError):
             return "\n".join(self.stderr.splitlines()[:lines])
 
     def __str__(self) -> str:
-        s = f"{self.message}'\n"
+        s = f"{self.message}\n"
         s += f"  - Exit code: {self.exit_code}\n"
         s += f"  - Command executed: {' '.join(self.cmd)}\n"
         if self.metadata:
