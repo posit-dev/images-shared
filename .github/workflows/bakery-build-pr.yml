@@ -52,8 +52,6 @@ on:
         type: string
     # NO secrets section — only inherited GITHUB_TOKEN
 
-permissions: {}
-
 defaults:
   run:
     shell: bash
