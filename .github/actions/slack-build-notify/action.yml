@@ -17,7 +17,7 @@ runs:
   steps:
     - name: Notify Slack on state transition
       if: inputs.slack-webhook-url != '' && github.repository_owner == 'posit-dev'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
         CURRENT_RESULT: ${{ inputs.result }}
