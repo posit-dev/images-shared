@@ -72,8 +72,6 @@ defaults:
 # (matrix outputs, secrets) and keeps the rule enforceable by zizmor
 # without per-expression exceptions.
 
-permissions: {}
-
 jobs:
   matrix:
     name: Image Matrix
