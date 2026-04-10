@@ -1,0 +1,52 @@
+.mermaid-lightbox-target a.glightbox {
+  cursor: pointer;
+  display: inline-block;
+  transition: box-shadow 0.2s ease;
+}
+
+.mermaid-lightbox-target a.glightbox:hover {
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Override GLightbox's calculated fixed height so the panel
+   shrink-wraps to the actual SVG content size */
+.glightbox-container .gslide-inline {
+  height: auto !important;
+  max-height: calc(100vh - 40px);
+}
+
+.glightbox-container .ginlined-content {
+  height: auto !important;
+}
+
+.ginner-container {
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+body:not(.glightbox-mobile) div.gslide div.gslide-description,
+body:not(.glightbox-mobile) div.gslide-description .gslide-title,
+body:not(.glightbox-mobile) div.gslide-description .gslide-desc {
+  color: var(--quarto-body-color);
+  background-color: var(--quarto-body-bg);
+}
+
+body:not(.glightbox-mobile) div.gslide-media {
+  background-color: var(--quarto-body-bg);
+}
+
+.goverlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+div.gslide-description .gslide-title {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+div.gslide-description .gslide-desc {
+  padding-bottom: 0.5em;
+  font-family: inherit;
+}

@@ -58,3 +58,11 @@ test *ARGS:
 test-all *ARGS:
     NO_COLOR="true" \
     just _pytest -n 4 {{ ARGS }}
+
+# Preview the documentation site
+docs-preview:
+    cd {{ CWD }}/docs && quarto preview
+
+# Render the documentation site
+docs-render:
+    cd {{ CWD }}/docs && quarto render
