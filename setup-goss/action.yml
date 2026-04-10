@@ -38,19 +38,9 @@ runs:
 
         curl -fsSL "${release_url}/${binary}" -o "tools/${binary}"
 
-        # Verify checksum when available, warn on 404, fail on other errors
-        http_code=$(curl -sSL -o "tools/${binary}.sha256" -w '%{http_code}' "${release_url}/${binary}.sha256") || true
-        if [ "$http_code" = "200" ]; then
-            (cd tools && sha256sum -c "${binary}.sha256")
-            rm -f "tools/${binary}.sha256"
-        elif [ "$http_code" = "404" ]; then
-            echo "::warning::No .sha256 checksum file available for ${binary}; skipping verification"
-            rm -f "tools/${binary}.sha256"
-        else
-            echo "::error::Failed to download checksum for ${binary} (HTTP ${http_code})"
-            rm -f "tools/${binary}.sha256"
-            exit 1
-        fi
+        curl -fsSL "${release_url}/${binary}.sha256" -o "tools/${binary}.sha256"
+        (cd tools && sha256sum -c "${binary}.sha256")
+        rm -f "tools/${binary}.sha256"
 
         mv "tools/${binary}" tools/goss
         chmod +rx tools/goss
@@ -61,18 +51,8 @@ runs:
 
         curl -fsSL "${release_url}/dgoss" -o tools/dgoss
 
-        # Verify checksum when available, warn on 404, fail on other errors
-        http_code=$(curl -sSL -o "tools/dgoss.sha256" -w '%{http_code}' "${release_url}/dgoss.sha256") || true
-        if [ "$http_code" = "200" ]; then
-            (cd tools && sha256sum -c dgoss.sha256)
-            rm -f tools/dgoss.sha256
-        elif [ "$http_code" = "404" ]; then
-            echo "::warning::No .sha256 checksum file available for dgoss; skipping verification"
-            rm -f tools/dgoss.sha256
-        else
-            echo "::error::Failed to download checksum for dgoss (HTTP ${http_code})"
-            rm -f tools/dgoss.sha256
-            exit 1
-        fi
+        curl -fsSL "${release_url}/dgoss.sha256" -o tools/dgoss.sha256
+        (cd tools && sha256sum -c dgoss.sha256)
+        rm -f tools/dgoss.sha256
 
         chmod +rx tools/dgoss
