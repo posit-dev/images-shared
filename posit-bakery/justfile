@@ -49,15 +49,15 @@ _pytest *ARGS:
         {{ CWD }}/test/
 
 # Note: Both sets of quotes are required
-# Test the posit-bakery python project, skipping slow tests
+# Test the posit-bakery python project, skipping image build tests
 test *ARGS:
     NO_COLOR="true" \
-    just _pytest {{ ARGS }} -m "'not slow'"
+    just _pytest {{ ARGS }} -m "'not image_build'"
 
-# Run all tests
+# Run all tests (including image builds; -n 4 limits parallel builds to avoid OOM)
 test-all *ARGS:
     NO_COLOR="true" \
-    just _pytest {{ ARGS }}
+    just _pytest -n 4 {{ ARGS }}
 
 # Preview the documentation site
 docs-preview:

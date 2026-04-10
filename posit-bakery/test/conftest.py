@@ -1,10 +1,12 @@
 import datetime
 import os
 import shutil
+import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from ruamel.yaml import YAML
 from pytest_mock import MockFixture
 
 # Discover plugins before any config models are used. This registers tool options
@@ -73,6 +75,31 @@ def patch_temporary_directory(request, tmp_path):
         SETTINGS.temporary_storage = tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _disable_image_build_cache(request, mocker: MockFixture):
+    """Disable Docker layer caching for image_build tests.
+
+    Ensures templates and macros are tested end-to-end without stale layers.
+    """
+    if not any(m.name == "image_build" for m in request.node.iter_markers()):
+        return
+
+    from posit_bakery.image.image_target import ImageTarget
+    from posit_bakery.image.bake import BakePlan
+
+    original_it_build = ImageTarget.build
+    original_bp_build = BakePlan.build
+
+    def it_build_uncached(self, *args, cache=False, **kwargs):
+        return original_it_build(self, *args, cache=cache, **kwargs)
+
+    def bp_build_uncached(self, *args, cache=False, **kwargs):
+        return original_bp_build(self, *args, cache=cache, **kwargs)
+
+    mocker.patch.object(ImageTarget, "build", it_build_uncached)
+    mocker.patch.object(BakePlan, "build", bp_build_uncached)
+
+
 @pytest.fixture(scope="session")
 def project_path():
     """Return the path to the test directory"""
@@ -127,14 +154,41 @@ def get_config_obj(get_config_file):
     return _get_config_obj
 
 
+def _isolate_registry_namespace(bakery_yaml_path: Path, suffix: str):
+    """Rewrite registry namespaces in a bakery.yaml to include a unique suffix.
+
+    This prevents image tag collisions when multiple tests build from the
+    same suite concurrently (e.g., under pytest-xdist).
+    """
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    data = yaml.load(bakery_yaml_path)
+    for reg in data.get("registries", []):
+        ns = reg.get("namespace")
+        reg["namespace"] = f"{ns}/t-{suffix}" if ns else f"t-{suffix}"
+    yaml.dump(data, bakery_yaml_path)
+
+
 @pytest.fixture
-def get_tmpcontext(tmpdir, get_context):
-    """Return a function that can get a temporary copy of a test suite context by name"""
+def get_tmpcontext(request, tmpdir, get_context):
+    """Return a function that can get a temporary copy of a test suite context by name.
+
+    For image_build tests (which build real Docker images), each copy gets a
+    unique registry namespace suffix to prevent image tag collisions under
+    pytest-xdist.
+    """
+    builds_images = any(m.name == "image_build" for m in request.node.iter_markers())
+    suffix = uuid.uuid4().hex[:8] if builds_images else None
+    created = set()
 
     def _get_tmpcontext(suite_name: str) -> Path:
         tmpcontext = Path(tmpdir) / suite_name
-        tmpcontext.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(get_context(suite_name), tmpcontext, dirs_exist_ok=True)
+        if suite_name not in created:
+            tmpcontext.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(get_context(suite_name), tmpcontext, dirs_exist_ok=True)
+            if suffix:
+                _isolate_registry_namespace(tmpcontext / "bakery.yaml", suffix)
+            created.add(suite_name)
         return tmpcontext
 
     return _get_tmpcontext

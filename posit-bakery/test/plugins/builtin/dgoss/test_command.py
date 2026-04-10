@@ -198,6 +198,8 @@ class TestDGossCommand:
             "IMAGE_OS_FAMILY=debian",
             "-e",
             "IMAGE_OS_VERSION=22.04",
+            "-e",
+            "IMAGE_OS_PLATFORM=linux/arm64",
             "--init",
             basic_standard_image_target.ref("linux/arm64"),
             *basic_standard_image_target.image_variant.get_tool_option("goss").command.split(),

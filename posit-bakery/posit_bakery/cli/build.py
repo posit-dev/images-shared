@@ -221,7 +221,7 @@ def build(
                 style="error",
             )
             raise typer.Exit(code=1)
-        stdout_console.print_json(config.bake_plan_targets())
+        stdout_console.print_json(config.bake_plan_targets(push=push))
         raise typer.Exit(code=0)
 
     try:

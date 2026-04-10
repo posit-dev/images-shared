@@ -9,6 +9,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.util import auto_path
 
 app = typer.Typer()
@@ -57,6 +58,20 @@ def cache_registry(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude development version caches.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = DevVersionInclusionEnum.EXCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude matrix version caches.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
     dry_run: Annotated[
         Optional[bool], typer.Option("--dry-run", help="If set, print what would be deleted and exit.")
     ] = False,
@@ -72,7 +87,12 @@ def cache_registry(
     created by Bakery in the registry namespace `<registry>/<image-name>/cache`. If the `--image-name` filter is not
     provided, all image caches for the project will be cleaned.
     """
-    settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), cache_registry=registry)
+    settings = BakerySettings(
+        filter=BakeryConfigFilter(image_name=image_name),
+        cache_registry=registry,
+        dev_versions=dev_versions,
+        matrix_versions=matrix_versions,
+    )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     log.info(f"Cleaning cache registries in {registry}")
@@ -124,6 +144,20 @@ def temp_registry(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude development version temporary images.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = DevVersionInclusionEnum.EXCLUDE,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude matrix version temporary images.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
     dry_run: Annotated[
         Optional[bool], typer.Option("--dry-run", help="If set, print what would be deleted and exit.")
     ] = False,
@@ -138,7 +172,12 @@ def temp_registry(
     Images are assumed to be created by Bakery in the registry namespace `<registry>/<image-name>/tmp`. If the
     `--image-name` filter is not provided, all images for the project will be cleaned.
     """
-    settings = BakerySettings(filter=BakeryConfigFilter(image_name=image_name), temp_registry=registry)
+    settings = BakerySettings(
+        filter=BakeryConfigFilter(image_name=image_name),
+        temp_registry=registry,
+        dev_versions=dev_versions,
+        matrix_versions=matrix_versions,
+    )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     log.info(f"Cleaning temporary registries in {registry}")

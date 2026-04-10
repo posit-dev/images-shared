@@ -42,6 +42,16 @@ on:
         default: 3
         required: false
         type: number
+      dev-versions:
+        description: "Dev version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
+      matrix-versions:
+        description: "Matrix version builds [default: exclude] [options: include, exclude, only]"
+        default: "exclude"
+        required: false
+        type: string
       dry-run:
         description: "Perform a dry run without deleting any caches [default: false]"
         default: false
@@ -64,7 +74,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -72,7 +82,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -83,7 +93,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bakery clean cache-registry "ghcr.io/${{ github.repository_owner }}" \
-            --context ${{ inputs.context }} \
+            --context "${{ inputs.context }}" \
+            --dev-versions "${{ inputs['dev-versions'] }}" \
+            --matrix-versions "${{ inputs['matrix-versions'] }}" \
             ${{ inputs.dry-run && '--dry-run' || '' }} \
             ${{ !inputs.remove-dangling-caches && '--no-untagged' || '--untagged' }} \
             ${{ inputs.remove-caches-older-than > 0 && format('--older-than {0}', inputs.remove-caches-older-than) || '' }}
@@ -95,7 +107,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -103,7 +115,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -114,7 +126,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bakery clean temp-registry "ghcr.io/${{ github.repository_owner }}" \
-            --context ${{ inputs.context }} \
+            --context "${{ inputs.context }}" \
+            --dev-versions "${{ inputs['dev-versions'] }}" \
+            --matrix-versions "${{ inputs['matrix-versions'] }}" \
             ${{ inputs.dry-run && '--dry-run' || '' }} \
             ${{ !inputs.remove-dangling-temporary-images && '--no-untagged' || '--untagged' }} \
             ${{ inputs.remove-temporary-images-older-than > 0 && format('--older-than {0}', inputs.remove-temporary-images-older-than) || '' }}

@@ -37,10 +37,10 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest-4x
+    runs-on: ubuntu-latest-8x
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -49,7 +49,7 @@ jobs:
         uses: ./setup-goss
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@v4
+        uses: docker/setup-docker-action@v5
         with:
           daemon-config: |
             {
@@ -59,18 +59,18 @@ jobs:
             }
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: linux/amd64,linux/arm64
 
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@v1
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version-file: "posit-bakery/pyproject.toml"
 
@@ -172,13 +172,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version-file: "posit-bakery/pyproject.toml"
 
@@ -194,7 +194,7 @@ jobs:
 
       - name: Upload snapshot artifacts
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bakery-snapshot-pr${{ github.event.pull_request.number }}
           path: ./posit-bakery/dist

@@ -157,4 +157,4 @@ def dgoss(
 
     dgoss_plugin = get_plugin("dgoss")
     results = dgoss_plugin.execute(c.base_path, c.targets, platform=image_platform)
-    dgoss_plugin.display_results(results)
+    dgoss_plugin.results(results)

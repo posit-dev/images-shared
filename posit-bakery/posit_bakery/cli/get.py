@@ -9,7 +9,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
-from posit_bakery.log import stdout_console
+from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
@@ -115,4 +115,78 @@ def tags(
 
     except:
         log.exception("Failed to load bakery config")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+@with_verbosity_flags
+def version(
+    image_name: Annotated[
+        str,
+        typer.Argument(
+            show_default=False,
+            help="The image name to query.",
+        ),
+    ],
+    subpath: Annotated[
+        Optional[str],
+        typer.Option(
+            "--subpath",
+            show_default=False,
+            help="Find the version with this subpath.",
+        ),
+    ] = None,
+    context: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
+    ] = auto_path(),
+) -> None:
+    """Get a version name from bakery.yaml.
+
+    \b
+    Returns the latest version by default. Use --subpath to find a version by its
+    configured subpath instead.
+
+    \b
+    Examples:
+      bakery get version connect                    Find the latest version
+      bakery get version connect --subpath 2026.03  Find version with subpath '2026.03'
+    """
+    try:
+        config = BakeryConfig.from_context(context)
+        image = config.model.get_image(image_name)
+        if image is None:
+            stderr_console.print(f"Image '{image_name}' does not exist in the config.", style="error")
+            raise typer.Exit(code=1)
+
+        if not subpath:
+            for v in image.versions:
+                if v.latest:
+                    stdout_console.print(v.name, highlight=False)
+                    return
+            stderr_console.print(f"No latest version found for image '{image_name}'.", style="error")
+            raise typer.Exit(code=1)
+
+        found = image.get_version_by_subpath(subpath)
+        if found is None:
+            stderr_console.print(
+                f"No version found with subpath '{subpath}' for image '{image_name}'.",
+                style="error",
+            )
+            raise typer.Exit(code=1)
+
+        stdout_console.print(found.name, highlight=False)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        stderr_console.print(str(e), style="error")
         raise typer.Exit(code=1)

@@ -113,3 +113,34 @@ def default_tag_patterns() -> list[TagPattern]:
             only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
     ]
+
+
+def default_matrix_tag_patterns() -> list[TagPattern]:
+    """Return the default tag patterns for matrix images in the Bakery configuration.
+
+    Matrix images use composite version names (e.g., "R4.3.3-python3.11.15") where the
+    hyphen separators conflict with the stripMetadata filter, which strips from the last
+    hyphen onward. This set excludes stripMetadata patterns to avoid tag collisions across
+    matrix combinations. It also excludes latest-filtered patterns since matrices are
+    currently naive to the concept of "latest".
+
+    :return: A list of TagPattern objects representing the default matrix tag patterns.
+    """
+    return [
+        TagPattern(
+            patterns=["{{ Version }}-{{ OS }}-{{ Variant }}"],
+            only=[TagPatternFilter.ALL],
+        ),
+        TagPattern(
+            patterns=["{{ Version }}-{{ Variant }}"],
+            only=[TagPatternFilter.PRIMARY_OS],
+        ),
+        TagPattern(
+            patterns=["{{ Version }}-{{ OS }}"],
+            only=[TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Version }}"],
+            only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+    ]

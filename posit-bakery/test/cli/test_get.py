@@ -2,7 +2,10 @@ import json
 
 from pytest_bdd import scenarios, then, parsers
 
-scenarios("cli/get/tags.feature")
+scenarios(
+    "cli/get/tags.feature",
+    "cli/get/version.feature",
+)
 
 
 @then(parsers.parse("the tags match testdata {testdata_file}"))

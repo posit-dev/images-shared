@@ -643,7 +643,7 @@ class TestImageTarget:
 
     @pytest.mark.build
     def test_build_args_cache_registry(self, basic_standard_image_target):
-        """Test the build property of an ImageTarget."""
+        """Test that cache-from is set but cache-to is omitted when not pushing."""
         basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
         cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
         expected_build_args = {
@@ -658,7 +658,7 @@ class TestImageTarget:
             "output": {},
             "cache": True,
             "cache_from": f"type=registry,ref={cache_name}",
-            "cache_to": f"type=registry,ref={cache_name},mode=max",
+            "cache_to": None,
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
@@ -666,6 +666,34 @@ class TestImageTarget:
 
         with patch("python_on_whales.docker.build") as mock_build:
             basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_args_cache_registry_push(self, basic_standard_image_target):
+        """Test that cache-to is set when pushing with a cache registry."""
+        basic_standard_image_target.settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
+        cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "build_args": {},
+            "tags": basic_standard_image_target.tags.as_strings(),
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": True,
+            "pull": False,
+            "output": {},
+            "cache": True,
+            "cache_from": f"type=registry,ref={cache_name}",
+            "cache_to": f"type=registry,ref={cache_name},mode=max,compression=zstd,oci-mediatypes=true",
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+            "target": None,
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build(push=True)
 
         mock_build.assert_called_once_with(**expected_build_args)
 
@@ -782,13 +810,12 @@ class TestImageTarget:
         mock_build.assert_called_once_with(**expected_build_args)
 
     @pytest.mark.build
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_build(self, suite, get_targets):
+    def test_build(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
-        image_targets = get_targets(suite)
-        for target in image_targets:
+        config_obj = get_tmpconfig(suite)
+        for target in config_obj.targets:
             target.build()
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)
@@ -800,13 +827,12 @@ class TestImageTarget:
             remove_images(target)
 
     @pytest.mark.build
-    @pytest.mark.slow
-    @pytest.mark.xdist_group(name="build")
+    @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_build_metadata_file(self, suite, get_targets):
+    def test_build_metadata_file(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
-        image_targets = get_targets(suite)
-        for target in image_targets:
+        config_obj = get_tmpconfig(suite)
+        for target in config_obj.targets:
             target.build(metadata_file=True)
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)

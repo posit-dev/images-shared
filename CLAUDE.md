@@ -87,6 +87,16 @@ just test
 just test-all
 ```
 
+**Always use `uv` instead of `python`** for invoking Python commands, running scripts, or
+executing tools like `pytest`. For example:
+
+- `uv run pytest` instead of `python -m pytest` or `pytest`
+- `uv run python script.py` instead of `python script.py`
+- `uv run bakery ...` instead of `bakery ...` (when running outside of `just`)
+
+This ensures the correct virtual environment and dependencies are used automatically
+without requiring manual activation.
+
 ## Repository Structure
 
 This is a monorepo containing multiple projects:
@@ -149,6 +159,20 @@ Template variables available:
 - `Dependencies.python`, `Dependencies.R`, `Dependencies.quarto` (lists of version strings)
 
 Custom Jinja2 filters: `tagSafe`, `stripMetadata`, `condense`, `regexReplace`, `quote`, `split`
+
+## Python Coding Conventions
+
+### Imports
+
+Prefer file-level (top-of-file) imports over locally-scoped imports. Local imports should
+only be used when there is a legitimate reason, such as:
+
+- Avoiding a circular import
+- Avoiding importing a large or optional dependency unless it is actually needed
+- Deferring an import for performance in a rarely-used code path
+
+When a local import is used, add a comment explaining why it is local rather than at the
+top of the file.
 
 ## CI/CD Architecture
 
