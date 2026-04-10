@@ -20,7 +20,7 @@ runs:
   steps:
     - name: Make tools directory
       shell: bash
-      run: mkdir -p tools
+      run: mkdir -p "${{ inputs.base_path }}/tools"
     - name: Install hadolint
       shell: bash
       run: |
@@ -38,11 +38,23 @@ runs:
         fi
 
         release_url="https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download"
-        binary="hadolint-linux-${arch}"
         dest="${{ inputs.base_path }}/tools"
 
-        curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}"
-        curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256"
-        (cd "${dest}" && sha256sum -c "${binary}.sha256")
+        # v2.13.0+ uses lowercase "linux"; older releases use "Linux"
+        binary="hadolint-linux-${arch}"
+        if ! curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}" 2>/dev/null; then
+            binary="hadolint-Linux-${arch}"
+            curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}"
+        fi
+
+        # .sha256 files are not published for all releases (e.g., v2.10.0
+        # and earlier lack them). Verify when available, warn otherwise.
+        if curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256" 2>/dev/null; then
+            (cd "${dest}" && sha256sum -c "${binary}.sha256")
+            rm -f "${dest}/${binary}.sha256"
+        else
+            echo "::warning::No .sha256 checksum file available for ${binary}; skipping verification"
+        fi
+
         mv "${dest}/${binary}" "${dest}/hadolint"
         chmod +rx "${dest}/hadolint"
