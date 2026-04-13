@@ -27,6 +27,7 @@ URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
 )
 
 WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/latest/index.json"
+WORKBENCH_PREVIEW_URL = "https://dailies.rstudio.com/rstudio/{channel}/index.json"
 PACKAGE_MANAGER_DAILY_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_PREVIEW_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-rc-latest.txt"
 CONNECT_DAILY_URL = "https://cdn.posit.co/connect/latest-packages.json"
@@ -51,8 +52,7 @@ PRODUCT_RELEASE_STREAM_SUPPORT_MAP = {
     ProductEnum.PACKAGE_MANAGER: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.PREVIEW, ReleaseStreamEnum.DAILY],
     ProductEnum.WORKBENCH: [
         ReleaseStreamEnum.RELEASE,
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW,
+        ReleaseStreamEnum.PREVIEW,
         ReleaseStreamEnum.DAILY,
     ],
 }
