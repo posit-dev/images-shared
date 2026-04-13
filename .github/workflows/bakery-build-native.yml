@@ -229,24 +229,22 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
         # Cache-to is conditional on --push (handled by bakery internally)
         run: |
-          bakery build \
-            --strategy build --pull \
-            --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --cache-registry "$REGISTRY" \
-            --temp-registry "$REGISTRY" \
-            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
-            --context "$CONTEXT" \
-            --push
+          ARGS=(--strategy build --pull --retry "$RETRY")
+          ARGS+=(--image-name "^${IMAGE_NAME}$" --image-version "$IMAGE_VERSION" --image-platform "$IMAGE_PLATFORM")
+          ARGS+=(--dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          ARGS+=(--cache-registry "$REGISTRY" --temp-registry "$REGISTRY")
+          ARGS+=(--metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json")
+          ARGS+=(--context "$CONTEXT" --push)
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          bakery build "${ARGS[@]}"
       - name: Test
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
@@ -254,19 +252,20 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          ARGS=(--image-name "^${IMAGE_NAME}$" --image-version "$IMAGE_VERSION" --image-platform "$IMAGE_PLATFORM")
+          ARGS+=(--dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          ARGS+=(--metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json")
+          ARGS+=(--context "$CONTEXT")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          bakery run dgoss \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
-            --context "$CONTEXT"
+          bakery run dgoss "${ARGS[@]}"
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -366,13 +365,12 @@ jobs:
           CONTEXT: ${{ inputs.context }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           PUSH: ${{ inputs.push }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
-          if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
-          bakery ci merge \
-            --context "$CONTEXT" \
-            --temp-registry "$REGISTRY" \
-            $PUSH_FLAG \
-            *-metadata.json
+          ARGS=(--context "$CONTEXT" --temp-registry "$REGISTRY")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          if [ "$PUSH" != "true" ]; then ARGS+=(--dry-run); fi
+          bakery ci merge "${ARGS[@]}" *-metadata.json
 
   readme:
     name: Push READMEs
@@ -399,8 +397,8 @@ jobs:
           CONTEXT: ${{ inputs.context }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
-          bakery ci readme \
-            --context "$CONTEXT" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS"
+          ARGS=(--context "$CONTEXT" --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          bakery ci readme "${ARGS[@]}"

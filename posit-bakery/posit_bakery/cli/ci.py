@@ -161,6 +161,12 @@ def merge(
             rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
+    value: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            help="Override a devVersion value (key=value). Can be specified multiple times.",
+        ),
+    ] = None,
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
@@ -181,7 +187,13 @@ def merge(
     }
     ```
     """
+    value_map, errors = _make_value_map(value)
+    if errors:
+        for e in errors:
+            log.error(e)
+        raise typer.Exit(code=1)
     settings = BakerySettings(
+        filter=BakeryConfigFilter(values=value_map) if value_map else None,
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
@@ -264,6 +276,12 @@ def readme(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.INCLUDE,
+    value: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            help="Override a devVersion value (key=value). Can be specified multiple times.",
+        ),
+    ] = None,
 ) -> None:
     """Push image READMEs to Docker Hub.
 
@@ -275,7 +293,13 @@ def readme(
     variables to be set with a Personal Access Token (PAT). Organization Access Tokens
     cannot update repository descriptions.
     """
+    value_map, errors = _make_value_map(value)
+    if errors:
+        for e in errors:
+            log.error(e)
+        raise typer.Exit(code=1)
     settings = BakerySettings(
+        filter=BakeryConfigFilter(values=value_map) if value_map else None,
         dev_versions=dev_versions,
         matrix_versions=matrix_versions,
     )

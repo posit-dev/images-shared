@@ -189,17 +189,18 @@ jobs:
           IMAGE_VERSION: ${{ matrix.img.version }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           CONTEXT: ${{ inputs.context }}
         run: |
-          bakery build --load --pull \
-            --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --cache-registry "$REGISTRY" \
-            --context "$CONTEXT"
+          ARGS=(--load --pull --retry "$RETRY")
+          ARGS+=(--image-name "^${IMAGE_NAME}$" --image-version "$IMAGE_VERSION")
+          ARGS+=(--dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          ARGS+=(--cache-registry "$REGISTRY" --context "$CONTEXT")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          bakery build "${ARGS[@]}"
 
       - name: Test
         env:
@@ -207,16 +208,18 @@ jobs:
           IMAGE_VERSION: ${{ matrix.img.version }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          ARGS=(--image-name "^${IMAGE_NAME}$" --image-version "$IMAGE_VERSION")
+          ARGS+=(--dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          ARGS+=(--context "$CONTEXT")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          bakery run dgoss \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$CONTEXT"
+          bakery run dgoss "${ARGS[@]}"
 
       - name: Push
         # Since this is a reusable workflow, we need to be very explicit about
@@ -230,15 +233,17 @@ jobs:
           IMAGE_VERSION: ${{ matrix.img.version }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
           CONTEXT: ${{ inputs.context }}
         run: |
-          bakery build --push --pull \
-            --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$CONTEXT"
+          ARGS=(--push --pull --retry "$RETRY")
+          ARGS+=(--image-name "^${IMAGE_NAME}$" --image-version "$IMAGE_VERSION")
+          ARGS+=(--dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          ARGS+=(--context "$CONTEXT")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          bakery build "${ARGS[@]}"
 
   readme:
     name: Push READMEs
@@ -265,8 +270,8 @@ jobs:
           CONTEXT: ${{ inputs.context }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
-          bakery ci readme \
-            --context "$CONTEXT" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS"
+          ARGS=(--context "$CONTEXT" --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
+          bakery ci readme "${ARGS[@]}"
