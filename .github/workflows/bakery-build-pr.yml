@@ -73,6 +73,7 @@ jobs:
 
   matrix:
     name: Image Matrix
+    needs: detect
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -93,11 +94,17 @@ jobs:
       - name: Images by Version/Platform
         id: images-by-platform
         env:
+          IS_FORK: ${{ needs.detect.outputs.is-fork }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
         run: |
-          echo "platform_matrix=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$BAKERY_CONTEXT" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$BAKERY_CONTEXT" | jq --compact-output .)
+          if [ "$IS_FORK" = "true" ]; then
+            # Skip arm64 for fork PRs — paid runners may not be available
+            FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --compact-output '[.[] | select(.platform != "linux/arm64")]')
+          fi
+          echo "platform_matrix=$FULL_MATRIX" >> "$GITHUB_OUTPUT"
 
       - name: Images by Version
         id: images-by-version
@@ -122,8 +129,6 @@ jobs:
       matrix:
         img: ${{ fromJson(needs.matrix.outputs.platform-matrix) }}
     runs-on: ${{ matrix.img.platform == 'linux/arm64' && inputs.arm64-builder || inputs.amd64-builder }}
-    # Skip arm64 for fork PRs — paid runners may not be available
-    if: needs.detect.outputs.is-fork != 'true' || matrix.img.platform != 'linux/arm64'
 
     steps:
       - name: Checkout
