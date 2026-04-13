@@ -452,10 +452,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 tpl_full_path = (Path(root) / file).resolve()
                 tpl_rel_path = str(tpl_full_path.relative_to(self.parent.template_path))
 
-                for regex in regex_filters or []:
-                    if not re.match(regex, tpl_rel_path):
-                        log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter [bold]{regex}[/]")
-                        continue
+                if regex_filters and not any(re.match(regex, tpl_rel_path) for regex in regex_filters):
+                    log.debug(f"Skipping template [bright_black]{tpl_rel_path}[/] due to filter patterns")
+                    continue
 
                 # Check if this is a Jinja2 template file
                 is_jinja2_template = any(tpl_rel_path.endswith(ext) for ext in JINJA2_TEMPLATE_EXTENSIONS)
