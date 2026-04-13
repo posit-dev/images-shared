@@ -768,9 +768,9 @@ class TestImage:
             )
             i.load_dev_versions(values={"channel": "apple-blossom"})
 
-        # The override should have replaced the config value.
-        assert i.devVersions[0].values["channel"] == "apple-blossom"
-        # The override should flow through to the image version.
+        # The original devVersion model must not be mutated.
+        assert i.devVersions[0].values["channel"] == "latest"
+        # The override should flow through to the resulting image version.
         dev_ver = i.get_version(stream_version)
         assert dev_ver is not None
         assert dev_ver.values["channel"] == "apple-blossom"
@@ -801,8 +801,8 @@ class TestImage:
             )
             i.load_dev_versions(values={"channel": "globemaster-allium"})
 
-        # The override should replace config default.
-        assert i.devVersions[0].values["channel"] == "globemaster-allium"
+        # The original devVersion model must not be mutated.
+        assert i.devVersions[0].values["channel"] == "latest"
         # The overridden value should be passed to get_product_artifact_by_stream.
         assert mock_get.called
         assert any(

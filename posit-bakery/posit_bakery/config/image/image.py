@@ -588,10 +588,7 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
                     )
                     continue
 
-            if values:
-                dev_version.values.update(values)
-
-            image_version = dev_version.as_image_version()
+            image_version = dev_version.as_image_version(value_overrides=values)
             log_message = f"Loaded {self.name} development version from {repr(dev_version)}:\n"
             log_message += f"  - Version: {image_version.name}\n"
             for dep in image_version.dependencies:

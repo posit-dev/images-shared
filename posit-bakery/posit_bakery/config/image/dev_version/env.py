@@ -51,9 +51,10 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
 
         return v
 
-    def get_version(self) -> str:
+    def get_version(self, values: dict[str, str] | None = None) -> str:
         """Retrieve the version from the specified environment variable.
 
+        :param values: Unused. Accepted for ABC compatibility.
         :return: The version string from the environment variable.
         """
         return _get_value_from_env("versionEnvVar", self.versionEnvVar)

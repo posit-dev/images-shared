@@ -194,9 +194,10 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         return all_registries
 
     @abc.abstractmethod
-    def get_version(self) -> str:
+    def get_version(self, values: dict[str, str] | None = None) -> str:
         """Retrieve the version string for this image development version.
 
+        :param values: Optional merged values dict (self.values + overrides). If None, uses self.values.
         :return: The version string.
         """
         raise NotImplementedError("Subclasses must implement get_version method.")
@@ -221,16 +222,21 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
         return self
 
-    def as_image_version(self):
-        """Convert this development version to a standard image version."""
+    def as_image_version(self, value_overrides: dict[str, str] | None = None):
+        """Convert this development version to a standard image version.
+
+        :param value_overrides: Optional key-value pairs to merge on top of self.values.
+            Does not mutate the original values dict.
+        """
+        merged_values = {**self.values, **value_overrides} if value_overrides else self.values
         return ImageVersion(
-            name=self.get_version(),
-            subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
+            name=self.get_version(merged_values),
+            subpath=f".dev-{self.get_version(merged_values)}".replace(" ", "-").lower(),
             parent=self.parent,
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
             os=self.os,
-            values=self.values,
+            values=merged_values,
             latest=False,
             dependencies=self.parent.resolve_dependency_versions(),
             ephemeral=True,

@@ -27,13 +27,16 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
 
         return DEFAULT_OS
 
-    def get_version(self) -> str:
+    def get_version(self, values: dict[str, str] | None = None) -> str:
         """Retrieve the version from the specified product stream.
 
+        :param values: Optional merged values dict. If None, uses self.values.
         :return: The version string from the product stream.
         """
         _os = self.get_primary_os()
-        result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS, values=self.values)
+        result = get_product_artifact_by_stream(
+            self.product, self.stream, _os.buildOS, values=values if values is not None else self.values
+        )
 
         return result.version
 
