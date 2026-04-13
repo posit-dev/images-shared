@@ -12,6 +12,7 @@ from posit_bakery.config.image.posit_product.const import (
     ProductEnum,
     ReleaseStreamEnum,
     WORKBENCH_DAILY_URL,
+    WORKBENCH_PREVIEW_URL,
     PACKAGE_MANAGER_DAILY_URL,
     PACKAGE_MANAGER_PREVIEW_URL,
     CONNECT_DAILY_URL,
@@ -154,18 +155,17 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-        #     DOWNLOADS_JSON_URL,
-        #     {
-        #         "version": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "version"]
-        #         ),
-        #         "download_url": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "url"]
-        #         ),
-        #     },
-        # ),
+        ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
+            WORKBENCH_PREVIEW_URL,
+            {
+                "version": resolvers.StringMapPathResolver(
+                    ["workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
+                ),
+                "download_url": resolvers.StringMapPathResolver(
+                    ["workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
+                ),
+            },
+        ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
             WORKBENCH_DAILY_URL,
             {
@@ -190,18 +190,17 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-        #     DOWNLOADS_JSON_URL,
-        #     {
-        #         "version": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "version"]
-        #         ),
-        #         "download_url": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "url"]
-        #         ),
-        #     },
-        # ),
+        ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
+            WORKBENCH_PREVIEW_URL,
+            {
+                "version": resolvers.StringMapPathResolver(
+                    ["session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
+                ),
+                "download_url": resolvers.StringMapPathResolver(
+                    ["session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
+                ),
+            },
+        ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
             WORKBENCH_DAILY_URL,
             {
