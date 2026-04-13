@@ -13,26 +13,10 @@ def find_wizcli_bin(context: ImageTargetContext) -> str | None:
     return find_bin(context.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
 
 
-def find_wiz_config_file(context: ImageTargetContext) -> Path | None:
-    """Find a .wiz configuration file, checking version path then image path."""
-    version_wiz = context.version_path / ".wiz"
-    if version_wiz.exists():
-        return version_wiz
-
-    image_wiz = context.image_path / ".wiz"
-    if image_wiz.exists():
-        return image_wiz
-
-    return None
-
-
 class WizCLICommand(BaseModel):
     image_target: ImageTarget
     wizcli_bin: Annotated[str, Field(default_factory=lambda data: find_wizcli_bin(data["image_target"].context))]
     results_file: Path
-    wiz_config_file: Annotated[
-        Path | None, Field(default_factory=lambda data: find_wiz_config_file(data["image_target"].context))
-    ]
 
     # ToolOptions fields
     tool_options: Annotated[WizCLIOptions | None, Field(default=None)]
@@ -112,10 +96,6 @@ class WizCLICommand(BaseModel):
 
         # Dockerfile
         cmd.extend(["--dockerfile", str(self.image_target.containerfile)])
-
-        # Wiz configuration file (only if found at version or image level)
-        if self.wiz_config_file:
-            cmd.extend(["--wiz-configuration-file", str(self.wiz_config_file)])
 
         # Always set for machine-parseable output
         cmd.extend(["--no-color", "--no-style"])
