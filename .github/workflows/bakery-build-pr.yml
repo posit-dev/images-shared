@@ -123,7 +123,7 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
-      packages: write
+      packages: read
     strategy:
       fail-fast: false
       matrix:
