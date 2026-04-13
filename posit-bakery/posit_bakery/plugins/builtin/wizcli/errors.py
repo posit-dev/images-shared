@@ -47,9 +47,9 @@ class BakeryWizCLIError(BakeryToolRuntimeError):
         if desc:
             s += f" ({desc})"
         s += "\n"
-        stderr_dump = self.dump_stderr()
-        if stderr_dump:
-            s += f"  - stderr:\n{textwrap.indent(stderr_dump, '      ')}\n"
+        stdout_dump = self.dump_stdout()
+        if stdout_dump:
+            s += f"  - Output:\n{textwrap.indent(stdout_dump, '      ')}\n"
         s += f"  - Command executed: {' '.join(self.cmd)}\n"
         if self.metadata:
             s += "  - Metadata:\n"

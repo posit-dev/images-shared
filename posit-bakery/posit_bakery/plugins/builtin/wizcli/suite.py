@@ -76,29 +76,24 @@ class WizCLISuite:
 
             run_env = os.environ.copy()
 
-            # Always capture stderr so error messages are available for exit codes 1/2/3.
-            # Stdout is only captured in verbose mode; otherwise suppressed.
+            # wizcli sends primary error/success messages to stdout and verbose logging
+            # clutter to stderr. Always capture stdout for error reporting on failure;
+            # suppress stderr unless verbose mode is active.
             p = subprocess.run(
                 wizcli_command.command,
                 env=run_env,
                 cwd=self.context,
-                stdout=subprocess.PIPE if verbose else subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE if verbose else subprocess.DEVNULL,
             )
 
             if verbose:
                 try:
-                    stdout_text = p.stdout.decode("utf-8").strip()
-                    if stdout_text:
-                        log.debug(f"[bright_black]wizcli stdout:\n{stdout_text}")
+                    stderr_text = p.stderr.decode("utf-8").strip()
+                    if stderr_text:
+                        log.debug(f"[bright_black]wizcli stderr:\n{stderr_text}")
                 except UnicodeDecodeError:
                     pass
-            try:
-                stderr_text = p.stderr.decode("utf-8").strip()
-                if stderr_text and verbose:
-                    log.debug(f"[bright_black]wizcli stderr:\n{stderr_text}")
-            except UnicodeDecodeError:
-                pass
 
             exit_code = p.returncode
 
@@ -131,8 +126,8 @@ class WizCLISuite:
                         f"wizcli scan failed for '{str(wizcli_command.image_target)}'",
                         "wizcli",
                         cmd=wizcli_command.command,
-                        stdout=p.stdout if verbose else None,
-                        stderr=p.stderr,
+                        stdout=p.stdout,
+                        stderr=p.stderr if verbose else None,
                         exit_code=exit_code,
                     )
                 )
