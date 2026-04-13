@@ -33,9 +33,16 @@ class WizScanReport(BaseModel):
 
     @classmethod
     def load(cls, filepath: Path) -> "WizScanReport":
-        """Load a WizScanReport from a wizcli JSON output file."""
+        """Load a WizScanReport from a wizcli JSON output file.
+
+        Re-writes the file with indentation for human readability, since wizcli
+        outputs minified JSON by default.
+        """
         with filepath.open("r") as f:
             data = json.load(f)
+
+        with filepath.open("w") as f:
+            json.dump(data, f, indent=2)
 
         # Aggregate severity counts from vulnerable SBOM artifacts
         critical = high = medium = low = info = 0
