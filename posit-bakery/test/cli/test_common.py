@@ -3,7 +3,7 @@ import json
 import pytest
 
 from posit_bakery.cli.common import (
-    __make_value_map as make_value_map,
+    _make_value_map as make_value_map,
     __parse_dependency_constraint as parse_dependency_constraint,
     __parse_dependency_versions as parse_dependency_versions,
 )
@@ -22,7 +22,7 @@ pytestmark = [
 
 
 class TestMakeValueMap:
-    """Tests for the __make_value_map function"""
+    """Tests for the _make_value_map function"""
 
     def test_none_input(self):
         """Test that None input returns empty dict with no errors"""

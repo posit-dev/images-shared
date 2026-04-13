@@ -207,7 +207,7 @@ def merge(
             log.error(e)
         raise typer.Exit(code=1)
     settings = BakerySettings(
-        filter=BakeryConfigFilter(values=value_map) if value_map else None,
+        filter=BakeryConfigFilter(values=value_map),
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
@@ -313,7 +313,7 @@ def readme(
             log.error(e)
         raise typer.Exit(code=1)
     settings = BakerySettings(
-        filter=BakeryConfigFilter(values=value_map) if value_map else None,
+        filter=BakeryConfigFilter(values=value_map),
         dev_versions=dev_versions,
         matrix_versions=matrix_versions,
     )
