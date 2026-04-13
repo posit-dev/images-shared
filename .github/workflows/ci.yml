@@ -28,12 +28,14 @@ jobs:
       - test
       - bakery
       - bakery-native
+      - bakery-pr
       - release
       - zizmor
 
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # v1.2.2
         with:
+          allowed-skips: bakery-pr
           jobs: ${{ toJSON(needs) }}
 
   test:
@@ -143,6 +145,17 @@ jobs:
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
+
+  bakery-pr:
+    name: Bakery PR Build
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    uses: "./.github/workflows/bakery-build-pr.yml"
+    with:
+      context: "./posit-bakery/test/resources/multiplatform/"
+      dev-versions: include
 
   zizmor:
     name: Zizmor
