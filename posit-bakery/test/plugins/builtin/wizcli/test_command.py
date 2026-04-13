@@ -1,42 +1,14 @@
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand, find_wiz_config_file
+from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.wizcli,
 ]
-
-
-class TestFindWizConfigFile:
-    def test_finds_in_version_path(self, basic_standard_image_target):
-        """Should find .wiz at version path level."""
-        wiz_file = basic_standard_image_target.context.version_path / ".wiz"
-        wiz_file.touch()
-        try:
-            result = find_wiz_config_file(basic_standard_image_target.context)
-            assert result == wiz_file
-        finally:
-            wiz_file.unlink(missing_ok=True)
-
-    def test_finds_in_image_path(self, basic_standard_image_target):
-        """Should find .wiz at image path level when not at version level."""
-        wiz_file = basic_standard_image_target.context.image_path / ".wiz"
-        wiz_file.touch()
-        try:
-            result = find_wiz_config_file(basic_standard_image_target.context)
-            assert result == wiz_file
-        finally:
-            wiz_file.unlink(missing_ok=True)
-
-    def test_returns_none_when_not_found(self, basic_standard_image_target):
-        """Should return None when .wiz not found at version or image level."""
-        result = find_wiz_config_file(basic_standard_image_target.context)
-        assert result is None
 
 
 class TestWizCLICommand:
