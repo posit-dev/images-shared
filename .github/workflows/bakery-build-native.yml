@@ -27,6 +27,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      image-version:
+        description: "Filter to a specific image version (e.g. product version from upstream dispatch)"
+        default: ""
+        required: false
+        type: string
       dev-stream:
         description: "Filter dev versions to a specific release stream (e.g. 'daily', 'preview')"
         default: ""
@@ -115,11 +120,13 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          IMAGE_VERSION: ${{ inputs.image-version }}
           CONTEXT: ${{ inputs.context }}
           DEV_STREAM: ${{ inputs.dev-stream }}
           DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
+          [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
           [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
           echo "platform_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
@@ -128,11 +135,13 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          IMAGE_VERSION: ${{ inputs.image-version }}
           CONTEXT: ${{ inputs.context }}
           DEV_STREAM: ${{ inputs.dev-stream }}
           DEV_CHANNEL: ${{ inputs.dev-channel }}
         run: |
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$CONTEXT")
+          [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
           [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--value "channel=$DEV_CHANNEL")
           echo "versions_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT

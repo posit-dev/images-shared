@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import re
 import python_on_whales
 from enum import Enum
 from pathlib import Path
@@ -49,6 +50,14 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    image_version: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image version to filter to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     dev_stream: Annotated[
         Optional[str],
         typer.Option(
@@ -105,7 +114,12 @@ def matrix(
                 log.error(e)
             raise typer.Exit(code=1)
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name, dev_stream=dev_stream, values=value_map),
+            filter=BakeryConfigFilter(
+                image_name=image_name,
+                image_version=re.escape(image_version) if image_version else None,
+                dev_stream=dev_stream,
+                values=value_map,
+            ),
             dev_versions=dev_versions,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
