@@ -7,7 +7,7 @@ import typer
 
 from posit_bakery import error
 from posit_bakery.cli.common import (
-    __make_value_map,
+    _make_value_map,
     with_verbosity_flags,
     __parse_dependency_constraint,
     __parse_dependency_versions,
@@ -221,7 +221,7 @@ def version(
             └── Containerfile*.jinja2
     ```
     """
-    value_map, errors = __make_value_map(value)
+    value_map, errors = _make_value_map(value)
     if errors:
         for e in errors:
             log.error(e)
@@ -334,7 +334,7 @@ def matrix(
             └── Containerfile*.jinja2
     ```
     """
-    value_map, value_errors = __make_value_map(value)
+    value_map, value_errors = _make_value_map(value)
 
     parsed_dependency_constraints = []
     dependency_constraint_errors = []

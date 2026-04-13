@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from posit_bakery.config.image.build_os import SUPPORTED_OS, BuildOS
@@ -6,6 +8,7 @@ from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
     get_product_artifact_by_stream,
+    ReleaseStreamPath,
     ReleaseStreamResult,
 )
 
@@ -161,6 +164,48 @@ helper_test_collection = [
         for product in [ProductEnum.PACKAGE_MANAGER, ProductEnum.WORKBENCH, ProductEnum.WORKBENCH_SESSION]
     ],
 ]
+
+
+class TestReleaseStreamPath:
+    @pytest.fixture
+    def _mock_session(self):
+        """Patch cached_session to return a mock that accepts any URL."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {}
+        mock_resp.raise_for_status.return_value = None
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        with patch("posit_bakery.config.image.posit_product.main.cached_session", return_value=mock_session):
+            yield mock_session
+
+    def test_static_url(self, _mock_session):
+        """A URL with no placeholders passes through unchanged."""
+        path = ReleaseStreamPath(
+            "https://example.com/daily.json",
+            {"version": "1.0.0", "download_url": "https://example.com/pkg.deb"},
+        )
+        result = path.get({"os": "ubuntu"})
+        assert result.version == "1.0.0"
+        _mock_session.get.assert_called_once_with("https://example.com/daily.json")
+
+    def test_url_with_placeholder(self, _mock_session):
+        """A URL with a {channel} placeholder resolves from metadata."""
+        path = ReleaseStreamPath(
+            "https://dailies.example.com/{channel}/index.json",
+            {"version": "2.0.0", "download_url": "https://example.com/pkg.deb"},
+        )
+        result = path.get({"channel": "apple-blossom"})
+        assert result.version == "2.0.0"
+        _mock_session.get.assert_called_once_with("https://dailies.example.com/apple-blossom/index.json")
+
+    def test_url_with_missing_placeholder_raises(self):
+        """A URL with a placeholder not in metadata raises ValueError."""
+        path = ReleaseStreamPath(
+            "https://dailies.example.com/{channel}/index.json",
+            {"version": "2.0.0", "download_url": "https://example.com/pkg.deb"},
+        )
+        with pytest.raises(ValueError, match="channel"):
+            path.get({})
 
 
 class TestReleaseStreamResult:

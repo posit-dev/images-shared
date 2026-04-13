@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, __make_value_map
+from posit_bakery.cli.common import with_verbosity_flags, _make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -99,7 +99,7 @@ def matrix(
         exclude = []
 
     try:
-        value_map, errors = __make_value_map(value)
+        value_map, errors = _make_value_map(value)
         if errors:
             for e in errors:
                 log.error(e)

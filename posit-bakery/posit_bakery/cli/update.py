@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import __make_value_map, with_verbosity_flags
+from posit_bakery.cli.common import _make_value_map, with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter
 from posit_bakery.log import stderr_console
@@ -141,7 +141,7 @@ def version(
       bakery update version connect 2026.03.1 --target-version 2026.03.0
       # Explicitly patches '2026.03.0' to '2026.03.1'
     """
-    value_map, errors = __make_value_map(value)
+    value_map, errors = _make_value_map(value)
     if errors:
         for e in errors:
             log.error(e)

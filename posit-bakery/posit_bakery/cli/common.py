@@ -90,7 +90,7 @@ def with_temporary_storage(fn):
     return wrapper
 
 
-def __make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exception]]:
+def _make_value_map(value: list[str] | None) -> tuple[dict[Any, Any], list[Exception]]:
     """Parses key=value option pairs into a dictionary"""
     value_map = dict()
     errors = []

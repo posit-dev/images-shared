@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, __make_value_map
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, _make_value_map
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -210,7 +210,7 @@ def build(
 
     Requires Docker, Podman, or nerdctl to be installed and running for `--strategy build`.
     """
-    value_map, errors = __make_value_map(value)
+    value_map, errors = _make_value_map(value)
     if errors:
         for e in errors:
             log.error(e)

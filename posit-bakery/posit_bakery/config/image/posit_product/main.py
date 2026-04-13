@@ -43,7 +43,13 @@ class ReleaseStreamPath:
 
     def get(self, metadata: dict) -> ReleaseStreamResult:
         """Fetches data from the stream URL and resolves the data using the given resolvers."""
-        stream_url = self.stream_url.format_map(metadata)
+        try:
+            stream_url = self.stream_url.format_map(metadata)
+        except KeyError as e:
+            raise ValueError(
+                f"Stream URL {self.stream_url!r} contains placeholder {e} "
+                f"not found in metadata. Pass --value {e.args[0]}=<value> to set it."
+            ) from e
         session = cached_session()
         response = session.get(stream_url)
         response.raise_for_status()
