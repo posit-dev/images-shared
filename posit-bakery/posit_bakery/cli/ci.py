@@ -118,6 +118,9 @@ def matrix(
                     continue
                 if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
                     continue
+                if dev_stream is not None and ver.isDevelopmentVersion:
+                    if ver.metadata.get("release_stream") != dev_stream:
+                        continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
                     entry["version"] = ver.name
