@@ -25,6 +25,7 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
     BakeryError,
@@ -279,6 +280,13 @@ class BakerySettings(BaseModel):
             default=DevVersionInclusionEnum.EXCLUDE,
         ),
     ]
+    dev_stream: Annotated[
+        ReleaseStreamEnum | None,
+        Field(
+            default=None,
+            description="Filter development versions to a specific release stream.",
+        ),
+    ]
     matrix_versions: Annotated[
         MatrixVersionInclusionEnum,
         Field(
@@ -328,6 +336,12 @@ class BakeryConfig:
         except pydantic.ValidationError as e:
             log.error(f"Failed to load configuration from {str(self.config_file)}")
             raise e
+
+        if self.settings.dev_stream is not None and self.settings.dev_versions == DevVersionInclusionEnum.EXCLUDE:
+            log.warning(
+                "--dev-stream has no effect when development versions are excluded. "
+                "Use --dev-versions include or --dev-versions only to enable dev stream filtering."
+            )
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
@@ -791,6 +805,21 @@ class BakeryConfig:
                             f"development version."
                         )
                     continue
+                if settings.dev_stream is not None and version.isDevelopmentVersion:
+                    version_release_stream = version.metadata.get("release_stream")
+                    if version_release_stream != settings.dev_stream:
+                        if version_filter_matched:
+                            log.warning(
+                                f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
+                                f"but is being skipped: dev stream '{version_release_stream}' does not match "
+                                f"--dev-stream '{settings.dev_stream.value}'"
+                            )
+                        else:
+                            log.debug(
+                                f"Skipping dev version '{version.name}' in image '{image.name}': "
+                                f"dev stream '{version_release_stream}' does not match --dev-stream '{settings.dev_stream.value}'"
+                            )
+                        continue
                 if (
                     settings.filter.image_version is not None
                     and re.search(settings.filter.image_version, version.name) is None
