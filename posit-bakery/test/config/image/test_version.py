@@ -507,6 +507,23 @@ class TestImageVersion:
         assert "{{ Image.Name }}" in content
         assert "This is a static file that should be copied verbatim." in content
 
+    def test_metadata_defaults_to_empty_dict(self):
+        """Test that metadata defaults to an empty dict."""
+        i = ImageVersion(name="1.0.0")
+        assert i.metadata == {}
+
+    def test_metadata_excluded_from_serialization(self):
+        """Test that metadata is excluded from model_dump output."""
+        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily"})
+        dump = i.model_dump()
+        assert "metadata" not in dump
+
+    def test_metadata_stores_arbitrary_values(self):
+        """Test that metadata can store arbitrary key-value pairs."""
+        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily", "custom_key": 42})
+        assert i.metadata["release_stream"] == "daily"
+        assert i.metadata["custom_key"] == 42
+
     def test_render_files_preserves_directory_structure(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_files preserves directory structure for non-template files."""
         context = get_tmpcontext("basic")

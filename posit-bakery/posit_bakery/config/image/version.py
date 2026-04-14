@@ -110,6 +110,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         str | None,
         Field(default=None, description="Target build stage for the Docker --target flag."),
     ]
+    metadata: Annotated[
+        dict[str, Any],
+        Field(
+            exclude=True,
+            default_factory=dict,
+            description="Private metadata store for internal use. Not settable via bakery.yaml.",
+        ),
+    ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
