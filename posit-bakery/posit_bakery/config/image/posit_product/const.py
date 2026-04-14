@@ -52,10 +52,5 @@ class ReleaseStreamEnum(str, Enum):
 PRODUCT_RELEASE_STREAM_SUPPORT_MAP = {
     ProductEnum.CONNECT: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
     ProductEnum.PACKAGE_MANAGER: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.PREVIEW, ReleaseStreamEnum.DAILY],
-    ProductEnum.WORKBENCH: [
-        ReleaseStreamEnum.RELEASE,
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW,
-        ReleaseStreamEnum.DAILY,
-    ],
+    ProductEnum.WORKBENCH: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
 }
