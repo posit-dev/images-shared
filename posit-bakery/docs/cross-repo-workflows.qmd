@@ -56,53 +56,44 @@ posit-platform is a future option once the per-product chains are stable.
 %%| fig-cap: "Production Release Flow"
 graph TD
     subgraph "Product Repos"
-        CONNECT_PROD["posit-dev/connect"]
-        WORKBENCH_PROD["rstudio/rstudio-pro"]
-        PPM_PROD["rstudio/package-manager"]
+        CONNECT_PROD["connect"]
+        WORKBENCH_PROD["rstudio-pro"]
+        PPM_PROD["package-manager"]
     end
 
-    CONNECT_BOT["posit-connect-projects"]
-    WORKBENCH_BOT["workbench-ide-release"]
-    PPM_BOT["posit-ppm"]
-
-    CONNECT_PROD -.-> CONNECT_BOT
-    WORKBENCH_PROD -.-> WORKBENCH_BOT
-    PPM_PROD -.-> PPM_BOT
-
-    CONNECT_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_CONNECT
-    WORKBENCH_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_WORKBENCH
-    PPM_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_PM
-
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
+    CONNECT_PROD -.->|"dispatch release.yml<br/>version"| IMG_CONNECT
+    WORKBENCH_PROD -.->|"dispatch release.yml<br/>version"| IMG_WORKBENCH
+    PPM_PROD -.->|"dispatch release.yml<br/>version"| IMG_PM
 
     subgraph "Image Repos"
-        IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
-        IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
-        IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
+        IMG_CONNECT["images-connect"]
+        IMG_WORKBENCH["images-workbench"]
+        IMG_PM["images-package-manager"]
     end
 
-    IMG_CONNECT -.->|workflow_call| SHARED
-    IMG_WORKBENCH -.->|workflow_call| SHARED
-    IMG_PM -.->|workflow_call| SHARED
+    IMG_CONNECT -.->|"workflow_call<br/>bakery-build-native.yml"| SHARED
+    IMG_WORKBENCH -.->|"workflow_call<br/>bakery-build-native.yml"| SHARED
+    IMG_PM -.->|"workflow_call<br/>bakery-build-native.yml"| SHARED
 
-    IMG_CONNECT -->|push| DOCKERHUB
-    IMG_CONNECT -->|push| GHCR
-    IMG_WORKBENCH -->|push| DOCKERHUB
-    IMG_WORKBENCH -->|push| GHCR
-    IMG_PM -->|push| DOCKERHUB
-    IMG_PM -->|push| GHCR
+    subgraph images-shared
+        SHARED["bakery-build-native.yml<br/>product-release.yml"]
+    end
 
-    DOCKERHUB["Docker Hub"]
-    GHCR["GHCR"]
+    IMG_CONNECT -->|push| REGISTRIES
+    IMG_WORKBENCH -->|push| REGISTRIES
+    IMG_PM -->|push| REGISTRIES
 
-    IMG_CONNECT -.->|"workflow_dispatch product-release.yml"| HELM
-    IMG_WORKBENCH -.->|"workflow_dispatch product-release.yml"| HELM
-    IMG_PM -.->|"workflow_dispatch product-release.yml"| HELM
+    REGISTRIES["Docker Hub + GHCR"]
 
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    IMG_CONNECT -.->|"dispatch product-release.yml<br/>product, version"| HELM_WF
+    IMG_WORKBENCH -.->|"dispatch product-release.yml<br/>product, version"| HELM_WF
+    IMG_PM -.->|"dispatch product-release.yml<br/>product, version"| HELM_WF
 
-    K8S["K8s Dogfood Sites"]
+    subgraph helm
+        HELM_WF["product-release.yml"]
+    end
+
+    HELM_WF -->|Flux sync| K8S["K8s Dogfood Sites"]
 ```
 
 ## Development / Preview Flow
@@ -111,32 +102,28 @@ graph TD
 %%| fig-cap: "Development / Preview Flow"
 graph TD
     subgraph "Product Repos"
-        CONNECT_PROD["posit-dev/connect"]
-        WORKBENCH_PROD["rstudio/rstudio-pro"]
-        PPM_PROD["rstudio/package-manager"]
+        CONNECT_PROD["connect"]
+        WORKBENCH_PROD["rstudio-pro"]
+        PPM_PROD["package-manager"]
     end
 
-    CONNECT_BOT["posit-connect-projects"]
-    WORKBENCH_BOT["workbench-ide-release"]
-    PPM_BOT["posit-ppm"]
+    CONNECT_PROD -.->|"dispatch development.yml<br/>version"| IMG_CONNECT
+    WORKBENCH_PROD -.->|"dispatch development.yml<br/>version, stream, channel"| IMG_WORKBENCH
+    PPM_PROD -.->|"dispatch development.yml<br/>version, stream"| IMG_PM
 
-    CONNECT_PROD -.-> CONNECT_BOT
-    WORKBENCH_PROD -.-> WORKBENCH_BOT
-    PPM_PROD -.-> PPM_BOT
+    subgraph "Image Repos"
+        IMG_CONNECT["images-connect<br/>development.yml"]
+        IMG_WORKBENCH["images-workbench<br/>development.yml"]
+        IMG_PM["images-package-manager<br/>development.yml"]
+    end
 
-    CONNECT_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_CONNECT
-    WORKBENCH_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_WORKBENCH
-    PPM_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_PM
+    IMG_CONNECT -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream"| SHARED
+    IMG_WORKBENCH -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream, dev-channel"| SHARED
+    IMG_PM -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream"| SHARED
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
-
-    IMG_CONNECT["posit-dev/images-connect<br/>development"]
-    IMG_WORKBENCH["posit-dev/images-workbench<br/>development"]
-    IMG_PM["posit-dev/images-package-manager<br/>development"]
-
-    IMG_CONNECT -.->|workflow_call| SHARED
-    IMG_WORKBENCH -.->|workflow_call| SHARED
-    IMG_PM -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml"]
+    end
 
     IMG_CONNECT -->|preview push| GHCR
     IMG_WORKBENCH -->|preview push| GHCR
@@ -144,13 +131,9 @@ graph TD
 
     GHCR["GHCR<br/>connect-preview<br/>workbench-preview<br/>workbench-session-init-preview<br/>package-manager-preview"]
 
-    GHCR --> K8S
-    GHCR --> FUZZBUCKET
-    GHCR --> EKS_REF
-
-    K8S["K8s Dogfood Sites"]
-    FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
-    EKS_REF["EKS Reference Architecture"]
+    GHCR --> K8S["K8s Dogfood Sites"]
+    GHCR --> FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
+    GHCR --> EKS_REF["EKS Reference Architecture"]
 ```
 
 ## Per-Product Diagrams
@@ -162,38 +145,53 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Connect Production Flow"
 graph TD
-    PROD["posit-dev/connect<br/>release-scripts.yml"]
-    BOT["posit-connect-projects"]
+    subgraph connect
+        SCRIPTS["release-scripts.yml<br/>publish_release.py"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    SCRIPTS -.->|"workflow_dispatch<br/>version"| REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-connect
+        REL["release.yml"]
+        PROD_WF["production.yml"]
+        CONTENT["content.yml"]
+        HELM_JOB["update-helm job"]
+    end
 
-    IMG_RELEASE["posit-dev/images-connect<br/>release"]
-    IMG_PROD["posit-dev/images-connect<br/>production"]
-    IMG_CONTENT["posit-dev/images-connect<br/>content"]
+    REL -.->|"workflow_call<br/>version, images"| PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
-    IMG_CONTENT -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
-    IMG_RELEASE -->|"merge to main"| IMG_CONTENT
+    REL -->|"PR merge triggers"| PROD_WF
+    REL -->|"PR merge triggers"| CONTENT
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
-    IMG_CONTENT -->|push| DOCKERHUB
-    IMG_CONTENT -->|push| GHCR
+    PROD_WF -.->|"workflow_call<br/>dev-versions=exclude"| SHARED
+    CONTENT -.->|"workflow_call<br/>matrix-versions=only"| SHARED
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-connect<br/>rstudio/rstudio-connect-content-init"]
-    GHCR["GHCR"]
+    PROD_WF --> HELM_JOB
+    HELM_JOB -.->|"workflow_dispatch<br/>product=connect, version"| HELM_WF
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    PROD_WF -->|push| DOCKERHUB["Docker Hub"]
+    PROD_WF -->|push| GHCR["GHCR"]
+    CONTENT -->|push| DOCKERHUB
+    CONTENT -->|push| GHCR
 
-    K8S["K8s Dogfood Sites"]
+    subgraph helm
+        HELM_WF["product-release.yml"]
+    end
+
+    HELM_WF -->|Flux sync| K8S["K8s Dogfood Sites"]
+
+    click SCRIPTS "https://github.com/posit-dev/connect/blob/main/.github/workflows/release-scripts.yml" _blank
+    click REL "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/production.yml" _blank
+    click CONTENT "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/content.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -201,25 +199,28 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Connect Development Flow"
 graph TD
-    PROD["posit-dev/connect<br/>ci.yml (push to main)"]
-    BOT["posit-connect-projects"]
+    subgraph connect
+        CI["ci.yml"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    CI -.->|"workflow_dispatch<br/>version"| DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-connect
+        DEV["development.yml"]
+    end
 
-    IMG_DEV["posit-dev/images-connect<br/>development"]
+    DEV -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream"| SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|preview push| GHCR["GHCR<br/>connect-preview"]
+    GHCR --> K8S["K8s Dogfood Sites"]
 
-    GHCR["GHCR<br/>connect-preview"]
-
-    GHCR --> K8S
-
-    K8S["K8s Dogfood Sites"]
+    click CI "https://github.com/posit-dev/connect/blob/main/.github/workflows/ci.yml" _blank
+    click DEV "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
 
 ### Workbench
@@ -229,38 +230,56 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Workbench Production Flow"
 graph TD
-    PROD["rstudio/rstudio-pro<br/>release-all.yml"]
-    BOT["workbench-ide-release"]
+    subgraph rstudio-pro
+        RELEASE_ALL["release-all.yml"]
+        UPDATE_IMG["release-update-images-workbench.yml"]
+        RELEASE_ALL --> UPDATE_IMG
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    UPDATE_IMG -.->|"workflow_dispatch<br/>version"| REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-workbench
+        REL["release.yml"]
+        PROD_WF["production.yml"]
+        SESSION["session.yml"]
+        HELM_JOB["update-helm job"]
+    end
 
-    IMG_RELEASE["posit-dev/images-workbench<br/>release"]
-    IMG_PROD["posit-dev/images-workbench<br/>production"]
-    IMG_SESSION["posit-dev/images-workbench<br/>session"]
+    REL -.->|"workflow_call<br/>version, images"| PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
-    IMG_SESSION -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
-    IMG_RELEASE -->|"merge to main"| IMG_SESSION
+    REL -->|"PR merge triggers"| PROD_WF
+    REL -->|"PR merge triggers"| SESSION
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
-    IMG_SESSION -->|push| DOCKERHUB
-    IMG_SESSION -->|push| GHCR
+    PROD_WF -.->|"workflow_call<br/>dev-versions=exclude"| SHARED
+    SESSION -.->|"workflow_call<br/>matrix-versions=only"| SHARED
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-workbench<br/>rstudio/r-session-complete"]
-    GHCR["GHCR"]
+    PROD_WF --> HELM_JOB
+    HELM_JOB -.->|"workflow_dispatch<br/>product=workbench, version"| HELM_WF
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    PROD_WF -->|push| DOCKERHUB["Docker Hub"]
+    PROD_WF -->|push| GHCR["GHCR"]
+    SESSION -->|push| DOCKERHUB
+    SESSION -->|push| GHCR
 
-    K8S["K8s Dogfood Sites"]
+    subgraph helm
+        HELM_WF["product-release.yml"]
+    end
+
+    HELM_WF -->|Flux sync| K8S["K8s Dogfood Sites"]
+
+    click RELEASE_ALL "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-all.yml" _blank
+    click UPDATE_IMG "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-update-images-workbench.yml" _blank
+    click REL "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/production.yml" _blank
+    click SESSION "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/session.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -268,29 +287,30 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Workbench Development Flow"
 graph TD
-    PROD["rstudio/rstudio-pro<br/>release-nightly-test.yml"]
-    BOT["workbench-ide-release"]
+    subgraph rstudio-pro
+        NIGHTLY["release-nightly-test.yml"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    NIGHTLY -.->|"workflow_dispatch<br/>version, stream, channel"| DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-workbench
+        DEV["development.yml"]
+    end
 
-    IMG_DEV["posit-dev/images-workbench<br/>development"]
+    DEV -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream, dev-channel"| SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|preview push| GHCR["GHCR<br/>workbench-preview<br/>workbench-session-init-preview"]
+    GHCR --> K8S["K8s Dogfood Sites"]
+    GHCR --> FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
+    GHCR --> EKS_REF["EKS Reference Architecture"]
 
-    GHCR["GHCR<br/>workbench-preview<br/>workbench-session-init-preview"]
-
-    GHCR --> K8S
-    GHCR --> FUZZBUCKET
-    GHCR --> EKS_REF
-
-    K8S["K8s Dogfood Sites"]
-    FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
-    EKS_REF["EKS Reference Architecture"]
+    click NIGHTLY "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-nightly-test.yml" _blank
+    click DEV "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
 
 ### Package Manager
@@ -300,33 +320,46 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Package Manager Production Flow"
 graph TD
-    PROD["rstudio/package-manager<br/>ci.yml (tag push)"]
-    BOT["posit-ppm"]
+    subgraph package-manager
+        CI["ci.yml (publish job)"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    CI -.->|"workflow_dispatch<br/>version"| REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-package-manager
+        REL["release.yml"]
+        PROD_WF["production.yml"]
+        HELM_JOB["update-helm job"]
+    end
 
-    IMG_RELEASE["posit-dev/images-package-manager<br/>release"]
-    IMG_PROD["posit-dev/images-package-manager<br/>production"]
+    REL -.->|"workflow_call<br/>version, images"| PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
+    REL -->|"PR merge triggers"| PROD_WF
+    PROD_WF -.->|"workflow_call<br/>dev-versions=exclude"| SHARED
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
+    PROD_WF --> HELM_JOB
+    HELM_JOB -.->|"workflow_dispatch<br/>product=package-manager, version"| HELM_WF
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-package-manager"]
-    GHCR["GHCR"]
+    PROD_WF -->|push| DOCKERHUB["Docker Hub"]
+    PROD_WF -->|push| GHCR["GHCR"]
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    subgraph helm
+        HELM_WF["product-release.yml"]
+    end
 
-    K8S["K8s Dogfood Sites"]
+    HELM_WF -->|Flux sync| K8S["K8s Dogfood Sites"]
+
+    click CI "https://github.com/rstudio/package-manager/blob/main/.github/workflows/ci.yml" _blank
+    click REL "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/production.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -334,25 +367,28 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Package Manager Development Flow"
 graph TD
-    PROD["rstudio/package-manager<br/>ci.yml (push to main)"]
-    BOT["posit-ppm"]
+    subgraph package-manager
+        CI["ci.yml (publish job)"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    CI -.->|"workflow_dispatch<br/>version, stream"| DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-package-manager
+        DEV["development.yml"]
+    end
 
-    IMG_DEV["posit-dev/images-package-manager<br/>development"]
+    DEV -.->|"workflow_call<br/>dev-versions, image-version,<br/>dev-stream"| SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|preview push| GHCR["GHCR<br/>package-manager-preview"]
+    GHCR --> K8S["K8s Dogfood Sites"]
 
-    GHCR["GHCR<br/>package-manager-preview"]
-
-    GHCR --> K8S
-
-    K8S["K8s Dogfood Sites"]
+    click CI "https://github.com/rstudio/package-manager/blob/main/.github/workflows/ci.yml" _blank
+    click DEV "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
 
 ## Reference Tables
