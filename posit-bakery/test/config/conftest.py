@@ -82,7 +82,7 @@ def patch_testdata_response(url: str):
     elif url == product_const.PACKAGE_MANAGER_DAILY_URL:
         mock_response.json.side_effect = FakeJSONDecodeError
         mock_response.text = PACKAGE_MANAGER_DAILY.read_text()
-    elif url == product_const.WORKBENCH_DAILY_URL:
+    elif url.startswith("https://dailies.rstudio.com/rstudio/") and url.endswith("/index.json"):
         mock_response.json.return_value = json.loads(WORKBENCH_DAILY.read_text())
     # Default mock response for unknown URLs
     else:
