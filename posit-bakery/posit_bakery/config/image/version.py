@@ -11,10 +11,11 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import DependencyVersionsField
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
-from posit_bakery.const import JINJA2_TEMPLATE_EXTENSIONS
+from posit_bakery.const import DevVersionInclusionEnum, JINJA2_TEMPLATE_EXTENSIONS
 from .build_os import DEFAULT_PLATFORMS, TargetPlatform
 from .variant import ImageVariant
 from .version_os import ImageVersionOS
@@ -118,6 +119,27 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="Private metadata store for internal use. Not settable via bakery.yaml.",
         ),
     ]
+
+    def matches_dev_filter(
+        self,
+        dev_versions: DevVersionInclusionEnum,
+        dev_stream: ReleaseStreamEnum | None = None,
+    ) -> tuple[bool, str | None]:
+        """Check whether this version should be included given dev version filters.
+
+        :param dev_versions: Whether dev versions are included, excluded, or the only versions.
+        :param dev_stream: If set, only include dev versions from this release stream.
+        :return: A tuple of (included, reason). If excluded, reason explains why.
+        """
+        if self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.EXCLUDE:
+            return False, "excluded by --dev-versions exclude"
+        if not self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
+            return False, "not a development version (excluded by --dev-versions only)"
+        if dev_stream is not None and self.isDevelopmentVersion:
+            version_stream = self.metadata.get("release_stream")
+            if version_stream != dev_stream:
+                return False, (f"dev stream '{version_stream}' does not match --dev-stream '{dev_stream.value}'")
+        return True, None
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod

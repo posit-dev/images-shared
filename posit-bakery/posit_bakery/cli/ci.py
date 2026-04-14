@@ -114,9 +114,8 @@ def matrix(
             elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
                 versions = img.matrix.to_image_versions()
             for ver in versions:
-                if ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.EXCLUDE:
-                    continue
-                if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
+                included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
+                if not included:
                     continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
@@ -158,7 +157,7 @@ def merge(
         Optional[ReleaseStreamEnum],
         typer.Option(
             help="Filter development versions to a specific release stream.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
 ):
