@@ -52,5 +52,12 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
 
         return url_by_os
 
+    def get_release_stream(self) -> ReleaseStreamEnum:
+        """Return the release stream for this product stream development version.
+
+        :return: The configured ReleaseStreamEnum value.
+        """
+        return self.stream
+
     def __repr__(self):
         return f'devVersion(sourceType="stream", product="{self.product}", stream="{self.stream}")'

@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from posit_bakery.config import Image, BaseRegistry
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromEnv
 from posit_bakery.config.image.dev_version.env import _get_value_from_env
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 
 pytestmark = [
     pytest.mark.unit,
@@ -268,3 +269,63 @@ class TestImageDevelopmentVersionFromEnv:
         assert len(i.all_registries) == 2
         for registry in override_registries:
             assert registry in i.all_registries
+
+    def test_get_release_stream_returns_none_by_default(self, monkeypatch):
+        """Test that get_release_stream returns None when no stream configured."""
+        monkeypatch.setenv("TEST_VERSION", "1.0.0")
+        monkeypatch.setenv("TEST_URL", "https://example.com/download")
+        dev_version = ImageDevelopmentVersionFromEnv(
+            sourceType="env",
+            versionEnvVar="TEST_VERSION",
+            urlEnvVar="TEST_URL",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dev_version.get_release_stream() is None
+
+    def test_get_release_stream_returns_configured_stream(self, monkeypatch):
+        """Test that get_release_stream returns the configured stream."""
+        monkeypatch.setenv("TEST_VERSION", "1.0.0")
+        monkeypatch.setenv("TEST_URL", "https://example.com/download")
+        dev_version = ImageDevelopmentVersionFromEnv(
+            sourceType="env",
+            versionEnvVar="TEST_VERSION",
+            urlEnvVar="TEST_URL",
+            stream=ReleaseStreamEnum.DAILY,
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dev_version.get_release_stream() == ReleaseStreamEnum.DAILY
+
+    def test_as_image_version_metadata_empty_when_no_stream(self, monkeypatch):
+        """Test that as_image_version metadata has no release_stream when stream is None."""
+        monkeypatch.setenv("TEST_VERSION", "1.0.0")
+        monkeypatch.setenv("TEST_URL", "https://example.com/download")
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        mock_parent.resolve_dependency_versions.return_value = []
+        dev_version = ImageDevelopmentVersionFromEnv(
+            sourceType="env",
+            versionEnvVar="TEST_VERSION",
+            urlEnvVar="TEST_URL",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dev_version.parent = mock_parent
+        image_version = dev_version.as_image_version()
+        assert "release_stream" not in image_version.metadata
+
+    def test_as_image_version_metadata_contains_stream_when_configured(self, monkeypatch):
+        """Test that as_image_version metadata contains release_stream when stream is set."""
+        monkeypatch.setenv("TEST_VERSION", "1.0.0")
+        monkeypatch.setenv("TEST_URL", "https://example.com/download")
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        mock_parent.resolve_dependency_versions.return_value = []
+        dev_version = ImageDevelopmentVersionFromEnv(
+            sourceType="env",
+            versionEnvVar="TEST_VERSION",
+            urlEnvVar="TEST_URL",
+            stream=ReleaseStreamEnum.DAILY,
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dev_version.parent = mock_parent
+        image_version = dev_version.as_image_version()
+        assert image_version.metadata == {"release_stream": ReleaseStreamEnum.DAILY}

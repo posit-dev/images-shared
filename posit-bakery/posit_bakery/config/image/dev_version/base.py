@@ -6,6 +6,7 @@ from typing import Annotated, Self
 from pydantic import Field, field_validator, model_validator
 
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.registry import BaseRegistry, Registry
@@ -209,6 +210,13 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         raise NotImplementedError("Subclasses must implement get_url method.")
 
+    def get_release_stream(self) -> ReleaseStreamEnum | None:
+        """Return the release stream for this development version, if known.
+
+        :return: The ReleaseStreamEnum value, or None if not applicable.
+        """
+        return None
+
     @model_validator(mode="after")
     def add_os_url(self) -> "BaseImageDevelopmentVersion":
         """Add the URL to each OS in the os list.
@@ -223,6 +231,10 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
     def as_image_version(self):
         """Convert this development version to a standard image version."""
+        metadata = {}
+        release_stream = self.get_release_stream()
+        if release_stream is not None:
+            metadata["release_stream"] = release_stream
         return ImageVersion(
             name=self.get_version(),
             subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
@@ -235,4 +247,5 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             dependencies=self.parent.resolve_dependency_versions(),
             ephemeral=True,
             isDevelopmentVersion=True,
+            metadata=metadata,
         )

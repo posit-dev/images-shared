@@ -5,6 +5,7 @@ from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.templating import jinja2_env
 
 
@@ -31,6 +32,10 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
     sourceType: Literal["env"] = "env"
     versionEnvVar: Annotated[str, Field(description="The environment variable that contains the image version name.")]
     urlEnvVar: Annotated[str, Field(description="The environment variable that contains the image URL.")]
+    stream: Annotated[
+        ReleaseStreamEnum | None,
+        Field(default=None, description="Optional release stream to associate with this environment-sourced version."),
+    ]
 
     @field_validator("versionEnvVar", "urlEnvVar", mode="after")
     def validate_env_vars(cls, v: str, info: ValidationInfo):
@@ -82,6 +87,13 @@ class ImageDevelopmentVersionFromEnv(BaseImageDevelopmentVersion):
             d[_os.name] = rendered_url
 
         return d
+
+    def get_release_stream(self) -> ReleaseStreamEnum | None:
+        """Return the release stream for this env development version, if configured.
+
+        :return: The configured ReleaseStreamEnum value, or None.
+        """
+        return self.stream
 
     def __repr__(self) -> str:
         """Generate a unique representation for this development version configuration.
