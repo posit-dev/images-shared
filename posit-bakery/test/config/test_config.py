@@ -12,6 +12,7 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.image.image_metadata import BuildMetadata
 from test.config.conftest import CONFIG_TESTDATA_DIR
@@ -223,6 +224,58 @@ class TestBakeryConfig:
                 for version in dev_versions:
                     assert version.name in expected_versions
                     assert len(version.os) == 2
+
+    @pytest.mark.parametrize(
+        "dev_stream,expected_dev_version_count",
+        [
+            pytest.param(None, 2, id="no-filter-includes-all-dev-versions"),
+            pytest.param(ReleaseStreamEnum.PREVIEW, 1, id="preview-filter"),
+            pytest.param(ReleaseStreamEnum.DAILY, 1, id="daily-filter"),
+            pytest.param(ReleaseStreamEnum.RELEASE, 0, id="release-filter-no-match"),
+        ],
+    )
+    @patch("atexit.register")
+    def test_dev_stream_filter(
+        self,
+        mock_atexit_register,
+        dev_stream,
+        expected_dev_version_count,
+        testdata_path,
+        patch_requests_get,
+    ):
+        """Test that dev_stream filters development versions by release stream."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                config = BakeryConfig(
+                    yaml_file,
+                    BakerySettings(
+                        dev_versions=DevVersionInclusionEnum.ONLY,
+                        dev_stream=dev_stream,
+                        clean_temporary=False,
+                    ),
+                )
+                dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
+                # package-manager has 2 variants and each dev version has 2 OSes = 4 targets per dev version
+                assert len(dev_targets) == expected_dev_version_count * 4
+
+    def test_dev_stream_warning_when_dev_versions_excluded(
+        self,
+        caplog,
+        testdata_path,
+        patch_requests_get,
+    ):
+        """Test that a warning is emitted when --dev-stream is set but dev versions are excluded."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                dev_versions=DevVersionInclusionEnum.EXCLUDE,
+                dev_stream=ReleaseStreamEnum.DAILY,
+            ),
+        )
+        assert "WARNING" in caplog.text
+        assert "--dev-stream" in caplog.text
 
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",

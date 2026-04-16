@@ -268,6 +268,31 @@ class TestImageDevelopmentVersionFromProductStream:
         for registry in override_registries:
             assert registry in i.all_registries
 
+    def test_get_release_stream_returns_stream(self, patch_requests_get):
+        """Test that get_release_stream returns the configured stream."""
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product=ProductEnum.PACKAGE_MANAGER,
+            stream=ReleaseStreamEnum.DAILY,
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dev_version.get_release_stream() == ReleaseStreamEnum.DAILY
+
+    def test_as_image_version_metadata_contains_release_stream(self, patch_requests_get):
+        """Test that as_image_version populates metadata with release_stream."""
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        mock_parent.resolve_dependency_versions.return_value = []
+        dev_version = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product=ProductEnum.PACKAGE_MANAGER,
+            stream=ReleaseStreamEnum.PREVIEW,
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dev_version.parent = mock_parent
+        image_version = dev_version.as_image_version()
+        assert image_version.metadata == {"release_stream": ReleaseStreamEnum.PREVIEW}
+
     @pytest.mark.parametrize(
         "download_url,generalize_architecture,expected_url",
         [

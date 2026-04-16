@@ -8,6 +8,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -65,6 +66,13 @@ def tags(
             rich_help_panel="Filters",
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel="Filters",
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -102,6 +110,7 @@ def tags(
                 image_os=image_os,
             ),
             dev_versions=dev_versions,
+            dev_stream=dev_stream,
             matrix_versions=matrix_versions,
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)

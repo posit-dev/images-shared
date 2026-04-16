@@ -9,6 +9,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.util import auto_path
 
@@ -65,6 +66,13 @@ def cache_registry(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -91,6 +99,7 @@ def cache_registry(
         filter=BakeryConfigFilter(image_name=image_name),
         cache_registry=registry,
         dev_versions=dev_versions,
+        dev_stream=dev_stream,
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
@@ -151,6 +160,13 @@ def temp_registry(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -176,6 +192,7 @@ def temp_registry(
         filter=BakeryConfigFilter(image_name=image_name),
         temp_registry=registry,
         dev_versions=dev_versions,
+        dev_stream=dev_stream,
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)

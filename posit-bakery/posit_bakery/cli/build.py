@@ -10,6 +10,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
@@ -179,6 +180,13 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -205,6 +213,7 @@ def build(
             image_platform=image_platform or [],
         ),
         dev_versions=dev_versions,
+        dev_stream=dev_stream,
         matrix_versions=matrix_versions,
         clean_temporary=clean,
         cache_registry=cache_registry,

@@ -11,6 +11,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import push_readmes
@@ -42,6 +43,13 @@ def matrix(
             help="Include or exclude development versions defined in config.", rich_help_panel=RichHelpPanelEnum.FILTERS
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -88,6 +96,7 @@ def matrix(
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
+            dev_stream=dev_stream,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
@@ -109,6 +118,9 @@ def matrix(
                     continue
                 if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
                     continue
+                if dev_stream is not None and ver.isDevelopmentVersion:
+                    if ver.metadata.get("release_stream") != dev_stream:
+                        continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
                     entry["version"] = ver.name
@@ -145,6 +157,13 @@ def merge(
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = None,
 ):
     """Merges multiple metadata files with single-platform images into a single multi-platform image by UID.
     This command is intended for use in CI workflows that utilize native builders for multiplatform builds.
@@ -164,6 +183,7 @@ def merge(
     """
     settings = BakerySettings(
         dev_versions=DevVersionInclusionEnum.INCLUDE,
+        dev_stream=dev_stream,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
         temp_registry=temp_registry,
@@ -238,6 +258,13 @@ def readme(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.INCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -258,6 +285,7 @@ def readme(
     """
     settings = BakerySettings(
         dev_versions=dev_versions,
+        dev_stream=dev_stream,
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
