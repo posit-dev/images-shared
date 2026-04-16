@@ -1,3 +1,4 @@
+import stat
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -637,3 +638,43 @@ class TestImageMatrix:
         script_content = copied_script.read_text()
         assert "{{ Image.Name }}" in script_content  # Should be literal
         assert "#!/bin/bash" in script_content
+
+    def test_render_files_preserves_template_file_mode(self, tmp_path):
+        """Test that matrix render_files propagates the template file mode to rendered output."""
+        image_dir = tmp_path / "test-image"
+        template_dir = image_dir / "template"
+        scripts_dir = template_dir / "scripts"
+        scripts_dir.mkdir(parents=True)
+
+        # Executable Jinja2 template: rendered output should inherit the exec bit.
+        exec_tpl = scripts_dir / "startup.sh.jinja2"
+        exec_tpl.write_text("#!/bin/bash\necho {{ Image.Name }}\n")
+        exec_tpl.chmod(0o755)
+
+        # Non-executable Jinja2 template: rendered output should stay 0o644.
+        plain_tpl = scripts_dir / "config.sh.jinja2"
+        plain_tpl.write_text("# config for {{ Image.Name }}\n")
+        plain_tpl.chmod(0o644)
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = tmp_path
+
+        mock_image_parent = MagicMock(spec=Image)
+        mock_image_parent.name = "test-image"
+        mock_image_parent.displayName = "Test Image"
+        mock_image_parent.path = image_dir
+        mock_image_parent.template_path = template_dir
+        mock_image_parent.parent = mock_config_parent
+
+        matrix = ImageMatrix(
+            parent=mock_image_parent,
+            values={"go_version": ["1.24"]},
+        )
+
+        matrix.render_files()
+
+        expected_path = image_dir / "matrix"
+        exec_out = expected_path / "scripts" / "startup.sh"
+        plain_out = expected_path / "scripts" / "config.sh"
+        assert exec_out.stat().st_mode & stat.S_IXUSR, "executable template should render to executable file"
+        assert not (plain_out.stat().st_mode & stat.S_IXUSR), "non-executable template should stay non-executable"

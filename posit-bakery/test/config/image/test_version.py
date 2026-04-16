@@ -1,3 +1,4 @@
+import stat
 import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -551,3 +552,40 @@ class TestImageVersion:
         # The Jinja2 syntax should be preserved literally
         assert "{{ Image.Name }}" in content
         assert "#!/bin/bash" in content
+
+    def test_render_files_preserves_template_file_mode(self, get_tmpcontext, common_image_variants_objects):
+        """Test that render_files propagates the template file mode to rendered output."""
+        context = get_tmpcontext("basic")
+
+        # Executable Jinja2 template: rendered output should inherit the exec bit.
+        exec_tpl = context / "test-image" / "template" / "scripts" / "startup.sh.jinja2"
+        exec_tpl.parent.mkdir(parents=True, exist_ok=True)
+        exec_tpl.write_text("#!/bin/bash\necho {{ Image.Name }}\n")
+        exec_tpl.chmod(0o755)
+
+        # Non-executable Jinja2 template: rendered output should stay 0o644.
+        plain_tpl = context / "test-image" / "template" / "scripts" / "config.sh.jinja2"
+        plain_tpl.write_text("# config for {{ Image.Name }}\n")
+        plain_tpl.chmod(0o644)
+
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+        mock_parent.registries = [BaseRegistry(host="docker.io", namespace="posit")]
+
+        i = Image(
+            name="test-image", versions=[{"name": "1.0.0"}], variants=common_image_variants_objects, parent=mock_parent
+        )
+        new_version = ImageVersion(
+            parent=i,
+            name="2.0.0",
+            subpath="2.0",
+            os=[{"name": "Ubuntu 22.04", "primary": True}],
+        )
+
+        new_version.render_files(i.variants)
+
+        expected_path = context / "test-image" / "2.0"
+        exec_out = expected_path / "scripts" / "startup.sh"
+        plain_out = expected_path / "scripts" / "config.sh"
+        assert exec_out.stat().st_mode & stat.S_IXUSR, "executable template should render to executable file"
+        assert not (plain_out.stat().st_mode & stat.S_IXUSR), "non-executable template should stay non-executable"
