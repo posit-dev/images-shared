@@ -793,33 +793,16 @@ class BakeryConfig:
                 version_filter_matched = settings.filter.image_version is not None and re.search(
                     settings.filter.image_version, version.name
                 )
-                if settings.dev_versions == DevVersionInclusionEnum.ONLY and not version.isDevelopmentVersion:
+                included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_stream)
+                if not included:
                     if version_filter_matched:
                         log.warning(
                             f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                            f"but is being skipped: not a development version (excluded by --dev-versions only)"
+                            f"but is being skipped: {reason}"
                         )
                     else:
-                        log.debug(
-                            f"Skipping image version '{version.name}' in image '{image.name}' due to not being a "
-                            f"development version."
-                        )
+                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
                     continue
-                if settings.dev_stream is not None and version.isDevelopmentVersion:
-                    version_release_stream = version.metadata.get("release_stream")
-                    if version_release_stream != settings.dev_stream:
-                        if version_filter_matched:
-                            log.warning(
-                                f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                                f"but is being skipped: dev stream '{version_release_stream}' does not match "
-                                f"--dev-stream '{settings.dev_stream.value}'"
-                            )
-                        else:
-                            log.debug(
-                                f"Skipping dev version '{version.name}' in image '{image.name}': "
-                                f"dev stream '{version_release_stream}' does not match --dev-stream '{settings.dev_stream.value}'"
-                            )
-                        continue
                 if (
                     settings.filter.image_version is not None
                     and re.search(settings.filter.image_version, version.name) is None

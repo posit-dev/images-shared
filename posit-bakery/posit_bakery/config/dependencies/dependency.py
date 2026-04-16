@@ -51,7 +51,7 @@ class DependencyVersions(BakeryYAMLModel):
     @model_serializer(mode="wrap")
     def serialize_versions(self, next_serializer):
         dumped = next_serializer(self)
-        for name, field_info in self.model_fields.items():
+        for name, field_info in type(self).model_fields.items():
             # Ensure Literal fields are always included since exclude_unset=True is used in serialization.
             if typing.get_origin(field_info.annotation) == typing.Literal:
                 dumped[name] = getattr(self, name)
@@ -87,7 +87,7 @@ class DependencyConstraint(BakeryYAMLModel):
     @model_serializer(mode="wrap")
     def serialize_literal(self, next_serializer):
         dumped = next_serializer(self)
-        for name, field_info in self.model_fields.items():
+        for name, field_info in type(self).model_fields.items():
             # Ensure Literal fields are always included since exclude_unset=True is used in serialization.
             if typing.get_origin(field_info.annotation) == typing.Literal:
                 dumped[name] = getattr(self, name)
