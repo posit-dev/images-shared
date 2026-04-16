@@ -157,9 +157,7 @@ class OrasPlugin(BakeryToolPlugin):
                     style="error",
                 )
             elif workflow_result:
-                log.info(
-                    f"Merged '{result.target}' -> {', '.join(workflow_result.destinations)}"
-                )
+                log.info(f"Merged '{result.target}' -> {', '.join(workflow_result.destinations)}")
 
         if has_errors:
             stderr_console.print("❌ ORAS merge(s) failed", style="error")

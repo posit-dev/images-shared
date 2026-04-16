@@ -98,9 +98,9 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     tagPatterns: Annotated[
         list[TagPattern],
         Field(
-            default_factory=lambda data: default_matrix_tag_patterns()
-            if data.get("matrix") is not None
-            else default_tag_patterns(),
+            default_factory=lambda data: (
+                default_matrix_tag_patterns() if data.get("matrix") is not None else default_tag_patterns()
+            ),
             validate_default=True,
             description="List of tag patterns for this image.",
         ),

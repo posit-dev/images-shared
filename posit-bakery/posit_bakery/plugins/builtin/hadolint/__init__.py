@@ -349,16 +349,16 @@ class HadolintPlugin(BakeryToolPlugin):
                         continue
                     stderr_console.print(f"\n=== {report.containerfile} ===", style="bold")
                     for issue in report.results:
-                            level_style = {
-                                "error": "bright_red",
-                                "warning": "yellow",
-                                "info": "bright_blue",
-                                "style": "bright_black",
-                            }.get(issue.level, "")
-                            stderr_console.print(
-                                f"  {issue.code} {issue.level} line {issue.line}: {issue.message}",
-                                style=level_style,
-                            )
+                        level_style = {
+                            "error": "bright_red",
+                            "warning": "yellow",
+                            "info": "bright_blue",
+                            "style": "bright_black",
+                        }.get(issue.level, "")
+                        stderr_console.print(
+                            f"  {issue.code} {issue.level} line {issue.line}: {issue.message}",
+                            style=level_style,
+                        )
 
         # Execution errors
         if has_errors:

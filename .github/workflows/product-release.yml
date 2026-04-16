@@ -55,9 +55,11 @@ jobs:
           DISPLAY_VERSION="${VERSION%%[+-]*}"
           EDITION="${DISPLAY_VERSION%.*}"
 
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "display_version=$DISPLAY_VERSION" >> "$GITHUB_OUTPUT"
-          echo "edition=$EDITION" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "display_version=$DISPLAY_VERSION"
+            echo "edition=$EDITION"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create or update versions
         id: release
@@ -154,7 +156,7 @@ jobs:
           git push -u origin "$BRANCH" --force-with-lease
 
           BODY="Updates images to version \`${VERSION}\`."
-          BODY+=$'\n\n'"**Images:** $(echo $IMAGES | tr ' ' ', ')"
+          BODY+=$'\n\n'"**Images:** $(echo "$IMAGES" | tr ' ' ', ')"
           if [ "$LATEST_CHANGED" = "true" ]; then
             BODY+=$'\n'"**Latest changed:** \`${OLD_DISPLAY}\` → \`${DISPLAY_VERSION}\`"
           fi
