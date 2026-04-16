@@ -147,18 +147,6 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-        #     DOWNLOADS_JSON_URL,
-        #     {
-        #         "version": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "version"]
-        #         ),
-        #         "download_url": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "server", "installer", "{download_json_os}", "url"]
-        #         ),
-        #     },
-        # ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
             WORKBENCH_DAILY_URL,
             {
@@ -183,18 +171,6 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
-        #     DOWNLOADS_JSON_URL,
-        #     {
-        #         "version": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "version"]
-        #         ),
-        #         "download_url": resolvers.StringMapPathResolver(
-        #             ["rstudio", "pro", "preview", "session", "installer", "{download_json_os}", "url"]
-        #         ),
-        #     },
-        # ),
         ReleaseStreamEnum.DAILY: ReleaseStreamPath(
             WORKBENCH_DAILY_URL,
             {

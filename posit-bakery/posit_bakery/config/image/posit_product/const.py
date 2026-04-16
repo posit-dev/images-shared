@@ -1,3 +1,4 @@
+import os
 import re
 from enum import Enum
 
@@ -26,7 +27,9 @@ URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
     rf"(?:#(?:{_QUERY_FRAGMENT}|{_ENV_VAR})*)?$"
 )
 
-WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/latest/index.json"
+WORKBENCH_DAILY_URL = (
+    f"https://dailies.rstudio.com/rstudio/{os.getenv('BAKERY_WORKBENCH_RELEASE_BRANCH', 'latest')}/index.json"
+)
 PACKAGE_MANAGER_DAILY_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_PREVIEW_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-rc-latest.txt"
 CONNECT_DAILY_URL = "https://cdn.posit.co/connect/latest-packages.json"
@@ -49,10 +52,5 @@ class ReleaseStreamEnum(str, Enum):
 PRODUCT_RELEASE_STREAM_SUPPORT_MAP = {
     ProductEnum.CONNECT: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
     ProductEnum.PACKAGE_MANAGER: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.PREVIEW, ReleaseStreamEnum.DAILY],
-    ProductEnum.WORKBENCH: [
-        ReleaseStreamEnum.RELEASE,
-        # FIXME: This stream seems out of date
-        # ReleaseStreamEnum.PREVIEW,
-        ReleaseStreamEnum.DAILY,
-    ],
+    ProductEnum.WORKBENCH: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
 }
