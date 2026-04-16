@@ -1499,6 +1499,10 @@ class TestBakeryConfig:
 
         assert version.path.exists()
         assert_directories_match(version.path / "deps", get_context("basic") / image.name / version.name / "deps")
+        # Non-matching files should not be rendered
+        assert not (version.path / "Containerfile.ubuntu2204.std").exists()
+        assert not (version.path / "Containerfile.ubuntu2204.min").exists()
+        assert not (version.path / "test").exists()
 
     def test_target_generation_matrix(self, get_tmpcontext):
         config = BakeryConfig(
