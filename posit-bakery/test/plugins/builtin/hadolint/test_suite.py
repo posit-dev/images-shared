@@ -43,10 +43,18 @@ class TestHadolintSuite:
         basic_tmpconfig = get_tmpconfig("basic")
         suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
 
-        hadolint_output = json.dumps([
-            {"code": "DL3008", "column": 1, "file": "Containerfile", "level": "warning",
-             "line": 10, "message": "Pin versions"}
-        ])
+        hadolint_output = json.dumps(
+            [
+                {
+                    "code": "DL3008",
+                    "column": 1,
+                    "file": "Containerfile",
+                    "level": "warning",
+                    "line": 10,
+                    "message": "Pin versions",
+                }
+            ]
+        )
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = hadolint_output.encode("utf-8")
@@ -57,9 +65,7 @@ class TestHadolintSuite:
 
         assert errors is None
         for target in basic_tmpconfig.targets:
-            results_file = (
-                basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
-            )
+            results_file = basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
             assert results_file.exists()
             with open(results_file) as f:
                 data = json.load(f)
@@ -124,6 +130,7 @@ class TestHadolintSuite:
 
         # Simulate matrix by duplicating a target (same containerfile, different uid)
         from copy import deepcopy
+
         extra_target = targets[0].model_copy(deep=True)
         extra_target.image_version = deepcopy(targets[0].image_version)
         extra_target.image_version.isMatrixVersion = True
@@ -168,7 +175,5 @@ class TestHadolintSuite:
         assert errors is None
         assert len(report_collection) > 0
         for target in basic_tmpconfig.targets:
-            results_file = (
-                basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
-            )
+            results_file = basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
             assert results_file.exists()

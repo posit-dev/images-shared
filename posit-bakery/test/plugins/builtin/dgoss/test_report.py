@@ -117,7 +117,7 @@ class TestGossMatcherResult:
                 "extra-elements": [],
                 "found-elements": ["a", "b"],
                 "missing-elements": ["c"],
-            }
+            },
         )
         assert result.missing_elements == ["c"]
         assert result.found_elements == ["a", "b"]

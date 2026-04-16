@@ -25,8 +25,7 @@ class HadolintSuite:
         self.context = context
         self.image_targets = image_targets
         self.hadolint_commands = [
-            HadolintCommand.from_image_target(target, options_override=options_override)
-            for target in image_targets
+            HadolintCommand.from_image_target(target, options_override=options_override) for target in image_targets
         ]
 
     def _group_commands_by_containerfile(self) -> dict[Path, list[HadolintCommand]]:
