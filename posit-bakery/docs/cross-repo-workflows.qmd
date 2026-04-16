@@ -16,39 +16,47 @@ filters:
 Repository relationships and workflow dispatch chains for the Posit container
 image ecosystem, including dogfooding and internal deployment paths.
 
+::: {.callout-note}
+This document represents the **desired future state** of the cross-repo
+workflow architecture. Not all workflows shown here are implemented yet.
+See [posit-dev/images-shared#302](https://github.com/posit-dev/images-shared/issues/302)
+for implementation status and open PRs.
+:::
+
 ## Legend
 
 ```{mermaid}
 %%| fig-cap: "Legend"
 graph TD
-    A["Repository"] -.->|"workflow_call"| B["Repository"]
-    C["Repository"] -->|"push"| D["Registry / Environment"]
-    E["Repository"] -.->|"workflow_dispatch (planned)"| F["Repository"]
-    G["Bot"] -.->|"triggers (planned)"| H["Repository"]
+    A["Repository"] ==>|"workflow_dispatch"| B["Repository"]
+    C["Repository"] -.->|"workflow_call"| D["Repository"]
+    E["Repository"] -->|"push"| F[("Registry")]
+    F --> I(["Environment"])
+    G{{"GitHub App"}} ==> H["Repository"]
 ```
 
 | Symbol | Meaning |
 |---|---|
-| Solid line | Direct action (push, sync) |
-| Dashed line | Cross-repo invocation (`workflow_call`, `workflow_dispatch`) or planned |
-| `workflow_call` | Reusable workflow invocation (caller to shared) |
-| `workflow_dispatch` | Cross-repo trigger via GitHub App |
-| `push` | Image push to registry |
-| `Flux sync` | GitOps pull from Helm chart repo |
+| Thick line | `workflow_dispatch` — cross-repo trigger via GitHub App |
+| Dashed line | `workflow_call` — reusable workflow (same CI run) |
+| Thin line | Direct action: push, Flux sync, PR merge |
+| Rectangle | Repository or workflow |
+| Cylinder | Registry |
+| Stadium | Environment |
+| Hexagon | GitHub App identity |
 
 ### GitHub Apps {.unnumbered}
 
-| Bot | Installed on | Role |
+| App | Installed on | Role |
 |---|---|---|
-| **posit-connect-projects** | `posit-dev/connect`, `images-connect`, `rstudio/helm` | Dispatches downstream from Connect releases |
-| **workbench-ide-release** | `posit-dev/images-workbench`, `rstudio/rstudio-pro`, `rstudio/helm` | Dispatches downstream from Workbench releases |
-| **posit-ppm** | `posit-dev/images-package-manager`, `rstudio/package-manager`, `rstudio/helm` | Dispatches downstream from PPM releases |
-| **posit-platform** | `posit-dev/images-shared`, `rstudio/helm` | Platform team operations, centralized dispatch (future) |
+| **posit-connect-projects** | `posit-dev/connect`<br/>`posit-dev/images-connect`<br/>`rstudio/helm` | Dispatches downstream from Connect releases |
+| **workbench-ide-release** | `posit-dev/images-workbench`<br/>`rstudio/rstudio-pro`<br/>`rstudio/helm` | Dispatches downstream from Workbench releases |
+| **posit-package-manager-automation** | `posit-dev/images-package-manager`<br/>`rstudio/package-manager`<br/>`rstudio/helm` | Dispatches downstream from PPM releases |
+| **posit-platform** | `posit-dev/images-shared`<br/>`rstudio/helm` | Platform team operations, centralized dispatch |
 
-Product bots own the dispatch chain from product release through to Helm
-chart update. **posit-platform** handles platform-team-owned operations
-(e.g., scheduled rebuilds, cache cleanup). Centralized dispatch through
-posit-platform is a future option once the per-product chains are stable.
+Product GitHub Apps own the dispatch chain from product release through
+to Helm chart update. **posit-platform** handles platform-team-owned
+operations (e.g., scheduled rebuilds, cache cleanup).
 
 ## Production Release Flow
 
@@ -56,53 +64,38 @@ posit-platform is a future option once the per-product chains are stable.
 %%| fig-cap: "Production Release Flow"
 graph TD
     subgraph "Product Repos"
-        CONNECT_PROD["posit-dev/connect"]
-        WORKBENCH_PROD["rstudio/rstudio-pro"]
-        PPM_PROD["rstudio/package-manager"]
+        CONNECT_PROD["connect"]
+        WORKBENCH_PROD["rstudio-pro"]
+        PPM_PROD["package-manager"]
     end
 
-    CONNECT_BOT["posit-connect-projects"]
-    WORKBENCH_BOT["workbench-ide-release"]
-    PPM_BOT["posit-ppm"]
-
-    CONNECT_PROD -.-> CONNECT_BOT
-    WORKBENCH_PROD -.-> WORKBENCH_BOT
-    PPM_PROD -.-> PPM_BOT
-
-    CONNECT_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_CONNECT
-    WORKBENCH_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_WORKBENCH
-    PPM_BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_PM
-
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build<br/>product-release<br/>clean"]
+    CONNECT_PROD ==> IMG_CONNECT
+    WORKBENCH_PROD ==> IMG_WORKBENCH
+    PPM_PROD ==> IMG_PM
 
     subgraph "Image Repos"
-        IMG_CONNECT["posit-dev/images-connect<br/>production<br/>content<br/>release"]
-        IMG_WORKBENCH["posit-dev/images-workbench<br/>production<br/>session<br/>release"]
-        IMG_PM["posit-dev/images-package-manager<br/>production<br/>release"]
+        IMG_CONNECT["images-connect"]
+        IMG_WORKBENCH["images-workbench"]
+        IMG_PM["images-package-manager"]
     end
 
-    IMG_CONNECT -.->|workflow_call| SHARED
-    IMG_WORKBENCH -.->|workflow_call| SHARED
-    IMG_PM -.->|workflow_call| SHARED
+    IMG_CONNECT -.-> SHARED
+    IMG_WORKBENCH -.-> SHARED
+    IMG_PM -.-> SHARED
 
-    IMG_CONNECT -->|push| DOCKERHUB
-    IMG_CONNECT -->|push| GHCR
-    IMG_WORKBENCH -->|push| DOCKERHUB
-    IMG_WORKBENCH -->|push| GHCR
-    IMG_PM -->|push| DOCKERHUB
-    IMG_PM -->|push| GHCR
+    SHARED["images-shared"]
 
-    DOCKERHUB["Docker Hub"]
-    GHCR["GHCR"]
+    IMG_CONNECT --> REGISTRIES
+    IMG_WORKBENCH --> REGISTRIES
+    IMG_PM --> REGISTRIES
 
-    IMG_CONNECT -.->|"workflow_dispatch product-release.yml"| HELM
-    IMG_WORKBENCH -.->|"workflow_dispatch product-release.yml"| HELM
-    IMG_PM -.->|"workflow_dispatch product-release.yml"| HELM
+    REGISTRIES[("Docker Hub + GHCR")]
 
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    IMG_CONNECT ==> HELM
+    IMG_WORKBENCH ==> HELM
+    IMG_PM ==> HELM
 
-    K8S["K8s Dogfood Sites"]
+    HELM["helm"] --> K8S(["K8s Dogfood Sites"])
 ```
 
 ## Development / Preview Flow
@@ -111,46 +104,36 @@ graph TD
 %%| fig-cap: "Development / Preview Flow"
 graph TD
     subgraph "Product Repos"
-        CONNECT_PROD["posit-dev/connect"]
-        WORKBENCH_PROD["rstudio/rstudio-pro"]
-        PPM_PROD["rstudio/package-manager"]
+        CONNECT_PROD["connect"]
+        WORKBENCH_PROD["rstudio-pro"]
+        PPM_PROD["package-manager"]
     end
 
-    CONNECT_BOT["posit-connect-projects"]
-    WORKBENCH_BOT["workbench-ide-release"]
-    PPM_BOT["posit-ppm"]
+    CONNECT_PROD ==> IMG_CONNECT
+    WORKBENCH_PROD ==> IMG_WORKBENCH
+    PPM_PROD ==> IMG_PM
 
-    CONNECT_PROD -.-> CONNECT_BOT
-    WORKBENCH_PROD -.-> WORKBENCH_BOT
-    PPM_PROD -.-> PPM_BOT
+    subgraph "Image Repos"
+        IMG_CONNECT["images-connect"]
+        IMG_WORKBENCH["images-workbench"]
+        IMG_PM["images-package-manager"]
+    end
 
-    CONNECT_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_CONNECT
-    WORKBENCH_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_WORKBENCH
-    PPM_BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_PM
+    IMG_CONNECT -.-> SHARED
+    IMG_WORKBENCH -.-> SHARED
+    IMG_PM -.-> SHARED
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>bakery-build"]
+    SHARED["images-shared"]
 
-    IMG_CONNECT["posit-dev/images-connect<br/>development"]
-    IMG_WORKBENCH["posit-dev/images-workbench<br/>development"]
-    IMG_PM["posit-dev/images-package-manager<br/>development"]
+    IMG_CONNECT --> GHCR
+    IMG_WORKBENCH --> GHCR
+    IMG_PM --> GHCR
 
-    IMG_CONNECT -.->|workflow_call| SHARED
-    IMG_WORKBENCH -.->|workflow_call| SHARED
-    IMG_PM -.->|workflow_call| SHARED
+    GHCR[("GHCR")]
 
-    IMG_CONNECT -->|preview push| GHCR
-    IMG_WORKBENCH -->|preview push| GHCR
-    IMG_PM -->|preview push| GHCR
-
-    GHCR["GHCR<br/>connect-preview<br/>workbench-preview<br/>workbench-session-init-preview<br/>package-manager-preview"]
-
-    GHCR --> K8S
-    GHCR --> FUZZBUCKET
-    GHCR --> EKS_REF
-
-    K8S["K8s Dogfood Sites"]
-    FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
-    EKS_REF["EKS Reference Architecture"]
+    GHCR --> K8S(["K8s Dogfood Sites"])
+    GHCR --> FUZZBUCKET(["Fuzzbucket"])
+    GHCR --> EKS_REF(["EKS Reference Architecture"])
 ```
 
 ## Per-Product Diagrams
@@ -162,38 +145,51 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Connect Production Flow"
 graph TD
-    PROD["posit-dev/connect<br/>release-scripts.yml"]
-    BOT["posit-connect-projects"]
+    subgraph connect
+        SCRIPTS["release-scripts.yml<br/>publish_release.py"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    SCRIPTS ==> APP_REL{{"posit-connect-projects"}}
+    APP_REL ==> REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-connect
+        REL["release.yml<br/><i>version</i>"]
+        PROD_WF["production.yml<br/><i>dev-versions=exclude</i>"]
+        CONTENT["content.yml<br/><i>matrix-versions=only</i>"]
+    end
 
-    IMG_RELEASE["posit-dev/images-connect<br/>release"]
-    IMG_PROD["posit-dev/images-connect<br/>production"]
-    IMG_CONTENT["posit-dev/images-connect<br/>content"]
+    REL -.-> PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
-    IMG_CONTENT -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml<br/><i>version</i><br/><i>images</i>"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
-    IMG_RELEASE -->|"merge to main"| IMG_CONTENT
+    REL -->|"PR merge"| PROD_WF
+    REL -->|"PR merge"| CONTENT
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
-    IMG_CONTENT -->|push| DOCKERHUB
-    IMG_CONTENT -->|push| GHCR
+    PROD_WF -.-> SHARED
+    CONTENT -.-> SHARED
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-connect<br/>rstudio/rstudio-connect-content-init"]
-    GHCR["GHCR"]
+    PROD_WF -->|push| REGISTRIES[("Docker Hub + GHCR")]
+    CONTENT -->|push| REGISTRIES
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    PROD_WF ==> APP_HELM{{"posit-connect-projects"}}
+    APP_HELM ==> HELM_WF
 
-    K8S["K8s Dogfood Sites"]
+    subgraph helm
+        HELM_WF["product-release.yml<br/><i>product</i><br/><i>version</i>"]
+    end
+
+    HELM_WF --> K8S(["K8s Dogfood Sites"])
+
+    click SCRIPTS "https://github.com/posit-dev/connect/blob/main/.github/workflows/release-scripts.yml" _blank
+    click REL "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/production.yml" _blank
+    click CONTENT "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/content.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -201,25 +197,29 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Connect Development Flow"
 graph TD
-    PROD["posit-dev/connect<br/>ci.yml (push to main)"]
-    BOT["posit-connect-projects"]
+    subgraph connect
+        CI["ci.yml"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    CI ==> APP{{"posit-connect-projects"}}
+    APP ==> DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-connect
+        DEV["development.yml<br/><i>version</i>"]
+    end
 
-    IMG_DEV["posit-dev/images-connect<br/>development"]
+    DEV -.-> SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml<br/><i>dev-versions=only</i>"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|push| GHCR[("GHCR<br/>connect-preview")]
+    GHCR --> K8S(["K8s Dogfood Sites"])
 
-    GHCR["GHCR<br/>connect-preview"]
-
-    GHCR --> K8S
-
-    K8S["K8s Dogfood Sites"]
+    click CI "https://github.com/posit-dev/connect/blob/main/.github/workflows/ci.yml" _blank
+    click DEV "https://github.com/posit-dev/images-connect/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
 
 ### Workbench
@@ -229,38 +229,54 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Workbench Production Flow"
 graph TD
-    PROD["rstudio/rstudio-pro<br/>release-all.yml"]
-    BOT["workbench-ide-release"]
+    subgraph rstudio-pro
+        RELEASE_ALL["release-all.yml"]
+        UPDATE_IMG["release-update-images-workbench.yml"]
+        RELEASE_ALL --> UPDATE_IMG
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    UPDATE_IMG ==> APP_REL{{"workbench-ide-release"}}
+    APP_REL ==> REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-workbench
+        REL["release.yml<br/><i>version</i>"]
+        PROD_WF["production.yml<br/><i>dev-versions=exclude</i>"]
+        SESSION["session.yml<br/><i>matrix-versions=only</i>"]
+    end
 
-    IMG_RELEASE["posit-dev/images-workbench<br/>release"]
-    IMG_PROD["posit-dev/images-workbench<br/>production"]
-    IMG_SESSION["posit-dev/images-workbench<br/>session"]
+    REL -.-> PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
-    IMG_SESSION -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml<br/><i>version</i><br/><i>images</i>"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
-    IMG_RELEASE -->|"merge to main"| IMG_SESSION
+    REL -->|"PR merge"| PROD_WF
+    REL -->|"PR merge"| SESSION
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
-    IMG_SESSION -->|push| DOCKERHUB
-    IMG_SESSION -->|push| GHCR
+    PROD_WF -.-> SHARED
+    SESSION -.-> SHARED
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-workbench<br/>rstudio/r-session-complete"]
-    GHCR["GHCR"]
+    PROD_WF -->|push| REGISTRIES[("Docker Hub + GHCR")]
+    SESSION -->|push| REGISTRIES
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    PROD_WF ==> APP_HELM{{"workbench-ide-release"}}
+    APP_HELM ==> HELM_WF
 
-    K8S["K8s Dogfood Sites"]
+    subgraph helm
+        HELM_WF["product-release.yml<br/><i>product</i><br/><i>version</i>"]
+    end
+
+    HELM_WF --> K8S(["K8s Dogfood Sites"])
+
+    click RELEASE_ALL "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-all.yml" _blank
+    click UPDATE_IMG "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-update-images-workbench.yml" _blank
+    click REL "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/production.yml" _blank
+    click SESSION "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/session.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -268,29 +284,31 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Workbench Development Flow"
 graph TD
-    PROD["rstudio/rstudio-pro<br/>release-nightly-test.yml"]
-    BOT["workbench-ide-release"]
+    subgraph rstudio-pro
+        NIGHTLY["release-nightly-test.yml"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    NIGHTLY ==> APP{{"workbench-ide-release"}}
+    APP ==> DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-workbench
+        DEV["development.yml<br/><i>version</i><br/><i>stream</i>"]
+    end
 
-    IMG_DEV["posit-dev/images-workbench<br/>development"]
+    DEV -.-> SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml<br/><i>dev-versions=only</i>"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|push| GHCR[("GHCR<br/>workbench-preview<br/>workbench-session-init-preview")]
+    GHCR --> K8S(["K8s Dogfood Sites"])
+    GHCR --> FUZZBUCKET(["Fuzzbucket"])
+    GHCR --> EKS_REF(["EKS Reference Architecture"])
 
-    GHCR["GHCR<br/>workbench-preview<br/>workbench-session-init-preview"]
-
-    GHCR --> K8S
-    GHCR --> FUZZBUCKET
-    GHCR --> EKS_REF
-
-    K8S["K8s Dogfood Sites"]
-    FUZZBUCKET["Fuzzbucket<br/>IDE Automation"]
-    EKS_REF["EKS Reference Architecture"]
+    click NIGHTLY "https://github.com/rstudio/rstudio-pro/blob/main/.github/workflows/release-nightly-test.yml" _blank
+    click DEV "https://github.com/posit-dev/images-workbench/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
 
 ### Package Manager
@@ -300,33 +318,45 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Package Manager Production Flow"
 graph TD
-    PROD["rstudio/package-manager<br/>ci.yml (tag push)"]
-    BOT["posit-ppm"]
+    subgraph package-manager
+        CI["ci.yml (publish job)"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch release.yml<br/>(version)"| IMG_RELEASE
+    CI ==> APP_REL{{"posit-package-manager-automation"}}
+    APP_REL ==> REL
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native<br/>product-release"]
+    subgraph images-package-manager
+        REL["release.yml<br/><i>version</i>"]
+        PROD_WF["production.yml<br/><i>dev-versions=exclude</i>"]
+    end
 
-    IMG_RELEASE["posit-dev/images-package-manager<br/>release"]
-    IMG_PROD["posit-dev/images-package-manager<br/>production"]
+    REL -.-> PRODUCT_REL
 
-    IMG_RELEASE -.->|workflow_call| SHARED
-    IMG_PROD -.->|workflow_call| SHARED
+    subgraph images-shared
+        PRODUCT_REL["product-release.yml<br/><i>version</i><br/><i>images</i>"]
+        SHARED["bakery-build-native.yml"]
+    end
 
-    IMG_RELEASE -->|"merge to main"| IMG_PROD
+    REL -->|"PR merge"| PROD_WF
+    PROD_WF -.-> SHARED
 
-    IMG_PROD -->|push| DOCKERHUB
-    IMG_PROD -->|push| GHCR
+    PROD_WF -->|push| REGISTRIES[("Docker Hub + GHCR")]
 
-    DOCKERHUB["Docker Hub<br/>rstudio/rstudio-package-manager"]
-    GHCR["GHCR"]
+    PROD_WF ==> APP_HELM{{"posit-package-manager-automation"}}
+    APP_HELM ==> HELM_WF
 
-    IMG_PROD -.->|"workflow_dispatch product-release.yml"| HELM
-    HELM["rstudio/helm<br/>product-release<br/>chart-releaser"]
-    HELM -->|Flux sync| K8S
+    subgraph helm
+        HELM_WF["product-release.yml<br/><i>product</i><br/><i>version</i>"]
+    end
 
-    K8S["K8s Dogfood Sites"]
+    HELM_WF --> K8S(["K8s Dogfood Sites"])
+
+    click CI "https://github.com/rstudio/package-manager/blob/main/.github/workflows/ci.yml" _blank
+    click REL "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/release.yml" _blank
+    click PROD_WF "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/production.yml" _blank
+    click PRODUCT_REL "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/product-release.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
+    click HELM_WF "https://github.com/rstudio/helm/blob/main/.github/workflows/product-release.yml" _blank
 ```
 
 #### Development {.unnumbered}
@@ -334,51 +364,27 @@ graph TD
 ```{mermaid}
 %%| fig-cap: "Package Manager Development Flow"
 graph TD
-    PROD["rstudio/package-manager<br/>ci.yml (push to main)"]
-    BOT["posit-ppm"]
+    subgraph package-manager
+        CI["ci.yml (publish job)"]
+    end
 
-    PROD -.-> BOT
-    BOT -.->|"workflow_dispatch development.yml<br/>(version)"| IMG_DEV
+    CI ==> APP{{"posit-package-manager-automation"}}
+    APP ==> DEV
 
-    SHARED["posit-dev/images-shared<br/>bakery-build-native"]
+    subgraph images-package-manager
+        DEV["development.yml<br/><i>version</i>"]
+    end
 
-    IMG_DEV["posit-dev/images-package-manager<br/>development"]
+    DEV -.-> SHARED
 
-    IMG_DEV -.->|workflow_call| SHARED
+    subgraph images-shared
+        SHARED["bakery-build-native.yml<br/><i>dev-versions=only</i>"]
+    end
 
-    IMG_DEV -->|preview push| GHCR
+    DEV -->|push| GHCR[("GHCR<br/>package-manager-preview")]
+    GHCR --> K8S(["K8s Dogfood Sites"])
 
-    GHCR["GHCR<br/>package-manager-preview"]
-
-    GHCR --> K8S
-
-    K8S["K8s Dogfood Sites"]
+    click CI "https://github.com/rstudio/package-manager/blob/main/.github/workflows/ci.yml" _blank
+    click DEV "https://github.com/posit-dev/images-package-manager/blob/main/.github/workflows/development.yml" _blank
+    click SHARED "https://github.com/posit-dev/images-shared/blob/main/.github/workflows/bakery-build-native.yml" _blank
 ```
-
-## Reference Tables
-
-### Repositories Involved in Deployment
-
-| Repository | Role | Deploy Target |
-|---|---|---|
-| `posit-dev/images-connect` | Build Connect images | Docker Hub, GHCR |
-| `posit-dev/images-workbench` | Build Workbench images | Docker Hub, GHCR |
-| `posit-dev/images-package-manager` | Build PPM images | Docker Hub, GHCR |
-| `posit-dev/images-shared` | Shared build workflows | -- |
-| `rstudio/helm` | Helm charts for all products | K8s dogfood (Flux) |
-
-### External Repos (Product Source)
-
-| Repository | Trigger Mechanism |
-|---|---|
-| `posit-dev/connect` | Release: `publish_release.py` dispatches `release.yml`. Dev: `ci.yml` dispatches `development.yml` on push to main |
-| `rstudio/rstudio-pro` | Release: `release-all.yml` dispatches sub-workflows. Dev: `release-nightly-test.yml` dispatches `development.yml` daily |
-| `rstudio/package-manager` | Release: tag push triggers `ci.yml` publish. Dev: `ci.yml` dispatches `development.yml` on push to main |
-
-### Internal Environments
-
-| Environment | Consumes | Source |
-|---|---|---|
-| K8s Dogfood | PPM preview, Workbench preview, Helm charts | GHCR, Flux |
-| Fuzzbucket | Workbench session images | GHCR |
-| EKS Reference Architecture | Workbench images | GHCR |
