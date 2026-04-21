@@ -1441,6 +1441,227 @@ class TestPythonMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_install_jupyterlab_workbench_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.install_jupyterlab_workbench("3.12.11") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                jupyterlab \\
+                notebook \\
+                pwb_jupyterlab && \\
+            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+            ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_jupyterlab_workbench_version_pins(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.install_jupyterlab_workbench("3.12.11", jupyterlab_version_pin="<5", pwb_jupyterlab_version_pin="<2") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                jupyterlab<5 \\
+                notebook \\
+                pwb_jupyterlab<2 && \\
+            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+            ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_jupyterlab_workbench_extra_packages(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.install_jupyterlab_workbench("3.12.11", extra_packages=["numpy", "pandas"]) }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                jupyterlab \\
+                notebook \\
+                pwb_jupyterlab \\
+                numpy \\
+                pandas && \\
+            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+            ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_jupyterlab_workbench_custom_venv_name(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.install_jupyterlab_workbench("3.12.11", jupyter_venv_name="lab") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            /opt/python/3.12.11/bin/python -m venv /opt/python/lab && \\
+            /opt/python/lab/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+            /opt/python/lab/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                jupyterlab \\
+                notebook \\
+                pwb_jupyterlab && \\
+            bash -O failglob -c 'rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/tests' && \\
+            bash -O failglob -c 'rm -f /opt/python/lab/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+            ln -s /opt/python/lab/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @pytest.mark.parametrize(
+        "strip_tests,strip_staging,expected",
+        [
+            pytest.param(
+                True,
+                True,
+                textwrap.dedent(
+                    """\
+                    /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                        jupyterlab \\
+                        notebook \\
+                        pwb_jupyterlab && \\
+                    bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+                    bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+                    """
+                ),
+                id="strip-both",
+            ),
+            pytest.param(
+                True,
+                False,
+                textwrap.dedent(
+                    """\
+                    /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                        jupyterlab \\
+                        notebook \\
+                        pwb_jupyterlab && \\
+                    bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+                    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+                    """
+                ),
+                id="strip-tests-only",
+            ),
+            pytest.param(
+                False,
+                True,
+                textwrap.dedent(
+                    """\
+                    /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                        jupyterlab \\
+                        notebook \\
+                        pwb_jupyterlab && \\
+                    bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+                    """
+                ),
+                id="strip-staging-only",
+            ),
+            pytest.param(
+                False,
+                False,
+                textwrap.dedent(
+                    """\
+                    /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                        jupyterlab \\
+                        notebook \\
+                        pwb_jupyterlab && \\
+                    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+                    """
+                ),
+                id="strip-neither",
+            ),
+        ],
+    )
+    def test_install_jupyterlab_workbench_strip_toggles(self, environment_with_macros, strip_tests, strip_staging, expected):
+        template = textwrap.dedent(
+            f"""\
+            {{%- import "python.j2" as python -%}}
+            {{{{ python.install_jupyterlab_workbench("3.12.11", strip_tests={strip_tests}, strip_staging={strip_staging}) }}}}
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install_jupyterlab_workbench_default(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.run_install_jupyterlab_workbench("3.12.11") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
+                /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    jupyterlab \\
+                    notebook \\
+                    pwb_jupyterlab && \\
+                bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+                bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install_jupyterlab_workbench_passes_args_through(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.run_install_jupyterlab_workbench("3.12.11", jupyter_venv_name="lab", jupyterlab_version_pin="<5", strip_tests=False, strip_staging=False) }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN /opt/python/3.12.11/bin/python -m venv /opt/python/lab && \\
+                /opt/python/lab/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
+                /opt/python/lab/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
+                    jupyterlab<5 \\
+                    notebook \\
+                    pwb_jupyterlab && \\
+                ln -s /opt/python/lab/bin/jupyter /usr/local/bin/jupyter
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
 
 class TestQuartoMacros:
     def test_declare_build_arg_default(self, environment_with_macros):

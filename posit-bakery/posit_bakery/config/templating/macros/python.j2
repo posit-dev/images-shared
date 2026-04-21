@@ -155,3 +155,40 @@ ln -s {{ get_version_directory(version) }} {{ target }}
 {% macro symlink_binary(version, bin_name, target) -%}
 ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {%- endmacro %}
+
+{# Generates commands to install jupyterlab, notebook, and pwb_jupyterlab to a new virtual environment and symlinks jupyter to the system PATH
+
+:param python_version: The Python version to install JupyterLab's virtual environment with, e.g. "3.12.11"
+:param jupyter_venv_name: The name of the virtual environment to create for JupyterLab. Defaults to "jupyter".
+:param jupyterlab_version_pin: An optional version specifier to pin the jupyterlab version to, e.g. "<5"
+:param pwb_jupyterlab_version_pin: An optional version specifier to pin the pwb_jupyterlab version to, e.g. "<2"
+:param extra_packages: A list of additional packages to install in the JupyterLab virtual environment, e.g. ["numpy", "pandas"]. Optional.
+:param strip_tests: Whether to remove the jupyterlab tests directory after installation. Defaults to True.
+:param strip_staging: Whether to remove the jupyterlab staging yarn.lock file after installation. Defaults to True.
+#}
+{% macro install_jupyterlab_workbench(python_version, jupyter_venv_name = "jupyter", jupyterlab_version_pin = "", pwb_jupyterlab_version_pin = "", extra_packages = [], strip_tests = True, strip_staging = True) -%}
+{{ get_version_directory(python_version) }}/bin/python -m venv {{ get_version_directory(jupyter_venv_name) }} && \
+{{ get_version_directory(jupyter_venv_name) }}/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+{{ install_packages(jupyter_venv_name, ["jupyterlab" + jupyterlab_version_pin, "notebook", "pwb_jupyterlab" + pwb_jupyterlab_version_pin] + extra_packages, None, False) }} && \
+{% if strip_tests -%}
+bash -O failglob -c 'rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests' && \
+{% endif -%}
+{% if strip_staging -%}
+bash -O failglob -c 'rm -f {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \
+{% endif -%}
+{{ symlink_binary(jupyter_venv_name, "jupyter", "/usr/local/bin/jupyter") }}
+{%- endmacro %}
+
+{# Install JupyterLab and associated packages to a new virtual environment for use with Posit Workbench
+
+:param python_version: The Python version to install JupyterLab's virtual environment with, e.g. "3.12.11"
+:param jupyter_venv_name: The name of the virtual environment to create for JupyterLab. Defaults to "jupyter".
+:param jupyterlab_version_pin: An optional version specifier to pin the jupyterlab version to, e.g. "<5"
+:param pwb_jupyterlab_version_pin: An optional version specifier to pin the pwb_jupyterlab version to, e.g. "<2"
+:param extra_packages: A list of additional packages to install in the JupyterLab virtual environment, e.g. ["numpy", "pandas"]. Optional.
+:param strip_tests: Whether to remove the jupyterlab tests directory after installation. Defaults to True.
+:param strip_staging: Whether to remove the jupyterlab staging yarn.lock file after installation. Defaults to True.
+#}
+{% macro run_install_jupyterlab_workbench(python_version, jupyter_venv_name = "jupyter", jupyterlab_version_pin = "", pwb_jupyterlab_version_pin = "", extra_packages = [], strip_tests = True, strip_staging = True) -%}
+RUN {{ install_jupyterlab_workbench(python_version, jupyter_venv_name, jupyterlab_version_pin, pwb_jupyterlab_version_pin, extra_packages, strip_tests, strip_staging) | indent(4) }}
+{%- endmacro %}
