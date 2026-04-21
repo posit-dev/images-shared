@@ -38,11 +38,13 @@ class WizScanReport(BaseModel):
         Re-writes the file with indentation for human readability, since wizcli
         outputs minified JSON by default.
         """
-        with filepath.open("r") as f:
-            data = json.load(f)
+        raw = filepath.read_text()
+        data = json.loads(raw)
 
-        with filepath.open("w") as f:
-            json.dump(data, f, indent=2)
+        # Re-write with indentation for human readability if the file is minified
+        formatted = json.dumps(data, indent=2)
+        if formatted != raw:
+            filepath.write_text(formatted)
 
         # Aggregate severity counts from vulnerable SBOM artifacts
         critical = high = medium = low = info = 0
