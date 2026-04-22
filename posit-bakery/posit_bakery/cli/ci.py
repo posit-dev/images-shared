@@ -57,6 +57,14 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    image_version: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image version to filter to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -121,6 +129,8 @@ def matrix(
                 if dev_stream is not None and ver.isDevelopmentVersion:
                     if ver.metadata.get("release_stream") != dev_stream:
                         continue
+                if image_version is not None and ver.name != image_version:
+                    continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
                     entry["version"] = ver.name
