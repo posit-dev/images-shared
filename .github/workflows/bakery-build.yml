@@ -61,6 +61,12 @@ on:
       AWS_ROLE:
         description: "AWS Role to assume [required if pushing to ECR]"
         required: false
+      GCP_WORKLOAD_IDENTITY_PROVIDER:
+        description: "GCP Workload Identity Provider for authentication [required if pushing to GCP Artifact Registry]"
+        required: false
+      GCP_SERVICE_ACCOUNT:
+        description: "GCP Service Account email for authentication [required if pushing to GCP Artifact Registry]"
+        required: false
 
 defaults:
   run:
@@ -104,6 +110,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: matrix
     runs-on: ${{ inputs.runs-on }}
     strategy:
@@ -133,9 +140,11 @@ jobs:
         env:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
+          HAS_GCP: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && secrets.GCP_SERVICE_ACCOUNT != '' }}
         run: |
           echo "docker-hub=$HAS_DOCKER_HUB" >> $GITHUB_OUTPUT
           echo "ecr=$HAS_AWS_ROLE" >> $GITHUB_OUTPUT
+          echo "gcp=$HAS_GCP" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
@@ -162,6 +171,19 @@ jobs:
       - name: Login to Amazon ECR
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/amazon-ecr-login@f2e9fc6c2b355c1890b65e6f6f0e2ac3e6e22f78  # v2.1.2
+
+      - name: Authenticate to GCP
+        id: gcp-auth
+        if: ${{ inputs.push && steps.filter-steps.outputs.gcp == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for GCP Artifact Registry
+        if: ${{ inputs.push && steps.filter-steps.outputs.gcp == 'true' }}
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev,us-docker.pkg.dev,europe-docker.pkg.dev,asia-docker.pkg.dev --quiet
 
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
