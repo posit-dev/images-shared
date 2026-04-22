@@ -125,9 +125,6 @@ def matrix(
                 included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
                 if not included:
                     continue
-                if dev_stream is not None and ver.isDevelopmentVersion:
-                    if ver.metadata.get("release_stream") != dev_stream:
-                        continue
                 if image_version is not None and ver.name != image_version:
                     continue
 
