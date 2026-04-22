@@ -167,9 +167,12 @@ ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 :param strip_staging: Whether to remove the jupyterlab staging yarn.lock file after installation. Defaults to True.
 #}
 {% macro install_jupyterlab_workbench(python_version, jupyter_venv_name = "jupyter", jupyterlab_version_pin = "", pwb_jupyterlab_version_pin = "", extra_packages = [], strip_tests = True, strip_staging = True) -%}
+{%- if python_version is sequence and python_version is not string -%}
+{%- set python_version = python_version.0 -%}
+{%- endif -%}
 {{ get_version_directory(python_version) }}/bin/python -m venv {{ get_version_directory(jupyter_venv_name) }} && \
 {{ get_version_directory(jupyter_venv_name) }}/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-{{ install_packages(jupyter_venv_name, ["jupyterlab" + jupyterlab_version_pin, "notebook", "pwb_jupyterlab" + pwb_jupyterlab_version_pin] + extra_packages, None, False) }} && \
+{{ install_packages(jupyter_venv_name, ["\"jupyterlab" + jupyterlab_version_pin + "\"", "notebook", "\"pwb_jupyterlab" + pwb_jupyterlab_version_pin + "\""] + extra_packages, break_system_packages=False) }} && \
 {% if strip_tests -%}
 rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests && \
 {% endif -%}
