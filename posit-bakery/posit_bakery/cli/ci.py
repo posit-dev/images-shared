@@ -143,8 +143,14 @@ def matrix(
                 else:
                     data.append(entry.copy())
 
+        if image_version is not None and not data:
+            log.error(f"No matrix entries matched --image-version '{image_version}'")
+            raise typer.Exit(code=1)
+
         stdout_console.print(json.dumps(data))
 
+    except typer.Exit:
+        raise
     except:
         log.exception("Failed to load bakery config")
         raise typer.Exit(code=1)
