@@ -171,10 +171,10 @@ ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {{ get_version_directory(jupyter_venv_name) }}/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
 {{ install_packages(jupyter_venv_name, ["jupyterlab" + jupyterlab_version_pin, "notebook", "pwb_jupyterlab" + pwb_jupyterlab_version_pin] + extra_packages, None, False) }} && \
 {% if strip_tests -%}
-bash -O failglob -c 'rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests' && \
+rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests && \
 {% endif -%}
 {% if strip_staging -%}
-bash -O failglob -c 'rm -f {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \
+rm -f {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \
 {% endif -%}
 {{ symlink_binary(jupyter_venv_name, "jupyter", "/usr/local/bin/jupyter") }}
 {%- endmacro %}
