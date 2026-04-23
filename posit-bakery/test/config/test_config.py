@@ -259,6 +259,32 @@ class TestBakeryConfig:
                 # package-manager has 2 variants and each dev version has 2 OSes = 4 targets per dev version
                 assert len(dev_targets) == expected_dev_version_count * 4
 
+    @patch("atexit.register")
+    def test_dev_stream_filter_with_include(
+        self,
+        mock_atexit_register,
+        testdata_path,
+        patch_requests_get,
+    ):
+        """Test that dev_stream filters work with dev_versions=INCLUDE (mixed dev + release)."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                config = BakeryConfig(
+                    yaml_file,
+                    BakerySettings(
+                        dev_versions=DevVersionInclusionEnum.INCLUDE,
+                        dev_stream=ReleaseStreamEnum.DAILY,
+                        clean_temporary=False,
+                    ),
+                )
+                dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
+                release_targets = [t for t in config.targets if not t.image_version.isDevelopmentVersion]
+                # Only daily dev versions included (1 dev version × 2 variants × 2 OSes = 4)
+                assert len(dev_targets) == 4
+                # Release versions still present
+                assert len(release_targets) > 0
+
     def test_dev_stream_warning_when_dev_versions_excluded(
         self,
         caplog,

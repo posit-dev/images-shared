@@ -30,3 +30,20 @@ Feature: matrix
         When I execute the command
         Then The command succeeds
         * the matrix matches testdata ci/matrix/multiplatform/exclude_platform.json
+
+    Scenario: Filtering the CI matrix to a matching image version
+        Given I call bakery ci matrix
+        * in the basic context
+        * with the arguments:
+            | --image-version | 1.0.0 |
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/basic/image_version_match.json
+
+    Scenario: Filtering the CI matrix to an unknown image version fails loudly
+        Given I call bakery ci matrix
+        * in the basic context
+        * with the arguments:
+            | --image-version | 9.9.9 |
+        When I execute the command
+        Then The command fails

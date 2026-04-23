@@ -57,6 +57,14 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    image_version: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image version to filter to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -114,13 +122,11 @@ def matrix(
             elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
                 versions = img.matrix.to_image_versions()
             for ver in versions:
-                if ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.EXCLUDE:
+                included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
+                if not included:
                     continue
-                if not ver.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
+                if image_version is not None and ver.name != image_version:
                     continue
-                if dev_stream is not None and ver.isDevelopmentVersion:
-                    if ver.metadata.get("release_stream") != dev_stream:
-                        continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
                     entry["version"] = ver.name
@@ -133,8 +139,14 @@ def matrix(
                 else:
                     data.append(entry.copy())
 
+        if image_version is not None and not data:
+            log.error(f"No matrix entries matched --image-version '{image_version}'")
+            raise typer.Exit(code=1)
+
         stdout_console.print(json.dumps(data))
 
+    except typer.Exit:
+        raise
     except:
         log.exception("Failed to load bakery config")
         raise typer.Exit(code=1)
@@ -161,7 +173,7 @@ def merge(
         Optional[ReleaseStreamEnum],
         typer.Option(
             help="Filter development versions to a specific release stream.",
-            rich_help_panel="Build Configuration & Outputs",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
 ):
