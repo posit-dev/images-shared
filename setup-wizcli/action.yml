@@ -16,12 +16,17 @@ runs:
   steps:
     - name: Make tools directory
       shell: bash
-      run: mkdir -p "${{ inputs.base_path }}/tools"
+      env:
+        BASE_PATH: ${{ inputs.base_path }}
+      run: mkdir -p "$BASE_PATH/tools"
     - name: Install wizcli
       shell: bash
+      env:
+        INPUT_ARCH: ${{ inputs.architecture }}
+        BASE_PATH: ${{ inputs.base_path }}
       run: |
         # Determine architecture if not provided
-        arch="${{ inputs.architecture }}"
+        arch="$INPUT_ARCH"
         if [ -z "$arch" ]; then
           arch=$(uname -m)
         fi
@@ -33,5 +38,5 @@ runs:
             arch="arm64"
         fi
 
-        curl -fsSL https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${arch} -o ${{ inputs.base_path }}/tools/wizcli
-        chmod +rx ${{ inputs.base_path }}/tools/wizcli
+        curl -fsSL "https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${arch}" -o "$BASE_PATH/tools/wizcli"
+        chmod +rx "$BASE_PATH/tools/wizcli"
