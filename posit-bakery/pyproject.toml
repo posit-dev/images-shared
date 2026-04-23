@@ -34,6 +34,7 @@ bakery = "posit_bakery.cli.main:app"
 dgoss = "posit_bakery.plugins.builtin.dgoss:DGossPlugin"
 oras = "posit_bakery.plugins.builtin.oras:OrasPlugin"
 hadolint = "posit_bakery.plugins.builtin.hadolint:HadolintPlugin"
+wizcli = "posit_bakery.plugins.builtin.wizcli:WizCLIPlugin"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
