@@ -521,9 +521,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                                 )
                             )
                             continue
-                        with open(containerfile, "w") as f:
-                            log.debug(f"[bright_black]Rendering [bold]{containerfile}")
-                            f.write(rendered)
+                        log.debug(f"[bright_black]Rendering [bold]{containerfile}")
+                        copy2(tpl_full_path, containerfile)
+                        containerfile.write_text(rendered)
 
                 # Render other templates once
                 else:
@@ -548,9 +548,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                             )
                         )
                         continue
-                    with open(output_file, "w") as f:
-                        log.debug(f"[bright_black]Rendering [bold]{output_file}")
-                        f.write(rendered)
+                    log.debug(f"[bright_black]Rendering [bold]{output_file}")
+                    copy2(tpl_full_path, output_file)
+                    output_file.write_text(rendered)
 
         if exceptions:
             if len(exceptions) == 1:
