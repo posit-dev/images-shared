@@ -175,6 +175,7 @@ ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {{ install_packages(jupyter_venv_name, ["\"jupyterlab" + jupyterlab_version_pin + "\"", "notebook", "\"pwb_jupyterlab" + pwb_jupyterlab_version_pin + "\""] + extra_packages, break_system_packages=False) }} && \
 {% if strip_tests -%}
 rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests && \
+rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/galata && \
 {% endif -%}
 {% if strip_staging -%}
 rm -f {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \

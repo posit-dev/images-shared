@@ -1452,12 +1452,13 @@ class TestPythonMacros:
             """\
             /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
             /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                jupyterlab \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                "jupyterlab" \\
                 notebook \\
-                pwb_jupyterlab && \\
-            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
-            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                "pwb_jupyterlab" && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
         )
@@ -1475,12 +1476,13 @@ class TestPythonMacros:
             """\
             /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
             /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                jupyterlab<5 \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                "jupyterlab<5" \\
                 notebook \\
-                pwb_jupyterlab<2 && \\
-            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
-            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                "pwb_jupyterlab<2" && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
         )
@@ -1498,14 +1500,15 @@ class TestPythonMacros:
             """\
             /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
             /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                jupyterlab \\
+            /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                "jupyterlab" \\
                 notebook \\
-                pwb_jupyterlab \\
+                "pwb_jupyterlab" \\
                 numpy \\
                 pandas && \\
-            bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
-            bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
         )
@@ -1523,12 +1526,13 @@ class TestPythonMacros:
             """\
             /opt/python/3.12.11/bin/python -m venv /opt/python/lab && \\
             /opt/python/lab/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-            /opt/python/lab/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                jupyterlab \\
+            /opt/python/lab/bin/pip install --no-cache-dir --upgrade \\
+                "jupyterlab" \\
                 notebook \\
-                pwb_jupyterlab && \\
-            bash -O failglob -c 'rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/tests' && \\
-            bash -O failglob -c 'rm -f /opt/python/lab/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                "pwb_jupyterlab" && \\
+            rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/tests && \\
+            rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -f /opt/python/lab/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/lab/bin/jupyter /usr/local/bin/jupyter
             """
         )
@@ -1545,12 +1549,13 @@ class TestPythonMacros:
                     """\
                     /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
                     /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                        jupyterlab \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                        "jupyterlab" \\
                         notebook \\
-                        pwb_jupyterlab && \\
-                    bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
-                    bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                        "pwb_jupyterlab" && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+                    rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
                 ),
@@ -1563,11 +1568,12 @@ class TestPythonMacros:
                     """\
                     /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
                     /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                        jupyterlab \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                        "jupyterlab" \\
                         notebook \\
-                        pwb_jupyterlab && \\
-                    bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
+                        "pwb_jupyterlab" && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
                 ),
@@ -1580,11 +1586,11 @@ class TestPythonMacros:
                     """\
                     /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
                     /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                        jupyterlab \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                        "jupyterlab" \\
                         notebook \\
-                        pwb_jupyterlab && \\
-                    bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                        "pwb_jupyterlab" && \\
+                    rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
                 ),
@@ -1597,10 +1603,10 @@ class TestPythonMacros:
                     """\
                     /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
                     /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                        jupyterlab \\
+                    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                        "jupyterlab" \\
                         notebook \\
-                        pwb_jupyterlab && \\
+                        "pwb_jupyterlab" && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
                 ),
@@ -1629,12 +1635,13 @@ class TestPythonMacros:
             """\
             RUN /opt/python/3.12.11/bin/python -m venv /opt/python/jupyter && \\
                 /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                    jupyterlab \\
+                /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \\
+                    "jupyterlab" \\
                     notebook \\
-                    pwb_jupyterlab && \\
-                bash -O failglob -c 'rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests' && \\
-                bash -O failglob -c 'rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock' && \\
+                    "pwb_jupyterlab" && \\
+                rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
+                rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+                rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
                 ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
         )
@@ -1652,10 +1659,10 @@ class TestPythonMacros:
             """\
             RUN /opt/python/3.12.11/bin/python -m venv /opt/python/lab && \\
                 /opt/python/lab/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \\
-                /opt/python/lab/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                    jupyterlab<5 \\
+                /opt/python/lab/bin/pip install --no-cache-dir --upgrade \\
+                    "jupyterlab<5" \\
                     notebook \\
-                    pwb_jupyterlab && \\
+                    "pwb_jupyterlab" && \\
                 ln -s /opt/python/lab/bin/jupyter /usr/local/bin/jupyter
             """
         )
