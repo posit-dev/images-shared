@@ -27,6 +27,7 @@ ${{ name }}
 :param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
 {% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
+if [ -s /run/secrets/github_token ]; then export GH_TOKEN="$(cat /run/secrets/github_token)"; fi && \
 {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
@@ -54,7 +55,7 @@ curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ versi
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path) | indent(4) }}
+RUN {% if with_tinytex %}--mount=type=secret,id=github_token,required=false {% endif %}{{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
