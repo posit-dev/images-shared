@@ -4,16 +4,13 @@ import logging
 import os
 import re
 import shutil
-import time
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated, Self, Any
 
 import jinja2
 import pydantic
-import python_on_whales
 from pydantic import Field, model_validator, field_validator, BaseModel
-from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
@@ -29,45 +26,15 @@ from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
     BakeryError,
-    BakeryToolRuntimeError,
-    BakeryToolRuntimeErrorGroup,
     BakeryFileError,
-    BakeryBuildErrorGroup,
     BakeryRenderError,
     BakeryRenderErrorGroup,
 )
-from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
-
-_RETRY_DELAY_SECONDS = 5
-
-
-def _retry_build(fn, retry: int, label: str) -> None:
-    """Attempt fn() up to (retry + 1) times, re-raising on final failure.
-
-    :param fn: The function to call.
-    :param retry: Number of retries (0 means no retries, just one attempt).
-    :param label: A label for logging purposes.
-    """
-    for attempt in range(retry + 1):
-        try:
-            fn()
-            return
-        except BakeryFileError:
-            raise  # Never retry file errors
-        except (DockerException, BakeryToolRuntimeError) as e:
-            if attempt < retry:
-                log.warning(
-                    f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "
-                    f"Retrying in {_RETRY_DELAY_SECONDS}s..."
-                )
-                time.sleep(_RETRY_DELAY_SECONDS)
-            else:
-                raise
 
 
 class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
@@ -883,18 +850,6 @@ class BakeryConfig:
                 return target
         return None
 
-    def _merge_sequential_build_metadata_files(self) -> dict[str, Any]:
-        """Merges all sequential build metadata files generated during image builds.
-
-        :return: A dictionary containing the merged metadata.
-        """
-        merged_metadata: dict[str, dict[str, Any]] = {}
-        for target in self.targets:
-            for build_metadata in target.build_metadata:
-                merged_metadata[target.uid] = build_metadata.model_dump(exclude_none=True, by_alias=True)
-
-        return merged_metadata
-
     def load_build_metadata_from_file(self, metadata_file: Path) -> list[str]:
         """Loads build metadata from a given metadata file.
 
@@ -911,91 +866,6 @@ class BakeryConfig:
                 log.info(f"Loaded build metadata for target '{target}' from file '{metadata_file.filepath}'.")
 
         return targets_loaded
-
-    def bake_plan_targets(self, push: bool = False) -> str:
-        """Generates a bake plan JSON string for the image targets defined in the config.
-
-        :param push: When True, include cache-to exports in the bake plan so that
-            cache layers are written to the registry alongside the built images.
-        """
-        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets, push=push)
-        return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
-
-    def build_targets(
-        self,
-        load: bool = True,
-        push: bool = False,
-        pull: bool = False,
-        cache: bool = True,
-        platforms: list[str] | None = None,
-        strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
-        metadata_file: Path | None = None,
-        fail_fast: bool = False,
-        retry: int = 0,
-    ):
-        """Build image targets using the specified strategy.
-
-        :param load: If True, load the built images into the local Docker daemon.
-        :param push: If True, push the built images to the configured registries.
-        :param pull: If True, always pull the latest version of base images.
-        :param cache: If True, use the build cache when building images.
-        :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
-            platform.
-        :param strategy: The strategy to use when building images.
-        :param metadata_file: Optional path to a metadata file to write build metadata to.
-        :param fail_fast: If True, stop building targets on the first failure.
-        :param retry: Number of times to retry a failed build (default 0, no retries).
-        """
-        if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, platforms=platforms, push=push
-            )
-            set_opts = None
-            if self.settings.temp_registry is not None and push:
-                set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
-            _retry_build(
-                lambda: bake_plan.build(
-                    load=load,
-                    push=push,
-                    pull=pull,
-                    cache=cache,
-                    clean_bakefile=self.settings.clean_temporary,
-                    platforms=platforms,
-                    set_opts=set_opts,
-                ),
-                retry=retry,
-                label="bake plan",
-            )
-        elif strategy == ImageBuildStrategy.BUILD:
-            errors: list[Exception] = []
-            for target in self.targets:
-                try:
-                    _retry_build(
-                        lambda t=target: t.build(
-                            load=load,
-                            push=push,
-                            pull=pull,
-                            cache=cache,
-                            platforms=platforms,
-                            metadata_file=True if metadata_file else False,
-                        ),
-                        retry=retry,
-                        label=str(target),
-                    )
-                except (BakeryFileError, DockerException, BakeryToolRuntimeError) as e:
-                    log.error(f"Failed to build image target '{str(target)}'.")
-                    if fail_fast:
-                        log.info("--fail-fast is set, stopping builds...")
-                        raise e
-                    errors.append(e)
-            if errors:
-                if len(errors) == 1:
-                    raise errors[0]
-                raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
-            if metadata_file is not None:
-                with open(metadata_file, "w") as f:
-                    log.info(f"Writing build metadata to '{str(metadata_file)}'.")
-                    json.dump(self._merge_sequential_build_metadata_files(), f, indent=2)
 
     def clean_caches(
         self,
