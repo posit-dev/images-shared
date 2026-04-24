@@ -602,6 +602,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -634,6 +635,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -662,6 +664,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -690,6 +693,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -717,6 +721,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": None,
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -745,6 +750,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": "my-stage",
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -773,6 +779,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": "image-stage",
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -802,6 +809,7 @@ class TestImageTarget:
             "metadata_file": None,
             "platforms": ["linux/amd64"],
             "target": "version-stage",
+            "secrets": [],
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
