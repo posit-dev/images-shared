@@ -31,11 +31,13 @@ BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
 
 @pytest.fixture
 def mock_config():
-    """Mock BakeryConfig to capture settings without making API calls."""
-    with patch("posit_bakery.cli.clean.BakeryConfig") as mock:
+    """Mock BakeryConfig and clean functions to capture settings without making API calls."""
+    with (
+        patch("posit_bakery.cli.clean.BakeryConfig") as mock,
+        patch("posit_bakery.cli.clean.do_clean_caches", return_value=[]),
+        patch("posit_bakery.cli.clean.do_clean_temporary", return_value=[]),
+    ):
         instance = MagicMock()
-        instance.clean_caches.return_value = []
-        instance.clean_temporary.return_value = []
         mock.from_context.return_value = instance
         yield mock
 

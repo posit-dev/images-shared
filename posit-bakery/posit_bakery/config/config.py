@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import shutil
-from datetime import timedelta
 from pathlib import Path
 from typing import Annotated, Self, Any
 
@@ -31,8 +30,7 @@ from posit_bakery.error import (
     BakeryRenderErrorGroup,
 )
 from posit_bakery.image.image_metadata import MetadataFile
-from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
-from posit_bakery.registry_management import ghcr
+from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 
 log = logging.getLogger(__name__)
 
@@ -866,57 +864,3 @@ class BakeryConfig:
                 log.info(f"Loaded build metadata for target '{target}' from file '{metadata_file.filepath}'.")
 
         return targets_loaded
-
-    def clean_caches(
-        self,
-        remove_untagged: bool = True,
-        remove_older_than: timedelta | None = None,
-        dry_run: bool = False,
-    ):
-        """Cleans up dangling caches in the specified registry for all generated image targets.
-
-        :param remove_untagged: If True, remove untagged caches.
-        :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
-        :param dry_run: If True, print what would be deleted without actually deleting anything.
-        """
-        target_caches = list(set([cn.split(":")[0] for target in self.targets if (cn := target.cache_name())]))
-
-        errors = []
-        for target_cache in target_caches:
-            errors.extend(
-                ghcr.clean_temporary_artifacts(
-                    ghcr_registry=target_cache,
-                    remove_untagged=remove_untagged,
-                    remove_older_than=remove_older_than,
-                    dry_run=dry_run,
-                )
-            )
-
-        return errors
-
-    def clean_temporary(
-        self,
-        remove_untagged: bool = True,
-        remove_older_than: timedelta | None = None,
-        dry_run: bool = False,
-    ):
-        """Cleans up temporary images in the specified registry for all generated image targets.
-
-        :param remove_untagged: If True, remove untagged images.
-        :param remove_older_than: Optional timedelta to remove images older than the specified duration.
-        :param dry_run: If True, print what would be deleted without actually deleting anything.
-        """
-        target_caches = list(set([target.temp_name for target in self.targets]))
-
-        errors = []
-        for target_cache in target_caches:
-            errors.extend(
-                ghcr.clean_temporary_artifacts(
-                    ghcr_registry=target_cache,
-                    remove_untagged=remove_untagged,
-                    remove_older_than=remove_older_than,
-                    dry_run=dry_run,
-                )
-            )
-
-        return errors

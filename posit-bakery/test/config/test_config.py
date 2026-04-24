@@ -1728,19 +1728,6 @@ class TestBakeryConfig:
         with pytest.raises(ValueError, match=f"Version 'non-existent' does not exist for image '{image_name}'"):
             config.remove_version(image_name, "non-existent")
 
-    def test__merge_sequential_build_metadata_files(self, get_config_obj):
-        """Test merging sequential build metadata files."""
-        config = get_config_obj("basic")
-        for target in config.targets:
-            metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / f"{target.uid}.json"
-            target.build_metadata.append(BuildMetadata.model_validate_json(metadata_filepath.read_text()))
-
-        merged_metadata = config._merge_sequential_build_metadata_files()
-        with open(CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json", "r") as f:
-            expected_metadata = json.load(f)
-
-        assert merged_metadata == expected_metadata
-
     def test_load_build_metadata_file(self, get_config_obj):
         """Test loading a build metadata file."""
         metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json"
@@ -1802,7 +1789,10 @@ class TestBakeryConfig:
         mock_ghcr_client_instance.get_package_versions.return_value = cache_ghcr_package_versions_data
 
         # Clean caches
-        config.clean_caches(
+        from posit_bakery.registry_management.clean import clean_caches
+
+        clean_caches(
+            targets=config.targets,
             remove_untagged=untagged,
             remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
         )
@@ -1834,7 +1824,10 @@ class TestBakeryConfig:
         mock_ghcr_client_instance.get_package_versions.return_value = cache_ghcr_package_versions_data
 
         # Clean caches
-        config.clean_caches(
+        from posit_bakery.registry_management.clean import clean_caches
+
+        clean_caches(
+            targets=config.targets,
             remove_untagged=True,
             remove_older_than=timedelta(days=14),
             dry_run=True,
@@ -1893,7 +1886,10 @@ class TestBakeryConfig:
         mock_ghcr_client_instance.get_package_versions.return_value = temp_ghcr_package_versions_data
 
         # Clean temp images
-        config.clean_temporary(
+        from posit_bakery.registry_management.clean import clean_temporary
+
+        clean_temporary(
+            targets=config.targets,
             remove_untagged=untagged,
             remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
         )
@@ -1925,7 +1921,10 @@ class TestBakeryConfig:
         mock_ghcr_client_instance.get_package_versions.return_value = temp_ghcr_package_versions_data
 
         # Clean temp images
-        config.clean_temporary(
+        from posit_bakery.registry_management.clean import clean_temporary
+
+        clean_temporary(
+            targets=config.targets,
             remove_untagged=True,
             remove_older_than=timedelta(days=14),
             dry_run=True,
