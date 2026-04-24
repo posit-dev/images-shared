@@ -1758,6 +1758,16 @@ class TestQuartoMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_github_token_secret_mount(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.github_token_secret_mount() }}"""
+        )
+        expected = "--mount=type=secret,id=github_token,required=false"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     @pytest.mark.parametrize(
         "update_path,home_path,expected",
         [
