@@ -443,6 +443,10 @@ window.onload = function () {
   <li><a href="#tagpattern" id="toc-tagpattern" class="nav-link" data-scroll-target="#tagpattern">TagPattern</a></li>
   <li><a href="#tooloptions" id="toc-tooloptions" class="nav-link" data-scroll-target="#tooloptions">ToolOptions</a></li>
   </ul></li>
+  <li><a href="#environment-variables" id="toc-environment-variables" class="nav-link" data-scroll-target="#environment-variables">Environment Variables</a>
+  <ul class="collapse">
+  <li><a href="#example-usage" id="toc-example-usage" class="nav-link" data-scroll-target="#example-usage">Example Usage</a></li>
+  </ul></li>
   <li><a href="#see-also" id="toc-see-also" class="nav-link" data-scroll-target="#see-also">See Also</a></li>
   </ul>
 </nav>
@@ -1453,6 +1457,39 @@ Note
 </tbody>
 </table>
 </section>
+</section>
+</section>
+<section id="environment-variables" class="level2">
+<h2 class="anchored" data-anchor-id="environment-variables">Environment Variables</h2>
+<p>The following environment variables can be used to configure Bakery behavior at runtime when building a project targeting Workbench Daily builds.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>BAKERY_WORKBENCH_RELEASE_BRANCH</code></td>
+<td>Override the Workbench dailies release branch used when fetching daily build artifacts. Workbench tracks multiple release branches (e.g., <code>globemaster-allium</code>, <code>apple-blossom</code>) for daily builds. Set this variable to build a daily development version from a previous release’s branch instead of the latest.</td>
+<td><code>latest</code></td>
+</tr>
+</tbody>
+</table>
+<section id="example-usage" class="level3">
+<h3 class="anchored" data-anchor-id="example-usage">Example Usage</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build the latest daily (default behavior)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a daily from the "globemaster-allium" release branch</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="va">BAKERY_WORKBENCH_RELEASE_BRANCH</span><span class="op">=</span>globemaster-allium <span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="see-also" class="level2">

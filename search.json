@@ -187,6 +187,17 @@
     ]
   },
   {
+    "objectID": "configuration.html#environment-variables",
+    "href": "configuration.html#environment-variables",
+    "title": "Configuration",
+    "section": "Environment Variables",
+    "text": "Environment Variables\nThe following environment variables can be used to configure Bakery behavior at runtime when building a project targeting Workbench Daily builds.\n\n\n\n\n\n\n\n\nVariable\nDescription\nDefault\n\n\n\n\nBAKERY_WORKBENCH_RELEASE_BRANCH\nOverride the Workbench dailies release branch used when fetching daily build artifacts. Workbench tracks multiple release branches (e.g., globemaster-allium, apple-blossom) for daily builds. Set this variable to build a daily development version from a previous release’s branch instead of the latest.\nlatest\n\n\n\n\nExample Usage\n# Build the latest daily (default behavior)\nbakery build --dev-versions only\n\n# Build a daily from the \"globemaster-allium\" release branch\nBAKERY_WORKBENCH_RELEASE_BRANCH=globemaster-allium bakery build --dev-versions only",
+    "crumbs": [
+      "Home",
+      "Configuration"
+    ]
+  },
+  {
     "objectID": "configuration.html#see-also",
     "href": "configuration.html#see-also",
     "title": "Configuration",
