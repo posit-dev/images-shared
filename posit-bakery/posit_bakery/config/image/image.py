@@ -12,6 +12,7 @@ from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.tag import default_matrix_tag_patterns, default_tag_patterns, TagPattern
 from posit_bakery.config.tools import ToolField, ToolOptions
+from .build_secret import BuildSecret
 from .dev_version import DevelopmentVersionField
 from .matrix import ImageMatrix
 from .variant import ImageVariant
@@ -108,6 +109,14 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     buildTarget: Annotated[
         str | None,
         Field(default=None, description="Target build stage for the Docker --target flag."),
+    ]
+    buildSecrets: Annotated[
+        list[BuildSecret],
+        Field(
+            default_factory=list,
+            description="List of build secrets to pass to `docker buildx build` via `--secret id=<id>,env=<envVar>`. "
+            "Secrets whose envVar is not set in the environment are skipped with a warning.",
+        ),
     ]
     options: Annotated[list[ToolField], Field(default_factory=list, description="List of tool options for this image.")]
 
