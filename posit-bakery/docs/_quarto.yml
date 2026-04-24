@@ -3,6 +3,7 @@ project:
   type: posit-docs
   render:
     - "*.qmd"
+    - "reference/*.qmd"
 
 website:
   title: "Posit Bakery"
@@ -13,6 +14,8 @@ website:
     left:
     - text: "Home"
       href: index.qmd
+    - text: "Reference"
+      href: reference/index.qmd
     - text: "Examples"
       href: https://github.com/posit-dev/images-examples/
   sidebar:
@@ -28,6 +31,18 @@ website:
         href: "architecture.qmd"
       - text: "Cross-Repository Workflows"
         href: "cross-repo-workflows.qmd"
+      - section: "API Reference"
+        contents:
+          - text: "Overview"
+            href: "reference/index.qmd"
+          - section: "config"
+            contents: "reference/config.*.qmd"
+          - section: "ci"
+            contents: "reference/ci.*.qmd"
+          - section: "image"
+            contents: "reference/image.*.qmd"
+          - section: "error"
+            contents: "reference/error.*.qmd"
 
   page-footer:
     left:

@@ -2,3 +2,6 @@
 coverage.xml
 results.xml
 bake-plan.json
+
+# Great Docs ephemeral build directory
+great-docs/

@@ -59,10 +59,18 @@ test-all *ARGS:
     NO_COLOR="true" \
     just _pytest -n 4 {{ ARGS }}
 
-# Preview the documentation site
+# Regenerate API reference pages from package source using great-docs
+docs-reference:
+    uv run --group docs great-docs build --project-path {{ CWD }}
+    rm -rf {{ CWD }}/docs/reference
+    cp -r {{ CWD }}/great-docs/reference {{ CWD }}/docs/reference
+    rm -rf {{ CWD }}/great-docs
+
+# Preview the documentation site (run docs-reference first if reference/ is missing)
 docs-preview:
+    @test -d {{ CWD }}/docs/reference || just docs-reference
     cd {{ CWD }}/docs && quarto preview
 
 # Render the documentation site
-docs-render:
+docs-render: docs-reference
     cd {{ CWD }}/docs && quarto render
