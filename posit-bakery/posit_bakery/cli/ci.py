@@ -1,4 +1,3 @@
-import glob
 import json
 import logging
 import python_on_whales
@@ -8,7 +7,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.ci import CIMatrixField, ci_matrix
+from posit_bakery.ci import CIMatrixField, ci_matrix, ci_merge
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
@@ -168,42 +167,18 @@ def merge(
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-    # Resolve glob patterns in metadata_file arguments
-    resolved_files: list[Path] = []
-    for file in metadata_file:
-        if "*" in str(file) or "?" in str(file) or "[" in str(file):
-            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(str(file))))
-        else:
-            resolved_files.append(file.absolute())
-    metadata_file = resolved_files
-
-    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
-
-    files_ok = True
-    loaded_targets: list[str] = []
-    for file in metadata_file:
-        try:
-            loaded_targets.extend(config.load_build_metadata_from_file(file))
-        except Exception as e:
-            log.error(f"Failed to load metadata from file '{file}'")
-            log.error(str(e))
-            files_ok = False
-    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
-
-    if not files_ok:
-        log.error("One or more metadata files are invalid, aborting merge.")
+    try:
+        results = ci_merge(
+            base_path=config.base_path,
+            targets=config.targets,
+            metadata_files=metadata_file,
+            load_metadata=config.load_build_metadata_from_file,
+            dry_run=dry_run,
+        )
+    except RuntimeError as e:
+        log.error(str(e))
         raise typer.Exit(code=1)
 
-    log.info(f"Found {len(loaded_targets)} targets")
-    log.debug(", ".join(loaded_targets))
-
-    # Imported locally for patching in CLI tests
-    from posit_bakery.plugins.registry import get_plugin
-
-    oras = get_plugin("oras")
-    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
-
-    # CI-specific: verify final manifests with imagetools inspect
     if not dry_run:
         for result in results:
             if result.exit_code == 0 and result.artifacts:
@@ -211,8 +186,6 @@ def merge(
                 if workflow_result and workflow_result.destinations:
                     manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
                     stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
-
-    oras.results(results)
 
 
 @app.command()
