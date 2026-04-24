@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from python_on_whales import DockerException
 
-from posit_bakery.config.config import _retry_build, _RETRY_DELAY_SECONDS
+from posit_bakery.image.build import _retry_build, _RETRY_DELAY_SECONDS
 from posit_bakery.error import BakeryFileError, BakeryToolRuntimeError
 
 pytestmark = [
@@ -25,7 +25,7 @@ class TestRetryBuild:
 
         mock_fn.assert_called_once()
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_retry_on_docker_exception_then_success(self, mock_sleep):
         """Test that DockerException triggers retry and succeeds on second attempt."""
         mock_fn = MagicMock(side_effect=[DockerException(["docker", "build"], 1), None])
@@ -35,7 +35,7 @@ class TestRetryBuild:
         assert mock_fn.call_count == 2
         mock_sleep.assert_called_once_with(_RETRY_DELAY_SECONDS)
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_retry_on_bakery_tool_runtime_error_then_success(self, mock_sleep):
         """Test that BakeryToolRuntimeError triggers retry and succeeds on second attempt."""
         mock_fn = MagicMock(side_effect=[BakeryToolRuntimeError("Build failed", cmd=["docker", "build"]), None])
@@ -45,7 +45,7 @@ class TestRetryBuild:
         assert mock_fn.call_count == 2
         mock_sleep.assert_called_once_with(_RETRY_DELAY_SECONDS)
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_all_retries_exhausted_raises_exception(self, mock_sleep):
         """Test that exception is raised when all retries are exhausted."""
         error = DockerException(["docker", "build"], 1)
@@ -68,7 +68,7 @@ class TestRetryBuild:
         # Should only be called once, no retries
         mock_fn.assert_called_once()
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_retry_zero_means_no_retries(self, mock_sleep):
         """Test that retry=0 means no retries, just one attempt."""
         error = DockerException(["docker", "build"], 1)
@@ -80,7 +80,7 @@ class TestRetryBuild:
         mock_fn.assert_called_once()
         mock_sleep.assert_not_called()
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_multiple_retries_then_success(self, mock_sleep):
         """Test multiple failures before eventual success."""
         mock_fn = MagicMock(
@@ -96,7 +96,7 @@ class TestRetryBuild:
         assert mock_fn.call_count == 3
         assert mock_sleep.call_count == 2
 
-    @patch("posit_bakery.config.config.time.sleep")
+    @patch("posit_bakery.image.build.time.sleep")
     def test_logs_warning_on_retry(self, mock_sleep, caplog):
         """Test that a warning is logged when retrying."""
         import logging
