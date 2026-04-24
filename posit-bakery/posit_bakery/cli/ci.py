@@ -8,6 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from posit_bakery.ci import CIMatrixField, ci_matrix
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
@@ -25,12 +26,6 @@ class RichHelpPanelEnum(str, Enum):
     """Enum for categorizing options into rich help panels."""
 
     FILTERS = "Filters"
-
-
-class BakeryCIMatrixFieldEnum(str, Enum):
-    VERSION = "version"
-    DEV = "dev"
-    PLATFORM = "platform"
 
 
 @app.command()
@@ -66,7 +61,7 @@ def matrix(
         ),
     ] = None,
     exclude: Annotated[
-        Optional[list[BakeryCIMatrixFieldEnum]],
+        Optional[list[CIMatrixField]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
     ] = None,
     context: Annotated[
@@ -102,42 +97,13 @@ def matrix(
 
     try:
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name),
+            filter=BakeryConfigFilter(image_name=image_name, image_version=image_version),
             dev_versions=dev_versions,
             dev_stream=dev_stream,
+            matrix_versions=matrix_versions,
         )
-        c = BakeryConfig.from_context(context=context, settings=settings)
-        images = [i for i in c.model.images]
-        if image_name is not None:
-            images = [i for i in images if i.name == image_name]
-
-        data = []
-        for img in images:
-            entry = {"image": img.name}
-            versions = img.versions
-            if (img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
-                img.matrix is not None and matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
-            ):
-                continue
-            elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                versions = img.matrix.to_image_versions()
-            for ver in versions:
-                included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
-                if not included:
-                    continue
-                if image_version is not None and ver.name != image_version:
-                    continue
-
-                if BakeryCIMatrixFieldEnum.VERSION not in exclude:
-                    entry["version"] = ver.name
-                if BakeryCIMatrixFieldEnum.DEV not in exclude:
-                    entry["dev"] = ver.isDevelopmentVersion
-                if BakeryCIMatrixFieldEnum.PLATFORM not in exclude:
-                    for platform in ver.supported_platforms:
-                        entry["platform"] = platform
-                        data.append(entry.copy())
-                else:
-                    data.append(entry.copy())
+        config = BakeryConfig.from_context(context=context, settings=settings)
+        data = ci_matrix(config.targets, exclude=exclude)
 
         if image_version is not None and not data:
             log.error(f"No matrix entries matched --image-version '{image_version}'")
