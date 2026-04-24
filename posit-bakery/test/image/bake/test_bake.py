@@ -88,6 +88,57 @@ class TestBakeTarget:
         json_data = bake_target.model_dump(exclude_none=True)
         assert json_data["target"] == "my-stage"
 
+    def test_secret_populated_when_env_set(self, basic_standard_image_target, monkeypatch):
+        """Configured build secrets surface on the bake target as env-typed dicts."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="github_token", envVar="GITHUB_TOKEN"),
+        ]
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+
+        assert bake_target.secret == [{"type": "env", "id": "github_token", "env": "GITHUB_TOKEN"}]
+
+    def test_secret_skipped_when_env_unset(self, basic_standard_image_target, monkeypatch, caplog):
+        """Bake targets omit secrets whose envVar is unset and warn."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="set_secret", envVar="SET_TOKEN"),
+            BuildSecret(id="unset_secret", envVar="UNSET_TOKEN"),
+        ]
+        monkeypatch.setenv("SET_TOKEN", "value")
+        monkeypatch.delenv("UNSET_TOKEN", raising=False)
+
+        with caplog.at_level("WARNING"):
+            bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+
+        assert bake_target.secret == [{"type": "env", "id": "set_secret", "env": "SET_TOKEN"}]
+        assert "unset_secret" in caplog.text
+        assert "UNSET_TOKEN" in caplog.text
+
+    def test_secret_excluded_from_json_when_empty(self, basic_standard_image_target):
+        """The secret key is not emitted in bake JSON when no secrets are configured."""
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        json_data = bake_target.model_dump(exclude_none=True, by_alias=True)
+        assert "secret" not in json_data
+
+    def test_secret_included_in_json_when_set(self, basic_standard_image_target, monkeypatch):
+        """The secret key appears in bake JSON when secrets are configured and env is set."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="github_token", envVar="GITHUB_TOKEN"),
+        ]
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        json_data = bake_target.model_dump(exclude_none=True, by_alias=True)
+
+        assert json_data["secret"] == [{"type": "env", "id": "github_token", "env": "GITHUB_TOKEN"}]
+
 
 class TestBakePlan:
     def test_update_groups_new(self):

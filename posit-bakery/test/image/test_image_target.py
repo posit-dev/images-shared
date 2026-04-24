@@ -817,6 +817,76 @@ class TestImageTarget:
 
         mock_build.assert_called_once_with(**expected_build_args)
 
+    def test_build_secrets_resolves_set_env(self, basic_standard_image_target, monkeypatch):
+        """build_secrets returns `--secret` options for each secret whose envVar is set."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="github_token", envVar="GITHUB_TOKEN"),
+        ]
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+
+        assert basic_standard_image_target.build_secrets == ["id=github_token,env=GITHUB_TOKEN"]
+
+    def test_build_secrets_skips_unset_env_with_warning(
+        self, basic_standard_image_target, monkeypatch, caplog
+    ):
+        """Secrets whose envVar is unset are skipped and a warning is logged."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="set_secret", envVar="SET_TOKEN"),
+            BuildSecret(id="unset_secret", envVar="UNSET_TOKEN"),
+        ]
+        monkeypatch.setenv("SET_TOKEN", "value")
+        monkeypatch.delenv("UNSET_TOKEN", raising=False)
+
+        with caplog.at_level("WARNING"):
+            result = basic_standard_image_target.build_secrets
+
+        assert result == ["id=set_secret,env=SET_TOKEN"]
+        assert "unset_secret" in caplog.text
+        assert "UNSET_TOKEN" in caplog.text
+
+    def test_build_secrets_empty_when_none_configured(self, basic_standard_image_target):
+        """build_secrets returns an empty list when no secrets are configured."""
+        assert basic_standard_image_target.image_version.parent.buildSecrets == []
+        assert basic_standard_image_target.build_secrets == []
+
+    @pytest.mark.build
+    def test_build_args_with_secrets(self, basic_standard_image_target, monkeypatch):
+        """Test that build secrets are passed to docker.build via the `secrets` kwarg."""
+        from posit_bakery.config.image.build_secret import BuildSecret
+
+        basic_standard_image_target.image_version.parent.buildSecrets = [
+            BuildSecret(id="github_token", envVar="GITHUB_TOKEN"),
+        ]
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+
+        expected_build_args = {
+            "context_path": basic_standard_image_target.context.base_path,
+            "file": basic_standard_image_target.containerfile,
+            "build_args": {},
+            "tags": basic_standard_image_target.tags.as_strings(),
+            "labels": basic_standard_image_target.labels,
+            "load": True,
+            "push": False,
+            "pull": False,
+            "output": {},
+            "cache": True,
+            "cache_from": None,
+            "cache_to": None,
+            "metadata_file": None,
+            "platforms": ["linux/amd64"],
+            "target": None,
+            "secrets": ["id=github_token,env=GITHUB_TOKEN"],
+        }
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
+
+        mock_build.assert_called_once_with(**expected_build_args)
+
     @pytest.mark.build
     @pytest.mark.image_build
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)

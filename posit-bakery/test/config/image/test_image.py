@@ -104,6 +104,28 @@ class TestImage:
         assert len(i.variants) == 1
         assert len(i.versions) == 1
 
+    def test_build_secrets_default_empty(self):
+        """buildSecrets defaults to an empty list."""
+        i = Image(name="my-image", versions=[{"name": "1.0.0"}])
+        assert i.buildSecrets == []
+
+    def test_build_secrets_parsed(self):
+        """buildSecrets accepts a list of {id, envVar} maps."""
+        i = Image(
+            name="my-image",
+            versions=[{"name": "1.0.0"}],
+            buildSecrets=[
+                {"id": "github_token", "envVar": "GITHUB_TOKEN"},
+                {"id": "dockerhub_token", "envVar": "DOCKERHUB_TOKEN"},
+            ],
+        )
+        assert len(i.buildSecrets) == 2
+        assert i.buildSecrets[0].id == "github_token"
+        assert i.buildSecrets[0].envVar == "GITHUB_TOKEN"
+        assert i.buildSecrets[0].as_cli_option() == "id=github_token,env=GITHUB_TOKEN"
+        assert i.buildSecrets[1].id == "dockerhub_token"
+        assert i.buildSecrets[1].envVar == "DOCKERHUB_TOKEN"
+
     def test_documentation_url_https_prepend(self):
         """Test that the documentation URL is correctly prepended with https:// if missing."""
         i = Image(name="my-image", documentationUrl="docs.example.com", versions=[{"name": "1.0.0"}])
