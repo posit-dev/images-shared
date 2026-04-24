@@ -540,6 +540,24 @@ A GossOption represents options for `dgoss` tests against an image target.
 | `command`<br/>*string*             | The command to run within the `dgoss` container. This can be used to start a service in the container for testing.                                            | `sleep infinity`                                                                                                   | `start-server`   |
 | `wait`<br/>*int*                   | The number of seconds to wait after container startup before running tests. Useful if there is a service that needs to complete its startup prior to testing. | `0`                                                                                                                | `30`             |
 
+## Environment Variables
+
+The following environment variables can be used to configure Bakery behavior at runtime when building a project targeting Workbench Daily builds.
+
+| Variable | Description | Default |
+|---|---|---|
+| `BAKERY_WORKBENCH_RELEASE_BRANCH` | Override the Workbench dailies release branch used when fetching daily build artifacts. Workbench tracks multiple release branches (e.g., `globemaster-allium`, `apple-blossom`) for daily builds. Set this variable to build a daily development version from a previous release's branch instead of the latest. | `latest` |
+
+### Example Usage
+
+```bash
+# Build the latest daily (default behavior)
+bakery build --dev-versions only
+
+# Build a daily from the "globemaster-allium" release branch
+BAKERY_WORKBENCH_RELEASE_BRANCH=globemaster-allium bakery build --dev-versions only
+```
+
 ## See Also
 
 - [Templating Documentation](templating.qmd) — Jinja2 macros and variables available in image templates
