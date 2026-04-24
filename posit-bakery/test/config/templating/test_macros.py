@@ -1614,7 +1614,9 @@ class TestPythonMacros:
             ),
         ],
     )
-    def test_install_jupyterlab_workbench_strip_toggles(self, environment_with_macros, strip_tests, strip_staging, expected):
+    def test_install_jupyterlab_workbench_strip_toggles(
+        self, environment_with_macros, strip_tests, strip_staging, expected
+    ):
         template = textwrap.dedent(
             f"""\
             {{%- import "python.j2" as python -%}}

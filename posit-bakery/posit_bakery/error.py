@@ -152,7 +152,6 @@ class BakeryToolRuntimeError(BakeryToolError):
         return s
 
 
-
 class BakeryToolRuntimeErrorGroup(ExceptionGroup):
     """Group of tool runtime errors"""
 

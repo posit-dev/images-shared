@@ -31,9 +31,7 @@ class TestHadolintCommand:
     def test_command_includes_containerfile(self, basic_standard_image_target):
         """Test that the command ends with the containerfile path."""
         cmd = HadolintCommand.from_image_target(basic_standard_image_target)
-        expected_path = str(
-            basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile
-        )
+        expected_path = str(basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile)
         assert cmd.command[-1] == expected_path
 
     def test_command_default_failure_threshold(self, basic_standard_image_target):
@@ -134,9 +132,7 @@ class TestHadolintCommand:
 
     def test_command_with_override(self, basic_standard_image_target):
         """Test that override rules are mapped to the correct flags."""
-        options = HadolintOptions(
-            override={"error": ["DL3001"], "warning": ["DL3002", "DL3003"], "info": ["DL3004"]}
-        )
+        options = HadolintOptions(override={"error": ["DL3001"], "warning": ["DL3002", "DL3003"], "info": ["DL3004"]})
         cmd = HadolintCommand.from_image_target(basic_standard_image_target, options_override=options)
         error_indices = [i for i, v in enumerate(cmd.command) if v == "--error"]
         assert len(error_indices) == 1

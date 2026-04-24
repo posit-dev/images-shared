@@ -9,9 +9,9 @@ pytestmark = [pytest.mark.unit]
 class TestProtocol:
     def test_protocol_is_runtime_checkable(self):
         """BakeryToolPlugin must be runtime_checkable so we can validate plugins."""
-        assert hasattr(BakeryToolPlugin, "__protocol_attrs__") or hasattr(
-            BakeryToolPlugin, "__abstractmethods__"
-        ), "BakeryToolPlugin should be a Protocol"
+        assert hasattr(BakeryToolPlugin, "__protocol_attrs__") or hasattr(BakeryToolPlugin, "__abstractmethods__"), (
+            "BakeryToolPlugin should be a Protocol"
+        )
 
 
 class TestDiscoverPlugins:
@@ -62,6 +62,7 @@ class TestDGossPlugin:
     def test_register_cli_creates_command_group(self):
         """register_cli should add a 'dgoss' command group to the app."""
         import typer
+
         app = typer.Typer()
         plugin = DGossPlugin()
         plugin.register_cli(app)

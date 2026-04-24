@@ -132,6 +132,4 @@ def test_default_matrix_tag_patterns_no_tag_collisions():
         for i, v1 in enumerate(version_list):
             for v2 in version_list[i + 1 :]:
                 overlap = tags_by_version[v1] & tags_by_version[v2]
-                assert not overlap, (
-                    f"Tag collision for OS {os} between {v1} and {v2}: {overlap}"
-                )
+                assert not overlap, f"Tag collision for OS {os} between {v1} and {v2}: {overlap}"

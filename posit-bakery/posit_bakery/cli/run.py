@@ -138,9 +138,7 @@ def dgoss(
         DeprecationWarning,
         stacklevel=2,
     )
-    stderr_console.print(
-        "[yellow]Warning: 'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.[/yellow]"
-    )
+    stderr_console.print("[yellow]Warning: 'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.[/yellow]")
 
     # Autoselect host architecture platform if not specified.
     image_platform = image_platform or SETTINGS.architecture

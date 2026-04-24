@@ -159,7 +159,11 @@ class WizScanReportCollection(dict):
 
         table.add_section()
         table.add_row(
-            "Total", "", "", "", "",
+            "Total",
+            "",
+            "",
+            "",
+            "",
             str(total_row["critical"]),
             str(total_row["high"]),
             str(total_row["medium"]),

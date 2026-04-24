@@ -38,9 +38,7 @@ class TestRetryBuild:
     @patch("posit_bakery.config.config.time.sleep")
     def test_retry_on_bakery_tool_runtime_error_then_success(self, mock_sleep):
         """Test that BakeryToolRuntimeError triggers retry and succeeds on second attempt."""
-        mock_fn = MagicMock(
-            side_effect=[BakeryToolRuntimeError("Build failed", cmd=["docker", "build"]), None]
-        )
+        mock_fn = MagicMock(side_effect=[BakeryToolRuntimeError("Build failed", cmd=["docker", "build"]), None])
 
         _retry_build(mock_fn, retry=1, label="test-target")
 

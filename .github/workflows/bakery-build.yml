@@ -112,7 +112,7 @@ jobs:
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
@@ -149,8 +149,8 @@ jobs:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
         run: |
-          echo "docker-hub=$HAS_DOCKER_HUB" >> $GITHUB_OUTPUT
-          echo "ecr=$HAS_AWS_ROLE" >> $GITHUB_OUTPUT
+          echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
+          echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
