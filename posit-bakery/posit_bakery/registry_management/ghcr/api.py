@@ -9,6 +9,11 @@ from posit_bakery.registry_management.ghcr.models import GHCRPackageVersions, GH
 
 log = logging.getLogger(__name__)
 
+# GitHub intermittently returns this message when deleting public package versions, even when
+# the version does not actually have 5000+ downloads. Treat it as a warning so a flaky response
+# doesn't fail CI — the next cleanup run typically deletes the version successfully.
+FLAKY_DOWNLOAD_LIMIT_MESSAGE = "5000 downloads cannot be deleted"
+
 
 class GHCRClient:
     ENDPOINTS = {
@@ -61,7 +66,7 @@ class GHCRClient:
 
     def delete_package_version(self, version: GHCRPackageVersion):
         target_endpoint = version.url.removeprefix("https://api.github.com")
-        logging.debug(f"DELETE {target_endpoint}")
+        log.debug(f"DELETE {target_endpoint}")
         self.client.requester.requestJsonAndCheck(
             "DELETE",
             target_endpoint,
@@ -73,6 +78,9 @@ class GHCRClient:
             try:
                 self.delete_package_version(version)
             except GithubException as e:
-                logging.error(f"Failed to delete package version {version.html_url}: {e.message}")
+                if e.message and FLAKY_DOWNLOAD_LIMIT_MESSAGE in e.message:
+                    log.warning(f"Skipping package version {version.html_url}: {e.message}")
+                    continue
+                log.error(f"Failed to delete package version {version.html_url}: {e.message}")
                 errors.append((version.id, e.message))
         return errors
