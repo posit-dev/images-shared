@@ -15,13 +15,20 @@ class BuildSecret(BakeryYAMLModel):
 
     id: Annotated[
         str,
-        Field(min_length=1, description="Secret ID referenced by `RUN --mount=type=secret,id=<id>` in the Containerfile."),
+        Field(
+            min_length=1,
+            pattern=r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$",
+            description="Secret ID referenced by `RUN --mount=type=secret,id=<id>` in the Containerfile. "
+            "Restricted to alphanumerics, underscores, dots, and hyphens to prevent CLI argument injection.",
+        ),
     ]
     envVar: Annotated[
         str,
         Field(
             min_length=1,
-            description="Name of the environment variable whose value is mounted as the secret at build time.",
+            pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
+            description="Name of the environment variable whose value is mounted as the secret at build time. "
+            "Must be a valid POSIX environment variable name.",
         ),
     ]
 
