@@ -105,7 +105,10 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
     config.generate_image_targets()
 
     # Render the bake plan.
-    result = config.bake_plan_targets()
+    from posit_bakery.image.bake.bake import BakePlan
+
+    bake_plan = BakePlan.from_image_targets(context=config.base_path, image_targets=config.targets)
+    result = bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
 
     expected_plan = {
         "group": {
