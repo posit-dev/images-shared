@@ -187,9 +187,9 @@ jobs:
           BAKERY_CONTEXT: ${{ inputs.context }}
           REGISTRY_OWNER: ${{ github.repository_owner }}
         run: |
-          CACHE_FLAGS=""
+          CACHE_FLAGS=()
           if [ "$IS_FORK" != "true" ]; then
-            CACHE_FLAGS="--cache-registry ghcr.io/${REGISTRY_OWNER}"
+            CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
           fi
           bakery build \
             --strategy build --pull --load \
@@ -199,7 +199,7 @@ jobs:
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            $CACHE_FLAGS \
+            "${CACHE_FLAGS[@]}" \
             --context "$BAKERY_CONTEXT"
 
       - name: Test

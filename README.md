@@ -48,6 +48,14 @@ We invite you to join us on [GitHub Discussions](https://github.com/posit-dev/im
 
 If you encounter any issues or have any questions, please [open an issue](https://github.com/posit-dev/images-shared/issues). We appreciate your feedback.
 
+## Contributing
+
+Before your first commit, install the repository's pre-commit hooks so changes are checked locally before they hit CI:
+
+```shell
+just setup
+```
+
 ## Code of Conduct
 
 We expect all contributors to adhere to the project's [Code of Conduct](CODE_OF_CONDUCT.md) and create a positive and inclusive community.

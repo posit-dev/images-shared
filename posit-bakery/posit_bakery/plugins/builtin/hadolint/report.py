@@ -28,7 +28,11 @@ class HadolintReport(BaseModel):
     exit_code: Annotated[int, Field(default=0, exclude=True, description="Hadolint process exit code.")]
     version_label: Annotated[
         str | None,
-        Field(default=None, exclude=True, description="Display label for the version column. Overrides the target version when set."),
+        Field(
+            default=None,
+            exclude=True,
+            description="Display label for the version column. Overrides the target version when set.",
+        ),
     ]
     results: Annotated[list[HadolintResult], Field(default_factory=list, description="List of lint issues.")]
 
@@ -158,7 +162,11 @@ class HadolintReportCollection(dict):
 
         table.add_section()
         table.add_row(
-            "Total", "", "", "", "",
+            "Total",
+            "",
+            "",
+            "",
+            "",
             str(total_errors),
             str(total_warnings),
             str(total_info),

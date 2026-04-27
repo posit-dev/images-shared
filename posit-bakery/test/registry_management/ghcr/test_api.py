@@ -73,7 +73,9 @@ class TestDeletePackageVersions:
             errors = client.delete_package_versions(versions)
 
         assert errors == []
-        assert any("5000 downloads" in record.message and record.levelno == logging.WARNING for record in caplog.records)
+        assert any(
+            "5000 downloads" in record.message and record.levelno == logging.WARNING for record in caplog.records
+        )
 
     def test_mixed_results_only_reports_non_flaky_errors(self, client, mocker):
         flaky = GithubException(

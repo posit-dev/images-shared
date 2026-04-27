@@ -18,28 +18,49 @@ pytestmark = [pytest.mark.unit, pytest.mark.hadolint]
 def sample_results_data():
     """Sample hadolint JSON output as a list of dicts."""
     return [
-        {"code": "DL3007", "column": 1, "file": "Containerfile", "level": "warning", "line": 1,
-         "message": "Using latest is prone to errors"},
-        {"code": "DL3008", "column": 1, "file": "Containerfile", "level": "warning", "line": 5,
-         "message": "Pin versions in apt get install"},
-        {"code": "DL3009", "column": 1, "file": "Containerfile", "level": "info", "line": 5,
-         "message": "Delete the apt lists after installing"},
+        {
+            "code": "DL3007",
+            "column": 1,
+            "file": "Containerfile",
+            "level": "warning",
+            "line": 1,
+            "message": "Using latest is prone to errors",
+        },
+        {
+            "code": "DL3008",
+            "column": 1,
+            "file": "Containerfile",
+            "level": "warning",
+            "line": 5,
+            "message": "Pin versions in apt get install",
+        },
+        {
+            "code": "DL3009",
+            "column": 1,
+            "file": "Containerfile",
+            "level": "info",
+            "line": 5,
+            "message": "Delete the apt lists after installing",
+        },
     ]
 
 
 class TestHadolintResult:
     def test_parse_result(self):
         result = HadolintResult(
-            code="DL3008", column=1, file="Containerfile",
-            level="warning", line=10, message="Pin versions in apt get install",
+            code="DL3008",
+            column=1,
+            file="Containerfile",
+            level="warning",
+            line=10,
+            message="Pin versions in apt get install",
         )
         assert result.code == "DL3008"
         assert result.level == "warning"
         assert result.line == 10
 
     def test_parse_from_dict(self):
-        data = {"code": "DL3007", "column": 1, "file": "-", "level": "error", "line": 1,
-                "message": "Using latest"}
+        data = {"code": "DL3007", "column": 1, "file": "-", "level": "error", "line": 1, "message": "Using latest"}
         result = HadolintResult.model_validate(data)
         assert result.code == "DL3007"
         assert result.level == "error"

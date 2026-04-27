@@ -1,0 +1,6 @@
+self-hosted-runner:
+  # ubuntu-latest-8x is a GitHub-hosted larger runner registered at the
+  # posit-dev organization level. Actionlint doesn't query org settings,
+  # so the label is listed here for linting.
+  labels:
+    - ubuntu-latest-8x

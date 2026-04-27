@@ -3,13 +3,14 @@
 exclude: ^(\.vscode.*)$
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
     -   id: check-added-large-files
     -   id: check-ast
     -   id: check-case-conflict
     -   id: check-executables-have-shebangs
     -   id: check-json
+    -   id: check-merge-conflict
     -   id: check-shebang-scripts-are-executable
     -   id: check-yaml
         exclude: "^.*goss.yaml$"
@@ -24,7 +25,7 @@ repos:
     -   id: no-commit-to-branch
         args: [--branch, main]
     -   id: pretty-format-json
-        exclude: "^.*testdata.*json$"
+        exclude: "^.*testdata.*json$|^\\.claude/settings\\.json$"
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace
         exclude: "docs/_extensions"
@@ -33,21 +34,18 @@ repos:
     hooks:
     -   id: shellcheck
         args: ["-s", "bash"]
--   repo: https://github.com/lovesegfault/beautysh
-    rev: v6.2.1
+-   repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
     hooks:
-    -   id: beautysh
-        # Workaround for Python 3.12
-        # https://github.com/lovesegfault/beautysh/issues/249#issuecomment-2397256907
-        additional_dependencies:
-            - setuptools
+    -   id: shfmt
+        args: [-i, "2", -d]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.9
+    rev: v0.15.10
     hooks:
     -   id: ruff
         args: [ --fix ]
     -   id: ruff-format
-# -   repo: https://github.com/pre-commit/mirrors-mypy
-#     rev: v1.13.0
-#     hooks:
-#     - id: mypy
+-   repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+    -   id: actionlint

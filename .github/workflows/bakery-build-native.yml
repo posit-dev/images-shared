@@ -122,7 +122,7 @@ jobs:
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "platform_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "platform_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
       - name: Images by Version
         id: images-by-version
         env:
@@ -135,7 +135,7 @@ jobs:
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "versions_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> $GITHUB_OUTPUT
+          echo "versions_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
@@ -184,8 +184,8 @@ jobs:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
         run: |
-          echo "docker-hub=$HAS_DOCKER_HUB" >> $GITHUB_OUTPUT
-          echo "ecr=$HAS_AWS_ROLE" >> $GITHUB_OUTPUT
+          echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
+          echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
@@ -219,7 +219,7 @@ jobs:
           BUILD_PLATFORM: ${{ matrix.img.platform }}
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/}
-          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+          echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
@@ -315,8 +315,8 @@ jobs:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
         run: |
-          echo "docker-hub=$HAS_DOCKER_HUB" >> $GITHUB_OUTPUT
-          echo "ecr=$HAS_AWS_ROLE" >> $GITHUB_OUTPUT
+          echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
+          echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
@@ -372,7 +372,7 @@ jobs:
             --context "$CONTEXT" \
             --temp-registry "$REGISTRY" \
             $PUSH_FLAG \
-            *-metadata.json
+            ./*-metadata.json
 
   readme:
     name: Push READMEs

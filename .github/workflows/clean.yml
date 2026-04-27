@@ -108,16 +108,15 @@ jobs:
           REMOVE_DANGLING: ${{ inputs.remove-dangling-caches }}
           OLDER_THAN: ${{ inputs.remove-caches-older-than }}
         run: |
-          DRY_RUN_FLAG=""; if [ "$DRY_RUN" = "true" ]; then DRY_RUN_FLAG="--dry-run"; fi
-          UNTAGGED_FLAG="--no-untagged"; if [ "$REMOVE_DANGLING" = "true" ]; then UNTAGGED_FLAG="--untagged"; fi
-          OLDER_FLAG=""; if [ "$OLDER_THAN" -gt 0 ] 2>/dev/null; then OLDER_FLAG="--older-than $OLDER_THAN"; fi
+          FLAGS=()
+          if [ "$DRY_RUN" = "true" ]; then FLAGS+=(--dry-run); fi
+          if [ "$REMOVE_DANGLING" = "true" ]; then FLAGS+=(--untagged); else FLAGS+=(--no-untagged); fi
+          if [ "$OLDER_THAN" -gt 0 ] 2>/dev/null; then FLAGS+=(--older-than "$OLDER_THAN"); fi
           bakery clean cache-registry "$REGISTRY" \
             --context "$CONTEXT" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            $DRY_RUN_FLAG \
-            $UNTAGGED_FLAG \
-            $OLDER_FLAG
+            "${FLAGS[@]}"
 
   clean-temp:
     name: Clean Temporary Images
@@ -154,13 +153,12 @@ jobs:
           REMOVE_DANGLING: ${{ inputs.remove-dangling-temporary-images }}
           OLDER_THAN: ${{ inputs.remove-temporary-images-older-than }}
         run: |
-          DRY_RUN_FLAG=""; if [ "$DRY_RUN" = "true" ]; then DRY_RUN_FLAG="--dry-run"; fi
-          UNTAGGED_FLAG="--no-untagged"; if [ "$REMOVE_DANGLING" = "true" ]; then UNTAGGED_FLAG="--untagged"; fi
-          OLDER_FLAG=""; if [ "$OLDER_THAN" -gt 0 ] 2>/dev/null; then OLDER_FLAG="--older-than $OLDER_THAN"; fi
+          FLAGS=()
+          if [ "$DRY_RUN" = "true" ]; then FLAGS+=(--dry-run); fi
+          if [ "$REMOVE_DANGLING" = "true" ]; then FLAGS+=(--untagged); else FLAGS+=(--no-untagged); fi
+          if [ "$OLDER_THAN" -gt 0 ] 2>/dev/null; then FLAGS+=(--older-than "$OLDER_THAN"); fi
           bakery clean temp-registry "$REGISTRY" \
             --context "$CONTEXT" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            $DRY_RUN_FLAG \
-            $UNTAGGED_FLAG \
-            $OLDER_FLAG
+            "${FLAGS[@]}"
