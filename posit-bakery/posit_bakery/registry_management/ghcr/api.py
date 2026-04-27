@@ -14,6 +14,10 @@ log = logging.getLogger(__name__)
 # doesn't fail CI — the next cleanup run typically deletes the version successfully.
 FLAKY_DOWNLOAD_LIMIT_MESSAGE = "5000 downloads cannot be deleted"
 
+# Concurrent cleanup runs can race: a version discovered by this run may already have been
+# deleted by another run by the time we get to it. Treat as a warning rather than failing.
+VERSION_NOT_FOUND_MESSAGE = "Package version not found"
+
 
 class GHCRClient:
     ENDPOINTS = {
@@ -80,6 +84,12 @@ class GHCRClient:
             except GithubException as e:
                 if e.message and FLAKY_DOWNLOAD_LIMIT_MESSAGE in e.message:
                     log.warning(f"Skipping package version {version.html_url}: {e.message}")
+                    continue
+                if e.message and VERSION_NOT_FOUND_MESSAGE in e.message:
+                    log.warning(
+                        f"Skipping package version {version.html_url}: {e.message}. "
+                        "The version may have already been deleted by a concurrent cleanup run."
+                    )
                     continue
                 log.error(f"Failed to delete package version {version.html_url}: {e.message}")
                 errors.append((version.id, e.message))
