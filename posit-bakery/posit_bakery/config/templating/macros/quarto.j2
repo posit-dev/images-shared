@@ -23,6 +23,12 @@ ${{ name }}
 {# The --mount option for the optional GitHub token build secret consumed by
    the TinyTeX install step. Mount is declared on the RUN instruction; the
    corresponding shell-side read lives in `install_tinytex_command`.
+
+   By setting GH_TOKEN to a valid GitHub token, we avoid hitting GitHub API
+   rate limits during the TinyTeX install process, which downloads packages
+   from GitHub repositories. The secret is optional to allow for flexibility
+   in build environments, but if not provided, running a high number of
+   concurrent builds that install Quarto may result in flaky failures.
 #}
 {% macro github_token_secret_mount() -%}
 --mount=type=secret,id=github_token,required=false
@@ -35,8 +41,7 @@ ${{ name }}
 :param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
 {% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
-if [ -s /run/secrets/github_token ]; then export GH_TOKEN="$(cat /run/secrets/github_token)"; fi && \
-{% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
+GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well

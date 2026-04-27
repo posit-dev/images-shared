@@ -1079,8 +1079,7 @@ class TestBakeryConfig:
             # Install Quarto
             RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                 curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                if [ -s /run/secrets/github_token ]; then export GH_TOKEN="$(cat /run/secrets/github_token)"; fi && \\
-                /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+                GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
         """)
         assert (
             expected_std_containerfile
