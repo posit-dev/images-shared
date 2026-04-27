@@ -35,3 +35,10 @@ class BuildSecret(BakeryYAMLModel):
     def as_cli_option(self) -> str:
         """Return the value for docker's `--secret` flag, e.g. `id=github_token,env=GITHUB_TOKEN`."""
         return f"id={self.id},env={self.envVar}"
+
+    def as_bake_json(self) -> dict[str, str]:
+        """Return the per-target `secret` entry for a Docker Bake JSON plan.
+
+        See https://docs.docker.com/build/bake/reference/#targetsecret for the schema.
+        """
+        return {"type": "env", "id": self.id, "env": self.envVar}

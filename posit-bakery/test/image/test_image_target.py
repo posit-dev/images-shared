@@ -817,41 +817,39 @@ class TestImageTarget:
 
         mock_build.assert_called_once_with(**expected_build_args)
 
-    def test_build_secrets_resolves_set_env(self, basic_standard_image_target, monkeypatch):
-        """build_secrets returns `--secret` options for each secret whose envVar is set."""
+    def test_resolved_build_secrets_returns_secrets_with_set_env(self, basic_standard_image_target, monkeypatch):
+        """resolved_build_secrets returns BuildSecret objects whose envVar is set."""
         from posit_bakery.config.image.build_secret import BuildSecret
 
-        basic_standard_image_target.image_version.parent.buildSecrets = [
-            BuildSecret(id="github_token", envVar="GITHUB_TOKEN"),
-        ]
+        secret = BuildSecret(id="github_token", envVar="GITHUB_TOKEN")
+        basic_standard_image_target.image_version.parent.buildSecrets = [secret]
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
 
-        assert basic_standard_image_target.build_secrets == ["id=github_token,env=GITHUB_TOKEN"]
+        assert basic_standard_image_target.resolved_build_secrets == [secret]
 
-    def test_build_secrets_skips_unset_env_with_warning(
+    def test_resolved_build_secrets_skips_unset_env_with_warning(
         self, basic_standard_image_target, monkeypatch, caplog
     ):
         """Secrets whose envVar is unset are skipped and a warning is logged."""
         from posit_bakery.config.image.build_secret import BuildSecret
 
-        basic_standard_image_target.image_version.parent.buildSecrets = [
-            BuildSecret(id="set_secret", envVar="SET_TOKEN"),
-            BuildSecret(id="unset_secret", envVar="UNSET_TOKEN"),
-        ]
+        set_secret = BuildSecret(id="set_secret", envVar="SET_TOKEN")
+        unset_secret = BuildSecret(id="unset_secret", envVar="UNSET_TOKEN")
+        basic_standard_image_target.image_version.parent.buildSecrets = [set_secret, unset_secret]
         monkeypatch.setenv("SET_TOKEN", "value")
         monkeypatch.delenv("UNSET_TOKEN", raising=False)
 
         with caplog.at_level("WARNING"):
-            result = basic_standard_image_target.build_secrets
+            result = basic_standard_image_target.resolved_build_secrets
 
-        assert result == ["id=set_secret,env=SET_TOKEN"]
+        assert result == [set_secret]
         assert "unset_secret" in caplog.text
         assert "UNSET_TOKEN" in caplog.text
 
-    def test_build_secrets_empty_when_none_configured(self, basic_standard_image_target):
-        """build_secrets returns an empty list when no secrets are configured."""
+    def test_resolved_build_secrets_empty_when_none_configured(self, basic_standard_image_target):
+        """resolved_build_secrets returns an empty list when no secrets are configured."""
         assert basic_standard_image_target.image_version.parent.buildSecrets == []
-        assert basic_standard_image_target.build_secrets == []
+        assert basic_standard_image_target.resolved_build_secrets == []
 
     @pytest.mark.build
     def test_build_args_with_secrets(self, basic_standard_image_target, monkeypatch):
