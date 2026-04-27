@@ -51,5 +51,4 @@ RUN RUN_UNATTENDED=1 R_VERSION=$R_VERSION bash -c "$(curl -fsSL https://rstd.io/
 # Install Quarto
 RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/$QUARTO_VERSION && \
     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v$QUARTO_VERSION/quarto-$QUARTO_VERSION-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/$QUARTO_VERSION" --strip-components=1 && \
-    if [ -s /run/secrets/github_token ]; then export GH_TOKEN="$(cat /run/secrets/github_token)"; fi && \
-    /opt/quarto/$QUARTO_VERSION/bin/quarto install tinytex --no-prompt --quiet
+    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/$QUARTO_VERSION/bin/quarto install tinytex --no-prompt --quiet
