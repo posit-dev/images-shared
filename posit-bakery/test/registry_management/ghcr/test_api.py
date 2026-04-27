@@ -77,6 +77,26 @@ class TestDeletePackageVersions:
             "5000 downloads" in record.message and record.levelno == logging.WARNING for record in caplog.records
         )
 
+    def test_suppresses_version_not_found_error_as_warning(self, client, mocker, caplog):
+        message = "Package version not found"
+        mocker.patch.object(
+            client,
+            "delete_package_version",
+            side_effect=GithubException(404, data={}, message=message),
+        )
+        versions = GHCRPackageVersions(versions=[_make_version(1)])
+
+        with caplog.at_level(logging.WARNING, logger="posit_bakery.registry_management.ghcr.api"):
+            errors = client.delete_package_versions(versions)
+
+        assert errors == []
+        assert any(
+            "Package version not found" in record.message
+            and "concurrent cleanup run" in record.message
+            and record.levelno == logging.WARNING
+            for record in caplog.records
+        )
+
     def test_mixed_results_only_reports_non_flaky_errors(self, client, mocker):
         flaky = GithubException(
             422,
