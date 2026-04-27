@@ -12,6 +12,7 @@ from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validat
 
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
+from posit_bakery.config.image.build_secret import BuildSecret
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
@@ -501,26 +502,26 @@ class ImageTarget(BaseModel):
         return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
     @property
-    def build_secrets(self) -> list[str]:
-        """Resolve build secrets to `--secret` CLI option strings.
+    def resolved_build_secrets(self) -> list[BuildSecret]:
+        """Return the parent Image's BuildSecrets whose envVar is set in the environment.
 
-        Secrets whose envVar is not set in the environment are skipped with a warning; the
-        build command itself decides whether a missing secret is fatal (via `required=true`
-        on the Dockerfile mount).
+        Secrets whose envVar is unset are skipped with a warning; the build command itself
+        decides whether a missing secret is fatal (via `required=true` on the Dockerfile
+        mount). Each build path (sequential, bake) formats these into its own option shape.
         """
         image = self.image_version.parent
         if image is None:
             return []
-        options: list[str] = []
+        resolved: list[BuildSecret] = []
         for secret in image.buildSecrets:
             if os.environ.get(secret.envVar):
-                options.append(secret.as_cli_option())
+                resolved.append(secret)
             else:
                 log.warning(
                     f"Build secret '{secret.id}' for image '{image.name}' skipped: environment "
                     f"variable '{secret.envVar}' is not set."
                 )
-        return options
+        return resolved
 
     @property
     def build_target(self) -> str | None:
@@ -619,7 +620,7 @@ class ImageTarget(BaseModel):
                     metadata_file=metadata_file,
                     platforms=platforms or self.image_os.platforms,
                     target=self.build_target,
-                    secrets=self.build_secrets,
+                    secrets=[s.as_cli_option() for s in self.resolved_build_secrets],
                 )
             except python_on_whales.exceptions.DockerException as e:
                 raise BakeryToolRuntimeError(

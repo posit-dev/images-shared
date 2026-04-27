@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 from typing import Annotated, Any
@@ -8,8 +7,6 @@ from pydantic import BaseModel, Field, field_serializer
 
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
-
-log = logging.getLogger(__name__)
 
 
 class BakeGroup(BaseModel):
@@ -139,19 +136,9 @@ class BakeTarget(BaseModel):
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
 
-        image = image_target.image_version.parent
-        if image is not None and image.buildSecrets:
-            secrets = []
-            for secret in image.buildSecrets:
-                if os.environ.get(secret.envVar):
-                    secrets.append({"type": "env", "id": secret.id, "env": secret.envVar})
-                else:
-                    log.warning(
-                        f"Build secret '{secret.id}' for image '{image.name}' skipped: environment "
-                        f"variable '{secret.envVar}' is not set."
-                    )
-            if secrets:
-                kwargs["secret"] = secrets
+        secrets = [s.as_bake_json() for s in image_target.resolved_build_secrets]
+        if secrets:
+            kwargs["secret"] = secrets
 
         return cls(
             image_name=image_target.image_name,

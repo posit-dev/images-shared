@@ -29,6 +29,11 @@ class TestBuildSecret:
         secret = BuildSecret(id="github_token", envVar="GITHUB_TOKEN")
         assert secret.as_cli_option() == "id=github_token,env=GITHUB_TOKEN"
 
+    def test_as_bake_json(self):
+        """as_bake_json returns the per-target secret entry for a Docker Bake JSON plan."""
+        secret = BuildSecret(id="github_token", envVar="GITHUB_TOKEN")
+        assert secret.as_bake_json() == {"type": "env", "id": "github_token", "env": "GITHUB_TOKEN"}
+
     @pytest.mark.parametrize(
         "id_value",
         [
