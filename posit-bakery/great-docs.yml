@@ -1,0 +1,57 @@
+display_name: Posit Bakery
+changelog:
+  enabled: false
+hero: false
+markdown_pages: false
+
+source:
+  branch: main
+
+inline_methods: true
+
+auto_include:
+  - config
+
+cli:
+  enabled: false
+
+exclude:
+  - cli
+  - main
+  - app
+
+reference:
+  sections:
+    - title: Configuration
+      desc: Models for bakery.yaml
+      contents:
+        - config.BakeryConfig
+        - config.BakeryConfigDocument
+        - config.Image
+        - config.ImageVariant
+        - config.ImageVersion
+        - config.ImageVersionOS
+        - config.BaseRegistry
+        - config.Registry
+        - config.Repository
+        - config.TagPattern
+    - title: CI
+      desc: CI pipeline operations
+      contents:
+        - ci.ci_matrix
+        - ci.ci_merge
+        - ci.resolve_metadata_globs
+        - ci.ImageTarget
+    - title: Image
+      desc: Image build targets and plans
+      contents:
+        - image.BakePlan
+        - image.ImageTarget
+        - image.ImageBuildStrategy
+    - title: Errors
+      desc: Exception hierarchy
+      contents:
+        - error.BakeryError
+        - error.BakeryToolError
+        - error.BakeryToolRuntimeError
+        - error.BakeryBuildErrorGroup
