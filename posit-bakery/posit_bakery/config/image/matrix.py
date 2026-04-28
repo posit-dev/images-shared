@@ -16,6 +16,7 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
     DependencyVersions,
 )
+from posit_bakery.config.dependencies.version import DependencyVersion
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -373,6 +374,48 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             resolved.append(dc.resolve_versions())
 
         return resolved
+
+    @property
+    def latest_combination(self) -> dict[str, str] | None:
+        """Resolve the cartesian-product row that represents the matrix's "latest" combination.
+
+        Returns a dict mapping each version-bearing axis to the original string of its
+        maximum version, or ``None`` when any axis has a candidate that cannot be parsed
+        as a version (in which case a warning is logged and the matrix emits no
+        ``latest``-family tags).
+
+        Axes considered:
+          * Every entry in :pyattr:`resolved_dependencies` (key = ``entry.dependency``).
+          * Every entry in :pyattr:`values` whose value is a ``list`` (key = ``f"value:{key}"``).
+
+        Scalar ``values`` are constant across the cartesian product and are skipped.
+        """
+        axes: list[tuple[str, list[str]]] = []
+        for entry in self.resolved_dependencies:
+            axes.append((entry.dependency, list(entry.versions)))
+        for key, value in self.values.items():
+            if isinstance(value, list):
+                axes.append((f"value:{key}", [str(v) for v in value]))
+
+        selected: dict[str, str] = {}
+        for axis_key, candidates in axes:
+            parsed: list[tuple[DependencyVersion, str]] = []
+            for candidate in candidates:
+                try:
+                    parsed.append((DependencyVersion(candidate), candidate))
+                except Exception as e:
+                    # packaging raises InvalidVersion (a ValueError subclass); we keep this
+                    # broad to also catch any defensive parsing errors from DependencyVersion.
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                        f"'{axis_key}' has unparseable version '{candidate}' ({e}). "
+                        f"No 'latest'-family tags will be emitted for this matrix."
+                    )
+                    return None
+            max_version, max_original = max(parsed, key=lambda pair: pair[0])
+            selected[axis_key] = max_original
+
+        return selected
 
     def generate_template_values(
         self,

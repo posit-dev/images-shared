@@ -678,3 +678,76 @@ class TestImageMatrix:
         plain_out = expected_path / "scripts" / "config.sh"
         assert exec_out.stat().st_mode & stat.S_IXUSR, "executable template should render to executable file"
         assert not (plain_out.stat().st_mode & stat.S_IXUSR), "non-executable template should stay non-executable"
+
+
+class TestLatestCombination:
+    def test_single_dependency_returns_max_version(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3", "3.10.14"]),
+            ],
+        )
+        assert matrix.latest_combination == {"python": "3.12.3"}
+
+    def test_multiple_dependencies_picks_max_per_axis(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"]),
+                RDependencyVersions(dependency="R", versions=["4.4.1", "4.3.3"]),
+            ],
+        )
+        assert matrix.latest_combination == {"python": "3.12.3", "R": "4.4.1"}
+
+    def test_dependency_constraints_resolve_then_pick_max(self, patch_requests_get):
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 2},
+                ),
+            ],
+        )
+        result = matrix.latest_combination
+        assert result is not None
+        assert "python" in result
+        # Highest of the two resolved versions, original-string from the resolved list
+        assert result["python"] == matrix.resolved_dependencies[0].versions[0]
+
+    def test_list_values_included_under_value_namespace(self):
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24", "1.25.1"]},
+        )
+        assert matrix.latest_combination == {"value:go_version": "1.25.1"}
+
+    def test_scalar_values_not_in_returned_dict(self):
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"])],
+            values={"pro_drivers_version": "2025.07.0"},
+        )
+        result = matrix.latest_combination
+        assert result == {"python": "3.12.3"}
+        assert "value:pro_drivers_version" not in result
+
+    def test_dependencies_and_list_values_combined(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"]),
+            ],
+            values={
+                "go_version": ["1.24", "1.25.1"],
+                "pro_drivers_version": "2025.07.0",
+            },
+        )
+        assert matrix.latest_combination == {
+            "python": "3.12.3",
+            "value:go_version": "1.25.1",
+        }
+
+    def test_preserves_original_version_string(self):
+        # Verify we record the candidate string, not packaging.Version's normalized form.
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12", "3.11.5"])],
+        )
+        # "3.12" should be picked; result should preserve "3.12" rather than "3.12.0"
+        result = matrix.latest_combination
+        assert result == {"python": "3.12"}
