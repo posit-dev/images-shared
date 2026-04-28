@@ -16,6 +16,8 @@ from posit_bakery.config.dependencies import (
     QuartoDependencyConstraint,
 )
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
+from posit_bakery.config.repository import Repository
+from posit_bakery.image.image_target import ImageTarget
 
 
 @pytest.mark.parametrize(
@@ -680,10 +682,6 @@ class TestImageMatrix:
 
     def test_latest_matrix_target_emits_latest_tag(self, patch_requests_get):
         """Integration: latest matrix row + primary OS + no variants emits 'latest' tag."""
-        from posit_bakery.config.image.image import Image
-        from posit_bakery.image.image_target import ImageTarget
-        from posit_bakery.config.repository import Repository
-
         # Minimal Image with a matrix; tagPatterns defaults to default_matrix_tag_patterns()
         image = Image(
             name="content",
