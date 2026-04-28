@@ -6,9 +6,20 @@ unparseable input.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 
 log = logging.getLogger(__name__)
+
+# Anchored grammar:
+#   <release>      one or more dot-separated digit groups, minimum two groups
+#   -<prerelease>  optional, semver prerelease alphabet
+#   +<build>       optional, semver build alphabet
+_VERSION_RE = re.compile(
+    r"^(?P<release>\d+(?:\.\d+){1,})"
+    r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?"
+    r"(?:\+(?P<build>[0-9A-Za-z.-]+))?$"
+)
 
 
 @dataclass(frozen=True)
@@ -27,8 +38,23 @@ class ParsedVersion:
     prerelease: str | None = None
     build: str | None = None
 
+    def __str__(self) -> str:
+        return self.original
+
     @classmethod
     def parse(cls, value: str) -> "ParsedVersion | None":
         """Parse a version string. Returns ``None`` on failure and logs a warning."""
-        log.warning("Unparseable version string: %r", value)
-        return None
+        if not isinstance(value, str):
+            log.warning("Unparseable version string: %r", value)
+            return None
+        match = _VERSION_RE.match(value)
+        if match is None:
+            log.warning("Unparseable version string: %r", value)
+            return None
+        release = tuple(int(part) for part in match.group("release").split("."))
+        return cls(
+            original=value,
+            release=release,
+            prerelease=match.group("prerelease"),
+            build=match.group("build"),
+        )
