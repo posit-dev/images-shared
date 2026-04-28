@@ -751,3 +751,57 @@ class TestLatestCombination:
         # "3.12" should be picked; result should preserve "3.12" rather than "3.12.0"
         result = matrix.latest_combination
         assert result == {"python": "3.12"}
+
+    def test_unparseable_list_value_returns_none_and_warns(self, caplog):
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.11.5"])],
+            values={"flavor": ["alpha", "beta"]},
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        assert "value:flavor" in warnings[0].message
+        assert "alpha" in warnings[0].message or "beta" in warnings[0].message
+
+    def test_unparseable_dependency_version_returns_none_and_warns(self, caplog):
+        # Build via dict so pydantic discriminator accepts arbitrary version strings.
+        matrix = ImageMatrix.model_validate(
+            {
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.12.3", "not-a-version"]},
+                ],
+            }
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "python" in warnings[0].message
+        assert "not-a-version" in warnings[0].message
+
+    def test_first_failing_axis_short_circuits(self, caplog):
+        # Two unparseable axes: only the first one encountered should produce a warning.
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+            values={
+                "first": ["x", "y"],
+                "second": ["a", "b"],
+            },
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
