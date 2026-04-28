@@ -86,4 +86,4 @@ SUPPORTED_OS = {
     "unknown": BuildOS(family=OSFamilyEnum.UNKNOWN, name="unknown", version=""),
 }
 
-DEFAULT_OS = SUPPORTED_OS["ubuntu"]["22"]
+DEFAULT_OS = SUPPORTED_OS["ubuntu"]["24"]
