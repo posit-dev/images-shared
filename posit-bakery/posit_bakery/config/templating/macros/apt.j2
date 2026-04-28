@@ -5,24 +5,22 @@
 
 {# Setup command for Posit Cloudsmith apt repositories.
 
-:param codename_override: Override the OS codename used by the setup script. Useful when
+:param codename: Override the OS codename used by the Cloudsmith setup script. Useful when
     Posit packages are not yet published for the current OS (e.g., using noble packages on
-    resolute). The original codename is restored after setup.
+    resolute). When set, the codename is passed as an environment variable to the script
+    per the Cloudsmith docs.
 #}
-{% macro setup_posit_cloudsmith(codename_override = None) -%}
-{%- if codename_override -%}
-_ORG_CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME") && \
-sed -i "s/VERSION_CODENAME=$_ORG_CODENAME/VERSION_CODENAME={{ codename_override }}/" /etc/os-release && \
-bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \
-sed -i "s/VERSION_CODENAME={{ codename_override }}/VERSION_CODENAME=$_ORG_CODENAME/" /etc/os-release
+{% macro setup_posit_cloudsmith(codename = None) -%}
+{%- if codename -%}
+codename={{ codename }} bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
 {%- else -%}
 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
 {%- endif -%}
 {%- endmacro %}
 
 {# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup_posit_cloudsmith(codename_override = None) -%}
-RUN {{ setup_posit_cloudsmith(codename_override) | indent(4) }}
+{% macro run_setup_posit_cloudsmith(codename = None) -%}
+RUN {{ setup_posit_cloudsmith(codename) | indent(4) }}
 {%- endmacro %}
 
 {# Commands for cleaning and removing the apt cache between layers #}
@@ -138,21 +136,21 @@ RUN {{ install(packages, files) | indent(4) }}
 {# Commands for update_upgrade(), setup_posit_cloudsmith(), and installation of curl, ca-certificates, gnupg, and tar.
 
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
-:param codename_override: Override the OS codename for the Cloudsmith setup script.
+:param codename: Override the OS codename for the Cloudsmith setup script.
 #}
-{% macro setup(clean = True, codename_override = None) -%}
+{% macro setup(clean = True, codename = None) -%}
 {{ update_upgrade(False) }} && \
 apt-get install -yqq --no-install-recommends \
     curl \
     ca-certificates \
     gnupg \
     tar && \
-{{ setup_posit_cloudsmith(codename_override) }}{% if clean %} && \
+{{ setup_posit_cloudsmith(codename) }}{% if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
 
 {# The setup() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup(codename_override = None) -%}
-RUN {{ setup(codename_override=codename_override) | indent(4) }}
+{% macro run_setup(codename = None) -%}
+RUN {{ setup(codename=codename) | indent(4) }}
 {%- endmacro %}
