@@ -58,6 +58,7 @@ ALTERNATE_NAMES = {
 
 SUPPORTED_OS = {
     "ubuntu": {
+        "26": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="26.04", codename="resolute"),
         "24": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="24.04", codename="noble"),
         "22": BuildOS(family=OSFamilyEnum.DEBIAN_LIKE, name="ubuntu", version="22.04", codename="jammy"),
     },
@@ -85,4 +86,4 @@ SUPPORTED_OS = {
     "unknown": BuildOS(family=OSFamilyEnum.UNKNOWN, name="unknown", version=""),
 }
 
-DEFAULT_OS = SUPPORTED_OS["ubuntu"]["22"]
+DEFAULT_OS = SUPPORTED_OS["ubuntu"]["24"]
