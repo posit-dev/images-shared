@@ -412,8 +412,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                         f"No 'latest'-family tags will be emitted for this matrix."
                     )
                     return None
-            max_version, max_original = max(parsed, key=lambda pair: pair[0])
-            selected[axis_key] = max_original
+            selected[axis_key] = max(parsed, key=lambda pair: pair[0])[1]
 
         return selected
 
