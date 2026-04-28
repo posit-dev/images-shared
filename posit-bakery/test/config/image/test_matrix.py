@@ -766,7 +766,8 @@ class TestLatestCombination:
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
         assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
         assert "value:flavor" in warnings[0].message
-        assert "alpha" in warnings[0].message or "beta" in warnings[0].message
+        # Iteration is in-order; the first unparseable candidate ("alpha") is reported.
+        assert "alpha" in warnings[0].message
 
     def test_unparseable_dependency_version_returns_none_and_warns(self, caplog):
         # Build via dict so pydantic discriminator accepts arbitrary version strings.
@@ -784,7 +785,7 @@ class TestLatestCombination:
             result = matrix.latest_combination
         assert result is None
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
-        assert len(warnings) == 1
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
         assert "python" in warnings[0].message
         assert "not-a-version" in warnings[0].message
 
@@ -804,4 +805,6 @@ class TestLatestCombination:
             result = matrix.latest_combination
         assert result is None
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
-        assert len(warnings) == 1
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        assert "value:first" in warnings[0].message
+        assert "value:second" not in warnings[0].message
