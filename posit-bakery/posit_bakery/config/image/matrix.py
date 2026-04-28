@@ -693,8 +693,10 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         image_versions = []
 
+        latest_pick = self.latest_combination
         products = self._cartesian_product(self.resolved_dependencies, self.values)
         for product in products:
+            is_latest = latest_pick is not None and self._matches_latest(product, latest_pick)
             image_version = ImageVersion(
                 parent=self.parent,
                 name=self._render_name_pattern(self.namePattern, product["dependencies"], product["values"]),
@@ -705,8 +707,26 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 dependencies=product["dependencies"],
                 values=product["values"],
                 isMatrixVersion=True,
+                latest=is_latest,
                 buildTarget=self.buildTarget,
             )
             image_versions.append(image_version)
 
         return image_versions
+
+    @staticmethod
+    def _matches_latest(product: dict[str, list | dict], latest_pick: dict[str, str]) -> bool:
+        """Return True iff every dependency and list-typed value in ``product`` equals
+        the corresponding entry in ``latest_pick`` (by original-string equality).
+
+        Scalar values are not compared — they are constant across all rows.
+        """
+        for dep in product["dependencies"]:
+            expected = latest_pick.get(dep.dependency)
+            if expected is None or dep.versions[0] != expected:
+                return False
+        for key, value in product["values"].items():
+            axis_key = f"value:{key}"
+            if axis_key in latest_pick and value != latest_pick[axis_key]:
+                return False
+        return True

@@ -478,6 +478,45 @@ class TestImageMatrix:
             assert image_version.values["go_version"] in ["1.24", "1.25"]
             assert image_version.values["pro_drivers_version"] in ["2025.07.0", "2025.08.0"]
 
+    def test_to_image_versions_marks_latest_combination(self, patch_requests_get):
+        """Exactly one ImageVersion produced from a fully version-parseable matrix has latest=True."""
+        matrix = ImageMatrix(
+            dependencies=[
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "R", "versions": ["4.2.3", "4.1.3"]},
+            ],
+            values={
+                "go_version": ["1.24", "1.25"],
+                "pro_drivers_version": "2025.07.0",
+            },
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_versions = [iv for iv in image_versions if iv.latest]
+        assert len(latest_versions) == 1, (
+            f"expected exactly one latest version, got {len(latest_versions)}: {[iv.name for iv in latest_versions]}"
+        )
+
+        latest = latest_versions[0]
+        dep_versions = {dep.dependency: dep.versions[0] for dep in latest.dependencies}
+        assert dep_versions == {"python": "3.13.7", "R": "4.2.3"}
+        assert latest.values["go_version"] == "1.25"
+        # Scalar values are present but not selecting on them
+        assert latest.values["pro_drivers_version"] == "2025.07.0"
+
+    def test_to_image_versions_no_latest_when_combination_is_none(self):
+        """When latest_combination returns None, no ImageVersion is marked latest."""
+        matrix = ImageMatrix(
+            dependencies=[
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+            ],
+            values={"flavor": ["alpha", "beta"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 4  # 2 python * 2 flavor
+        assert not any(iv.latest for iv in image_versions)
+
     def test_check_duplicate_dependency_constraints(self):
         """Test that duplicate dependency constraints raise error."""
         with pytest.raises(
