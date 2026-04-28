@@ -678,6 +678,51 @@ class TestImageMatrix:
         assert "{{ Image.Name }}" in script_content  # Should be literal
         assert "#!/bin/bash" in script_content
 
+    def test_latest_matrix_target_emits_latest_tag(self, patch_requests_get):
+        """Integration: latest matrix row + primary OS + no variants emits 'latest' tag."""
+        from posit_bakery.config.image.image import Image
+        from posit_bakery.image.image_target import ImageTarget
+        from posit_bakery.config.repository import Repository
+
+        # Minimal Image with a matrix; tagPatterns defaults to default_matrix_tag_patterns()
+        image = Image(
+            name="content",
+            matrix={
+                "namePattern": "python{{ Dependencies.python }}",
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.11.5", "3.12.3"]},
+                ],
+                "os": [
+                    {"name": "Ubuntu 24.04", "primary": True},
+                ],
+            },
+        )
+
+        # The Image needs a parent (BakeryConfigDocument) for path resolution in
+        # ImageTarget. A mock with a valid path is sufficient for tag rendering.
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        mock_config_parent.registries = []
+        image.parent = mock_config_parent
+
+        repo = Repository(url="https://example.com/repo", vendor="Example", maintainer="dev <dev@example.com>")
+        image_versions = image.matrix.to_image_versions()
+        latest_iv = next(iv for iv in image_versions if iv.latest)
+        primary_os = latest_iv.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=repo,
+            image_version=latest_iv,
+            image_variant=None,
+            image_os=primary_os,
+        )
+
+        suffixes = set(target.tag_suffixes)
+        # Latest + primary OS + (no variant -> primary by default) yields the bare 'latest' tag.
+        assert "latest" in suffixes
+        # Existing matrix tag still emitted.
+        assert "python3.12.3" in suffixes
+
     def test_render_files_preserves_template_file_mode(self, tmp_path):
         """Test that matrix render_files propagates the template file mode to rendered output."""
         image_dir = tmp_path / "test-image"
