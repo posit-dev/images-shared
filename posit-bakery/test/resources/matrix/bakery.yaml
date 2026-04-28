@@ -16,6 +16,9 @@ registries:
 
 images:
   - name: "test-matrix"
+    buildSecrets:
+      - id: github_token
+        envVar: GITHUB_TOKEN
     matrix:
       dependencyConstraints:
         - dependency: R

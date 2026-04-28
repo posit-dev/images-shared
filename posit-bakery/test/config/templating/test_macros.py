@@ -1758,31 +1758,41 @@ class TestQuartoMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_github_token_secret_mount(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.github_token_secret_mount() }}"""
+        )
+        expected = "--mount=type=secret,id=github_token,required=false"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     @pytest.mark.parametrize(
         "update_path,home_path,expected",
         [
             pytest.param(
                 True,
                 None,
-                "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path",
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
                 id="with-update-path",
             ),
             pytest.param(
                 False,
                 None,
-                "/opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet",
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
                 id="without-update-path",
             ),
             pytest.param(
                 False,
                 "/root",
-                'HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
                 id="with-home-path",
             ),
             pytest.param(
                 True,
                 "/root",
-                'HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
                 id="with-home-path-and-update-path",
             ),
         ],
@@ -1829,7 +1839,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex",
             ),
@@ -1841,7 +1851,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-update-path",
             ),
@@ -1853,7 +1863,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex-home-path",
             ),
@@ -1865,7 +1875,7 @@ class TestQuartoMacros:
                     """\
                     mkdir -p /opt/quarto/1.8.24 && \\
                     curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-home-path-update-path",
             ),
@@ -1923,9 +1933,9 @@ class TestQuartoMacros:
                 (["1.8.24"], True, False, None),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex",
             ),
@@ -1933,12 +1943,12 @@ class TestQuartoMacros:
                 (["1.8.24", "1.7.8"], True, False, None),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="multiple-versions-with-tinytex",
             ),
@@ -1946,9 +1956,9 @@ class TestQuartoMacros:
                 (["1.8.24"], True, True, None),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-update-path",
             ),
@@ -1956,12 +1966,12 @@ class TestQuartoMacros:
                 (["1.8.24", "1.7.8"], True, True, None),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="multiple-versions-with-tinytex-update-path",
             ),
@@ -1969,9 +1979,9 @@ class TestQuartoMacros:
                 (["1.8.24"], True, False, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex-home-path",
             ),
@@ -1979,12 +1989,12 @@ class TestQuartoMacros:
                 (["1.8.24", "1.7.8"], True, False, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="multiple-versions-with-tinytex-home-path",
             ),
@@ -1992,9 +2002,9 @@ class TestQuartoMacros:
                 (["1.8.24"], True, True, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-home-path-update-path",
             ),
@@ -2002,12 +2012,12 @@ class TestQuartoMacros:
                 (["1.8.24", "1.7.8"], True, True, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
+                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
                         curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="multiple-versions-with-tinytex-home-path-update-path",
             ),

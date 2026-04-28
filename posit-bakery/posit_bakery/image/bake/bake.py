@@ -82,6 +82,15 @@ class BakeTarget(BaseModel):
             exclude_if=lambda v: len(v) == 0,
         ),
     ]
+    secret: Annotated[
+        list[dict],
+        Field(
+            default_factory=list,
+            description="Build secrets for the image build, each formatted as "
+            "`{'type': 'env', 'id': <id>, 'env': <envVar>}`.",
+            exclude_if=lambda v: len(v) == 0,
+        ),
+    ]
 
     @field_serializer("dockerfile", "context", when_used="json")
     @staticmethod
@@ -126,6 +135,10 @@ class BakeTarget(BaseModel):
 
         if image_target.temp_name is not None:
             kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
+
+        secrets = [s.as_bake_json() for s in image_target.resolved_build_secrets]
+        if secrets:
+            kwargs["secret"] = secrets
 
         return cls(
             image_name=image_target.image_name,
