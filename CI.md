@@ -113,13 +113,15 @@ jobs:
       push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.schedule == '0 4 * * *' }}
 ```
 #### Inputs
-| Input          | Required | Default         | Description                                                                                                    |
-|----------------|----------|-----------------|----------------------------------------------------------------------------------------------------------------|
-| `version`      | No       | `main`          | The version of Posit Bakery to use. Can be a specific version (e.g., `0.1.0`) or a branch name (e.g., `main`). |
-| `context`      | No       | `.`             | The path to the Bakery project root.                                                                           |
-| `dev-versions` | No       | `include`       | Whether to include development versions in the build. Options are `include`, `exclude`, and `only`.            |
-| `push`         | No       | `false`         | Whether to push built images to the registry.                                                                  |
-| `runs-on`      | No       | `ubuntu-latest` | The type of runner to use for the build jobs.                                                                  |
+| Input            | Required | Default         | Description                                                                                                    |
+|------------------|----------|-----------------|----------------------------------------------------------------------------------------------------------------|
+| `version`        | No       | `main`          | The version of Posit Bakery to use. Can be a specific version (e.g., `0.1.0`) or a branch name (e.g., `main`). |
+| `context`        | No       | `.`             | The path to the Bakery project root.                                                                           |
+| `dev-versions`   | No       | `include`       | Whether to include development versions in the build. Options are `include`, `exclude`, and `only`.            |
+| `image-version`  | No       | (empty)         | Filter to a specific image version. A leading `v` is stripped automatically. When set and no version matches, the matrix step fails. |
+| `dev-stream`     | No       | (empty)         | Filter dev versions to a specific release stream (e.g. `daily`, `preview`).                                    |
+| `push`           | No       | `false`         | Whether to push built images to the registry.                                                                  |
+| `runs-on`        | No       | `ubuntu-latest` | The type of runner to use for the build jobs.                                                                  |
 
 #### Workflow Steps
 
@@ -240,6 +242,8 @@ jobs:
 | `version`       | No       | `main`                      | The version of Posit Bakery to use. Can be a specific version (e.g., `0.1.0`) or a branch name (e.g., `main`). |
 | `context`       | No       | `.`                         | The path to the Bakery project root.                                                                           |
 | `dev-versions`  | No       | `include`                   | Whether to include development versions in the build. Options are `include`, `exclude`, and `only`.            |
+| `image-version` | No       | (empty)                     | Filter to a specific image version. A leading `v` is stripped automatically. When set and no version matches, the matrix step fails. |
+| `dev-stream`    | No       | (empty)                     | Filter dev versions to a specific release stream (e.g. `daily`, `preview`).                                    |
 | `push`          | No       | `false`                     | Whether to push built images to the registry.                                                                  |
 | `runs-on`       | No       | `ubuntu-latest`             | The type of runner to use for non-build jobs.                                                                  |
 | `amd64-builder` | No       | `ubuntu-latest-4x`          | The type of runner to use for amd64 build jobs.                                                                |
