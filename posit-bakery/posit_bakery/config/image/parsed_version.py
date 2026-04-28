@@ -7,7 +7,6 @@ unparseable input.
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -25,11 +24,11 @@ class ParsedVersion:
 
     original: str
     release: tuple[int, ...]
-    prerelease: Optional[str] = None
-    build: Optional[str] = None
+    prerelease: str | None = None
+    build: str | None = None
 
     @classmethod
-    def parse(cls, value: str) -> Optional["ParsedVersion"]:
+    def parse(cls, value: str) -> "ParsedVersion | None":
         """Parse a version string. Returns ``None`` on failure and logs a warning."""
         log.warning("Unparseable version string: %r", value)
         return None
