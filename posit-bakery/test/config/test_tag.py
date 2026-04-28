@@ -72,12 +72,31 @@ def test_default_matrix_tag_patterns():
         f"{version}-{variant}",
         f"{version}-{os}",
         version,
+        f"{os}-{variant}",
+        os,
+        variant,
+        "latest",
     ]
     rendered_tags = []
     for pattern in patterns:
         rendered_tags.extend(pattern.render(Version=version, OS=os, Variant=variant))
     for tag in expected_tags:
         assert tag in rendered_tags
+
+
+def test_default_matrix_tag_patterns_includes_latest_filter():
+    """Matrix tag patterns now include LATEST-filtered entries matching default_tag_patterns()."""
+    matrix_patterns = default_matrix_tag_patterns()
+    default_patterns = default_tag_patterns()
+
+    matrix_latest = [p for p in matrix_patterns if TagPatternFilter.LATEST in p.only]
+    default_latest = [p for p in default_patterns if TagPatternFilter.LATEST in p.only]
+
+    # Same set of LATEST-filtered patterns; order-insensitive.
+    assert sorted([(tuple(p.patterns), tuple(p.only)) for p in matrix_latest]) == sorted(
+        [(tuple(p.patterns), tuple(p.only)) for p in default_latest]
+    )
+    assert len(matrix_latest) == 4
 
 
 def test_default_matrix_tag_patterns_no_strip_metadata():
@@ -92,19 +111,6 @@ def test_default_matrix_tag_patterns_no_strip_metadata():
             assert "stripMetadata" not in p, f"Matrix tag pattern should not use stripMetadata: {p}"
 
 
-def test_default_matrix_tag_patterns_no_latest_filter():
-    """Test that default matrix tag patterns do not include latest-filtered patterns.
-
-    Matrices are currently naive to the concept of "latest", so latest-filtered patterns
-    should not be included.
-    """
-    patterns = default_matrix_tag_patterns()
-    for pattern in patterns:
-        assert TagPatternFilter.LATEST not in pattern.only, (
-            f"Matrix tag pattern should not filter by latest: {pattern.patterns}"
-        )
-
-
 def test_default_matrix_tag_patterns_no_tag_collisions():
     """Test that matrix tag patterns do not produce colliding tags across different matrix combinations.
 
@@ -113,9 +119,11 @@ def test_default_matrix_tag_patterns_no_tag_collisions():
 
     Checks that different versions within the same OS produce unique tags. Cross-OS overlap
     (e.g., the PRIMARY_OS pattern producing "R4.3.3-python3.11.15" for both OSes) is expected
-    and handled by tag pattern filters at the ImageTarget level.
+    and handled by tag pattern filters at the ImageTarget level. LATEST-filtered patterns
+    are similarly filter-handled (only applied to the latest combination), so they are
+    excluded here.
     """
-    patterns = default_matrix_tag_patterns()
+    patterns = [p for p in default_matrix_tag_patterns() if TagPatternFilter.LATEST not in p.only]
     versions = ["R4.3.3-python3.11.15", "R4.3.3-python3.12.13", "R4.3.3-python3.13.12"]
     os_values = ["ubuntu2404", "ubuntu2204"]
 
@@ -124,7 +132,7 @@ def test_default_matrix_tag_patterns_no_tag_collisions():
         for version in versions:
             tags = []
             for pattern in patterns:
-                tags.extend(pattern.render(Version=version, OS=os, Variant=""))
+                tags.extend(pattern.render(Version=version, OS=os, Variant="min"))
             tags_by_version[version] = set(tags)
 
         # Verify no two different versions within the same OS share any tags
