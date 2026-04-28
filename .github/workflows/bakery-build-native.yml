@@ -28,7 +28,7 @@ on:
         required: false
         type: string
       image-version:
-        description: "Filter to a specific image version (e.g. product version from upstream dispatch)"
+        description: "Filter to a specific image version. A leading 'v' is stripped automatically."
         default: ""
         required: false
         type: string
