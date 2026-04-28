@@ -50,6 +50,21 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_setup_posit_cloudsmith_with_codename(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "apt.j2" as apt -%}
+            {{ apt.setup_posit_cloudsmith(codename="noble") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            codename=noble bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_run_setup_posit_cloudsmith(self, environment_with_macros):
         template = textwrap.dedent(
             """\
@@ -60,6 +75,21 @@ class TestAptMacros:
         expected = textwrap.dedent(
             """\
             RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_setup_posit_cloudsmith_with_codename(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "apt.j2" as apt -%}
+            {{ apt.run_setup_posit_cloudsmith(codename="noble") }}
+            """
+        )
+        expected = textwrap.dedent(
+            """\
+            RUN codename=noble bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
             """
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -601,6 +631,27 @@ class TestAptMacros:
                     gnupg \\
                     tar && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+            """
+        )
+        assert rendered == expected
+
+    def test_run_setup_with_codename(self, environment_with_macros):
+        template = '{%- import "apt.j2" as apt -%}\n{{ apt.run_setup(codename="noble") }}\n'
+        rendered = environment_with_macros.from_string(template).render()
+        expected = textwrap.dedent(
+            """\
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                codename=noble bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             """
