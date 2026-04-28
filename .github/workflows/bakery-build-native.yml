@@ -119,10 +119,12 @@ jobs:
           DEV_STREAM: ${{ inputs.dev-stream }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "platform_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+          result=$(bakery ci matrix "${ARGS[@]}")
+          echo "platform_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
       - name: Images by Version
         id: images-by-version
         env:
@@ -132,10 +134,12 @@ jobs:
           DEV_STREAM: ${{ inputs.dev-stream }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "versions_matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+          result=$(bakery ci matrix "${ARGS[@]}")
+          echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"

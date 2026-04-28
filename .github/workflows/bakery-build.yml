@@ -109,10 +109,12 @@ jobs:
           DEV_STREAM: ${{ inputs.dev-stream }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
-          echo "matrix=$(bakery ci matrix "${ARGS[@]}" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+          result=$(bakery ci matrix "${ARGS[@]}")
+          echo "matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build:
     name: "${{ matrix.img.image }}:${{ matrix.img.version }}"
