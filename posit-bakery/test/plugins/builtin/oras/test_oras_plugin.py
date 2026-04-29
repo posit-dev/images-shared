@@ -1,5 +1,6 @@
 """Tests for the OrasPlugin."""
 
+import logging
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -157,8 +158,6 @@ class TestOrasPluginExecute:
 
     def test_execute_processes_targets_in_push_sort_key_order(self, plugin, caplog):
         """Targets are processed in ascending push_sort_key order, regardless of input order."""
-        # local: only used by this test for caplog level configuration
-        import logging
 
         def make_target(name, sort_key):
             t = MagicMock(spec=ImageTarget)
