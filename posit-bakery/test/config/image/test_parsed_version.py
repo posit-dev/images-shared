@@ -87,20 +87,21 @@ class TestComparison:
             ["2026.04.0", "2026.04.1"],  # patch increment
             ["2026.04.1", "2026.05.0"],  # minor increment
             ["2026.04.9", "2026.04.10"],  # rollover (the bug from #499)
-            ["2026.04.0-daily", "2026.04.0-dev", "2026.04.0"],  # prerelease then no-pre
+            ["2026.04.0-daily", "2026.04.0-dev", "2026.04.0"],  # lexicographic prerelease order; presence < absence
             ["2026.04.0-1", "2026.04.0-alpha"],  # numeric < alphanumeric segment
             ["2026.03.1", "2026.04.0-daily", "2026.04.0", "2026.04.1"],
         ],
     )
     def test_ordered_chain(self, ascending):
         parsed = [_p(s) for s in ascending]
-        for i in range(len(parsed) - 1):
-            a, b = parsed[i], parsed[i + 1]
-            assert a < b, f"expected {a} < {b}"
-            assert b > a
-            assert a <= b
-            assert b >= a
-            assert a != b
+        for i in range(len(parsed)):
+            for j in range(i + 1, len(parsed)):
+                a, b = parsed[i], parsed[j]
+                assert a < b, f"expected {a} < {b}"
+                assert b > a
+                assert a <= b
+                assert b >= a
+                assert a != b
 
     @pytest.mark.parametrize(
         "a,b",

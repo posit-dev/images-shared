@@ -82,9 +82,7 @@ class ParsedVersion:
         segments = tuple(self._prerelease_segment_key(s) for s in self.prerelease.split("."))
         return (-1, segments)
 
-    def _compare_key(
-        self, other: "ParsedVersion"
-    ) -> tuple[tuple[tuple[int, ...], tuple], tuple[tuple[int, ...], tuple]]:
+    def _compare_key(self, other: "ParsedVersion"):
         """Build (self_key, other_key) for ordered comparison against ``other``."""
         length = max(len(self.release), len(other.release))
         return (
