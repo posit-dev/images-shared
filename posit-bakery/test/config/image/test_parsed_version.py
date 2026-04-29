@@ -69,4 +69,4 @@ class TestParseRoundtrip:
         assert parsed.prerelease == prerelease
         assert parsed.build == build
         assert str(parsed) == value
-        assert not caplog.records  # no warning on a valid parse
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]

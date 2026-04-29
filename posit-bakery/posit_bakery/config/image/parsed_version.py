@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 #   -<prerelease>  optional, semver prerelease alphabet
 #   +<build>       optional, semver build alphabet
 _VERSION_RE = re.compile(
-    r"^(?P<release>\d+(?:\.\d+){1,})"
+    r"^(?P<release>\d+(?:\.\d+)+)"
     r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?"
     r"(?:\+(?P<build>[0-9A-Za-z.-]+))?$"
 )
@@ -27,10 +27,8 @@ class ParsedVersion:
     """A parsed Posit calver/semver version string.
 
     The original string is preserved verbatim so ``str(parsed) == original``.
-    Comparison follows semver §11: release tuples first (zero-padded to equal
-    length), then prerelease presence (a version with a prerelease is less
-    than the same version without), then prerelease segments. Build metadata
-    is preserved in ``original`` but ignored for comparison.
+    Build metadata is preserved in ``build`` but is not used for comparison
+    (see semver §10).
     """
 
     original: str
