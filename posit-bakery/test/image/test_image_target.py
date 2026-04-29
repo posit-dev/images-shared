@@ -1037,3 +1037,116 @@ class TestImageTarget:
         sources = basic_standard_image_target.get_merge_sources()
 
         assert sources == ["image@sha256:digest"]
+
+
+class TestPushSortKey:
+    """Tests for ImageTarget.push_sort_key — see ordered-push design spec."""
+
+    @staticmethod
+    def _make(
+        *,
+        image_name="connect",
+        is_latest=False,
+        version_name="2026.03.0",
+        is_primary_os=True,
+        is_primary_variant=True,
+        variant_name="Standard",
+        os_name="Ubuntu 24.04",
+        is_matrix=False,
+    ):
+        """Build a MagicMock(spec=ImageTarget) with the inputs push_sort_key reads."""
+        from posit_bakery.config.image.parsed_version import ParsedVersion
+
+        target = MagicMock(spec=ImageTarget)
+        target.image_name = image_name
+        target.is_latest = is_latest
+        target.is_primary_os = is_primary_os
+        target.is_primary_variant = is_primary_variant
+
+        image_version = MagicMock()
+        image_version.name = version_name
+        image_version.isMatrixVersion = is_matrix
+        image_version.parsed_version = None if is_matrix else ParsedVersion.parse(version_name)
+        target.image_version = image_version
+
+        variant = MagicMock()
+        variant.name = variant_name
+        target.image_variant = variant
+
+        os_obj = MagicMock()
+        os_obj.name = os_name
+        target.image_os = os_obj
+
+        # Bind the real property — push_sort_key reads only these attributes,
+        # so we can borrow ImageTarget's actual implementation.
+        target.push_sort_key = ImageTarget.push_sort_key.fget(target)
+        return target
+
+    def test_latest_sorts_last(self):
+        """Within one image+version, the is_latest=True target sorts after is_latest=False."""
+        non_latest = self._make(is_latest=False, version_name="2026.04.0")
+        latest = self._make(is_latest=True, version_name="2026.04.0")
+        assert sorted([latest, non_latest], key=lambda t: t.push_sort_key) == [non_latest, latest]
+
+    def test_within_version_primary_sorts_last(self):
+        """Within one version, primary_score 0 < 1 < 2 — most-primary pushed last."""
+        non_primary = self._make(
+            is_primary_os=False, is_primary_variant=False, os_name="Ubuntu 22.04", variant_name="Minimal"
+        )
+        partial_primary = self._make(
+            is_primary_os=True, is_primary_variant=False, os_name="Ubuntu 24.04", variant_name="Minimal"
+        )
+        full_primary = self._make(
+            is_primary_os=True, is_primary_variant=True, os_name="Ubuntu 24.04", variant_name="Standard"
+        )
+        ordered = sorted(
+            [full_primary, non_primary, partial_primary],
+            key=lambda t: t.push_sort_key,
+        )
+        assert ordered == [non_primary, partial_primary, full_primary]
+
+    def test_older_version_sorts_first(self):
+        """Two non-latest stable targets — older (2026.03.0) sorts before newer (2026.04.0)."""
+        old = self._make(version_name="2026.03.0")
+        new = self._make(version_name="2026.04.0")
+        assert sorted([new, old], key=lambda t: t.push_sort_key) == [old, new]
+
+    def test_dev_prerelease_orders_correctly(self):
+        """Locks in ParsedVersion semver §11: daily < dev < release at same release tuple."""
+        daily = self._make(version_name="2026.04.0-daily+92")
+        dev = self._make(version_name="2026.04.0-dev+485-gdb8245deea")
+        release = self._make(version_name="2026.04.0")
+        assert sorted([release, dev, daily], key=lambda t: t.push_sort_key) == [daily, dev, release]
+
+    def test_matrix_non_latest_rows_use_name_tiebreaker(self):
+        """Non-latest matrix rows collapse to MIN on version key; deterministic via version.name lex."""
+        a = self._make(is_matrix=True, version_name="R4.3-python3.11")
+        b = self._make(is_matrix=True, version_name="R4.3-python3.12")
+        c = self._make(is_matrix=True, version_name="R4.4-python3.11")
+        ordered = sorted([c, a, b], key=lambda t: t.push_sort_key)
+        assert [t.image_version.name for t in ordered] == [
+            "R4.3-python3.11",
+            "R4.3-python3.12",
+            "R4.4-python3.11",
+        ]
+
+    def test_matrix_latest_row_sorts_last(self):
+        """The is_latest=True matrix row sorts after all non-latest matrix rows."""
+        non_latest = self._make(is_matrix=True, version_name="R4.3-python3.11", is_latest=False)
+        latest = self._make(is_matrix=True, version_name="R4.4-python3.12", is_latest=True)
+        assert sorted([latest, non_latest], key=lambda t: t.push_sort_key) == [non_latest, latest]
+
+    def test_multi_image_grouped(self):
+        """Two image_names in one list — output fully grouped, no interleaving."""
+        connect_old = self._make(image_name="connect", version_name="2026.03.0")
+        connect_new = self._make(image_name="connect", version_name="2026.04.0", is_latest=True)
+        content_a = self._make(image_name="connect-content", is_matrix=True, version_name="R4.3-python3.11")
+        content_b = self._make(
+            image_name="connect-content", is_matrix=True, version_name="R4.4-python3.12", is_latest=True
+        )
+        ordered = sorted(
+            [content_b, connect_old, content_a, connect_new],
+            key=lambda t: t.push_sort_key,
+        )
+        names = [t.image_name for t in ordered]
+        assert names == ["connect", "connect", "connect-content", "connect-content"]
