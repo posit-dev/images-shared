@@ -8,6 +8,10 @@ unparseable input.
 import logging
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from posit_bakery.config.image.version import ImageVersion
 
 log = logging.getLogger(__name__)
 
@@ -140,7 +144,7 @@ ParsedVersion.MIN = ParsedVersion(  # type: ignore[attr-defined]
 )
 
 
-def version_sort_key(image_version) -> ParsedVersion:
+def version_sort_key(image_version: "ImageVersion") -> ParsedVersion:
     """Sort key for ``ImageVersion``: unparseable / matrix versions sort first.
 
     Use as: ``sorted(versions, key=version_sort_key)``. Parseable versions

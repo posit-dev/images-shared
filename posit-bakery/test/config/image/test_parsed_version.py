@@ -169,10 +169,7 @@ class TestVersionSortKey:
             iv = MagicMock()
             iv.name = name
             iv.isMatrixVersion = is_matrix
-            # Replicate the property defined in Task 5 for this isolated unit test.
-            from posit_bakery.config.image.parsed_version import ParsedVersion as _PV
-
-            iv.parsed_version = None if is_matrix else _PV.parse(name)
+            iv.parsed_version = None if is_matrix else ParsedVersion.parse(name)
             return iv
 
         items = [
