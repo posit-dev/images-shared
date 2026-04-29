@@ -6,6 +6,7 @@ import pytest
 import python_on_whales
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
+from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
@@ -1055,8 +1056,6 @@ class TestPushSortKey:
         is_matrix=False,
     ):
         """Build a MagicMock(spec=ImageTarget) with the inputs push_sort_key reads."""
-        from posit_bakery.config.image.parsed_version import ParsedVersion
-
         target = MagicMock(spec=ImageTarget)
         target.image_name = image_name
         target.is_latest = is_latest
@@ -1065,7 +1064,6 @@ class TestPushSortKey:
 
         image_version = MagicMock()
         image_version.name = version_name
-        image_version.isMatrixVersion = is_matrix
         image_version.parsed_version = None if is_matrix else ParsedVersion.parse(version_name)
         target.image_version = image_version
 

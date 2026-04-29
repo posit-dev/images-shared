@@ -13,9 +13,9 @@ from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validat
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.build_secret import BuildSecret
+from posit_bakery.config.image.parsed_version import version_sort_key
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
-from posit_bakery.config.image.parsed_version import version_sort_key
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
