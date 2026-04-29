@@ -382,7 +382,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         Returns a dict mapping each version-bearing axis to the original string of its
         maximum version, or ``None`` when any axis has a candidate that cannot be parsed
         as a version (in which case a warning is logged and the matrix emits no
-        ``latest``-family tags).
+        ``latest``-family tags). Also returns ``None`` when the matrix has no
+        version-bearing axes (no dependencies and no list-typed values), since there is
+        nothing to select a "latest" row from.
 
         Axes considered:
           * Every entry in :pyattr:`resolved_dependencies` (key = ``entry.dependency``).
@@ -390,12 +392,24 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         Scalar ``values`` are constant across the cartesian product and are skipped.
         """
+        return self._compute_latest_combination(self.resolved_dependencies)
+
+    def _compute_latest_combination(self, resolved_dependencies: list[DependencyVersions]) -> dict[str, str] | None:
+        """Helper for :pyattr:`latest_combination` that uses a pre-resolved deps list.
+
+        Accepting the resolved list as a parameter lets callers (notably
+        :pymeth:`to_image_versions`) resolve dependency constraints once rather than
+        triggering the network-bound :pyattr:`resolved_dependencies` property twice.
+        """
         axes: list[tuple[str, list[str]]] = []
-        for entry in self.resolved_dependencies:
+        for entry in resolved_dependencies:
             axes.append((entry.dependency, list(entry.versions)))
         for key, value in self.values.items():
             if isinstance(value, list):
                 axes.append((f"value:{key}", [str(v) for v in value]))
+
+        if not axes:
+            return None
 
         selected: dict[str, str] = {}
         for axis_key, candidates in axes:
@@ -693,8 +707,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         image_versions = []
 
-        latest_pick = self.latest_combination
-        products = self._cartesian_product(self.resolved_dependencies, self.values)
+        # Resolve dependency constraints once; the property is network-bound and
+        # deepcopies, so reuse the result across both the cartesian product and the
+        # latest-row computation.
+        resolved_deps = self.resolved_dependencies
+        latest_pick = self._compute_latest_combination(resolved_deps)
+        products = self._cartesian_product(resolved_deps, self.values)
         for product in products:
             is_latest = latest_pick is not None and self._matches_latest(product, latest_pick)
             image_version = ImageVersion(
