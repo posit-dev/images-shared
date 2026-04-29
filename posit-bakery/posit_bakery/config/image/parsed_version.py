@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+# Local under TYPE_CHECKING to avoid a circular import: version.py imports
+# this module at runtime, so importing ImageVersion eagerly would cycle.
 if TYPE_CHECKING:
     from posit_bakery.config.image.version import ImageVersion
 
