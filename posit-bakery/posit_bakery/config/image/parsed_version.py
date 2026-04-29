@@ -126,3 +126,27 @@ class ParsedVersion:
         while len(stripped) > 1 and stripped[-1] == 0:
             stripped = stripped[:-1]
         return hash((stripped, self._prerelease_key()))
+
+
+# Sentinel: sorts strictly below every parseable ParsedVersion. The parser only
+# ever produces non-negative release components, so a release tuple containing
+# -1 is unreachable from `parse()` and compares less than every real version
+# under tuple ordering after zero-padding.
+ParsedVersion.MIN = ParsedVersion(  # type: ignore[attr-defined]
+    original="",
+    release=(-1,),
+    prerelease=None,
+    build=None,
+)
+
+
+def version_sort_key(image_version) -> ParsedVersion:
+    """Sort key for ``ImageVersion``: unparseable / matrix versions sort first.
+
+    Use as: ``sorted(versions, key=version_sort_key)``. Parseable versions
+    sort in ascending semver order; ``ImageVersion`` instances whose
+    ``parsed_version`` is ``None`` (matrix versions or unparseable names)
+    collapse to ``ParsedVersion.MIN`` and lead the sorted list.
+    """
+    parsed = image_version.parsed_version
+    return parsed if parsed is not None else ParsedVersion.MIN

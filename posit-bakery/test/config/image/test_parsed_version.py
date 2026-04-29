@@ -1,8 +1,10 @@
 import logging
+from unittest.mock import MagicMock
 
 import pytest
 
 from posit_bakery.config.image.parsed_version import ParsedVersion
+from posit_bakery.config.image.parsed_version import version_sort_key
 
 pytestmark = [
     pytest.mark.unit,
@@ -137,3 +139,52 @@ class TestComparison:
         assert a == b
         assert str(a) == "2026.4.0+x"
         assert str(b) == "2026.04.0+y"
+
+
+class TestMinSentinel:
+    @pytest.mark.parametrize(
+        "value",
+        ["2026.04.0", "2026.04.0-daily", "1.0.0", "2025.12.0-14"],
+    )
+    def test_min_less_than_any_parseable(self, value):
+        parsed = _p(value)
+        assert ParsedVersion.MIN < parsed
+        assert parsed > ParsedVersion.MIN
+        assert ParsedVersion.MIN != parsed
+
+    def test_min_equal_to_self(self):
+        assert ParsedVersion.MIN == ParsedVersion.MIN
+        assert hash(ParsedVersion.MIN) == hash(ParsedVersion.MIN)
+
+    def test_min_str_is_empty(self):
+        assert str(ParsedVersion.MIN) == ""
+
+
+class TestVersionSortKey:
+    def test_sorts_with_unparseable_first(self):
+        """Mixed list sorts: matrix/garbage first (via MIN), then ascending parseable."""
+
+        # Build mock ImageVersions with the three relevant fields.
+        def mock_iv(name: str, *, is_matrix: bool = False) -> MagicMock:
+            iv = MagicMock()
+            iv.name = name
+            iv.isMatrixVersion = is_matrix
+            # Replicate the property defined in Task 5 for this isolated unit test.
+            from posit_bakery.config.image.parsed_version import ParsedVersion as _PV
+
+            iv.parsed_version = None if is_matrix else _PV.parse(name)
+            return iv
+
+        items = [
+            mock_iv("2026.04.1"),
+            mock_iv("R4.3.3-python3.11.15", is_matrix=True),
+            mock_iv("2026.04.0"),
+            mock_iv("garbage"),  # unparseable, parsed_version is None
+            mock_iv("2026.05.0-dev+62-g1ca9367735"),
+        ]
+        ordered = sorted(items, key=version_sort_key)
+        names = [iv.name for iv in ordered]
+        # Two unparseable/matrix entries lead, in original relative order
+        # (Python's sort is stable). Parseable entries follow in ascending order.
+        assert names[:2] == ["R4.3.3-python3.11.15", "garbage"]
+        assert names[2:] == ["2026.04.0", "2026.04.1", "2026.05.0-dev+62-g1ca9367735"]
