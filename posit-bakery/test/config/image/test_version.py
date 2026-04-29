@@ -1,3 +1,4 @@
+import logging
 import stat
 import textwrap
 from pathlib import Path
@@ -698,8 +699,6 @@ class TestImageVersion:
 
     def test_parsed_version_matrix_returns_none_silently(self, caplog):
         """Matrix versions return None and do NOT emit a warning."""
-        import logging
-
         caplog.set_level(logging.WARNING)
         v = ImageVersion(name="R4.3.3-python3.11.15", isMatrixVersion=True)
         assert v.parsed_version is None
@@ -707,8 +706,6 @@ class TestImageVersion:
 
     def test_parsed_version_unparseable_returns_none_with_warning(self, caplog):
         """An unparseable, non-matrix name returns None and emits exactly one warning."""
-        import logging
-
         v = ImageVersion(name="garbage")
         caplog.clear()
         caplog.set_level(logging.WARNING)
