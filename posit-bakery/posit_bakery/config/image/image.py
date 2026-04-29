@@ -4,6 +4,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Union, Any, Self
 
+import pydantic
+import requests
 from pydantic import Field, HttpUrl, field_validator, model_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
@@ -585,7 +587,11 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
     def load_dev_versions(self):
         """Load the development versions for this image."""
         for dev_version in self.devVersions:
-            image_version = dev_version.as_image_version()
+            try:
+                image_version = dev_version.as_image_version()
+            except (RuntimeError, ValueError, pydantic.ValidationError, requests.RequestException) as e:
+                log.warning(f"Skipping {self.name} {repr(dev_version)}: {e}")
+                continue
             log_message = f"Loaded {self.name} development version from {repr(dev_version)}:\n"
             log_message += f"  - Version: {image_version.name}\n"
             for dep in image_version.dependencies:
