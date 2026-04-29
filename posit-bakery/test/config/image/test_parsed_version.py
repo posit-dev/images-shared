@@ -70,3 +70,69 @@ class TestParseRoundtrip:
         assert parsed.build == build
         assert str(parsed) == value
         assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def _p(s: str) -> ParsedVersion:
+    """Helper: parse a known-good string and assert success."""
+    parsed = ParsedVersion.parse(s)
+    assert parsed is not None, f"failed to parse {s!r}"
+    return parsed
+
+
+class TestComparison:
+    @pytest.mark.parametrize(
+        "ascending",
+        [
+            # Each list is in strictly ascending order.
+            ["2026.04.0", "2026.04.1"],  # patch increment
+            ["2026.04.1", "2026.05.0"],  # minor increment
+            ["2026.04.9", "2026.04.10"],  # rollover (the bug from #499)
+            ["2026.04.0-daily", "2026.04.0-dev", "2026.04.0"],  # prerelease then no-pre
+            ["2026.04.0-1", "2026.04.0-alpha"],  # numeric < alphanumeric segment
+            ["2026.03.1", "2026.04.0-daily", "2026.04.0", "2026.04.1"],
+        ],
+    )
+    def test_ordered_chain(self, ascending):
+        parsed = [_p(s) for s in ascending]
+        for i in range(len(parsed) - 1):
+            a, b = parsed[i], parsed[i + 1]
+            assert a < b, f"expected {a} < {b}"
+            assert b > a
+            assert a <= b
+            assert b >= a
+            assert a != b
+
+    @pytest.mark.parametrize(
+        "a,b",
+        [
+            # Zero-padding equivalence.
+            ("2026.4.0", "2026.04.0"),
+            # Trailing-zero release-tuple equivalence.
+            ("2026.4.0", "2026.4.0.0"),
+            # Build metadata ignored for comparison.
+            ("2026.04.0+a", "2026.04.0+b"),
+            # Mixed: zero-padding + build difference.
+            ("2026.4.0+x", "2026.04.0+y"),
+        ],
+    )
+    def test_equality(self, a, b):
+        pa, pb = _p(a), _p(b)
+        assert pa == pb
+        assert not (pa < pb)
+        assert not (pa > pb)
+        assert pa <= pb
+        assert pa >= pb
+        assert hash(pa) == hash(pb)
+
+    def test_set_dedup_uses_comparison_equality(self):
+        """ParsedVersions equal under spec rules collapse in a set."""
+        items = {_p("2026.4.0"), _p("2026.04.0"), _p("2026.04.0+x")}
+        assert len(items) == 1
+
+    def test_str_preserves_original_after_equality(self):
+        """Equality does not erase the original string."""
+        a = _p("2026.4.0+x")
+        b = _p("2026.04.0+y")
+        assert a == b
+        assert str(a) == "2026.4.0+x"
+        assert str(b) == "2026.04.0+y"
