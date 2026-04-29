@@ -1,5 +1,8 @@
 {# Macros for installing and managing Quarto #}
 
+{%- import "apt.j2" as apt -%}
+{%- import "dnf.j2" as dnf -%}
+
 {%- set _BUILD_ARG_NAME = "QUARTO_VERSION" -%}
 
 {# Declare a generic build argument for a Quarto version #}
@@ -12,12 +15,21 @@ ARG {{ name }}{% if default %}={{ default }}{% endif %}
 ${{ name }}
 {%- endmacro %}
 
-{# The directory for an installed version of Quarto
+{# The directory where Quarto is installed.
 
-:param version: The Quarto version, e.g. "1.8.24"
+The `quarto` deb from the Posit Open apt repository installs to `/opt/quarto`
+with no version-scoped subdirectory. The `version` parameter is accepted for
+backward compatibility but is ignored.
+
+:param version: Ignored. Retained for backward compatibility.
 #}
-{% macro get_version_directory(version) -%}
-/opt/quarto/{{ version }}
+{% macro get_directory(version = None) -%}
+/opt/quarto
+{%- endmacro %}
+
+{# Backward-compatible alias for get_directory(). #}
+{% macro get_version_directory(version = None) -%}
+{{ get_directory(version) }}
 {%- endmacro %}
 
 {# The --mount option for the optional GitHub token build secret consumed by
@@ -44,51 +56,94 @@ ${{ name }}
 GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
-{# Command to download and install a specific version of Quarto, optionally installing TinyTeX as well
+{# Command to install a specific version of Quarto from the Posit Open
+repository, optionally installing TinyTeX as well.
 
-:param version: The Quarto version to install, e.g. "1.8.24"
+On Debian-like systems, installs via apt from the Open deb repo. The `quarto`
+deb installs to `/opt/quarto/bin/quarto` and symlinks into `/usr/local/bin/`
+via its postinst script.
+
+On RHEL-like systems, installs via dnf from the Open rpm repo.
+
+Requires `curl` to be installed prior to execution so that the Posit Open
+repository can be added via its setup script.
+
+When `with_tinytex` is `True`, `xz-utils` (apt) or `xz` (dnf) is also
+installed because the TinyTeX release tarball is `.tar.xz`.
+
+:param version: The Quarto version to install, e.g. "1.9.37"
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_update_path: Adds --update-path to the TinyTeX install command to add TinyTeX binaries to the PATH. Defaults to False.
 :param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param codename: Override the OS codename for the Open repo setup script.
+:param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None) -%}
-mkdir -p {{ get_version_directory(version) }} && \
-curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v{{ version | trim }}/quarto-{{ version | trim }}-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "{{ get_version_directory(version | trim) }}" --strip-components=1{% if with_tinytex %} && \
-{{ install_tinytex_command(get_version_directory(version | trim) + "/bin/quarto", tinytex_update_path, tinytex_home_path) }}{% endif %}
+{% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, codename = None, os_family = "debian") -%}
+{%- if os_family == "debian" -%}
+{{ apt.setup_posit_repo("open", codename) }} && \
+apt-get install -yqq --no-install-recommends \
+    quarto={{ version | trim }}{% if with_tinytex %} \
+    xz-utils{% endif %} && \
+apt-mark hold quarto && \
+{{ apt.clean_command() }}{% if with_tinytex %} && \
+{{ install_tinytex_command("/opt/quarto/bin/quarto", tinytex_update_path, tinytex_home_path) }}{% endif %}
+{%- elif os_family == "rhel" -%}
+{{ dnf.setup_posit_repo("open") }} && \
+dnf install -yq \
+    quarto-{{ version | trim }} \
+    'dnf-command(versionlock)'{% if with_tinytex %} \
+    xz{% endif %} && \
+dnf versionlock add quarto && \
+{{ dnf.clean_command() }}{% if with_tinytex %} && \
+{{ install_tinytex_command("/opt/quarto/bin/quarto", tinytex_update_path, tinytex_home_path) }}{% endif %}
+{%- else -%}
+{{ raise("Unsupported os_family '" ~ os_family ~ "' in quarto.install(). Must be 'debian' or 'rhel'.") }}
+{%- endif %}
 {%- endmacro %}
 
-{# Installs one or more versions of Quarto as separate RUN statements
+{# Installs Quarto as a RUN statement.
 
-:param versions: A list of Quarto versions or a comma separated string of Quarto versions to install
-:param with_tinytex: Whether to install TinyTeX along with each Quarto version. Defaults to False.
+Quarto installs to a flat `/opt/quarto/` directory with no version scoping,
+so only a single version is supported.
+
+:param version: A Quarto version string, or a single-element list (e.g. Dependencies.quarto).
+:param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param codename: Override the OS codename for the Open repo setup script.
+:param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro run_install(versions, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None) -%}
-{%- if versions is string -%}
-{%- set versions = versions | split(",") -%}
+{% macro run_install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, codename = None, os_family = "debian") -%}
+{%- if version is not string -%}
+{%- if version | length != 1 -%}
+{{ raise("Only one Quarto version may be passed to quarto.run_install() (got " ~ version | length ~ "). Quarto installs to a flat /opt/quarto/ directory and cannot coexist with other versions.") }}
 {%- endif -%}
-{% for version in versions -%}
-RUN {% if with_tinytex %}{{ github_token_secret_mount() }} {% endif %}{{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path) | indent(4) }}
-{%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
-{% endif %}
-{%- endfor %}
+{%- set version = version[0] -%}
+{%- endif -%}
+RUN {% if with_tinytex %}{{ github_token_secret_mount() }} {% endif %}{{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path, codename, os_family) | indent(4) }}
 {%- endmacro %}
 
-{# Symlinks a Quarto install to the target directory
+{# Symlinks the Quarto install directory to the target path.
 
-:param version: The Quarto version to symlink, e.g. "1.8.24"
+Since the `quarto` deb installs to a flat `/opt/quarto/`, the `version`
+parameter is ignored. Retained for backward compatibility.
+
+:param version: Ignored. Retained for backward compatibility.
 :param target: The target path for the symlink, e.g. "/opt/quarto/default"
 #}
 {% macro symlink_version(version, target) -%}
-ln -s {{ get_version_directory(version) }} {{ target }}
+ln -s {{ get_directory() }} {{ target }}
 {%- endmacro %}
 
-{# Symlinks a specific Quarto binary to the target path
+{# Symlinks a specific Quarto binary to the target path.
 
-:param version: The Quarto version to symlink the binary from, e.g. "1.8.24"
+The `quarto` deb already symlinks the `quarto` binary into `/usr/local/bin`
+via its postinst script, so this macro is typically unnecessary. Retained
+for other binaries that may be shipped under `/opt/quarto/bin/`.
+
+:param version: Ignored. Retained for backward compatibility.
 :param bin_name: The name of the binary to symlink, e.g. "quarto"
 :param target: The target path for the symlink, e.g. "/usr/local/bin/quarto"
 #}
 {% macro symlink_binary(version, bin_name, target) -%}
-ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
+ln -s {{ get_directory() }}/bin/{{ bin_name }} {{ target }}
 {%- endmacro %}

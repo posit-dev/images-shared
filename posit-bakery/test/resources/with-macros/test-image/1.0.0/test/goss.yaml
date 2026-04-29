@@ -9,6 +9,10 @@ package:
     installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
   xz-utils:
     installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
+  quarto:
+    installed: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
+    versions:
+      - 1.8.27
 
 file:
   python-3.13.7:
@@ -17,6 +21,6 @@ file:
   r-4.5.1:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
     path: /opt/R/4.5.1
-  quarto-1.8.24:
+  quarto:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
-    path: /opt/quarto/1.8.24
+    path: /opt/quarto/bin/quarto

@@ -16,4 +16,4 @@ file:
     path: /opt/R/{{ .Env.BUILD_ARG_R_VERSION }}
   quarto-{{ .Env.BUILD_ARG_QUARTO_VERSION }}:
     exists: true
-    path: /opt/quarto/{{ .Env.BUILD_ARG_QUARTO_VERSION }}
+    path: /opt/quarto
