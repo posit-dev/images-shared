@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry, BakeryConfigDocument, ImageVariant
+from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum
 
@@ -687,3 +688,30 @@ class TestImageVersion:
         plain_out = expected_path / "scripts" / "config.sh"
         assert exec_out.stat().st_mode & stat.S_IXUSR, "executable template should render to executable file"
         assert not (plain_out.stat().st_mode & stat.S_IXUSR), "non-executable template should stay non-executable"
+
+    def test_parsed_version_returns_parsedversion(self):
+        """parsed_version on a valid name returns a non-None ParsedVersion that round-trips."""
+        v = ImageVersion(name="2026.04.0+526.pro2")
+        parsed = v.parsed_version
+        assert isinstance(parsed, ParsedVersion)
+        assert str(parsed) == "2026.04.0+526.pro2"
+
+    def test_parsed_version_matrix_returns_none_silently(self, caplog):
+        """Matrix versions return None and do NOT emit a warning."""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+        v = ImageVersion(name="R4.3.3-python3.11.15", isMatrixVersion=True)
+        assert v.parsed_version is None
+        assert not any("Unparseable version string" in r.message for r in caplog.records)
+
+    def test_parsed_version_unparseable_returns_none_with_warning(self, caplog):
+        """An unparseable, non-matrix name returns None and emits exactly one warning."""
+        import logging
+
+        v = ImageVersion(name="garbage")
+        caplog.clear()
+        caplog.set_level(logging.WARNING)
+        assert v.parsed_version is None
+        warnings = [r for r in caplog.records if "Unparseable version string" in r.message]
+        assert len(warnings) == 1
