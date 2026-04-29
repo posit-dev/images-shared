@@ -727,6 +727,8 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 return False
         for key, value in product["values"].items():
             axis_key = f"value:{key}"
-            if axis_key in latest_pick and value != latest_pick[axis_key]:
+            # latest_combination stringifies list-value candidates; mirror that here
+            # so YAML-typed scalars (e.g., ints/floats) compare correctly.
+            if axis_key in latest_pick and str(value) != latest_pick[axis_key]:
                 return False
         return True
