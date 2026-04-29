@@ -36,6 +36,7 @@ def mock_target_with_sources():
         "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
     ]
     mock_target.labels = {"org.opencontainers.image.title": "Test Image"}
+    mock_target.push_sort_key = (0,)
 
     mock_tag = MagicMock()
     mock_tag.destination = "ghcr.io/posit-dev/test-image"
@@ -53,6 +54,7 @@ def mock_target_without_sources():
     mock_target.image_name = "no-sources"
     mock_target.uid = "no-sources-1-0-0"
     mock_target.get_merge_sources.return_value = []
+    mock_target.push_sort_key = (0,)
     return mock_target
 
 
@@ -152,6 +154,64 @@ class TestOrasPluginExecute:
         # Only the target with sources should produce a result
         assert len(results) == 1
         assert results[0].target is mock_target_with_sources
+
+    def test_execute_processes_targets_in_push_sort_key_order(self, plugin, caplog):
+        """Targets are processed in ascending push_sort_key order, regardless of input order."""
+        # local: only used by this test for caplog level configuration
+        import logging
+
+        def make_target(name, sort_key):
+            t = MagicMock(spec=ImageTarget)
+            t.image_name = name
+            t.uid = f"{name}-uid"
+            t.context = MagicMock(spec=ImageTargetContext)
+            t.context.base_path = Path("/project")
+            t.settings = MagicMock(spec=ImageTargetSettings)
+            t.settings.temp_registry = "ghcr.io/posit-dev"
+            t.get_merge_sources.return_value = [f"ghcr.io/posit-dev/{name}/tmp@sha256:digest"]
+            t.labels = {}
+            mock_tag = MagicMock()
+            mock_tag.destination = f"ghcr.io/posit-dev/{name}"
+            mock_tag.suffix = "1.0.0"
+            mock_tag.__str__ = lambda self: f"ghcr.io/posit-dev/{name}:1.0.0"
+            t.tags = StringableList([mock_tag])
+            # Override push_sort_key to a controlled tuple so the test is independent of
+            # ImageVersion / ImageVariant internals.
+            t.push_sort_key = sort_key
+            t.__str__ = lambda self: name
+            return t
+
+        # Input order is intentionally scrambled.
+        targets = [
+            make_target("c-second", (1,)),
+            make_target("a-first", (0,)),
+            make_target("d-last", (3,)),
+            make_target("b-third", (2,)),
+        ]
+        expected_order = ["a-first", "c-second", "b-third", "d-last"]
+
+        call_order = []
+
+        def fake_run(self_workflow, dry_run=False):
+            call_order.append(self_workflow.image_target.image_name)
+            return OrasMergeWorkflowResult(success=True, destinations=[])
+
+        with (
+            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch(
+                "posit_bakery.plugins.builtin.oras.OrasMergeWorkflow.run",
+                autospec=True,
+                side_effect=fake_run,
+            ),
+            caplog.at_level(logging.INFO, logger="posit_bakery.plugins.builtin.oras"),
+        ):
+            plugin.execute(Path("/project"), targets)
+
+        assert call_order == expected_order, f"got {call_order}, want {expected_order}"
+        order_log_lines = [r for r in caplog.records if "ORAS merge order:" in r.getMessage()]
+        assert len(order_log_lines) == 1, "expected exactly one ORAS merge order log line"
+        msg = order_log_lines[0].getMessage()
+        assert msg.endswith("a-first, c-second, b-third, d-last"), msg
 
 
 class TestOrasPluginCLI:
