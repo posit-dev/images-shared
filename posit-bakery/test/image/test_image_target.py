@@ -112,7 +112,7 @@ class TestImageTarget:
         assert target.image_version == version
         assert target.image_variant == variant
         assert target.image_os == os
-        assert len(target.tag_patterns) == 8
+        assert len(target.tag_patterns) == 12
 
     def test_str(self, get_config_obj, basic_standard_image_target):
         """Test the string representation of an ImageTarget."""
@@ -228,6 +228,7 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": basic_standard_image_target.image_variant.tagDisplayName,
             "OS": basic_standard_image_target.image_os.tagDisplayName,
+            "Stream": "",
         }
         assert basic_standard_image_target.tag_template_values == expected_values
 
@@ -237,6 +238,7 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": "",
             "OS": "",
+            "Stream": "",
         }
         basic_standard_image_target.image_variant = None
         basic_standard_image_target.image_os = None
@@ -258,8 +260,9 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        # Check that the tag patterns are deduplicated to 8, the default tag patterns length
-        assert len(target.tag_patterns) == 8
+        # Check that the tag patterns are deduplicated to 12, the default tag patterns length
+        # (8 version-based + 4 stream-based)
+        assert len(target.tag_patterns) == 12
 
     def test_tag_patterns_filtering(self, get_config_obj):
         """Test the filter_tag_patterns method of an ImageTarget."""
@@ -276,7 +279,9 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        assert len(target.tag_patterns) == 8
+        # 8 version-based + 4 stream-based (stream patterns pass filtering
+        # even when Stream is empty; they produce nothing during rendering)
+        assert len(target.tag_patterns) == 12
 
         # Test primary variant and primary OS, but not latest
         version.latest = False
@@ -287,7 +292,7 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        assert len(target.tag_patterns) == 4
+        assert len(target.tag_patterns) == 8
         assert not any(TagPatternFilter.LATEST in pattern.only for pattern in target.tag_patterns)
 
         # Test latest and primary OS, but not primary variant
@@ -300,7 +305,7 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        assert len(target.tag_patterns) == 4
+        assert len(target.tag_patterns) == 6
         assert not any(TagPatternFilter.PRIMARY_VARIANT in pattern.only for pattern in target.tag_patterns)
 
         # Test latest and primary variant, but not primary OS
@@ -313,7 +318,7 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        assert len(target.tag_patterns) == 4
+        assert len(target.tag_patterns) == 6
         assert not any(TagPatternFilter.PRIMARY_OS in pattern.only for pattern in target.tag_patterns)
 
     @pytest.mark.parametrize(

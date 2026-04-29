@@ -52,6 +52,8 @@ class TagPattern(BakeryYAMLModel):
                 continue
             if "{{ Variant }}" in pattern and not kwargs.get("Variant"):
                 continue
+            if "{{ Stream }}" in pattern and not kwargs.get("Stream"):
+                continue
 
             env = jinja2_env()
             template = env.from_string(pattern)
@@ -111,6 +113,22 @@ def default_tag_patterns() -> list[TagPattern]:
         TagPattern(
             patterns=["latest"],
             only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Stream }}-{{ OS }}-{{ Variant }}"],
+            only=[TagPatternFilter.ALL],
+        ),
+        TagPattern(
+            patterns=["{{ Stream }}-{{ Variant }}"],
+            only=[TagPatternFilter.PRIMARY_OS],
+        ),
+        TagPattern(
+            patterns=["{{ Stream }}-{{ OS }}"],
+            only=[TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Stream }}"],
+            only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
     ]
 
