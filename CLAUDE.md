@@ -142,7 +142,6 @@ Bakery uses Jinja2 for templating with shared macros in `posit_bakery/config/tem
 | `r.j2` | R installation via rstd.io/r-install |
 | `quarto.j2` | Quarto and TinyTeX installation |
 | `goss.j2` | Goss test helpers |
-| `wait-for-it.j2` | wait-for-it.sh script installation |
 
 Key Python/UV pattern — multi-stage build:
 ```jinja2
