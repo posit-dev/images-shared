@@ -19,7 +19,15 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
     sourceType: Literal["stream"] = "stream"
     product: Annotated[ProductEnum, Field(description="The ID of the product stream to use for this image version.")]
     stream: Annotated[ReleaseStreamEnum, Field(description="The release stream to use for this image version.")]
-    _resolved_version: str | None = None
+    resolved_version: Annotated[
+        str | None,
+        Field(
+            exclude=True,
+            default=None,
+            description="Cached version from the last _resolve_os_urls() call. Avoids a redundant stream fetch in "
+            "get_version().",
+        ),
+    ]
 
     def get_primary_os(self) -> ImageVersionOS:
         """Retrieve the primary OS from the parent image if available.
@@ -40,8 +48,8 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
 
         :return: The version string from the product stream.
         """
-        if self._resolved_version is not None:
-            return self._resolved_version
+        if self.resolved_version is not None:
+            return self.resolved_version
         _os = self.get_primary_os()
         result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
         return result.version
@@ -68,7 +76,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         Caches the version from the first successfully resolved OS so
         that get_version() can return it without a redundant fetch.
         """
-        self._resolved_version = None
+        self.resolved_version = None
         resolved = []
         for os_version in self.os:
             try:
@@ -78,8 +86,8 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
                     os_version.artifactDownloadURL = str(result.architecture_generalized_download_url)
                 else:
                     os_version.artifactDownloadURL = str(result.download_url)
-                if self._resolved_version is None:
-                    self._resolved_version = result.version
+                if self.resolved_version is None:
+                    self.resolved_version = result.version
                 resolved.append(os_version)
             except (ValueError, ValidationError, requests.RequestException) as e:
                 log.warning(f"Excluding OS '{os_version.name}' from {repr(self)}: {e}")

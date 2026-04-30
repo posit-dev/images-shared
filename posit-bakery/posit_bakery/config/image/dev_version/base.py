@@ -238,8 +238,9 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
     def as_image_version(self):
         """Convert this development version to a standard image version.
 
-        Resolves artifact download URLs for each OS. OSes whose URLs
-        cannot be resolved are excluded with a warning.
+        Calls _resolve_os_urls() to populate artifact download URLs.
+        The stream subclass overrides _resolve_os_urls() to exclude
+        OSes whose platform is unavailable in the product stream.
 
         :raises RuntimeError: If no OSes remain after URL resolution.
         """
