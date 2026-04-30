@@ -35,26 +35,24 @@ def test_import_all_macros_no_errors(environment_with_macros):
 
 
 class TestAptMacros:
-    def test_setup_posit_cloudsmith(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "apt.j2" as apt -%}
-            {{ apt.setup_posit_cloudsmith() }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
-            """
-        )
+    @pytest.mark.parametrize(
+        "repo,expected_url",
+        [
+            pytest.param("pro", "https://dl.posit.co/public/pro/setup.deb.sh", id="pro"),
+            pytest.param("open", "https://dl.posit.co/public/open/setup.deb.sh", id="open"),
+        ],
+    )
+    def test_setup_posit_repo(self, environment_with_macros, repo, expected_url):
+        template = f'{{%- import "apt.j2" as apt -%}}\n{{{{ apt.setup_posit_repo("{repo}") }}}}\n'
+        expected = f"bash -c \"$(curl -1fsSL '{expected_url}')\"\n"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_setup_posit_cloudsmith_with_codename(self, environment_with_macros):
+    def test_setup_posit_repo_with_codename(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "apt.j2" as apt -%}
-            {{ apt.setup_posit_cloudsmith(codename="noble") }}
+            {{ apt.setup_posit_repo("pro", codename="noble") }}
             """
         )
         expected = textwrap.dedent(
@@ -65,26 +63,24 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_run_setup_posit_cloudsmith(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "apt.j2" as apt -%}
-            {{ apt.run_setup_posit_cloudsmith() }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
-            """
-        )
+    @pytest.mark.parametrize(
+        "repo,expected_url",
+        [
+            pytest.param("pro", "https://dl.posit.co/public/pro/setup.deb.sh", id="pro"),
+            pytest.param("open", "https://dl.posit.co/public/open/setup.deb.sh", id="open"),
+        ],
+    )
+    def test_run_setup_posit_repo(self, environment_with_macros, repo, expected_url):
+        template = f'{{%- import "apt.j2" as apt -%}}\n{{{{ apt.run_setup_posit_repo("{repo}") }}}}\n'
+        expected = f"RUN bash -c \"$(curl -1fsSL '{expected_url}')\"\n"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_run_setup_posit_cloudsmith_with_codename(self, environment_with_macros):
+    def test_run_setup_posit_repo_with_codename(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "apt.j2" as apt -%}
-            {{ apt.run_setup_posit_cloudsmith(codename="noble") }}
+            {{ apt.run_setup_posit_repo("pro", codename="noble") }}
             """
         )
         expected = textwrap.dedent(
@@ -94,6 +90,11 @@ class TestAptMacros:
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+    def test_setup_posit_repo_rejects_invalid(self, environment_with_macros):
+        template = '{%- import "apt.j2" as apt -%}\n{{ apt.setup_posit_repo("foo") }}'
+        with pytest.raises(Exception, match="Invalid repo"):
+            environment_with_macros.from_string(template).render()
 
     def test_clean_command(self, environment_with_macros):
         template = textwrap.dedent(
@@ -569,10 +570,12 @@ class TestAptMacros:
         assert rendered == expected
 
     @pytest.mark.parametrize(
-        "clean,expected",
+        "clean,pro_repo,open_repo,expected",
         [
             pytest.param(
                 True,
+                True,
+                False,
                 textwrap.dedent(
                     """\
                     apt-get update -yqq --fix-missing && \\
@@ -589,9 +592,11 @@ class TestAptMacros:
                     rm -rf /var/lib/apt/lists/*
                     """
                 ),
-                id="clean",
+                id="pro-only-clean",
             ),
             pytest.param(
+                False,
+                True,
                 False,
                 textwrap.dedent(
                     """\
@@ -607,12 +612,81 @@ class TestAptMacros:
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
                     """
                 ),
-                id="noclean",
+                id="pro-only-noclean",
+            ),
+            pytest.param(
+                True,
+                True,
+                True,
+                textwrap.dedent(
+                    """\
+                    apt-get update -yqq --fix-missing && \\
+                    apt-get upgrade -yqq && \\
+                    apt-get dist-upgrade -yqq && \\
+                    apt-get autoremove -yqq --purge && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/*
+                    """
+                ),
+                id="both-repos-clean",
+            ),
+            pytest.param(
+                True,
+                False,
+                True,
+                textwrap.dedent(
+                    """\
+                    apt-get update -yqq --fix-missing && \\
+                    apt-get upgrade -yqq && \\
+                    apt-get dist-upgrade -yqq && \\
+                    apt-get autoremove -yqq --purge && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/*
+                    """
+                ),
+                id="open-only-clean",
+            ),
+            pytest.param(
+                True,
+                False,
+                False,
+                textwrap.dedent(
+                    """\
+                    apt-get update -yqq --fix-missing && \\
+                    apt-get upgrade -yqq && \\
+                    apt-get dist-upgrade -yqq && \\
+                    apt-get autoremove -yqq --purge && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        curl \\
+                        ca-certificates \\
+                        gnupg \\
+                        tar && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/*
+                    """
+                ),
+                id="no-repos-clean",
             ),
         ],
     )
-    def test_setup(self, environment_with_macros, clean, expected):
-        template = '{%- import "apt.j2" as apt -%}\n' + "{{ apt.setup(" + str(clean) + ") }}\n"
+    def test_setup(self, environment_with_macros, clean, pro_repo, open_repo, expected):
+        template = (
+            '{%- import "apt.j2" as apt -%}\n'
+            f"{{{{ apt.setup({clean}, pro_repo={pro_repo}, open_repo={open_repo}) }}}}\n"
+        )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -631,6 +705,28 @@ class TestAptMacros:
                     gnupg \\
                     tar && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+            """
+        )
+        assert rendered == expected
+
+    def test_run_setup_both_repos(self, environment_with_macros):
+        template = '{%- import "apt.j2" as apt -%}\n{{ apt.run_setup(pro_repo=True, open_repo=True) }}\n'
+        rendered = environment_with_macros.from_string(template).render()
+        expected = textwrap.dedent(
+            """\
+            RUN apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             """
@@ -675,35 +771,36 @@ class TestDnfMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_setup_posit_cloudsmith(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.setup_posit_cloudsmith() }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
-            """
-        )
+    @pytest.mark.parametrize(
+        "repo,expected_url",
+        [
+            pytest.param("pro", "https://dl.posit.co/public/pro/setup.rpm.sh", id="pro"),
+            pytest.param("open", "https://dl.posit.co/public/open/setup.rpm.sh", id="open"),
+        ],
+    )
+    def test_setup_posit_repo(self, environment_with_macros, repo, expected_url):
+        template = f'{{%- import "dnf.j2" as dnf -%}}\n{{{{ dnf.setup_posit_repo("{repo}") }}}}\n'
+        expected = f"bash -c \"$(curl -1fsSL '{expected_url}')\"\n"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
-    def test_run_setup_posit_cloudsmith(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "dnf.j2" as dnf -%}
-            {{ dnf.run_setup_posit_cloudsmith() }}
-            """
-        )
-        expected = textwrap.dedent(
-            """\
-            RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
-            """
-        )
+    @pytest.mark.parametrize(
+        "repo,expected_url",
+        [
+            pytest.param("pro", "https://dl.posit.co/public/pro/setup.rpm.sh", id="pro"),
+            pytest.param("open", "https://dl.posit.co/public/open/setup.rpm.sh", id="open"),
+        ],
+    )
+    def test_run_setup_posit_repo(self, environment_with_macros, repo, expected_url):
+        template = f'{{%- import "dnf.j2" as dnf -%}}\n{{{{ dnf.run_setup_posit_repo("{repo}") }}}}\n'
+        expected = f"RUN bash -c \"$(curl -1fsSL '{expected_url}')\"\n"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+    def test_setup_posit_repo_rejects_invalid(self, environment_with_macros):
+        template = '{%- import "dnf.j2" as dnf -%}\n{{ dnf.setup_posit_repo("foo") }}'
+        with pytest.raises(Exception, match="Invalid repo"):
+            environment_with_macros.from_string(template).render()
 
     @pytest.mark.parametrize(
         "clean,expected",
@@ -1799,13 +1896,23 @@ class TestQuartoMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_get_directory(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.get_directory("1.8.24") }}"""
+        )
+        expected = "/opt/quarto"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_get_version_directory(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
             {{ quarto.get_version_directory("1.8.24") }}"""
         )
-        expected = "/opt/quarto/1.8.24"
+        expected = "/opt/quarto"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -1866,8 +1973,12 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="without-tinytex",
             ),
@@ -1877,8 +1988,12 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="without-tinytex-update-path-no-effect",
             ),
@@ -1888,9 +2003,14 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 \\
+                        xz-utils && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/* && \\
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex",
             ),
@@ -1900,9 +2020,14 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 \\
+                        xz-utils && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/* && \\
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-update-path",
             ),
@@ -1912,9 +2037,14 @@ class TestQuartoMacros:
                 "/root",
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 \\
+                        xz-utils && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/* && \\
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="with-tinytex-home-path",
             ),
@@ -1924,9 +2054,14 @@ class TestQuartoMacros:
                 "/root",
                 textwrap.dedent(
                     """\
-                    mkdir -p /opt/quarto/1.8.24 && \\
-                    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get install -yqq --no-install-recommends \\
+                        quarto=1.8.24 \\
+                        xz-utils && \\
+                    apt-mark hold quarto && \\
+                    apt-get clean -yqq && \\
+                    rm -rf /var/lib/apt/lists/* && \\
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="with-tinytex-home-path-update-path",
             ),
@@ -1946,6 +2081,53 @@ class TestQuartoMacros:
         )
         assert rendered == expected
 
+    def test_install_rhel(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.install("1.8.24", os_family="rhel") }}"""
+        )
+        expected = textwrap.dedent(
+            """\
+            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \\
+            dnf install -yq \\
+                quarto-1.8.24 \\
+                'dnf-command(versionlock)' && \\
+            dnf versionlock add quarto && \\
+            dnf clean all -yq"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_rhel_with_tinytex(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.install("1.8.24", with_tinytex=True, os_family="rhel") }}"""
+        )
+        expected = textwrap.dedent(
+            """\
+            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \\
+            dnf install -yq \\
+                quarto-1.8.24 \\
+                'dnf-command(versionlock)' \\
+                xz && \\
+            dnf versionlock add quarto && \\
+            dnf clean all -yq && \\
+            GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_rejects_invalid_os_family(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "quarto.j2" as quarto -%}
+            {{ quarto.install("1.8.24", os_family="sles") }}"""
+        )
+        with pytest.raises(Exception, match="Unsupported os_family"):
+            environment_with_macros.from_string(template).render()
+
     @pytest.mark.parametrize(
         "input,expected",
         [
@@ -1953,124 +2135,74 @@ class TestQuartoMacros:
                 (["1.8.24"], False, False, None),
                 textwrap.dedent(
                     """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1"""
+                    RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            quarto=1.8.24 && \\
+                        apt-mark hold quarto && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="single-version-no-tinytex",
-            ),
-            pytest.param(
-                (["1.8.24", "1.7.8"], False, False, None),
-                textwrap.dedent(
-                    """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
-                ),
-                id="multiple-versions-no-tinytex",
-            ),
-            pytest.param(
-                ("1.8.24,1.7.8", False, False, None),
-                textwrap.dedent(
-                    """\
-                    RUN mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1
-                    RUN mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1"""
-                ),
-                id="string-versions-no-tinytex",
             ),
             pytest.param(
                 (["1.8.24"], True, False, None),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            quarto=1.8.24 \\
+                            xz-utils && \\
+                        apt-mark hold quarto && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/* && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex",
-            ),
-            pytest.param(
-                (["1.8.24", "1.7.8"], True, False, None),
-                textwrap.dedent(
-                    """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
-                ),
-                id="multiple-versions-with-tinytex",
             ),
             pytest.param(
                 (["1.8.24"], True, True, None),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            quarto=1.8.24 \\
+                            xz-utils && \\
+                        apt-mark hold quarto && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/* && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-update-path",
-            ),
-            pytest.param(
-                (["1.8.24", "1.7.8"], True, True, None),
-                textwrap.dedent(
-                    """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
-                ),
-                id="multiple-versions-with-tinytex-update-path",
             ),
             pytest.param(
                 (["1.8.24"], True, False, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet"""
+                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            quarto=1.8.24 \\
+                            xz-utils && \\
+                        apt-mark hold quarto && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/* && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
                 ),
                 id="single-version-with-tinytex-home-path",
-            ),
-            pytest.param(
-                (["1.8.24", "1.7.8"], True, False, "/root"),
-                textwrap.dedent(
-                    """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet"""
-                ),
-                id="multiple-versions-with-tinytex-home-path",
             ),
             pytest.param(
                 (["1.8.24"], True, True, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            quarto=1.8.24 \\
+                            xz-utils && \\
+                        apt-mark hold quarto && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/* && \\
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
                 ),
                 id="single-version-with-tinytex-home-path-update-path",
-            ),
-            pytest.param(
-                (["1.8.24", "1.7.8"], True, True, "/root"),
-                textwrap.dedent(
-                    """\
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.8.24 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.24/quarto-1.8.24-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.8.24" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path
-                    RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/1.7.8 && \\
-                        curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.8/quarto-1.7.8-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/1.7.8" --strip-components=1 && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.7.8/bin/quarto install tinytex --no-prompt --quiet --update-path"""
-                ),
-                id="multiple-versions-with-tinytex-home-path-update-path",
             ),
         ],
     )
@@ -2082,13 +2214,18 @@ class TestQuartoMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_run_install_rejects_multiple_versions(self, environment_with_macros):
+        template = '{%- import "quarto.j2" as quarto -%}\n{{ quarto.run_install(["1.8.24", "1.7.8"]) }}'
+        with pytest.raises(Exception, match="Only one Quarto version"):
+            environment_with_macros.from_string(template).render()
+
     def test_symlink_version(self, environment_with_macros):
         template = textwrap.dedent(
             """\
             {%- import "quarto.j2" as quarto -%}
             {{ quarto.symlink_version("1.8.24", "/opt/quarto/default") }}"""
         )
-        expected = "ln -s /opt/quarto/1.8.24 /opt/quarto/default"
+        expected = "ln -s /opt/quarto /opt/quarto/default"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -2098,7 +2235,7 @@ class TestQuartoMacros:
             {%- import "quarto.j2" as quarto -%}
             {{ quarto.symlink_binary("1.8.24", "quarto", "/usr/local/bin/quarto") }}"""
         )
-        expected = "ln -s /opt/quarto/1.8.24/bin/quarto /usr/local/bin/quarto"
+        expected = "ln -s /opt/quarto/bin/quarto /usr/local/bin/quarto"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 

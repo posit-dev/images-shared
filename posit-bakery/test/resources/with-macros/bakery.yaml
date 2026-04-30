@@ -48,4 +48,4 @@ images:
           - dependency: python
             version: 3.13.7
           - dependency: quarto
-            version: 1.8.24
+            version: 1.8.27

@@ -159,11 +159,6 @@ class TestDependencyVersions:
                 id="quarto_single_version",
             ),
             pytest.param(
-                QuartoDependencyVersions(dependency="quarto", versions=["1.7.34", "1.6.43"]),
-                {"dependency": "quarto", "versions": ["1.7.34", "1.6.43"]},
-                id="quarto_multiple_versions",
-            ),
-            pytest.param(
                 PositronDependencyVersions(dependency="positron", versions=["2026.03.0-212"]),
                 {"dependency": "positron", "version": "2026.03.0-212"},
                 id="positron_single_version",
@@ -179,6 +174,16 @@ class TestDependencyVersions:
         """Test that version serialization works as expected."""
         serialized = versions_obj.model_dump(exclude_unset=True, exclude_defaults=True, exclude_none=True)
         assert serialized == expected_dict
+
+
+class TestQuartoSingleVersionConstraint:
+    def test_rejects_multiple_versions(self):
+        with pytest.raises(ValueError, match="Only one Quarto version may be specified"):
+            QuartoDependencyVersions(dependency="quarto", versions=["1.7.34", "1.6.43"])
+
+    def test_accepts_single_version(self):
+        dep = QuartoDependencyVersions(dependency="quarto", versions=["1.7.34"])
+        assert dep.versions == ["1.7.34"]
 
 
 class TestGetDependencyVersionsClass:

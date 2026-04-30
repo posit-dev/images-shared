@@ -343,13 +343,11 @@ class TestParseDependencyVersions:
         assert isinstance(result, RDependencyVersions)
         assert result.versions == ["4.3.3", "4.4.1"]
 
-    def test_quarto_versions_list(self):
-        """Test parsing a Quarto dependency with a list of versions"""
+    def test_quarto_versions_list_rejects_multiple(self):
+        """Test that parsing a Quarto dependency with multiple versions raises an error"""
         input_str = '{"dependency": "quarto", "versions": ["1.4.550", "1.5.23"]}'
-        result = parse_dependency_versions(input_str)
-        assert isinstance(result, QuartoDependencyVersions)
-        assert result.dependency == "quarto"
-        assert result.versions == ["1.4.550", "1.5.23"]
+        with pytest.raises(ValueError, match="Only one Quarto version may be specified"):
+            parse_dependency_versions(input_str)
 
     def test_quarto_single_version(self):
         """Test parsing a Quarto dependency with a single version"""

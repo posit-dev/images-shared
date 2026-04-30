@@ -51,7 +51,7 @@ from posit_bakery.config.image.matrix import generate_default_name_pattern, Imag
                     ),
                     QuartoDependencyVersions(
                         dependency="quarto",
-                        versions=["1.2", "1.3"],
+                        versions=["1.2"],
                     ),
                 ],
             },

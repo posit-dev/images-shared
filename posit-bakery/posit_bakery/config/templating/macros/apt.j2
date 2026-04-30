@@ -3,24 +3,32 @@
 {# Global options for apt-get commands #}
 {%- set global_options = "-yqq" -%}
 
-{# Setup command for Posit Cloudsmith apt repositories.
+{# Setup command for a Posit apt repository.
 
-:param codename: Override the OS codename used by the Cloudsmith setup script. Useful when
+Available repositories:
+  - "pro" — Posit professional products (Connect, Workbench, Package Manager)
+  - "open" — Open-source Posit packages (Quarto, RStudio)
+
+:param repo: The repository name ("pro" or "open").
+:param codename: Override the OS codename used by the setup script. Useful when
     Posit packages are not yet published for the current OS (e.g., using noble packages on
     resolute). When set, the codename is passed as an environment variable to the script
     per the Cloudsmith docs.
 #}
-{% macro setup_posit_cloudsmith(codename = None) -%}
+{% macro setup_posit_repo(repo, codename = None) -%}
+{%- if repo not in ("pro", "open") -%}
+{{ raise("Invalid repo '" ~ repo ~ "' passed to apt.setup_posit_repo(). Must be 'pro' or 'open'.") }}
+{%- endif -%}
 {%- if codename -%}
-codename={{ codename }} bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
+codename={{ codename }} bash -c "$(curl -1fsSL 'https://dl.posit.co/public/{{ repo }}/setup.deb.sh')"
 {%- else -%}
-bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
+bash -c "$(curl -1fsSL 'https://dl.posit.co/public/{{ repo }}/setup.deb.sh')"
 {%- endif -%}
 {%- endmacro %}
 
-{# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup_posit_cloudsmith(codename = None) -%}
-RUN {{ setup_posit_cloudsmith(codename) | indent(4) }}
+{# The setup_posit_repo() command wrapped with a Docker RUN statement. #}
+{% macro run_setup_posit_repo(repo, codename = None) -%}
+RUN {{ setup_posit_repo(repo, codename) | indent(4) }}
 {%- endmacro %}
 
 {# Commands for cleaning and removing the apt cache between layers #}
@@ -133,24 +141,33 @@ apt-get update {{ global_options }} && \
 RUN {{ install(packages, files) | indent(4) }}
 {%- endmacro %}
 
-{# Commands for update_upgrade(), setup_posit_cloudsmith(), and installation of curl, ca-certificates, gnupg, and tar.
+{# Commands for update_upgrade() and installation of curl, ca-certificates, gnupg, and tar,
+optionally adding the Posit Pro and/or Open apt repositories.
 
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 :param codename: Override the OS codename for the Cloudsmith setup script.
+:param pro_repo: Whether to add the Posit Pro apt repository. Defaults to True.
+:param open_repo: Whether to add the Posit Open apt repository. Defaults to False.
 #}
-{% macro setup(clean = True, codename = None) -%}
+{% macro setup(clean = True, codename = None, pro_repo = True, open_repo = False) -%}
 {{ update_upgrade(False) }} && \
 apt-get install -yqq --no-install-recommends \
     curl \
     ca-certificates \
     gnupg \
-    tar && \
-{{ setup_posit_cloudsmith(codename) }}{% if clean %} && \
+    tar
+{%- if pro_repo %} && \
+{{ setup_posit_repo("pro", codename) }}
+{%- endif %}
+{%- if open_repo %} && \
+{{ setup_posit_repo("open", codename) }}
+{%- endif %}
+{%- if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
 
 {# The setup() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup(codename = None) -%}
-RUN {{ setup(codename=codename) | indent(4) }}
+{% macro run_setup(codename = None, pro_repo = True, open_repo = False) -%}
+RUN {{ setup(codename=codename, pro_repo=pro_repo, open_repo=open_repo) | indent(4) }}
 {%- endmacro %}

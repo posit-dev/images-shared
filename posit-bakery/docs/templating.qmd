@@ -75,19 +75,25 @@ To wrap `setup()` in a Docker RUN statement, use:
 {{ apt.run_setup() }}
 ```
 
-#### Setup Posit Cloudsmith Apt Repositories
-Renders commands to set up Posit Cloudsmith apt repositories. Requires `curl` to be installed prior to execution.
+#### Setup Posit Apt Repository
+Renders commands to set up a Posit apt repository. Requires `curl` to be installed prior to execution.
 
-**NOTE:** This macro is included in `apt.setup()` or `apt.run_setup()`, so it does not need to be called separately unless `apt.setup()` is not used.
+Available repositories:
+
+- `"pro"` — Posit professional products (Connect, Workbench, Package Manager)
+- `"open"` — Open-source Posit packages (Quarto, RStudio)
+
+**NOTE:** This macro is called by `apt.setup()` and `quarto.install()`, so it does not typically need to be called separately.
 
 ```jinja2
-{{ apt.setup_posit_cloudsmith() }}
+{{ apt.setup_posit_repo("pro") }}
+{{ apt.setup_posit_repo("open") }}
 ```
 
-To wrap `setup_posit_cloudsmith()` in a Docker RUN statement, use:
+To wrap in a Docker RUN statement:
 
 ```jinja2
-{{ apt.run_setup_posit_cloudsmith() }}
+{{ apt.run_setup_posit_repo("pro") }}
 ```
 
 #### Apt Clean Commands
@@ -155,19 +161,22 @@ To wrap `setup()` in a Docker RUN statement, use:
 {{ dnf.run_setup() }}
 ```
 
-#### Setup Posit Cloudsmith DNF Repositories
-Renders commands to set up Posit Cloudsmith DNF repositories. Requires `curl` to be installed prior to execution.
+#### Setup Posit RPM Repository
+Renders commands to set up a Posit rpm repository. Requires `curl` to be installed prior to execution.
 
-**NOTE:** This macro is included in `dnf.setup()` or `dnf.run_setup()`, so it does not need to be called separately unless `dnf.setup()` is not used.
+Available repositories: `"pro"` and `"open"` (same as the apt variant).
+
+**NOTE:** This macro is called by `dnf.setup()`, so it does not typically need to be called separately.
 
 ```jinja2
-{{ dnf.setup_posit_cloudsmith() }}
+{{ dnf.setup_posit_repo("pro") }}
+{{ dnf.setup_posit_repo("open") }}
 ```
 
-To wrap `setup_posit_cloudsmith()` in a Docker RUN statement, use:
+To wrap in a Docker RUN statement:
 
 ```jinja2
-{{ dnf.run_setup_posit_cloudsmith() }}
+{{ dnf.run_setup_posit_repo("pro") }}
 ```
 
 #### DNF Clean Command
@@ -408,9 +417,11 @@ To use the Quarto macros, import the `quarto` module in your Jinja2 template:
 ```
 
 #### Install Quarto
-Returns the command to download and install a Quarto version. Requires `curl` to be installed prior to execution.
+Returns the command to install a Quarto version from the [Posit Open repository](https://dl.posit.co/public/open/). Requires `curl` to be installed prior to execution so the repository can be added via the appropriate setup script.
 
-The macro takes an optional `with_tinytex` argument to include the command to install TinyTeX using the installed Quarto binary. Default is `False`.
+The `quarto` deb installs the binary to `/opt/quarto/bin/quarto` and symlinks it into `/usr/local/bin/quarto` via its postinst script, so no explicit symlink step is required. After installing, the macro runs `apt-mark hold quarto` to pin the package at the installed version so `apt upgrade` inside the container cannot drift off the pinned version.
+
+The macro takes an optional `with_tinytex` argument to include the command to install TinyTeX using the installed Quarto binary. Default is `False`. When `True`, `xz-utils` is also installed because the TinyTeX release tarball is `.tar.xz` and is not in the Ubuntu base image.
 
 If `with_tinytex` is `True`, `tinytex_update_path` can be set to `True` to append the `--update-path` option to the install command. This will add TinyTeX binaries to the system `PATH`.
 
@@ -418,44 +429,44 @@ If `with_tinytex` is `True`, `tinytex_update_path` can be set to `True` to appen
 {{ quarto.install("1.8.24", with_tinytex=True, tinytex_update_path=True) }}
 ```
 
-To install multiple Quarto versions and wrap them in `RUN` statements, use:
-
-```jinja2
-{{ quarto.run_install(["1.8.24", "1.9.0"], with_tinytex=True) }}
-```
-
-Usually, this should be called with `Dependencies.quarto` to dynamically specify versions based on the image's `dependencyConstraints` field:
+To wrap the install in a `RUN` statement, use `run_install`. Only a single version is supported — Quarto installs to a flat `/opt/quarto/` directory and is pinned via `apt-mark hold` (Debian) or `dnf versionlock` (RHEL).
 
 ```jinja2
 {{ quarto.run_install(Dependencies.quarto, with_tinytex=True) }}
 ```
 
-#### Get Version Directory
-Returns the expected directory for an installed Quarto version.
+For RHEL-based images, pass `os_family="rhel"`:
 
 ```jinja2
-{{ quarto.get_version_directory("1.8.24") }}
+{{ quarto.run_install(Dependencies.quarto, with_tinytex=True, os_family="rhel") }}
+```
+
+#### Get Directory
+Returns the Quarto install directory (`/opt/quarto`). The `version` parameter is accepted for backward compatibility but is ignored.
+
+```jinja2
+{{ quarto.get_directory("1.9.37") }}
 ```
 
 #### Install TinyTeX
 Returns the command to install TinyTeX using a given Quarto binary.
 
-This command takes a full path to the Quarto binary, which can be constructed using `quarto.get_version_directory()`. Workbench manages its own installation of Quarto and thus must specify its own full path to the Quarto binary.
+This command takes a full path to the Quarto binary. For Quarto installed via `quarto.install()`, the binary is at `/opt/quarto/bin/quarto`. Workbench manages its own installation of Quarto and thus must specify its own full path to the Quarto binary.
 
 If `update_path` is `True`, the command will have `--update-path` appended to add TinyTeX binaries to the system `PATH`. Default is `False`.
 
 ```jinja2
-{{ quarto.install_tinytex_command(quarto.get_version_directory("1.8.24"), update_path=True) }}
+{{ quarto.install_tinytex_command("/opt/quarto/bin/quarto", update_path=True) }}
 ```
 
 #### Create Symlinks
-Creates a symlink to a Quarto version directory.
+Creates a symlink to the Quarto install directory. The `version` parameter is ignored and retained for backward compatibility.
 
 ```jinja2
 {{ quarto.symlink_version(version="1.8.24", target="/opt/quarto/default") }}
 ```
 
-Creates a symlink to a Quarto binary by name.
+Creates a symlink to a Quarto binary by name. **NOTE:** The `quarto` deb already symlinks the `quarto` binary into `/usr/local/bin` via its postinst script, so this macro is typically unnecessary.
 
 ```jinja2
 {{ quarto.symlink_binary(version="1.8.24", bin_name="quarto", target="/usr/local/bin/quarto") }}

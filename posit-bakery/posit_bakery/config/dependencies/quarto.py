@@ -1,7 +1,7 @@
 import abc
 from typing import Annotated, Literal, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 from ruamel.yaml import YAML
 
 from posit_bakery.config.shared import BakeryYAMLModel
@@ -68,7 +68,22 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
 
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
-    """Class for specifying a list of Quarto versions."""
+    """Class for specifying a list of Quarto versions.
+
+    Only a single version is supported because the quarto deb package
+    installs to a flat /opt/quarto/ directory with no version scoping.
+    """
+
+    @field_validator("versions", mode="after")
+    @classmethod
+    def validate_single_version(cls, versions: list[str]) -> list[str]:
+        if len(versions) > 1:
+            raise ValueError(
+                f"Only one Quarto version may be specified (got {len(versions)}). "
+                "The quarto apt package installs to a single /opt/quarto/ directory "
+                "and cannot coexist with other versions."
+            )
+        return versions
 
 
 class QuartoDependencyConstraint(DependencyConstraint, QuartoDependency):

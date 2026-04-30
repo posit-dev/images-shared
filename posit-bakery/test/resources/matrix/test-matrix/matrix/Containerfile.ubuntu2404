@@ -49,6 +49,11 @@ RUN RUN_UNATTENDED=1 R_VERSION=$R_VERSION bash -c "$(curl -fsSL https://rstd.io/
     find . -type f -name '[rR]-$R_VERSION.*\.(deb|rpm)' -delete
 
 # Install Quarto
-RUN --mount=type=secret,id=github_token,required=false mkdir -p /opt/quarto/$QUARTO_VERSION && \
-    curl -fsSL "https://github.com/quarto-dev/quarto-cli/releases/download/v$QUARTO_VERSION/quarto-$QUARTO_VERSION-linux-${TARGETARCH}.tar.gz" | tar xzf - -C "/opt/quarto/$QUARTO_VERSION" --strip-components=1 && \
-    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/$QUARTO_VERSION/bin/quarto install tinytex --no-prompt --quiet
+RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \
+    apt-get install -yqq --no-install-recommends \
+        quarto=$QUARTO_VERSION \
+        xz-utils && \
+    apt-mark hold quarto && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/* && \
+    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet

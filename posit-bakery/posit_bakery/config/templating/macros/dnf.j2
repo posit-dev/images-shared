@@ -8,14 +8,24 @@
 dnf clean all {{ global_options }}
 {%- endmacro %}
 
-{# Setup command for Posit Cloudsmith apt repositories #}
-{% macro setup_posit_cloudsmith() -%}
-bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')"
+{# Setup command for a Posit rpm repository.
+
+Available repositories:
+  - "pro" — Posit professional products (Connect, Workbench, Package Manager)
+  - "open" — Open-source Posit packages (Quarto, RStudio)
+
+:param repo: The repository name ("pro" or "open").
+#}
+{% macro setup_posit_repo(repo) -%}
+{%- if repo not in ("pro", "open") -%}
+{{ raise("Invalid repo '" ~ repo ~ "' passed to dnf.setup_posit_repo(). Must be 'pro' or 'open'.") }}
+{%- endif -%}
+bash -c "$(curl -1fsSL 'https://dl.posit.co/public/{{ repo }}/setup.rpm.sh')"
 {%- endmacro %}
 
-{# The setup_posit_cloudsmith() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup_posit_cloudsmith() -%}
-RUN {{ setup_posit_cloudsmith() | indent(4) }}
+{# The setup_posit_repo() command wrapped with a Docker RUN statement. #}
+{% macro run_setup_posit_repo(repo) -%}
+RUN {{ setup_posit_repo(repo) | indent(4) }}
 {%- endmacro %}
 
 {# Commands for updating and upgrading dnf system packages
@@ -106,24 +116,33 @@ RUN {{ install(packages, files) | indent(4) }}
 {%- endmacro %}
 
 {# Commands to perform an initial setup of the dnf package manager, including upgrading existing packages and installing
-essential packages like curl, ca-certificates, gnupg, and tar.
+essential packages like curl, ca-certificates, gnupg, and tar, optionally adding the Posit Pro and/or Open rpm
+repositories.
 
 :param clean: Whether to clean the dnf cache after installation. Defaults to True.
+:param pro_repo: Whether to add the Posit Pro rpm repository. Defaults to True.
+:param open_repo: Whether to add the Posit Open rpm repository. Defaults to False.
 #}
-{% macro setup(clean = True) -%}
+{% macro setup(clean = True, pro_repo = True, open_repo = False) -%}
 dnf upgrade {{ global_options }} && \
 dnf install {{ global_options }} --allowerasing \
     curl \
     ca-certificates \
     findutils \
     gnupg \
-    tar && \
-{{ setup_posit_cloudsmith() }}{% if clean %} && \
+    tar
+{%- if pro_repo %} && \
+{{ setup_posit_repo("pro") }}
+{%- endif %}
+{%- if open_repo %} && \
+{{ setup_posit_repo("open") }}
+{%- endif %}
+{%- if clean %} && \
 {{ clean_command() }}
 {%- endif %}
 {%- endmacro %}
 
 {# The setup() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup() -%}
-RUN {{ setup() | indent(4) }}
+{% macro run_setup(pro_repo = True, open_repo = False) -%}
+RUN {{ setup(pro_repo=pro_repo, open_repo=open_repo) | indent(4) }}
 {%- endmacro %}

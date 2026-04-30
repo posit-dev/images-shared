@@ -13,6 +13,12 @@ package:
     installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
   xz-utils:
     installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+  {% for quarto_version in Dependencies.quarto -%}
+  quarto:
+    installed: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
+    versions:
+      - {{ quarto_version }}
+  {%- endfor %}
 
 file:
   {% for python_version in Dependencies.python -%}
@@ -25,8 +31,6 @@ file:
     exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
     path: {{ r.get_version_directory(r_version) }}
   {%- endfor %}
-  {% for quarto_version in Dependencies.quarto -%}
-  quarto-{{ quarto_version }}:
+  quarto:
     exists: {% raw %}{{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}{% endraw %}
-    path: {{ quarto.get_version_directory(quarto_version) }}
-  {%- endfor %}
+    path: {{ quarto.get_directory() }}/bin/quarto
