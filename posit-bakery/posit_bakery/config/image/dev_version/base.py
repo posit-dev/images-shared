@@ -217,31 +217,49 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         return None
 
-    @model_validator(mode="after")
-    def add_os_url(self) -> "BaseImageDevelopmentVersion":
-        """Add the URL to each OS in the os list.
+    def _resolve_os_urls(self) -> list[ImageVersionOS]:
+        """Resolve artifact download URLs for each OS.
 
-        :return: The modified BaseImageDevelopmentVersion object.
+        Returns a list of OSes whose URLs could be resolved. The default
+        implementation resolves all OSes at once via get_url_by_os().
+        Subclasses may override for per-OS error handling.
         """
+        default_urls = self.get_url_by_os(generalize_architecture=False)
+        generalized_urls = None
         for os_version in self.os:
-            url_by_os = self.get_url_by_os(generalize_architecture=os_version.platforms != DEFAULT_PLATFORMS)
-            os_version.artifactDownloadURL = url_by_os.get(os_version.name, "")
-
-        return self
+            if os_version.platforms != DEFAULT_PLATFORMS:
+                if generalized_urls is None:
+                    generalized_urls = self.get_url_by_os(generalize_architecture=True)
+                os_version.artifactDownloadURL = generalized_urls.get(os_version.name, "")
+            else:
+                os_version.artifactDownloadURL = default_urls.get(os_version.name, "")
+        return list(self.os)
 
     def as_image_version(self):
-        """Convert this development version to a standard image version."""
+        """Convert this development version to a standard image version.
+
+        Calls _resolve_os_urls() to populate artifact download URLs.
+        The stream subclass overrides _resolve_os_urls() to exclude
+        OSes whose platform is unavailable in the product stream.
+
+        :raises RuntimeError: If no OSes remain after URL resolution.
+        """
+        resolved_os = self._resolve_os_urls()
+        if not resolved_os:
+            raise RuntimeError(f"No OSes could be resolved for {repr(self)}")
+
+        version = self.get_version()
         metadata = {}
         release_stream = self.get_release_stream()
         if release_stream is not None:
             metadata["release_stream"] = release_stream
         return ImageVersion(
-            name=self.get_version(),
-            subpath=f".dev-{self.get_version()}".replace(" ", "-").lower(),
+            name=version,
+            subpath=f".dev-{version}".replace(" ", "-").lower(),
             parent=self.parent,
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
-            os=self.os,
+            os=resolved_os,
             values=self.values,
             latest=False,
             dependencies=self.parent.resolve_dependency_versions(),

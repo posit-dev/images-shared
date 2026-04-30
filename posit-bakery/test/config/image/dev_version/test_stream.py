@@ -412,7 +412,6 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -490,7 +489,6 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -566,7 +564,6 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -642,7 +639,6 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -718,7 +714,6 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url,expected_session_url",
@@ -814,14 +809,12 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
         dev_version = ImageDevelopmentVersionFromProductStream(
             sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
-        assert str(_os.artifactDownloadURL) == expected_session_url
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url,expected_session_url",
@@ -932,11 +925,125 @@ class TestByStream:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
-        assert str(_os.artifactDownloadURL) == expected_url
 
         dev_version = ImageDevelopmentVersionFromProductStream(
             sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
-        assert str(_os.artifactDownloadURL) == expected_session_url
+
+
+class TestResolveOsUrls:
+    def test_sets_artifact_download_url(self):
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(
+                version="1.0.0", download_url="https://example.com/image.tar.gz"
+            )
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[{"name": "Ubuntu 24.04", "primary": True}],
+            )
+            resolved_os = dev._resolve_os_urls()
+            assert len(resolved_os) == 1
+            assert str(resolved_os[0].artifactDownloadURL) == "https://example.com/image.tar.gz"
+
+    def test_excludes_os_on_resolution_failure(self):
+        good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
+
+        def side_effect(product, stream, build_os):
+            if build_os.version == "26.04":
+                raise ValueError("no packages for ubuntu26")
+            return good
+
+        with patch(
+            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream", side_effect=side_effect
+        ):
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[
+                    {"name": "Ubuntu 24.04", "primary": True},
+                    {"name": "Ubuntu 26.04"},
+                ],
+            )
+            resolved_os = dev._resolve_os_urls()
+            assert len(resolved_os) == 1
+            assert resolved_os[0].name == "Ubuntu 24.04"
+
+    def test_generalizes_url_for_multiplatform_os(self):
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(
+                version="1.0.0", download_url="https://example.com/pkg_amd64.deb"
+            )
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[
+                    {
+                        "name": "Ubuntu 24.04",
+                        "primary": True,
+                        "platforms": ["linux/amd64", "linux/arm64"],
+                    }
+                ],
+            )
+            resolved_os = dev._resolve_os_urls()
+            assert len(resolved_os) == 1
+            assert "$TARGETARCH" in str(resolved_os[0].artifactDownloadURL)
+
+    def test_all_os_fail_returns_empty(self):
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.side_effect = ValueError("no packages")
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[{"name": "Ubuntu 26.04", "primary": True}],
+            )
+            resolved_os = dev._resolve_os_urls()
+            assert len(resolved_os) == 0
+
+    def test_unexpected_exception_propagates(self):
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.side_effect = TypeError("unexpected bug")
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[{"name": "Ubuntu 24.04", "primary": True}],
+            )
+            with pytest.raises(TypeError, match="unexpected bug"):
+                dev._resolve_os_urls()
+
+    def test_primary_os_excluded_falls_back_to_secondary(self):
+        good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
+
+        def side_effect(product, stream, build_os):
+            if build_os.version == "26.04":
+                raise ValueError("no packages for ubuntu26")
+            return good
+
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/images")
+        mock_parent.resolve_dependency_versions.return_value = []
+
+        with patch(
+            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream", side_effect=side_effect
+        ):
+            dev = ImageDevelopmentVersionFromProductStream(
+                parent=mock_parent,
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[
+                    {"name": "Ubuntu 26.04", "primary": True},
+                    {"name": "Ubuntu 24.04"},
+                ],
+            )
+            iv = dev.as_image_version()
+            assert iv.name == "1.0.0"
+            assert len(iv.os) == 1
+            assert iv.os[0].name == "Ubuntu 24.04"
