@@ -33,6 +33,26 @@ class BakeryCIMatrixFieldEnum(str, Enum):
     PLATFORM = "platform"
 
 
+def _version_matches(ver_name: str, filter_version: str) -> bool:
+    """Check if a version name matches a filter, comparing dot-separated segments.
+
+    Supports exact matches and prefix matches at segment boundaries:
+      "2026.05" matches "2026.05.0-dev+15-gSHA"
+      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
+      "2026" matches all 2026.x versions
+    """
+    if ver_name == filter_version:
+        return True
+    ver_parts = ver_name.split(".")
+    filter_parts = filter_version.split(".")
+    if len(filter_parts) > len(ver_parts):
+        return False
+    for ver_seg, filter_seg in zip(ver_parts, filter_parts):
+        if ver_seg != filter_seg and not ver_seg.startswith(filter_seg + "-"):
+            return False
+    return True
+
+
 @app.command()
 @with_verbosity_flags
 def matrix(
@@ -125,7 +145,7 @@ def matrix(
                 included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
                 if not included:
                     continue
-                if image_version is not None and ver.name != image_version:
+                if image_version is not None and not _version_matches(ver.name, image_version):
                     continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
