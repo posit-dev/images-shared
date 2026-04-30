@@ -1,4 +1,5 @@
 import atexit
+import io
 import json
 import logging
 import os
@@ -394,7 +395,10 @@ class BakeryConfig:
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
-        self.yaml.dump(self._config_yaml, self.config_file)
+        stream = io.StringIO()
+        self.yaml.dump(self._config_yaml, stream)
+        text = re.sub(r"[ \t]+$", "", stream.getvalue(), flags=re.MULTILINE)
+        self.config_file.write_text(text)
 
     def _get_image_index(self, image_name: str) -> int:
         """Returns the index of the image with the given name in the config.
