@@ -2,7 +2,10 @@ import json
 import re
 from unittest.mock import MagicMock
 
+import pytest
 from pytest_bdd import scenarios, then, parsers, given
+
+from posit_bakery.cli.ci import _version_matches
 
 from posit_bakery.plugins.protocol import ToolCallResult
 
@@ -95,3 +98,39 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
 
     for expected in expected_calls:
         assert expected in calls
+
+
+class TestVersionMatches:
+    @pytest.mark.parametrize(
+        "ver_name,filter_version",
+        [
+            ("2026.03.1", "2026.03.1"),
+            ("2026.05.0-dev+15-gSHA", "2026.05.0-dev+15-gSHA"),
+            ("2026.05.0-dev+15-gSHA", "2026.05"),
+            ("2026.05.0-dev+15-gSHA", "2026.05.0"),
+            ("2026.05.0-dev+15-gSHA", "2026"),
+            ("2026.03.1", "2026"),
+            ("2026.03.1", "2026.03"),
+            ("2026.05.0-dev+15-gSHA", "2026.05.0-dev"),
+            ("R4.5.3-python3.14.3", "R4.5.3-python3.14.3"),
+        ],
+    )
+    def test_matches(self, ver_name, filter_version):
+        assert _version_matches(ver_name, filter_version)
+
+    @pytest.mark.parametrize(
+        "ver_name,filter_version",
+        [
+            ("2026.05.0-dev+15-gSHA", "2026.03"),
+            ("2026.05.0-dev+15-gSHA", "2026.05.1"),
+            ("2026.05.0-dev+15-gSHA", "2026.0"),
+            ("2026.05.0-dev+15-gSHA", "20"),
+            ("2026.05.0-dev+15-gSHA", "9999.99"),
+            ("2026.03.1", "2026.03.1.0"),
+            ("2026.05.0-dev+15-gSHA", "2026.05.0-rc"),
+            ("2026.05.0", "2026.05.0-dev"),
+            ("R4.5.3-python3.14.3", "R4.5.3-python3.13.0"),
+        ],
+    )
+    def test_no_match(self, ver_name, filter_version):
+        assert not _version_matches(ver_name, filter_version)
