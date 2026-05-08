@@ -73,6 +73,33 @@ class TagPattern(BakeryYAMLModel):
         return hash((tuple(self.patterns), tuple(self.only)))
 
 
+def _shared_latest_tag_patterns() -> list[TagPattern]:
+    """Return the LATEST-filtered tag patterns shared by every default-pattern set.
+
+    These patterns don't reference ``Version``, so they're version-shape-agnostic and
+    safe to use for both static-version images (where ``Version`` may be ``"1.2.3"``)
+    and matrix images (where ``Version`` may be a composite like ``"R4.3.3-python3.11.15"``).
+    """
+    return [
+        TagPattern(
+            patterns=["{{ OS }}-{{ Variant }}"],
+            only=[TagPatternFilter.LATEST],
+        ),
+        TagPattern(
+            patterns=["{{ OS }}"],
+            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Variant }}"],
+            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS],
+        ),
+        TagPattern(
+            patterns=["latest"],
+            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+    ]
+
+
 def default_tag_patterns() -> list[TagPattern]:
     """Return the default tag patterns for images in the Bakery configuration.
 
@@ -98,22 +125,7 @@ def default_tag_patterns() -> list[TagPattern]:
             patterns=["{{ Version }}", "{{ Version | stripMetadata }}"],
             only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
-        TagPattern(
-            patterns=["{{ OS }}-{{ Variant }}"],
-            only=[TagPatternFilter.LATEST],
-        ),
-        TagPattern(
-            patterns=["{{ OS }}"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_VARIANT],
-        ),
-        TagPattern(
-            patterns=["{{ Variant }}"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS],
-        ),
-        TagPattern(
-            patterns=["latest"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
-        ),
+        *_shared_latest_tag_patterns(),
         TagPattern(
             patterns=["{{ Stream }}-{{ OS }}-{{ Variant }}"],
             only=[TagPatternFilter.ALL],
@@ -160,20 +172,5 @@ def default_matrix_tag_patterns() -> list[TagPattern]:
             patterns=["{{ Version }}"],
             only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
-        TagPattern(
-            patterns=["{{ OS }}-{{ Variant }}"],
-            only=[TagPatternFilter.LATEST],
-        ),
-        TagPattern(
-            patterns=["{{ OS }}"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_VARIANT],
-        ),
-        TagPattern(
-            patterns=["{{ Variant }}"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS],
-        ),
-        TagPattern(
-            patterns=["latest"],
-            only=[TagPatternFilter.LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
-        ),
+        *_shared_latest_tag_patterns(),
     ]
