@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -105,7 +104,7 @@ def tags(
         settings = BakerySettings(
             filter=BakeryConfigFilter(
                 image_name=image_name,
-                image_version=re.escape(image_version) if image_version else None,
+                image_version=image_version,
                 image_variant=image_variant,
                 image_os=image_os,
             ),

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
-from posit_bakery.cli.ci import _version_matches
+from posit_bakery.config.config import version_matches
 
 from posit_bakery.plugins.protocol import ToolCallResult
 
@@ -116,7 +116,7 @@ class TestVersionMatches:
         ],
     )
     def test_matches(self, ver_name, filter_version):
-        assert _version_matches(ver_name, filter_version)
+        assert version_matches(ver_name, filter_version)
 
     @pytest.mark.parametrize(
         "ver_name,filter_version",
@@ -133,4 +133,4 @@ class TestVersionMatches:
         ],
     )
     def test_no_match(self, ver_name, filter_version):
-        assert not _version_matches(ver_name, filter_version)
+        assert not version_matches(ver_name, filter_version)

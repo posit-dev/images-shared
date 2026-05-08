@@ -10,8 +10,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
-from posit_bakery.config.image.parsed_version import ParsedVersion
+from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
@@ -32,33 +31,6 @@ class BakeryCIMatrixFieldEnum(str, Enum):
     VERSION = "version"
     DEV = "dev"
     PLATFORM = "platform"
-
-
-def _version_matches(ver_name: str, filter_version: str) -> bool:
-    """Check if a version name matches a filter by comparing release segments.
-
-    Uses ParsedVersion when both strings are parseable; falls back to
-    dot-separated segment comparison for short filters like "2026".
-
-    Supports exact matches and prefix matches at segment boundaries:
-      "2026.05" matches "2026.05.0-dev+15-gSHA"
-      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
-      "2026" matches all 2026.x versions
-    """
-    if ver_name == filter_version:
-        return True
-    ver = ParsedVersion.parse(ver_name)
-    filt = ParsedVersion.parse(filter_version)
-    if ver is not None and filt is not None:
-        return ver.release[: len(filt.release)] == filt.release and (
-            filt.prerelease is None or ver.prerelease == filt.prerelease
-        )
-    # Fallback for unparseable filters (e.g. single-segment "2026")
-    ver_parts = ver_name.split(".")
-    filter_parts = filter_version.split(".")
-    if len(filter_parts) > len(ver_parts):
-        return False
-    return all(v == f or v.startswith(f + "-") for v, f in zip(ver_parts, filter_parts))
 
 
 @app.command()
@@ -153,7 +125,7 @@ def matrix(
                 included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
                 if not included:
                     continue
-                if image_version is not None and not _version_matches(ver.name, image_version):
+                if image_version is not None and not version_matches(ver.name, image_version):
                     continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:

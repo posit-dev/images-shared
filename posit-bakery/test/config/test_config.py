@@ -397,7 +397,7 @@ class TestBakeryConfig:
             config = BakeryConfig(
                 yaml_file,
                 BakerySettings(
-                    filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^2025.04.2-8$"),
+                    filter=BakeryConfigFilter(image_name="^package-manager$", image_version="2025.04.2-8"),
                     dev_versions=DevVersionInclusionEnum.ONLY,
                 ),
             )
@@ -414,7 +414,7 @@ class TestBakeryConfig:
         config = BakeryConfig(
             yaml_file,
             BakerySettings(
-                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^nonexistent$"),
+                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="nonexistent"),
             ),
         )
         assert config is not None
@@ -429,7 +429,7 @@ class TestBakeryConfig:
         config = BakeryConfig(
             yaml_file,
             BakerySettings(
-                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="^2025.04.2-8$"),
+                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="2025.04.2-8"),
             ),
         )
         assert config is not None
