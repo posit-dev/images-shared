@@ -17,6 +17,7 @@ from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.const import DevVersionInclusionEnum, JINJA2_TEMPLATE_EXTENSIONS
 from .build_os import DEFAULT_PLATFORMS, TargetPlatform
+from .parsed_version import ParsedVersion
 from .variant import ImageVariant
 from .version_os import ImageVersionOS
 from ..templating import jinja2_env
@@ -333,6 +334,18 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                 if platform not in platforms:
                     platforms.append(platform)
         return platforms
+
+    @property
+    def parsed_version(self) -> ParsedVersion | None:
+        """Return the parsed semver/calver representation of ``self.name``.
+
+        Returns ``None`` for matrix versions (without warning) and for
+        unparseable names (with a single ``log.warning`` from
+        ``ParsedVersion.parse``).
+        """
+        if self.isMatrixVersion:
+            return None
+        return ParsedVersion.parse(self.name)
 
     def generate_template_values(
         self,
