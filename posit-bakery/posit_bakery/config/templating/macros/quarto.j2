@@ -51,9 +51,10 @@ backward compatibility but is ignored.
 :param quarto_binary: The path to the Quarto binary.
 :param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
 :param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param quiet: Whether to suppress TinyTeX install output. Defaults to True.
 #}
-{% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
-GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt --quiet{% if update_path %} --update-path{% endif %}
+{% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None, quiet = True) -%}
+GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt{% if quiet %} --quiet{% endif %}{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to install a specific version of Quarto from the Posit Open
