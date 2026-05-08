@@ -415,6 +415,13 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         selected: dict[str, str] = {}
         for axis_key, candidates in axes:
+            if not candidates:
+                log.warning(
+                    f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                    f"'{axis_key}' has no candidate versions. "
+                    f"No 'latest'-family tags will be emitted for this matrix."
+                )
+                return None
             parsed: list[tuple[DependencyVersion, str]] = []
             for candidate in candidates:
                 try:

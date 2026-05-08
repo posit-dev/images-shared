@@ -913,3 +913,20 @@ class TestLatestCombination:
         assert "python" in message
         assert "3.12.3" in message
         assert "disk on fire" in message
+
+    def test_empty_list_value_returns_none_and_warns(self, caplog):
+        """An empty list-typed value has no candidates; latest is undeterminable."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+            values={"flavor": []},
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        assert "value:flavor" in message
+        # Should not be reported as a parse failure — the list is empty, not malformed.
+        assert "unparseable" not in message.lower()
