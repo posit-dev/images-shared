@@ -930,3 +930,55 @@ class TestLatestCombination:
         assert "value:flavor" in message
         # Should not be reported as a parse failure — the list is empty, not malformed.
         assert "unparseable" not in message.lower()
+
+    def test_resolved_dependencies_is_cached(self, patch_requests_get):
+        """Repeated reads should reuse the resolved list to avoid re-resolving constraints.
+
+        Constraint resolution (e.g., for Python) hits the network, so callers that
+        access ``resolved_dependencies`` multiple times — directly or via
+        ``latest_combination`` and ``to_image_versions`` — should hit the cache.
+        """
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 1},
+                ),
+            ],
+        )
+
+        first = matrix.resolved_dependencies
+        second = matrix.resolved_dependencies
+
+        # Same object reference proves the result was cached, not recomputed.
+        assert first is second
+
+    def test_resolved_dependencies_cache_invalidates_on_assignment(self, patch_requests_get):
+        """Mutating dependency fields should invalidate the cache so callers see fresh data."""
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 1},
+                ),
+            ],
+        )
+
+        before = matrix.resolved_dependencies
+        assert len(before) == 1
+
+        # Replace the constraints entirely; the cached list must not be reused.
+        matrix.dependencyConstraints = [
+            PythonDependencyConstraint(
+                dependency="python",
+                constraint={"latest": True, "count": 2},
+            ),
+            RDependencyConstraint(
+                dependency="R",
+                constraint={"latest": True, "count": 1},
+            ),
+        ]
+
+        after = matrix.resolved_dependencies
+        assert after is not before
+        assert {dv.dependency for dv in after} == {"python", "R"}

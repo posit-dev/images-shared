@@ -2,6 +2,7 @@ import itertools
 import logging
 import re
 from copy import deepcopy
+from functools import cached_property
 from pathlib import Path
 from shutil import copy2
 from typing import Annotated, Union, Self, Any, Literal
@@ -349,6 +350,18 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             version_os.parent = self
         return self
 
+    @model_validator(mode="after")
+    def _invalidate_resolved_dependencies_cache(self) -> Self:
+        """Clear the :pyattr:`resolved_dependencies` cache.
+
+        With ``validate_assignment=True`` this validator also runs on every field
+        assignment, so mutations to ``dependencies`` or ``dependencyConstraints``
+        (e.g., via :pymeth:`Image.create_matrix` with ``update_if_exists=True``)
+        do not leave a stale cached list behind.
+        """
+        self.__dict__.pop("resolved_dependencies", None)
+        return self
+
     @property
     def supported_platforms(self) -> list[TargetPlatform]:
         """Returns a list of supported target platforms for this image version.
@@ -365,9 +378,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                     platforms.append(platform)
         return platforms
 
-    @property
+    @cached_property
     def resolved_dependencies(self) -> list[DependencyVersions]:
         """Returns the list of resolved dependencies for this image version.
+
+        Cached after the first access — constraint resolution can hit the network
+        (e.g., the Python constraint reads from astral-sh/python-build-standalone),
+        and callers like :pyattr:`latest_combination` and :pymeth:`to_image_versions`
+        may both read this property within a single build.
 
         :return: A list of DependencyVersions objects.
         """
