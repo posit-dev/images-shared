@@ -159,6 +159,14 @@ Template variables available:
 
 Custom Jinja2 filters: `tagSafe`, `stripMetadata`, `condense`, `regexReplace`, `quote`, `split`
 
+## Pre-commit
+
+A pre-commit hook is installed and runs automatically on `git commit`. If the hook fails,
+read the output — many hooks (trailing whitespace, end-of-file fixer, ruff format, shfmt)
+auto-fix files in place. After a hook failure, re-stage the fixed files and commit again.
+
+Do not skip hooks with `--no-verify`.
+
 ## Python Coding Conventions
 
 ### Imports
