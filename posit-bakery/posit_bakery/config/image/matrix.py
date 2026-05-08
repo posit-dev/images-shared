@@ -16,6 +16,8 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
     DependencyVersions,
 )
+from packaging.version import InvalidVersion
+
 from posit_bakery.config.dependencies.version import DependencyVersion
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
@@ -417,12 +419,18 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             for candidate in candidates:
                 try:
                     parsed.append((DependencyVersion(candidate), candidate))
-                except Exception as e:
-                    # packaging raises InvalidVersion (a ValueError subclass); we keep this
-                    # broad to also catch any defensive parsing errors from DependencyVersion.
+                except InvalidVersion as e:
                     log.warning(
                         f"Image matrix '{self.namePattern}': cannot determine latest because axis "
                         f"'{axis_key}' has unparseable version '{candidate}' ({e}). "
+                        f"No 'latest'-family tags will be emitted for this matrix."
+                    )
+                    return None
+                except Exception as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                        f"'{axis_key}' raised an unexpected error processing '{candidate}' "
+                        f"({type(e).__name__}: {e}). "
                         f"No 'latest'-family tags will be emitted for this matrix."
                     )
                     return None

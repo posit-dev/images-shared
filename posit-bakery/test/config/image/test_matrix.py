@@ -890,3 +890,26 @@ class TestLatestCombination:
         assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
         assert "value:first" in warnings[0].message
         assert "value:second" not in warnings[0].message
+
+    def test_non_parsing_exception_returns_none_with_distinct_warning(self, caplog, mocker):
+        """A non-InvalidVersion exception during construction should not be reported as a parse failure."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+        )
+        mocker.patch(
+            "posit_bakery.config.image.matrix.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        # Should not falsely claim the version is unparseable.
+        assert "unparseable" not in message.lower()
+        # Should still surface the axis, candidate, and underlying error.
+        assert "python" in message
+        assert "3.12.3" in message
+        assert "disk on fire" in message
