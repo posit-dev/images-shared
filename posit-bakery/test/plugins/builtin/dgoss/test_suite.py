@@ -24,7 +24,9 @@ class TestDGossSuite:
     def test_run(self, get_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
         basic_tmpconfig = get_tmpconfig("basic")
-        basic_tmpconfig.build_targets()
+        from posit_bakery.image.build import build_targets
+
+        build_targets(basic_tmpconfig.targets, basic_tmpconfig.base_path)
 
         dgoss_suite = DGossSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
 

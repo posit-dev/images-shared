@@ -14,6 +14,8 @@ from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
+from posit_bakery.image.bake.bake import BakePlan
+from posit_bakery.image.build import build_targets
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
@@ -230,11 +232,14 @@ def build(
                 style="error",
             )
             raise typer.Exit(code=1)
-        stdout_console.print_json(config.bake_plan_targets(push=push))
+        bake_plan = BakePlan.from_image_targets(context=config.base_path, image_targets=config.targets, push=push)
+        stdout_console.print_json(bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True))
         raise typer.Exit(code=0)
 
     try:
-        config.build_targets(
+        build_targets(
+            targets=config.targets,
+            base_path=config.base_path,
             load=load,
             push=push,
             pull=pull,
@@ -244,6 +249,8 @@ def build(
             fail_fast=fail_fast,
             retry=retry,
             metadata_file=metadata_file,
+            temp_registry=config.settings.temp_registry,
+            clean_temporary=config.settings.clean_temporary,
         )
     except BakeryBuildErrorGroup as e:
         stderr_console.print(str(e))
