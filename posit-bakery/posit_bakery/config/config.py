@@ -26,6 +26,7 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env
+from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
@@ -248,6 +249,33 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         return new_image
 
 
+def version_matches(ver_name: str, filter_version: str) -> bool:
+    """Check if a version name matches a filter by comparing release segments.
+
+    Uses ParsedVersion when both strings are parseable; falls back to
+    dot-separated segment comparison for short filters like "2026".
+
+    Supports exact matches and prefix matches at segment boundaries:
+      "2026.05" matches "2026.05.0-dev+15-gSHA"
+      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
+      "2026" matches all 2026.x versions
+    """
+    if ver_name == filter_version:
+        return True
+    ver = ParsedVersion.parse(ver_name)
+    filt = ParsedVersion.parse(filter_version)
+    if ver is not None and filt is not None:
+        return ver.release[: len(filt.release)] == filt.release and (
+            filt.prerelease is None or ver.prerelease == filt.prerelease
+        )
+    # Fallback for unparseable filters (e.g. single-segment "2026")
+    ver_parts = ver_name.split(".")
+    filter_parts = filter_version.split(".")
+    if len(filter_parts) > len(ver_parts):
+        return False
+    return all(v == f or v.startswith(f + "-") for v, f in zip(ver_parts, filter_parts))
+
+
 class BakeryConfigFilter(BaseModel):
     """Container for filtering options when generating image targets from the BakeryConfig."""
 
@@ -257,9 +285,7 @@ class BakeryConfigFilter(BaseModel):
     image_variant: Annotated[
         str | None, Field(description="Name or regex pattern of the image variant to filter by.", default=None)
     ]
-    image_version: Annotated[
-        str | None, Field(description="Name or regex pattern of the image version to filter by.", default=None)
-    ]
+    image_version: Annotated[str | None, Field(description="Version string or prefix to filter by.", default=None)]
     image_os: Annotated[
         str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
     ]
@@ -695,7 +721,7 @@ class BakeryConfig:
                 continue
             if image.versions:
                 for version in image.versions:
-                    if _filter.image_version is not None and re.search(_filter.image_version, version.name) is None:
+                    if _filter.image_version is not None and not version_matches(version.name, _filter.image_version):
                         log.debug(
                             f"Skipping image version '{version.name}' in image '{image.name}' "
                             f"due to not matching version filter '{_filter.image_version}'"
@@ -794,8 +820,8 @@ class BakeryConfig:
                 versions = image.matrix.to_image_versions()
             targets_before = len(targets)
             for version in versions:
-                version_filter_matched = settings.filter.image_version is not None and re.search(
-                    settings.filter.image_version, version.name
+                version_filter_matched = settings.filter.image_version is not None and version_matches(
+                    version.name, settings.filter.image_version
                 )
                 included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_stream)
                 if not included:
@@ -807,9 +833,8 @@ class BakeryConfig:
                     else:
                         log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
                     continue
-                if (
-                    settings.filter.image_version is not None
-                    and re.search(settings.filter.image_version, version.name) is None
+                if settings.filter.image_version is not None and not version_matches(
+                    version.name, settings.filter.image_version
                 ):
                     log.debug(
                         f"Skipping image version '{version.name}' in image '{image.name}' "

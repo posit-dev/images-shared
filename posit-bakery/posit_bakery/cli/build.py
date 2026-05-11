@@ -1,5 +1,4 @@
 import logging
-import re
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -146,7 +145,7 @@ def build(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image version or a regex pattern to isolate builds to.",
+            help="The image version or version prefix to isolate builds to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -207,7 +206,7 @@ def build(
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
-            image_version=re.escape(image_version) if image_version else None,
+            image_version=image_version,
             image_variant=image_variant,
             image_os=image_os,
             image_platform=image_platform or [],

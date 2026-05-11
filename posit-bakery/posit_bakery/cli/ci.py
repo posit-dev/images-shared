@@ -10,7 +10,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
+from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
@@ -125,7 +125,7 @@ def matrix(
                 included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
                 if not included:
                     continue
-                if image_version is not None and ver.name != image_version:
+                if image_version is not None and not version_matches(ver.name, image_version):
                     continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:
