@@ -2,6 +2,7 @@ import itertools
 import logging
 import re
 from copy import deepcopy
+from functools import cached_property
 from pathlib import Path
 from shutil import copy2
 from typing import Annotated, Union, Self, Any, Literal
@@ -16,6 +17,9 @@ from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
     DependencyVersions,
 )
+from packaging.version import InvalidVersion
+
+from posit_bakery.config.dependencies.version import DependencyVersion
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -346,6 +350,18 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             version_os.parent = self
         return self
 
+    @model_validator(mode="after")
+    def _invalidate_resolved_dependencies_cache(self) -> Self:
+        """Clear the :pyattr:`resolved_dependencies` cache.
+
+        With ``validate_assignment=True`` this validator also runs on every field
+        assignment, so mutations to ``dependencies`` or ``dependencyConstraints``
+        (e.g., via :pymeth:`Image.create_matrix` with ``update_if_exists=True``)
+        do not leave a stale cached list behind.
+        """
+        self.__dict__.pop("resolved_dependencies", None)
+        return self
+
     @property
     def supported_platforms(self) -> list[TargetPlatform]:
         """Returns a list of supported target platforms for this image version.
@@ -362,9 +378,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                     platforms.append(platform)
         return platforms
 
-    @property
+    @cached_property
     def resolved_dependencies(self) -> list[DependencyVersions]:
         """Returns the list of resolved dependencies for this image version.
+
+        Cached after the first access — constraint resolution can hit the network
+        (e.g., the Python constraint reads from astral-sh/python-build-standalone),
+        and callers like :pyattr:`latest_combination` and :pymeth:`to_image_versions`
+        may both read this property within a single build.
 
         :return: A list of DependencyVersions objects.
         """
@@ -373,6 +394,74 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             resolved.append(dc.resolve_versions())
 
         return resolved
+
+    @property
+    def latest_combination(self) -> dict[str, str] | None:
+        """Resolve the cartesian-product row that represents the matrix's "latest" combination.
+
+        Returns a dict mapping each version-bearing axis to the original string of its
+        maximum version, or ``None`` when any axis has a candidate that cannot be parsed
+        as a version (in which case a warning is logged and the matrix emits no
+        ``latest``-family tags). Also returns ``None`` when the matrix has no
+        version-bearing axes (no dependencies and no list-typed values), since there is
+        nothing to select a "latest" row from.
+
+        Axes considered:
+          * Every entry in :pyattr:`resolved_dependencies` (key = ``entry.dependency``).
+          * Every entry in :pyattr:`values` whose value is a ``list`` (key = ``f"value:{key}"``).
+
+        Scalar ``values`` are constant across the cartesian product and are skipped.
+        """
+        return self._compute_latest_combination(self.resolved_dependencies)
+
+    def _compute_latest_combination(self, resolved_dependencies: list[DependencyVersions]) -> dict[str, str] | None:
+        """Helper for :pyattr:`latest_combination` that uses a pre-resolved deps list.
+
+        Accepting the resolved list as a parameter lets callers (notably
+        :pymeth:`to_image_versions`) resolve dependency constraints once rather than
+        triggering the network-bound :pyattr:`resolved_dependencies` property twice.
+        """
+        axes: list[tuple[str, list[str]]] = []
+        for entry in resolved_dependencies:
+            axes.append((entry.dependency, list(entry.versions)))
+        for key, value in self.values.items():
+            if isinstance(value, list):
+                axes.append((f"value:{key}", [str(v) for v in value]))
+
+        if not axes:
+            return None
+
+        selected: dict[str, str] = {}
+        for axis_key, candidates in axes:
+            if not candidates:
+                log.warning(
+                    f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                    f"'{axis_key}' has no candidate versions. "
+                    f"No 'latest'-family tags will be emitted for this matrix."
+                )
+                return None
+            parsed: list[tuple[DependencyVersion, str]] = []
+            for candidate in candidates:
+                try:
+                    parsed.append((DependencyVersion(candidate), candidate))
+                except InvalidVersion as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                        f"'{axis_key}' has unparseable version '{candidate}' ({e}). "
+                        f"No 'latest'-family tags will be emitted for this matrix."
+                    )
+                    return None
+                except Exception as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest because axis "
+                        f"'{axis_key}' raised an unexpected error processing '{candidate}' "
+                        f"({type(e).__name__}: {e}). "
+                        f"No 'latest'-family tags will be emitted for this matrix."
+                    )
+                    return None
+            selected[axis_key] = max(parsed, key=lambda pair: pair[0])[1]
+
+        return selected
 
     def generate_template_values(
         self,
@@ -651,8 +740,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         """
         image_versions = []
 
-        products = self._cartesian_product(self.resolved_dependencies, self.values)
+        # Resolve dependency constraints once; the property is network-bound and
+        # deepcopies, so reuse the result across both the cartesian product and the
+        # latest-row computation.
+        resolved_deps = self.resolved_dependencies
+        latest_pick = self._compute_latest_combination(resolved_deps)
+        products = self._cartesian_product(resolved_deps, self.values)
         for product in products:
+            is_latest = latest_pick is not None and self._matches_latest(product, latest_pick)
             image_version = ImageVersion(
                 parent=self.parent,
                 name=self._render_name_pattern(self.namePattern, product["dependencies"], product["values"]),
@@ -663,8 +758,28 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 dependencies=product["dependencies"],
                 values=product["values"],
                 isMatrixVersion=True,
+                latest=is_latest,
                 buildTarget=self.buildTarget,
             )
             image_versions.append(image_version)
 
         return image_versions
+
+    @staticmethod
+    def _matches_latest(product: dict[str, list | dict], latest_pick: dict[str, str]) -> bool:
+        """Return True iff every dependency and list-typed value in ``product`` equals
+        the corresponding entry in ``latest_pick`` (by original-string equality).
+
+        Scalar values are not compared — they are constant across all rows.
+        """
+        for dep in product["dependencies"]:
+            expected = latest_pick.get(dep.dependency)
+            if expected is None or dep.versions[0] != expected:
+                return False
+        for key, value in product["values"].items():
+            axis_key = f"value:{key}"
+            # latest_combination stringifies list-value candidates; mirror that here
+            # so YAML-typed scalars (e.g., ints/floats) compare correctly.
+            if axis_key in latest_pick and str(value) != latest_pick[axis_key]:
+                return False
+        return True

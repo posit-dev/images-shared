@@ -16,6 +16,8 @@ from posit_bakery.config.dependencies import (
     QuartoDependencyConstraint,
 )
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
+from posit_bakery.config.repository import Repository
+from posit_bakery.image.image_target import ImageTarget
 
 
 @pytest.mark.parametrize(
@@ -478,6 +480,45 @@ class TestImageMatrix:
             assert image_version.values["go_version"] in ["1.24", "1.25"]
             assert image_version.values["pro_drivers_version"] in ["2025.07.0", "2025.08.0"]
 
+    def test_to_image_versions_marks_latest_combination(self, patch_requests_get):
+        """Exactly one ImageVersion produced from a fully version-parseable matrix has latest=True."""
+        matrix = ImageMatrix(
+            dependencies=[
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+                {"dependency": "R", "versions": ["4.2.3", "4.1.3"]},
+            ],
+            values={
+                "go_version": ["1.24", "1.25"],
+                "pro_drivers_version": "2025.07.0",
+            },
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_versions = [iv for iv in image_versions if iv.latest]
+        assert len(latest_versions) == 1, (
+            f"expected exactly one latest version, got {len(latest_versions)}: {[iv.name for iv in latest_versions]}"
+        )
+
+        latest = latest_versions[0]
+        dep_versions = {dep.dependency: dep.versions[0] for dep in latest.dependencies}
+        assert dep_versions == {"python": "3.13.7", "R": "4.2.3"}
+        assert latest.values["go_version"] == "1.25"
+        # Scalar values are present but not selecting on them
+        assert latest.values["pro_drivers_version"] == "2025.07.0"
+
+    def test_to_image_versions_no_latest_when_combination_is_none(self):
+        """When latest_combination returns None, no ImageVersion is marked latest."""
+        matrix = ImageMatrix(
+            dependencies=[
+                {"dependency": "python", "versions": ["3.13.7", "3.12.11"]},
+            ],
+            values={"flavor": ["alpha", "beta"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 4  # 2 python * 2 flavor
+        assert not any(iv.latest for iv in image_versions)
+
     def test_check_duplicate_dependency_constraints(self):
         """Test that duplicate dependency constraints raise error."""
         with pytest.raises(
@@ -639,6 +680,47 @@ class TestImageMatrix:
         assert "{{ Image.Name }}" in script_content  # Should be literal
         assert "#!/bin/bash" in script_content
 
+    def test_latest_matrix_target_emits_latest_tag(self, patch_requests_get):
+        """Integration: latest matrix row + primary OS + no variants emits 'latest' tag."""
+        # Minimal Image with a matrix; tagPatterns defaults to default_matrix_tag_patterns()
+        image = Image(
+            name="content",
+            matrix={
+                "namePattern": "python{{ Dependencies.python }}",
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.11.5", "3.12.3"]},
+                ],
+                "os": [
+                    {"name": "Ubuntu 24.04", "primary": True},
+                ],
+            },
+        )
+
+        # The Image needs a parent (BakeryConfigDocument) for path resolution in
+        # ImageTarget. A mock with a valid path is sufficient for tag rendering.
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        mock_config_parent.registries = []
+        image.parent = mock_config_parent
+
+        repo = Repository(url="https://example.com/repo", vendor="Example", maintainer="dev <dev@example.com>")
+        image_versions = image.matrix.to_image_versions()
+        latest_iv = next(iv for iv in image_versions if iv.latest)
+        primary_os = latest_iv.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=repo,
+            image_version=latest_iv,
+            image_variant=None,
+            image_os=primary_os,
+        )
+
+        suffixes = set(target.tag_suffixes)
+        # Latest + primary OS + (no variant -> primary by default) yields the bare 'latest' tag.
+        assert "latest" in suffixes
+        # Existing matrix tag still emitted.
+        assert "python3.12.3" in suffixes
+
     def test_render_files_preserves_template_file_mode(self, tmp_path):
         """Test that matrix render_files propagates the template file mode to rendered output."""
         image_dir = tmp_path / "test-image"
@@ -678,3 +760,225 @@ class TestImageMatrix:
         plain_out = expected_path / "scripts" / "config.sh"
         assert exec_out.stat().st_mode & stat.S_IXUSR, "executable template should render to executable file"
         assert not (plain_out.stat().st_mode & stat.S_IXUSR), "non-executable template should stay non-executable"
+
+
+class TestLatestCombination:
+    def test_single_dependency_returns_max_version(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3", "3.10.14"]),
+            ],
+        )
+        assert matrix.latest_combination == {"python": "3.12.3"}
+
+    def test_multiple_dependencies_picks_max_per_axis(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"]),
+                RDependencyVersions(dependency="R", versions=["4.4.1", "4.3.3"]),
+            ],
+        )
+        assert matrix.latest_combination == {"python": "3.12.3", "R": "4.4.1"}
+
+    def test_dependency_constraints_resolve_then_pick_max(self, patch_requests_get):
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 2},
+                ),
+            ],
+        )
+        result = matrix.latest_combination
+        assert result is not None
+        assert "python" in result
+        # Highest of the two resolved versions, original-string from the resolved list
+        assert result["python"] == matrix.resolved_dependencies[0].versions[0]
+
+    def test_list_values_included_under_value_namespace(self):
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24", "1.25.1"]},
+        )
+        assert matrix.latest_combination == {"value:go_version": "1.25.1"}
+
+    def test_scalar_values_not_in_returned_dict(self):
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"])],
+            values={"pro_drivers_version": "2025.07.0"},
+        )
+        result = matrix.latest_combination
+        assert result == {"python": "3.12.3"}
+        assert "value:pro_drivers_version" not in result
+
+    def test_dependencies_and_list_values_combined(self):
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.5", "3.12.3"]),
+            ],
+            values={
+                "go_version": ["1.24", "1.25.1"],
+                "pro_drivers_version": "2025.07.0",
+            },
+        )
+        assert matrix.latest_combination == {
+            "python": "3.12.3",
+            "value:go_version": "1.25.1",
+        }
+
+    def test_preserves_original_version_string(self):
+        # Verify we record the candidate string, not packaging.Version's normalized form.
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12", "3.11.5"])],
+        )
+        # "3.12" should be picked; result should preserve "3.12" rather than "3.12.0"
+        result = matrix.latest_combination
+        assert result == {"python": "3.12"}
+
+    def test_unparseable_list_value_returns_none_and_warns(self, caplog):
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.11.5"])],
+            values={"flavor": ["alpha", "beta"]},
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        assert "value:flavor" in warnings[0].message
+        # Iteration is in-order; the first unparseable candidate ("alpha") is reported.
+        assert "alpha" in warnings[0].message
+
+    def test_unparseable_dependency_version_returns_none_and_warns(self, caplog):
+        # Build via dict so pydantic discriminator accepts arbitrary version strings.
+        matrix = ImageMatrix.model_validate(
+            {
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.12.3", "not-a-version"]},
+                ],
+            }
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        assert "python" in warnings[0].message
+        assert "not-a-version" in warnings[0].message
+
+    def test_first_failing_axis_short_circuits(self, caplog):
+        # Two unparseable axes: only the first one encountered should produce a warning.
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+            values={
+                "first": ["x", "y"],
+                "second": ["a", "b"],
+            },
+        )
+        # Discard construction-time warnings (e.g., missing OS) so we only assert
+        # on warnings emitted by the latest_combination property itself.
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        assert "value:first" in warnings[0].message
+        assert "value:second" not in warnings[0].message
+
+    def test_non_parsing_exception_returns_none_with_distinct_warning(self, caplog, mocker):
+        """A non-InvalidVersion exception during construction should not be reported as a parse failure."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+        )
+        mocker.patch(
+            "posit_bakery.config.image.matrix.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        # Should not falsely claim the version is unparseable.
+        assert "unparseable" not in message.lower()
+        # Should still surface the axis, candidate, and underlying error.
+        assert "python" in message
+        assert "3.12.3" in message
+        assert "disk on fire" in message
+
+    def test_empty_list_value_returns_none_and_warns(self, caplog):
+        """An empty list-typed value has no candidates; latest is undeterminable."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+            values={"flavor": []},
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            result = matrix.latest_combination
+        assert result is None
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        assert "value:flavor" in message
+        # Should not be reported as a parse failure — the list is empty, not malformed.
+        assert "unparseable" not in message.lower()
+
+    def test_resolved_dependencies_is_cached(self, patch_requests_get):
+        """Repeated reads should reuse the resolved list to avoid re-resolving constraints.
+
+        Constraint resolution (e.g., for Python) hits the network, so callers that
+        access ``resolved_dependencies`` multiple times — directly or via
+        ``latest_combination`` and ``to_image_versions`` — should hit the cache.
+        """
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 1},
+                ),
+            ],
+        )
+
+        first = matrix.resolved_dependencies
+        second = matrix.resolved_dependencies
+
+        # Same object reference proves the result was cached, not recomputed.
+        assert first is second
+
+    def test_resolved_dependencies_cache_invalidates_on_assignment(self, patch_requests_get):
+        """Mutating dependency fields should invalidate the cache so callers see fresh data."""
+        matrix = ImageMatrix(
+            dependencyConstraints=[
+                PythonDependencyConstraint(
+                    dependency="python",
+                    constraint={"latest": True, "count": 1},
+                ),
+            ],
+        )
+
+        before = matrix.resolved_dependencies
+        assert len(before) == 1
+
+        # Replace the constraints entirely; the cached list must not be reused.
+        matrix.dependencyConstraints = [
+            PythonDependencyConstraint(
+                dependency="python",
+                constraint={"latest": True, "count": 2},
+            ),
+            RDependencyConstraint(
+                dependency="R",
+                constraint={"latest": True, "count": 1},
+            ),
+        ]
+
+        after = matrix.resolved_dependencies
+        assert after is not before
+        assert {dv.dependency for dv in after} == {"python", "R"}

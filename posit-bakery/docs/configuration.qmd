@@ -309,6 +309,14 @@ This generates four image versions:
 - `r4.3.3-py3.12`
 - `r4.3.3-py3.11`
 
+#### Latest Tag Selection
+
+When every version-bearing axis (each `dependency`, each `dependencyConstraint` after resolution, and each list-typed entry in `values`) contains version-parseable strings, Bakery automatically marks the cartesian-product row at the maximum version of every axis as the "latest" combination. That row inherits the same `latest`-family tags applied to non-matrix versions — including the bare `latest` tag when paired with the primary OS and primary variant.
+
+In the example above, the latest combination is `r4.4.3-py3.12`. Built against the primary OS and primary variant (if any), it would receive `latest`, `<os>`, `<variant>`, and `<os>-<variant>` tags in addition to its existing matrix tags.
+
+If any axis has a non-version-parseable entry (e.g., a list-typed `values` axis containing `["alpha", "beta"]`), Bakery emits a warning naming the offending axis and value, and the matrix produces no `latest`-family tags. Scalar (non-list) `values` are constant across the cartesian product and do not affect the latest selection.
+
 ### DependencyConstraint
 
 A DependencyConstraint represents a software dependency installed in a specific image.
