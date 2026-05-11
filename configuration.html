@@ -1011,6 +1011,12 @@ window.onload = function () {
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">tagDisplayName</span><span class="kw">:</span><span class="at"> ubuntu24.04</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This generates four image versions: - <code>r4.4.3-py3.12</code> - <code>r4.4.3-py3.11</code> - <code>r4.3.3-py3.12</code> - <code>r4.3.3-py3.11</code></p>
 </section>
+<section id="latest-tag-selection" class="level4">
+<h4 class="anchored" data-anchor-id="latest-tag-selection">Latest Tag Selection</h4>
+<p>When every version-bearing axis (each <code>dependency</code>, each <code>dependencyConstraint</code> after resolution, and each list-typed entry in <code>values</code>) contains version-parseable strings, Bakery automatically marks the cartesian-product row at the maximum version of every axis as the “latest” combination. That row inherits the same <code>latest</code>-family tags applied to non-matrix versions — including the bare <code>latest</code> tag when paired with the primary OS and primary variant.</p>
+<p>In the example above, the latest combination is <code>r4.4.3-py3.12</code>. Built against the primary OS and primary variant (if any), it would receive <code>latest</code>, <code>&lt;os&gt;</code>, <code>&lt;variant&gt;</code>, and <code>&lt;os&gt;-&lt;variant&gt;</code> tags in addition to its existing matrix tags.</p>
+<p>If any axis has a non-version-parseable entry (e.g., a list-typed <code>values</code> axis containing <code>["alpha", "beta"]</code>), Bakery emits a warning naming the offending axis and value, and the matrix produces no <code>latest</code>-family tags. Scalar (non-list) <code>values</code> are constant across the cartesian product and do not affect the latest selection.</p>
+</section>
 </section>
 <section id="dependencyconstraint" class="level3">
 <h3 class="anchored" data-anchor-id="dependencyconstraint">DependencyConstraint</h3>
