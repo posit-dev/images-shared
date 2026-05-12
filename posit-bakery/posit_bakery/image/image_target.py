@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
@@ -21,6 +21,10 @@ from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
 from posit_bakery.settings import SETTINGS
+
+# Local under TYPE_CHECKING to avoid a circular import
+if TYPE_CHECKING:
+    from posit_bakery.config.image.parsed_version import ParsedVersion
 
 log = logging.getLogger(__name__)
 
@@ -316,7 +320,7 @@ class ImageTarget(BaseModel):
         return self.image_variant.primary
 
     @property
-    def push_sort_key(self) -> tuple:
+    def push_sort_key(self) -> tuple[str, bool, "ParsedVersion", int, str, str, str]:
         """Deterministic ordering for push to ordered-display registries (e.g. Docker Hub).
 
         Tuple semantics, ascending sort:
