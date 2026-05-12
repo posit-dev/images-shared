@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Annotated, Any
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field, field_serializer
 
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.settings import SETTINGS
 
 
 class BakeGroup(BaseModel):
@@ -281,7 +283,13 @@ class BakePlan(BaseModel):
         _set = self._set_opts_dict_to_str(_set)
 
         python_on_whales.docker.buildx.bake(
-            files=[self.bake_file.name], load=load, push=push, pull=pull, cache=cache, set=_set
+            files=[self.bake_file.name],
+            load=load,
+            push=push,
+            pull=pull,
+            cache=cache,
+            set=_set,
+            progress=False if SETTINGS.log_level >= logging.ERROR else "auto",
         )
         if clean_bakefile:
             self.remove()

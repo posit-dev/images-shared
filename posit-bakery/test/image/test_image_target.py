@@ -637,6 +637,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -670,6 +671,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -699,6 +701,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -728,6 +731,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -756,6 +760,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -785,6 +790,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": "my-stage",
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -814,6 +820,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": "image-stage",
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -844,6 +851,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": "version-stage",
             "secrets": [],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -912,6 +920,7 @@ class TestImageTarget:
             "platforms": ["linux/amd64"],
             "target": None,
             "secrets": ["id=github_token,env=GITHUB_TOKEN"],
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.build") as mock_build:

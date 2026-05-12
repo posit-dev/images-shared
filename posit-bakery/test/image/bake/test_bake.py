@@ -329,6 +329,7 @@ class TestBakePlan:
             "pull": False,
             "cache": True,
             "set": {},
+            "progress": "auto",
         }
 
         with patch("python_on_whales.docker.buildx.bake") as mock_bake:
