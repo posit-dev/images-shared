@@ -105,6 +105,9 @@ class OrasPlugin(BakeryToolPlugin):
         **kwargs,
     ) -> list[ToolCallResult]:
         """Execute ORAS merge workflow against the given image targets."""
+        # Sort so latest pushes last; Docker Hub displays tags by push-time order.
+        targets = sorted(targets, key=lambda t: t.push_sort_key)
+        log.info("ORAS merge order: %s", ", ".join(str(t) for t in targets))
         results = []
 
         for target in targets:

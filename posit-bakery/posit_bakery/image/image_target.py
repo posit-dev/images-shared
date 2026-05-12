@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
@@ -13,6 +13,7 @@ from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validat
 from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.build_secret import BuildSecret
+from posit_bakery.config.image.parsed_version import version_sort_key
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
@@ -20,6 +21,10 @@ from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE
 from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
 from posit_bakery.settings import SETTINGS
+
+# Local under TYPE_CHECKING to avoid a circular import
+if TYPE_CHECKING:
+    from posit_bakery.config.image.parsed_version import ParsedVersion
 
 log = logging.getLogger(__name__)
 
@@ -313,6 +318,31 @@ class ImageTarget(BaseModel):
         if self.image_variant is None:
             return True
         return self.image_variant.primary
+
+    @property
+    def push_sort_key(self) -> tuple[str, bool, "ParsedVersion", int, str, str, str]:
+        """Deterministic ordering for push to ordered-display registries (e.g. Docker Hub).
+
+        Tuple semantics, ascending sort:
+          1. image_name        — group all targets of one image together.
+          2. is_latest         — False before True; latest target pushed LAST in its group.
+          3. version           — ParsedVersion (semver §11) or MIN for matrix/unparseable.
+          4. primary_score     — 0..2; (primary OS + primary variant) target pushes LAST
+                                 within a version, so its simplest tag is most-recent.
+          5. version.name      — stable lex tiebreaker (load-bearing for matrix rows that
+                                 collapse to MIN under (3)).
+          6. variant.name      — stable tiebreaker.
+          7. os.name           — stable tiebreaker.
+        """
+        return (
+            self.image_name,
+            self.is_latest,
+            version_sort_key(self.image_version),
+            int(self.is_primary_os) + int(self.is_primary_variant),
+            self.image_version.name,
+            self.image_variant.name if self.image_variant else "",
+            self.image_os.name if self.image_os else "",
+        )
 
     @computed_field
     @property
