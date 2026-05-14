@@ -40,6 +40,11 @@ on:
         default: 1
         required: false
         type: number
+      cache:
+        description: "Whether to use registry caching for builds [default: true]"
+        default: true
+        required: false
+        type: boolean
       amd64-builder:
         description: "Runner label for amd64 builds"
         default: "ubuntu-latest-4x"
@@ -187,9 +192,10 @@ jobs:
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           REGISTRY_OWNER: ${{ github.repository_owner }}
+          CACHE: ${{ inputs.cache }}
         run: |
           CACHE_FLAGS=()
-          if [ "$IS_FORK" != "true" ]; then
+          if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then
             CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
           fi
           bakery build \
