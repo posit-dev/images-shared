@@ -48,6 +48,11 @@ on:
         default: 1
         required: false
         type: number
+      cache:
+        description: "Whether to use registry caching for builds [default: true]"
+        default: true
+        required: false
+        type: boolean
       runs-on:
         description: "The type of runner to use [default: ubuntu-latest]"
         default: "ubuntu-latest"
@@ -193,14 +198,19 @@ jobs:
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           CONTEXT: ${{ inputs.context }}
+          CACHE: ${{ inputs.cache }}
         run: |
+          CACHE_FLAGS=()
+          if [ "$CACHE" = "true" ]; then
+            CACHE_FLAGS=(--cache-registry "$REGISTRY")
+          fi
           bakery build --load --pull \
             --retry "$RETRY" \
             --image-name "^${IMAGE_NAME}$" \
             --image-version "$IMAGE_VERSION" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            --cache-registry "$REGISTRY" \
+            "${CACHE_FLAGS[@]}" \
             --context "$CONTEXT"
 
       - name: Test
