@@ -138,6 +138,174 @@ jobs:
               -exec sed -i "s/${OLD_EDITION}/${EDITION}/g" {} +
           fi
 
+      - name: Update Supported tags sections
+        env:
+          IMAGES: ${{ inputs.images }}
+        run: |
+          # Regenerate the "## Supported tags" bullet list in each image's
+          # README from the current bakery build plan. Skips images that lack
+          # a README.md or that don't have a Supported tags section.
+          #
+          # Curation rules (matching the curated section style):
+          # - For the latest version, emit a bullet for every (variant, OS)
+          #   Containerfile. For older versions, emit only the std + primary
+          #   OS Containerfile.
+          # - Within each bullet's tag set, drop tags ending in "-std" (they
+          #   are redundant with the bare form). For non-latest versions,
+          #   also drop "<verbose-version>-ubuntu-*" tags (keep only the
+          #   "<display-version>-ubuntu-*" form).
+          # - Sort: newest version first; within a version, primary OS
+          #   before non-primary; within an OS, std before min.
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from collections import defaultdict
+          from pathlib import Path
+
+          images = os.environ["IMAGES"].split()
+
+          # Resolve repo URL from origin so Containerfile links are correct.
+          remote = subprocess.check_output(
+              ["git", "remote", "get-url", "origin"], text=True
+          ).strip()
+          if remote.startswith("git@github.com:"):
+              remote = "https://github.com/" + remote[len("git@github.com:"):]
+          if remote.endswith(".git"):
+              remote = remote[:-4]
+
+          plan_out = subprocess.check_output(["bakery", "build", "--plan"], text=True)
+          plan = json.loads(plan_out[plan_out.find("{"):])
+          targets = plan["target"]
+
+          # Match the heading and the contiguous bullet block that follows it.
+          # Trailing prose (e.g. "For a full list of available tags...") is
+          # preserved because it is separated from the bullets by a blank line.
+          bullet_re = re.compile(
+              r"(?m)^(## Supported tags\s*\n\n)(?:- \[.*\n)+"
+          )
+
+          def display_version(tags):
+              for t in tags:
+                  m = re.match(r"^(\d{4}\.\d{2}\.\d+)", t)
+                  if m:
+                      return m.group(1)
+              return None
+
+          def verbose_version(tags, display):
+              for t in tags:
+                  m = re.match(rf"^({re.escape(display)}-\d+)(?:-|$)", t)
+                  if m:
+                      return m.group(1)
+              return None
+
+          def variant_of(cf):
+              if cf.endswith(".std"):
+                  return "std"
+              if cf.endswith(".min"):
+                  return "min"
+              return None
+
+          def is_primary_os(tags, display, variant):
+              # The std + primary_os Containerfile owns the bare display tag;
+              # the min + primary_os Containerfile owns "<display>-min". Other
+              # combinations always carry an "-ubuntu-*" suffix.
+              if variant == "std":
+                  return display in tags
+              if variant == "min":
+                  return f"{display}-min" in tags
+              return False
+
+          def curate_tags(tags, is_latest_version, verbose):
+              kept = []
+              for t in sorted(tags):
+                  if t.endswith("-std"):
+                      continue
+                  if not is_latest_version and verbose and t.startswith(f"{verbose}-ubuntu"):
+                      continue
+                  kept.append(t)
+              return kept
+
+          for image in images:
+              readme = Path(image) / "README.md"
+              if not readme.exists():
+                  print(f"::notice::Skipping {image}: no README.md")
+                  continue
+              text = readme.read_text()
+              if not bullet_re.search(text):
+                  print(f"::notice::Skipping {image}: no Supported tags section")
+                  continue
+
+              groups: dict[str, set[str]] = defaultdict(set)
+              for name, target in targets.items():
+                  if not name.startswith(f"{image}-"):
+                      continue
+                  cf = target.get("dockerfile") or ""
+                  if not cf:
+                      continue
+                  for tag in target.get("tags", []):
+                      if not tag.startswith("docker.io/") or ":" not in tag:
+                          continue
+                      groups[cf].add(tag.split(":", 1)[1])
+
+              if not groups:
+                  print(f"::warning::No build plan targets found for {image}")
+                  continue
+
+              # Latest version owns the bare "latest" floating tag.
+              latest_display = None
+              for cf, tags in groups.items():
+                  if "latest" in tags:
+                      latest_display = display_version(tags)
+                      break
+
+              selected: dict[str, set[str]] = {}
+              for cf, tags in groups.items():
+                  disp = display_version(tags)
+                  if not disp:
+                      continue
+                  var = variant_of(cf)
+                  if disp == latest_display:
+                      selected[cf] = tags
+                  elif var == "std" and is_primary_os(tags, disp, "std"):
+                      selected[cf] = tags
+
+              def sort_key(cf: str):
+                  tags = selected[cf]
+                  disp = display_version(tags)
+                  var = variant_of(cf)
+                  primary = is_primary_os(tags, disp, var)
+                  ver_parts = tuple(int(x) for x in disp.split("."))
+                  return (
+                      tuple(-x for x in ver_parts),  # newer version first
+                      not primary,                    # primary OS first
+                      var != "std",                   # std before min
+                  )
+
+              bullets = []
+              for cf in sorted(selected, key=sort_key):
+                  tags = selected[cf]
+                  disp = display_version(tags)
+                  verb = verbose_version(tags, disp) if disp else None
+                  kept = curate_tags(tags, disp == latest_display, verb)
+                  if not kept:
+                      continue
+                  tag_str = ", ".join(f"`{t}`" for t in kept)
+                  bullets.append(f"- [{tag_str}]({remote}/blob/main/{cf})")
+              new_block = "\n".join(bullets) + "\n"
+
+              new_text = bullet_re.sub(
+                  lambda m: m.group(1) + new_block, text, count=1
+              )
+
+              if new_text != text:
+                  readme.write_text(new_text)
+                  print(f"::notice::Updated Supported tags in {readme}")
+              else:
+                  print(f"::notice::No changes for {readme}")
+          PY
+
       - name: Create pull request
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
