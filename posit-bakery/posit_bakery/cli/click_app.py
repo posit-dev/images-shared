@@ -23,5 +23,18 @@ def _disable_rich_help(cmd: click.Command) -> None:
             _disable_rich_help(sub)
 
 
+def _stabilize_path_defaults(cmd: click.Command) -> None:
+    # `--context` defaults to the cwd captured at import time (auto_path()),
+    # which would leak the docs-build directory into rendered help. Render a
+    # stable placeholder instead.
+    for param in getattr(cmd, "params", []):
+        if param.name == "context":
+            param.show_default = "."
+    if isinstance(cmd, click.Group):
+        for sub in cmd.commands.values():
+            _stabilize_path_defaults(sub)
+
+
 click_app = typer.main.get_command(app)
 _disable_rich_help(click_app)
+_stabilize_path_defaults(click_app)
