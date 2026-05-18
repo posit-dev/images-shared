@@ -26,8 +26,6 @@ website:
         href: "templating.qmd"
       - text: "Architecture"
         href: "architecture.qmd"
-      - text: "Cross-Repository Workflows"
-        href: "cross-repo-workflows.qmd"
 
   page-footer:
     left:

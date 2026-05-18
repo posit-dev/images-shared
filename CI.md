@@ -8,7 +8,7 @@ This repository provides reusable GitHub Actions workflows and composite actions
 - [images-examples](https://github.com/posit-dev/images-examples)
 - [images-specialized](https://github.com/posit-dev/images-specialized)
 
-For the cross-repo dispatch chain (product repo → image repo → helm chart), see [Cross-Repository Workflows](https://posit-dev.github.io/images-shared/cross-repo-workflows.html).
+For the cross-repo dispatch chain (product repo → image repo → helm chart), see [Cross-repository workflows](./CI_CROSS_REPO_WORKFLOWS.md).
 
 ## Reusable workflows
 
