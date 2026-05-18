@@ -37,6 +37,8 @@ website:
             contents: "reference/config.*.qmd"
           - section: "image"
             contents: "reference/image.*.qmd"
+          - section: "plugins"
+            contents: "reference/plugins.*.qmd"
           - section: "registry_management"
             contents: "reference/registry_management.*.qmd"
           - section: "error"

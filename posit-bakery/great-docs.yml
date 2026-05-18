@@ -32,6 +32,10 @@ reference:
       desc: Image build targets and plans
       contents:
         - image
+    - title: Plugins
+      desc: Protocol for extending bakery with custom tools
+      contents:
+        - plugins
     - title: Registry Management
       desc: Clients for DockerHub and GHCR
       contents:
