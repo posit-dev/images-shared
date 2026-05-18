@@ -32,6 +32,19 @@ reference:
       desc: Image build targets and plans
       contents:
         - image
+    - title: Registry Management
+      desc: Clients for DockerHub and GHCR
+      contents:
+        - registry_management.dockerhub.DockerhubClient
+        - registry_management.dockerhub.clean_registry
+        - registry_management.dockerhub.push_readmes
+        - registry_management.ghcr.GHCRClient
+        - registry_management.ghcr.clean_registry
+        - registry_management.ghcr.clean_temporary_artifacts
+        - registry_management.ghcr.GHCRPackageVersion
+        - registry_management.ghcr.GHCRPackageVersionMetadata
+        - registry_management.ghcr.GHCRPackageVersionContainerMetadata
+        - registry_management.ghcr.GHCRPackageVersions
     - title: Errors
       desc: Exception hierarchy
       contents:
