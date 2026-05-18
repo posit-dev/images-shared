@@ -1,0 +1,55 @@
+display_name: Posit Bakery
+changelog:
+  enabled: false
+hero: false
+markdown_pages: false
+
+source:
+  branch: main
+
+inline_methods: true
+
+auto_include:
+  - config
+
+cli:
+  enabled: true
+  module: posit_bakery.cli.click_app
+  name: click_app
+
+exclude:
+  - cli
+  - main
+  - app
+
+reference:
+  sections:
+    - title: Configuration
+      desc: Models for bakery.yaml
+      contents:
+        - config
+    - title: Image
+      desc: Image build targets and plans
+      contents:
+        - image
+    - title: Plugins
+      desc: Protocol for extending bakery with custom tools
+      contents:
+        - plugins
+    - title: Registry Management
+      desc: Clients for DockerHub and GHCR
+      contents:
+        - registry_management.dockerhub.DockerhubClient
+        - registry_management.dockerhub.clean_registry
+        - registry_management.dockerhub.push_readmes
+        - registry_management.ghcr.GHCRClient
+        - registry_management.ghcr.clean_registry
+        - registry_management.ghcr.clean_temporary_artifacts
+        - registry_management.ghcr.GHCRPackageVersion
+        - registry_management.ghcr.GHCRPackageVersionMetadata
+        - registry_management.ghcr.GHCRPackageVersionContainerMetadata
+        - registry_management.ghcr.GHCRPackageVersions
+    - title: Errors
+      desc: Exception hierarchy
+      contents:
+        - error
