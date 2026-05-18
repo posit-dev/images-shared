@@ -1,0 +1,64 @@
+"""Unit tests for the `bakery dgoss run` CLI command.
+
+Specifically guards the platform normalization step. If the caller passes a
+value that already includes the `linux/` prefix, the command must not prepend
+the prefix a second time. The shared GitHub Actions workflows pass platform
+values straight through from `bakery ci matrix` output (e.g. `linux/amd64`),
+and a double-prefixed value (e.g. `linux/linux/amd64`) causes Docker to
+reject the run.
+"""
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+from typer.testing import CliRunner
+
+from posit_bakery.cli.main import app
+
+runner = CliRunner()
+
+BASIC_CONTEXT = str(Path(__file__).parent.parent.parent.parent / "resources" / "basic")
+
+
+@pytest.fixture
+def mocked_dgoss_run():
+    """Mock BakeryConfig and DGossPlugin.execute so the CLI can run end-to-end
+    without needing a Docker daemon or built images."""
+    with patch("posit_bakery.plugins.builtin.dgoss.BakeryConfig") as mock_config:
+        instance = MagicMock()
+        instance.base_path = Path(BASIC_CONTEXT)
+        instance.targets = []
+        mock_config.from_context.return_value = instance
+        with (
+            patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.execute") as mock_execute,
+            patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.results"),
+        ):
+            mock_execute.return_value = []
+            yield mock_config, mock_execute
+
+
+class TestDgossRunPlatformNormalization:
+    """Regression coverage: `--image-platform linux/amd64` must not become
+    `linux/linux/amd64`."""
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("amd64", "linux/amd64"),
+            ("arm64", "linux/arm64"),
+            ("linux/amd64", "linux/amd64"),
+            ("linux/arm64", "linux/arm64"),
+        ],
+    )
+    def test_normalizes_platform(self, mocked_dgoss_run, given, expected):
+        mock_config, mock_execute = mocked_dgoss_run
+        result = runner.invoke(
+            app,
+            ["dgoss", "run", "--context", BASIC_CONTEXT, "--image-platform", given],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_platform == [expected]
+        assert mock_execute.call_args[1]["platform"] == expected

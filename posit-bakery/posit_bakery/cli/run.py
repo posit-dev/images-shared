@@ -141,7 +141,8 @@ def dgoss(
 
     # Autoselect host architecture platform if not specified.
     image_platform = image_platform or SETTINGS.architecture
-    image_platform = f"linux/{image_platform}"
+    if not image_platform.startswith("linux/"):
+        image_platform = f"linux/{image_platform}"
 
     settings = BakerySettings(
         filter=BakeryConfigFilter(

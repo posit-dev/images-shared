@@ -140,7 +140,8 @@ class DGossPlugin(BakeryToolPlugin):
             """
             # Autoselect host architecture platform if not specified.
             platform = image_platform or SETTINGS.architecture
-            platform = f"linux/{platform}"
+            if not platform.startswith("linux/"):
+                platform = f"linux/{platform}"
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
