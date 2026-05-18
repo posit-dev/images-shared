@@ -27,7 +27,13 @@ Full documentation is available at **[posit-dev.github.io/images-shared](https:/
 
 ## Installation
 
-Install `bakery` using `uv tool`:
+Install `bakery` from [PyPI](https://pypi.org/project/posit-bakery/) using `uv tool`:
+
+```bash
+uv tool install posit-bakery
+```
+
+To install an unreleased development version directly from GitHub:
 
 ```bash
 uv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
