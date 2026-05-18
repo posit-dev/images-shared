@@ -1,6 +1,6 @@
 [project]
 name = "posit-bakery"
-description = "CLI for building, testing, and managing matrixed container images with variant, version, and OS support via Docker Buildx Bake."
+description = "CLI for building, testing, and managing multidimensional container images with variant, version, and OS support."
 authors = [
     { name = "Ian H. Pittwood", email = "ian.pittwood@posit.co" },
     { name = "Ben Schwedler", email = "ben@posit.co" },
