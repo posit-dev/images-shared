@@ -180,7 +180,7 @@
     "href": "index.html#installation",
     "title": "Getting Started",
     "section": "Installation",
-    "text": "Installation\nInstall bakery using uv tool:\nuv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'",
+    "text": "Installation\nInstall bakery from PyPI using uv tool:\nuv tool install posit-bakery\nTo install an unreleased development version directly from GitHub:\nuv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'",
     "crumbs": [
       "Home",
       "Getting Started"
