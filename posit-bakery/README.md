@@ -1,3 +1,17 @@
+<p>
+<a href="https://posit.co/">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.posit.co/platform/containers/logos/Posit-Logos-2024_horiz-reverse-quarto-web.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://cdn.posit.co/platform/containers/logos/Posit-Logos-2024_horiz-full-color-quarto-web.svg">
+  <img alt="Posit Logo" src="https://cdn.posit.co/platform/containers/logos/Posit-Logos-2024_horiz-full-color-quarto-web.svg" height="120">
+</picture>
+</a>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://posit-dev.github.io/images-shared/">
+<img alt="bakery" src="docs/images/bakery-logo.svg" height="180">
+</a>
+</p>
+
 # Bakery
 
 The [bakery](./posit_bakery/) command line interface (CLI) binds together various [tools](#3rd-party-tools) to manage a matrixed build of container images.
