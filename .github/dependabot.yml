@@ -6,7 +6,7 @@ updates:
       - "/.github/actions/*"
       - "/setup-*"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       actions:
         patterns:
