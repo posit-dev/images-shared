@@ -27,26 +27,12 @@ reference:
     - title: Configuration
       desc: Models for bakery.yaml
       contents:
-        - config.BakeryConfig
-        - config.BakeryConfigDocument
-        - config.Image
-        - config.ImageVariant
-        - config.ImageVersion
-        - config.ImageVersionOS
-        - config.BaseRegistry
-        - config.Registry
-        - config.Repository
-        - config.TagPattern
+        - config
     - title: Image
       desc: Image build targets and plans
       contents:
-        - image.BakePlan
-        - image.ImageTarget
-        - image.ImageBuildStrategy
+        - image
     - title: Errors
       desc: Exception hierarchy
       contents:
-        - error.BakeryError
-        - error.BakeryToolError
-        - error.BakeryToolRuntimeError
-        - error.BakeryBuildErrorGroup
+        - error
