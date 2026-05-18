@@ -19,7 +19,7 @@ graph TD
 |---|---|
 | Thick line | `workflow_dispatch` (cross-repo trigger via GitHub App) |
 | Dashed line | `workflow_call` (reusable workflow in the same CI run) |
-| Thin line | Direct action: push, Flux sync, or PR merge |
+| Thin line | Direct action: push, Flux sync, or pull request merge |
 | Rectangle | Repository or workflow |
 | Cylinder | Registry |
 | Stadium | Environment |
@@ -34,7 +34,7 @@ graph TD
 | **posit-package-manager-automation** | `posit-dev/images-package-manager`<br/>`rstudio/package-manager`<br/>`rstudio/helm` | Dispatches downstream from Posit Package Manager (PPM) releases |
 | **posit-platform** | `posit-dev/images-shared`<br/>`rstudio/helm` | Platform team operations, centralized dispatch |
 
-Product GitHub Apps own the dispatch chain from product release through to Helm chart update. **posit-platform** handles platform-team-owned operations (e.g., scheduled rebuilds, cache cleanup).
+Product GitHub Apps own the dispatch chain from product release through to Helm chart update. `posit-platform` handles platform-team-owned operations (e.g., scheduled rebuilds, cache cleanup).
 
 ## Production release flow
 
