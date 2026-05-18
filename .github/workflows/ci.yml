@@ -31,12 +31,13 @@ jobs:
       - bakery-native
       - bakery-pr
       - release
+      - pypi-publish
       - zizmor
 
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # v1.2.2
         with:
-          allowed-skips: bakery-pr, lint
+          allowed-skips: bakery-pr, lint, pypi-publish
           jobs: ${{ toJSON(needs) }}
 
   lint:
@@ -269,15 +270,43 @@ jobs:
           retention-days: 7
           overwrite: true
 
-      - name: Create a release draft
+      - name: Upload release dist artifact
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: bakery-dist
+          path: ./posit-bakery/dist
+          retention-days: 7
+
+      - name: Create a GitHub release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           gh release create "$REF_NAME" \
-            --draft \
             --generate-notes \
             --latest
           gh release upload "$REF_NAME" \
             ./posit-bakery/dist/*
+
+  pypi-publish:
+    name: Publish to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/posit-bakery
+    permissions:
+      id-token: write  # required for PyPI Trusted Publisher OIDC
+    steps:
+      - name: Download release dist artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
+        with:
+          name: bakery-dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
