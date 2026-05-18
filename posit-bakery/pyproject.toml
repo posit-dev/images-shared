@@ -1,6 +1,6 @@
 [project]
 name = "posit-bakery"
-description = "Tools for extracting and manipulating image build artifacts for various commands"
+description = "CLI for building, testing, and managing multidimensional container images with variant, version, and OS support."
 authors = [
     { name = "Ian H. Pittwood", email = "ian.pittwood@posit.co" },
     { name = "Ben Schwedler", email = "ben@posit.co" },
@@ -9,9 +9,27 @@ maintainers = [
     { name = "Posit Container Team", email = "docker@posit.co" },
 ]
 license = "MIT"
+license-files = ["LICENSE.md"]
 readme = "README.md"
+keywords = ["docker", "container", "image", "build", "bake", "buildx", "posit", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Software Distribution",
+]
 
-requires-python = "<4,>=3.10"
+requires-python = ">=3.10"
 dependencies = [
     "typer~=0.21.1",
     "jinja2~=3.1.6",
@@ -26,6 +44,13 @@ dependencies = [
     "pygithub>=2.8.1,<3.0.0",
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://posit-dev.github.io/images-shared/"
+Documentation = "https://posit-dev.github.io/images-shared/"
+Repository = "https://github.com/posit-dev/images-shared"
+Issues = "https://github.com/posit-dev/images-shared/issues"
+Changelog = "https://github.com/posit-dev/images-shared/releases"
 
 [project.scripts]
 bakery = "posit_bakery.cli.main:app"
@@ -42,6 +67,17 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "posit_bakery/",
+    "README.md",
+    "LICENSE.md",
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["posit_bakery"]
 
 [tool.ruff]
 line-length = 120
