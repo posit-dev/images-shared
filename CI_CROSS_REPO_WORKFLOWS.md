@@ -4,9 +4,6 @@ Repository relationships and workflow dispatch chains for the Posit container im
 
 For the reusable workflows that these dispatch chains call (inputs, secrets, examples), see [`CI.md`](./CI.md).
 
-> [!NOTE]
-> This document represents the **desired future state** of the cross-repo workflow architecture. Not all workflows shown here are implemented yet. See [posit-dev/images-shared#302](https://github.com/posit-dev/images-shared/issues/302) for implementation status and open PRs.
-
 ## Legend
 
 ```mermaid
