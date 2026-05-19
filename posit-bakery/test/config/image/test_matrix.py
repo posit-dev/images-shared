@@ -651,6 +651,23 @@ class TestImageMatrix:
         # "alpha" and "beta" are unparseable → separate groups → both latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
+    def test_to_image_versions_values_only_matrix_groups_prefixed_versions_by_stripped_form(self):
+        """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
+        same form must land in the same group, even though they don't parse as a standalone
+        ``DependencyVersion``. Otherwise the two rows would both be flagged latest-patch and
+        emit the same stripped tag, racing on push.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["go1.24.1", "go1.24.2", "go1.25.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (go1.24, *) collapses to one row — go1.24.2; (go1.25, *) is its own group — go1.25.0.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["build"] for iv in latest_patch_versions}
+        assert latest_values == {"go1.24.2", "go1.25.0"}
+
     def test_check_duplicate_dependency_constraints(self):
         """Test that duplicate dependency constraints raise error."""
         with pytest.raises(

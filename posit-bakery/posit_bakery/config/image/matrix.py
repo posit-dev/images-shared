@@ -24,7 +24,7 @@ from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
-from posit_bakery.config.templating.render import normalize_rendered_output
+from posit_bakery.config.templating.render import normalize_rendered_output, strip_patch
 from posit_bakery.const import JINJA2_TEMPLATE_EXTENSIONS
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 from .variant import ImageVariant
@@ -34,6 +34,8 @@ from .version_os import ImageVersionOS
 log = logging.getLogger(__name__)
 
 DEFAULT_MATRIX_SUBPATH: Literal["matrix"] = "matrix"
+
+_VERSION_SUBSTRING_RE = re.compile(r"\d+(?:\.\d+)+")
 
 
 def generate_default_name_pattern(data: dict[str, Any]) -> str:
@@ -839,52 +841,57 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     def _minor_group_key(product: dict[str, list | dict]) -> tuple:
         """Group key for latest-patch logic.
 
-        Dependencies group by ``(dep_name, (major, minor))``. Values group by
-        ``(key, (major, minor))`` when the value parses as a versioned string with a minor
-        component — matching what :func:`stripPatch` would collapse — and otherwise by
-        ``(key, raw_str)``. This keeps grouping consistent with the rendered tag, so two
-        values that ``stripPatch`` collapses to the same string land in the same group and
-        only the highest-patch row is selected.
+        Apply :func:`strip_patch` to each axis value to derive the group key. Two rows
+        that would render to the same stripped tag share a group, so only the
+        highest-patch row in each group is later selected as the latest patch.
 
-        ``InvalidVersion`` from an unparseable *dependency* version propagates to the caller;
-        unparseable values fall back to the raw string.
+        Dependency versions are validated as parseable here so the caller can
+        short-circuit on bad input; the resulting group key is still the stripped form
+        for consistency with the rendered tag (covering prefix-bearing strings like
+        ``v3.12.3`` that the regex still collapses correctly).
         """
         dep_parts = []
         for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
-            v = DependencyVersion(dep.versions[0])
-            dep_parts.append((dep.dependency, (v.major, v.minor)))
+            # Validate parseability so unparseable deps short-circuit the caller.
+            DependencyVersion(dep.versions[0])
+            dep_parts.append((dep.dependency, strip_patch(dep.versions[0])))
 
-        value_parts = []
-        for k, val in sorted(product["values"].items()):
-            value_str = str(val)
-            try:
-                parsed = DependencyVersion(value_str)
-            except InvalidVersion:
-                value_parts.append((k, value_str))
-                continue
-            if parsed.minor is None:
-                value_parts.append((k, value_str))
-            else:
-                value_parts.append((k, (parsed.major, parsed.minor)))
+        value_parts = [(k, strip_patch(str(val))) for k, val in sorted(product["values"].items())]
 
         return tuple(dep_parts), tuple(value_parts)
 
     @staticmethod
     def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
-        """Sort key for finding the row with the maximum patch versions within a group.
+        """Sort key for finding the highest-patch row within a group.
 
-        Includes parseable list-typed values so version-like value axes (e.g.
-        ``go_version: [1.24.1, 1.24.2]``) participate in latest-patch selection alongside
-        dependency axes. Within a single group all values at a given axis share the same
-        parseability — they were grouped by it — so mixed-type tuples never compare here.
+        Extract the first numeric ``MAJOR.MINOR[.PATCH...]`` substring from each axis
+        value and parse it as a ``DependencyVersion`` for comparison. Within a single
+        group all rows share the same stripped form, so either every row produces an
+        extractable version (when the stripped form contains a numeric version segment)
+        or the group has only one row (when there is no numeric segment to compete on).
+        That invariant prevents mixed-type comparisons during ``max()``.
         """
         sort_keys = []
         for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
             sort_keys.append(DependencyVersion(dep.versions[0]))
         for k, val in sorted(product["values"].items()):
             value_str = str(val)
-            try:
-                sort_keys.append(DependencyVersion(value_str))
-            except InvalidVersion:
-                sort_keys.append(value_str)
+            extracted = ImageMatrix._extract_version(value_str)
+            sort_keys.append(extracted if extracted is not None else value_str)
         return tuple(sort_keys)
+
+    @staticmethod
+    def _extract_version(s: str) -> DependencyVersion | None:
+        """Return the first ``\\d+(\\.\\d+)+`` substring parsed as a ``DependencyVersion``.
+
+        Lets prefix-bearing values like ``"go1.24.10"`` participate in patch ordering
+        alongside plain ``"1.24.10"``. Returns ``None`` when no numeric version segment
+        is present or the segment fails to parse.
+        """
+        match = _VERSION_SUBSTRING_RE.search(s)
+        if match is None:
+            return None
+        try:
+            return DependencyVersion(match.group())
+        except InvalidVersion:
+            return None

@@ -5,6 +5,18 @@ import jinja2
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryTemplateError
 
+_STRIP_PATCH_RE = re.compile(r"(\d+\.\d+)\.\d+")
+
+
+def strip_patch(s: str) -> str:
+    """Collapse ``MAJOR.MINOR.PATCH`` groups in a string to ``MAJOR.MINOR``.
+
+    Shared between the ``stripPatch`` Jinja filter and matrix latest-patch grouping so
+    the two stay consistent — anything that would render the same after the filter must
+    land in the same group, otherwise rows collide on the rendered tag.
+    """
+    return _STRIP_PATCH_RE.sub(r"\1", s)
+
 
 def raise_template_exception(message: str) -> None:
     """Raises a ValueError with the provided message.
@@ -25,7 +37,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env = jinja2.Environment(**kwargs)
     env.filters["tagSafe"] = lambda s: re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", s).strip("-._")
     env.filters["stripMetadata"] = lambda s: re.sub(r"[+-](?=[^+-]*$).*", "", s)
-    env.filters["stripPatch"] = lambda s: re.sub(r"(\d+\.\d+)\.\d+", r"\1", s)
+    env.filters["stripPatch"] = strip_patch
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
     env.filters["quote"] = lambda s: '"' + s + '"'
