@@ -188,12 +188,12 @@ flowchart TD
     results[/"Test & Scan Results"/]
 
     lint[[hadolint]]
-    runLint[[bakery run lint]]
+    runLint[[bakery hadolint run]]
     runLint --> lint
     containerfile -.-> lint -.-> results
 
     dgoss[[dgoss]]
-    runDgoss[[bakery run dgoss]]
+    runDgoss[[bakery dgoss run]]
     image & tests -.-> dgoss
     runDgoss --> dgoss
     dgoss -.-> results
@@ -208,7 +208,7 @@ flowchart TD
 
     %% Mark what we are working on and is in flight %%
     class inprogress,snyk progress
-    class planned,lint,openscap,results todo
+    class planned,openscap,results todo
 ```
 
 ### Run Security Scans
@@ -221,17 +221,17 @@ flowchart TD
     results[/"Test & Scan results"/]
 
     trivy[[trivy]]
-    runTrivy[[bakery run trivy]]
+    runTrivy[[bakery trivy run]]
     runTrivy --> trivy
     image -.-> trivy -.-> results
 
     wizcli[[wizcli]]
-    runWizcli[[bakery run wiz]]
+    runWizcli[[bakery wizcli scan]]
     runWizcli --> wizcli
     image -.-> wizcli -.-> results
 
     openscap[[openscap]]
-    runOpenscap[[bakery run openscap]]
+    runOpenscap[[bakery openscap run]]
     runOpenscap --> openscap
     image -.-> openscap -.-> results
 
@@ -244,7 +244,7 @@ flowchart TD
     class trivy,openscap,wizcli external
 
     %% Mark what we are working on and is in flight %%
-    class inprogress,trivy,wizcli todo
+    class inprogress,trivy todo
     class openscap,results todo
 ```
 
@@ -288,7 +288,7 @@ flowchart TD
 
     sign["Sign Image(s)"]
     push_temp["Push to Temporary Registry"]
-    merge["Merge to OCI Index"]
+    merge[["bakery oras merge"]]
     push["Push Artifacts to Final Registry & Reporting Platform"]
     amd64_image -.-> push_temp
     arm64_image -.-> push_temp
@@ -303,6 +303,8 @@ flowchart TD
     classDef external fill:grey,color:#fff
     classDef progress stroke-dasharray: 2 2
     classDef todo stroke-dasharray: 3 8
+
+    class merge tooling
 
     %% Mark what we are working on and is in flight %%
     class results,sign todo

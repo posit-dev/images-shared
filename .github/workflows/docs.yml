@@ -3,7 +3,8 @@ on:
   push:
     branches: main
     paths:
-      - 'posit-bakery/docs/**'
+      - 'posit-bakery/**'
+      - '.github/workflows/docs.yml'
 
 name: Publish Docs
 
@@ -15,6 +16,24 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          python-version-file: posit-bakery/pyproject.toml
+          enable-cache: false
+
+      - name: Install docs dependencies
+        working-directory: posit-bakery
+        run: uv sync --group docs
+
+      - name: Generate API reference
+        working-directory: posit-bakery
+        run: |
+          uv run --group docs great-docs build --project-path .
+          rm -rf docs/reference
+          cp -r great-docs/reference docs/reference
+          rm -rf great-docs
 
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b  # v2.2.0
