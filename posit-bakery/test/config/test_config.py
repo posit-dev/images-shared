@@ -1086,7 +1086,7 @@ class TestBakeryConfig:
                 apt-mark hold quarto && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/* && \\
-                GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet
+                GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt
         """)
         assert (
             expected_std_containerfile
