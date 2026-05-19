@@ -1940,25 +1940,25 @@ class TestQuartoMacros:
             pytest.param(
                 True,
                 None,
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --update-path',
                 id="with-update-path",
             ),
             pytest.param(
                 False,
                 None,
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt',
                 id="without-update-path",
             ),
             pytest.param(
                 False,
                 "/root",
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt',
                 id="with-home-path",
             ),
             pytest.param(
                 True,
                 "/root",
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --quiet --update-path',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --update-path',
                 id="with-home-path-and-update-path",
             ),
         ],
@@ -2018,7 +2018,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt"""
                 ),
                 id="with-tinytex",
             ),
@@ -2035,7 +2035,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
                 ),
                 id="with-tinytex-update-path",
             ),
@@ -2052,7 +2052,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt"""
                 ),
                 id="with-tinytex-home-path",
             ),
@@ -2069,7 +2069,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
                 ),
                 id="with-tinytex-home-path-update-path",
             ),
@@ -2122,7 +2122,7 @@ class TestQuartoMacros:
                 xz && \\
             dnf versionlock add quarto && \\
             dnf clean all -yq && \\
-            GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+            GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt"""
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
@@ -2163,7 +2163,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt"""
                 ),
                 id="single-version-with-tinytex",
             ),
@@ -2178,7 +2178,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
                 ),
                 id="single-version-with-tinytex-update-path",
             ),
@@ -2193,7 +2193,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt"""
                 ),
                 id="single-version-with-tinytex-home-path",
             ),
@@ -2208,7 +2208,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --quiet --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
                 ),
                 id="single-version-with-tinytex-home-path-update-path",
             ),
