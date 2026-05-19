@@ -837,20 +837,54 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
     @staticmethod
     def _minor_group_key(product: dict[str, list | dict]) -> tuple:
-        """Group key for latest-patch logic: (dep, (major, minor)) per dep + (key, value) per value.
+        """Group key for latest-patch logic.
 
-        Scalar values are constant across all rows so do not differentiate groups, but including
-        them in the key is harmless. ``InvalidVersion`` propagates to the caller.
+        Dependencies group by ``(dep_name, (major, minor))``. Values group by
+        ``(key, (major, minor))`` when the value parses as a versioned string with a minor
+        component — matching what :func:`stripPatch` would collapse — and otherwise by
+        ``(key, raw_str)``. This keeps grouping consistent with the rendered tag, so two
+        values that ``stripPatch`` collapses to the same string land in the same group and
+        only the highest-patch row is selected.
+
+        ``InvalidVersion`` from an unparseable *dependency* version propagates to the caller;
+        unparseable values fall back to the raw string.
         """
         dep_parts = []
         for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
             v = DependencyVersion(dep.versions[0])
             dep_parts.append((dep.dependency, (v.major, v.minor)))
-        value_parts = sorted((k, str(v)) for k, v in product["values"].items())
+
+        value_parts = []
+        for k, val in sorted(product["values"].items()):
+            value_str = str(val)
+            try:
+                parsed = DependencyVersion(value_str)
+            except InvalidVersion:
+                value_parts.append((k, value_str))
+                continue
+            if parsed.minor is None:
+                value_parts.append((k, value_str))
+            else:
+                value_parts.append((k, (parsed.major, parsed.minor)))
+
         return tuple(dep_parts), tuple(value_parts)
 
     @staticmethod
     def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
-        """Sort key for finding the row with the maximum patch versions within a group."""
-        deps = sorted(product["dependencies"], key=lambda d: d.dependency)
-        return tuple(DependencyVersion(dep.versions[0]) for dep in deps)
+        """Sort key for finding the row with the maximum patch versions within a group.
+
+        Includes parseable list-typed values so version-like value axes (e.g.
+        ``go_version: [1.24.1, 1.24.2]``) participate in latest-patch selection alongside
+        dependency axes. Within a single group all values at a given axis share the same
+        parseability — they were grouped by it — so mixed-type tuples never compare here.
+        """
+        sort_keys = []
+        for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
+            sort_keys.append(DependencyVersion(dep.versions[0]))
+        for k, val in sorted(product["values"].items()):
+            value_str = str(val)
+            try:
+                sort_keys.append(DependencyVersion(value_str))
+            except InvalidVersion:
+                sort_keys.append(value_str)
+        return tuple(sort_keys)

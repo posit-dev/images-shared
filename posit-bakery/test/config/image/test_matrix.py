@@ -623,6 +623,34 @@ class TestImageMatrix:
         # No dependency versions means each (no-deps, value) group has one row → all latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
+    def test_to_image_versions_values_only_matrix_groups_by_minor_for_patch_values(self):
+        """Version-like list values compete on patch within their minor — matching ``stripPatch``.
+
+        Without this, two rows with values like ``1.24.1`` and ``1.24.2`` would both be flagged
+        latest-patch but render the same stripped tag (``1.24``), colliding on push.
+        """
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24.1", "1.24.2", "1.25.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (1.24, *) collapses to one row — 1.24.2; (1.25, *) is its own group — 1.25.0.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["go_version"] for iv in latest_patch_versions}
+        assert latest_values == {"1.24.2", "1.25.0"}
+
+    def test_to_image_versions_values_only_matrix_non_version_axis_keeps_all_rows(self):
+        """Non-version list values fall back to raw-string grouping so distinct values stay distinct."""
+        matrix = ImageMatrix(
+            values={"flavor": ["alpha", "beta"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 2
+        # "alpha" and "beta" are unparseable → separate groups → both latest-patch.
+        assert all(iv.isLatestPatchCombination for iv in image_versions)
+
     def test_check_duplicate_dependency_constraints(self):
         """Test that duplicate dependency constraints raise error."""
         with pytest.raises(
