@@ -102,7 +102,7 @@ def matrix(
 
     try:
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name),
+            filter=BakeryConfigFilter(image_name=image_name, image_version=image_version),
             dev_versions=dev_versions,
             dev_stream=dev_stream,
         )

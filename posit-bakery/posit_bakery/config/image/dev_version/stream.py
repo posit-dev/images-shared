@@ -28,6 +28,17 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
             "get_version().",
         ),
     ]
+    version_override: Annotated[
+        str | None,
+        Field(
+            exclude=True,
+            default=None,
+            description="Authoritative version supplied by the caller (e.g. a CI dispatch). When set, skips the "
+            "upstream version fetch and uses this value as ImageVersion.name. URL resolution is unchanged: the "
+            "build runner's CDN fetch resolves URLs against whatever the upstream has at build time, which by "
+            "then has propagated past the dispatch.",
+        ),
+    ]
 
     def get_primary_os(self) -> ImageVersionOS:
         """Retrieve the primary OS from the parent image if available.
@@ -43,11 +54,15 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
     def get_version(self) -> str:
         """Retrieve the version from the specified product stream.
 
-        If _resolve_os_urls() has already been called, returns the cached
-        version. Otherwise fetches it from the primary OS stream.
+        If ``version_override`` is set, returns it directly without contacting
+        the upstream stream. Otherwise, if ``_resolve_os_urls()`` has already
+        been called, returns the cached version; else fetches it from the
+        primary OS stream.
 
         :return: The version string from the product stream.
         """
+        if self.version_override is not None:
+            return self.version_override
         if self.resolved_version is not None:
             return self.resolved_version
         _os = self.get_primary_os()
@@ -74,7 +89,9 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         is not yet available in the product stream.
 
         Caches the version from the first successfully resolved OS so
-        that get_version() can return it without a redundant fetch.
+        that get_version() can return it without a redundant fetch. The
+        cache is only consulted when ``version_override`` is unset — an
+        override always wins in ``get_version()``.
         """
         self.resolved_version = None
         resolved = []

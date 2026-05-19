@@ -20,6 +20,7 @@ from ruamel.yaml import YAML
 from posit_bakery import util
 from posit_bakery.config.dependencies import DependencyConstraint, DependencyVersions
 from posit_bakery.config.image import Image
+from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
 from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
@@ -327,6 +328,58 @@ class BakerySettings(BaseModel):
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
     temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
 
+    @model_validator(mode="after")
+    def validate_dev_version_override(self) -> Self:
+        """Validate the inputs that activate dev version override mode.
+
+        Override mode (treating --image-version as authoritative for stream dev versions)
+        requires the full triplet:
+          - --dev-versions=only
+          - --image-version=<full version, YYYY.MM.PATCH at minimum>
+          - --dev-stream=<stream>
+
+        With --dev-versions=only set, the other two are mandatory: --image-version because
+        there is nothing to override otherwise, and --dev-stream because an image may declare
+        dev versions across multiple streams and we don't try to pick one. A prefix-only
+        --image-version is rejected because it can't unambiguously identify an artifact.
+        """
+        if self.dev_versions != DevVersionInclusionEnum.ONLY:
+            return self
+        if self.filter.image_version is None:
+            return self
+        # --dev-versions=only with --image-version set: override mode is engaged.
+        if self.dev_stream is None:
+            raise ValueError(
+                "--image-version with --dev-versions=only also requires --dev-stream. "
+                "Override mode uses the explicit triplet (dev-versions=only, image-version, "
+                "dev-stream) to identify exactly which dev artifact to build."
+            )
+        parsed = ParsedVersion.parse(self.filter.image_version)
+        if parsed is None or len(parsed.release) < 3:
+            raise ValueError(
+                f"--image-version '{self.filter.image_version}' must be a full version "
+                f"(YYYY.MM.PATCH at minimum) when used with --dev-versions=only. "
+                f"A prefix can't unambiguously identify a single artifact."
+            )
+        return self
+
+    @property
+    def dev_version_override(self) -> str | None:
+        """The authoritative dev version when override mode is active, else ``None``.
+
+        Override mode activates when --dev-versions=only, --image-version, and --dev-stream
+        are all set. The value flows into ``ImageDevelopmentVersionFromProductStream.version_override``
+        so the matrix entry's ``name`` is the dispatched version rather than whatever the
+        upstream stream currently reports.
+        """
+        if (
+            self.dev_versions == DevVersionInclusionEnum.ONLY
+            and self.filter.image_version is not None
+            and self.dev_stream is not None
+        ):
+            return self.filter.image_version
+        return None
+
 
 class BakeryConfig:
     """Manager for the bakery.yaml configuration file and operations against the configuration.
@@ -371,6 +424,8 @@ class BakeryConfig:
             )
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
+            if self.settings.dev_version_override is not None:
+                self._apply_dev_version_override()
             for image in self.model.images:
                 image.load_dev_versions()
                 image.render_ephemeral_version_files()
@@ -379,6 +434,25 @@ class BakeryConfig:
 
         self.targets = []
         self.generate_image_targets(self.settings)
+
+    def _apply_dev_version_override(self) -> None:
+        """Propagate ``settings.dev_version_override`` to stream-based dev versions.
+
+        Scoped by ``settings.filter.image_name`` and ``settings.dev_stream``. The
+        validator on ``BakerySettings`` guarantees ``dev_stream`` is set whenever
+        ``dev_version_override`` is set, so there's no ambiguity to guard against
+        here — each image has at most one stream-based dev version matching the
+        selected stream.
+        """
+        override = self.settings.dev_version_override
+        dev_stream = self.settings.dev_stream
+        image_name_filter = self.settings.filter.image_name
+        for image in self.model.images:
+            if image_name_filter is not None and re.search(image_name_filter, image.name) is None:
+                continue
+            for dv in image.devVersions:
+                if isinstance(dv, ImageDevelopmentVersionFromProductStream) and dv.stream == dev_stream:
+                    dv.version_override = override
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":

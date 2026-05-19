@@ -12,6 +12,7 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
+from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.image.image_metadata import BuildMetadata
@@ -389,23 +390,83 @@ class TestBakeryConfig:
         assert "Image 'package-manager' matches --image-name filter but is being skipped" in caplog.text
         assert "non-matrix image excluded by --matrix-versions only" in caplog.text
 
+    def test_dev_version_override_requires_dev_stream(self):
+        """Override mode requires --dev-stream alongside --dev-versions=only and --image-version."""
+        with pytest.raises(ValidationError, match="also requires --dev-stream"):
+            BakerySettings(
+                filter=BakeryConfigFilter(image_version="2026.05.0-dev+148-g1e590bacf9"),
+                dev_versions=DevVersionInclusionEnum.ONLY,
+            )
+
     @pytest.mark.usefixtures("patch_requests_get")
-    def test_filter_warning_version_excluded_by_dev_versions_only(self, caplog, testdata_path):
-        """Test that a warning is logged when --image-version matches but --dev-versions only excludes it."""
+    def test_dev_version_override_applied_with_triplet(self, testdata_path):
+        """With the full triplet (dev-versions=only, image-version, dev-stream), override applies cleanly.
+
+        The matching stream's dev version on the targeted image gets ``version_override``
+        set; other streams' dev versions are left alone.
+        """
         yaml_file = testdata_path / "valid" / "complex.yaml"
+        override = "2026.05.0-dev+999-gffffffffff"
         with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
             config = BakeryConfig(
                 yaml_file,
                 BakerySettings(
-                    filter=BakeryConfigFilter(image_name="^package-manager$", image_version="2025.04.2-8"),
+                    filter=BakeryConfigFilter(image_name="^package-manager$", image_version=override),
                     dev_versions=DevVersionInclusionEnum.ONLY,
+                    dev_stream=ReleaseStreamEnum.DAILY,
                 ),
             )
-        assert config is not None
-        assert len(config.targets) == 0
-        assert "WARNING" in caplog.text
-        assert "Version '2025.04.2-8' in image 'package-manager' matches --image-version filter" in caplog.text
-        assert "not a development version" in caplog.text
+        pm = next(i for i in config.model.images if i.name == "package-manager")
+        daily_dvs = [
+            dv
+            for dv in pm.devVersions
+            if isinstance(dv, ImageDevelopmentVersionFromProductStream) and dv.stream == ReleaseStreamEnum.DAILY
+        ]
+        preview_dvs = [
+            dv
+            for dv in pm.devVersions
+            if isinstance(dv, ImageDevelopmentVersionFromProductStream) and dv.stream == ReleaseStreamEnum.PREVIEW
+        ]
+        assert all(dv.version_override == override for dv in daily_dvs)
+        assert all(dv.version_override is None for dv in preview_dvs)
+        # The loaded dev version reflects the override as its name.
+        assert any(v.name == override and v.isDevelopmentVersion for v in pm.versions)
+
+    def test_dev_version_override_rejects_prefix(self):
+        """Prefix-only --image-version cannot be used as an override; reject at settings validation."""
+        with pytest.raises(ValidationError, match="must be a full version"):
+            BakerySettings(
+                filter=BakeryConfigFilter(image_version="2026.05"),
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_stream=ReleaseStreamEnum.DAILY,
+            )
+
+    def test_dev_version_override_unset_when_dev_versions_not_only(self):
+        """Override only activates with --dev-versions=only; other modes don't derive an override."""
+        for mode in (DevVersionInclusionEnum.EXCLUDE, DevVersionInclusionEnum.INCLUDE):
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(image_version="2026.05.0-dev+148-g1e590bacf9"),
+                dev_versions=mode,
+                dev_stream=ReleaseStreamEnum.DAILY,
+            )
+            assert settings.dev_version_override is None
+
+    def test_dev_version_override_unset_when_image_version_missing(self):
+        """Override requires --image-version; --dev-versions=only alone leaves it unset."""
+        settings = BakerySettings(
+            dev_versions=DevVersionInclusionEnum.ONLY,
+            dev_stream=ReleaseStreamEnum.DAILY,
+        )
+        assert settings.dev_version_override is None
+
+    def test_dev_version_override_returns_full_version(self):
+        """The property returns the image_version when the triplet is complete."""
+        settings = BakerySettings(
+            filter=BakeryConfigFilter(image_version="2026.05.0-dev+148-g1e590bacf9"),
+            dev_versions=DevVersionInclusionEnum.ONLY,
+            dev_stream=ReleaseStreamEnum.DAILY,
+        )
+        assert settings.dev_version_override == "2026.05.0-dev+148-g1e590bacf9"
 
     @pytest.mark.usefixtures("patch_requests_get")
     def test_filter_warning_image_matches_but_no_targets(self, caplog, testdata_path):

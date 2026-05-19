@@ -952,7 +952,7 @@ class TestResolveOsUrls:
     def test_excludes_os_on_resolution_failure(self):
         good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
 
-        def side_effect(product, stream, build_os):
+        def side_effect(product, stream, build_os, **kwargs):
             if build_os.version == "26.04":
                 raise ValueError("no packages for ubuntu26")
             return good
@@ -1021,7 +1021,7 @@ class TestResolveOsUrls:
     def test_primary_os_excluded_falls_back_to_secondary(self):
         good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
 
-        def side_effect(product, stream, build_os):
+        def side_effect(product, stream, build_os, **kwargs):
             if build_os.version == "26.04":
                 raise ValueError("no packages for ubuntu26")
             return good
@@ -1047,3 +1047,76 @@ class TestResolveOsUrls:
             assert iv.name == "1.0.0"
             assert len(iv.os) == 1
             assert iv.os[0].name == "Ubuntu 24.04"
+
+
+class TestVersionOverride:
+    """Override mode forces the dev version's name to the caller-supplied value.
+
+    URL resolution is unchanged: at matrix-gen time the matrix only carries
+    ``image``/``version``/``platform``, and at build time the runner's CDN
+    fetch picks up whatever the upstream has — which by build time has
+    propagated past the dispatch.
+    """
+
+    OVERRIDE = "2026.05.0-dev+224-g92e78b4eda"
+    STALE_CDN_VERSION = "2026.05.0-dev+153-g571063894f"
+
+    def test_field_defaults_to_none(self):
+        dev = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product="connect",
+            stream="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dev.version_override is None
+
+    def test_get_version_returns_override_without_fetch(self):
+        """``get_version()`` short-circuits the CDN fetch when an override is set."""
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[{"name": "Ubuntu 24.04", "primary": True}],
+                version_override=self.OVERRIDE,
+            )
+            assert dev.get_version() == self.OVERRIDE
+            mock_get.assert_not_called()
+
+    def test_get_version_uses_cdn_when_override_unset(self):
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(
+                version=self.STALE_CDN_VERSION, download_url="https://example.com/stale.deb"
+            )
+            dev = ImageDevelopmentVersionFromProductStream(
+                sourceType="stream",
+                product="connect",
+                stream="daily",
+                os=[{"name": "Ubuntu 24.04", "primary": True}],
+            )
+            assert dev.get_version() == self.STALE_CDN_VERSION
+
+    def test_as_image_version_name_is_override_even_with_stale_cdn(self):
+        """``ImageVersion.name`` reflects the override even when CDN returns a different version.
+
+        The URL fields still come from CDN — that's intentional. At build time the
+        CDN will have propagated and the runner will resolve a URL for the override.
+        """
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/images")
+        mock_parent.resolve_dependency_versions.return_value = []
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(
+                version=self.STALE_CDN_VERSION, download_url="https://example.com/stale.deb"
+            )
+            dev = ImageDevelopmentVersionFromProductStream(
+                parent=mock_parent,
+                sourceType="stream",
+                product="package-manager",
+                stream="daily",
+                os=[{"name": "Ubuntu 24.04", "primary": True}],
+                version_override=self.OVERRIDE,
+            )
+            iv = dev.as_image_version()
+            assert iv.name == self.OVERRIDE
+            assert iv.isDevelopmentVersion is True
