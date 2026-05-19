@@ -519,7 +519,7 @@ class TestImageMatrix:
         assert len(image_versions) == 4  # 2 python * 2 flavor
         assert not any(iv.latest for iv in image_versions)
 
-    def test_to_image_versions_marks_latest_patch_combinations_all_unique_minors(self):
+    def test_to_image_versions_marks_all_latest_patch_when_minors_unique(self):
         """When every row's (minor, ...) tuple is unique, every row is a latest-patch combination."""
         matrix = ImageMatrix(
             dependencies=[
@@ -533,7 +533,7 @@ class TestImageMatrix:
         # Each (python_minor, R_minor) pair appears once → all are latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
-    def test_to_image_versions_marks_only_highest_patch_when_multiple_patches_share_minor(self):
+    def test_to_image_versions_picks_highest_patch_per_minor_group(self):
         """Within a (minor, ...) group, only the highest-patch row is the latest-patch combination."""
         matrix = ImageMatrix(
             dependencies=[
@@ -575,7 +575,7 @@ class TestImageMatrix:
             ("3.12.5", "4.4.1"),
         }
 
-    def test_to_image_versions_latest_patch_groups_by_list_value_axis(self):
+    def test_to_image_versions_latest_patch_per_list_value(self):
         """List-typed values partition the latest-patch grouping; each value gets its own latest-patch row."""
         matrix = ImageMatrix(
             dependencies=[
@@ -623,7 +623,7 @@ class TestImageMatrix:
         # No dependency versions means each (no-deps, value) group has one row → all latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
-    def test_to_image_versions_values_only_matrix_groups_by_minor_for_patch_values(self):
+    def test_to_image_versions_values_only_groups_by_minor(self):
         """Version-like list values compete on patch within their minor — matching ``stripPatch``.
 
         Without this, two rows with values like ``1.24.1`` and ``1.24.2`` would both be flagged
@@ -640,7 +640,7 @@ class TestImageMatrix:
         latest_values = {iv.values["go_version"] for iv in latest_patch_versions}
         assert latest_values == {"1.24.2", "1.25.0"}
 
-    def test_to_image_versions_values_only_matrix_non_version_axis_keeps_all_rows(self):
+    def test_to_image_versions_values_only_non_version_keeps_all(self):
         """Non-version list values fall back to raw-string grouping so distinct values stay distinct."""
         matrix = ImageMatrix(
             values={"flavor": ["alpha", "beta"]},
@@ -651,7 +651,7 @@ class TestImageMatrix:
         # "alpha" and "beta" are unparseable → separate groups → both latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
-    def test_to_image_versions_values_only_matrix_groups_prefixed_versions_by_stripped_form(self):
+    def test_to_image_versions_values_only_groups_prefixed_versions(self):
         """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
         same form must land in the same group, even though they don't parse as a standalone
         ``DependencyVersion``. Otherwise the two rows would both be flagged latest-patch and
