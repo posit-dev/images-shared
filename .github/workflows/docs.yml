@@ -27,6 +27,9 @@ jobs:
         working-directory: posit-bakery
         run: uv sync --group docs
 
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b  # v2.2.0
+
       - name: Generate API reference
         working-directory: posit-bakery
         run: |
@@ -34,9 +37,6 @@ jobs:
           rm -rf docs/reference
           cp -r great-docs/reference docs/reference
           rm -rf great-docs
-
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b  # v2.2.0
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@8a96df13519ee81fd526f2dfca5962811136661b  # v2.2.0
