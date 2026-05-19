@@ -578,6 +578,7 @@ class TestAptMacros:
                 False,
                 textwrap.dedent(
                     """\
+                    echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
                     apt-get update -yqq --fix-missing && \\
                     apt-get upgrade -yqq && \\
                     apt-get dist-upgrade -yqq && \\
@@ -600,6 +601,7 @@ class TestAptMacros:
                 False,
                 textwrap.dedent(
                     """\
+                    echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
                     apt-get update -yqq --fix-missing && \\
                     apt-get upgrade -yqq && \\
                     apt-get dist-upgrade -yqq && \\
@@ -620,6 +622,7 @@ class TestAptMacros:
                 True,
                 textwrap.dedent(
                     """\
+                    echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
                     apt-get update -yqq --fix-missing && \\
                     apt-get upgrade -yqq && \\
                     apt-get dist-upgrade -yqq && \\
@@ -643,6 +646,7 @@ class TestAptMacros:
                 True,
                 textwrap.dedent(
                     """\
+                    echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
                     apt-get update -yqq --fix-missing && \\
                     apt-get upgrade -yqq && \\
                     apt-get dist-upgrade -yqq && \\
@@ -665,6 +669,7 @@ class TestAptMacros:
                 False,
                 textwrap.dedent(
                     """\
+                    echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
                     apt-get update -yqq --fix-missing && \\
                     apt-get upgrade -yqq && \\
                     apt-get dist-upgrade -yqq && \\
@@ -695,7 +700,8 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         expected = textwrap.dedent(
             """\
-            RUN apt-get update -yqq --fix-missing && \\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
                 apt-get upgrade -yqq && \\
                 apt-get dist-upgrade -yqq && \\
                 apt-get autoremove -yqq --purge && \\
@@ -716,7 +722,8 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         expected = textwrap.dedent(
             """\
-            RUN apt-get update -yqq --fix-missing && \\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
                 apt-get upgrade -yqq && \\
                 apt-get dist-upgrade -yqq && \\
                 apt-get autoremove -yqq --purge && \\
@@ -738,7 +745,8 @@ class TestAptMacros:
         rendered = environment_with_macros.from_string(template).render()
         expected = textwrap.dedent(
             """\
-            RUN apt-get update -yqq --fix-missing && \\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
                 apt-get upgrade -yqq && \\
                 apt-get dist-upgrade -yqq && \\
                 apt-get autoremove -yqq --purge && \\

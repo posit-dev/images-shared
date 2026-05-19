@@ -999,7 +999,8 @@ class TestBakeryConfig:
             ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
-            RUN apt-get update -yqq --fix-missing && \\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
                 apt-get upgrade -yqq && \\
                 apt-get dist-upgrade -yqq && \\
                 apt-get autoremove -yqq --purge && \\
@@ -1044,7 +1045,8 @@ class TestBakeryConfig:
             ARG TARGETARCH=${BUILDARCH}
 
             ### Install Apt Packages ###
-            RUN apt-get update -yqq --fix-missing && \\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
                 apt-get upgrade -yqq && \\
                 apt-get dist-upgrade -yqq && \\
                 apt-get autoremove -yqq --purge && \\
