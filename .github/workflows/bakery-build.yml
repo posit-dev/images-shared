@@ -199,6 +199,7 @@ jobs:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CACHE_FLAGS=()
           if [ "$CACHE" = "true" ]; then
@@ -244,6 +245,7 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           CONTEXT: ${{ inputs.context }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bakery build --push --pull \
             --retry "$RETRY" \
