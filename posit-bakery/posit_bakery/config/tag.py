@@ -15,6 +15,7 @@ class TagPatternFilter(str, Enum):
 
     ALL = "all"  # Matches all image targets.
     LATEST = "latest"  # Matches the image targets at the latest image version.
+    LATEST_PATCH = "latestPatch"  # Matches matrix rows that are the latest patch for their minor combination.
     PRIMARY_OS = "primaryOS"  # Matches image targets using the primary OS.
     PRIMARY_VARIANT = "primaryVariant"  # Matches image targets of the primary variant.
 
@@ -153,6 +154,10 @@ def default_matrix_tag_patterns() -> list[TagPattern]:
     hyphen onward. This set excludes stripMetadata patterns to avoid tag collisions across
     matrix combinations.
 
+    The ``stripPatch`` variants emit additional minor-only tags (e.g., "R4.3-python3.11")
+    for rows that represent the latest patch in their (minor, ...) group, gated by the
+    ``LATEST_PATCH`` filter so non-latest rows do not collide on the stripped tag.
+
     :return: A list of TagPattern objects representing the default matrix tag patterns.
     """
     return [
@@ -161,16 +166,32 @@ def default_matrix_tag_patterns() -> list[TagPattern]:
             only=[TagPatternFilter.ALL],
         ),
         TagPattern(
+            patterns=["{{ Version | stripPatch }}-{{ OS }}-{{ Variant }}"],
+            only=[TagPatternFilter.LATEST_PATCH],
+        ),
+        TagPattern(
             patterns=["{{ Version }}-{{ Variant }}"],
             only=[TagPatternFilter.PRIMARY_OS],
+        ),
+        TagPattern(
+            patterns=["{{ Version | stripPatch }}-{{ Variant }}"],
+            only=[TagPatternFilter.LATEST_PATCH, TagPatternFilter.PRIMARY_OS],
         ),
         TagPattern(
             patterns=["{{ Version }}-{{ OS }}"],
             only=[TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
+            patterns=["{{ Version | stripPatch }}-{{ OS }}"],
+            only=[TagPatternFilter.LATEST_PATCH, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
             patterns=["{{ Version }}"],
             only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Version | stripPatch }}"],
+            only=[TagPatternFilter.LATEST_PATCH, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
         *_shared_latest_tag_patterns(),
     ]

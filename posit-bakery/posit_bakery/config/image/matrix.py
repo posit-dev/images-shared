@@ -742,8 +742,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         resolved_deps = self.resolved_dependencies
         latest_pick = self._compute_latest_combination(resolved_deps)
         products = self._cartesian_product(resolved_deps, self.values)
+        latest_patch_signatures = self._compute_latest_patch_signatures(products)
         for product in products:
             is_latest = latest_pick is not None and self._matches_latest(product, latest_pick)
+            is_latest_patch = (
+                latest_patch_signatures is not None and self._row_signature(product) in latest_patch_signatures
+            )
             image_version = ImageVersion(
                 parent=self.parent,
                 name=self._render_name_pattern(self.namePattern, product["dependencies"], product["values"]),
@@ -755,6 +759,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 values=product["values"],
                 isMatrixVersion=True,
                 latest=is_latest,
+                isLatestPatchCombination=is_latest_patch,
                 buildTarget=self.buildTarget,
             )
             image_versions.append(image_version)
@@ -779,3 +784,73 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             if axis_key in latest_pick and str(value) != latest_pick[axis_key]:
                 return False
         return True
+
+    @staticmethod
+    def _row_signature(product: dict[str, list | dict]) -> tuple:
+        """Hashable signature for a cartesian-product row, used for set membership checks."""
+        dep_parts = tuple(sorted((d.dependency, d.versions[0]) for d in product["dependencies"]))
+        value_parts = tuple(sorted((k, str(v)) for k, v in product["values"].items()))
+        return dep_parts, value_parts
+
+    def _compute_latest_patch_signatures(self, products: list[dict[str, list | dict]]) -> set[tuple] | None:
+        """Identify cartesian-product rows that are the latest patch for their (minor, ...) group.
+
+        Groups rows by (axis_key, (major, minor)) for each dependency axis and by (key, value)
+        for each ``values`` axis. Within each group, the row whose dependency versions are
+        highest is the "latest patch" row.
+
+        :param products: All cartesian-product rows.
+
+        :return: A set of row signatures (see :pymeth:`_row_signature`) identifying latest-patch
+            rows. Returns ``None`` if any dependency version is unparseable; in that case no
+            ``LATEST_PATCH``-family tags are emitted for the matrix.
+        """
+        if not products:
+            return set()
+
+        groups: dict[tuple, list[dict[str, list | dict]]] = {}
+        for product in products:
+            try:
+                group_key = self._minor_group_key(product)
+            except InvalidVersion as e:
+                log.warning(
+                    f"Image matrix '{self.namePattern}': cannot determine latest patch combinations because a "
+                    f"dependency version is unparseable ({e}). "
+                    f"No 'latestPatch'-family tags will be emitted for this matrix."
+                )
+                return None
+            groups.setdefault(group_key, []).append(product)
+
+        try:
+            latest_signatures: set[tuple] = set()
+            for group_rows in groups.values():
+                max_row = max(group_rows, key=self._patch_sort_key)
+                latest_signatures.add(self._row_signature(max_row))
+            return latest_signatures
+        except InvalidVersion as e:
+            log.warning(
+                f"Image matrix '{self.namePattern}': cannot determine latest patch combinations because a "
+                f"dependency version is unparseable ({e}). "
+                f"No 'latestPatch'-family tags will be emitted for this matrix."
+            )
+            return None
+
+    @staticmethod
+    def _minor_group_key(product: dict[str, list | dict]) -> tuple:
+        """Group key for latest-patch logic: (dep, (major, minor)) per dep + (key, value) per value.
+
+        Scalar values are constant across all rows so do not differentiate groups, but including
+        them in the key is harmless. ``InvalidVersion`` propagates to the caller.
+        """
+        dep_parts = []
+        for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
+            v = DependencyVersion(dep.versions[0])
+            dep_parts.append((dep.dependency, (v.major, v.minor)))
+        value_parts = sorted((k, str(v)) for k, v in product["values"].items())
+        return tuple(dep_parts), tuple(value_parts)
+
+    @staticmethod
+    def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
+        """Sort key for finding the row with the maximum patch versions within a group."""
+        deps = sorted(product["dependencies"], key=lambda d: d.dependency)
+        return tuple(DependencyVersion(dep.versions[0]) for dep in deps)

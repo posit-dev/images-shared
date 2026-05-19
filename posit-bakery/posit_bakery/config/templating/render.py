@@ -25,6 +25,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env = jinja2.Environment(**kwargs)
     env.filters["tagSafe"] = lambda s: re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", s).strip("-._")
     env.filters["stripMetadata"] = lambda s: re.sub(r"[+-](?=[^+-]*$).*", "", s)
+    env.filters["stripPatch"] = lambda s: re.sub(r"(\d+\.\d+)\.\d+", r"\1", s)
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
     env.filters["quote"] = lambda s: '"' + s + '"'

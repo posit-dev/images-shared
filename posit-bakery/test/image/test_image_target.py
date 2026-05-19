@@ -150,6 +150,14 @@ class TestImageTarget:
 
         assert not basic_standard_image_target.is_latest
 
+    def test_is_latest_patch_combination(self, basic_standard_image_target):
+        """Test the is_latest_patch_combination property of an ImageTarget."""
+        # Default is False — non-matrix image versions don't get the flag.
+        assert not basic_standard_image_target.is_latest_patch_combination
+
+        basic_standard_image_target.image_version.isLatestPatchCombination = True
+        assert basic_standard_image_target.is_latest_patch_combination
+
     def test_is_primary_os(self, basic_standard_image_target):
         """Test the is_primary_os property of an ImageTarget."""
         assert basic_standard_image_target.is_primary_os
@@ -350,6 +358,39 @@ class TestImageTarget:
         )
         assert len(target.tag_patterns) == 6
         assert not any(TagPatternFilter.PRIMARY_OS in pattern.only for pattern in target.tag_patterns)
+
+    def test_tag_patterns_filters_latest_patch(self, get_config_obj):
+        """LATEST_PATCH-filtered patterns are dropped unless the version is the latest patch."""
+        from posit_bakery.config.tag import default_matrix_tag_patterns
+
+        basic_config_obj = get_config_obj("basic")
+        image = basic_config_obj.model.get_image("test-image")
+        version = image.get_version("1.0.0")
+        variant = image.get_variant("Standard")
+        os = version.os[0]
+
+        # Use matrix patterns so LATEST_PATCH-filtered entries are present.
+        image.tagPatterns = default_matrix_tag_patterns()
+
+        # When not a latest-patch row, the LATEST_PATCH patterns are filtered out.
+        version.isLatestPatchCombination = False
+        target = ImageTarget.new_image_target(
+            repository=basic_config_obj.model.repository,
+            image_version=version,
+            image_variant=variant,
+            image_os=os,
+        )
+        assert not any(TagPatternFilter.LATEST_PATCH in p.only for p in target.tag_patterns)
+
+        # When marked as the latest patch row, LATEST_PATCH patterns are retained.
+        version.isLatestPatchCombination = True
+        target = ImageTarget.new_image_target(
+            repository=basic_config_obj.model.repository,
+            image_version=version,
+            image_variant=variant,
+            image_os=os,
+        )
+        assert any(TagPatternFilter.LATEST_PATCH in p.only for p in target.tag_patterns)
 
     @pytest.mark.parametrize(
         "target_name,expected_tag_suffixes",

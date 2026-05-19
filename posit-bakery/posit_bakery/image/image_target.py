@@ -304,6 +304,11 @@ class ImageTarget(BaseModel):
         return self.image_version.latest
 
     @property
+    def is_latest_patch_combination(self) -> bool:
+        """Check if the image version is the latest patch for its matrix (minor, ...) group."""
+        return self.image_version.isLatestPatchCombination
+
+    @property
     def is_primary_os(self) -> bool:
         """Check if the image OS is marked as primary."""
         # If no OS is specified, consider it primary by default.
@@ -390,6 +395,9 @@ class ImageTarget(BaseModel):
             if TagPatternFilter.ALL not in tag_pattern.only:
                 # Skip pattern marked as latest if not latest version.
                 if TagPatternFilter.LATEST in tag_pattern.only and not self.is_latest:
+                    continue
+                # Skip pattern for latest patch if this row is not the latest patch in its group.
+                if TagPatternFilter.LATEST_PATCH in tag_pattern.only and not self.is_latest_patch_combination:
                     continue
                 # Skip pattern for primary OS if not primary OS.
                 if TagPatternFilter.PRIMARY_OS in tag_pattern.only and not self.is_primary_os:

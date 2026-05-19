@@ -119,11 +119,14 @@ def test_default_matrix_tag_patterns_no_tag_collisions():
 
     Checks that different versions within the same OS produce unique tags. Cross-OS overlap
     (e.g., the PRIMARY_OS pattern producing "R4.3.3-python3.11.15" for both OSes) is expected
-    and handled by tag pattern filters at the ImageTarget level. LATEST-filtered patterns
-    are similarly filter-handled (only applied to the latest combination), so they are
-    excluded here.
+    and handled by tag pattern filters at the ImageTarget level. LATEST- and LATEST_PATCH-filtered
+    patterns are similarly filter-handled (only applied to specific rows), so they are excluded here.
     """
-    patterns = [p for p in default_matrix_tag_patterns() if TagPatternFilter.LATEST not in p.only]
+    patterns = [
+        p
+        for p in default_matrix_tag_patterns()
+        if TagPatternFilter.LATEST not in p.only and TagPatternFilter.LATEST_PATCH not in p.only
+    ]
     versions = ["R4.3.3-python3.11.15", "R4.3.3-python3.12.13", "R4.3.3-python3.13.12"]
     os_values = ["ubuntu2404", "ubuntu2204"]
 
@@ -141,3 +144,35 @@ def test_default_matrix_tag_patterns_no_tag_collisions():
             for v2 in version_list[i + 1 :]:
                 overlap = tags_by_version[v1] & tags_by_version[v2]
                 assert not overlap, f"Tag collision for OS {os} between {v1} and {v2}: {overlap}"
+
+
+def test_default_matrix_tag_patterns_includes_strip_patch_under_latest_patch_filter():
+    """Matrix tag patterns include stripPatch variants gated by LATEST_PATCH."""
+    patterns = default_matrix_tag_patterns()
+    strip_patch_patterns = [p for p in patterns if any("stripPatch" in pat for pat in p.patterns)]
+    # One per OS/Variant combination: ALL-equivalent, PRIMARY_OS, PRIMARY_VARIANT, both-primary.
+    assert len(strip_patch_patterns) == 4
+    for pattern in strip_patch_patterns:
+        assert TagPatternFilter.LATEST_PATCH in pattern.only, (
+            f"stripPatch pattern must be gated by LATEST_PATCH: {pattern.patterns} only={pattern.only}"
+        )
+
+
+def test_default_matrix_tag_patterns_strip_patch_renders_minor_tags():
+    """stripPatch-filtered tag patterns produce minor-only tags from composite matrix versions."""
+    patterns = [p for p in default_matrix_tag_patterns() if TagPatternFilter.LATEST_PATCH in p.only]
+    version = "R4.3.3-python3.11.15"
+    os = "ubuntu2404"
+    variant = "min"
+
+    rendered_tags = []
+    for pattern in patterns:
+        rendered_tags.extend(pattern.render(Version=version, OS=os, Variant=variant))
+
+    expected = {
+        f"R4.3-python3.11-{os}-{variant}",
+        f"R4.3-python3.11-{variant}",
+        f"R4.3-python3.11-{os}",
+        "R4.3-python3.11",
+    }
+    assert expected.issubset(set(rendered_tags))
