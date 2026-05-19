@@ -900,12 +900,38 @@ Update the full description (README) of a Docker Hub repository.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>update_full_description(namespace<span class="op">=</span><span class="va">None</span>, repository<span class="op">=</span><span class="va">None</span>, full_description<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param namespace: The namespace (organization or user) of the repository. :param repository: The name of the repository. :param full_description: The full description content (typically README.md contents). Docker Hub limits this to 25,000 bytes.</p>
-<p>:return: The updated repository data from Docker Hub.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">namespace</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>The namespace (organization or user) of the repository.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">repository</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>The name of the repository.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">full_description</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+The full description content (typically README.md contents). Docker Hub limits this to 25,000 bytes.
+</dd>
+</dl>
+</div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">dict</span></code></dt>
+<dd>
+The updated repository data from Docker Hub.
+</dd>
+</dl>
 </div>
 
 
+</section>
 </section>
 </section>
 </section>

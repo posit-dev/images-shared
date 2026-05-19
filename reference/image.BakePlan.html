@@ -934,10 +934,40 @@ Write the bake plan to a file in the context directory.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>from_image_targets(context, image_targets, platforms<span class="op">=</span><span class="va">None</span>, push<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param context: The absolute path to the build context directory. :param image_targets: A list of ImageTarget objects to include in the bake plan. :param platforms: Optional platform override (e.g., from CLI –platform flag). When provided, this takes precedence over each image target’s OS platform configuration for cache tag generation. :param push: If True, include cache-to in bake targets to push cache layers to the registry.</p>
-<p>:return: A BakePlan object containing the context, groups, and targets.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">context</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Path</span></code></dt>
+<dd>
+<p>The absolute path to the build context directory.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_targets</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[ImageTarget]</span></code></dt>
+<dd>
+<p>A list of ImageTarget objects to include in the bake plan.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">platforms</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[str] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional platform override (e.g., from CLI –platform flag). When provided, this takes precedence over each image target’s OS platform configuration for cache tag generation.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">push</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+If True, include cache-to in bake targets to push cache layers to the registry.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">BakePlan</span></code></dt>
+<dd>
+A BakePlan object containing the context, groups, and targets.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="remove" class="level3">
 <h3 class="anchored" data-anchor-id="remove"><span class="doc-object-name doc-function doc-label doc-label-method">remove()</span></h3>
@@ -964,10 +994,40 @@ Write the bake plan to a file in the context directory.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>update_groups(groups, uid, image_name, image_variant)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param groups: The current groups of targets. :param uid: The unique identifier for the target. :param image_name: The name of the image. :param image_variant: The variant of the image.</p>
-<p>:return: The updated groups with the new target added.</p>
+<section id="parameters-1" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">groups</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">dict[str, BakeGroup]</span></code></dt>
+<dd>
+<p>The current groups of targets.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">uid</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The unique identifier for the target.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_variant</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The variant of the image.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns-1" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">dict[str, BakeGroup]</span></code></dt>
+<dd>
+The updated groups with the new target added.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="write" class="level3">
 <h3 class="anchored" data-anchor-id="write"><span class="doc-object-name doc-function doc-label doc-label-method">write()</span></h3>

@@ -840,9 +840,6 @@ Get the git commit SHA for the repository.
 <div class="doc-signature doc-attribute">
 <p><code><span class="doc-parameter-name">revision</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span></code></p>
 </div>
-<div class="doc-text">
-<p>:return: The git commit SHA if available, otherwise None.</p>
-</div>
 </section>
 </section>
 <section id="methods" class="level2 doc-methods">
@@ -905,10 +902,28 @@ Parse the maintainer field into a NameEmail object or return as is if already a 
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>deduplicate_authors(authors)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param authors: The list of authors to deduplicate.</p>
-<p>:return: A list of unique authors.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">authors</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[NameEmail]</span></code></dt>
+<dd>
+The list of authors to deduplicate.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">list[NameEmail]</span></code></dt>
+<dd>
+A list of unique authors.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="default_https_url_scheme" class="level3">
 <h3 class="anchored" data-anchor-id="default_https_url_scheme"><span class="doc-object-name doc-function doc-label doc-label-method">default_https_url_scheme()</span></h3>
@@ -922,9 +937,17 @@ Parse the maintainer field into a NameEmail object or return as is if already a 
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>default_https_url_scheme(value)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param value: The URL to validate and possibly modify.</p>
+<section id="parameters-1" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">value</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Any</span></code></dt>
+<dd>
+The URL to validate and possibly modify.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="parse_authors" class="level3">
 <h3 class="anchored" data-anchor-id="parse_authors"><span class="doc-object-name doc-function doc-label doc-label-method">parse_authors()</span></h3>
@@ -938,10 +961,28 @@ Parse the maintainer field into a NameEmail object or return as is if already a 
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>parse_authors(value)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param value: The list of authors to parse.</p>
-<p>:return: A list of HashableNameEmail objects parsed from dictionaries and/or strings.</p>
+<section id="parameters-2" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">value</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[Any]</span></code></dt>
+<dd>
+The list of authors to parse.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns-1" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">list[HashableNameEmail | str]</span></code></dt>
+<dd>
+A list of HashableNameEmail objects parsed from dictionaries and/or strings.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="parse_maintainer" class="level3">
 <h3 class="anchored" data-anchor-id="parse_maintainer"><span class="doc-object-name doc-function doc-label doc-label-method">parse_maintainer()</span></h3>
@@ -955,12 +996,30 @@ Parse the maintainer field into a NameEmail object or return as is if already a 
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>parse_maintainer(value)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param value: The maintainer to parse.</p>
-<p>:return: A HashableNameEmail object parsed from a dictionary or the string value if already a string.</p>
+<section id="parameters-3" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">value</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Any</span></code></dt>
+<dd>
+The maintainer to parse.
+</dd>
+</dl>
+</div>
+</section>
+<section id="returns-2" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">HashableNameEmail | str</span></code></dt>
+<dd>
+A HashableNameEmail object parsed from a dictionary or the string value if already a string.
+</dd>
+</dl>
 </div>
 
 
+</section>
 </section>
 </section>
 </section>

@@ -756,7 +756,12 @@ window.onload = function () {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#registry_management.dockerhub.push_readmes" id="toc-registry_management.dockerhub.push_readmes" class="nav-link active" data-scroll-target="#registry_management.dockerhub.push_readmes"><span class="doc-object-name doc-function doc-label doc-label-function">registry_management.dockerhub.push_readmes()</span></a></li>
+  <li><a href="#registry_management.dockerhub.push_readmes" id="toc-registry_management.dockerhub.push_readmes" class="nav-link active" data-scroll-target="#registry_management.dockerhub.push_readmes"><span class="doc-object-name doc-function doc-label doc-label-function">registry_management.dockerhub.push_readmes()</span></a>
+  <ul class="collapse">
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#returns" id="toc-returns" class="nav-link" data-scroll-target="#returns">Returns</a></li>
+  <li><a href="#raises" id="toc-raises" class="nav-link" data-scroll-target="#raises">Raises</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -804,10 +809,42 @@ window.onload = function () {
 </ul>
 <p>Pushes once per Docker Hub repository, regardless of how many targets share it.</p>
 <p>Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment variables to be set. Skips gracefully if credentials are not configured. Raises on authentication or push failures.</p>
-<p>:param targets: List of image targets to evaluate. :return: Number of READMEs pushed. :raises RuntimeError: If one or more README pushes fail.</p>
+</div>
+<section id="parameters" class="level2 doc-parameters">
+<h2 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">targets</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[ImageTarget]</span></code></dt>
+<dd>
+List of image targets to evaluate.
+</dd>
+</dl>
+</div>
+</section>
+<section id="returns" class="level2 doc-returns">
+<h2 class="doc-returns anchored" data-anchor-id="returns">Returns</h2>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">int</span></code></dt>
+<dd>
+Number of READMEs pushed.
+</dd>
+</dl>
+</div>
+</section>
+<section id="raises" class="level2 doc-raises">
+<h2 class="doc-raises anchored" data-anchor-id="raises">Raises</h2>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">RuntimeError</span></code></dt>
+<dd>
+If one or more README pushes fail.
+</dd>
+</dl>
 </div>
 
 
+</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->

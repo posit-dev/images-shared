@@ -929,9 +929,17 @@ Sets the parent reference for the Repository and Image child objects.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>check_image_duplicates(images)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param images: List of Image objects to check for duplicates.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">images</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[Image]</span></code></dt>
+<dd>
+List of Image objects to check for duplicates.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="check_images_not_empty" class="level3">
 <h3 class="anchored" data-anchor-id="check_images_not_empty"><span class="doc-object-name doc-function doc-label doc-label-method">check_images_not_empty()</span></h3>
@@ -945,9 +953,17 @@ Sets the parent reference for the Repository and Image child objects.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>check_images_not_empty(images)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param images: List of Image objects to check.</p>
+<section id="parameters-1" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">images</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[Image]</span></code></dt>
+<dd>
+List of Image objects to check.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="create_image_files_template" class="level3">
 <h3 class="anchored" data-anchor-id="create_image_files_template"><span class="doc-object-name doc-function doc-label doc-label-method">create_image_files_template()</span></h3>
@@ -964,8 +980,26 @@ Sets the parent reference for the Repository and Image child objects.
 <div class="doc-text">
 <p>This function does <strong>NOT</strong> create a new image model. Use <code>create_image_model</code> for that.</p>
 <p>Creates the following structure: - image_path/ - template/ - Containerfile.{{ base_tag | condensed }}.jinja2 - test/ - goss.yaml.jinja2 - deps/ - packages.txt.jinja2</p>
-<p>:param image_path: The path to the image directory. :param image_name: The name of the image. :param base_tag: The base tag for the image to use in the <code>FROM</code> directive of the Containerfile template.</p>
 </div>
+<section id="parameters-2" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_path</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Path</span></code></dt>
+<dd>
+<p>The path to the image directory.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">base_tag</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The base tag for the image to use in the <code>FROM</code> directive of the Containerfile template.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="create_image_model" class="level3">
 <h3 class="anchored" data-anchor-id="create_image_model"><span class="doc-object-name doc-function doc-label doc-label-method">create_image_model()</span></h3>
@@ -987,9 +1021,45 @@ Sets the parent reference for the Repository and Image child objects.
 </div>
 <div class="doc-text">
 <p>This function does <strong>NOT</strong> create the image files template. Use <code>create_image_files_template</code> for that.</p>
-<p>:param name: The name of the image to create. :param subpath: Optional alternate subpath for the image. :param display_name: Optional display name for the image. If not provided, the image name will be used. :param description: Optional description for the image. Used in labels. :param documentation_url: Optional URL for the image documentation. Used in labels.</p>
-<p>:return: The newly created Image model.</p>
 </div>
+<section id="parameters-3" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image to create.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">subpath</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional alternate subpath for the image.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">display_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional display name for the image. If not provided, the image name will be used.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">description</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional description for the image. Used in labels.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">documentation_url</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional URL for the image documentation. Used in labels.
+</dd>
+</dl>
+</div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">Image</span></code></dt>
+<dd>
+The newly created Image model.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="deduplicate_registries" class="level3">
 <h3 class="anchored" data-anchor-id="deduplicate_registries"><span class="doc-object-name doc-function doc-label doc-label-method">deduplicate_registries()</span></h3>
@@ -1003,9 +1073,17 @@ Sets the parent reference for the Repository and Image child objects.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>deduplicate_registries(registries)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param registries: List of BaseRegistry objects to deduplicate.</p>
+<section id="parameters-4" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">registries</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[BaseRegistry]</span></code></dt>
+<dd>
+List of BaseRegistry objects to deduplicate.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="get_image" class="level3">
 <h3 class="anchored" data-anchor-id="get_image"><span class="doc-object-name doc-function doc-label doc-label-method">get_image()</span></h3>
@@ -1019,9 +1097,17 @@ Sets the parent reference for the Repository and Image child objects.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>get_image(name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param name: The name of the image to get.</p>
+<section id="parameters-5" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The name of the image to get.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="resolve_parentage" class="level3">
 <h3 class="anchored" data-anchor-id="resolve_parentage"><span class="doc-object-name doc-function doc-label doc-label-method">resolve_parentage()</span></h3>

@@ -1271,9 +1271,17 @@ Remove the image from the local image cache or registry.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>cache_name(platform<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param platform: Optional platform string (e.g., “linux/amd64”) to include in the cache tag for platform-specific cache differentiation.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">platform</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional platform string (e.g., “linux/amd64”) to include in the cache tag for platform-specific cache differentiation.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="get_merge_sources" class="level3">
 <h3 class="anchored" data-anchor-id="get_merge_sources"><span class="doc-object-name doc-function doc-label doc-label-method">get_merge_sources()</span></h3>
@@ -1322,10 +1330,44 @@ Remove the image from the local image cache or registry.
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    settings<span class="op">=</span><span class="va">None</span></span>
 <span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param repository: The repository containing the image. :param image_version: The specific version of the image. :param image_variant: The variant of the image, if applicable. :param image_os: The operating system of the image, if applicable. :param settings: Optional settings for the image target.</p>
-<p>:return: A new ImageTarget representing the given combination of configurations.</p>
+<section id="parameters-1" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">repository</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Repository</span></code></dt>
+<dd>
+<p>The repository containing the image.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_version</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ImageVersion</span></code></dt>
+<dd>
+<p>The specific version of the image.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_variant</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ImageVariant | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>The variant of the image, if applicable.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">image_os</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ImageVersionOS | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>The operating system of the image, if applicable.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">settings</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ImageTargetSettings | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional settings for the image target.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">ImageTarget</span></code></dt>
+<dd>
+A new ImageTarget representing the given combination of configurations.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="ref" class="level3">
 <h3 class="anchored" data-anchor-id="ref"><span class="doc-object-name doc-function doc-label doc-label-method">ref()</span></h3>
@@ -1339,10 +1381,28 @@ Remove the image from the local image cache or registry.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ref(platform<span class="op">=</span><span class="ss">f'linux/</span><span class="sc">{</span>SETTINGS<span class="sc">.</span>architecture<span class="sc">}</span><span class="ss">'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param platform: The platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.</p>
-<p>:return: A string reference to the image, using the build metadata digest if available, otherwise falling back to the first tag.</p>
+<section id="parameters-2" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">platform</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">f<span class="st">"linux/{SETTINGS.architecture}"</span><br></span></code></dt>
+<dd>
+The platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns-1" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+A string reference to the image, using the build metadata digest if available, otherwise falling back to the first tag.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="remove" class="level3">
 <h3 class="anchored" data-anchor-id="remove"><span class="doc-object-name doc-function doc-label doc-label-method">remove()</span></h3>

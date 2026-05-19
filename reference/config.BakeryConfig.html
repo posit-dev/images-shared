@@ -758,6 +758,7 @@ window.onload = function () {
   <ul>
   <li><a href="#config.bakeryconfig" id="toc-config.bakeryconfig" class="nav-link active" data-scroll-target="#config.bakeryconfig"><span class="doc-object-name doc-class doc-label doc-label-class">config.BakeryConfig</span></a>
   <ul class="collapse">
+  <li><a href="#attributes" id="toc-attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
   <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
   <ul class="collapse">
   <li><a href="#init__" id="toc-init__" class="nav-link" data-scroll-target="#init__"><span class="doc-object-name doc-function doc-label doc-label-method">__init__()</span></a></li>
@@ -818,9 +819,33 @@ window.onload = function () {
 <div class="doc-signature doc-Kind.CLASS">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>config.BakeryConfig()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:var yaml: The YAML parser used to read and write the bakery.yaml file. :var config_file: Path to the bakery.yaml configuration file. :var base_path: The base path where the bakery.yaml file is located. :var model: The BakeryConfigDocument model representation of the bakery.yaml file. :var targets: List of ImageTarget objects representing the image build targets defined in the config.</p>
+<section id="attributes" class="level2 doc-attributes">
+<h2 class="doc-attributes anchored" data-anchor-id="attributes">Attributes</h2>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">yaml</span></code></dt>
+<dd>
+<p>The YAML parser used to read and write the bakery.yaml file.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">config_file</span></code></dt>
+<dd>
+<p>Path to the bakery.yaml configuration file.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">base_path</span></code></dt>
+<dd>
+<p>The base path where the bakery.yaml file is located.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">model</span></code></dt>
+<dd>
+<p>The BakeryConfigDocument model representation of the bakery.yaml file.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">targets</span></code></dt>
+<dd>
+List of ImageTarget objects representing the image build targets defined in the config.
+</dd>
+</dl>
 </div>
+</section>
 <section id="methods" class="level2 doc-methods">
 <h2 class="doc-methods anchored" data-anchor-id="methods">Methods</h2>
 <table class="gd-summary-table">
@@ -993,10 +1018,32 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">__init__</span>(config_file, settings<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param config_file: Path to the target bakery.yaml configuration file. :param settings: Optional BakeryConfigFilter to apply when generating image targets.</p>
-<p>:raises FileNotFoundError: If the config file does not exist.</p>
+<section id="parameters" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">config_file</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | Path | os.PathLike</span></code></dt>
+<dd>
+<p>Path to the target bakery.yaml configuration file.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">settings</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">BakerySettings | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional BakeryConfigFilter to apply when generating image targets.
+</dd>
+</dl>
 </div>
+</section>
+<section id="raises" class="level4 doc-raises">
+<h4 class="doc-raises anchored" data-anchor-id="raises">Raises</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">FileNotFoundError</span></code></dt>
+<dd>
+If the config file does not exist.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="bake_plan_targets" class="level3">
 <h3 class="anchored" data-anchor-id="bake_plan_targets"><span class="doc-object-name doc-function doc-label doc-label-method">bake_plan_targets()</span></h3>
@@ -1010,9 +1057,17 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>bake_plan_targets(push<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param push: When True, include cache-to exports in the bake plan so that cache layers are written to the registry alongside the built images.</p>
+<section id="parameters-1" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">push</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+When True, include cache-to exports in the bake plan so that cache layers are written to the registry alongside the built images.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="build_targets" class="level3">
 <h3 class="anchored" data-anchor-id="build_targets"><span class="doc-object-name doc-function doc-label doc-label-method">build_targets()</span></h3>
@@ -1036,9 +1091,49 @@ Write the bakery config to the config file.
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    retry<span class="op">=</span><span class="dv">0</span></span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param load: If True, load the built images into the local Docker daemon. :param push: If True, push the built images to the configured registries. :param pull: If True, always pull the latest version of base images. :param cache: If True, use the build cache when building images. :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified platform. :param strategy: The strategy to use when building images. :param metadata_file: Optional path to a metadata file to write build metadata to. :param fail_fast: If True, stop building targets on the first failure. :param retry: Number of times to retry a failed build (default 0, no retries).</p>
+<section id="parameters-2" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">load</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">True</span></span></code></dt>
+<dd>
+<p>If True, load the built images into the local Docker daemon.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">push</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+<p>If True, push the built images to the configured registries.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">pull</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+<p>If True, always pull the latest version of base images.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">cache</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">True</span></span></code></dt>
+<dd>
+<p>If True, use the build cache when building images.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">platforms</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[str] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional list of platforms to build for. If None, builds for the configuration specified platform.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">strategy</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ImageBuildStrategy</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">ImageBuildStrategy.BAKE<br></span></code></dt>
+<dd>
+<p>The strategy to use when building images.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">metadata_file</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Path | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional path to a metadata file to write build metadata to.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">fail_fast</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+<p>If True, stop building targets on the first failure.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">retry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">int</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="dv">0</span></span></code></dt>
+<dd>
+Number of times to retry a failed build (default 0, no retries).
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="clean_caches" class="level3">
 <h3 class="anchored" data-anchor-id="clean_caches"><span class="doc-object-name doc-function doc-label doc-label-method">clean_caches()</span></h3>
@@ -1052,9 +1147,25 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>clean_caches(remove_untagged<span class="op">=</span><span class="va">True</span>, remove_older_than<span class="op">=</span><span class="va">None</span>, dry_run<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param remove_untagged: If True, remove untagged caches. :param remove_older_than: Optional timedelta to remove caches older than the specified duration. :param dry_run: If True, print what would be deleted without actually deleting anything.</p>
+<section id="parameters-3" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">remove_untagged</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">True</span></span></code></dt>
+<dd>
+<p>If True, remove untagged caches.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">remove_older_than</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">timedelta | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional timedelta to remove caches older than the specified duration.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">dry_run</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+If True, print what would be deleted without actually deleting anything.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="clean_temporary" class="level3">
 <h3 class="anchored" data-anchor-id="clean_temporary"><span class="doc-object-name doc-function doc-label doc-label-method">clean_temporary()</span></h3>
@@ -1068,9 +1179,25 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>clean_temporary(remove_untagged<span class="op">=</span><span class="va">True</span>, remove_older_than<span class="op">=</span><span class="va">None</span>, dry_run<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param remove_untagged: If True, remove untagged images. :param remove_older_than: Optional timedelta to remove images older than the specified duration. :param dry_run: If True, print what would be deleted without actually deleting anything.</p>
+<section id="parameters-4" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">remove_untagged</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">True</span></span></code></dt>
+<dd>
+<p>If True, remove untagged images.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">remove_older_than</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">timedelta | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional timedelta to remove images older than the specified duration.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">dry_run</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+If True, print what would be deleted without actually deleting anything.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="create_image" class="level3">
 <h3 class="anchored" data-anchor-id="create_image"><span class="doc-object-name doc-function doc-label doc-label-method">create_image()</span></h3>
@@ -1093,8 +1220,38 @@ Write the bakery config to the config file.
 </div>
 <div class="doc-text">
 <p>Creates a new image directory, adds the image to the config, and writes the image back to bakery.yaml.</p>
-<p>:param image_name: The name of the image to create. :param base_image: Optional base image to use in the Containerfile template. This is used in the <code>FROM</code> directive. :param subpath: Optional subpath for the image. If not provided, the image name will be used as the subpath. :param display_name: Optional display name for the image. If not provided, the image name will be used. :param description: Optional description for the image. Used in labels. :param documentation_url: Optional URL for the image documentation. Used in labels.</p>
 </div>
+<section id="parameters-5" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image to create.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">base_image</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional base image to use in the Containerfile template. This is used in the <code>FROM</code> directive.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">subpath</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional subpath for the image. If not provided, the image name will be used as the subpath.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">display_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional display name for the image. If not provided, the image name will be used.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">description</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional description for the image. Used in labels.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">documentation_url</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional URL for the image documentation. Used in labels.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="create_matrix" class="level3">
 <h3 class="anchored" data-anchor-id="create_matrix"><span class="doc-object-name doc-function doc-label doc-label-method">create_matrix()</span></h3>
@@ -1118,8 +1275,42 @@ Write the bakery config to the config file.
 </div>
 <div class="doc-text">
 <p>Creates a new matrix directory from image templates, add the matrix definition to the config, and writes the matrix back to bakery.yaml.</p>
-<p>:param image_name: The name of the image to create the matrix for. :param name_pattern: Optional name pattern for the matrix versions. If not provided, the default pattern will be used. :param subpath: Optional subpath for the matrix. If not provided, the matrix name will be used as the subpath. :param dependency_constraints: Optional list of DependencyConstraint objects to define constraints for the matrix. :param dependencies: Optional list of DependencyVersions objects to define dependencies for the matrix. :param values: Optional dictionary of values to use in the matrix. This can be used to provide additional context or configuration for the matrix. Often used to specify unmanaged dependency versions. :param force: If True, will overwrite an existing matrix.</p>
 </div>
+<section id="parameters-6" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image to create the matrix for.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">name_pattern</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional name pattern for the matrix versions. If not provided, the default pattern will be used.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">subpath</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional subpath for the matrix. If not provided, the matrix name will be used as the subpath.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">dependency_constraints</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[DependencyConstraint] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional list of DependencyConstraint objects to define constraints for the matrix.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">dependencies</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[DependencyVersions] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional list of DependencyVersions objects to define dependencies for the matrix.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">values</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">dict[str, str] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional dictionary of values to use in the matrix. This can be used to provide additional context or configuration for the matrix. Often used to specify unmanaged dependency versions.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">force</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+If True, will overwrite an existing matrix.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="create_version" class="level3">
 <h3 class="anchored" data-anchor-id="create_version"><span class="doc-object-name doc-function doc-label doc-label-method">create_version()</span></h3>
@@ -1137,8 +1328,38 @@ Write the bakery config to the config file.
 </div>
 <div class="doc-text">
 <p>Creates a new version directory from image templates, add the version to the image config, and writes the version back to bakery.yaml.</p>
-<p>:param image_name: The name of the image to create the version for. :param version: The version name to create. :param subpath: Optional subpath for the version. If not provided, the version name will be used as the subpath. :param values: Optional dictionary of values to use in the version. This can be used to provide additional context or configuration for the version. Often used to specify versions of R, Python, or Quarto. :param latest: Whether this version should be marked as the latest version. :param force: If True, will overwrite an existing version with the same name.</p>
 </div>
+<section id="parameters-7" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image to create the version for.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">version</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The version name to create.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">subpath</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional subpath for the version. If not provided, the version name will be used as the subpath.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">values</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">dict[str, str] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>Optional dictionary of values to use in the version. This can be used to provide additional context or configuration for the version. Often used to specify versions of R, Python, or Quarto.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">latest</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">True</span></span></code></dt>
+<dd>
+<p>Whether this version should be marked as the latest version.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">force</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default"><span class="va">False</span></span></code></dt>
+<dd>
+If True, will overwrite an existing version with the same name.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="from_context" class="level3">
 <h3 class="anchored" data-anchor-id="from_context"><span class="doc-object-name doc-function doc-label doc-label-method">from_context()</span></h3>
@@ -1152,11 +1373,43 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>from_context(context, settings<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param context: The path to the bakery.yaml file or its parent directory. :param settings: Optional BakerySettings to apply when generating image targets.</p>
-<p>:return: A BakeryConfig instance.</p>
-<p>:raises FileNotFoundError: If no bakery.yaml or bakery.yml file is found in the context path.</p>
+<section id="parameters-8" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">context</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | Path | os.PathLike</span></code></dt>
+<dd>
+<p>The path to the bakery.yaml file or its parent directory.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">settings</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">BakerySettings | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+Optional BakerySettings to apply when generating image targets.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">BakeryConfig</span></code></dt>
+<dd>
+A BakeryConfig instance.
+</dd>
+</dl>
+</div>
+</section>
+<section id="raises-1" class="level4 doc-raises">
+<h4 class="doc-raises anchored" data-anchor-id="raises-1">Raises</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">FileNotFoundError</span></code></dt>
+<dd>
+If no bakery.yaml or bakery.yml file is found in the context path.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="generate_image_targets" class="level3">
 <h3 class="anchored" data-anchor-id="generate_image_targets"><span class="doc-object-name doc-function doc-label doc-label-method">generate_image_targets()</span></h3>
@@ -1170,9 +1423,17 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>generate_image_targets(settings<span class="op">=</span>BakerySettings())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param settings: Optional settings to apply when generating image targets. If None, all images will be included.</p>
+<section id="parameters-9" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">settings</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">BakerySettings</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">BakerySettings()<br></span></code></dt>
+<dd>
+Optional settings to apply when generating image targets. If None, all images will be included.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="get_image_target_by_uid" class="level3">
 <h3 class="anchored" data-anchor-id="get_image_target_by_uid"><span class="doc-object-name doc-function doc-label doc-label-method">get_image_target_by_uid()</span></h3>
@@ -1186,9 +1447,28 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>get_image_target_by_uid(uid)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param uid: The UID of the image target to find. :return: The ImageTarget with the given UID, or None if not found.</p>
+<section id="parameters-10" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-10">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">uid</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The UID of the image target to find.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns-1" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">ImageTarget | None</span></code></dt>
+<dd>
+The ImageTarget with the given UID, or None if not found.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="load_build_metadata_from_file" class="level3">
 <h3 class="anchored" data-anchor-id="load_build_metadata_from_file"><span class="doc-object-name doc-function doc-label doc-label-method">load_build_metadata_from_file()</span></h3>
@@ -1202,9 +1482,28 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>load_build_metadata_from_file(metadata_file)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param metadata_file: Path to the metadata file to load. :return: A list of targets loaded.</p>
+<section id="parameters-11" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-11">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">metadata_file</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">Path</span></code></dt>
+<dd>
+Path to the metadata file to load.
+</dd>
+</dl>
 </div>
+</section>
+<section id="returns-2" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">list[str]</span></code></dt>
+<dd>
+A list of targets loaded.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="new" class="level3">
 <h3 class="anchored" data-anchor-id="new"><span class="doc-object-name doc-function doc-label doc-label-method">new()</span></h3>
@@ -1218,9 +1517,17 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>new(base_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:var base_path: The path where the new bakery.yaml file will be created.</p>
+<section id="attributes-1" class="level4 doc-attributes">
+<h4 class="doc-attributes anchored" data-anchor-id="attributes-1">Attributes</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">base_path</span></code></dt>
+<dd>
+The path where the new bakery.yaml file will be created.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="patch_version" class="level3">
 <h3 class="anchored" data-anchor-id="patch_version"><span class="doc-object-name doc-function doc-label doc-label-method">patch_version()</span></h3>
@@ -1247,9 +1554,17 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>remove_image(image_name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param image_name: The name of the image to remove.</p>
+<section id="parameters-12" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-12">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The name of the image to remove.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="remove_version" class="level3">
 <h3 class="anchored" data-anchor-id="remove_version"><span class="doc-object-name doc-function doc-label doc-label-method">remove_version()</span></h3>
@@ -1263,9 +1578,21 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>remove_version(image_name, version_name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param image_name: The name of the image to which the version belongs. :param version_name: The name of the version to remove.</p>
+<section id="parameters-13" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-13">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">image_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+<p>The name of the image to which the version belongs.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">version_name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str</span></code></dt>
+<dd>
+The name of the version to remove.
+</dd>
+</dl>
 </div>
+</section>
 </section>
 <section id="rerender_files" class="level3">
 <h3 class="anchored" data-anchor-id="rerender_files"><span class="doc-object-name doc-function doc-label doc-label-method">rerender_files()</span></h3>
@@ -1279,10 +1606,32 @@ Write the bakery config to the config file.
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>rerender_files(_filter<span class="op">=</span><span class="va">None</span>, regex_filters<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div class="doc-text">
-<p>:param _filter: A BakeryConfigFilter to apply when regenerating version files. :param regex_filters: A list of regex patterns to filter which templates to render.</p>
-<p>:raises BakeryFileError: If any errors occur while regenerating version files.</p>
+<section id="parameters-14" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-14">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">_filter</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">BakeryConfigFilter | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+<p>A BakeryConfigFilter to apply when regenerating version files.</p>
+</dd>
+<dt><code><span class="doc-parameter-name">regex_filters</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[str] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+A list of regex patterns to filter which templates to render.
+</dd>
+</dl>
 </div>
+</section>
+<section id="raises-2" class="level4 doc-raises">
+<h4 class="doc-raises anchored" data-anchor-id="raises-2">Raises</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">BakeryFileError</span></code></dt>
+<dd>
+If any errors occur while regenerating version files.
+</dd>
+</dl>
+</div>
+</section>
 </section>
 <section id="write" class="level3">
 <h3 class="anchored" data-anchor-id="write"><span class="doc-object-name doc-function doc-label doc-label-method">write()</span></h3>
