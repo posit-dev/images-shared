@@ -37,6 +37,19 @@ apt-get clean {{ global_options }} && \
 rm -rf /var/lib/apt/lists/*
 {%- endmacro %}
 
+{# Write apt retries and timeout config.
+Retries without a lowered Timeout makes stalls take longer, not shorter.
+Called once inside setup() so the file persists across subsequent layers.
+Subsequent apt macros do not re-emit this, keeping rendered Containerfiles
+readable for downstream consumers.
+
+:param retries: Retry attempts on transient errors. Defaults to 3.
+:param timeout: Per-fetch timeout in seconds. Defaults to 30.
+#}
+{% macro configure_retries(retries = 3, timeout = 30) -%}
+echo 'Acquire::Retries "{{ retries }}"; Acquire::http::Timeout "{{ timeout }}"; Acquire::https::Timeout "{{ timeout }}";' > /etc/apt/apt.conf.d/99-retries
+{%- endmacro %}
+
 {# Commands for updating the apt cache, upgrading packages, running dist-upgrade, removing unneeded packages,
 and cleaning the apt cache.
 
@@ -150,6 +163,7 @@ optionally adding the Posit Pro and/or Open apt repositories.
 :param open_repo: Whether to add the Posit Open apt repository. Defaults to False.
 #}
 {% macro setup(clean = True, codename = None, pro_repo = True, open_repo = False) -%}
+{{ configure_retries() }} && \
 {{ update_upgrade(False) }} && \
 apt-get install -yqq --no-install-recommends \
     curl \
