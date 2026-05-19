@@ -193,6 +193,7 @@ jobs:
           BAKERY_CONTEXT: ${{ inputs.context }}
           REGISTRY_OWNER: ${{ github.repository_owner }}
           CACHE: ${{ inputs.cache }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CACHE_FLAGS=()
           if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then

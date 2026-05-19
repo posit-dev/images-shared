@@ -226,6 +226,7 @@ jobs:
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Cache-to is conditional on --push (handled by bakery internally)
         run: |
           CACHE_FLAGS=()
