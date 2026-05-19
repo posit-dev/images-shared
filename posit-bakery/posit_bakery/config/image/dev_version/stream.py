@@ -33,10 +33,11 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         Field(
             exclude=True,
             default=None,
-            description="Authoritative version supplied by the caller (e.g. a CI dispatch). When set, skips the "
-            "upstream version fetch and uses this value as ImageVersion.name. URL resolution is unchanged: the "
-            "build runner's CDN fetch resolves URLs against whatever the upstream has at build time, which by "
-            "then has propagated past the dispatch.",
+            description="Authoritative version supplied by the caller (e.g. a CI dispatch). When set, "
+            "``get_version()`` returns this value directly (no upstream fetch), and during URL resolution "
+            "the upstream version embedded in ``download_url`` is rewritten to point at the override's "
+            "artifact. If that artifact has not propagated to the CDN, the build fails loudly at curl time "
+            "rather than silently downloading the stale upstream artifact.",
         ),
     ]
 
@@ -76,7 +77,9 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         """
         url_by_os = {}
         for _os in self.os:
-            result = get_product_artifact_by_stream(self.product, self.stream, _os.buildOS)
+            result = get_product_artifact_by_stream(
+                self.product, self.stream, _os.buildOS, version_override=self.version_override
+            )
             if generalize_architecture:
                 url_by_os[_os.name] = str(result.architecture_generalized_download_url)
             else:
@@ -98,7 +101,9 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         for os_version in self.os:
             try:
                 generalize = os_version.platforms != DEFAULT_PLATFORMS
-                result = get_product_artifact_by_stream(self.product, self.stream, os_version.buildOS)
+                result = get_product_artifact_by_stream(
+                    self.product, self.stream, os_version.buildOS, version_override=self.version_override
+                )
                 if generalize:
                     os_version.artifactDownloadURL = str(result.architecture_generalized_download_url)
                 else:

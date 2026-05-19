@@ -41,8 +41,15 @@ class ReleaseStreamPath:
         self.stream_url = stream_url
         self.resolver_map = resolver_map
 
-    def get(self, metadata: dict) -> ReleaseStreamResult:
-        """Fetches data from the stream URL and resolves the data using the given resolvers."""
+    def get(self, metadata: dict, version_override: str | None = None) -> ReleaseStreamResult:
+        """Fetches data from the stream URL and resolves the data using the given resolvers.
+
+        When ``version_override`` is set, resolvers still run unchanged (we need the upstream
+        version to know what to rewrite). After resolution, ``result["version"]`` is replaced
+        with the override and any occurrence of the upstream version in ``download_url`` is
+        rewritten to the override form. See :func:`_apply_version_override` for the encodings
+        we handle.
+        """
         session = cached_session()
         response = session.get(self.stream_url)
         response.raise_for_status()
@@ -61,7 +68,37 @@ class ReleaseStreamPath:
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
 
+        if version_override is not None:
+            _apply_version_override(result, version_override)
+
         return ReleaseStreamResult(**result)
+
+
+def _apply_version_override(result: dict, version_override: str) -> None:
+    """Rewrite ``result`` in place to reflect a caller-supplied version override.
+
+    Replaces ``result["version"]`` with the override and rewrites every occurrence of
+    the upstream version in ``download_url`` so the URL points at the override's artifact.
+    The rewrite covers the three encodings products embed the version in URLs:
+
+      - **raw** (e.g. ``2026.05.0-dev+148-gSHA``) — rare in URLs but possible
+      - **URL-encoded** (e.g. ``2026.05.0-dev%2B148-gSHA``) — Connect, PPM
+      - **tag-safe** with ``+`` replaced by ``-`` (e.g. ``2026.05.0-dev-148-gSHA``) — Workbench
+
+    Resolvers themselves remain declarative and untouched; this is a pure post-resolution
+    rewrite. If the upstream version doesn't appear in the URL in any of these forms,
+    the URL is left as-is and the build will download the upstream artifact — at which
+    point the caller can detect the mismatch via the resulting image's contents.
+    """
+    upstream_version = result.get("version", "")
+    result["version"] = version_override
+    if not upstream_version or not isinstance(result.get("download_url"), str):
+        return
+    url = result["download_url"]
+    url = url.replace(upstream_version, version_override)
+    url = url.replace(quote(upstream_version, safe=""), quote(version_override, safe=""))
+    url = url.replace(upstream_version.replace("+", "-"), version_override.replace("+", "-"))
+    result["download_url"] = url
 
 
 # This map connects products to their respective release streams. Each release stream has a ReleaseStreamPath object
@@ -257,9 +294,18 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
 
 
 def get_product_artifact_by_stream(
-    product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
+    product: ProductEnum,
+    stream: ReleaseStreamEnum,
+    os: BuildOS,
+    generalize_arch: bool = True,
+    version_override: str | None = None,
 ) -> ReleaseStreamResult:
-    """Fetches the version and download URL for a given product, release stream, and OS."""
+    """Fetches the version and download URL for a given product, release stream, and OS.
+
+    When ``version_override`` is set, the returned ``version`` is the override and the
+    ``download_url`` is rewritten so it points at the override's artifact (across all
+    three URL encoding styles products use).
+    """
     if product not in product_release_stream_url_map:
         raise ValueError(f"Product {product} is not supported.")
     if stream not in product_release_stream_url_map[product]:
@@ -267,4 +313,4 @@ def get_product_artifact_by_stream(
 
     metadata = _make_resolver_metadata(os, product)
 
-    return product_release_stream_url_map[product][stream].get(metadata)
+    return product_release_stream_url_map[product][stream].get(metadata, version_override=version_override)

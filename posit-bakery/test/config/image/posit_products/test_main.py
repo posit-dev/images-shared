@@ -773,3 +773,95 @@ class TestGetProductArtifactByStream:
         output = get_product_artifact_by_stream(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_session_url
+
+
+class TestVersionOverrideRewrite:
+    """version_override flows through to every product's download_url after resolution.
+
+    Each product embeds the version in URLs in a slightly different way; the post-resolution
+    rewrite handles raw, URL-encoded, and tag-safe (``+`` → ``-``) forms so the same code
+    works uniformly across templated and payload-sourced URLs.
+    """
+
+    def test_ppm_daily_url_rewritten_to_override(self, patch_requests_get):
+        """PPM daily URLs embed the version URL-encoded (``+`` → ``%2B``)."""
+        override = "2026.05.0-dev+999-gffffffffff"
+        output = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert output.version == override
+        assert "2026.05.0-dev%2B999-gffffffffff" in str(output.download_url)
+        # The upstream version (from the fixture) should no longer appear in the URL.
+        assert "2026.02.0-dev%2B89-ga1b2c3d4e5" not in str(output.download_url)
+
+    def test_ppm_preview_url_rewritten_to_override(self, patch_requests_get):
+        """PPM preview URLs are templated the same way as daily."""
+        override = "2026.05.0-dev+999-gffffffffff"
+        output = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseStreamEnum.PREVIEW,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert output.version == override
+        assert "2026.05.0-dev%2B999-gffffffffff" in str(output.download_url)
+
+    def test_connect_daily_url_rewritten_to_override(self, patch_requests_get):
+        """Connect daily URLs come verbatim from the JSON payload with URL-encoded versions."""
+        override = "2026.05.0-dev+999-gffffffffff"
+        output = get_product_artifact_by_stream(
+            ProductEnum.CONNECT,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert output.version == override
+        assert "2026.05.0-dev%2B999-gffffffffff" in str(output.download_url)
+        # The upstream version embedded in the fixture URL should no longer appear.
+        assert "2026.04.0-dev%2B10-gbe0a4a3d31" not in str(output.download_url)
+
+    def test_workbench_daily_url_rewritten_to_override(self, patch_requests_get):
+        """Workbench daily URLs embed the version in tag-safe form (``+`` → ``-``)."""
+        override = "2026.05.0-daily+999.pro7"
+        output = get_product_artifact_by_stream(
+            ProductEnum.WORKBENCH,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert output.version == override
+        # Tag-safe form: + → -
+        assert "2026.05.0-daily-999.pro7" in str(output.download_url)
+        # The upstream version (from the fixture) should no longer appear in tag-safe form.
+        assert "2025.04.0-daily-404.pro4" not in str(output.download_url)
+
+    def test_workbench_session_daily_url_rewritten_to_override(self, patch_requests_get):
+        """Workbench-session daily URLs follow the same tag-safe pattern as Workbench."""
+        override = "2026.05.0-daily+999.pro7"
+        output = get_product_artifact_by_stream(
+            ProductEnum.WORKBENCH_SESSION,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert output.version == override
+        assert "2026.05.0-daily-999.pro7" in str(output.download_url)
+
+    def test_no_override_leaves_url_unchanged(self, patch_requests_get):
+        """Without an override, both the version and URL come from the upstream payload verbatim."""
+        without = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+        )
+        explicit_none = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseStreamEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=None,
+        )
+        assert without.version == explicit_none.version
+        assert str(without.download_url) == str(explicit_none.download_url)
