@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 from typing import Annotated, Self, Literal
@@ -91,6 +92,18 @@ class DGossCommand(BaseModel):
             for arg, value in self.image_target.build_args.items():
                 env_var = f"BUILD_ARG_{arg.upper()}"
                 e[env_var] = value
+
+        # Forward the runner's GITHUB_TOKEN as GH_TOKEN so `quarto list tools`
+        # (and similar) can authenticate api.github.com calls and avoid the
+        # 60/hr anonymous rate limit that intermittently fails dgoss runs.
+        # Gate on GITHUB_ACTIONS=true so we only forward in environments where
+        # GitHub's automatic log masking redacts the value — a local run that
+        # happens to have GITHUB_TOKEN set (e.g. a developer's gh CLI session)
+        # would echo the raw token into the `-e GH_TOKEN=…` command logging.
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if github_token:
+                e["GH_TOKEN"] = github_token
 
         return e
 

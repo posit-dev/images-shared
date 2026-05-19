@@ -55,6 +55,27 @@ class TestDGossCommand:
         }
         assert dgoss_command.image_environment == expected_env
 
+    def test_image_environment_forwards_github_token_in_actions(self, basic_standard_image_target, monkeypatch):
+        """Inside a GitHub Actions run GITHUB_TOKEN is forwarded as GH_TOKEN."""
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_test_value")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert dgoss_command.image_environment["GH_TOKEN"] == "ghs_test_value"
+
+    def test_image_environment_skips_github_token_outside_actions(self, basic_standard_image_target, monkeypatch):
+        """Local runs with GITHUB_TOKEN set (e.g. from gh CLI) do not forward it,
+        so the raw token never appears in the dgoss command line outside the
+        GitHub Actions log-masking environment."""
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_developer_pat")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert "GH_TOKEN" not in dgoss_command.image_environment
+
+    def test_image_environment_omits_gh_token_when_token_unset(self, basic_standard_image_target, monkeypatch):
+        """In GitHub Actions but with no token (rare, but possible) GH_TOKEN is omitted."""
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert "GH_TOKEN" not in dgoss_command.image_environment
+
     def test_volume_mounts(self, basic_standard_image_target):
         """Test that DGossCommand volume_mounts returns the expected volume mounts."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
