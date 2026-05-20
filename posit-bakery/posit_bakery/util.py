@@ -1,5 +1,6 @@
 import logging
 import os
+from functools import cache
 from pathlib import Path
 from shutil import which
 from typing import Union
@@ -63,17 +64,19 @@ def auto_path() -> Path:
     return context
 
 
-def cached_session(**kwargs) -> CachedSession:
-    """Create a cached requests session with default settings."""
-    session_kwargs = {
-        "cache_name": "bakery_cache",
-        "expire_after": 3600,
-        "backend": "filesystem",
-        "use_temp": True,
-        "allowable_methods": ["GET"],
-        "allowable_codes": [200],
-        "stale_if_error": True,
-    }
-    session_kwargs.update(kwargs)
+@cache
+def cached_session() -> CachedSession:
+    """Return a process-wide cached requests session.
 
-    return CachedSession(**session_kwargs)
+    Memoized so backend initialization and the accompanying log chatter only
+    happen once per bakery invocation.
+    """
+    return CachedSession(
+        cache_name="bakery_cache",
+        expire_after=3600,
+        backend="filesystem",
+        use_temp=True,
+        allowable_methods=["GET"],
+        allowable_codes=[200],
+        stale_if_error=True,
+    )
