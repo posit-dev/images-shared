@@ -684,6 +684,22 @@ class TestImageMatrix:
             "python3.13.0",
         }
 
+    def test_to_image_versions_multi_version_value_sorts_on_later_segment(self):
+        """Values with multiple version-like segments must sort on the later segment when the
+        earlier one ties, otherwise ``max()`` picks an arbitrary row and the ``LATEST_PATCH``
+        tag can end up pointing at an older patch. Regression test for the single-segment
+        sort key.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["go1.24-lib2.3.1", "go1.24-lib2.3.2", "go1.24-lib2.3.5"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # All three strip to ``go1.24-lib2.3`` → one group, only the highest lib patch wins.
+        assert len(latest_patch_versions) == 1
+        assert latest_patch_versions[0].values["build"] == "go1.24-lib2.3.5"
+
     def test_to_image_versions_values_only_groups_prefixed_versions(self):
         """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
         same form must land in the same group, even though they don't parse as a standalone

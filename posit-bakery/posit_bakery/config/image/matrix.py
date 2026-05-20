@@ -862,34 +862,37 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
     def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
         """Sort key for finding the highest-patch row within a group.
 
-        Extract the first numeric ``MAJOR.MINOR[.PATCH...]`` substring from each axis
-        value and parse it as a ``DependencyVersion`` for comparison. Within a single
-        group all rows share the same stripped form, so either every row produces an
-        extractable version (when the stripped form contains a numeric version segment)
-        or the group has only one row (when there is no numeric segment to compete on).
-        That invariant prevents mixed-type comparisons during ``max()``.
+        Extract *every* numeric ``MAJOR.MINOR[.PATCH...]`` substring from each value
+        and use the tuple of parsed versions as the sort key, so multi-version strings
+        (e.g. ``"go1.24-lib2.3.1"`` vs ``"go1.24-lib2.3.2"``) cascade comparison to
+        the later segment that actually differs.
+
+        Within a group all rows share the same stripped form, which forces the same
+        set of version-bearing positions, so every row produces the same shape of
+        tuple (empty when no version is present and the group has a single row, or
+        non-empty in lockstep otherwise). That invariant prevents mixed-type
+        comparisons during ``max()``.
         """
         sort_keys = []
         for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
             sort_keys.append(DependencyVersion(dep.versions[0]))
         for k, val in sorted(product["values"].items()):
-            value_str = str(val)
-            extracted = ImageMatrix._extract_version(value_str)
-            sort_keys.append(extracted if extracted is not None else value_str)
+            sort_keys.append(ImageMatrix._extract_versions(str(val)))
         return tuple(sort_keys)
 
     @staticmethod
-    def _extract_version(s: str) -> DependencyVersion | None:
-        """Return the first ``\\d+(\\.\\d+)+`` substring parsed as a ``DependencyVersion``.
+    def _extract_versions(s: str) -> tuple[DependencyVersion, ...]:
+        """Return every ``\\d+(\\.\\d+)+`` substring in ``s`` parsed as a ``DependencyVersion``.
 
-        Lets prefix-bearing values like ``"go1.24.10"`` participate in patch ordering
-        alongside plain ``"1.24.10"``. Returns ``None`` when no numeric version segment
-        is present or the segment fails to parse.
+        Returning a tuple (rather than the first match) is load-bearing: it lets values
+        with several version segments (e.g. ``"go1.24-lib2.3.1"``) sort on the later
+        segment when the earlier one ties. Unparseable substrings are skipped; the empty
+        tuple means no version was found and the row is alone in its strip-patch group.
         """
-        match = _VERSION_SUBSTRING_RE.search(s)
-        if match is None:
-            return None
-        try:
-            return DependencyVersion(match.group())
-        except InvalidVersion:
-            return None
+        parsed: list[DependencyVersion] = []
+        for match in _VERSION_SUBSTRING_RE.finditer(s):
+            try:
+                parsed.append(DependencyVersion(match.group()))
+            except InvalidVersion:
+                continue
+        return tuple(parsed)
