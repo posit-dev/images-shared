@@ -654,6 +654,36 @@ class TestImageMatrix:
         # so the stripped group key for each is its own raw string → both latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
+    def test_to_image_versions_metadata_bearing_dep_grouped_by_stripped_minor(self):
+        """Pre-release / build metadata on dep versions survives ``stripPatch`` intact.
+
+        Constraint resolution today never emits metadata-bearing strings (clean patches win
+        in ``_filter_minor``), but an explicit ``dependencies:`` list can carry e.g.
+        ``3.12.3-rc1``. Pin that the patch numeric is the only thing collapsed, so prerelease
+        rows group with their own siblings rather than with clean-version rows. Guards
+        against regex widenings that would eat the trailing ``-rc1``.
+        """
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(
+                    dependency="python",
+                    versions=["3.12.3-rc1", "3.12.5-rc1", "3.12.5", "3.13.0"],
+                ),
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+
+        # Three stripped groups: "python3.12-rc1" → 3.12.5-rc1 wins;
+        # "python3.12" → 3.12.5; "python3.13" → 3.13.0.
+        assert len(latest_patch_versions) == 3
+        assert {iv.name for iv in latest_patch_versions} == {
+            "python3.12.5-rc1",
+            "python3.12.5",
+            "python3.13.0",
+        }
+
     def test_to_image_versions_values_only_groups_prefixed_versions(self):
         """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
         same form must land in the same group, even though they don't parse as a standalone
