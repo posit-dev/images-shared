@@ -641,14 +641,17 @@ class TestImageMatrix:
         assert latest_values == {"1.24.2", "1.25.0"}
 
     def test_to_image_versions_values_only_non_version_keeps_all(self):
-        """Non-version list values fall back to raw-string grouping so distinct values stay distinct."""
+        """Values without ``MAJOR.MINOR.PATCH`` substrings are untouched by ``stripPatch`` and
+        therefore land in distinct groups, leaving each row eligible as latest-patch.
+        """
         matrix = ImageMatrix(
             values={"flavor": ["alpha", "beta"]},
         )
 
         image_versions = matrix.to_image_versions()
         assert len(image_versions) == 2
-        # "alpha" and "beta" are unparseable → separate groups → both latest-patch.
+        # "alpha" and "beta" have no patch component for stripPatch to collapse,
+        # so the stripped group key for each is its own raw string → both latest-patch.
         assert all(iv.isLatestPatchCombination for iv in image_versions)
 
     def test_to_image_versions_values_only_groups_prefixed_versions(self):

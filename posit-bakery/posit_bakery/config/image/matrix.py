@@ -795,70 +795,68 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         return dep_parts, value_parts
 
     def _compute_latest_patch_signatures(self, products: list[dict[str, list | dict]]) -> set[tuple] | None:
-        """Identify cartesian-product rows that are the latest patch for their (minor, ...) group.
+        """Identify cartesian-product rows that are the latest patch for their stripped group.
 
-        Groups rows by (axis_key, (major, minor)) for each dependency axis and by (key, value)
-        for each ``values`` axis. Within each group, the row whose dependency versions are
-        highest is the "latest patch" row.
+        Validate all dependency versions upfront, then group every row by the result of
+        applying :func:`strip_patch` to each of its axis values. Within each group, the
+        row whose ``_patch_sort_key`` ranks highest is the "latest patch" row.
+
+        Grouping by the stripped form keeps the selection consistent with what
+        ``stripPatch`` would render: any two rows that would produce the same stripped
+        tag share a group, so only one of them is flagged and no ``LATEST_PATCH``
+        targets collide on push.
 
         :param products: All cartesian-product rows.
 
-        :return: A set of row signatures (see :pymeth:`_row_signature`) identifying latest-patch
-            rows. Returns ``None`` if any dependency version is unparseable; in that case no
-            ``LATEST_PATCH``-family tags are emitted for the matrix.
+        :return: A set of row signatures (see :pymeth:`_row_signature`) identifying
+            latest-patch rows. Returns ``None`` if any dependency version is unparseable;
+            in that case no ``LATEST_PATCH``-family tags are emitted for the matrix.
         """
         if not products:
             return set()
 
+        # Validate dependency versions in a single explicit pass so the rest of the
+        # function can treat them as parseable. Mirrors `_compute_latest_combination`'s
+        # behaviour: bad dep input aborts emission of the family.
+        for product in products:
+            for dep in product["dependencies"]:
+                try:
+                    DependencyVersion(dep.versions[0])
+                except InvalidVersion as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                        f"because dependency '{dep.dependency}' version '{dep.versions[0]}' is unparseable "
+                        f"({e}). No 'latestPatch'-family tags will be emitted for this matrix."
+                    )
+                    return None
+
         groups: dict[tuple, list[dict[str, list | dict]]] = {}
         for product in products:
-            try:
-                group_key = self._minor_group_key(product)
-            except InvalidVersion as e:
-                log.warning(
-                    f"Image matrix '{self.namePattern}': cannot determine latest patch combinations because a "
-                    f"dependency version is unparseable ({e}). "
-                    f"No 'latestPatch'-family tags will be emitted for this matrix."
-                )
-                return None
-            groups.setdefault(group_key, []).append(product)
+            groups.setdefault(self._minor_group_key(product), []).append(product)
 
-        try:
-            latest_signatures: set[tuple] = set()
-            for group_rows in groups.values():
-                max_row = max(group_rows, key=self._patch_sort_key)
-                latest_signatures.add(self._row_signature(max_row))
-            return latest_signatures
-        except InvalidVersion as e:
-            log.warning(
-                f"Image matrix '{self.namePattern}': cannot determine latest patch combinations because a "
-                f"dependency version is unparseable ({e}). "
-                f"No 'latestPatch'-family tags will be emitted for this matrix."
-            )
-            return None
+        latest_signatures: set[tuple] = set()
+        for group_rows in groups.values():
+            max_row = max(group_rows, key=self._patch_sort_key)
+            latest_signatures.add(self._row_signature(max_row))
+        return latest_signatures
 
     @staticmethod
     def _minor_group_key(product: dict[str, list | dict]) -> tuple:
-        """Group key for latest-patch logic.
+        """Group key derived from :func:`strip_patch` applied to every axis value.
 
-        Apply :func:`strip_patch` to each axis value to derive the group key. Two rows
-        that would render to the same stripped tag share a group, so only the
-        highest-patch row in each group is later selected as the latest patch.
+        Two rows that would render to the same stripped tag share the same group key,
+        regardless of whether the value is a plain version (``3.12.3``), a prefixed
+        version (``go1.24.3``), or a non-version label (``alpha``).
 
-        Dependency versions are validated as parseable here so the caller can
-        short-circuit on bad input; the resulting group key is still the stripped form
-        for consistency with the rendered tag (covering prefix-bearing strings like
-        ``v3.12.3`` that the regex still collapses correctly).
+        Pure function — assumes dependency versions are already validated by the
+        caller; this method does not raise.
         """
-        dep_parts = []
-        for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
-            # Validate parseability so unparseable deps short-circuit the caller.
-            DependencyVersion(dep.versions[0])
-            dep_parts.append((dep.dependency, strip_patch(dep.versions[0])))
-
-        value_parts = [(k, strip_patch(str(val))) for k, val in sorted(product["values"].items())]
-
-        return tuple(dep_parts), tuple(value_parts)
+        dep_parts = tuple(
+            (dep.dependency, strip_patch(dep.versions[0]))
+            for dep in sorted(product["dependencies"], key=lambda d: d.dependency)
+        )
+        value_parts = tuple((k, strip_patch(str(val))) for k, val in sorted(product["values"].items()))
+        return dep_parts, value_parts
 
     @staticmethod
     def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
