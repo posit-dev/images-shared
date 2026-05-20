@@ -1,4 +1,5 @@
 import abc
+from functools import cache
 from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
@@ -17,10 +18,13 @@ class RDependency(BakeryYAMLModel, abc.ABC):
 
     dependency: Literal[SupportedDependencies.R] = SupportedDependencies.R
 
-    def _fetch_versions(self) -> list[DependencyVersion]:
+    @staticmethod
+    @cache
+    def _fetch_versions() -> list[DependencyVersion]:
         """Fetch available R versions from Posit.
 
-        This method uses caching to avoid repeated network requests.
+        Memoized so the fetch+parse runs once per bakery invocation regardless
+        of how many constraint instances ask for it.
 
         The results exclude "devel" and "next" versions.
 
