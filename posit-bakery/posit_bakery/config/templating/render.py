@@ -42,3 +42,21 @@ def render_template(template: str, **kwargs) -> str:
     """
     template = jinja2_env().from_string(template)
     return template.render(**kwargs).strip()
+
+
+def normalize_rendered_output(text: str) -> str:
+    """Normalize rendered template output to match common pre-commit hook fixes.
+
+    Strips trailing spaces and tabs from each line and ensures the result
+    ends with exactly one newline (or stays empty if it was empty). This
+    matches the output of the `trailing-whitespace` and `end-of-file-fixer`
+    pre-commit hooks, so files written by bakery's renderer don't fail
+    those hooks in consuming repositories.
+
+    :param text: The rendered template text to normalize.
+    :return: The normalized text.
+    """
+    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)
+    if text:
+        text = text.rstrip("\n") + "\n"
+    return text

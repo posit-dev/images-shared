@@ -25,7 +25,7 @@ from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
-from posit_bakery.config.templating.render import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -197,7 +197,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
             tpl = jinja2_env().from_string(TPL_CONTAINERFILE)
             rendered = tpl.render(image_name=image_name, base_tag=base_tag)
             with open(containerfile_path, "w") as f:
-                f.write(rendered)
+                f.write(normalize_rendered_output(rendered))
 
         image_test_path = image_template_path / "test"
         if not image_test_path.is_dir():
@@ -417,14 +417,13 @@ class BakeryConfig:
         tpl = jinja2_env(loader=jinja2.FileSystemLoader(config_file.parent)).from_string(TPL_BAKERY_CONFIG_YAML)
         rendered = tpl.render(repo_url=util.try_get_repo_url(base_path))
         with open(config_file, "w") as f:
-            f.write(rendered)
+            f.write(normalize_rendered_output(rendered))
 
     def write(self) -> None:
         """Write the bakery config to the config file."""
         stream = io.StringIO()
         self.yaml.dump(self._config_yaml, stream)
-        text = re.sub(r"[ \t]+$", "", stream.getvalue(), flags=re.MULTILINE)
-        self.config_file.write_text(text)
+        self.config_file.write_text(normalize_rendered_output(stream.getvalue()))
 
     def _get_image_index(self, image_name: str) -> int:
         """Returns the index of the image with the given name in the config.

@@ -1,7 +1,7 @@
 import jinja2
 import pytest
 
-from posit_bakery.config.templating.render import jinja2_env
+from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 
 
 pytestmark = [
@@ -61,3 +61,35 @@ def test_render_template():
     template = "{{ 'Test String' | condense }} {{ 'foo-bar-baz' | regexReplace('-', '_') }}"
     rendered = jinja2_env().from_string(template).render()
     assert rendered == "TestString foo_bar_baz"
+
+
+class TestNormalizeRenderedOutput:
+    def test_strips_trailing_spaces(self):
+        assert normalize_rendered_output("foo  \nbar\n") == "foo\nbar\n"
+
+    def test_strips_trailing_tabs(self):
+        assert normalize_rendered_output("foo\t\nbar\n") == "foo\nbar\n"
+
+    def test_strips_mixed_trailing_whitespace(self):
+        assert normalize_rendered_output("foo \t \nbar\n") == "foo\nbar\n"
+
+    def test_strips_whitespace_only_lines(self):
+        assert normalize_rendered_output("a\n  \nb\n") == "a\n\nb\n"
+
+    def test_collapses_multiple_trailing_newlines(self):
+        assert normalize_rendered_output("foo\n\n\n") == "foo\n"
+
+    def test_adds_missing_trailing_newline(self):
+        assert normalize_rendered_output("foo\nbar") == "foo\nbar\n"
+
+    def test_preserves_single_trailing_newline(self):
+        assert normalize_rendered_output("foo\nbar\n") == "foo\nbar\n"
+
+    def test_empty_input_stays_empty(self):
+        assert normalize_rendered_output("") == ""
+
+    def test_preserves_interior_blank_lines(self):
+        assert normalize_rendered_output("a\n\nb\n") == "a\n\nb\n"
+
+    def test_does_not_touch_leading_whitespace(self):
+        assert normalize_rendered_output("    indented\n") == "    indented\n"
