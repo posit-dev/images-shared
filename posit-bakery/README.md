@@ -8,7 +8,10 @@
 </a>
 &nbsp;&nbsp;&nbsp;&nbsp;
 <a href="https://posit-dev.github.io/images-shared/">
-<img alt="bakery" src="docs/images/bakery-logo.svg" height="180">
+<picture>
+<source srcset="https://cdn.posit.co/platform/containers/logos/bakery-logo.svg">
+<img alt="Posit Bakery Hex Logo" src="docs/images/bakery-logo.svg" height="180">
+</picture>
 </a>
 </p>
 
