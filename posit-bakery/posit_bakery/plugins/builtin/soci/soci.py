@@ -1,6 +1,7 @@
 """SOCI CLI integration module."""
 
 import logging
+import re
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -163,3 +164,78 @@ class SociPush(SociCommand):
             cmd += ["--max-concurrent-uploads", str(self.max_concurrent_uploads)]
         cmd.append(self.image_ref)
         return cmd
+
+
+IMAGE_NOT_FOUND_RE = re.compile(rb'image "[^"]+": not found')
+"""Matches soci's canonical "image not found" error so namespace probes can
+distinguish a missing image from a real error."""
+
+
+def find_ctr_bin(context: Path) -> str:
+    """Resolve a path or PATH-resident name for the ctr binary.
+
+    :param context: Project context to search for the binary in.
+    :return: Path to the ctr binary, or the bare name "ctr" when it
+        resolves through PATH.
+    """
+    return find_bin(context, "ctr", "CTR_PATH") or "ctr"
+
+
+class ContainerdImagePull(BaseModel):
+    """`ctr image pull` wrapper.
+
+    Not a SociCommand because it shells out to containerd's CLI rather than
+    soci itself, but the surface is similar enough to keep it in this module
+    (it only exists to serve the SOCI workflow).
+    """
+
+    ctr_bin: Annotated[str, Field(description="Path to the ctr binary.")]
+    containerd_address: Annotated[str | None, Field(default=None)]
+    containerd_namespace: Annotated[str, Field(default="default")]
+    image_ref: Annotated[str, Field(description="Image ref to pull.")]
+    all_platforms: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Pass --all-platforms; default ctr behavior is multi-platform without it, but explicit is safer.",
+        ),
+    ]
+
+    @property
+    def command(self) -> list[str]:
+        cmd: list[str] = [self.ctr_bin]
+        if self.containerd_address:
+            cmd += ["--address", self.containerd_address]
+        cmd += ["--namespace", self.containerd_namespace, "image", "pull"]
+        if self.all_platforms:
+            cmd.append("--all-platforms")
+        cmd.append(self.image_ref)
+        return cmd
+
+    def run(self, dry_run: bool = False) -> subprocess.CompletedProcess:
+        """Execute the ctr image pull command.
+
+        :param dry_run: If True, log the command without executing it.
+        :return: The completed process result.
+        :raises BakeryToolRuntimeError: On non-zero exit.
+        """
+        cmd = self.command
+        log.debug(f"Executing ctr command: {' '.join(cmd)}")
+
+        if dry_run:
+            log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+        result = subprocess.run(cmd, capture_output=True)
+
+        if result.returncode != 0:
+            raise BakeryToolRuntimeError(
+                message="ctr image pull failed",
+                tool_name="ctr",
+                cmd=cmd,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                exit_code=result.returncode,
+            )
+
+        return result
