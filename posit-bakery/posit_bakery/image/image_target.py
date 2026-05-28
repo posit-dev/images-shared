@@ -14,11 +14,12 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.build_secret import BuildSecret
 from posit_bakery.config.image.parsed_version import version_sort_key
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
-from posit_bakery.error import BakeryToolRuntimeError, BakeryFileError
+from posit_bakery.error import BakeryError, BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
 from posit_bakery.settings import SETTINGS
 
@@ -285,13 +286,33 @@ class ImageTarget(BaseModel):
     @computed_field
     @property
     def uid(self) -> str:
-        """Generate a unique identifier for the target based on its properties."""
+        """Generate a unique identifier for the target.
+
+        The stream is appended for development versions so a dev build and a release
+        build of the same version never share a UID. Release UIDs stay unsuffixed.
+        """
         u = f"{self.image_name}-{self.image_version.name}"
         if self.image_variant:
             u += f"-{self.image_variant.name}"
         if self.image_os:
             u += f"-{self.image_os.name}"
+        if self.release_stream != ReleaseStreamEnum.RELEASE:
+            u += f"-{self.release_stream.value}"
         return re.sub("[ .+/]", "-", u).lower()
+
+    @property
+    def release_stream(self) -> ReleaseStreamEnum:
+        """The release stream for this target, defaulting to ``release`` when unset."""
+        stream = self.image_version.metadata.get("release_stream")
+        if stream is None:
+            return ReleaseStreamEnum.RELEASE
+        try:
+            return ReleaseStreamEnum(stream)
+        except ValueError as e:
+            raise BakeryError(
+                f"Invalid release_stream {stream!r} for {self}. "
+                f"Expected one of: {', '.join(s.value for s in ReleaseStreamEnum)}."
+            ) from e
 
     @property
     def image_name(self) -> str:
@@ -371,9 +392,7 @@ class ImageTarget(BaseModel):
             "Variant": self.image_variant.tagDisplayName if self.image_variant else "",
             "OS": self.image_os.tagDisplayName if self.image_os else "",
             "Name": self.image_name,
-            "Stream": str(v.value if hasattr(v, "value") else v)
-            if (v := self.image_version.metadata.get("release_stream"))
-            else "",
+            "Stream": self.release_stream.value if self.image_version.metadata.get("release_stream") else "",
         }
 
     @property

@@ -7,6 +7,7 @@ import python_on_whales
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.image.parsed_version import ParsedVersion
+from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
@@ -138,6 +139,42 @@ class TestImageTarget:
 
         expected_uid = re.sub(r"[ .+/]", "-", f"{image.name}-{version.name}-{variant.name}-{os.name}").lower()
         assert basic_standard_image_target.uid == expected_uid
+
+    def test_uid_encodes_release_stream(self, get_config_obj):
+        """A dev-stream build and a release build of the same version get distinct UIDs.
+
+        Regression test for posit-dev/images-shared#553: the UID omitted the release
+        stream, so a daily/preview build of version X shared a UID with the release
+        build of X and `bakery ci merge` pushed the dev image to the release registries.
+        """
+        config = get_config_obj("basic")
+        image = config.model.get_image("test-image")
+        version = image.get_version("1.0.0")
+        variant = image.get_variant("Standard")
+        os = version.os[0]
+
+        release_target = ImageTarget.new_image_target(
+            repository=config.model.repository,
+            image_version=version,
+            image_variant=variant,
+            image_os=os,
+        )
+
+        dev_version = version.model_copy(deep=True)
+        dev_version.parent = version.parent
+        dev_version.metadata = {"release_stream": ReleaseStreamEnum.DAILY}
+        dev_target = ImageTarget.new_image_target(
+            repository=config.model.repository,
+            image_version=dev_version,
+            image_variant=variant,
+            image_os=os,
+        )
+
+        assert release_target.uid != dev_target.uid
+        # Release UIDs stay unsuffixed; only dev streams carry a stream suffix.
+        assert release_target.uid == "test-image-1-0-0-standard-ubuntu-22-04"
+        assert not release_target.uid.endswith("-release")
+        assert dev_target.uid.endswith("-daily")
 
     def test_image_name(self, basic_standard_image_target):
         assert basic_standard_image_target.image_name == "test-image"

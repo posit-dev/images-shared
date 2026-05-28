@@ -899,6 +899,20 @@ class BakeryConfig:
                 )
 
         targets = sorted(targets, key=lambda t: str(t))
+
+        # Build metadata is matched to targets by UID, so a duplicate would let one
+        # build's artifacts be pushed as another's. Fail fast.
+        seen: dict[str, ImageTarget] = {}
+        for target in targets:
+            if target.uid in seen:
+                raise BakeryError(
+                    f"Duplicate image target UID '{target.uid}': two targets resolve to the same "
+                    f"image, version, variant, OS, and release stream ({target.release_stream.value}). "
+                    "Check for a duplicate version definition or multiple development streams "
+                    "resolving to the same version."
+                )
+            seen[target.uid] = target
+
         self.targets = targets
 
     def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
