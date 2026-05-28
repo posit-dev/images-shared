@@ -4,7 +4,7 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -75,3 +75,53 @@ class SociCommand(BaseModel, ABC):
             )
 
         return result
+
+
+class SociConvert(SociCommand):
+    """`soci convert` wrapper.
+
+    Source and destination are image refs in non-standalone mode and
+    filesystem paths (OCI archive or directory) in standalone mode.
+    """
+
+    source: Annotated[str, Field(description="Source image ref or OCI-layout path.")]
+    destination: Annotated[str, Field(description="Destination image ref or OCI-layout path.")]
+    platforms: Annotated[
+        list[str] | None,
+        Field(default=None, description="Platforms to convert. None => --all-platforms."),
+    ]
+    span_size: Annotated[int | None, Field(default=None, description="zTOC span size in bytes.")]
+    min_layer_size: Annotated[int | None, Field(default=None, description="Minimum indexed layer size.")]
+    prefetch_files: Annotated[list[str], Field(default_factory=list, description="Files to prefetch.")]
+    optimizations: Annotated[list[str], Field(default_factory=list, description="Optional optimizations.")]
+    force: Annotated[bool, Field(default=False, description="Force regeneration of existing zTOCs.")]
+    output_format: Annotated[
+        Literal["oci-archive", "oci-dir"],
+        Field(default="oci-archive", description="Standalone-mode output layout (ignored otherwise)."),
+    ]
+
+    @property
+    def command(self) -> list[str]:
+        cmd: list[str] = [self.soci_bin]
+        if self.containerd_address:
+            cmd += ["--address", self.containerd_address]
+        cmd += ["--namespace", self.containerd_namespace, "convert"]
+        if self.standalone:
+            cmd += ["--standalone", "--format", self.output_format]
+        if self.platforms:
+            for p in self.platforms:
+                cmd += ["--platform", p]
+        else:
+            cmd.append("--all-platforms")
+        if self.span_size is not None:
+            cmd += ["--span-size", str(self.span_size)]
+        if self.min_layer_size is not None:
+            cmd += ["--min-layer-size", str(self.min_layer_size)]
+        for f in self.prefetch_files:
+            cmd += ["--prefetch-file", f]
+        for o in self.optimizations:
+            cmd += ["--optimizations", o]
+        if self.force:
+            cmd.append("--force")
+        cmd += [self.source, self.destination]
+        return cmd
