@@ -291,6 +291,139 @@ def merge(
 
 @app.command()
 @with_verbosity_flags
+def publish(
+    metadata_file: Annotated[list[Path], typer.Argument(help="Path to input build metadata JSON file(s).")],
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory.")
+    ] = auto_path(),
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Temporary registry to use for split/merge builds.", rich_help_panel="Build Configuration & Outputs"
+        ),
+    ] = None,
+    enable_soci: Annotated[
+        bool,
+        typer.Option("--enable-soci/--no-enable-soci", help="Run SOCI conversion between merge-create and merge-copy."),
+    ] = False,
+    dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.", rich_help_panel=RichHelpPanelEnum.FILTERS
+        ),
+    ] = None,
+) -> None:
+    """Publish multi-platform images by composing oras index-create →
+    optional soci-convert → oras index-copy.
+
+    Temporary indexes are left in place and cleaned up out-of-band by the
+    clean.yml workflow (bakery clean temp-registry) rather than deleted here.
+
+    Replaces `bakery ci merge`; the latter is preserved as a thin alias
+    that calls this command with `--no-enable-soci`.
+    """
+    # Imports kept local to mirror existing patterns and to avoid bloating
+    # module load time when this command isn't invoked.
+    from posit_bakery.plugins.builtin.oras.oras import (
+        OrasIndexCopyWorkflow,
+        OrasIndexCreateWorkflow,
+        find_oras_bin,
+    )
+    from posit_bakery.plugins.registry import get_plugin
+
+    settings = BakerySettings(
+        dev_versions=DevVersionInclusionEnum.INCLUDE,
+        dev_stream=dev_stream,
+        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
+        clean_temporary=False,
+        temp_registry=temp_registry,
+    )
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    resolved_files: list[Path] = []
+    for f in metadata_file:
+        s = str(f)
+        if "*" in s or "?" in s or "[" in s:
+            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(s)))
+        else:
+            resolved_files.append(f.absolute())
+    metadata_file = resolved_files
+
+    files_ok = True
+    for f in metadata_file:
+        try:
+            config.load_build_metadata_from_file(f)
+        except Exception as e:
+            log.error(f"Failed to load metadata from file '{f}': {e}")
+            files_ok = False
+    if not files_ok:
+        raise typer.Exit(code=1)
+
+    oras_bin = find_oras_bin(config.base_path)
+    targets = sorted(config.targets, key=lambda t: t.push_sort_key)
+
+    # Phase 1: index create. Failures abort.
+    temp_refs: dict[str, str] = {}
+    for t in targets:
+        if not t.get_merge_sources():
+            log.debug(f"Skipping target '{t}' (no merge sources).")
+            continue
+        if not t.settings.temp_registry:
+            log.error(f"Cannot publish '{t}': temp_registry not configured.")
+            raise typer.Exit(code=1)
+        res = OrasIndexCreateWorkflow(
+            oras_bin=oras_bin,
+            image_target=t,
+            annotations=t.labels,
+        ).run(dry_run=dry_run)
+        if not res.success:
+            log.error(f"index-create failed for '{t}': {res.error}")
+            raise typer.Exit(code=1)
+        temp_refs[t.uid] = res.temp_ref  # type: ignore[assignment]
+
+    # Phase 2: SOCI convert (conditional).
+    if enable_soci:
+        soci = get_plugin("soci")
+        soci_results = soci.execute(
+            config.base_path,
+            targets,
+            source_refs=temp_refs,
+            dry_run=dry_run,
+        )
+        for r in soci_results:
+            artifacts = r.artifacts or {}
+            if artifacts.get("skipped"):
+                continue
+            wf = artifacts.get("workflow_result")
+            if r.exit_code != 0:
+                soci.results(soci_results)  # raises typer.Exit(1)
+            if wf and getattr(wf, "destination_ref", None):
+                temp_refs[r.target.uid] = wf.destination_ref
+
+    # Phase 3: index copy.
+    copy_failed = False
+    for t in targets:
+        if t.uid not in temp_refs:
+            continue
+        copy = OrasIndexCopyWorkflow(
+            oras_bin=oras_bin,
+            image_target=t,
+        ).run(source=temp_refs[t.uid], dry_run=dry_run)
+        if not copy.success:
+            log.error(f"index-copy failed for '{t}': {copy.error}")
+            copy_failed = True
+
+    # The temporary indexes (and any SOCI-converted variants) are intentionally
+    # left in place; they are cleaned up out-of-band by the clean.yml workflow
+    # (bakery clean temp-registry) rather than deleted here.
+
+    if copy_failed:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+@with_verbosity_flags
 def readme(
     context: Annotated[
         Path,
