@@ -63,8 +63,6 @@ class SociOptions(ToolOptions):
             "standalone",
             "candidate_namespaces",
         ):
-            default = self.__pydantic_fields__[field_name].default
-            current = getattr(self, field_name)
-            if default == current and field_name not in self.model_fields_set:
+            if field_name not in self.model_fields_set:
                 setattr(merged, field_name, getattr(other, field_name))
         return merged

@@ -55,3 +55,19 @@ def test_update_self_wins_when_explicitly_set():
     merged = base.update(override)
     assert merged.enabled is True
     assert merged.span_size == 16 * 1024 * 1024
+
+
+def test_update_other_wins_for_list_fields_when_self_unset():
+    base = SociOptions()
+    override = SociOptions(prefetch_files=["/a"], optimizations=["xattr"])
+    merged = base.update(override)
+    assert merged.prefetch_files == ["/a"]
+    assert merged.optimizations == ["xattr"]
+
+
+def test_update_self_wins_for_list_fields_when_explicitly_set():
+    base = SociOptions(prefetch_files=["/x"], optimizations=["yyy"])
+    override = SociOptions(prefetch_files=["/a"], optimizations=["xattr"])
+    merged = base.update(override)
+    assert merged.prefetch_files == ["/x"]
+    assert merged.optimizations == ["yyy"]
