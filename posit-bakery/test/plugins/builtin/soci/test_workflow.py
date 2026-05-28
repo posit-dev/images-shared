@@ -115,3 +115,32 @@ def test_all_namespaces_not_found_returns_failure(workflow):
 
     assert result.success is False
     assert "not found" in (result.error or "").lower()
+
+
+@pytest.fixture
+def standalone_workflow(mock_target):
+    return SociConvertWorkflow(
+        soci_bin="soci",
+        ctr_bin="ctr",
+        image_target=mock_target,
+        options=SociOptions(enabled=True, standalone=True),
+        source_ref="./img.tar",
+        standalone=True,
+    )
+
+
+def test_standalone_mode_skips_ctr_pull_and_push(standalone_workflow):
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+        result = standalone_workflow.run()
+
+    assert result.success is True
+    # Only one call: soci convert. No ctr pull, no soci push (the caller is
+    # responsible for pushing the resulting OCI layout via ORAS).
+    assert mock_run.call_count == 1
+    convert_cmd = mock_run.call_args.args[0]
+    assert "--standalone" in convert_cmd
+
+
+def test_standalone_destination_ref_is_sibling_path(standalone_workflow):
+    assert standalone_workflow.destination_ref == "./img.tar-soci"

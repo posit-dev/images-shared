@@ -296,8 +296,23 @@ class SociConvertWorkflow(BaseModel):
         )
 
     def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
-        """Materialize source in containerd, convert, push. Probes
-        ``candidate_namespaces`` until ctr-pull finds the source image."""
+        """Materialize source (if non-standalone), convert, and push."""
+        if self.standalone:
+            try:
+                self._build_convert(self.candidate_namespaces[0]).run(dry_run=dry_run)
+            except BakeryToolRuntimeError as e:
+                return SociConvertWorkflowResult(
+                    success=False,
+                    destination_ref=self.destination_ref,
+                    resolved_namespace=None,
+                    error=e.dump_stderr() or str(e),
+                )
+            return SociConvertWorkflowResult(
+                success=True,
+                destination_ref=self.destination_ref,
+                resolved_namespace=None,
+            )
+
         last_error: str | None = None
         last_ns: str | None = None
         for ns in self.candidate_namespaces:
