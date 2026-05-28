@@ -637,6 +637,35 @@ class TestImageMatrix:
         assert "3.12.3" in message
         assert "disk on fire" in message
 
+    def test_to_image_versions_values_only_non_parsing_exception_skips_latest_patch(self, caplog, mocker):
+        """A non-InvalidVersion exception on the value-axis path is also caught.
+
+        Dependency pre-validation in ``_compute_latest_patch_signatures`` doesn't cover
+        values, so the safety net lives at the ``max()`` call site. Patches
+        ``DependencyVersion`` at the source module — that's the one ``extract_versions``
+        imports — and uses a values-only matrix so the only ``DependencyVersion``
+        call path is through ``extract_versions``. Regression for the asymmetric
+        hedge that previously only protected the dependency axis.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["1.24.1", "1.24.2"]},
+        )
+        mocker.patch(
+            "posit_bakery.config.dependencies.version.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            image_versions = matrix.to_image_versions()
+
+        assert len(image_versions) == 2
+        assert not any(iv.isLatestPatchCombination for iv in image_versions)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        assert "unparseable" not in message.lower()
+        assert "disk on fire" in message
+
     def test_to_image_versions_no_dependencies_marks_all_latest_patch(self):
         """A matrix with only ``values`` axes has no patch versions to compete on; every row qualifies."""
         matrix = ImageMatrix(

@@ -844,7 +844,20 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         latest_signatures: set[tuple] = set()
         for group_rows in groups.values():
-            max_row = max(group_rows, key=self._patch_sort_key)
+            try:
+                max_row = max(group_rows, key=self._patch_sort_key)
+            except Exception as e:
+                # _patch_sort_key parses value substrings as ``DependencyVersion``,
+                # which the dep pre-validation pass above doesn't cover. An
+                # unexpected error there shouldn't kill the build — drop
+                # latestPatch tags for the matrix instead.
+                log.warning(
+                    f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                    f"because computing the patch sort key raised an unexpected error "
+                    f"({type(e).__name__}: {e}). "
+                    f"No 'latestPatch'-family tags will be emitted for this matrix."
+                )
+                return None
             latest_signatures.add(self._row_signature(max_row))
         return latest_signatures
 
