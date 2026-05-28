@@ -67,6 +67,11 @@ on:
         default: true
         required: false
         type: boolean
+      enable-soci:
+        description: "Convert merged images to SOCI-enabled images [default: false]"
+        default: false
+        required: false
+        type: boolean
       merge-builder:
         description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
         default: "ubuntu-latest-4x"
@@ -387,6 +392,10 @@ jobs:
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
 
+      - name: Setup SOCI
+        if: ${{ inputs.enable-soci }}
+        uses: "posit-dev/images-shared/setup-soci@main"
+
       - name: Download Metadata
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -397,20 +406,23 @@ jobs:
         run: |
           ls -ltra .
 
-      - name: Merge/Push
+      - name: Publish
         env:
           GIT_SHA: ${{ github.sha }}
           CONTEXT: ${{ inputs.context }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           PUSH: ${{ inputs.push }}
           IMAGE_NAME: ${{ matrix.image }}
+          ENABLE_SOCI: ${{ inputs.enable-soci }}
         run: |
           if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
-          bakery ci merge \
+          if [ "$ENABLE_SOCI" = "true" ]; then SOCI_FLAG="--enable-soci"; else SOCI_FLAG="--no-enable-soci"; fi
+          bakery ci publish \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
             --temp-registry "$REGISTRY" \
             $PUSH_FLAG \
+            $SOCI_FLAG \
             ./*-metadata.json
 
   readme:
