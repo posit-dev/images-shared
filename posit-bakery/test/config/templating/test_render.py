@@ -50,6 +50,9 @@ class TestJinja2Env:
         assert env.from_string("{{ 'R4.3.3-python3.11.15' | stripPatch }}").render() == "R4.3-python3.11"
         # 2-component versions are untouched (no patch to strip).
         assert env.from_string("{{ '2026.04' | stripPatch }}").render() == "2026.04"
+        # 4+ component versions collapse fully to MAJOR.MINOR, not partially.
+        assert env.from_string("{{ '1.2.3.4' | stripPatch }}").render() == "1.2"
+        assert env.from_string("{{ '1.2.3.4.5' | stripPatch }}").render() == "1.2"
         # Strings without version-like sequences are untouched.
         assert env.from_string("{{ 'standard-min' | stripPatch }}").render() == "standard-min"
 

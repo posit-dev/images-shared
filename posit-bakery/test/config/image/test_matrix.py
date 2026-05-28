@@ -612,6 +612,31 @@ class TestImageMatrix:
         warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
         assert len(warnings) >= 1
 
+    def test_to_image_versions_non_parsing_exception_skips_latest_patch(self, caplog, mocker):
+        """An unexpected exception from DependencyVersion is caught and skips latest-patch emission."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+        )
+        mocker.patch(
+            "posit_bakery.config.image.matrix.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            image_versions = matrix.to_image_versions()
+
+        assert len(image_versions) == 1
+        assert not any(iv.isLatestPatchCombination for iv in image_versions)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        # Should not falsely claim the version is unparseable.
+        assert "unparseable" not in message.lower()
+        # Should still surface the dependency, candidate, and underlying error.
+        assert "python" in message
+        assert "3.12.3" in message
+        assert "disk on fire" in message
+
     def test_to_image_versions_no_dependencies_marks_all_latest_patch(self):
         """A matrix with only ``values`` axes has no patch versions to compete on; every row qualifies."""
         matrix = ImageMatrix(
@@ -699,6 +724,23 @@ class TestImageMatrix:
         # All three strip to ``go1.24-lib2.3`` → one group, only the highest lib patch wins.
         assert len(latest_patch_versions) == 1
         assert latest_patch_versions[0].values["build"] == "go1.24-lib2.3.5"
+
+    def test_to_image_versions_values_only_groups_four_segment_versions(self):
+        """Four-segment versions must collapse fully to ``MAJOR.MINOR`` for grouping, then the
+        highest-version row in the group wins. Regression for the old regex which collapsed
+        ``1.2.3.4`` to ``1.2.4`` and split rows that share a minor into separate groups.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["1.2.3.4", "1.2.3.5", "1.2.5.0", "1.3.0.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # All three 1.2.* rows share the ``1.2`` group; 1.3.0.0 is its own group.
+        # Within ``1.2``, 1.2.5.0 outranks the 1.2.3.* rows.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["build"] for iv in latest_patch_versions}
+        assert latest_values == {"1.2.5.0", "1.3.0.0"}
 
     def test_to_image_versions_values_only_groups_prefixed_versions(self):
         """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
@@ -918,6 +960,50 @@ class TestImageMatrix:
         assert "latest" in suffixes
         # Existing matrix tag still emitted.
         assert "python3.12.3" in suffixes
+
+    def test_latest_patch_matrix_target_emits_minor_tag(self, patch_requests_get):
+        """End-to-end: a non-latest row that IS latest-patch emits the stripped minor tag.
+
+        Pins the full chain isLatestPatchCombination → filter retains LATEST_PATCH
+        patterns → tag renders. Picks 3.11.10 (highest patch in the 3.11 minor group)
+        rather than 3.12.3 (overall latest) so the assertion isn't satisfied accidentally
+        by the LATEST-filtered patterns.
+        """
+        image = Image(
+            name="content",
+            matrix={
+                "namePattern": "python{{ Dependencies.python }}",
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.11.5", "3.11.10", "3.12.3"]},
+                ],
+                "os": [
+                    {"name": "Ubuntu 24.04", "primary": True},
+                ],
+            },
+        )
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        mock_config_parent.registries = []
+        image.parent = mock_config_parent
+
+        repo = Repository(url="https://example.com/repo", vendor="Example", maintainer="dev <dev@example.com>")
+        image_versions = image.matrix.to_image_versions()
+        latest_patch_iv = next(
+            iv
+            for iv in image_versions
+            if iv.isLatestPatchCombination and not iv.latest and iv.dependencies[0].versions[0] == "3.11.10"
+        )
+        primary_os = latest_patch_iv.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=repo,
+            image_version=latest_patch_iv,
+            image_variant=None,
+            image_os=primary_os,
+        )
+
+        assert "python3.11" in set(target.tag_suffixes)
 
     def test_render_files_preserves_template_file_mode(self, tmp_path):
         """Test that matrix render_files propagates the template file mode to rendered output."""

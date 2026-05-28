@@ -5,11 +5,15 @@ import jinja2
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryTemplateError
 
-_STRIP_PATCH_RE = re.compile(r"(\d+\.\d+)\.\d+")
+_STRIP_PATCH_RE = re.compile(r"(\d+\.\d+)(?:\.\d+)+")
 
 
 def strip_patch(s: str) -> str:
-    """Collapse ``MAJOR.MINOR.PATCH`` groups in a string to ``MAJOR.MINOR``.
+    """Collapse dotted numeric runs in a string to their first two segments.
+
+    Any ``\\d+(\\.\\d+)+`` substring with three or more components reduces to
+    ``MAJOR.MINOR``; 4+ component versions (e.g. ``1.2.3.4``) collapse the same way,
+    not partially (which the old ``(\\d+\\.\\d+)\\.\\d+`` regex did, producing ``1.2.4``).
 
     Shared between the ``stripPatch`` Jinja filter and matrix latest-patch grouping so
     the two stay consistent — anything that would render the same after the filter must

@@ -817,7 +817,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
 
         # Validate dependency versions in a single explicit pass so the rest of the
         # function can treat them as parseable. Mirrors `_compute_latest_combination`'s
-        # behaviour: bad dep input aborts emission of the family.
+        # behaviour: bad dep input aborts emission of the family, and an unexpected
+        # internal error from the version constructor is caught and treated the same way
+        # rather than killing the whole build.
         for product in products:
             for dep in product["dependencies"]:
                 try:
@@ -827,6 +829,14 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                         f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
                         f"because dependency '{dep.dependency}' version '{dep.versions[0]}' is unparseable "
                         f"({e}). No 'latestPatch'-family tags will be emitted for this matrix."
+                    )
+                    return None
+                except Exception as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                        f"because dependency '{dep.dependency}' raised an unexpected error processing "
+                        f"'{dep.versions[0]}' ({type(e).__name__}: {e}). "
+                        f"No 'latestPatch'-family tags will be emitted for this matrix."
                     )
                     return None
 
