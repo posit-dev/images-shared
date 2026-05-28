@@ -1,11 +1,50 @@
+import re
 from typing import Annotated, Self, Any
 
-from packaging.version import Version
+from packaging.version import InvalidVersion, Version
 from pydantic import Field, model_validator, field_validator
 from ruamel.yaml.scalarfloat import ScalarFloat
 from ruamel.yaml.scalarint import ScalarInt
 
 from posit_bakery.config.shared import BakeryYAMLModel
+
+
+_STRIP_PATCH_RE = re.compile(r"(\d+\.\d+)(?:\.\d+)+")
+_VERSION_SUBSTRING_RE = re.compile(r"\d+(?:\.\d+)+")
+
+
+def strip_patch(s: str) -> str:
+    """Collapse dotted numeric runs in a string to their first two segments.
+
+    Any ``\\d+(\\.\\d+)+`` substring with three or more components reduces to
+    ``MAJOR.MINOR``; 4+ component versions (e.g. ``1.2.3.4``) collapse the
+    same way, not partially (which the old ``(\\d+\\.\\d+)\\.\\d+`` regex did,
+    producing ``1.2.4``).
+
+    Shared between the ``stripPatch`` Jinja filter and matrix latest-patch
+    grouping so the two stay consistent — anything that would render the
+    same after the filter must land in the same group, otherwise rows
+    collide on the rendered tag.
+    """
+    return _STRIP_PATCH_RE.sub(r"\1", s)
+
+
+def extract_versions(s: str) -> tuple["DependencyVersion", ...]:
+    """Return every ``\\d+(\\.\\d+)+`` substring in ``s`` parsed as a
+    ``DependencyVersion``.
+
+    Returning a tuple (rather than the first match) is load-bearing: it lets
+    values with several version segments (e.g. ``"go1.24-lib2.3.1"``) sort on
+    the later segment when the earlier one ties. Unparseable substrings are
+    skipped; the empty tuple means no version was found.
+    """
+    parsed: list[DependencyVersion] = []
+    for match in _VERSION_SUBSTRING_RE.finditer(s):
+        try:
+            parsed.append(DependencyVersion(match.group()))
+        except InvalidVersion:
+            continue
+    return tuple(parsed)
 
 
 class DependencyVersion(Version):
