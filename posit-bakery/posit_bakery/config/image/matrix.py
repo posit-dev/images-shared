@@ -19,12 +19,12 @@ from posit_bakery.config.dependencies import (
 )
 from packaging.version import InvalidVersion
 
-from posit_bakery.config.dependencies.version import DependencyVersion
+from posit_bakery.config.dependencies.version import DependencyVersion, extract_versions, strip_patch
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
-from posit_bakery.config.templating.render import normalize_rendered_output, strip_patch
+from posit_bakery.config.templating.render import normalize_rendered_output
 from posit_bakery.const import JINJA2_TEMPLATE_EXTENSIONS
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 from .variant import ImageVariant
@@ -34,8 +34,6 @@ from .version_os import ImageVersionOS
 log = logging.getLogger(__name__)
 
 DEFAULT_MATRIX_SUBPATH: Literal["matrix"] = "matrix"
-
-_VERSION_SUBSTRING_RE = re.compile(r"\d+(?:\.\d+)+")
 
 
 def generate_default_name_pattern(data: dict[str, Any]) -> str:
@@ -887,22 +885,5 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
             sort_keys.append(DependencyVersion(dep.versions[0]))
         for k, val in sorted(product["values"].items()):
-            sort_keys.append(ImageMatrix._extract_versions(str(val)))
+            sort_keys.append(extract_versions(str(val)))
         return tuple(sort_keys)
-
-    @staticmethod
-    def _extract_versions(s: str) -> tuple[DependencyVersion, ...]:
-        """Return every ``\\d+(\\.\\d+)+`` substring in ``s`` parsed as a ``DependencyVersion``.
-
-        Returning a tuple (rather than the first match) is load-bearing: it lets values
-        with several version segments (e.g. ``"go1.24-lib2.3.1"``) sort on the later
-        segment when the earlier one ties. Unparseable substrings are skipped; the empty
-        tuple means no version was found and the row is alone in its strip-patch group.
-        """
-        parsed: list[DependencyVersion] = []
-        for match in _VERSION_SUBSTRING_RE.finditer(s):
-            try:
-                parsed.append(DependencyVersion(match.group()))
-            except InvalidVersion:
-                continue
-        return tuple(parsed)
