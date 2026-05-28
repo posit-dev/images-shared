@@ -45,3 +45,41 @@ def test_with_namespace_platforms_and_skip_existing():
         "5",
         "reg/img:tag",
     ]
+
+
+def test_with_containerd_address():
+    cmd = SociPush(
+        soci_bin="soci",
+        containerd_address="/run/containerd/alt.sock",
+        image_ref="reg/img:tag",
+    )
+    assert cmd.command == [
+        "soci",
+        "--address",
+        "/run/containerd/alt.sock",
+        "--namespace",
+        "default",
+        "push",
+        "--all-platforms",
+        "--existing-index",
+        "warn",
+        "reg/img:tag",
+    ]
+
+
+def test_existing_index_allow():
+    cmd = SociPush(
+        soci_bin="soci",
+        image_ref="reg/img:tag",
+        existing_index="allow",
+    )
+    assert cmd.command == [
+        "soci",
+        "--namespace",
+        "default",
+        "push",
+        "--all-platforms",
+        "--existing-index",
+        "allow",
+        "reg/img:tag",
+    ]
