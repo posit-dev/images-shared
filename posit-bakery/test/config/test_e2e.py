@@ -7,6 +7,7 @@ import pytest
 
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.templating import TPL_BAKERY_CONFIG_YAML, render_template
+from posit_bakery.config.templating.render import normalize_rendered_output
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from test.helpers import IMAGE_INDENT, VERSION_INDENT
 
@@ -30,7 +31,7 @@ def test_create_from_scratch(tmpdir, common_image_variants):
 
     # Check that the bakery.yaml file was created as expected from its template.
     assert config_file.is_file()
-    expected_config = render_template(TPL_BAKERY_CONFIG_YAML, repo_url=repo_url)
+    expected_config = normalize_rendered_output(render_template(TPL_BAKERY_CONFIG_YAML, repo_url=repo_url))
     assert config_file.read_text() == expected_config
 
     # Load the new project

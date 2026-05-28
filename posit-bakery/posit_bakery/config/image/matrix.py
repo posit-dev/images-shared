@@ -24,6 +24,7 @@ from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import jinja2_env
+from posit_bakery.config.templating.render import normalize_rendered_output
 from posit_bakery.const import JINJA2_TEMPLATE_EXTENSIONS
 from posit_bakery.error import BakeryFileError, BakeryRenderError, BakeryTemplateError, BakeryRenderErrorGroup
 from .variant import ImageVariant
@@ -571,11 +572,6 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                     )
                     continue
 
-                # Enable trim_blocks for Containerfile templates
-                render_kwargs = {}
-                if tpl_rel_path.startswith("Containerfile"):
-                    render_kwargs["trim_blocks"] = True
-
                 # If variants are specified, render Containerfile for each variant
                 if tpl_rel_path.startswith("Containerfile") and variants:
                     containerfile_base_name = tpl_rel_path.removesuffix(".jinja2")
@@ -592,7 +588,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                         template_values = self.generate_template_values(variant, containerfile_os)
                         containerfile: Path = self.path / f"{containerfile_base_name}.{variant.extension}"
                         try:
-                            rendered = tpl.render(**template_values, **render_kwargs)
+                            rendered = tpl.render(**template_values)
                         except (jinja2.TemplateError, BakeryTemplateError) as e:
                             log.error(
                                 f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' "
@@ -612,7 +608,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                             continue
                         log.debug(f"[bright_black]Rendering [bold]{containerfile}")
                         copy2(tpl_full_path, containerfile)
-                        containerfile.write_text(rendered)
+                        containerfile.write_text(normalize_rendered_output(rendered))
 
                 # Render other templates once
                 else:
@@ -621,7 +617,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                     output_file.parent.mkdir(parents=True, exist_ok=True)
                     template_values = self.generate_template_values()
                     try:
-                        rendered = tpl.render(**template_values, **render_kwargs)
+                        rendered = tpl.render(**template_values)
                     except (jinja2.TemplateError, BakeryTemplateError) as e:
                         log.error(
                             f"Failed to render template [bold]{tpl_rel_path}[/] for image '{self.parent.name}' matrix"
@@ -639,7 +635,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                         continue
                     log.debug(f"[bright_black]Rendering [bold]{output_file}")
                     copy2(tpl_full_path, output_file)
-                    output_file.write_text(rendered)
+                    output_file.write_text(normalize_rendered_output(rendered))
 
         if exceptions:
             if len(exceptions) == 1:
