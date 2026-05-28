@@ -228,8 +228,6 @@ class OrasMergeWorkflowResult(BaseModel):
     temp_index_ref: Annotated[str | None, Field(default=None, description="Reference to the temporary index created.")]
     destinations: Annotated[list[str], Field(default_factory=list, description="List of destination references.")]
     error: Annotated[str | None, Field(default=None, description="Error message if the workflow failed.")]
-    stdout: Annotated[str, Field(default="", description="Captured stdout of the failed oras command, if any.")]
-    stderr: Annotated[str, Field(default="", description="Captured stderr of the failed oras command, if any.")]
 
 
 class OrasMergeWorkflow(BaseModel):
@@ -271,63 +269,40 @@ class OrasMergeWorkflow(BaseModel):
         )
 
     def run(self, dry_run: bool = False) -> OrasMergeWorkflowResult:
-        """Run the merge workflow.
+        """Compose create → copy. Preserved as a single call for back-compat
+        with the `bakery oras merge` CLI.
 
-        :param dry_run: If True, log commands without executing them.
-        :return: Result of the workflow execution.
+        The temporary index is intentionally left in place; it is cleaned up
+        out-of-band by the ``clean.yml`` workflow (``bakery clean temp-registry``)
+        rather than deleted here.
         """
-
         log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
-        log.debug(f"Sources: {self.sources}")
-        log.debug(f"Temporary index: {self.temp_index_tag}")
-        log.debug(f"Destinations: {', '.join(self.image_target.tags.as_strings())}")
-
-        try:
-            # Step 1: Create the manifest index
-            log.info(f"Creating manifest index at {self.temp_index_tag}")
-            create_cmd = OrasManifestIndexCreate(
-                oras_bin=self.oras_bin,
-                sources=self.image_target.get_merge_sources(),
-                destination=self.temp_index_tag,
-                annotations=self.annotations,
-                plain_http=self.plain_http,
-            )
-            create_cmd.run(dry_run=dry_run)
-
-            # Step 2: Copy to all destinations
-            for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
-                log.info(f"Copying index to {destination}")
-                combine_tag_str = destination + ":" + ",".join(tag.suffix for tag in tags)
-                copy_cmd = OrasCopy(
-                    oras_bin=self.oras_bin,
-                    source=self.temp_index_tag,
-                    destination=combine_tag_str,
-                    plain_http=self.plain_http,
-                )
-                copy_cmd.run(dry_run=dry_run)
-
-            # The temporary index is intentionally left in place; it is cleaned up
-            # out-of-band by the clean.yml workflow (bakery clean temp-registry).
-            log.info(f"ORAS merge workflow completed successfully")
-            return OrasMergeWorkflowResult(
-                success=True,
-                temp_index_ref=self.temp_index_tag,
-                destinations=self.image_target.tags.as_strings(),
-            )
-
-        except BakeryToolRuntimeError as e:
-            log.error(f"ORAS merge workflow failed: {e}")
-            # The base error's __str__ only reports the exit code and command. Carry
-            # the captured oras stdout/stderr up so results() can surface the
-            # underlying failure to the user (unless quiet logging is enabled).
+        create = OrasIndexCreateWorkflow(
+            oras_bin=self.oras_bin,
+            image_target=self.image_target,
+            annotations=self.annotations,
+            plain_http=self.plain_http,
+        ).run(dry_run=dry_run)
+        if not create.success:
             return OrasMergeWorkflowResult(
                 success=False,
-                temp_index_ref=self.temp_index_tag,
+                temp_index_ref=create.temp_ref,
                 destinations=self.image_target.tags.as_strings(),
-                error=str(e),
-                stdout=e.dump_stdout(),
-                stderr=e.dump_stderr(),
+                error=create.error,
             )
+
+        copy = OrasIndexCopyWorkflow(
+            oras_bin=self.oras_bin,
+            image_target=self.image_target,
+            plain_http=self.plain_http,
+        ).run(source=create.temp_ref, dry_run=dry_run)
+
+        return OrasMergeWorkflowResult(
+            success=copy.success,
+            temp_index_ref=create.temp_ref,
+            destinations=self.image_target.tags.as_strings(),
+            error=copy.error,
+        )
 
     @classmethod
     def from_image_target(
