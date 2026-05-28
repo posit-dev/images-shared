@@ -13,6 +13,7 @@ from posit_bakery.plugins.builtin.oras.oras import (
     find_oras_bin,
     get_repository_from_ref,
     OrasCopy,
+    OrasIndexCopyWorkflow,
     OrasIndexCreateWorkflow,
     OrasManifestIndexCreate,
     OrasMergeWorkflow,
@@ -562,6 +563,29 @@ class TestOrasIndexCreateWorkflow:
         assert mock_run.call_count == 1
         cmd = mock_run.call_args.args[0]
         assert cmd[:4] == ["oras", "manifest", "index", "create"]
+
+
+class TestOrasIndexCopyWorkflow:
+    """Tests for the standalone index-copy primitive."""
+
+    def test_copies_to_each_destination_grouped_by_repo(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        # Add a second-registry tag so we exercise the grouping.
+        extra_tag = MagicMock()
+        extra_tag.destination = "docker.io/posit/test-image"
+        extra_tag.suffix = "1.0.0"
+        extra_tag.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
+        target.tags.append(extra_tag)
+
+        workflow = OrasIndexCopyWorkflow(oras_bin="oras", image_target=target)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            result = workflow.run(source="ghcr.io/posit-dev/test-image/tmp:src")
+
+        assert result.success is True
+        # Two distinct destination repos => two oras cp invocations.
+        assert mock_run.call_count == 2
 
 
 @pytest.mark.slow

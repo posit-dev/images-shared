@@ -182,6 +182,45 @@ class OrasIndexCreateWorkflow(BaseModel):
             return OrasIndexCreateResult(success=False, temp_ref=self.temp_index_tag, error=str(e))
 
 
+class OrasIndexCopyResult(BaseModel):
+    """Result of an ORAS index-copy phase."""
+
+    success: Annotated[bool, Field(description="Whether all copies succeeded.")]
+    destinations: Annotated[list[str], Field(default_factory=list)]
+    error: Annotated[str | None, Field(default=None)]
+
+
+class OrasIndexCopyWorkflow(BaseModel):
+    """Copy a temp-registry ref to each configured destination."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    image_target: Annotated[ImageTarget, Field(description="Target whose tags to fan out to.")]
+    plain_http: Annotated[bool, Field(default=False)]
+
+    def run(self, source: str, dry_run: bool = False) -> OrasIndexCopyResult:
+        try:
+            destinations = []
+            for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
+                combined = destination + ":" + ",".join(t.suffix for t in tags)
+                OrasCopy(
+                    oras_bin=self.oras_bin,
+                    source=source,
+                    destination=combined,
+                    plain_http=self.plain_http,
+                ).run(dry_run=dry_run)
+                destinations.append(combined)
+            return OrasIndexCopyResult(success=True, destinations=destinations)
+        except BakeryToolRuntimeError as e:
+            log.error(f"oras index-copy failed: {e}")
+            return OrasIndexCopyResult(
+                success=False,
+                destinations=self.image_target.tags.as_strings(),
+                error=str(e),
+            )
+
+
 class OrasMergeWorkflowResult(BaseModel):
     """Result of an ORAS merge workflow execution."""
 
