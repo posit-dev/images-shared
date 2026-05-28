@@ -5,7 +5,9 @@ Feature: merge
         Given I call bakery ci merge
         * in a temp multiplatform context
         * with the arguments:
-            | *-metadata.json |
+            | --temp-registry           |
+            | ghcr.io/posit-dev/temp    |
+            | *-metadata.json           |
         * with testdata ci/merge/multiplatform copied to context
         * with the context as the working directory
         * with image target merge method patched

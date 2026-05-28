@@ -212,81 +212,18 @@ def merge(
         ),
     ] = None,
 ):
-    """Merges multiple metadata files with single-platform images into a single multi-platform image by UID.
-    This command is intended for use in CI workflows that utilize native builders for multiplatform builds.
-    Easier multiplatform builds can be achieved by using emulation (Docker and QEMU), but builds in emulation typically
-    suffer severe performance disadvantages.
-    This command should be ran after multiple `bakery build --strategy build --platform <platform>
-    --metadata-file <path> --temp-registry <registry>` commands have been executed for different platforms. The
-    resulting metadata files can be fed into this command to merge and push combined multi-platform images. Matches are
-    made by the top-level Image UID keys in the metadata files. Single entries with no other matches will be tagged and
-    pushed as is. If an entry has no matching UID in the project, it will be skipped with a delayed error.
-    Metadata files are expected to be JSON with the following structure:
-    ```json
-    {
-      "<Image UID>": {metadata...}
-    }
-    ```
+    """Alias for `bakery ci publish --no-enable-soci`.
+
+    Preserved for back-compat. New callers should prefer `bakery ci publish`.
     """
-    if dev_stream is not None:
-        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
-        if dev_channel is None:
-            dev_channel = dev_stream
-    settings = BakerySettings(
-        filter=BakeryConfigFilter(image_name=image_name),
-        dev_versions=DevVersionInclusionEnum.INCLUDE,
-        dev_channel=dev_channel,
-        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
-        clean_temporary=False,
+    publish(
+        metadata_file=metadata_file,
+        context=context,
         temp_registry=temp_registry,
+        enable_soci=False,
+        dry_run=dry_run,
+        dev_channel=dev_channel,
     )
-    config: BakeryConfig = BakeryConfig.from_context(context, settings)
-
-    # Resolve glob patterns in metadata_file arguments
-    resolved_files: list[Path] = []
-    for file in metadata_file:
-        if "*" in str(file) or "?" in str(file) or "[" in str(file):
-            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(str(file))))
-        else:
-            resolved_files.append(file.absolute())
-    metadata_file = resolved_files
-
-    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
-
-    files_ok = True
-    loaded_targets: list[str] = []
-    for file in metadata_file:
-        try:
-            loaded_targets.extend(config.load_build_metadata_from_file(file))
-        except Exception as e:
-            log.error(f"Failed to load metadata from file '{file}'")
-            log.error(str(e))
-            files_ok = False
-    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
-
-    if not files_ok:
-        log.error("One or more metadata files are invalid, aborting merge.")
-        raise typer.Exit(code=1)
-
-    log.info(f"Found {len(loaded_targets)} targets")
-    log.debug(", ".join(loaded_targets))
-
-    # Imported locally for patching in CLI tests
-    from posit_bakery.plugins.registry import get_plugin
-
-    oras = get_plugin("oras")
-    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
-
-    # CI-specific: verify final manifests with imagetools inspect
-    if not dry_run:
-        for result in results:
-            if result.exit_code == 0 and result.artifacts:
-                workflow_result = result.artifacts.get("workflow_result")
-                if workflow_result and workflow_result.destinations:
-                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
-                    stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
-
-    oras.results(results)
 
 
 @app.command()
@@ -307,10 +244,21 @@ def publish(
         typer.Option("--enable-soci/--no-enable-soci", help="Run SOCI conversion between merge-create and merge-copy."),
     ] = False,
     dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.", rich_help_panel=RichHelpPanelEnum.FILTERS
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
 ) -> None:
@@ -332,9 +280,13 @@ def publish(
     )
     from posit_bakery.plugins.registry import get_plugin
 
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     settings = BakerySettings(
         dev_versions=DevVersionInclusionEnum.INCLUDE,
-        dev_stream=dev_stream,
+        dev_channel=dev_channel,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
         temp_registry=temp_registry,
@@ -350,15 +302,22 @@ def publish(
             resolved_files.append(f.absolute())
     metadata_file = resolved_files
 
+    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
+
     files_ok = True
+    loaded_targets: list[str] = []
     for f in metadata_file:
         try:
-            config.load_build_metadata_from_file(f)
+            loaded_targets.extend(config.load_build_metadata_from_file(f))
         except Exception as e:
             log.error(f"Failed to load metadata from file '{f}': {e}")
             files_ok = False
     if not files_ok:
         raise typer.Exit(code=1)
+
+    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
+    log.info(f"Found {len(loaded_targets)} targets")
+    log.debug(", ".join(loaded_targets))
 
     oras_bin = find_oras_bin(config.base_path)
     targets = sorted(config.targets, key=lambda t: t.push_sort_key)
