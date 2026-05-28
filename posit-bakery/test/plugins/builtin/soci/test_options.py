@@ -71,3 +71,21 @@ def test_update_self_wins_for_list_fields_when_explicitly_set():
     merged = base.update(override)
     assert merged.prefetch_files == ["/x"]
     assert merged.optimizations == ["yyy"]
+
+
+def test_update_scalar_explicitly_set_to_default():
+    """User explicitly sets a scalar to its default value; self should still win."""
+    base = SociOptions(enabled=False)  # explicitly set to default False
+    override = SociOptions(enabled=True)
+    merged = base.update(override)
+    # enabled is in base.model_fields_set, so base's value should win
+    assert merged.enabled is False
+
+
+def test_update_list_explicitly_set_to_empty():
+    """User explicitly sets a list to empty (its default); self should still win."""
+    base = SociOptions(prefetch_files=[])  # explicitly set to []
+    override = SociOptions(prefetch_files=["/a"])
+    merged = base.update(override)
+    # prefetch_files is in base.model_fields_set, so base's value should win
+    assert merged.prefetch_files == []
