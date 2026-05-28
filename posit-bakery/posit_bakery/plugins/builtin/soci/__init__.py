@@ -140,5 +140,27 @@ class SociPlugin(BakeryToolPlugin):
         return results
 
     def results(self, results: list[ToolCallResult]) -> None:
-        """Display SOCI results. Implemented in a later task."""
-        return
+        """Display SOCI conversion results and raise typer.Exit(1) on failure."""
+        from posit_bakery.log import stderr_console
+
+        has_errors = False
+        for r in results:
+            artifacts = r.artifacts or {}
+            if artifacts.get("skipped"):
+                log.info(f"SOCI skipped for {r.target}: {artifacts.get('reason')}")
+                continue
+            wf = artifacts.get("workflow_result")
+            if r.exit_code != 0:
+                has_errors = True
+                stderr_console.print(
+                    f"SOCI convert failed for '{r.target}': {r.stderr}",
+                    style="error",
+                )
+            elif wf:
+                log.info(f"SOCI converted '{r.target}' -> {wf.destination_ref}")
+
+        if has_errors:
+            stderr_console.print("❌ SOCI conversion(s) failed", style="error")
+            raise typer.Exit(code=1)
+
+        stderr_console.print("✅ SOCI conversion(s) completed", style="success")
