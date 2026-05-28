@@ -60,6 +60,7 @@ dgoss = "posit_bakery.plugins.builtin.dgoss:DGossPlugin"
 oras = "posit_bakery.plugins.builtin.oras:OrasPlugin"
 hadolint = "posit_bakery.plugins.builtin.hadolint:HadolintPlugin"
 wizcli = "posit_bakery.plugins.builtin.wizcli:WizCLIPlugin"
+soci = "posit_bakery.plugins.builtin.soci:SociPlugin"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]

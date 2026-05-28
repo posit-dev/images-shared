@@ -1,0 +1,1 @@
+"""SOCI CLI integration module."""
