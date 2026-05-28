@@ -14,6 +14,7 @@ from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, Baker
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
 from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
@@ -1759,6 +1760,43 @@ class TestBakeryConfig:
             assert target.build_metadata[0] is not None
             assert target.build_metadata[0].image_name is not None
             assert target.build_metadata[0].container_image_digest is not None
+
+    def test_generate_image_targets_rejects_duplicate_uid(self, get_config_obj):
+        """Two targets sharing a UID fail fast instead of silently colliding.
+
+        Build metadata is keyed by UID, so a duplicate UID would let one build's
+        metadata match another target and push to the wrong registries. This is a
+        defense-in-depth guard for the posit-dev/images-shared#553 collision class.
+        """
+        config = get_config_obj("basic")
+        image = config.model.get_image("test-image")
+        version = image.get_version("1.0.0")
+        clone = version.model_copy(deep=True)
+        clone.parent = version.parent
+        image.versions.append(clone)
+
+        with pytest.raises(BakeryError, match="Duplicate image target UID"):
+            config.generate_image_targets()
+
+    def test_dev_and_release_same_version_do_not_collide(self, get_config_obj):
+        """A dev-stream version and a release version of the same number coexist with
+        distinct UIDs and generate without error."""
+        config = get_config_obj("basic")
+        image = config.model.get_image("test-image")
+        release = image.get_version("1.0.0")
+
+        dev = release.model_copy(deep=True)
+        dev.parent = release.parent
+        dev.isDevelopmentVersion = True
+        dev.metadata = {"release_stream": ReleaseStreamEnum.DAILY}
+        image.versions.append(dev)
+
+        config.generate_image_targets(BakerySettings(dev_versions=DevVersionInclusionEnum.INCLUDE))
+
+        uids = [t.uid for t in config.targets if t.image_version.name == "1.0.0"]
+        assert len(uids) == len(set(uids))
+        assert any(u.endswith("-daily") for u in uids)
+        assert any(not u.endswith("-daily") for u in uids)
 
     @pytest.mark.parametrize(
         "untagged,older_than_days,expected_deletions",
