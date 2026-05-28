@@ -99,3 +99,33 @@ def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
     assert len(results) == 1
     assert results[0].artifacts.get("skipped") is True
     assert "no targets have soci enabled" in caplog.text.lower()
+
+
+def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
+    """When all targets are disabled, execute should not require soci/ctr
+    binaries to be installed — the lookups should be skipped."""
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=False)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=False),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.find_soci_bin",
+        ) as mock_find_soci,
+        patch(
+            "posit_bakery.plugins.builtin.soci.find_ctr_bin",
+        ) as mock_find_ctr,
+    ):
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+        )
+
+    assert len(results) == 1
+    assert results[0].artifacts.get("skipped") is True
+    mock_find_soci.assert_not_called()
+    mock_find_ctr.assert_not_called()

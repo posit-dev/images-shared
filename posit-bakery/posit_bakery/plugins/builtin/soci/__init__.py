@@ -72,8 +72,6 @@ class SociPlugin(BakeryToolPlugin):
         skipped with a ``skipped=True`` artifact entry.
         """
         source_refs = source_refs or {}
-        soci_bin = find_soci_bin(base_path)
-        ctr_bin = find_ctr_bin(base_path)
 
         eligible: list[tuple[ImageTarget, SociOptions, str]] = []
         results: list[ToolCallResult] = []
@@ -111,6 +109,9 @@ class SociPlugin(BakeryToolPlugin):
                 "were provided for the enabled ones); skipping conversion."
             )
             return results
+
+        soci_bin = find_soci_bin(base_path)
+        ctr_bin = find_ctr_bin(base_path)
 
         for target, opts, ref in eligible:
             workflow_standalone = opts.standalone if opts.standalone is not None else standalone
