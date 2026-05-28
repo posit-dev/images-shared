@@ -48,8 +48,90 @@ class SociPlugin(BakeryToolPlugin):
     tool_options_class = SociOptions
 
     def register_cli(self, app: typer.Typer) -> None:
-        """Register the soci CLI commands. Implemented in a later task."""
+        """Register the soci CLI commands."""
+        import glob as glob_module
+        from typing import Annotated, Optional
+
+        from posit_bakery.cli.common import with_verbosity_flags
+        from posit_bakery.config.config import BakeryConfig, BakerySettings
+        from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+        from posit_bakery.util import auto_path
+
         soci_app = typer.Typer(no_args_is_help=True)
+        plugin = self
+
+        @soci_app.command()
+        @with_verbosity_flags
+        def convert(
+            metadata_file: Annotated[list[Path], typer.Argument(help="Path to input build metadata JSON file(s).")],
+            context: Annotated[
+                Path,
+                typer.Option(help="The root path to use. Defaults to the current working directory."),
+            ] = auto_path(),
+            temp_registry: Annotated[
+                Optional[str],
+                typer.Option(help="Temporary registry to use for split/merge builds."),
+            ] = None,
+            standalone: Annotated[
+                bool,
+                typer.Option(help="Run soci convert in standalone (no-containerd) mode."),
+            ] = False,
+            dry_run: Annotated[
+                bool,
+                typer.Option(help="Log commands without executing them."),
+            ] = False,
+        ) -> None:
+            """Convert images referenced by build-metadata JSON files into SOCI-enabled images.
+
+            \b
+            By default, operates against containerd (non-standalone mode).
+            Targets without `tool: soci, enabled: true` in bakery.yaml are
+            skipped.
+            """
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.INCLUDE,
+                matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
+                clean_temporary=False,
+                temp_registry=temp_registry,
+            )
+            config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+            resolved_files: list[Path] = []
+            for f in metadata_file:
+                s = str(f)
+                if "*" in s or "?" in s or "[" in s:
+                    resolved_files.extend(sorted(Path(x).absolute() for x in glob_module.glob(s)))
+                else:
+                    resolved_files.append(f.absolute())
+            metadata_file = resolved_files
+
+            log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
+            files_ok = True
+            for f in metadata_file:
+                try:
+                    config.load_build_metadata_from_file(f)
+                except Exception as e:
+                    log.error(f"Failed to load metadata from file '{f}': {e}")
+                    files_ok = False
+            if not files_ok:
+                raise typer.Exit(code=1)
+
+            # Build source_refs from each target's most recent build metadata.
+            source_refs: dict[str, str] = {}
+            for t in config.targets:
+                if t.build_metadata:
+                    latest = max(t.build_metadata, key=lambda m: m.created_at)
+                    source_refs[t.uid] = latest.image_ref
+
+            results = plugin.execute(
+                config.base_path,
+                config.targets,
+                source_refs=source_refs,
+                dry_run=dry_run,
+                standalone=standalone,
+            )
+            plugin.results(results)
+
         app.add_typer(soci_app, name="soci", help=self.description)
 
     def execute(
