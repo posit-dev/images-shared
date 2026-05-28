@@ -125,3 +125,41 @@ class SociConvert(SociCommand):
             cmd.append("--force")
         cmd += [self.source, self.destination]
         return cmd
+
+
+class SociPush(SociCommand):
+    """`soci push` wrapper: upload SOCI-enabled artifacts from containerd."""
+
+    image_ref: Annotated[str, Field(description="Image ref to push.")]
+    platforms: Annotated[
+        list[str] | None,
+        Field(default=None, description="Platforms to push. None => --all-platforms."),
+    ]
+    existing_index: Annotated[
+        Literal["warn", "skip", "allow"],
+        Field(default="warn", description="Behavior when a SOCI index already exists for the ref."),
+    ]
+    plain_http: Annotated[bool, Field(default=False, description="Allow plain HTTP registry connections.")]
+    max_concurrent_uploads: Annotated[
+        int | None,
+        Field(default=None, description="Max concurrent uploads. SOCI default if None."),
+    ]
+
+    @property
+    def command(self) -> list[str]:
+        cmd: list[str] = [self.soci_bin]
+        if self.containerd_address:
+            cmd += ["--address", self.containerd_address]
+        cmd += ["--namespace", self.containerd_namespace, "push"]
+        if self.platforms:
+            for p in self.platforms:
+                cmd += ["--platform", p]
+        else:
+            cmd.append("--all-platforms")
+        cmd += ["--existing-index", self.existing_index]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        if self.max_concurrent_uploads is not None:
+            cmd += ["--max-concurrent-uploads", str(self.max_concurrent_uploads)]
+        cmd.append(self.image_ref)
+        return cmd
