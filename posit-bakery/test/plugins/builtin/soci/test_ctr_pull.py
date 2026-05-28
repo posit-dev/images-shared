@@ -67,3 +67,11 @@ def test_image_not_found_regex_matches_canonical_message():
 
 def test_image_not_found_regex_does_not_match_unrelated_errors():
     assert IMAGE_NOT_FOUND_RE.search(b"some other error") is None
+
+
+def test_dry_run_does_not_invoke_subprocess():
+    cmd = ContainerdImagePull(ctr_bin="ctr", image_ref="reg/img:tag")
+    with patch("subprocess.run") as mock_run:
+        result = cmd.run(dry_run=True)
+    mock_run.assert_not_called()
+    assert result.returncode == 0

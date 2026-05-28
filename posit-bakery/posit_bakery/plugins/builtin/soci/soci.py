@@ -177,6 +177,7 @@ def find_ctr_bin(context: Path) -> str:
     :param context: Project context to search for the binary in.
     :return: Path to the ctr binary, or the bare name "ctr" when it
         resolves through PATH.
+    :raises BakeryToolNotFoundError: If ctr cannot be found.
     """
     return find_bin(context, "ctr", "CTR_PATH") or "ctr"
 
