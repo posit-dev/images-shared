@@ -142,6 +142,46 @@ class OrasCopy(OrasCommand):
         return cmd
 
 
+class OrasIndexCreateResult(BaseModel):
+    """Result of an ORAS manifest-index-create phase."""
+
+    success: Annotated[bool, Field(description="Whether the create phase succeeded.")]
+    temp_ref: Annotated[str | None, Field(default=None, description="The temp ref of the created index.")]
+    error: Annotated[str | None, Field(default=None, description="Error message on failure.")]
+
+
+class OrasIndexCreateWorkflow(BaseModel):
+    """Create the multi-platform manifest index at the temp registry."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    image_target: Annotated[ImageTarget, Field(description="Target this index represents.")]
+    annotations: Annotated[dict[str, str], Field(default_factory=dict)]
+    plain_http: Annotated[bool, Field(default=False)]
+
+    @property
+    def temp_index_tag(self) -> str:
+        source_hash = hashlib.sha256("".join(self.image_target.get_merge_sources()).encode("UTF-8")).hexdigest()[:10]
+        return (
+            f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
+        )
+
+    def run(self, dry_run: bool = False) -> OrasIndexCreateResult:
+        try:
+            OrasManifestIndexCreate(
+                oras_bin=self.oras_bin,
+                sources=self.image_target.get_merge_sources(),
+                destination=self.temp_index_tag,
+                annotations=self.annotations,
+                plain_http=self.plain_http,
+            ).run(dry_run=dry_run)
+            return OrasIndexCreateResult(success=True, temp_ref=self.temp_index_tag)
+        except BakeryToolRuntimeError as e:
+            log.error(f"oras index-create failed: {e}")
+            return OrasIndexCreateResult(success=False, temp_ref=self.temp_index_tag, error=str(e))
+
+
 class OrasMergeWorkflowResult(BaseModel):
     """Result of an ORAS merge workflow execution."""
 

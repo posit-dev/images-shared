@@ -13,6 +13,7 @@ from posit_bakery.plugins.builtin.oras.oras import (
     find_oras_bin,
     get_repository_from_ref,
     OrasCopy,
+    OrasIndexCreateWorkflow,
     OrasManifestIndexCreate,
     OrasMergeWorkflow,
     OrasMergeWorkflowResult,
@@ -515,6 +516,52 @@ class TestOrasCommandsPlainHttp:
 
         expected = ["oras", "cp", "--plain-http", "localhost:5000/test:source", "localhost:5000/test:dest"]
         assert cmd.command == expected
+
+
+@pytest.fixture
+def mock_image_target_factory():
+    def _make():
+        t = MagicMock(spec=ImageTarget)
+        t.image_name = "test-image"
+        t.uid = "test-image-1-0-0"
+        t.temp_registry = "ghcr.io/posit-dev"
+        t.get_merge_sources.return_value = [
+            "ghcr.io/posit-dev/test/tmp@sha256:amd64digest",
+            "ghcr.io/posit-dev/test/tmp@sha256:arm64digest",
+        ]
+        t.labels = {"org.opencontainers.image.title": "Test Image"}
+        tag1 = MagicMock()
+        tag1.destination = "ghcr.io/posit-dev/test-image"
+        tag1.suffix = "1.0.0"
+        tag1.__str__ = lambda self: "ghcr.io/posit-dev/test-image:1.0.0"
+        t.tags = StringableList([tag1])
+        return t
+
+    return _make
+
+
+class TestOrasIndexCreateWorkflow:
+    """Tests for the standalone index-create primitive."""
+
+    @pytest.fixture
+    def workflow(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        return OrasIndexCreateWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            annotations={"k": "v"},
+        )
+
+    def test_creates_index_at_temp_ref(self, workflow):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            result = workflow.run()
+        assert result.success is True
+        assert result.temp_ref == workflow.temp_index_tag
+        # exactly one subprocess call: oras manifest index create
+        assert mock_run.call_count == 1
+        cmd = mock_run.call_args.args[0]
+        assert cmd[:4] == ["oras", "manifest", "index", "create"]
 
 
 @pytest.mark.slow
