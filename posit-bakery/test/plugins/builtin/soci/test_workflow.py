@@ -62,3 +62,56 @@ def test_dry_run_does_not_invoke_subprocess(workflow):
         result = workflow.run(dry_run=True)
     mock_run.assert_not_called()
     assert result.success is True
+
+
+def _not_found_proc(cmd):
+    return subprocess.CompletedProcess(
+        args=cmd,
+        returncode=1,
+        stdout=b"",
+        stderr=b'soci: image "x": not found',
+    )
+
+
+def _ok_proc(cmd):
+    return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+
+def test_falls_back_to_second_namespace_on_not_found(workflow):
+    # ctr pull defaults to namespace 'default'; we simulate not-found there
+    # and success in 'moby'. ctr pull is the call that triggers the fallback.
+    call_count = {"n": 0}
+
+    def fake_run(cmd, capture_output):
+        call_count["n"] += 1
+        # First call: ctr pull in 'default' fails with not-found.
+        if call_count["n"] == 1:
+            return _not_found_proc(cmd)
+        return _ok_proc(cmd)
+
+    with patch("subprocess.run", side_effect=fake_run):
+        result = workflow.run()
+
+    assert result.success is True
+    assert result.resolved_namespace == "moby"
+    # ctr pull(default-fail) + ctr pull(moby-ok) + convert + push = 4
+    assert call_count["n"] == 4
+
+
+def test_non_not_found_error_short_circuits(workflow):
+    def fake_run(cmd, capture_output):
+        return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"network error")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        result = workflow.run()
+
+    assert result.success is False
+    assert "network error" in (result.error or "")
+
+
+def test_all_namespaces_not_found_returns_failure(workflow):
+    with patch("subprocess.run", side_effect=lambda cmd, capture_output: _not_found_proc(cmd)):
+        result = workflow.run()
+
+    assert result.success is False
+    assert "not found" in (result.error or "").lower()

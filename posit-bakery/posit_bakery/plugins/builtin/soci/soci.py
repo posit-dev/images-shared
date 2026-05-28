@@ -296,28 +296,53 @@ class SociConvertWorkflow(BaseModel):
         )
 
     def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
-        """Materialize source in containerd, convert, push. Single-namespace
-        happy path; the namespace probe is added in a follow-up task."""
-        ns = self.candidate_namespaces[0]
-        try:
-            ContainerdImagePull(
-                ctr_bin=self.ctr_bin,
-                containerd_namespace=ns,
-                image_ref=self.source_ref,
-                all_platforms=True,
-            ).run(dry_run=dry_run)
-            self._build_convert(ns).run(dry_run=dry_run)
-            self._build_push(ns).run(dry_run=dry_run)
+        """Materialize source in containerd, convert, push. Probes
+        ``candidate_namespaces`` until ctr-pull finds the source image."""
+        last_error: str | None = None
+        last_ns: str | None = None
+        for ns in self.candidate_namespaces:
+            last_ns = ns
+            try:
+                ContainerdImagePull(
+                    ctr_bin=self.ctr_bin,
+                    containerd_namespace=ns,
+                    image_ref=self.source_ref,
+                    all_platforms=True,
+                ).run(dry_run=dry_run)
+            except BakeryToolRuntimeError as e:
+                if e.stderr and IMAGE_NOT_FOUND_RE.search(e.stderr):
+                    last_error = f'image "{self.source_ref}": not found in namespace "{ns}"'
+                    log.debug(last_error)
+                    continue
+                log.error(f"SOCI workflow: ctr pull failed: {e}")
+                return SociConvertWorkflowResult(
+                    success=False,
+                    destination_ref=self.destination_ref,
+                    resolved_namespace=ns,
+                    error=e.dump_stderr() or str(e),
+                )
+
+            try:
+                self._build_convert(ns).run(dry_run=dry_run)
+                self._build_push(ns).run(dry_run=dry_run)
+            except BakeryToolRuntimeError as e:
+                log.error(f"SOCI workflow: convert/push failed in namespace '{ns}': {e}")
+                return SociConvertWorkflowResult(
+                    success=False,
+                    destination_ref=self.destination_ref,
+                    resolved_namespace=ns,
+                    error=e.dump_stderr() or str(e),
+                )
+
             return SociConvertWorkflowResult(
                 success=True,
                 destination_ref=self.destination_ref,
                 resolved_namespace=ns,
             )
-        except BakeryToolRuntimeError as e:
-            log.error(f"SOCI convert workflow failed: {e}")
-            return SociConvertWorkflowResult(
-                success=False,
-                destination_ref=self.destination_ref,
-                resolved_namespace=ns,
-                error=str(e),
-            )
+
+        return SociConvertWorkflowResult(
+            success=False,
+            destination_ref=self.destination_ref,
+            resolved_namespace=last_ns,
+            error=last_error or "image not found in any candidate namespace",
+        )
