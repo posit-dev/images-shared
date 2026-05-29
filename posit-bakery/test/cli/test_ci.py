@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
+from posit_bakery.cli.ci import render_artifact_summary
 from posit_bakery.config.config import version_matches
 
 from posit_bakery.plugins.protocol import ToolCallResult
@@ -160,9 +161,6 @@ class TestMergeIndexOnly:
         )
 
 
-from posit_bakery.cli.ci import render_artifact_summary
-
-
 def _summary_mock_target(image_name, temp_tag, tag_strings):
     t = MagicMock()
     t.image_name = image_name
@@ -250,6 +248,20 @@ def test_summary_cli_temp_mode_requires_temp_registry():
         env={"TERM": "dumb", "NO_COLOR": "true"},
     )
     assert result.exit_code == 1
+
+
+def test_summary_cli_invalid_mode_exits_nonzero():
+    from typer.testing import CliRunner
+    from posit_bakery.cli.main import app
+
+    runner = CliRunner()
+    resource = Path(__file__).parent.parent / "resources" / "multiplatform"
+    result = runner.invoke(
+        app,
+        ["ci", "summary", "--mode", "bogus", "--context", str(resource)],
+        env={"TERM": "dumb", "NO_COLOR": "true"},
+    )
+    assert result.exit_code != 0
 
 
 class TestVersionMatches:

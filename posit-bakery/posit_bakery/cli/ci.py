@@ -40,7 +40,6 @@ def render_artifact_summary(targets, mode: str) -> str:
         for ref in refs:
             lines.append(f"| {target.image_name} | {target.image_version.name} | `{ref}` | `docker pull {ref}` |")
 
-    lines.append("")
     return "\n".join(lines)
 
 
@@ -48,6 +47,11 @@ class RichHelpPanelEnum(str, Enum):
     """Enum for categorizing options into rich help panels."""
 
     FILTERS = "Filters"
+
+
+class SummaryModeEnum(str, Enum):
+    TEMP = "temp"
+    FINAL = "final"
 
 
 class BakeryCIMatrixFieldEnum(str, Enum):
@@ -356,11 +360,19 @@ def readme(
 @with_verbosity_flags
 def summary(
     mode: Annotated[
-        str,
+        SummaryModeEnum,
         typer.Option(help="Which references to report: 'temp' (temp registry index) or 'final' (pushed tags)."),
-    ] = "temp",
+    ] = SummaryModeEnum.TEMP,
     context: Annotated[
-        Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
     ] = auto_path(),
     temp_registry: Annotated[
         Optional[str],
@@ -401,10 +413,7 @@ def summary(
     ] = None,
 ) -> None:
     """Render a markdown table of build artifact image references for a CI job summary."""
-    if mode not in ("temp", "final"):
-        log.error(f"Invalid --mode '{mode}'; expected 'temp' or 'final'.")
-        raise typer.Exit(code=1)
-    if mode == "temp" and not temp_registry:
+    if mode == SummaryModeEnum.TEMP and not temp_registry:
         log.error("--temp-registry is required when --mode temp.")
         raise typer.Exit(code=1)
 
@@ -417,7 +426,7 @@ def summary(
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-    md = render_artifact_summary(config.targets, mode=mode)
+    md = render_artifact_summary(config.targets, mode=mode.value)
 
     if output is not None:
         output.write_text(md + "\n")
