@@ -39,10 +39,10 @@ on:
         required: false
         type: string
       push:
-        description: "Whether to push images to registries [default: false]"
-        default: false
+        description: "Push target [default: off] [options: off (no push), temp (multi-arch tag to temp registry only), on (push to final registries)]"
+        default: "off"
         required: false
-        type: boolean
+        type: string
       retry:
         description: "Number of times to retry a failed build [default: 1]"
         default: 1
@@ -99,6 +99,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Validate push input
+        env:
+          PUSH: ${{ inputs.push }}
+        run: |
+          case "$PUSH" in
+            off|temp|on) ;;
+            *) echo "::error::Invalid push value '$PUSH'; expected off, temp, or on." ; exit 1 ;;
+          esac
 
       - name: Install
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -167,14 +176,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
-        if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.docker-hub == 'true' }}
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Configure AWS Credentials
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
@@ -182,7 +191,7 @@ jobs:
           role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419  # v2.1.5
 
       - name: Setup docker buildx
@@ -199,22 +208,35 @@ jobs:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
+          PUSH: ${{ inputs.push }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CACHE_FLAGS=()
           if [ "$CACHE" = "true" ]; then
             CACHE_FLAGS=(--cache-registry "$REGISTRY")
           fi
-          bakery build --load --pull \
-            --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            "${CACHE_FLAGS[@]}" \
-            --context "$CONTEXT"
+          if [ "$PUSH" = "temp" ]; then
+            bakery build --push --temp-registry "$REGISTRY" --temp-tagged --pull \
+              --retry "$RETRY" \
+              --image-name "^${IMAGE_NAME}$" \
+              --image-version "$IMAGE_VERSION" \
+              --dev-versions "$DEV_VERSIONS" \
+              --matrix-versions "$MATRIX_VERSIONS" \
+              "${CACHE_FLAGS[@]}" \
+              --context "$CONTEXT"
+          else
+            bakery build --load --pull \
+              --retry "$RETRY" \
+              --image-name "^${IMAGE_NAME}$" \
+              --image-version "$IMAGE_VERSION" \
+              --dev-versions "$DEV_VERSIONS" \
+              --matrix-versions "$MATRIX_VERSIONS" \
+              "${CACHE_FLAGS[@]}" \
+              --context "$CONTEXT"
+          fi
 
       - name: Test
+        if: ${{ inputs.push != 'temp' }}
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
@@ -236,7 +258,7 @@ jobs:
         # Since this is a reusable workflow, we need to be very explicit about
         # when to push the images. We default to not pushing images, so the
         # calling workflow must explicitly request pushing images.
-        if: ${{ inputs.push }}
+        if: ${{ inputs.push == 'on' }}
         env:
           GIT_SHA: ${{ github.sha }}
           RETRY: ${{ inputs.retry }}
@@ -255,11 +277,33 @@ jobs:
             --matrix-versions "$MATRIX_VERSIONS" \
             --context "$CONTEXT"
 
+      - name: Build Artifact Summary
+        if: ${{ inputs.push != 'off' }}
+        env:
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          PUSH: ${{ inputs.push }}
+          CONTEXT: ${{ inputs.context }}
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+        run: |
+          if [ "$PUSH" = "on" ]; then MODE="final"; else MODE="temp"; fi
+          bakery ci summary \
+            --mode "$MODE" \
+            --temp-registry "$REGISTRY" \
+            --context "$CONTEXT" \
+            --image-version "$IMAGE_VERSION" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --output summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
   readme:
     name: Push READMEs
     permissions:
       contents: read
-    if: ${{ inputs.push }}
+    if: ${{ inputs.push == 'on' }}
     needs:
       - build
     runs-on: ubuntu-latest
