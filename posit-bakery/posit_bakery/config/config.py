@@ -896,7 +896,9 @@ class BakeryConfig:
                                 image_variant=variant,
                                 image_os=_os,
                                 settings=ImageTargetSettings(
-                                    temp_registry=settings.temp_registry, cache_registry=settings.cache_registry
+                                    temp_registry=settings.temp_registry,
+                                    temp_tagged=settings.temp_tagged,
+                                    cache_registry=settings.cache_registry,
                                 ),
                             )
                         )
@@ -1001,7 +1003,7 @@ class BakeryConfig:
                 context=self.base_path, image_targets=self.targets, platforms=platforms, push=push
             )
             set_opts = None
-            if self.settings.temp_registry is not None and push:
+            if self.settings.temp_registry is not None and push and not self.settings.temp_tagged:
                 set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
             _retry_build(
                 lambda: bake_plan.build(

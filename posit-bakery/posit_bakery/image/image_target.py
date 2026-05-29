@@ -212,6 +212,13 @@ class ImageTargetSettings(BaseModel):
         str | None,
         Field(default=None, description="Temporary registry to use for multiplatform split/merge builds."),
     ]
+    temp_tagged: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="When True, push a single multi-arch tag to the temp registry instead of pushing by digest.",
+        ),
+    ]
     cache_registry: Annotated[
         str | None,
         Field(default=None, description="Registry to use for build cache storage and retrieval."),
@@ -652,7 +659,10 @@ class ImageTarget(BaseModel):
 
         tags = self.tags.as_strings()
         output = {}
-        if self.temp_name is not None:
+        if self.settings.temp_tagged and self.temp_tag_name is not None:
+            # Push a single multi-arch tag to the temp registry instead of by digest.
+            tags = [self.temp_tag_name]
+        elif self.temp_name is not None:
             tags = [self.temp_name]
             # If push is true for a temporary image, override the output to push the image by digest.
             if push:
