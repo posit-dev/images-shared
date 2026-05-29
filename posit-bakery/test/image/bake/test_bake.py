@@ -6,6 +6,9 @@ import pytest
 import python_on_whales
 from pytest_mock import MockFixture
 
+from posit_bakery.config import BakeryConfig
+from posit_bakery.config.config import BakerySettings
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.image.bake import BakePlan
 from posit_bakery.image.bake.bake import BakeTarget, BakeGroup
 from posit_bakery.image.image_target import ImageTargetSettings
@@ -60,20 +63,15 @@ def get_expected_plan(bake_testdata):
 class TestBakeTarget:
     def test_bake_target_uses_tagged_temp_ref_when_temp_tagged(self):
         """Test that BakeTarget uses temp_tag_name when temp_tagged is set."""
-        from posit_bakery.config import BakeryConfig
-        from posit_bakery.config.config import BakerySettings
-        from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-
-        resources = Path(__file__).parent
-        while not (resources / "resources").is_dir():
-            resources = resources.parent
+        resources = Path(__file__).parents[2] / "resources" / "multiplatform"
         settings = BakerySettings(
             temp_registry="ghcr.io/posit-dev",
             temp_tagged=True,
             dev_versions=DevVersionInclusionEnum.INCLUDE,
             matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         )
-        config = BakeryConfig.from_context(resources / "resources" / "multiplatform", settings)
+        config = BakeryConfig.from_context(resources, settings)
+        assert config.targets, "multiplatform fixture produced no targets"
         target = config.targets[0]
 
         bt = BakeTarget.from_image_target(target, push=True)
