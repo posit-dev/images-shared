@@ -9,7 +9,7 @@ on:
     inputs:
       version:
         description: "The version of the Posit Bakery tool to install"
-        default: "main"
+        default: "feat/dry-run-artifacts"
         required: false
         type: string
       context:
@@ -119,7 +119,7 @@ jobs:
           esac
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -156,7 +156,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -296,7 +296,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -415,7 +415,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
