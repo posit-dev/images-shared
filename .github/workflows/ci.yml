@@ -108,7 +108,7 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
-          python-version-file: "posit-bakery/pyproject.toml"
+          version-file: "posit-bakery/pyproject.toml"
           enable-cache: false
 
       - name: Install dependencies
@@ -248,7 +248,7 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
-          python-version-file: "posit-bakery/pyproject.toml"
+          version-file: "posit-bakery/pyproject.toml"
           enable-cache: false
 
       - name: Install dependencies
