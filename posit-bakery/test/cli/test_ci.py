@@ -160,6 +160,98 @@ class TestMergeIndexOnly:
         )
 
 
+from posit_bakery.cli.ci import render_artifact_summary
+
+
+def _summary_mock_target(image_name, temp_tag, tag_strings):
+    t = MagicMock()
+    t.image_name = image_name
+    t.image_version.name = "1.0.0"
+    t.temp_tag_name = temp_tag
+    tags = MagicMock()
+    tags.as_strings.return_value = tag_strings
+    t.tags = tags
+    return t
+
+
+def test_render_artifact_summary_temp():
+    target = _summary_mock_target(
+        "connect",
+        "ghcr.io/posit-dev/connect/tmp:connect-1-0-0",
+        ["ghcr.io/posit-dev/connect:1.0.0"],
+    )
+    md = render_artifact_summary([target], mode="temp")
+
+    assert "Build Artifacts" in md
+    assert "ghcr.io/posit-dev/connect/tmp:connect-1-0-0" in md
+    assert "docker pull ghcr.io/posit-dev/connect/tmp:connect-1-0-0" in md
+    # temp mode must not advertise the final destination tag
+    assert "ghcr.io/posit-dev/connect:1.0.0" not in md
+
+
+def test_render_artifact_summary_final():
+    target = _summary_mock_target(
+        "connect",
+        "ghcr.io/posit-dev/connect/tmp:connect-1-0-0",
+        ["ghcr.io/posit-dev/connect:1.0.0", "docker.io/posit/connect:1.0.0"],
+    )
+    md = render_artifact_summary([target], mode="final")
+
+    assert "ghcr.io/posit-dev/connect:1.0.0" in md
+    assert "docker.io/posit/connect:1.0.0" in md
+    # final mode must not advertise the temp ref
+    assert "/tmp:connect-1-0-0" not in md
+
+
+def test_summary_cli_temp_mode(tmp_path):
+    from typer.testing import CliRunner
+    from posit_bakery.cli.main import app
+
+    runner = CliRunner()
+    resource = Path(__file__).parent.parent / "resources" / "multiplatform"
+    out = tmp_path / "summary.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "summary",
+            "--mode",
+            "temp",
+            "--temp-registry",
+            "ghcr.io/posit-dev",
+            "--matrix-versions",
+            "include",
+            "--context",
+            str(resource),
+            "--output",
+            str(out),
+        ],
+        env={"TERM": "dumb", "NO_COLOR": "true"},
+    )
+
+    assert result.exit_code == 0, result.output
+    body = out.read_text()
+    assert "Build Artifacts" in body
+    assert "test-multi" in body
+    assert "/tmp:" in body
+    assert "docker pull ghcr.io/posit-dev/test-multi/tmp:" in body
+
+
+def test_summary_cli_temp_mode_requires_temp_registry():
+    from typer.testing import CliRunner
+    from posit_bakery.cli.main import app
+
+    runner = CliRunner()
+    resource = Path(__file__).parent.parent / "resources" / "multiplatform"
+    result = runner.invoke(
+        app,
+        ["ci", "summary", "--mode", "temp", "--context", str(resource)],
+        env={"TERM": "dumb", "NO_COLOR": "true"},
+    )
+    assert result.exit_code == 1
+
+
 class TestVersionMatches:
     @pytest.mark.parametrize(
         "ver_name,filter_version",
