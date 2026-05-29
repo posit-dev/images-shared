@@ -227,6 +227,7 @@ class TestOrasMergeWorkflow:
         mock_tag4.__str__ = lambda self: "docker.io/posit/test-image:latest"
 
         mock_target.tags = StringableList([mock_tag1, mock_tag2, mock_tag3, mock_tag4])
+        mock_target.temp_tag_name = "ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0"
         return mock_target
 
     @pytest.fixture
@@ -278,6 +279,29 @@ class TestOrasMergeWorkflow:
         mock_run.assert_not_called()
         assert result.success is True
         assert len(result.destinations) == 4
+
+    def test_index_only_creates_index_and_skips_copy(self, basic_workflow):
+        """index_only runs only the create step (1 call), no copy-to-final."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            result = basic_workflow.run(index_only=True)
+
+        assert result.success is True
+        assert result.error is None
+        # Only the index-create call runs; the 2 copy calls are skipped.
+        assert mock_run.call_count == 1
+        # The index is pushed to the stable temp tag, and no final destinations are reported.
+        assert result.temp_index_ref == "ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0"
+        assert result.destinations == []
+
+    def test_index_only_dry_run_runs_nothing(self, basic_workflow):
+        """dry_run takes precedence over index_only."""
+        with patch("subprocess.run") as mock_run:
+            result = basic_workflow.run(dry_run=True, index_only=True)
+
+        mock_run.assert_not_called()
+        assert result.success is True
+        assert result.temp_index_ref == "ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0"
 
     def test_execute_failure_on_create(self, basic_workflow):
         """Test workflow handles failure during index creation."""
