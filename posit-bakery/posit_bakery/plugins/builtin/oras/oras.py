@@ -142,24 +142,6 @@ class OrasCopy(OrasCommand):
         return cmd
 
 
-class OrasManifestDelete(OrasCommand):
-    """Delete a manifest from a registry.
-
-    This command deletes a manifest (image or index) from a registry.
-    """
-
-    reference: Annotated[str, Field(description="The manifest reference to delete.")]
-
-    @property
-    def command(self) -> list[str]:
-        """Build the oras manifest delete command."""
-        cmd = [self.oras_bin, "manifest", "delete", "--force"]
-        if self.plain_http:
-            cmd.append("--plain-http")
-        cmd.append(self.reference)
-        return cmd
-
-
 class OrasMergeWorkflowResult(BaseModel):
     """Result of an ORAS merge workflow execution."""
 
@@ -175,7 +157,9 @@ class OrasMergeWorkflow(BaseModel):
     This workflow:
     1. Creates a temporary manifest index from platform-specific source images
     2. Copies the index to all target registries/tags
-    3. Deletes the temporary index
+
+    The temporary index is left in place and is cleaned up out-of-band by the
+    ``clean.yml`` workflow (``bakery clean temp-registry``) rather than deleted here.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -241,18 +225,8 @@ class OrasMergeWorkflow(BaseModel):
                 )
                 copy_cmd.run(dry_run=dry_run)
 
-            # Step 3: Delete the temporary index (non-fatal)
-            log.info(f"Cleaning up temporary index {self.temp_index_tag}")
-            delete_cmd = OrasManifestDelete(
-                oras_bin=self.oras_bin,
-                reference=self.temp_index_tag,
-                plain_http=self.plain_http,
-            )
-            try:
-                delete_cmd.run(dry_run=dry_run)
-            except BakeryToolRuntimeError as e:
-                log.warning(f"Failed to clean up temporary index {self.temp_index_tag}: {e}")
-
+            # The temporary index is intentionally left in place; it is cleaned up
+            # out-of-band by the clean.yml workflow (bakery clean temp-registry).
             log.info(f"ORAS merge workflow completed successfully")
             return OrasMergeWorkflowResult(
                 success=True,
