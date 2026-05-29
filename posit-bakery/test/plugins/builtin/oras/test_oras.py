@@ -303,6 +303,12 @@ class TestOrasMergeWorkflow:
         assert result.success is True
         assert result.temp_index_ref == "ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0"
 
+    def test_index_only_without_temp_registry_raises(self, basic_workflow):
+        """index_only requires temp_registry; a None temp_tag_name is a clear error."""
+        basic_workflow.image_target.temp_tag_name = None
+        with pytest.raises(ValueError, match="temp_registry"):
+            basic_workflow.run(index_only=True)
+
     def test_execute_failure_on_create(self, basic_workflow):
         """Test workflow handles failure during index creation."""
         with patch("subprocess.run") as mock_run:

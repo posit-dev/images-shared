@@ -198,6 +198,9 @@ class OrasMergeWorkflow(BaseModel):
         :return: Result of the workflow execution.
         """
 
+        if index_only and self.image_target.temp_tag_name is None:
+            raise ValueError("index_only mode requires temp_registry to be configured.")
+
         index_dest = self.image_target.temp_tag_name if index_only else self.temp_index_tag
 
         log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
