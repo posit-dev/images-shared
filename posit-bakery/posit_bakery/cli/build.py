@@ -133,6 +133,14 @@ def build(
             rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
+    temp_tagged: Annotated[
+        bool,
+        typer.Option(
+            help="Push a single multi-arch tag to the temp registry (tmp:{uid}) instead of by digest. "
+            "Requires --temp-registry and --push.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = False,
     image_name: Annotated[
         Optional[str],
         typer.Option(
@@ -217,6 +225,7 @@ def build(
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
+        temp_tagged=temp_tagged,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 

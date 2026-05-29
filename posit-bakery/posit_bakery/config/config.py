@@ -326,6 +326,14 @@ class BakerySettings(BaseModel):
     ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
     temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
+    temp_tagged: Annotated[
+        bool,
+        Field(
+            description="When pushing to the temp registry, push a single multi-arch tag "
+            "({temp_registry}/{image_name}/tmp:{uid}) instead of pushing by digest.",
+            default=False,
+        ),
+    ]
 
 
 class BakeryConfig:

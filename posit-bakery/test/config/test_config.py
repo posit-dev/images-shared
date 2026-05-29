@@ -1979,3 +1979,11 @@ class TestBakeryConfig:
         mock_ghcr_client.assert_called_once()
         mock_ghcr_client_instance.get_package_versions.assert_called_once()
         mock_ghcr_client_instance.delete_package_version.assert_not_called()
+
+
+class TestBakerySettings:
+    def test_bakery_settings_temp_tagged_default(self):
+        assert BakerySettings().temp_tagged is False
+
+    def test_bakery_settings_temp_tagged_set(self):
+        assert BakerySettings(temp_tagged=True).temp_tagged is True
