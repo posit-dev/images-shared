@@ -102,6 +102,7 @@ class OrasPlugin(BakeryToolPlugin):
         targets: list[ImageTarget],
         *,
         dry_run: bool = False,
+        index_only: bool = False,
         **kwargs,
     ) -> list[ToolCallResult]:
         """Execute ORAS merge workflow against the given image targets."""
@@ -131,7 +132,7 @@ class OrasPlugin(BakeryToolPlugin):
 
             log.info(f"Merging sources for image UID '{target.uid}'")
             workflow = OrasMergeWorkflow.from_image_target(target)
-            workflow_result = workflow.run(dry_run=dry_run)
+            workflow_result = workflow.run(dry_run=dry_run, index_only=index_only)
 
             results.append(
                 ToolCallResult(
