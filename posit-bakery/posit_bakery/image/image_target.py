@@ -554,6 +554,19 @@ class ImageTarget(BaseModel):
         return f"{self.settings.temp_registry}/{self.image_name}/tmp"
 
     @property
+    def temp_tag_name(self) -> str | None:
+        """Generate a stable, human-pullable temp tag for debug/index-only pushes.
+
+        Unlike ``temp_name`` (pushed by digest), this is a single multi-arch tag at
+        ``{temp_registry}/{image_name}/tmp:{uid}`` used by ORAS index-only merges and
+        emulation tagged temp pushes so a developer can pull one ref.
+        """
+        if not self.settings.temp_registry:
+            return None
+
+        return f"{self.settings.temp_registry}/{self.image_name}/tmp:{self.uid}"
+
+    @property
     def resolved_build_secrets(self) -> list[BuildSecret]:
         """Return the parent Image's BuildSecrets whose envVar is set in the environment.
 
