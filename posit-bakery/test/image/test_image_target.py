@@ -1,24 +1,19 @@
 import datetime
 import re
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
 
-from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
-from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
 from test.helpers import remove_images, SUCCESS_SUITES
-
-RESOURCES = Path(__file__).parent.parent / "resources"
 
 pytestmark = [
     pytest.mark.unit,
@@ -660,6 +655,15 @@ class TestImageTarget:
         basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
         assert basic_standard_image_target.temp_name == "ghcr.io/posit-dev/test-image/tmp"
 
+    def test_temp_tag_name(self, basic_standard_image_target):
+        """Test the temp_tag_name property of an ImageTarget."""
+        assert basic_standard_image_target.temp_tag_name is None
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
+        assert (
+            basic_standard_image_target.temp_tag_name
+            == f"ghcr.io/posit-dev/test-image/tmp:{basic_standard_image_target.uid}"
+        )
+
     @pytest.mark.build
     def test_build_args(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""
@@ -1190,23 +1194,3 @@ class TestPushSortKey:
         )
         names = [t.image_name for t in ordered]
         assert names == ["connect", "connect", "connect-content", "connect-content"]
-
-
-def test_temp_tag_name_format():
-    settings = BakerySettings(
-        temp_registry="ghcr.io/posit-dev",
-        dev_versions=DevVersionInclusionEnum.INCLUDE,
-        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
-    )
-    config = BakeryConfig.from_context(RESOURCES / "multiplatform", settings)
-    target = config.targets[0]
-    assert target.temp_tag_name == f"ghcr.io/posit-dev/{target.image_name}/tmp:{target.uid}"
-
-
-def test_temp_tag_name_none_without_temp_registry():
-    settings = BakerySettings(
-        dev_versions=DevVersionInclusionEnum.INCLUDE,
-        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
-    )
-    config = BakeryConfig.from_context(RESOURCES / "multiplatform", settings)
-    assert config.targets[0].temp_tag_name is None
