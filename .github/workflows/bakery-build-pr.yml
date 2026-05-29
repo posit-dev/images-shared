@@ -196,19 +196,18 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
-          REGISTRY_OWNER: ${{ github.repository_owner }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CACHE: ${{ inputs.cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Cache only for same-repo PRs when enabled; fork PRs have no
+          # registry credentials, so they never receive cache flags.
+          CACHE_FLAGS=()
+          if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then
+            CACHE_FLAGS=(--cache-registry "$REGISTRY")
+          fi
           if [ "$IS_FORK" = "true" ]; then
-            # Fork PRs: load-only, no push, no temp registry. Cache only when
-            # explicitly enabled (forks have no registry credentials anyway).
-            CACHE_FLAGS=()
-            if [ "$CACHE" = "true" ]; then
-              CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
-            fi
             bakery build \
               --strategy build --pull --load \
               --retry "$RETRY" \
@@ -220,8 +219,6 @@ jobs:
               "${CACHE_FLAGS[@]}" \
               --context "$BAKERY_CONTEXT"
           else
-            # Same-repo PRs: push by digest per-platform to the temp registry so
-            # the merge job can assemble a multi-arch index (no --temp-tagged).
             bakery build \
               --strategy build --pull --push \
               --retry "$RETRY" \
@@ -230,8 +227,8 @@ jobs:
               --image-platform "$IMAGE_PLATFORM" \
               --dev-versions "$DEV_VERSIONS" \
               --matrix-versions "$MATRIX_VERSIONS" \
-              --cache-registry "ghcr.io/${REGISTRY_OWNER}" \
-              --temp-registry "ghcr.io/${REGISTRY_OWNER}" \
+              "${CACHE_FLAGS[@]}" \
+              --temp-registry "$REGISTRY" \
               --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
               --context "$BAKERY_CONTEXT"
           fi
