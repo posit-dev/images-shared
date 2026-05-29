@@ -169,6 +169,13 @@ def merge(
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
+    index_only: Annotated[
+        bool,
+        typer.Option(
+            help="Create and push the multi-arch index to the temp registry but do not copy it to "
+            "the final destination tags. Useful for publishing debug artifacts on non-release builds.",
+        ),
+    ] = False,
     dev_stream: Annotated[
         Optional[ReleaseStreamEnum],
         typer.Option(
@@ -235,15 +242,22 @@ def merge(
     from posit_bakery.plugins.registry import get_plugin
 
     oras = get_plugin("oras")
-    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
+    results = oras.execute(config.base_path, config.targets, dry_run=dry_run, index_only=index_only)
 
-    # CI-specific: verify final manifests with imagetools inspect
+    # CI-specific: verify the pushed manifest with imagetools inspect
     if not dry_run:
         for result in results:
             if result.exit_code == 0 and result.artifacts:
                 workflow_result = result.artifacts.get("workflow_result")
-                if workflow_result and workflow_result.destinations:
-                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
+                if not workflow_result:
+                    continue
+                ref = (
+                    workflow_result.temp_index_ref
+                    if index_only
+                    else (workflow_result.destinations[0] if workflow_result.destinations else None)
+                )
+                if ref:
+                    manifest = python_on_whales.docker.buildx.imagetools.inspect(ref)
                     stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
 
     oras.results(results)

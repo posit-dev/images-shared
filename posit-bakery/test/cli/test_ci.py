@@ -52,7 +52,8 @@ def patch_image_target_merge_method(mocker):
             if not sources:
                 continue
             dry_run = kwargs.get("dry_run", False)
-            calls.append((sources, dry_run))
+            index_only = kwargs.get("index_only", False)
+            calls.append((sources, dry_run, index_only))
             results.append(
                 ToolCallResult(
                     exit_code=0,
@@ -60,7 +61,7 @@ def patch_image_target_merge_method(mocker):
                     target=target,
                     stdout="",
                     stderr="",
-                    artifacts={"workflow_result": MagicMock(success=True, destinations=[])},
+                    artifacts={"workflow_result": MagicMock(success=True, destinations=[], temp_index_ref=None)},
                 )
             )
         return results
@@ -98,6 +99,69 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
 
     for expected in expected_calls:
         assert expected in calls
+
+
+class TestMergeIndexOnly:
+    def test_merge_index_only_passes_flag(self, mocker, tmp_path):
+        """--index-only CLI flag should thread through to oras.execute as index_only=True."""
+        import shutil
+        from pathlib import Path
+        from unittest.mock import MagicMock
+
+        from posit_bakery.plugins.protocol import ToolCallResult
+        from test.cli.bakery_command import BakeryCommand
+
+        calls = []
+
+        def patched_execute(base_path, targets, platform=None, **kwargs):
+            results = []
+            for target in targets:
+                try:
+                    sources = target.get_merge_sources()
+                except Exception:
+                    continue
+                if not sources:
+                    continue
+                dry_run = kwargs.get("dry_run", False)
+                index_only = kwargs.get("index_only", False)
+                calls.append((sources, dry_run, index_only))
+                results.append(
+                    ToolCallResult(
+                        exit_code=0,
+                        tool_name="oras",
+                        target=target,
+                        stdout="",
+                        stderr="",
+                        artifacts={"workflow_result": MagicMock(success=True, destinations=[], temp_index_ref=None)},
+                    )
+                )
+            return results
+
+        mock_plugin = MagicMock()
+        mock_plugin.execute = patched_execute
+        mock_plugin.results = MagicMock()
+        mocker.patch("posit_bakery.plugins.registry.get_plugin", return_value=mock_plugin)
+
+        resource = Path(__file__).parent.parent / "resources" / "multiplatform"
+        # Copy the existing testdata metadata files so we get real targets loaded
+        testdata = Path(__file__).parent / "testdata" / "ci" / "merge" / "multiplatform"
+        for f in testdata.glob("*.json"):
+            shutil.copy(f, tmp_path / f.name)
+
+        cmd = BakeryCommand()
+        cmd.context = resource
+        cmd.set_subcommand(["ci", "merge"])
+        cmd.add_args(["--temp-registry", "ghcr.io/posit-dev", "--index-only"])
+        cmd.add_args([str(p) for p in sorted(tmp_path.glob("*.json"))])
+        cmd.run()
+
+        assert cmd.result.exit_code == 0, cmd.result.output
+        # The fixture must have recorded at least one call (the testdata has 4 targets)
+        assert calls, "Expected at least one merge call to be recorded"
+        # Every recorded call must carry index_only=True
+        assert all(index_only for (_sources, _dry_run, index_only) in calls), (
+            f"Some calls did not have index_only=True: {calls}"
+        )
 
 
 class TestVersionMatches:
