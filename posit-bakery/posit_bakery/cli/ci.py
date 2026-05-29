@@ -174,6 +174,7 @@ def merge(
         typer.Option(
             help="Create and push the multi-arch index to the temp registry but do not copy it to "
             "the final destination tags. Useful for publishing debug artifacts on non-release builds.",
+            rich_help_panel="Build Configuration & Outputs",
         ),
     ] = False,
     dev_stream: Annotated[

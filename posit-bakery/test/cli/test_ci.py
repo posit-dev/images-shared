@@ -1,5 +1,7 @@
 import json
 import re
+import shutil
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,6 +10,7 @@ from pytest_bdd import scenarios, then, parsers, given
 from posit_bakery.config.config import version_matches
 
 from posit_bakery.plugins.protocol import ToolCallResult
+from test.cli.bakery_command import BakeryCommand
 
 scenarios(
     "cli/ci/matrix.feature",
@@ -104,13 +107,6 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
 class TestMergeIndexOnly:
     def test_merge_index_only_passes_flag(self, mocker, tmp_path):
         """--index-only CLI flag should thread through to oras.execute as index_only=True."""
-        import shutil
-        from pathlib import Path
-        from unittest.mock import MagicMock
-
-        from posit_bakery.plugins.protocol import ToolCallResult
-        from test.cli.bakery_command import BakeryCommand
-
         calls = []
 
         def patched_execute(base_path, targets, platform=None, **kwargs):
