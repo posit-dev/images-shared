@@ -122,7 +122,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feature/soci-images"
         with:
           version: ${{ inputs.version }}
 
@@ -169,12 +169,12 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feature/soci-images"
         with:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@main"
+        uses: "posit-dev/images-shared/setup-goss@feature/soci-images"
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3  # v4.1.0
@@ -324,7 +324,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feature/soci-images"
         with:
           version: ${{ inputs.version }}
 
