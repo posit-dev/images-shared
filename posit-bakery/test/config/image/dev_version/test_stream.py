@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
-from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
 
 pytestmark = [
@@ -290,6 +290,18 @@ class TestImageDevelopmentVersionFromProductStream:
         assert dv.channel.value == "daily"
         assert "deprecated" in caplog.text.lower()
 
+    def test_channel_wins_when_both_stream_and_channel_supplied(self, caplog):
+        """When both 'stream' and 'channel' are present, 'channel' wins and no warning is emitted."""
+        dv = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product="package-manager",
+            channel="daily",
+            stream="preview",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dv.channel.value == "daily"
+        assert "deprecated" not in caplog.text.lower()
+
     def test_as_image_version_metadata_uses_release_channel(self, patch_requests_get):
         """Resolved ImageVersion metadata must use 'release_channel', not 'release_stream'."""
         mock_parent = MagicMock(spec=Image)
@@ -316,7 +328,7 @@ class TestImageDevelopmentVersionFromProductStream:
         )
         assert dev_version.get_release_stream() == ReleaseChannelEnum.DAILY
 
-    def test_as_image_version_metadata_contains_release_stream(self, patch_requests_get):
+    def test_as_image_version_metadata_contains_release_channel(self, patch_requests_get):
         """Test that as_image_version populates metadata with release_channel."""
         mock_parent = MagicMock(spec=Image)
         mock_parent.path = Path("/tmp/path")
