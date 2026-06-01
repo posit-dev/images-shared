@@ -315,6 +315,27 @@ class BakerySettings(BaseModel):
         ),
     ] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_dev_stream_to_dev_channel(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        if "dev_stream" in data and "dev_channel" not in data:
+            import warnings
+
+            warnings.warn(
+                "BakerySettings: 'dev_stream' is deprecated, use 'dev_channel' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            data = dict(data)
+            data["dev_channel"] = data.pop("dev_stream")
+        elif "dev_stream" in data:
+            # dev_channel already set — dev_channel wins, drop the stale dev_stream key
+            data = dict(data)
+            data.pop("dev_stream")
+        return data
+
     @property
     def dev_stream(self) -> ReleaseChannelEnum | None:
         """Deprecated: use dev_channel."""
