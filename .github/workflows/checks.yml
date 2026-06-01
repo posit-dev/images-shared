@@ -1,0 +1,115 @@
+name: Checks
+
+on:
+  workflow_call:
+    inputs:
+      run-pre-commit:
+        description: "Run the pre-commit job"
+        default: true
+        required: false
+        type: boolean
+      run-zizmor:
+        description: "Run the zizmor job"
+        default: true
+        required: false
+        type: boolean
+      run-lychee:
+        description: "Run the lychee link-check job"
+        default: true
+        required: false
+        type: boolean
+      python-version:
+        description: "Python version for pre-commit (used when python-version-file is empty)"
+        default: "3.x"
+        required: false
+        type: string
+      python-version-file:
+        description: "Path to a file specifying the Python version (takes precedence over python-version)"
+        default: ""
+        required: false
+        type: string
+      lychee-args:
+        description: "Arguments passed to lychee"
+        default: "--cache --no-progress --max-cache-age 1d **/*.md"
+        required: false
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+# Security policy: No ${{ }} expressions in `run:` blocks. All expression values
+# are assigned to `env:` and referenced as shell variables. This keeps the rule
+# enforceable by zizmor without per-expression exceptions.
+
+jobs:
+  pre-commit:
+    name: Pre-commit
+    if: inputs.run-pre-commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Two conditional setup-python steps avoid the python-version vs
+      # python-version-file precedence ambiguity: pass exactly one input.
+      - name: Set up Python (version)
+        if: inputs.python-version-file == ''
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up Python (version file)
+        if: inputs.python-version-file != ''
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version-file: ${{ inputs.python-version-file }}
+
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
+        env:
+          SKIP: no-commit-to-branch
+
+  zizmor:
+    name: Zizmor
+    if: inputs.run-zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d  # v0.5.6
+
+  lychee:
+    name: Lychee
+    if: inputs.run-lychee
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore lychee cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2.8.0
+        with:
+          args: ${{ inputs.lychee-args }}
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
