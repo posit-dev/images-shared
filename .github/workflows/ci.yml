@@ -25,38 +25,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
-      - lint
+      - checks
       - test
       - bakery
       - bakery-native
       - bakery-pr
       - release
       - pypi-publish
-      - zizmor
 
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe  # v1.2.2
         with:
-          allowed-skips: bakery-pr, lint, pypi-publish
+          allowed-skips: bakery-pr, checks, pypi-publish
           jobs: ${{ toJSON(needs) }}
 
-  lint:
-    name: Lint
+  checks:
+    name: Checks
     if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version-file: posit-bakery/pyproject.toml
-      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
-        env:
-          SKIP: no-commit-to-branch
+      security-events: write
+    uses: ./.github/workflows/checks.yml
+    with:
+      python-version-file: posit-bakery/pyproject.toml
 
   test:
     name: Test
@@ -179,18 +170,6 @@ jobs:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
-
-  zizmor:
-    name: Zizmor
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d  # v0.5.6
 
   with-macros-clean-caches:
     name: Clean Caches (with-macros suite)
