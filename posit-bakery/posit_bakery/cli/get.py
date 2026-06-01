@@ -7,7 +7,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -65,10 +65,20 @@ def tags(
             rich_help_panel="Filters",
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.",
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel="Filters",
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
             rich_help_panel="Filters",
         ),
     ] = None,
@@ -100,6 +110,10 @@ def tags(
     ] = auto_path(),
 ):
     """Get the list of tags that would be built for the given context and filters."""
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     try:
         settings = BakerySettings(
             filter=BakeryConfigFilter(
@@ -109,7 +123,7 @@ def tags(
                 image_os=image_os,
             ),
             dev_versions=dev_versions,
-            dev_stream=dev_stream,
+            dev_channel=dev_channel,
             matrix_versions=matrix_versions,
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)

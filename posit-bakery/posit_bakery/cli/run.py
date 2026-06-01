@@ -9,7 +9,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console
 from posit_bakery.plugins.registry import get_plugin
@@ -90,10 +90,20 @@ def dgoss(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.",
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -144,6 +154,10 @@ def dgoss(
     if not image_platform.startswith("linux/"):
         image_platform = f"linux/{image_platform}"
 
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
@@ -153,7 +167,7 @@ def dgoss(
             image_platform=[image_platform],
         ),
         dev_versions=dev_versions,
-        dev_stream=dev_stream,
+        dev_channel=dev_channel,
         matrix_versions=matrix_versions,
         clean_temporary=clean,
     )
