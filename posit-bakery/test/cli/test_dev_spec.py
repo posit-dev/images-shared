@@ -24,12 +24,6 @@ def _settings_from_call(mock):
 
 
 class TestBuildDevSpec:
-    def _mock(self):
-        with patch("posit_bakery.cli.build.BakeryConfig") as mock:
-            instance = MagicMock()
-            mock.from_context.return_value = instance
-            yield mock
-
     def test_dev_spec_via_flag(self):
         """--dev-spec JSON is parsed and forwarded to BakerySettings."""
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
