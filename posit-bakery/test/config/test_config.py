@@ -383,6 +383,33 @@ class TestBakeryConfig:
             with pytest.raises(ValueError, match="[Aa]mbig"):
                 BakeryConfig(bakery_yaml, settings=settings)
 
+        def test_conflicting_channels_raise(self, tmp_path, patch_requests_get):
+            """dev_spec.channel and --dev-channel must not conflict."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                "repository:\n"
+                "  url: https://github.com/posit-dev/test\n"
+                "images:\n"
+                "  - name: test-image\n"
+                "    devVersions:\n"
+                "      - sourceType: stream\n"
+                "        product: package-manager\n"
+                "        channel: daily\n"
+                "        os:\n"
+                "          - name: Ubuntu 24.04\n"
+                "            primary: true\n"
+            )
+            spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.DAILY)
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_spec=spec,
+                dev_channel=ReleaseChannelEnum.PREVIEW,  # conflicts with spec.channel
+            )
+            with pytest.raises(ValueError, match="[Cc]onfli"):
+                BakeryConfig(bakery_yaml, settings=settings)
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [
