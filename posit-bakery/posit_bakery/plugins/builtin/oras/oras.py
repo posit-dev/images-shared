@@ -189,57 +189,68 @@ class OrasMergeWorkflow(BaseModel):
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
 
-    def run(self, dry_run: bool = False) -> OrasMergeWorkflowResult:
+    def run(self, dry_run: bool = False, index_only: bool = False) -> OrasMergeWorkflowResult:
         """Run the merge workflow.
 
         :param dry_run: If True, log commands without executing them.
+        :param index_only: If True, create and push the multi-arch index to the stable
+            temp tag (``temp_tag_name``) but skip copying it to the final destinations.
         :return: Result of the workflow execution.
         """
 
+        if index_only and self.image_target.temp_tag_name is None:
+            raise ValueError("index_only mode requires temp_registry to be configured.")
+
+        index_dest = self.image_target.temp_tag_name if index_only else self.temp_index_tag
+
         log.info(f"Starting ORAS merge workflow for {self.image_target.image_name}")
         log.debug(f"Sources: {self.sources}")
-        log.debug(f"Temporary index: {self.temp_index_tag}")
-        log.debug(f"Destinations: {', '.join(self.image_target.tags.as_strings())}")
+        log.debug(f"Index: {index_dest}")
+        if not index_only:
+            log.debug(f"Destinations: {', '.join(self.image_target.tags.as_strings())}")
 
         try:
             # Step 1: Create the manifest index
-            log.info(f"Creating manifest index at {self.temp_index_tag}")
+            log.info(f"Creating manifest index at {index_dest}")
             create_cmd = OrasManifestIndexCreate(
                 oras_bin=self.oras_bin,
                 sources=self.image_target.get_merge_sources(),
-                destination=self.temp_index_tag,
+                destination=index_dest,
                 annotations=self.annotations,
                 plain_http=self.plain_http,
             )
             create_cmd.run(dry_run=dry_run)
 
-            # Step 2: Copy to all destinations
-            for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
-                log.info(f"Copying index to {destination}")
-                combine_tag_str = destination + ":" + ",".join(tag.suffix for tag in tags)
-                copy_cmd = OrasCopy(
-                    oras_bin=self.oras_bin,
-                    source=self.temp_index_tag,
-                    destination=combine_tag_str,
-                    plain_http=self.plain_http,
-                )
-                copy_cmd.run(dry_run=dry_run)
+            # Step 2: Copy to all destinations (skipped in index-only mode)
+            destinations: list[str] = []
+            if not index_only:
+                for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
+                    log.info(f"Copying index to {destination}")
+                    combine_tag_str = destination + ":" + ",".join(tag.suffix for tag in tags)
+                    copy_cmd = OrasCopy(
+                        oras_bin=self.oras_bin,
+                        source=index_dest,
+                        destination=combine_tag_str,
+                        plain_http=self.plain_http,
+                    )
+                    copy_cmd.run(dry_run=dry_run)
+                destinations = self.image_target.tags.as_strings()
 
             # The temporary index is intentionally left in place; it is cleaned up
             # out-of-band by the clean.yml workflow (bakery clean temp-registry).
             log.info(f"ORAS merge workflow completed successfully")
             return OrasMergeWorkflowResult(
                 success=True,
-                temp_index_ref=self.temp_index_tag,
-                destinations=self.image_target.tags.as_strings(),
+                temp_index_ref=index_dest,
+                destinations=destinations,
             )
 
         except BakeryToolRuntimeError as e:
             log.error(f"ORAS merge workflow failed: {e}")
             return OrasMergeWorkflowResult(
                 success=False,
-                temp_index_ref=self.temp_index_tag,
-                destinations=self.image_target.tags.as_strings(),
+                temp_index_ref=index_dest,
+                destinations=[] if index_only else self.image_target.tags.as_strings(),
                 error=str(e),
             )
 

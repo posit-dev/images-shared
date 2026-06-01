@@ -655,6 +655,15 @@ class TestImageTarget:
         basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
         assert basic_standard_image_target.temp_name == "ghcr.io/posit-dev/test-image/tmp"
 
+    def test_temp_tag_name(self, basic_standard_image_target):
+        """Test the temp_tag_name property of an ImageTarget."""
+        assert basic_standard_image_target.temp_tag_name is None
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
+        assert (
+            basic_standard_image_target.temp_tag_name
+            == f"ghcr.io/posit-dev/test-image/tmp:{basic_standard_image_target.uid}"
+        )
+
     @pytest.mark.build
     def test_build_args(self, basic_standard_image_target):
         """Test the build property of an ImageTarget."""

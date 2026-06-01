@@ -44,6 +44,7 @@ def mock_target_with_sources():
     mock_tag.suffix = "1.0.0"
     mock_tag.__str__ = lambda self: "ghcr.io/posit-dev/test-image:1.0.0"
     mock_target.tags = StringableList([mock_tag])
+    mock_target.temp_tag_name = "ghcr.io/posit-dev/test-image/tmp:test-image-1-0-0"
 
     return mock_target
 
@@ -141,6 +142,26 @@ class TestOrasPluginExecute:
         assert results[0].exit_code == 0
         assert results[0].artifacts["workflow_result"].success is True
 
+    def test_execute_index_only(self, plugin, mock_target_with_sources):
+        with (
+            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            results = plugin.execute(
+                Path("/project"),
+                [mock_target_with_sources],
+                index_only=True,
+            )
+
+        assert len(results) == 1
+        assert results[0].exit_code == 0
+        wf = results[0].artifacts["workflow_result"]
+        assert wf.success is True
+        assert wf.destinations == []
+        # Only the index-create subprocess call ran (no copy-to-final).
+        assert mock_run.call_count == 1
+
     def test_execute_mixed_targets(self, plugin, mock_target_with_sources, mock_target_without_sources):
         with (
             patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
@@ -191,7 +212,7 @@ class TestOrasPluginExecute:
 
         call_order = []
 
-        def fake_run(self_workflow, dry_run=False):
+        def fake_run(self_workflow, dry_run=False, index_only=False):
             call_order.append(self_workflow.image_target.image_name)
             return OrasMergeWorkflowResult(success=True, destinations=[])
 

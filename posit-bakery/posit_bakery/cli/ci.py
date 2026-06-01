@@ -21,10 +21,37 @@ app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
 
 
+def render_artifact_summary(targets, mode: str) -> str:
+    """Render a GitHub-flavored markdown table of image references for the job summary.
+
+    :param targets: Iterable of ImageTarget.
+    :param mode: ``temp`` to report the stable temp index ref (``temp_tag_name``),
+        ``final`` to report each final destination tag.
+    :return: Markdown string.
+    """
+    title = "Build Artifacts (temporary registry)" if mode == "temp" else "Build Artifacts (pushed)"
+    lines = [f"## {title}", "", "| Image | Version | Reference | Pull |", "|---|---|---|---|"]
+
+    for target in targets:
+        if mode == "temp":
+            refs = [target.temp_tag_name] if target.temp_tag_name else []
+        else:
+            refs = target.tags.as_strings()
+        for ref in refs:
+            lines.append(f"| {target.image_name} | {target.image_version.name} | `{ref}` | `docker pull {ref}` |")
+
+    return "\n".join(lines)
+
+
 class RichHelpPanelEnum(str, Enum):
     """Enum for categorizing options into rich help panels."""
 
     FILTERS = "Filters"
+
+
+class SummaryModeEnum(str, Enum):
+    TEMP = "temp"
+    FINAL = "final"
 
 
 class BakeryCIMatrixFieldEnum(str, Enum):
@@ -169,6 +196,14 @@ def merge(
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
+    index_only: Annotated[
+        bool,
+        typer.Option(
+            help="Create and push the multi-arch index to the temp registry but do not copy it to "
+            "the final destination tags. Useful for publishing debug artifacts on non-release builds.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = False,
     dev_stream: Annotated[
         Optional[ReleaseStreamEnum],
         typer.Option(
@@ -235,15 +270,22 @@ def merge(
     from posit_bakery.plugins.registry import get_plugin
 
     oras = get_plugin("oras")
-    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
+    results = oras.execute(config.base_path, config.targets, dry_run=dry_run, index_only=index_only)
 
-    # CI-specific: verify final manifests with imagetools inspect
+    # CI-specific: verify the pushed manifest with imagetools inspect
     if not dry_run:
         for result in results:
             if result.exit_code == 0 and result.artifacts:
                 workflow_result = result.artifacts.get("workflow_result")
-                if workflow_result and workflow_result.destinations:
-                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
+                if not workflow_result:
+                    continue
+                ref = (
+                    workflow_result.temp_index_ref
+                    if index_only
+                    else (workflow_result.destinations[0] if workflow_result.destinations else None)
+                )
+                if ref:
+                    manifest = python_on_whales.docker.buildx.imagetools.inspect(ref)
                     stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
 
     oras.results(results)
@@ -312,3 +354,81 @@ def readme(
         stderr_console.print(f"✅ Pushed {count} README(s) to Docker Hub", style="success")
     else:
         stderr_console.print("No READMEs pushed", style="dim")
+
+
+@app.command()
+@with_verbosity_flags
+def summary(
+    mode: Annotated[
+        SummaryModeEnum,
+        typer.Option(help="Which references to report: 'temp' (temp registry index) or 'final' (pushed tags)."),
+    ] = SummaryModeEnum.TEMP,
+    context: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="The root path to use. Defaults to the current working directory where invoked.",
+        ),
+    ] = auto_path(),
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(help="Temporary registry used for temp refs (required for --mode temp)."),
+    ] = None,
+    dev_versions: Annotated[
+        Optional[DevVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude development versions defined in config.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = DevVersionInclusionEnum.EXCLUDE,
+    dev_stream: Annotated[
+        Optional[ReleaseStreamEnum],
+        typer.Option(
+            help="Filter development versions to a specific release stream.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    matrix_versions: Annotated[
+        Optional[MatrixVersionInclusionEnum],
+        typer.Option(
+            help="Include or exclude versions defined in image matrix.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = MatrixVersionInclusionEnum.EXCLUDE,
+    image_version: Annotated[
+        Optional[str],
+        typer.Option(
+            show_default=False,
+            help="The image version to filter to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    output: Annotated[
+        Optional[Path],
+        typer.Option(writable=True, help="Write the markdown summary to this path instead of stdout."),
+    ] = None,
+) -> None:
+    """Render a markdown table of build artifact image references for a CI job summary."""
+    if mode == SummaryModeEnum.TEMP and not temp_registry:
+        log.error("--temp-registry is required when --mode temp.")
+        raise typer.Exit(code=1)
+
+    settings = BakerySettings(
+        filter=BakeryConfigFilter(image_version=image_version),
+        dev_versions=dev_versions,
+        dev_stream=dev_stream,
+        matrix_versions=matrix_versions,
+        temp_registry=temp_registry,
+    )
+    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    md = render_artifact_summary(config.targets, mode=mode.value)
+
+    if output is not None:
+        output.write_text(md + "\n")
+    else:
+        stdout_console.print(md)

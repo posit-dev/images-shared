@@ -9,7 +9,7 @@ on:
     inputs:
       version:
         description: "The version of the Posit Bakery tool to install"
-        default: "main"
+        default: "feat/dry-run-artifacts"
         required: false
         type: string
       context:
@@ -38,10 +38,10 @@ on:
         required: false
         type: string
       push:
-        description: "Whether to push images to registries [default: false]"
-        default: false
+        description: "Push target [default: off] [options: off (no push), temp (multi-arch index to temp registry only), on (push to final registries)]"
+        default: "off"
         required: false
-        type: boolean
+        type: string
       retry:
         description: "Number of times to retry a failed build [default: 1]"
         default: 1
@@ -109,8 +109,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
+      - name: Validate push input
+        env:
+          PUSH: ${{ inputs.push }}
+        run: |
+          case "$PUSH" in
+            off|temp|on) ;;
+            *) echo "::error::Invalid push value '$PUSH'; expected off, temp, or on." ; exit 1 ;;
+          esac
+
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -147,7 +156,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -188,14 +197,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
-        if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.docker-hub == 'true' }}
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Configure AWS Credentials
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
@@ -203,7 +212,7 @@ jobs:
           role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419  # v2.1.5
 
       - name: Normalize platform
@@ -287,7 +296,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -320,14 +329,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
-        if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.docker-hub == 'true' }}
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Configure AWS Credentials
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
@@ -335,7 +344,7 @@ jobs:
           role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
-        if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
+        if: ${{ inputs.push == 'on' && steps.filter-steps.outputs.ecr == 'true' }}
         uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419  # v2.1.5
 
       - name: Setup docker buildx
@@ -361,18 +370,42 @@ jobs:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           PUSH: ${{ inputs.push }}
         run: |
-          if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
+          case "$PUSH" in
+            on) PUSH_FLAG="" ;;
+            temp) PUSH_FLAG="--index-only" ;;
+            *) PUSH_FLAG="--dry-run" ;;
+          esac
           bakery ci merge \
             --context "$CONTEXT" \
             --temp-registry "$REGISTRY" \
             $PUSH_FLAG \
             ./*-metadata.json
 
+      - name: Build Artifact Summary
+        if: ${{ inputs.push != 'off' }}
+        env:
+          CONTEXT: ${{ inputs.context }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          PUSH: ${{ inputs.push }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          IMAGE_VERSION: ${{ inputs.image-version }}
+          DEV_STREAM: ${{ inputs.dev-stream }}
+        run: |
+          IMAGE_VERSION="${IMAGE_VERSION#v}"
+          if [ "$PUSH" = "on" ]; then MODE="final"; else MODE="temp"; fi
+          ARGS=(--mode "$MODE" --temp-registry "$REGISTRY" --context "$CONTEXT"
+                --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS")
+          [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
+          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          bakery ci summary "${ARGS[@]}" --output summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
   readme:
     name: Push READMEs
     permissions:
       contents: read
-    if: ${{ inputs.push }}
+    if: ${{ inputs.push == 'on' }}
     needs:
       - merge
     runs-on: ubuntu-latest
@@ -382,7 +415,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 

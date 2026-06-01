@@ -1,8 +1,13 @@
 # Fork-safe PR build workflow for Posit container images.
 #
-# Unlike bakery-build-native.yml this workflow never pushes images.
-# Fork PRs get a read-only GITHUB_TOKEN with no access to repo secrets,
-# so registry logins and caching are conditional on the PR source.
+# Fork PRs stay load-only and never push: they get a read-only GITHUB_TOKEN
+# with no access to repo secrets, so registry logins and caching are skipped.
+# Same-repo PRs push a temporary multi-arch index to ghcr.io/<owner> (by
+# digest per-platform, then assembled with `bakery ci merge --index-only`) so
+# maintainers can pull and debug the built image when tests fail. PRs never
+# push to the final/release registries.
+#
+# Registry logins and caching are conditional on the PR source.
 #
 # Security policy: No ${{ }} expressions in `run:` blocks.
 # All expression values are assigned to `env:` and referenced as
@@ -17,7 +22,7 @@ on:
     inputs:
       version:
         description: "Bakery version to install"
-        default: "main"
+        default: "feat/dry-run-artifacts"
         required: false
         type: string
       context:
@@ -92,7 +97,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -141,7 +146,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
         with:
           version: ${{ inputs.version }}
 
@@ -191,41 +196,151 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
-          REGISTRY_OWNER: ${{ github.repository_owner }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CACHE: ${{ inputs.cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Cache only for same-repo PRs when enabled; fork PRs have no
+          # registry credentials, so they never receive cache flags.
           CACHE_FLAGS=()
           if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then
-            CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
+            CACHE_FLAGS=(--cache-registry "$REGISTRY")
           fi
-          bakery build \
-            --strategy build --pull --load \
-            --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            "${CACHE_FLAGS[@]}" \
-            --context "$BAKERY_CONTEXT"
+          if [ "$IS_FORK" = "true" ]; then
+            bakery build \
+              --strategy build --pull --load \
+              --retry "$RETRY" \
+              --image-name "^${IMAGE_NAME}$" \
+              --image-version "$IMAGE_VERSION" \
+              --image-platform "$IMAGE_PLATFORM" \
+              --dev-versions "$DEV_VERSIONS" \
+              --matrix-versions "$MATRIX_VERSIONS" \
+              "${CACHE_FLAGS[@]}" \
+              --context "$BAKERY_CONTEXT"
+          else
+            bakery build \
+              --strategy build --pull --push \
+              --retry "$RETRY" \
+              --image-name "^${IMAGE_NAME}$" \
+              --image-version "$IMAGE_VERSION" \
+              --image-platform "$IMAGE_PLATFORM" \
+              --dev-versions "$DEV_VERSIONS" \
+              --matrix-versions "$MATRIX_VERSIONS" \
+              "${CACHE_FLAGS[@]}" \
+              --temp-registry "$REGISTRY" \
+              --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+              --context "$BAKERY_CONTEXT"
+          fi
 
       - name: Test
         env:
+          IS_FORK: ${{ needs.detect.outputs.is-fork }}
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          DGOSS_ARGS=(
+            --image-name "^${IMAGE_NAME}$"
+            --image-version "$IMAGE_VERSION"
+            --image-platform "$IMAGE_PLATFORM"
+            --dev-versions "$DEV_VERSIONS"
+            --matrix-versions "$MATRIX_VERSIONS"
+            --context "$BAKERY_CONTEXT"
+          )
+          if [ "$IS_FORK" != "true" ]; then
+            # Same-repo PRs pushed by digest; resolve via the build metadata.
+            DGOSS_ARGS+=(--metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json")
+          fi
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          bakery run dgoss \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
+          bakery run dgoss "${DGOSS_ARGS[@]}"
+
+      - name: Upload Metadata
+        if: needs.detect.outputs.is-fork != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata"
+          path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
+          overwrite: 'true'
+
+  merge:
+    name: "Merge (temp index)"
+    if: ${{ needs.detect.outputs.is-fork != 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - detect
+      - build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup bakery
+        uses: "posit-dev/images-shared/setup-bakery@feat/dry-run-artifacts"
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db  # v5.1.0
+        with:
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+
+      - name: Setup ORAS CLI
+        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
+
+      - name: Download Metadata
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: "*-metadata"
+          merge-multiple: true
+
+      - name: Merge index (temp)
+        env:
+          BAKERY_CONTEXT: ${{ inputs.context }}
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+        run: |
+          bakery ci merge \
+            --context "$BAKERY_CONTEXT" \
+            --temp-registry "ghcr.io/${REGISTRY_OWNER}" \
+            --index-only \
+            ./*-metadata.json
+
+      - name: Build Artifact Summary
+        env:
+          BAKERY_CONTEXT: ${{ inputs.context }}
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+        run: |
+          bakery ci summary \
+            --mode temp \
+            --temp-registry "ghcr.io/${REGISTRY_OWNER}" \
+            --context "$BAKERY_CONTEXT" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$BAKERY_CONTEXT"
+            --output summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
