@@ -17,12 +17,12 @@ pytestmark = [
 
 class TestImageDevelopmentVersionFromProductStream:
     def test_name_required(self):
-        """Test that an ImageDevelopmentVersionFromEnv object requires a name."""
+        """Test that an ImageDevelopmentVersionFromProductStream object requires a name."""
         with pytest.raises(ValidationError, match="Field required"):
             ImageDevelopmentVersionFromProductStream()
 
     def test_bad_product(self):
-        """Test that an ImageDevelopmentVersionFromEnv object requires a valid product."""
+        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid product."""
         with pytest.raises(ValidationError, match="Input should be"):
             ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
@@ -31,7 +31,7 @@ class TestImageDevelopmentVersionFromProductStream:
             )
 
     def test_bad_stream(self):
-        """Test that an ImageDevelopmentVersionFromEnv object requires a valid stream."""
+        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid stream."""
         with pytest.raises(ValidationError, match="Input should be"):
             ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
@@ -40,9 +40,10 @@ class TestImageDevelopmentVersionFromProductStream:
             )
 
     def test_valid(self):
-        """Test creating a valid ImageDevelopmentVersionFromEnv object with all fields.
+        """Test creating a valid ImageDevelopmentVersionFromProductStream object with all fields.
 
-        Test that ImageDevelopmentVersionFromEnv objects are correctly initialized and parented.
+        Test that ImageDevelopmentVersionFromProductStream objects are correctly initialized
+        and parented.
         """
         with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
             mock_get.return_value = ReleaseStreamResult(
