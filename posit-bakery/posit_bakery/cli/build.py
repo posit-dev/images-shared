@@ -1,3 +1,4 @@
+import json
 import logging
 from enum import Enum
 from pathlib import Path
@@ -9,6 +10,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
@@ -203,6 +205,15 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
 ) -> None:
     """Builds images in the context path
 
@@ -217,6 +228,12 @@ def build(
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
         if dev_channel is None:
             dev_channel = dev_stream
+    parsed_dev_spec: DevBuildSpec | None = None
+    if dev_spec:
+        try:
+            parsed_dev_spec = DevBuildSpec.model_validate_json(dev_spec)
+        except Exception as e:
+            raise typer.BadParameter(f"--dev-spec is not valid JSON: {e}", param_hint="--dev-spec") from e
     settings = BakerySettings(
         filter=BakeryConfigFilter(
             image_name=image_name,
@@ -231,6 +248,7 @@ def build(
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
+        dev_spec=parsed_dev_spec,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 

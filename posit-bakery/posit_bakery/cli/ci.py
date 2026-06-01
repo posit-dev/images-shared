@@ -11,6 +11,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
@@ -90,6 +91,15 @@ def matrix(
             help="The root path to use. Defaults to the current working directory where invoked.",
         ),
     ] = auto_path(),
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
 ) -> None:
     """Generates a JSON matrix of image versions for CI workflows to consume
 
@@ -114,11 +124,18 @@ def matrix(
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
         if dev_channel is None:
             dev_channel = dev_stream
+    parsed_dev_spec: DevBuildSpec | None = None
+    if dev_spec:
+        try:
+            parsed_dev_spec = DevBuildSpec.model_validate_json(dev_spec)
+        except Exception as e:
+            raise typer.BadParameter(f"--dev-spec is not valid JSON: {e}", param_hint="--dev-spec") from e
     try:
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
+            dev_spec=parsed_dev_spec,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
