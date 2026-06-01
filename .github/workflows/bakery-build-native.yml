@@ -155,7 +155,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db  # v5.1.0
+        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0
         with:
           daemon-config: |
             {
@@ -164,7 +164,7 @@ jobs:
               }
             }
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
 
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
@@ -181,7 +181,7 @@ jobs:
           echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -189,14 +189,14 @@ jobs:
 
       - name: Login to Docker Hub
         if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Configure AWS Credentials
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
+        uses: aws-actions/configure-aws-credentials@99214aa6889fcddfa57764031d71add364327e59  # v6.1.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
@@ -292,7 +292,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db  # v5.1.0
+        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0
         with:
           daemon-config: |
             {
@@ -313,7 +313,7 @@ jobs:
           echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -321,14 +321,14 @@ jobs:
 
       - name: Login to Docker Hub
         if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Configure AWS Credentials
         if: ${{ inputs.push && steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
+        uses: aws-actions/configure-aws-credentials@99214aa6889fcddfa57764031d71add364327e59  # v6.1.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
@@ -339,7 +339,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419  # v2.1.5
 
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
 
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
