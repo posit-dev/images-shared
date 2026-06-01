@@ -163,6 +163,20 @@ helper_test_collection = [
 ]
 
 
+class TestReleaseChannelEnum:
+    def test_channel_enum_has_same_values_as_stream_enum(self):
+        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, ReleaseStreamEnum
+
+        assert ReleaseChannelEnum.DAILY == ReleaseStreamEnum.DAILY
+        assert ReleaseChannelEnum.PREVIEW == ReleaseStreamEnum.PREVIEW
+        assert ReleaseChannelEnum.RELEASE == ReleaseStreamEnum.RELEASE
+
+    def test_stream_enum_is_alias_for_channel_enum(self):
+        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, ReleaseStreamEnum
+
+        assert ReleaseStreamEnum is ReleaseChannelEnum
+
+
 class TestReleaseStreamResult:
     @pytest.mark.parametrize(
         "download_url,expected_url",
