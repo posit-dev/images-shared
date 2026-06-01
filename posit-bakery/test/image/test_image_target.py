@@ -291,18 +291,18 @@ class TestImageTarget:
         assert basic_standard_image_target.tag_template_values == expected_values
 
     def test_stream_tags(self, basic_standard_image_target):
-        """Test that release_stream metadata produces stream-based floating tags."""
+        """Test that release_channel metadata produces stream-based floating tags."""
         from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 
         target = basic_standard_image_target
 
         # No stream → no stream tags
-        assert target.image_version.metadata.get("release_stream") is None
+        assert target.image_version.metadata.get("release_channel") is None
         stream_suffixes = [s for s in target.tag_suffixes if "daily" in s]
         assert stream_suffixes == []
 
         # Enum stream value
-        target.image_version.metadata["release_stream"] = ReleaseStreamEnum.DAILY
+        target.image_version.metadata["release_channel"] = ReleaseStreamEnum.DAILY
         assert target.tag_template_values["Stream"] == "daily"
         stream_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
         assert "daily" in stream_suffixes
@@ -311,13 +311,13 @@ class TestImageTarget:
         assert "daily-ubuntu-22.04-std" in stream_suffixes
 
         # Plain string stream value
-        target.image_version.metadata["release_stream"] = "preview"
+        target.image_version.metadata["release_channel"] = "preview"
         assert target.tag_template_values["Stream"] == "preview"
         stream_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
         assert "preview" in stream_suffixes
 
         # Clean up
-        del target.image_version.metadata["release_stream"]
+        del target.image_version.metadata["release_channel"]
 
     def test_tag_patterns_deduplication(self, get_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
