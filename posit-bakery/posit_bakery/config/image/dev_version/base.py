@@ -252,7 +252,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         metadata = {}
         release_stream = self.get_release_stream()
         if release_stream is not None:
-            metadata["release_stream"] = release_stream
+            metadata["release_channel"] = release_stream
         return ImageVersion(
             name=version,
             subpath=f".dev-{version}".replace(" ", "-").lower(),
