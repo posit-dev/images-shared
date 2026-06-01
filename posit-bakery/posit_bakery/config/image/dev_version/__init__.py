@@ -1,19 +1,12 @@
-from typing import Union, Annotated
-
-from pydantic import Field
-
 from .base import BaseImageDevelopmentVersion
-from .env import ImageDevelopmentVersionFromEnv
 from .stream import ImageDevelopmentVersionFromProductStream
 
-
-DevelopmentVersionTypes = Union[ImageDevelopmentVersionFromEnv, ImageDevelopmentVersionFromProductStream]
-DevelopmentVersionField = Annotated[DevelopmentVersionTypes, Field(discriminator="sourceType")]
+DevelopmentVersionTypes = ImageDevelopmentVersionFromProductStream
+DevelopmentVersionField = ImageDevelopmentVersionFromProductStream
 
 
 __all__ = [
     "BaseImageDevelopmentVersion",
-    "ImageDevelopmentVersionFromEnv",
     "ImageDevelopmentVersionFromProductStream",
     "DevelopmentVersionTypes",
     "DevelopmentVersionField",
