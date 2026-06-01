@@ -147,7 +147,7 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         if not self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
             return False, "not a development version (excluded by --dev-versions only)"
         if dev_stream is not None and self.isDevelopmentVersion:
-            version_stream = self.metadata.get("release_stream")
+            version_stream = self.metadata.get("release_channel")
             if version_stream != dev_stream:
                 return False, (f"dev stream '{version_stream}' does not match --dev-stream '{dev_stream.value}'")
         return True, None

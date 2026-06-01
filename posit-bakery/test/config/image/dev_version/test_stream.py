@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
-from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum, ReleaseStreamEnum
 from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
 
 pytestmark = [
@@ -27,16 +27,16 @@ class TestImageDevelopmentVersionFromProductStream:
             ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="invalid_product",
-                stream="daily",
+                channel="daily",
             )
 
-    def test_bad_stream(self):
-        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid stream."""
+    def test_bad_channel(self):
+        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid channel."""
         with pytest.raises(ValidationError, match="Input should be"):
             ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="workbench",
-                stream="invalid_stream",
+                channel="invalid_channel",
             )
 
     def test_valid(self):
@@ -52,7 +52,7 @@ class TestImageDevelopmentVersionFromProductStream:
             i = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 extraRegistries=[
                     {"host": "registry1.example.com", "namespace": "namespace1"},
                     {"host": "registry2.example.com", "namespace": "namespace2"},
@@ -76,7 +76,7 @@ class TestImageDevelopmentVersionFromProductStream:
             i = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 extraRegistries=[
                     {"host": "registry1.example.com", "namespace": "namespace1"},
                     {"host": "registry1.example.com", "namespace": "namespace1"},  # Duplicate
@@ -99,7 +99,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
-                sourceType="stream", product="workbench", stream="daily", os=[]
+                sourceType="stream", product="workbench", channel="daily", os=[]
             )
 
         assert "WARNING" in caplog.text
@@ -120,7 +120,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 parent=mock_parent,
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 os=[
                     {"name": "Ubuntu 22.04", "primary": True},
                     {"name": "Ubuntu 22.04"},  # Duplicate
@@ -138,7 +138,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
-                sourceType="stream", product="workbench", stream="daily", os=[{"name": "Ubuntu 22.04"}]
+                sourceType="stream", product="workbench", channel="daily", os=[{"name": "Ubuntu 22.04"}]
             )
 
         assert len(i.os) == 1
@@ -159,7 +159,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 i = ImageDevelopmentVersionFromProductStream(
                     sourceType="stream",
                     product="workbench",
-                    stream="daily",
+                    channel="daily",
                     os=[
                         {"name": "Ubuntu 22.04", "primary": True},
                         {"name": "Ubuntu 24.04", "primary": True},  # Multiple primary OSes
@@ -175,7 +175,7 @@ class TestImageDevelopmentVersionFromProductStream:
             i = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 os=[{"name": "Ubuntu 22.04"}, {"name": "Ubuntu 24.04"}],
             )
 
@@ -198,7 +198,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 i = ImageDevelopmentVersionFromProductStream(
                     sourceType="stream",
                     product="workbench",
-                    stream="daily",
+                    channel="daily",
                     extraRegistries=[{"host": "registry.example.com", "namespace": "namespace"}],
                     overrideRegistries=[{"host": "another.registry.com", "namespace": "another_namespace"}],
                 )
@@ -227,7 +227,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 parent=mock_image_parent,
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 extraRegistries=[
                     expected_registries[3],  # registry1.example.com/namespace1
                     expected_registries[0],  # docker.io/posit
@@ -261,7 +261,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 parent=mock_image_parent,
                 sourceType="stream",
                 product="workbench",
-                stream="daily",
+                channel="daily",
                 overrideRegistries=override_registries,
             )
 
@@ -269,30 +269,67 @@ class TestImageDevelopmentVersionFromProductStream:
         for registry in override_registries:
             assert registry in i.all_registries
 
+    def test_channel_field_accepted(self, patch_requests_get):
+        """bakery.yaml should accept 'channel' as the primary field name."""
+        dv = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product="package-manager",
+            channel="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dv.channel.value == "daily"
+
+    def test_stream_field_deprecated_alias(self, patch_requests_get, caplog):
+        """bakery.yaml with 'stream' should still work but log a deprecation warning."""
+        dv = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product="package-manager",
+            stream="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        assert dv.channel.value == "daily"
+        assert "deprecated" in caplog.text.lower()
+
+    def test_as_image_version_metadata_uses_release_channel(self, patch_requests_get):
+        """Resolved ImageVersion metadata must use 'release_channel', not 'release_stream'."""
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        mock_parent.resolve_dependency_versions.return_value = []
+        dv = ImageDevelopmentVersionFromProductStream(
+            sourceType="stream",
+            product="package-manager",
+            channel="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dv.parent = mock_parent
+        image_version = dv.as_image_version()
+        assert image_version.metadata.get("release_channel") == ReleaseChannelEnum.DAILY
+        assert "release_stream" not in image_version.metadata
+
     def test_get_release_stream_returns_stream(self, patch_requests_get):
         """Test that get_release_stream returns the configured stream."""
         dev_version = ImageDevelopmentVersionFromProductStream(
             sourceType="stream",
             product=ProductEnum.PACKAGE_MANAGER,
-            stream=ReleaseStreamEnum.DAILY,
+            channel=ReleaseChannelEnum.DAILY,
             os=[{"name": "Ubuntu 24.04", "primary": True}],
         )
-        assert dev_version.get_release_stream() == ReleaseStreamEnum.DAILY
+        assert dev_version.get_release_stream() == ReleaseChannelEnum.DAILY
 
     def test_as_image_version_metadata_contains_release_stream(self, patch_requests_get):
-        """Test that as_image_version populates metadata with release_stream."""
+        """Test that as_image_version populates metadata with release_channel."""
         mock_parent = MagicMock(spec=Image)
         mock_parent.path = Path("/tmp/path")
         mock_parent.resolve_dependency_versions.return_value = []
         dev_version = ImageDevelopmentVersionFromProductStream(
             sourceType="stream",
             product=ProductEnum.PACKAGE_MANAGER,
-            stream=ReleaseStreamEnum.PREVIEW,
+            channel=ReleaseChannelEnum.PREVIEW,
             os=[{"name": "Ubuntu 24.04", "primary": True}],
         )
         dev_version.parent = mock_parent
         image_version = dev_version.as_image_version()
-        assert image_version.metadata == {"release_stream": ReleaseStreamEnum.PREVIEW}
+        assert image_version.metadata == {"release_channel": ReleaseChannelEnum.PREVIEW}
 
     @pytest.mark.parametrize(
         "download_url,generalize_architecture,expected_url",
@@ -327,7 +364,7 @@ class TestImageDevelopmentVersionFromProductStream:
         """Test that get_url_by_os returns the correct URL based on generalize_architecture flag."""
         mock_os = ImageVersionOS(name="Ubuntu 22.04")
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.DAILY, os=[mock_os]
+            sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.DAILY, os=[mock_os]
         )
 
         with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
@@ -409,7 +446,7 @@ class TestByStream:
     def test_connect_release(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Release"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.CONNECT, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+            sourceType="stream", product=ProductEnum.CONNECT, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
@@ -486,7 +523,7 @@ class TestByStream:
     def test_connect_daily(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Daily"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.CONNECT, stream=ReleaseStreamEnum.DAILY, os=[_os]
+            sourceType="stream", product=ProductEnum.CONNECT, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
@@ -561,7 +598,7 @@ class TestByStream:
     ):
         """Test that the correct URL is returned for a release version of PPM Release"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
@@ -636,7 +673,7 @@ class TestByStream:
     ):
         """Test that the correct URL is returned for a release version of PPM Preview"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.PREVIEW, os=[_os]
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.PREVIEW, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
@@ -711,7 +748,7 @@ class TestByStream:
     ):
         """Test that the correct URL is returned for a release version of PPM Daily"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, stream=ReleaseStreamEnum.DAILY, os=[_os]
+            sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
@@ -806,13 +843,13 @@ class TestByStream:
     ):
         """Test that the correct URL is returned for a release version of Workbench Release"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+            sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
 
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.RELEASE, os=[_os]
+            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
@@ -922,13 +959,13 @@ class TestByStream:
     ):
         """Test that the correct URL is returned for a release version of Workbench Daily"""
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.WORKBENCH, stream=ReleaseStreamEnum.DAILY, os=[_os]
+            sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
 
         dev_version = ImageDevelopmentVersionFromProductStream(
-            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, stream=ReleaseStreamEnum.DAILY, os=[_os]
+            sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
@@ -943,7 +980,7 @@ class TestResolveOsUrls:
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[{"name": "Ubuntu 24.04", "primary": True}],
             )
             resolved_os = dev._resolve_os_urls()
@@ -964,7 +1001,7 @@ class TestResolveOsUrls:
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[
                     {"name": "Ubuntu 24.04", "primary": True},
                     {"name": "Ubuntu 26.04"},
@@ -982,7 +1019,7 @@ class TestResolveOsUrls:
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[
                     {
                         "name": "Ubuntu 24.04",
@@ -1001,7 +1038,7 @@ class TestResolveOsUrls:
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[{"name": "Ubuntu 26.04", "primary": True}],
             )
             resolved_os = dev._resolve_os_urls()
@@ -1013,7 +1050,7 @@ class TestResolveOsUrls:
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[{"name": "Ubuntu 24.04", "primary": True}],
             )
             with pytest.raises(TypeError, match="unexpected bug"):
@@ -1038,7 +1075,7 @@ class TestResolveOsUrls:
                 parent=mock_parent,
                 sourceType="stream",
                 product="connect",
-                stream="daily",
+                channel="daily",
                 os=[
                     {"name": "Ubuntu 26.04", "primary": True},
                     {"name": "Ubuntu 24.04"},
