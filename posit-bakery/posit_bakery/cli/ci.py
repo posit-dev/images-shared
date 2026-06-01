@@ -11,7 +11,7 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import push_readmes
@@ -43,10 +43,20 @@ def matrix(
             help="Include or exclude development versions defined in config.", rich_help_panel=RichHelpPanelEnum.FILTERS
         ),
     ] = DevVersionInclusionEnum.EXCLUDE,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.",
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -100,11 +110,15 @@ def matrix(
     if exclude is None:
         exclude = []
 
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     try:
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
-            dev_stream=dev_stream,
+            dev_channel=dev_channel,
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
@@ -122,7 +136,7 @@ def matrix(
             elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
                 versions = img.matrix.to_image_versions()
             for ver in versions:
-                included, _ = ver.matches_dev_filter(dev_versions, dev_stream)
+                included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
                 if not included:
                     continue
                 if image_version is not None and not version_matches(ver.name, image_version):
@@ -176,10 +190,20 @@ def merge(
     dry_run: Annotated[
         bool, typer.Option(help="If set, the merged images will not be pushed to the registry.")
     ] = False,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.",
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -200,10 +224,14 @@ def merge(
     }
     ```
     """
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     settings = BakerySettings(
         filter=BakeryConfigFilter(image_name=image_name),
         dev_versions=DevVersionInclusionEnum.INCLUDE,
-        dev_stream=dev_stream,
+        dev_channel=dev_channel,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
         temp_registry=temp_registry,
@@ -278,10 +306,20 @@ def readme(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = DevVersionInclusionEnum.INCLUDE,
-    dev_stream: Annotated[
-        Optional[ReleaseStreamEnum],
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
         typer.Option(
-            help="Filter development versions to a specific release stream.",
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -303,9 +341,13 @@ def readme(
     variables to be set with a Personal Access Token (PAT). Organization Access Tokens
     cannot update repository descriptions.
     """
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     settings = BakerySettings(
         dev_versions=dev_versions,
-        dev_stream=dev_stream,
+        dev_channel=dev_channel,
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
