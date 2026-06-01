@@ -304,6 +304,25 @@ class TestBakeryConfig:
         assert "WARNING" in caplog.text
         assert "--dev-channel" in caplog.text
 
+    def test_dev_stream_constructor_arg_migrates_to_dev_channel(self):
+        """BakerySettings(dev_stream=...) must migrate the value to dev_channel with a warning."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            settings = BakerySettings(dev_stream=ReleaseChannelEnum.DAILY)
+        assert settings.dev_channel == ReleaseChannelEnum.DAILY
+        assert any("dev_stream" in str(warning.message).lower() for warning in w)
+        assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
+
+    def test_dev_channel_wins_when_both_provided(self):
+        """When both dev_stream and dev_channel are provided, dev_channel wins."""
+        settings = BakerySettings(
+            dev_channel=ReleaseChannelEnum.PREVIEW,
+            dev_stream=ReleaseChannelEnum.DAILY,
+        )
+        assert settings.dev_channel == ReleaseChannelEnum.PREVIEW
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [
