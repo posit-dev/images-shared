@@ -26,3 +26,11 @@ _python-executable executable:
 _setup-pre-commit:
     pre-commit --version || just _python-executable pre-commit
     pre-commit install --install-hooks
+
+################
+# Linting
+
+# Check links in markdown with lychee
+check-links:
+    docker run --rm -w /input -v "{{ CWD }}":/input:ro \
+      lycheeverse/lychee --no-progress '**/*.md'
