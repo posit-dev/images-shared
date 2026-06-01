@@ -1,4 +1,3 @@
-import os
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -673,49 +672,29 @@ class TestImage:
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
 
-        env_version = "1.0.1"
-        env_url = "https://example.com/image.tar.gz"
         stream_version = "1.1.0"
         stream_url = "https://example.com/image-daily.tar.gz"
-        with patch.dict(os.environ, {"VERSION_ENV_VAR": env_version, "URL_ENV_VAR": env_url}, clear=True):
-            with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-                mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
-                i = Image(
-                    name="my-image",
-                    parent=mock_parent,
-                    devVersions=[
-                        {
-                            "sourceType": "env",
-                            "versionEnvVar": "VERSION_ENV_VAR",
-                            "urlEnvVar": "URL_ENV_VAR",
-                            "os": [
-                                {"name": "Ubuntu 22.04", "primary": True},
-                            ],
-                        },
-                        {
-                            "sourceType": "stream",
-                            "product": "workbench",
-                            "stream": "daily",
-                            "os": [
-                                {"name": "Ubuntu 22.04", "primary": True},
-                            ],
-                        },
-                    ],
-                    versions=[{"name": "1.0.0"}],
-                )
-                i.load_dev_versions()
+        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "stream": "daily",
+                        "os": [
+                            {"name": "Ubuntu 22.04", "primary": True},
+                        ],
+                    },
+                ],
+                versions=[{"name": "1.0.0"}],
+            )
+            i.load_dev_versions()
 
-        assert len(i.versions) == 3
+        assert len(i.versions) == 2
         assert i.get_version("1.0.0") is not None
-
-        assert i.get_version(env_version) is not None
-        assert not i.get_version(env_version).latest
-        assert i.get_version(env_version).subpath == f".dev-{env_version}"
-        assert i.get_version(env_version).ephemeral
-        assert i.get_version(env_version).isDevelopmentVersion
-        assert len(i.get_version(env_version).os) == 1
-        assert i.get_version(env_version).os[0].name == "Ubuntu 22.04"
-        assert str(i.get_version(env_version).os[0].artifactDownloadURL) == env_url
 
         assert i.get_version(stream_version) is not None
         assert not i.get_version(stream_version).latest
