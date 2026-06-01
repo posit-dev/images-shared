@@ -13,7 +13,6 @@ from posit_bakery.plugins.builtin.oras.oras import (
     find_oras_bin,
     get_repository_from_ref,
     OrasCopy,
-    OrasManifestDelete,
     OrasManifestIndexCreate,
     OrasMergeWorkflow,
     OrasMergeWorkflowResult,
@@ -188,34 +187,6 @@ class TestOrasCopy:
         assert result.returncode == 0
 
 
-class TestOrasManifestDelete:
-    """Tests for the OrasManifestDelete command."""
-
-    def test_command_construction(self):
-        """Test that the command is constructed correctly."""
-        cmd = OrasManifestDelete(
-            oras_bin="oras",
-            reference="ghcr.io/posit-dev/test/tmp:tag",
-        )
-
-        expected = ["oras", "manifest", "delete", "--force", "ghcr.io/posit-dev/test/tmp:tag"]
-        assert cmd.command == expected
-
-    def test_run_success(self):
-        """Test successful delete execution."""
-        cmd = OrasManifestDelete(
-            oras_bin="oras",
-            reference="ghcr.io/posit-dev/test/tmp:tag",
-        )
-
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = subprocess.CompletedProcess(args=cmd.command, returncode=0, stdout=b"", stderr=b"")
-            result = cmd.run()
-
-        mock_run.assert_called_once_with(cmd.command, capture_output=True)
-        assert result.returncode == 0
-
-
 class TestOrasMergeWorkflow:
     """Tests for the OrasMergeWorkflow orchestrator."""
 
@@ -295,8 +266,9 @@ class TestOrasMergeWorkflow:
         assert result.temp_index_ref is not None
 
         # Should have called:
-        # 1 create + 2 copy (grouped by destination) + 1 delete = 4 calls
-        assert mock_run.call_count == 4
+        # 1 create + 2 copy (grouped by destination) = 3 calls.
+        # The temporary index is no longer deleted here; clean.yml handles it.
+        assert mock_run.call_count == 3
 
     def test_execute_dry_run(self, basic_workflow):
         """Test dry run mode."""
@@ -517,17 +489,6 @@ class TestOrasCommandsPlainHttp:
         )
 
         expected = ["oras", "cp", "--plain-http", "localhost:5000/test:source", "localhost:5000/test:dest"]
-        assert cmd.command == expected
-
-    def test_manifest_delete_with_plain_http(self):
-        """Test that --plain-http flag is included when plain_http=True."""
-        cmd = OrasManifestDelete(
-            oras_bin="oras",
-            reference="localhost:5000/test:tag",
-            plain_http=True,
-        )
-
-        expected = ["oras", "manifest", "delete", "--force", "--plain-http", "localhost:5000/test:tag"]
         assert cmd.command == expected
 
 
