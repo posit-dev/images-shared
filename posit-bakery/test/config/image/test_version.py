@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry, BakeryConfigDocument, ImageVariant
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum
 
 pytestmark = [
@@ -530,7 +530,7 @@ class TestImageVersion:
         assert i.metadata["custom_key"] == 42
 
     @pytest.mark.parametrize(
-        "is_dev,dev_versions,dev_stream,metadata,expected_included,expected_reason_contains",
+        "is_dev,dev_versions,dev_channel,metadata,expected_included,expected_reason_contains",
         [
             # Release version, exclude dev → included
             pytest.param(False, DevVersionInclusionEnum.EXCLUDE, None, {}, True, None, id="release-exclude-dev"),
@@ -558,8 +558,8 @@ class TestImageVersion:
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
-                {"release_channel": ReleaseStreamEnum.DAILY},
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": ReleaseChannelEnum.DAILY},
                 True,
                 None,
                 id="dev-stream-match",
@@ -568,8 +568,8 @@ class TestImageVersion:
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
-                {"release_channel": ReleaseStreamEnum.PREVIEW},
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": ReleaseChannelEnum.PREVIEW},
                 False,
                 "does not match",
                 id="dev-stream-mismatch",
@@ -578,7 +578,7 @@ class TestImageVersion:
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
+                ReleaseChannelEnum.DAILY,
                 {},
                 False,
                 "does not match",
@@ -588,7 +588,7 @@ class TestImageVersion:
             pytest.param(
                 False,
                 DevVersionInclusionEnum.INCLUDE,
-                ReleaseStreamEnum.DAILY,
+                ReleaseChannelEnum.DAILY,
                 {},
                 True,
                 None,
@@ -597,11 +597,11 @@ class TestImageVersion:
         ],
     )
     def test_matches_dev_filter(
-        self, is_dev, dev_versions, dev_stream, metadata, expected_included, expected_reason_contains
+        self, is_dev, dev_versions, dev_channel, metadata, expected_included, expected_reason_contains
     ):
-        """Test matches_dev_filter with all combinations of dev_versions and dev_stream."""
+        """Test matches_dev_filter with all combinations of dev_versions and dev_channel."""
         v = ImageVersion(name="1.0.0", isDevelopmentVersion=is_dev, metadata=metadata)
-        included, reason = v.matches_dev_filter(dev_versions, dev_stream)
+        included, reason = v.matches_dev_filter(dev_versions, dev_channel)
         assert included == expected_included
         if expected_reason_contains is None:
             assert reason is None

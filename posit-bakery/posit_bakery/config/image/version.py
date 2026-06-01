@@ -11,7 +11,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.dependencies import DependencyVersionsField
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.registry import Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -134,22 +134,22 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
     def matches_dev_filter(
         self,
         dev_versions: DevVersionInclusionEnum,
-        dev_stream: ReleaseStreamEnum | None = None,
+        dev_channel: ReleaseChannelEnum | None = None,
     ) -> tuple[bool, str | None]:
         """Check whether this version should be included given dev version filters.
 
         :param dev_versions: Whether dev versions are included, excluded, or the only versions.
-        :param dev_stream: If set, only include dev versions from this release stream.
+        :param dev_channel: If set, only include dev versions from this release channel.
         :return: A tuple of (included, reason). If excluded, reason explains why.
         """
         if self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.EXCLUDE:
             return False, "excluded by --dev-versions exclude"
         if not self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
             return False, "not a development version (excluded by --dev-versions only)"
-        if dev_stream is not None and self.isDevelopmentVersion:
+        if dev_channel is not None and self.isDevelopmentVersion:
             version_stream = self.metadata.get("release_channel")
-            if version_stream != dev_stream:
-                return False, (f"dev stream '{version_stream}' does not match --dev-stream '{dev_stream.value}'")
+            if version_stream != dev_channel:
+                return False, (f"dev stream '{version_stream}' does not match --dev-stream '{dev_channel.value}'")
         return True, None
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
