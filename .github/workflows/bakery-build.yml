@@ -33,8 +33,13 @@ on:
         default: ""
         required: false
         type: string
+      dev-channel:
+        description: "Filter dev versions to a specific release channel (e.g. 'daily', 'preview')"
+        default: ""
+        required: false
+        type: string
       dev-stream:
-        description: "Filter dev versions to a specific release stream (e.g. 'daily', 'preview')"
+        description: "Deprecated: use dev-channel instead."
         default: ""
         required: false
         type: string
@@ -111,13 +116,13 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           IMAGE_VERSION: ${{ inputs.image-version }}
-          DEV_STREAM: ${{ inputs.dev-stream }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           CONTEXT: ${{ inputs.context }}
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
-          [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
+          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--dev-channel "$DEV_CHANNEL")
           result=$(bakery ci matrix "${ARGS[@]}")
           echo "matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
