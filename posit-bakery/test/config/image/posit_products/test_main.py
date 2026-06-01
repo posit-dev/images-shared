@@ -783,3 +783,66 @@ class TestGetProductArtifactByChannel:
         output = get_product_artifact_by_channel(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_session_url
+
+
+class TestDispatchOverride:
+    def test_ppm_daily_override_renders_offline(self, mocker):
+        """Template streams must NOT hit the network when version_override is supplied."""
+        spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        override = "2026.05.0-dev+185-g8a23833f57"
+        result = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        spy.assert_not_called()
+        assert result.version == override
+        assert "2026.05.0-dev%2B185-g8a23833f57" in str(result.download_url)
+
+    def test_ppm_preview_override_renders_offline(self, mocker):
+        """Preview stream is also templatable — no network on override."""
+        spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        override = "2026.05.0-dev+185-g8a23833f57"
+        result = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseChannelEnum.PREVIEW,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        spy.assert_not_called()
+        assert result.version == override
+
+    def test_connect_daily_override_mismatch_raises(self, patch_requests_get):
+        """Manifest streams must raise DispatchVersionMismatchError when versions differ."""
+        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+
+        with pytest.raises(DispatchVersionMismatchError):
+            get_product_artifact_by_stream(
+                ProductEnum.CONNECT,
+                ReleaseChannelEnum.DAILY,
+                SUPPORTED_OS["ubuntu"]["24"],
+                version_override="9999.99.0-dev+1-gdeadbeef",
+            )
+
+    def test_workbench_daily_override_mismatch_raises(self, patch_requests_get):
+        """Workbench daily is a manifest stream — mismatch raises."""
+        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+
+        with pytest.raises(DispatchVersionMismatchError):
+            get_product_artifact_by_stream(
+                ProductEnum.WORKBENCH,
+                ReleaseChannelEnum.DAILY,
+                SUPPORTED_OS["ubuntu"]["24"],
+                version_override="9999.99.0-daily+1.pro1",
+            )
+
+    def test_no_override_scheduled_path_unchanged(self, patch_requests_get):
+        """With version_override=None, behavior is identical to before this task."""
+        result = get_product_artifact_by_stream(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+        )
+        assert result.version is not None
+        assert result.download_url is not None

@@ -21,6 +21,14 @@ from posit_bakery.config.shared import OSFamilyEnum
 from posit_bakery.util import cached_session
 
 
+class DispatchVersionMismatchError(Exception):
+    """Raised when a dispatched version override does not match the upstream manifest.
+
+    Must NOT subclass ValueError or RequestException so it escapes the per-OS
+    catch in _resolve_os_urls and the skip-on-error catch in load_dev_versions.
+    """
+
+
 class ReleaseChannelResult(BaseModel):
     """Represents a resulting artifact found in a release channel. This provides an easy validation for data we get."""
 
@@ -37,12 +45,29 @@ class ReleaseChannelResult(BaseModel):
 class ReleaseChannelPath:
     """Represents a path to a release channel and a map of resolvers to extract data from the fetched data."""
 
-    def __init__(self, channel_url: str, resolver_map: dict[str, resolvers.AbstractResolver | str]):
+    def __init__(
+        self,
+        channel_url: str,
+        resolver_map: dict[str, resolvers.AbstractResolver | str],
+        version_templatable: bool = False,
+    ):
         self.channel_url = channel_url
         self.resolver_map = resolver_map
+        self.version_templatable = version_templatable
 
-    def get(self, metadata: dict) -> ReleaseChannelResult:
+    def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
         """Fetches data from the channel URL and resolves the data using the given resolvers."""
+        if version_override is not None and self.version_templatable:
+            result: dict = {"version": version_override}
+            url_safe_result = {f"url_safe_{k}": quote(str(v), safe="") for k, v in result.items()}
+            for key, resolver in self.resolver_map.items():
+                if key == "version":
+                    continue
+                if isinstance(resolver, str):
+                    result[key] = resolver.format(**metadata, **result, **url_safe_result)
+            return ReleaseChannelResult(**result)
+
+
         session = cached_session()
         response = session.get(self.channel_url)
         response.raise_for_status()
@@ -60,6 +85,13 @@ class ReleaseChannelPath:
             elif isinstance(resolver, resolvers.AbstractResolver):
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
+
+        if version_override is not None and result.get("version") != version_override:
+            raise DispatchVersionMismatchError(
+                f"Dispatched version {version_override!r} does not match manifest version "
+                f"{result.get('version')!r} at {self.channel_url!r}. "
+                f"The upstream manifest has not propagated the dispatched build yet."
+            )
 
         return ReleaseChannelResult(**result)
 
@@ -119,6 +151,7 @@ product_release_channel_url_map = {
                     ),
                 ]
             ),
+            version_templatable=True,
         ),
         ReleaseStreamEnum.DAILY: ReleaseChannelPath(
             PACKAGE_MANAGER_DAILY_URL,
@@ -133,6 +166,7 @@ product_release_channel_url_map = {
                     ),
                 ]
             ),
+            version_templatable=True,
         ),
     },
     ProductEnum.WORKBENCH: {
@@ -257,7 +291,11 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
 
 
 def get_product_artifact_by_channel(
-    product: ProductEnum, channel: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
+    product: ProductEnum,
+    channel: ReleaseStreamEnum,
+    os: BuildOS,
+    generalize_arch: bool = True,
+    version_override: str | None = None,
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
     if product not in product_release_channel_url_map:
@@ -267,4 +305,4 @@ def get_product_artifact_by_channel(
 
     metadata = _make_resolver_metadata(os, product)
 
-    return product_release_channel_url_map[product][channel].get(metadata)
+    return product_release_channel_url_map[product][channel].get(metadata, version_override)
