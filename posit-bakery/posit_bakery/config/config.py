@@ -318,6 +318,13 @@ class BakerySettings(BaseModel):
     @property
     def dev_stream(self) -> ReleaseChannelEnum | None:
         """Deprecated: use dev_channel."""
+        import warnings
+
+        warnings.warn(
+            "BakerySettings.dev_stream is deprecated, use dev_channel instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.dev_channel
 
     matrix_versions: Annotated[
