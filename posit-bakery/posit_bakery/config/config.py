@@ -27,7 +27,7 @@ from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
     BakeryError,
@@ -307,13 +307,19 @@ class BakerySettings(BaseModel):
             default=DevVersionInclusionEnum.EXCLUDE,
         ),
     ]
-    dev_stream: Annotated[
-        ReleaseStreamEnum | None,
+    dev_channel: Annotated[
+        ReleaseChannelEnum | None,
         Field(
             default=None,
-            description="Filter development versions to a specific release stream.",
+            description="Filter development versions to a specific release channel.",
         ),
-    ]
+    ] = None
+
+    @property
+    def dev_stream(self) -> ReleaseChannelEnum | None:
+        """Deprecated: use dev_channel."""
+        return self.dev_channel
+
     matrix_versions: Annotated[
         MatrixVersionInclusionEnum,
         Field(
@@ -371,10 +377,10 @@ class BakeryConfig:
             log.error(f"Failed to load configuration from {str(self.config_file)}")
             raise e
 
-        if self.settings.dev_stream is not None and self.settings.dev_versions == DevVersionInclusionEnum.EXCLUDE:
+        if self.settings.dev_channel is not None and self.settings.dev_versions == DevVersionInclusionEnum.EXCLUDE:
             log.warning(
-                "--dev-stream has no effect when development versions are excluded. "
-                "Use --dev-versions include or --dev-versions only to enable dev stream filtering."
+                "--dev-channel has no effect when development versions are excluded. "
+                "Use --dev-versions include or --dev-versions only to enable dev channel filtering."
             )
 
         if self.settings.latest and self.settings.dev_versions in (
@@ -838,7 +844,7 @@ class BakeryConfig:
                 version_filter_matched = settings.filter.image_version is not None and version_matches(
                     version.name, settings.filter.image_version
                 )
-                included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_stream)
+                included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_channel)
                 if not included:
                     if version_filter_matched:
                         log.warning(
