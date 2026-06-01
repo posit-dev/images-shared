@@ -377,7 +377,21 @@ def _apply_dev_spec(image: Image, settings: "BakerySettings") -> None:
     Called before load_dev_versions() so the pinned version is set
     when resolution runs.
     """
+    # Local import to avoid circular import.
     from posit_bakery.config.image.dev_version.stream import ImageDevelopmentVersionFromProductStream
+
+    # Validate channel consistency: if both are set and differ, the pinned version
+    # would be filtered out by --dev-channel. Fail loudly instead of silently skipping.
+    if (
+        settings.dev_spec.channel is not None
+        and settings.dev_channel is not None
+        and settings.dev_spec.channel != settings.dev_channel
+    ):
+        raise ValueError(
+            f"Conflicting channels: --dev-spec has channel '{settings.dev_spec.channel.value}' "
+            f"but --dev-channel is '{settings.dev_channel.value}'. "
+            f"Either omit 'channel' from --dev-spec or ensure they match."
+        )
 
     target_channel = settings.dev_spec.channel or settings.dev_channel
     candidates = [
