@@ -43,14 +43,19 @@ class ProductEnum(str, Enum):
     WORKBENCH_SESSION = "workbench-session"
 
 
-class ReleaseStreamEnum(str, Enum):
+class ReleaseChannelEnum(str, Enum):
     RELEASE = "release"
     PREVIEW = "preview"
     DAILY = "daily"
 
 
-PRODUCT_RELEASE_STREAM_SUPPORT_MAP = {
-    ProductEnum.CONNECT: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
-    ProductEnum.PACKAGE_MANAGER: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.PREVIEW, ReleaseStreamEnum.DAILY],
-    ProductEnum.WORKBENCH: [ReleaseStreamEnum.RELEASE, ReleaseStreamEnum.DAILY],
+ReleaseStreamEnum = ReleaseChannelEnum  # deprecated alias, remove in Phase 0.5c
+
+
+PRODUCT_RELEASE_CHANNEL_SUPPORT_MAP = {
+    ProductEnum.CONNECT: [ReleaseChannelEnum.RELEASE, ReleaseChannelEnum.DAILY],
+    ProductEnum.PACKAGE_MANAGER: [ReleaseChannelEnum.RELEASE, ReleaseChannelEnum.PREVIEW, ReleaseChannelEnum.DAILY],
+    ProductEnum.WORKBENCH: [ReleaseChannelEnum.RELEASE, ReleaseChannelEnum.DAILY],
 }
+
+PRODUCT_RELEASE_STREAM_SUPPORT_MAP = PRODUCT_RELEASE_CHANNEL_SUPPORT_MAP  # deprecated alias, remove in Phase 0.5c
