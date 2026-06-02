@@ -519,6 +519,275 @@ class TestImageMatrix:
         assert len(image_versions) == 4  # 2 python * 2 flavor
         assert not any(iv.latest for iv in image_versions)
 
+    def test_to_image_versions_marks_all_latest_patch_when_minors_unique(self):
+        """When every row's (minor, ...) tuple is unique, every row is a latest-patch combination."""
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.15", "3.12.3"]),
+                RDependencyVersions(dependency="R", versions=["4.3.3", "4.4.1"]),
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 4
+        # Each (python_minor, R_minor) pair appears once → all are latest-patch.
+        assert all(iv.isLatestPatchCombination for iv in image_versions)
+
+    def test_to_image_versions_picks_highest_patch_per_minor_group(self):
+        """Within a (minor, ...) group, only the highest-patch row is the latest-patch combination."""
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.12.1", "3.12.3", "3.12.5"]),
+                RDependencyVersions(dependency="R", versions=["4.3.3"]),
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # One python minor group (3.12), one R minor group (4.3) → one latest-patch row.
+        assert len(latest_patch_versions) == 1
+        latest = latest_patch_versions[0]
+        dep_versions = {dep.dependency: dep.versions[0] for dep in latest.dependencies}
+        assert dep_versions == {"python": "3.12.5", "R": "4.3.3"}
+
+    def test_to_image_versions_latest_patch_per_minor_combination(self):
+        """Each unique (minor, minor) pair gets its own latest-patch row."""
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.11.10", "3.11.15", "3.12.3", "3.12.5"]),
+                RDependencyVersions(dependency="R", versions=["4.3.2", "4.3.3", "4.4.1"]),
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (3.11, 4.3), (3.11, 4.4), (3.12, 4.3), (3.12, 4.4) → 4 latest-patch rows.
+        assert len(latest_patch_versions) == 4
+
+        def deps_dict(iv):
+            return {dep.dependency: dep.versions[0] for dep in iv.dependencies}
+
+        latest_pairs = {(deps_dict(iv)["python"], deps_dict(iv)["R"]) for iv in latest_patch_versions}
+        assert latest_pairs == {
+            ("3.11.15", "4.3.3"),
+            ("3.11.15", "4.4.1"),
+            ("3.12.5", "4.3.3"),
+            ("3.12.5", "4.4.1"),
+        }
+
+    def test_to_image_versions_latest_patch_per_list_value(self):
+        """List-typed values partition the latest-patch grouping; each value gets its own latest-patch row."""
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(dependency="python", versions=["3.12.3", "3.12.5"]),
+            ],
+            values={"flavor": ["alpha", "beta"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (3.12, alpha) and (3.12, beta) → 2 latest-patch rows, both using 3.12.5.
+        assert len(latest_patch_versions) == 2
+        for iv in latest_patch_versions:
+            dep_versions = {dep.dependency: dep.versions[0] for dep in iv.dependencies}
+            assert dep_versions == {"python": "3.12.5"}
+        flavors = {iv.values["flavor"] for iv in latest_patch_versions}
+        assert flavors == {"alpha", "beta"}
+
+    def test_to_image_versions_unparseable_dependency_skips_latest_patch(self, caplog):
+        """An unparseable dependency version means no row gets the latest-patch flag."""
+        matrix = ImageMatrix.model_validate(
+            {
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.12.3", "not-a-version"]},
+                ],
+            }
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            image_versions = matrix.to_image_versions()
+
+        assert len(image_versions) == 2
+        assert not any(iv.isLatestPatchCombination for iv in image_versions)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
+        assert len(warnings) >= 1
+
+    def test_to_image_versions_non_parsing_exception_skips_latest_patch(self, caplog, mocker):
+        """An unexpected exception from DependencyVersion is caught and skips latest-patch emission."""
+        matrix = ImageMatrix(
+            dependencies=[PythonDependencyVersions(dependency="python", versions=["3.12.3"])],
+        )
+        mocker.patch(
+            "posit_bakery.config.image.matrix.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            image_versions = matrix.to_image_versions()
+
+        assert len(image_versions) == 1
+        assert not any(iv.isLatestPatchCombination for iv in image_versions)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        # Should not falsely claim the version is unparseable.
+        assert "unparseable" not in message.lower()
+        # Should still surface the dependency, candidate, and underlying error.
+        assert "python" in message
+        assert "3.12.3" in message
+        assert "disk on fire" in message
+
+    def test_to_image_versions_values_only_non_parsing_exception_skips_latest_patch(self, caplog, mocker):
+        """A non-InvalidVersion exception on the value-axis path is also caught.
+
+        Dependency pre-validation in ``_compute_latest_patch_signatures`` doesn't cover
+        values, so the safety net lives at the ``max()`` call site. Patches
+        ``DependencyVersion`` at the source module — that's the one ``extract_versions``
+        imports — and uses a values-only matrix so the only ``DependencyVersion``
+        call path is through ``extract_versions``. Regression for the asymmetric
+        hedge that previously only protected the dependency axis.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["1.24.1", "1.24.2"]},
+        )
+        mocker.patch(
+            "posit_bakery.config.dependencies.version.DependencyVersion",
+            side_effect=RuntimeError("disk on fire"),
+        )
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            image_versions = matrix.to_image_versions()
+
+        assert len(image_versions) == 2
+        assert not any(iv.isLatestPatchCombination for iv in image_versions)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" and "latestPatch" in r.message]
+        assert len(warnings) == 1, f"Expected exactly one warning, got: {[r.message for r in warnings]}"
+        message = warnings[0].message
+        assert "unparseable" not in message.lower()
+        assert "disk on fire" in message
+
+    def test_to_image_versions_no_dependencies_marks_all_latest_patch(self):
+        """A matrix with only ``values`` axes has no patch versions to compete on; every row qualifies."""
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24", "1.25"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 2
+        # No dependency versions means each (no-deps, value) group has one row → all latest-patch.
+        assert all(iv.isLatestPatchCombination for iv in image_versions)
+
+    def test_to_image_versions_values_only_groups_by_minor(self):
+        """Version-like list values compete on patch within their minor — matching ``stripPatch``.
+
+        Without this, two rows with values like ``1.24.1`` and ``1.24.2`` would both be flagged
+        latest-patch but render the same stripped tag (``1.24``), colliding on push.
+        """
+        matrix = ImageMatrix(
+            values={"go_version": ["1.24.1", "1.24.2", "1.25.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (1.24, *) collapses to one row — 1.24.2; (1.25, *) is its own group — 1.25.0.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["go_version"] for iv in latest_patch_versions}
+        assert latest_values == {"1.24.2", "1.25.0"}
+
+    def test_to_image_versions_values_only_non_version_keeps_all(self):
+        """Values without ``MAJOR.MINOR.PATCH`` substrings are untouched by ``stripPatch`` and
+        therefore land in distinct groups, leaving each row eligible as latest-patch.
+        """
+        matrix = ImageMatrix(
+            values={"flavor": ["alpha", "beta"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        assert len(image_versions) == 2
+        # "alpha" and "beta" have no patch component for stripPatch to collapse,
+        # so the stripped group key for each is its own raw string → both latest-patch.
+        assert all(iv.isLatestPatchCombination for iv in image_versions)
+
+    def test_to_image_versions_metadata_bearing_dep_grouped_by_stripped_minor(self):
+        """Pre-release / build metadata on dep versions survives ``stripPatch`` intact.
+
+        Constraint resolution today never emits metadata-bearing strings (clean patches win
+        in ``_filter_minor``), but an explicit ``dependencies:`` list can carry e.g.
+        ``3.12.3-rc1``. Pin that the patch numeric is the only thing collapsed, so prerelease
+        rows group with their own siblings rather than with clean-version rows. Guards
+        against regex widenings that would eat the trailing ``-rc1``.
+        """
+        matrix = ImageMatrix(
+            dependencies=[
+                PythonDependencyVersions(
+                    dependency="python",
+                    versions=["3.12.3-rc1", "3.12.5-rc1", "3.12.5", "3.13.0"],
+                ),
+            ],
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+
+        # Three stripped groups: "python3.12-rc1" → 3.12.5-rc1 wins;
+        # "python3.12" → 3.12.5; "python3.13" → 3.13.0.
+        assert len(latest_patch_versions) == 3
+        assert {iv.name for iv in latest_patch_versions} == {
+            "python3.12.5-rc1",
+            "python3.12.5",
+            "python3.13.0",
+        }
+
+    def test_to_image_versions_multi_version_value_sorts_on_later_segment(self):
+        """Values with multiple version-like segments must sort on the later segment when the
+        earlier one ties, otherwise ``max()`` picks an arbitrary row and the ``LATEST_PATCH``
+        tag can end up pointing at an older patch. Regression test for the single-segment
+        sort key.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["go1.24-lib2.3.1", "go1.24-lib2.3.2", "go1.24-lib2.3.5"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # All three strip to ``go1.24-lib2.3`` → one group, only the highest lib patch wins.
+        assert len(latest_patch_versions) == 1
+        assert latest_patch_versions[0].values["build"] == "go1.24-lib2.3.5"
+
+    def test_to_image_versions_values_only_groups_four_segment_versions(self):
+        """Four-segment versions must collapse fully to ``MAJOR.MINOR`` for grouping, then the
+        highest-version row in the group wins. Regression for the old regex which collapsed
+        ``1.2.3.4`` to ``1.2.4`` and split rows that share a minor into separate groups.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["1.2.3.4", "1.2.3.5", "1.2.5.0", "1.3.0.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # All three 1.2.* rows share the ``1.2`` group; 1.3.0.0 is its own group.
+        # Within ``1.2``, 1.2.5.0 outranks the 1.2.3.* rows.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["build"] for iv in latest_patch_versions}
+        assert latest_values == {"1.2.5.0", "1.3.0.0"}
+
+    def test_to_image_versions_values_only_groups_prefixed_versions(self):
+        """Prefixed version strings (e.g. ``go1.24.1``) that ``stripPatch`` collapses to the
+        same form must land in the same group, even though they don't parse as a standalone
+        ``DependencyVersion``. Otherwise the two rows would both be flagged latest-patch and
+        emit the same stripped tag, racing on push.
+        """
+        matrix = ImageMatrix(
+            values={"build": ["go1.24.1", "go1.24.2", "go1.25.0"]},
+        )
+
+        image_versions = matrix.to_image_versions()
+        latest_patch_versions = [iv for iv in image_versions if iv.isLatestPatchCombination]
+        # (go1.24, *) collapses to one row — go1.24.2; (go1.25, *) is its own group — go1.25.0.
+        assert len(latest_patch_versions) == 2
+        latest_values = {iv.values["build"] for iv in latest_patch_versions}
+        assert latest_values == {"go1.24.2", "go1.25.0"}
+
     def test_check_duplicate_dependency_constraints(self):
         """Test that duplicate dependency constraints raise error."""
         with pytest.raises(
@@ -720,6 +989,50 @@ class TestImageMatrix:
         assert "latest" in suffixes
         # Existing matrix tag still emitted.
         assert "python3.12.3" in suffixes
+
+    def test_latest_patch_matrix_target_emits_minor_tag(self, patch_requests_get):
+        """End-to-end: a non-latest row that IS latest-patch emits the stripped minor tag.
+
+        Pins the full chain isLatestPatchCombination → filter retains LATEST_PATCH
+        patterns → tag renders. Picks 3.11.10 (highest patch in the 3.11 minor group)
+        rather than 3.12.3 (overall latest) so the assertion isn't satisfied accidentally
+        by the LATEST-filtered patterns.
+        """
+        image = Image(
+            name="content",
+            matrix={
+                "namePattern": "python{{ Dependencies.python }}",
+                "dependencies": [
+                    {"dependency": "python", "versions": ["3.11.5", "3.11.10", "3.12.3"]},
+                ],
+                "os": [
+                    {"name": "Ubuntu 24.04", "primary": True},
+                ],
+            },
+        )
+
+        mock_config_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_config_parent.path = Path("/tmp/path")
+        mock_config_parent.registries = []
+        image.parent = mock_config_parent
+
+        repo = Repository(url="https://example.com/repo", vendor="Example", maintainer="dev <dev@example.com>")
+        image_versions = image.matrix.to_image_versions()
+        latest_patch_iv = next(
+            iv
+            for iv in image_versions
+            if iv.isLatestPatchCombination and not iv.latest and iv.dependencies[0].versions[0] == "3.11.10"
+        )
+        primary_os = latest_patch_iv.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=repo,
+            image_version=latest_patch_iv,
+            image_variant=None,
+            image_os=primary_os,
+        )
+
+        assert "python3.11" in set(target.tag_suffixes)
 
     def test_render_files_preserves_template_file_mode(self, tmp_path):
         """Test that matrix render_files propagates the template file mode to rendered output."""

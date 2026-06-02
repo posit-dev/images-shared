@@ -2,6 +2,7 @@ import re
 
 import jinja2
 
+from posit_bakery.config.dependencies.version import strip_patch
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryTemplateError
 
@@ -25,6 +26,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env = jinja2.Environment(**kwargs)
     env.filters["tagSafe"] = lambda s: re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", s).strip("-._")
     env.filters["stripMetadata"] = lambda s: re.sub(r"[+-](?=[^+-]*$).*", "", s)
+    env.filters["stripPatch"] = strip_patch
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
     env.filters["quote"] = lambda s: '"' + s + '"'

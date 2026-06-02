@@ -85,6 +85,15 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             description="Flag to indicate if this is a matrix version.",
         ),
     ]
+    isLatestPatchCombination: Annotated[
+        bool,
+        Field(
+            exclude=True,
+            default=False,
+            description="Flag set on matrix versions whose dependency versions are the latest patch for their "
+            "(major.minor, ...) group. Used to gate ``LATEST_PATCH``-filtered tag patterns.",
+        ),
+    ]
     os: Annotated[
         list[ImageVersionOS],
         Field(

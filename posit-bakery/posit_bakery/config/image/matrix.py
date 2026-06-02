@@ -19,7 +19,7 @@ from posit_bakery.config.dependencies import (
 )
 from packaging.version import InvalidVersion
 
-from posit_bakery.config.dependencies.version import DependencyVersion
+from posit_bakery.config.dependencies.version import DependencyVersion, extract_versions, strip_patch
 from posit_bakery.config.image.build_os import TargetPlatform, DEFAULT_PLATFORMS
 from posit_bakery.config.registry import BaseRegistry, Registry
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
@@ -742,8 +742,12 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         resolved_deps = self.resolved_dependencies
         latest_pick = self._compute_latest_combination(resolved_deps)
         products = self._cartesian_product(resolved_deps, self.values)
+        latest_patch_signatures = self._compute_latest_patch_signatures(products)
         for product in products:
             is_latest = latest_pick is not None and self._matches_latest(product, latest_pick)
+            is_latest_patch = (
+                latest_patch_signatures is not None and self._row_signature(product) in latest_patch_signatures
+            )
             image_version = ImageVersion(
                 parent=self.parent,
                 name=self._render_name_pattern(self.namePattern, product["dependencies"], product["values"]),
@@ -755,6 +759,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
                 values=product["values"],
                 isMatrixVersion=True,
                 latest=is_latest,
+                isLatestPatchCombination=is_latest_patch,
                 buildTarget=self.buildTarget,
             )
             image_versions.append(image_version)
@@ -779,3 +784,119 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             if axis_key in latest_pick and str(value) != latest_pick[axis_key]:
                 return False
         return True
+
+    @staticmethod
+    def _row_signature(product: dict[str, list | dict]) -> tuple:
+        """Hashable signature for a cartesian-product row, used for set membership checks."""
+        dep_parts = tuple(sorted((d.dependency, d.versions[0]) for d in product["dependencies"]))
+        value_parts = tuple(sorted((k, str(v)) for k, v in product["values"].items()))
+        return dep_parts, value_parts
+
+    def _compute_latest_patch_signatures(self, products: list[dict[str, list | dict]]) -> set[tuple] | None:
+        """Identify cartesian-product rows that are the latest patch for their stripped group.
+
+        Validate all dependency versions upfront, then group every row by the result of
+        applying :func:`strip_patch` to each of its axis values. Within each group, the
+        row whose ``_patch_sort_key`` ranks highest is the "latest patch" row.
+
+        Grouping by the stripped form keeps the selection consistent with what
+        ``stripPatch`` would render: any two rows that would produce the same stripped
+        tag share a group, so only one of them is flagged and no ``LATEST_PATCH``
+        targets collide on push.
+
+        :param products: All cartesian-product rows.
+
+        :return: A set of row signatures (see :pymeth:`_row_signature`) identifying
+            latest-patch rows. Returns ``None`` if any dependency version is unparseable;
+            in that case no ``LATEST_PATCH``-family tags are emitted for the matrix.
+        """
+        if not products:
+            return set()
+
+        # Validate dependency versions in a single explicit pass so the rest of the
+        # function can treat them as parseable. Mirrors `_compute_latest_combination`'s
+        # behaviour: bad dep input aborts emission of the family, and an unexpected
+        # internal error from the version constructor is caught and treated the same way
+        # rather than killing the whole build.
+        for product in products:
+            for dep in product["dependencies"]:
+                try:
+                    DependencyVersion(dep.versions[0])
+                except InvalidVersion as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                        f"because dependency '{dep.dependency}' version '{dep.versions[0]}' is unparseable "
+                        f"({e}). No 'latestPatch'-family tags will be emitted for this matrix."
+                    )
+                    return None
+                except Exception as e:
+                    log.warning(
+                        f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                        f"because dependency '{dep.dependency}' raised an unexpected error processing "
+                        f"'{dep.versions[0]}' ({type(e).__name__}: {e}). "
+                        f"No 'latestPatch'-family tags will be emitted for this matrix."
+                    )
+                    return None
+
+        groups: dict[tuple, list[dict[str, list | dict]]] = {}
+        for product in products:
+            groups.setdefault(self._minor_group_key(product), []).append(product)
+
+        latest_signatures: set[tuple] = set()
+        for group_rows in groups.values():
+            try:
+                max_row = max(group_rows, key=self._patch_sort_key)
+            except Exception as e:
+                # _patch_sort_key parses value substrings as ``DependencyVersion``,
+                # which the dep pre-validation pass above doesn't cover. An
+                # unexpected error there shouldn't kill the build — drop
+                # latestPatch tags for the matrix instead.
+                log.warning(
+                    f"Image matrix '{self.namePattern}': cannot determine latest patch combinations "
+                    f"because computing the patch sort key raised an unexpected error "
+                    f"({type(e).__name__}: {e}). "
+                    f"No 'latestPatch'-family tags will be emitted for this matrix."
+                )
+                return None
+            latest_signatures.add(self._row_signature(max_row))
+        return latest_signatures
+
+    @staticmethod
+    def _minor_group_key(product: dict[str, list | dict]) -> tuple:
+        """Group key derived from :func:`strip_patch` applied to every axis value.
+
+        Two rows that would render to the same stripped tag share the same group key,
+        regardless of whether the value is a plain version (``3.12.3``), a prefixed
+        version (``go1.24.3``), or a non-version label (``alpha``).
+
+        Pure function — assumes dependency versions are already validated by the
+        caller; this method does not raise.
+        """
+        dep_parts = tuple(
+            (dep.dependency, strip_patch(dep.versions[0]))
+            for dep in sorted(product["dependencies"], key=lambda d: d.dependency)
+        )
+        value_parts = tuple((k, strip_patch(str(val))) for k, val in sorted(product["values"].items()))
+        return dep_parts, value_parts
+
+    @staticmethod
+    def _patch_sort_key(product: dict[str, list | dict]) -> tuple:
+        """Sort key for finding the highest-patch row within a group.
+
+        Extract *every* numeric ``MAJOR.MINOR[.PATCH...]`` substring from each value
+        and use the tuple of parsed versions as the sort key, so multi-version strings
+        (e.g. ``"go1.24-lib2.3.1"`` vs ``"go1.24-lib2.3.2"``) cascade comparison to
+        the later segment that actually differs.
+
+        Within a group all rows share the same stripped form, which forces the same
+        set of version-bearing positions, so every row produces the same shape of
+        tuple (empty when no version is present and the group has a single row, or
+        non-empty in lockstep otherwise). That invariant prevents mixed-type
+        comparisons during ``max()``.
+        """
+        sort_keys = []
+        for dep in sorted(product["dependencies"], key=lambda d: d.dependency):
+            sort_keys.append(DependencyVersion(dep.versions[0]))
+        for k, val in sorted(product["values"].items()):
+            sort_keys.append(extract_versions(str(val)))
+        return tuple(sort_keys)

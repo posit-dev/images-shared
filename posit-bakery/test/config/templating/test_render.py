@@ -16,6 +16,7 @@ class TestJinja2Env:
         assert isinstance(env, jinja2.Environment)
         assert "tagSafe" in env.filters.keys()
         assert "stripMetadata" in env.filters.keys()
+        assert "stripPatch" in env.filters.keys()
         assert "condense" in env.filters.keys()
         assert "regexReplace" in env.filters.keys()
 
@@ -37,6 +38,23 @@ class TestJinja2Env:
         assert env.from_string("{{ '2025.05.1+513.pro3' | stripMetadata }}").render() == "2025.05.1"
         assert env.from_string("{{ '2025.04.1-8' | stripMetadata }}").render() == "2025.04.1"
         assert env.from_string("{{ '2025.05.0' | stripMetadata }}").render() == "2025.05.0"
+
+    def test_stripPatch_filter(self):
+        """Test the stripPatch filter — drops the patch component from MAJOR.MINOR.PATCH groups."""
+        env = jinja2_env()
+        # Simple 3-component versions reduce to MAJOR.MINOR.
+        assert env.from_string("{{ '3.12.3' | stripPatch }}").render() == "3.12"
+        assert env.from_string("{{ '4.3.3' | stripPatch }}").render() == "4.3"
+        # Composite matrix names — both version segments get stripped.
+        assert env.from_string("{{ 'python3.12.3-R4.3.3' | stripPatch }}").render() == "python3.12-R4.3"
+        assert env.from_string("{{ 'R4.3.3-python3.11.15' | stripPatch }}").render() == "R4.3-python3.11"
+        # 2-component versions are untouched (no patch to strip).
+        assert env.from_string("{{ '2026.04' | stripPatch }}").render() == "2026.04"
+        # 4+ component versions collapse fully to MAJOR.MINOR, not partially.
+        assert env.from_string("{{ '1.2.3.4' | stripPatch }}").render() == "1.2"
+        assert env.from_string("{{ '1.2.3.4.5' | stripPatch }}").render() == "1.2"
+        # Strings without version-like sequences are untouched.
+        assert env.from_string("{{ 'standard-min' | stripPatch }}").render() == "standard-min"
 
     def test_condense_filter(self):
         """Test the condense filter."""
