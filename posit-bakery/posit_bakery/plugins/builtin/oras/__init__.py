@@ -148,7 +148,10 @@ class OrasPlugin(BakeryToolPlugin):
 
     def results(self, results: list[ToolCallResult]) -> None:
         """Display ORAS merge results and exit non-zero on failures."""
+        import textwrap
+
         from posit_bakery.log import stderr_console
+        from posit_bakery.settings import SETTINGS
 
         has_errors = False
         for result in results:
@@ -159,6 +162,20 @@ class OrasPlugin(BakeryToolPlugin):
                     f"Error merging '{result.target}': {result.stderr}",
                     style="error",
                 )
+                # Surface the captured oras stdout/stderr so the failure is
+                # actionable. Skip when quiet logging is enabled (--quiet raises
+                # log_level to ERROR).
+                if workflow_result and SETTINGS.log_level < logging.ERROR:
+                    if workflow_result.stdout:
+                        stderr_console.print(
+                            f"oras stdout:\n{textwrap.indent(workflow_result.stdout, '  ')}",
+                            style="error",
+                        )
+                    if workflow_result.stderr:
+                        stderr_console.print(
+                            f"oras stderr:\n{textwrap.indent(workflow_result.stderr, '  ')}",
+                            style="error",
+                        )
             elif workflow_result:
                 log.info(f"Merged '{result.target}' -> {', '.join(workflow_result.destinations)}")
 
