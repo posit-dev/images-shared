@@ -143,13 +143,14 @@ jobs:
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
-          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--dev-channel "$DEV_CHANNEL")
           if [[ -n "$DEV_SPEC" ]]; then
             ARGS+=(--dev-spec "$DEV_SPEC")
           elif [[ -n "$DEV_VERSION" ]]; then
             DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
               '{version: $v} + if $c != "" then {channel: $c} else {} end')
             ARGS+=(--dev-spec "$DEV_SPEC_JSON")
+          elif [[ -n "$DEV_CHANNEL" ]]; then
+            ARGS+=(--dev-channel "$DEV_CHANNEL")
           fi
           result=$(bakery ci matrix "${ARGS[@]}")
           echo "platform_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
