@@ -29,8 +29,8 @@ on:
         required: false
         type: string
       lychee-args:
-        description: "Arguments passed to lychee"
-        default: "--cache --no-progress --max-cache-age 1d **/*.md"
+        description: "Arguments passed to lychee. The default **/*.*md glob matches both Markdown (.md) and Quarto (.qmd) files."
+        default: "--cache --no-progress --max-cache-age 1d **/*.*md"
         required: false
         type: string
 

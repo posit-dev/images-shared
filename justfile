@@ -33,4 +33,4 @@ _setup-pre-commit:
 # Check links in markdown with lychee
 check-links:
     docker run --rm -w /input -v "{{ CWD }}":/input:ro \
-      lycheeverse/lychee --no-progress '**/*.md'
+      lycheeverse/lychee --no-progress --exclude-path presentations '**/*.*md'

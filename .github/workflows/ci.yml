@@ -48,6 +48,8 @@ jobs:
     uses: ./.github/workflows/checks.yml
     with:
       python-version-file: posit-bakery/pyproject.toml
+      # Check Markdown and Quarto docs; presentations are dated decks, not maintained docs.
+      lychee-args: "--cache --no-progress --max-cache-age 1d --exclude-path presentations **/*.*md"
 
   test:
     name: Test

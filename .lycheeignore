@@ -6,6 +6,9 @@ https://packagemanager.posit.co
 https://p3m.dev
 https://twitter.com
 
+# Bare directory paths that 404 (no index served)
+https://dl.posit.co/public/open/
+
 # Private Posit/RStudio source repos (return 404 to unauthenticated link checks)
 https://github.com/posit-dev/connect/
 https://github.com/rstudio/package-manager/
