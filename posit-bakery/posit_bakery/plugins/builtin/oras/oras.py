@@ -149,6 +149,8 @@ class OrasMergeWorkflowResult(BaseModel):
     temp_index_ref: Annotated[str | None, Field(default=None, description="Reference to the temporary index created.")]
     destinations: Annotated[list[str], Field(default_factory=list, description="List of destination references.")]
     error: Annotated[str | None, Field(default=None, description="Error message if the workflow failed.")]
+    stdout: Annotated[str, Field(default="", description="Captured stdout of the failed oras command, if any.")]
+    stderr: Annotated[str, Field(default="", description="Captured stderr of the failed oras command, if any.")]
 
 
 class OrasMergeWorkflow(BaseModel):
@@ -236,11 +238,16 @@ class OrasMergeWorkflow(BaseModel):
 
         except BakeryToolRuntimeError as e:
             log.error(f"ORAS merge workflow failed: {e}")
+            # The base error's __str__ only reports the exit code and command. Carry
+            # the captured oras stdout/stderr up so results() can surface the
+            # underlying failure to the user (unless quiet logging is enabled).
             return OrasMergeWorkflowResult(
                 success=False,
                 temp_index_ref=self.temp_index_tag,
                 destinations=self.image_target.tags.as_strings(),
                 error=str(e),
+                stdout=e.dump_stdout(),
+                stderr=e.dump_stderr(),
             )
 
     @classmethod

@@ -310,6 +310,31 @@ class TestOrasMergeWorkflow:
         assert result.success is False
         assert result.error is not None
 
+    def test_failure_captures_command_output(self, basic_workflow):
+        """A failed workflow result carries the failed command's stdout/stderr."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[],
+                returncode=1,
+                stdout=b"oras stdout details",
+                stderr=b"oras stderr details",
+            )
+            result = basic_workflow.run()
+
+        assert result.success is False
+        assert result.stdout == "oras stdout details"
+        assert result.stderr == "oras stderr details"
+
+    def test_success_has_no_captured_output(self, basic_workflow):
+        """A successful workflow result has empty stdout/stderr."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            result = basic_workflow.run()
+
+        assert result.success is True
+        assert result.stdout == ""
+        assert result.stderr == ""
+
     def test_validates_sources_required(self):
         """Test that validation fails when no sources are provided."""
         mock_target = MagicMock(spec=ImageTarget)
