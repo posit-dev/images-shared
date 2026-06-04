@@ -541,11 +541,11 @@ class TestBakeryConfig:
                 )
                 _apply_dev_spec(image, settings)
                 dv = image.devVersions[0]
-                assert dv.pinned_version == "2026.06.0-daily+143-gABC"
+                assert dv.version_override == "2026.06.0-daily+143-gABC"
                 assert dv.release_branch == "2026.06"
 
             def test_release_branch_only_sets_branch(self, tmp_path):
-                """release_branch in DevBuildSpec sets release_branch directly; pinned_version stays None."""
+                """release_branch in DevBuildSpec sets release_branch directly; version_override stays None."""
                 from posit_bakery.config.config import _apply_dev_spec
                 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 
@@ -557,7 +557,7 @@ class TestBakeryConfig:
                 )
                 _apply_dev_spec(image, settings)
                 dv = image.devVersions[0]
-                assert dv.pinned_version is None
+                assert dv.version_override is None
                 assert dv.release_branch == "apple-blossom"
 
             def test_version_takes_precedence_over_release_branch(self, tmp_path):
@@ -573,7 +573,7 @@ class TestBakeryConfig:
                 )
                 _apply_dev_spec(image, settings)
                 dv = image.devVersions[0]
-                assert dv.pinned_version == "2026.06.0-daily+143-gABC"
+                assert dv.version_override == "2026.06.0-daily+143-gABC"
                 assert dv.release_branch == "2026.06"
 
             def test_extract_calver_minor_rejects_trailing_garbage(self):
