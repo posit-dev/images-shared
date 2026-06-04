@@ -18,20 +18,18 @@ class DevBuildSpec(BaseModel):
 
     @field_validator("version")
     @classmethod
-    def version_not_empty(cls, v: str | None) -> str | None:
-        if v is not None:
-            v = v.strip()
-            if not v:
-                raise ValueError("version must not be empty")
+    def version_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("version must not be empty")
         return v
 
     @field_validator("release_branch")
     @classmethod
-    def release_branch_not_empty(cls, v: str | None) -> str | None:
-        if v is not None:
-            v = v.strip()
-            if not v:
-                raise ValueError("release_branch must not be empty")
+    def release_branch_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("release_branch must not be empty")
         return v
 
     @model_validator(mode="after")

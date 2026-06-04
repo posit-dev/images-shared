@@ -30,6 +30,10 @@ class TestDevBuildSpec:
         with pytest.raises(ValidationError, match="at least one of"):
             DevBuildSpec()
 
+    def test_channel_only_raises(self):
+        with pytest.raises(ValidationError, match="at least one of"):
+            DevBuildSpec(channel=ReleaseChannelEnum.DAILY)
+
     def test_empty_version_raises(self):
         with pytest.raises(ValidationError, match="version must not be empty"):
             DevBuildSpec(version="   ")
@@ -57,4 +61,4 @@ class TestDevBuildSpec:
 
     def test_unknown_fields_raise(self):
         with pytest.raises(ValidationError):
-            DevBuildSpec.model_validate_json('{"version": "2026.05.0-dev+1-gSHA", "chanenl": "daily"}')
+            DevBuildSpec.model_validate_json('{"version": "2026.05.0-dev+1-gSHA", "unexpected_field": "daily"}')
