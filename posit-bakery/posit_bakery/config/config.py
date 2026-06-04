@@ -371,7 +371,7 @@ class BakerySettings(BaseModel):
     temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
 
 
-def _apply_dev_spec(image: Image, settings: "BakerySettings") -> None:
+def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     """Pin the dispatched version onto the matching channel dev version.
 
     Called before load_dev_versions() so the pinned version is set
