@@ -1064,4 +1064,4 @@ class TestPositronDaily:
         assert str(output.download_url) == (
             "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-100.tar.gz"
         )
-
+        patch_requests_get.assert_not_called()
