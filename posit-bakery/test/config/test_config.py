@@ -510,6 +510,12 @@ class TestBakeryConfig:
                 assert dv.pinned_version == "2026.06.0-daily+143-gABC"
                 assert dv.release_branch == "2026.06"
 
+            def test_extract_calver_minor_rejects_trailing_garbage(self):
+                from posit_bakery.config.config import _extract_calver_minor
+
+                with pytest.raises(ValueError, match="not a valid CalVer"):
+                    _extract_calver_minor("2026.06.0-daily+143 trailing garbage")
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [

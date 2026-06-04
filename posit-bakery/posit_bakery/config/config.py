@@ -378,7 +378,7 @@ def _extract_calver_minor(version: str) -> str:
     (e.g. "2026.06.0-daily+143" -> "2026.06"). The dailies API supports
     YYYY.MM as a URL path segment equivalent to the branch codename.
     """
-    match = CALVER_REGEX_PATTERN.match(version)
+    match = CALVER_REGEX_PATTERN.fullmatch(version)
     if not match:
         raise ValueError(f"Cannot extract YYYY.MM from version {version!r}: not a valid CalVer string.")
     return f"{match.group(1)}.{match.group(2)}"
