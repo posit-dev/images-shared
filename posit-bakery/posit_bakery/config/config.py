@@ -920,8 +920,8 @@ class BakeryConfig:
             if target.uid in seen:
                 raise BakeryError(
                     f"Duplicate image target UID '{target.uid}': two targets resolve to the same "
-                    f"image, version, variant, OS, and release stream ({target.release_stream.value}). "
-                    "Check for a duplicate version definition or multiple development streams "
+                    f"image, version, variant, OS, and release channel ({target.release_channel.value}). "
+                    "Check for a duplicate version definition or multiple development channels "
                     "resolving to the same version."
                 )
             seen[target.uid] = target

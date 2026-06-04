@@ -14,7 +14,7 @@ from posit_bakery.config.image import ImageVersion, ImageVariant, ImageVersionOS
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.config.image.build_secret import BuildSecret
 from posit_bakery.config.image.parsed_version import version_sort_key
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
@@ -288,7 +288,7 @@ class ImageTarget(BaseModel):
     def uid(self) -> str:
         """Generate a unique identifier for the target.
 
-        The stream is appended for development versions so a dev build and a release
+        The channel is appended for development versions so a dev build and a release
         build of the same version never share a UID. Release UIDs stay unsuffixed.
         """
         u = f"{self.image_name}-{self.image_version.name}"
@@ -296,22 +296,22 @@ class ImageTarget(BaseModel):
             u += f"-{self.image_variant.name}"
         if self.image_os:
             u += f"-{self.image_os.name}"
-        if self.release_stream != ReleaseStreamEnum.RELEASE:
-            u += f"-{self.release_stream.value}"
+        if self.release_channel != ReleaseChannelEnum.RELEASE:
+            u += f"-{self.release_channel.value}"
         return re.sub("[ .+/]", "-", u).lower()
 
     @property
-    def release_stream(self) -> ReleaseStreamEnum:
+    def release_channel(self) -> ReleaseChannelEnum:
         """The release channel for this target, defaulting to ``release`` when unset."""
-        stream = self.image_version.metadata.get("release_channel")
-        if stream is None:
-            return ReleaseStreamEnum.RELEASE
+        channel = self.image_version.metadata.get("release_channel")
+        if channel is None:
+            return ReleaseChannelEnum.RELEASE
         try:
-            return ReleaseStreamEnum(stream)
+            return ReleaseChannelEnum(channel)
         except ValueError as e:
             raise BakeryError(
-                f"Invalid release_channel {stream!r} for {self}. "
-                f"Expected one of: {', '.join(s.value for s in ReleaseStreamEnum)}."
+                f"Invalid release_channel {channel!r} for {self}. "
+                f"Expected one of: {', '.join(s.value for s in ReleaseChannelEnum)}."
             ) from e
 
     @property
