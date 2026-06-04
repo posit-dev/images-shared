@@ -293,7 +293,6 @@ def get_product_artifact_by_channel(
     product: ProductEnum,
     channel: ReleaseChannelEnum,
     os: BuildOS,
-    generalize_arch: bool = True,
     version_override: str | None = None,
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""

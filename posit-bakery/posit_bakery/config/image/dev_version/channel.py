@@ -37,7 +37,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             exclude=True,
             default=None,
             description="Version pinned by a workflow dispatch spec. When set, bypasses CDN "
-            "discovery and is forwarded to the stream resolver for offline template rendering "
+            "discovery and is forwarded to the channel resolver for offline template rendering "
             "(PPM) or manifest assertion (Connect, Workbench).",
         ),
     ]
