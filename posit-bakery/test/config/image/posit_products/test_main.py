@@ -785,6 +785,39 @@ class TestGetProductArtifactByChannel:
         assert str(output.download_url) == expected_session_url
 
 
+class TestGetProductArtifactByChannelReleaseBranch:
+    """release_branch is passed through to the Workbench daily URL."""
+
+    def test_default_release_branch_uses_latest(self, mocker):
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+        mock_session.return_value.get.return_value.raise_for_status.return_value = None
+
+        get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"])
+
+        called_url = mock_session.return_value.get.call_args[0][0]
+        assert "latest" in called_url
+
+    def test_named_release_branch_formats_url(self, mocker):
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+        mock_session.return_value.get.return_value.raise_for_status.return_value = None
+
+        get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            release_branch="apple-blossom",
+        )
+
+        called_url = mock_session.return_value.get.call_args[0][0]
+        assert "apple-blossom" in called_url
+
+
 class TestDispatchOverride:
     def test_ppm_daily_override_renders_offline(self, mocker):
         """Template streams must NOT hit the network when version_override is supplied."""
