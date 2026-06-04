@@ -30,7 +30,7 @@ class DispatchVersionMismatchError(Exception):
 
 
 class ReleaseChannelResult(BaseModel):
-    """Represents a resulting artifact found in a release stream. This provides an easy validation for data we get."""
+    """Represents a resulting artifact found in a release channel. This provides an easy validation for data we get."""
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
     download_url: HttpUrl
@@ -43,7 +43,7 @@ class ReleaseChannelResult(BaseModel):
 
 
 class ReleaseChannelPath:
-    """Represents a path to a release stream and a map of resolvers to extract data from the fetched data."""
+    """Represents a path to a release channel and a map of resolvers to extract data from the fetched data."""
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class ReleaseChannelPath:
         self.version_templatable = version_templatable
 
     def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
-        """Fetches data from the stream URL and resolves the data using the given resolvers."""
+        """Fetches data from the channel URL and resolves the data using the given resolvers."""
         if version_override is not None and self.version_templatable:
             result: dict = {"version": version_override}
             url_safe_result = {f"url_safe_{k}": quote(str(v), safe="") for k, v in result.items()}
@@ -293,7 +293,6 @@ def get_product_artifact_by_channel(
     product: ProductEnum,
     channel: ReleaseChannelEnum,
     os: BuildOS,
-    generalize_arch: bool = True,
     version_override: str | None = None,
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
