@@ -28,7 +28,7 @@ from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, CALVER_REGEX_PATTERN
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
     BakeryError,
@@ -371,6 +371,19 @@ class BakerySettings(BaseModel):
     temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
 
 
+def _extract_calver_minor(version: str) -> str:
+    """Extract the YYYY.MM segment from a CalVer version string.
+
+    Used to derive the Workbench dailies URL branch from a pinned version
+    (e.g. "2026.06.0-daily+143" -> "2026.06"). The dailies API supports
+    YYYY.MM as a URL path segment equivalent to the branch codename.
+    """
+    match = CALVER_REGEX_PATTERN.match(version)
+    if not match:
+        raise ValueError(f"Cannot extract YYYY.MM from version {version!r}: not a valid CalVer string.")
+    return f"{match.group(1)}.{match.group(2)}"
+
+
 def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     """Pin the dispatched version onto the matching channel dev version.
 
@@ -408,7 +421,13 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
             f"channel '{target_channel}'. Specify 'channel' in --dev-spec or pass "
             f"--dev-channel to disambiguate."
         )
-    candidates[0].pinned_version = settings.dev_spec.version
+    candidates[0].pinned_version = settings.dev_spec.version  # None for branch-only specs
+    if settings.dev_spec.version is not None:
+        # Extract YYYY.MM from the pinned version to target the correct branch URL.
+        # The dailies API supports YYYY.MM path segments (e.g. /rstudio/2026.06/index.json).
+        candidates[0].release_branch = _extract_calver_minor(settings.dev_spec.version)
+    elif settings.dev_spec.release_branch is not None:
+        candidates[0].release_branch = settings.dev_spec.release_branch
 
 
 class BakeryConfig:

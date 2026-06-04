@@ -420,6 +420,96 @@ class TestBakeryConfig:
             with pytest.raises(ValueError, match="[Cc]onfli"):
                 BakeryConfig(bakery_yaml, settings=settings)
 
+        class TestApplyDevSpecReleaseBranch:
+            """release_branch is set from YYYY.MM when version is set, or directly from spec."""
+
+            def _make_image(self, tmp_path):
+                """Return a minimal Image with one workbench daily dev version."""
+                from posit_bakery.config.config import BakeryConfigDocument
+
+                bakery_yaml = tmp_path / "bakery.yaml"
+                bakery_yaml.write_text(
+                    "repository:\n"
+                    "  url: https://github.com/posit-dev/test\n"
+                    "images:\n"
+                    "  - name: test-image\n"
+                    "    devVersions:\n"
+                    "      - sourceType: stream\n"
+                    "        product: workbench\n"
+                    "        channel: daily\n"
+                    "        os:\n"
+                    "          - name: Ubuntu 24.04\n"
+                    "            primary: true\n"
+                )
+                doc = BakeryConfigDocument(
+                    base_path=tmp_path,
+                    **{
+                        "repository": {"url": "https://github.com/posit-dev/test"},
+                        "images": [
+                            {
+                                "name": "test-image",
+                                "devVersions": [
+                                    {
+                                        "sourceType": "stream",
+                                        "product": "workbench",
+                                        "channel": "daily",
+                                        "os": [{"name": "Ubuntu 24.04", "primary": True}],
+                                    }
+                                ],
+                            }
+                        ],
+                    },
+                )
+                return doc.images[0]
+
+            def test_version_sets_calver_release_branch(self, tmp_path):
+                """version in DevBuildSpec pins version and derives YYYY.MM release_branch."""
+                from posit_bakery.config.config import _apply_dev_spec
+                from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+                image = self._make_image(tmp_path)
+                spec = DevBuildSpec(version="2026.06.0-daily+143-gABC")
+                settings = BakerySettings(
+                    dev_versions=DevVersionInclusionEnum.ONLY,
+                    dev_spec=spec,
+                )
+                _apply_dev_spec(image, settings)
+                dv = image.devVersions[0]
+                assert dv.pinned_version == "2026.06.0-daily+143-gABC"
+                assert dv.release_branch == "2026.06"
+
+            def test_release_branch_only_sets_branch(self, tmp_path):
+                """release_branch in DevBuildSpec sets release_branch directly; pinned_version stays None."""
+                from posit_bakery.config.config import _apply_dev_spec
+                from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+                image = self._make_image(tmp_path)
+                spec = DevBuildSpec(release_branch="apple-blossom")
+                settings = BakerySettings(
+                    dev_versions=DevVersionInclusionEnum.ONLY,
+                    dev_spec=spec,
+                )
+                _apply_dev_spec(image, settings)
+                dv = image.devVersions[0]
+                assert dv.pinned_version is None
+                assert dv.release_branch == "apple-blossom"
+
+            def test_version_takes_precedence_over_release_branch(self, tmp_path):
+                """When both are set, version wins; release_branch is YYYY.MM, not spec.release_branch."""
+                from posit_bakery.config.config import _apply_dev_spec
+                from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+                image = self._make_image(tmp_path)
+                spec = DevBuildSpec(version="2026.06.0-daily+143-gABC", release_branch="apple-blossom")
+                settings = BakerySettings(
+                    dev_versions=DevVersionInclusionEnum.ONLY,
+                    dev_spec=spec,
+                )
+                _apply_dev_spec(image, settings)
+                dv = image.devVersions[0]
+                assert dv.pinned_version == "2026.06.0-daily+143-gABC"
+                assert dv.release_branch == "2026.06"
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [
