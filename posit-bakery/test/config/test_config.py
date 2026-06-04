@@ -1788,7 +1788,7 @@ class TestBakeryConfig:
         dev = release.model_copy(deep=True)
         dev.parent = release.parent
         dev.isDevelopmentVersion = True
-        dev.metadata = {"release_stream": ReleaseStreamEnum.DAILY}
+        dev.metadata = {"release_channel": ReleaseChannelEnum.DAILY}
         image.versions.append(dev)
 
         config.generate_image_targets(BakerySettings(dev_versions=DevVersionInclusionEnum.INCLUDE))
