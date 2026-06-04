@@ -519,14 +519,14 @@ class TestImageVersion:
 
     def test_metadata_excluded_from_serialization(self):
         """Test that metadata is excluded from model_dump output."""
-        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily"})
+        i = ImageVersion(name="1.0.0", metadata={"release_channel": "daily"})
         dump = i.model_dump()
         assert "metadata" not in dump
 
     def test_metadata_stores_arbitrary_values(self):
         """Test that metadata can store arbitrary key-value pairs."""
-        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily", "custom_key": 42})
-        assert i.metadata["release_stream"] == "daily"
+        i = ImageVersion(name="1.0.0", metadata={"release_channel": "daily", "custom_key": 42})
+        assert i.metadata["release_channel"] == "daily"
         assert i.metadata["custom_key"] == 42
 
     @pytest.mark.parametrize(
