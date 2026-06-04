@@ -140,11 +140,11 @@ class TestImageTarget:
         expected_uid = re.sub(r"[ .+/]", "-", f"{image.name}-{version.name}-{variant.name}-{os.name}").lower()
         assert basic_standard_image_target.uid == expected_uid
 
-    def test_uid_encodes_release_stream(self, get_config_obj):
-        """A dev-stream build and a release build of the same version get distinct UIDs.
+    def test_uid_encodes_release_channel(self, get_config_obj):
+        """A dev-channel build and a release build of the same version get distinct UIDs.
 
         Regression test for posit-dev/images-shared#553: the UID omitted the release
-        stream, so a daily/preview build of version X shared a UID with the release
+        channel, so a daily/preview build of version X shared a UID with the release
         build of X and `bakery ci merge` pushed the dev image to the release registries.
         """
         config = get_config_obj("basic")
