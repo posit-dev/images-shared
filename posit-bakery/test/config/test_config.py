@@ -388,6 +388,16 @@ class TestBakeryConfig:
         )
         assert settings.dev_channel == ReleaseChannelEnum.PREVIEW
 
+    def test_dev_stream_migrates_when_dev_channel_is_explicit_none(self):
+        """dev_stream must migrate even when dev_channel=None is passed explicitly."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            settings = BakerySettings(dev_stream=ReleaseChannelEnum.DAILY, dev_channel=None)
+        assert settings.dev_channel == ReleaseChannelEnum.DAILY
+        assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
+
     class TestDevBuildSpecApplication:
         def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
             """No dev_spec: config loads normally, no pinned_version set."""
