@@ -47,6 +47,11 @@ on:
         default: ""
         required: false
         type: string
+      release-branch:
+        description: "Workbench dailies release branch for dev builds (e.g. 'apple-blossom', '2026.07'). Omit to use 'latest'."
+        default: ""
+        required: false
+        type: string
       dev-spec:
         description: "JSON spec for a dispatched dev build. If set, takes precedence over dev-version/dev-channel for spec construction."
         default: ""
@@ -138,6 +143,7 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           DEV_VERSION: ${{ inputs.dev-version }}
           DEV_SPEC: ${{ inputs.dev-spec }}
+          RELEASE_BRANCH: ${{ inputs.release-branch }}
           CONTEXT: ${{ inputs.context }}
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
@@ -145,9 +151,14 @@ jobs:
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           if [[ -n "$DEV_SPEC" ]]; then
             ARGS+=(--dev-spec "$DEV_SPEC")
-          elif [[ -n "$DEV_VERSION" ]]; then
-            DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
-              '{version: $v} + if $c != "" then {channel: $c} else {} end')
+          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
+            DEV_SPEC_JSON=$(jq -cn \
+              --arg v "$DEV_VERSION" \
+              --arg c "$DEV_CHANNEL" \
+              --arg b "$RELEASE_BRANCH" \
+              'if $v != "" then {version: $v} else {} end
+               + if $c != "" then {channel: $c} else {} end
+               + if $b != "" then {release_branch: $b} else {} end')
             ARGS+=(--dev-spec "$DEV_SPEC_JSON")
           elif [[ -n "$DEV_CHANNEL" ]]; then
             ARGS+=(--dev-channel "$DEV_CHANNEL")
@@ -250,6 +261,7 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           DEV_VERSION: ${{ inputs.dev-version }}
           DEV_SPEC: ${{ inputs.dev-spec }}
+          RELEASE_BRANCH: ${{ inputs.release-branch }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
@@ -264,9 +276,14 @@ jobs:
           DEV_SPEC_FLAGS=()
           if [[ -n "$DEV_SPEC" ]]; then
             DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
-          elif [[ -n "$DEV_VERSION" ]]; then
-            DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
-              '{version: $v} + if $c != "" then {channel: $c} else {} end')
+          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
+            DEV_SPEC_JSON=$(jq -cn \
+              --arg v "$DEV_VERSION" \
+              --arg c "$DEV_CHANNEL" \
+              --arg b "$RELEASE_BRANCH" \
+              'if $v != "" then {version: $v} else {} end
+               + if $c != "" then {channel: $c} else {} end
+               + if $b != "" then {release_branch: $b} else {} end')
             DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
           fi
           bakery build \
