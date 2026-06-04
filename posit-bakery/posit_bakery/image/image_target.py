@@ -302,15 +302,15 @@ class ImageTarget(BaseModel):
 
     @property
     def release_stream(self) -> ReleaseStreamEnum:
-        """The release stream for this target, defaulting to ``release`` when unset."""
-        stream = self.image_version.metadata.get("release_stream")
+        """The release channel for this target, defaulting to ``release`` when unset."""
+        stream = self.image_version.metadata.get("release_channel")
         if stream is None:
             return ReleaseStreamEnum.RELEASE
         try:
             return ReleaseStreamEnum(stream)
         except ValueError as e:
             raise BakeryError(
-                f"Invalid release_stream {stream!r} for {self}. "
+                f"Invalid release_channel {stream!r} for {self}. "
                 f"Expected one of: {', '.join(s.value for s in ReleaseStreamEnum)}."
             ) from e
 
