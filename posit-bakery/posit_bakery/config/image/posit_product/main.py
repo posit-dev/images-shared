@@ -57,6 +57,8 @@ class ReleaseChannelPath:
 
     def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
         """Fetches data from the channel URL and resolves the data using the given resolvers."""
+        channel_url = self.channel_url.format_map(metadata)
+
         if version_override is not None and self.version_templatable:
             result: dict = {"version": version_override}
             url_safe_result = {f"url_safe_{k}": quote(str(v), safe="") for k, v in result.items()}
@@ -68,7 +70,7 @@ class ReleaseChannelPath:
             return ReleaseChannelResult(**result)
 
         session = cached_session()
-        response = session.get(self.channel_url)
+        response = session.get(channel_url)
         response.raise_for_status()
         try:
             data = response.json()
@@ -88,7 +90,7 @@ class ReleaseChannelPath:
         if version_override is not None and result.get("version") != version_override:
             raise DispatchVersionMismatchError(
                 f"Dispatched version {version_override!r} does not match manifest version "
-                f"{result.get('version')!r} at {self.channel_url!r}. "
+                f"{result.get('version')!r} at {channel_url!r}. "
                 f"The upstream manifest has not propagated the dispatched build yet."
             )
 
@@ -294,6 +296,7 @@ def get_product_artifact_by_channel(
     channel: ReleaseChannelEnum,
     os: BuildOS,
     version_override: str | None = None,
+    release_branch: str = "latest",
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
     if product not in product_release_channel_url_map:
@@ -302,5 +305,6 @@ def get_product_artifact_by_channel(
         raise ValueError(f"Channel {channel} is not supported for product {product}.")
 
     metadata = _make_resolver_metadata(os, product)
+    metadata["release_branch"] = release_branch
 
     return product_release_channel_url_map[product][channel].get(metadata, version_override)

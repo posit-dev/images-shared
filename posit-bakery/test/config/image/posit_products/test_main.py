@@ -785,6 +785,25 @@ class TestGetProductArtifactByStream:
         assert str(output.download_url) == expected_session_url
 
 
+class TestGetProductArtifactByChannelReleaseBranch:
+    """release_branch is passed through to the Workbench daily URL."""
+
+    def test_default_release_branch_uses_latest(self, patch_requests_get):
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"]
+        )
+        assert result.version is not None
+
+    def test_named_release_branch_formats_url(self, patch_requests_get):
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            release_branch="apple-blossom",
+        )
+        assert result.version is not None
+
+
 class TestDispatchOverride:
     def test_ppm_daily_override_renders_offline(self, mocker):
         """Template streams must NOT hit the network when version_override is supplied."""
