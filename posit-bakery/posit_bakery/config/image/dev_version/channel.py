@@ -41,6 +41,16 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             "(PPM) or manifest assertion (Connect, Workbench).",
         ),
     ]
+    release_branch: Annotated[
+        str | None,
+        Field(
+            exclude=True,
+            default=None,
+            description="Release branch for Workbench daily URL construction. "
+            "Passed as release_branch to get_product_artifact_by_channel(). "
+            "Defaults to 'latest' when None.",
+        ),
+    ]
 
     @model_validator(mode="before")
     @classmethod
@@ -76,7 +86,12 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         if self.resolved_version is not None:
             return self.resolved_version
         _os = self.get_primary_os()
-        result = get_product_artifact_by_channel(self.product, self.channel, _os.buildOS)
+        result = get_product_artifact_by_channel(
+            self.product,
+            self.channel,
+            _os.buildOS,
+            release_branch=self.release_branch or "latest",
+        )
         return result.version
 
     def get_url_by_os(self, generalize_architecture: bool = False) -> dict[str, str]:
@@ -86,7 +101,12 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         """
         url_by_os = {}
         for _os in self.os:
-            result = get_product_artifact_by_channel(self.product, self.channel, _os.buildOS)
+            result = get_product_artifact_by_channel(
+                self.product,
+                self.channel,
+                _os.buildOS,
+                release_branch=self.release_branch or "latest",
+            )
             if generalize_architecture:
                 url_by_os[_os.name] = str(result.architecture_generalized_download_url)
             else:
@@ -114,6 +134,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                     self.channel,
                     os_version.buildOS,
                     version_override=self.version_override,
+                    release_branch=self.release_branch or "latest",
                 )
                 if generalize:
                     os_version.artifactDownloadURL = str(result.architecture_generalized_download_url)
