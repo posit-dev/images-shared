@@ -42,6 +42,11 @@ When a new image name is added:
 - If the image pushes to a separate registry namespace, add a registry entry in
   `bakery.yaml`.
 
+```bash
+# Scaffold the image entry and template directory
+bakery create image <image-name>
+```
+
 ## Update dependencies
 
 Dependency versions (Python, R, Quarto) are resolved by bakery at build time using
@@ -55,10 +60,7 @@ To pin a specific version instead of tracking latest, replace the constraint wit
 explicit `dependencyVersions` list for the relevant image version. See
 [DependencyVersions](https://posit-dev.github.io/images-shared/configuration.html#dependencyversions).
 
-**UV availability:** when a new CPython minor version is released (e.g. `3.14`), UV's
-managed Python manifest may not include it yet. Check
-[UV's download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json)
-before adding a new Python minor version to constraints.
+**UV availability:** see [Footguns](#footguns) before adding a new Python minor version.
 
 ## Update older versions
 
@@ -67,7 +69,7 @@ shared template change needs to apply retroactively.
 
 **Procedure:**
 
-1. Edit the template in `template/` — never the rendered file in the version directory.
+1. Edit the template in `template/`. Never edit the rendered file in the version directory.
 2. Re-render: `bakery update files --image-name <name> --image-version <edition>`.
 3. Build and test locally:
 
@@ -91,8 +93,8 @@ there are silently overwritten by the next `bakery update files`. Always edit th
 `template/` files.
 
 **Never work directly on `main`.** Multiple CI sessions may be running concurrently.
-Use a branch. For changes spanning multiple repos, use worktrees (see the repo's
-`CLAUDE.md` for the worktree pattern).
+Use a branch. For changes spanning multiple repos, use a git worktree per repo so each
+change is isolated from `main`.
 
 **Python version not yet in UV.** When a new CPython minor version is released, there
 is a lag before UV's managed Python manifest includes it. `bakery build` fails with a
@@ -112,14 +114,9 @@ The `clean.yml` workflow removes caches older than 14 days on a schedule.
 
 **Version format mismatch.** Product repos dispatch with raw git-describe versions
 (e.g. `v2026.03.0-473-g072bb6fd1f`). Bakery normalizes these to semver-with-metadata
-(e.g. `2026.04.0-dev+473-g072bb6fd1f`). If `bakery ci matrix` produces an empty matrix
+(e.g. `2026.03.0-dev+473-g072bb6fd1f`). If `bakery ci matrix` produces an empty matrix
 after a dispatch, the formats did not align. The shared workflows strip a leading `v`
 automatically; check the rest of the version string against bakery's normalization.
-
-**Dev version pushed to Docker Hub.** If a product release version equals the current
-daily dev-stream version (same edition and build metadata), `bakery ci merge` can push
-the dev image without the expected `-preview` suffix. Tracked as
-[images-shared#553](https://github.com/posit-dev/images-shared/issues/553).
 
 ## Diagnose a build failure
 
@@ -152,6 +149,7 @@ gh run view <run-id> -R posit-dev/<product-repo> --log-failed
 | Registry auth | Login step fails | Check `DOCKER_HUB_ACCESS_TOKEN` (Docker Hub) or `AWS_ROLE` + `id-token: write` (ECR) |
 | ARM64 runner unavailable | `build-arm64` job queued but never starts | Re-run the job; capacity usually clears |
 | Empty matrix after dispatch | `bakery ci matrix` returns `[]` | Dispatched version format didn't match bakery normalization; inspect `image-version` input |
+| Dev build pushed without `-preview` | Release version matches current daily dev-stream version | Known issue ([#553](https://github.com/posit-dev/images-shared/issues/553)); check `bakery ci merge` inputs |
 
 For the shared workflow reference (inputs, secrets, flow diagrams), see
 [CI.md](https://github.com/posit-dev/images-shared/blob/main/CI.md). For the
