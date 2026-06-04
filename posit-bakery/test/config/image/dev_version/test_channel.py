@@ -413,7 +413,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         )
         dv.pinned_version = "9999.99.0-daily+1.pro1"
         with patch(
-            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream",
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
             side_effect=DispatchVersionMismatchError("mismatch"),
         ):
             with pytest.raises(DispatchVersionMismatchError):

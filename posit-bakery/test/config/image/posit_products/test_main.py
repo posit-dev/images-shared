@@ -790,7 +790,7 @@ class TestDispatchOverride:
         """Template streams must NOT hit the network when version_override is supplied."""
         spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         override = "2026.05.0-dev+185-g8a23833f57"
-        result = get_product_artifact_by_stream(
+        result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
             ReleaseChannelEnum.DAILY,
             SUPPORTED_OS["ubuntu"]["24"],
@@ -804,7 +804,7 @@ class TestDispatchOverride:
         """Preview stream is also templatable — no network on override."""
         spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         override = "2026.05.0-dev+185-g8a23833f57"
-        result = get_product_artifact_by_stream(
+        result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
             ReleaseChannelEnum.PREVIEW,
             SUPPORTED_OS["ubuntu"]["24"],
@@ -818,7 +818,7 @@ class TestDispatchOverride:
         from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
 
         with pytest.raises(DispatchVersionMismatchError):
-            get_product_artifact_by_stream(
+            get_product_artifact_by_channel(
                 ProductEnum.CONNECT,
                 ReleaseChannelEnum.DAILY,
                 SUPPORTED_OS["ubuntu"]["24"],
@@ -830,7 +830,7 @@ class TestDispatchOverride:
         from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
 
         with pytest.raises(DispatchVersionMismatchError):
-            get_product_artifact_by_stream(
+            get_product_artifact_by_channel(
                 ProductEnum.WORKBENCH,
                 ReleaseChannelEnum.DAILY,
                 SUPPORTED_OS["ubuntu"]["24"],
@@ -839,7 +839,7 @@ class TestDispatchOverride:
 
     def test_no_override_scheduled_path_unchanged(self, patch_requests_get):
         """With version_override=None, behavior is identical to before this task."""
-        result = get_product_artifact_by_stream(
+        result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
             ReleaseChannelEnum.DAILY,
             SUPPORTED_OS["ubuntu"]["24"],

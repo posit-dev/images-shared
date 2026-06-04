@@ -67,7 +67,6 @@ class ReleaseChannelPath:
                     result[key] = resolver.format(**metadata, **result, **url_safe_result)
             return ReleaseChannelResult(**result)
 
-
         session = cached_session()
         response = session.get(self.channel_url)
         response.raise_for_status()

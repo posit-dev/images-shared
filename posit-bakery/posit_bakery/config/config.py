@@ -385,7 +385,7 @@ def _apply_dev_spec(image: Image, settings: "BakerySettings") -> None:
     when resolution runs.
     """
     # Local import to avoid circular import.
-    from posit_bakery.config.image.dev_version.stream import ImageDevelopmentVersionFromProductStream
+    from posit_bakery.config.image.dev_version.channel import ImageDevelopmentVersionFromProductStream
 
     # Validate channel consistency: if both are set and differ, the pinned version
     # would be filtered out by --dev-channel. Fail loudly instead of silently skipping.
