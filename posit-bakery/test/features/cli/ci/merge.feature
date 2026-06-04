@@ -52,3 +52,17 @@ Feature: merge
         When I execute the command
         Then The command succeeds
         * 0 targets are found in the metadata
+
+    Scenario: Merging filtered to one image excludes a prefix-colliding image
+        Given I call bakery ci merge
+        * in a temp merge-multi-image context
+        * with the arguments:
+            | --image-name    |
+            | ^test-alpha$    |
+            | *-metadata.json |
+        * with testdata ci/merge/multi-image copied to context
+        * with the context as the working directory
+        * with image target merge method patched
+        When I execute the command
+        Then The command succeeds
+        * 1 targets are found in the metadata
