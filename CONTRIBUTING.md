@@ -86,7 +86,7 @@ fixes and regressions.
 ## Footguns
 
 **Never edit rendered files.** Files in version directories (e.g.
-`connect/2026.05/Containerfile.ubuntu2404.std`) are generated from templates. Edits
+`<image>/<edition>/Containerfile.<os>.<variant>`) are generated from templates. Edits
 there are silently overwritten by the next `bakery update files`. Always edit the
 `template/` files.
 
@@ -126,20 +126,20 @@ the dev image without the expected `-preview` suffix. Tracked as
 **1. Find the failing run:**
 
 ```bash
-gh run list -R posit-dev/images-connect        # or images-workbench / images-package-manager
+gh run list -R posit-dev/<product-repo>
 ```
 
 **2. View the run** to see which job failed (`matrix`, `build-amd64`, `build-arm64`,
 `merge`, `readme`):
 
 ```bash
-gh run view <run-id> -R posit-dev/images-connect
+gh run view <run-id> -R posit-dev/<product-repo>
 ```
 
 **3. Read the failed logs:**
 
 ```bash
-gh run view <run-id> -R posit-dev/images-connect --log-failed
+gh run view <run-id> -R posit-dev/<product-repo> --log-failed
 ```
 
 **4. Common failure modes:**
