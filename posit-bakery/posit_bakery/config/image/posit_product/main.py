@@ -356,9 +356,9 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
         meta["connect_daily_os_name"] = connect_daily_os_name
 
     if product == ProductEnum.POSITRON:
-        # positron CDN uses x86_64/x64 for amd64, arm64/arm64 for arm64
-        meta["positron_cdn_arch"] = "x86_64" if arch_identifier == "amd64" else arch_identifier
-        meta["positron_pkg_arch"] = "x64" if arch_identifier == "amd64" else arch_identifier
+        # positron CDN uses x86_64 (path) and x64 (filename) for both amd64 and x86_64
+        meta["positron_cdn_arch"] = "x86_64" if arch_identifier in ("amd64", "x86_64") else arch_identifier
+        meta["positron_pkg_arch"] = "x64" if arch_identifier in ("amd64", "x86_64") else arch_identifier
 
     return meta
 

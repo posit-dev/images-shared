@@ -91,6 +91,21 @@ helper_test_collection = [
     *[
         pytest.param(
             SUPPORTED_OS[_os_name][_os_version],
+            ProductEnum.POSITRON,
+            {
+                "download_json_os": "multi",
+                "os": SUPPORTED_OS[_os_name][_os_version],
+                "arch_identifier": "x86_64",
+                "positron_cdn_arch": "x86_64",
+                "positron_pkg_arch": "x64",
+            },
+            id=f"positron-{_os_name}-{_os_version}",
+        )
+        for _os_name, _os_version in [("rocky", "9"), ("alma", "9"), ("rhel", "9")]
+    ],
+    *[
+        pytest.param(
+            SUPPORTED_OS[_os_name][_os_version],
             ProductEnum.CONNECT,
             {
                 "download_json_os": "jammy",
