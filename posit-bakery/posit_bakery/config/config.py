@@ -372,7 +372,7 @@ class BakerySettings(BaseModel):
 
 
 def _apply_dev_spec(image: Image, settings: "BakerySettings") -> None:
-    """Pin the dispatched version onto the matching stream dev version.
+    """Pin the dispatched version onto the matching channel dev version.
 
     Called before load_dev_versions() so the pinned version is set
     when resolution runs.
