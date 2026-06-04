@@ -329,7 +329,7 @@ class BakerySettings(BaseModel):
     def migrate_dev_stream_to_dev_channel(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        if "dev_stream" in data and "dev_channel" not in data:
+        if "dev_stream" in data and data.get("dev_channel") is None:
             import warnings
 
             warnings.warn(
