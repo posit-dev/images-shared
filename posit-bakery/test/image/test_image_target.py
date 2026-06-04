@@ -7,7 +7,7 @@ import python_on_whales
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
