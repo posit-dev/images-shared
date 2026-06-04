@@ -1,0 +1,9 @@
+{
+  "version": "2026.07.0-55",
+  "pub_date": "2026-06-04 10:16:52 UTC",
+  "name": "2026.07.0-55",
+  "url": "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
+  "commit": "26de7b27508e7ad0034baf9d478809c247dfb02a",
+  "sha256hash": "0274d9d3e98f2b5dc51d8ae5a4d7583b9985ea4428a3aa135ee8bb6ae77a82f6",
+  "codeoss_version": "1.118.0"
+}

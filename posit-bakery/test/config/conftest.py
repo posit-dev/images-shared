@@ -32,6 +32,8 @@ CONNECT_DAILY = PRODUCT_TESTDATA_DIR / "connect_latest-packages.json"
 PACKAGE_MANAGER_PREVIEW = PRODUCT_TESTDATA_DIR / "rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_DAILY = PRODUCT_TESTDATA_DIR / "rstudio-pm-rc-latest.txt"
 WORKBENCH_DAILY = PRODUCT_TESTDATA_DIR / "workbench_index.json"
+POSITRON_DAILY_X86_64 = PRODUCT_TESTDATA_DIR / "positron_daily_x86_64.json"
+POSITRON_DAILY_ARM64 = PRODUCT_TESTDATA_DIR / "positron_daily_arm64.json"
 
 
 @pytest.fixture
@@ -84,6 +86,10 @@ def patch_testdata_response(url: str):
         mock_response.text = PACKAGE_MANAGER_DAILY.read_text()
     elif url.startswith("https://dailies.rstudio.com/rstudio/") and url.endswith("/index.json"):
         mock_response.json.return_value = json.loads(WORKBENCH_DAILY.read_text())
+    elif url == product_const.POSITRON_DAILY_CDN_URL_TEMPLATE.format(positron_cdn_arch="x86_64"):
+        mock_response.json.return_value = json.loads(POSITRON_DAILY_X86_64.read_text())
+    elif url == product_const.POSITRON_DAILY_CDN_URL_TEMPLATE.format(positron_cdn_arch="arm64"):
+        mock_response.json.return_value = json.loads(POSITRON_DAILY_ARM64.read_text())
     # Default mock response for unknown URLs
     else:
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError
