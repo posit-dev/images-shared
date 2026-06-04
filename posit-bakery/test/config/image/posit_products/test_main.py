@@ -1013,3 +1013,55 @@ class TestDispatchOverride:
         assert result.version is not None
         assert result.download_url is not None
         assert result.channel_latest is True
+
+
+class TestPositronDaily:
+    @pytest.mark.parametrize(
+        "_os, expected_version, expected_url",
+        [
+            pytest.param(
+                SUPPORTED_OS["ubuntu"]["24"],
+                "2026.07.0-55",
+                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
+                id="ubuntu-24",
+            ),
+            pytest.param(
+                SUPPORTED_OS["ubuntu"]["22"],
+                "2026.07.0-55",
+                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
+                id="ubuntu-22",
+            ),
+            pytest.param(
+                SUPPORTED_OS["rhel"]["9"],
+                "2026.07.0-55",
+                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
+                id="rhel-9",
+            ),
+        ],
+    )
+    def test_positron_daily(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
+        """Test that the correct version and URL are returned for a Positron daily build."""
+        output = get_product_artifact_by_channel(ProductEnum.POSITRON, ReleaseChannelEnum.DAILY, _os)
+        assert output.version == expected_version
+        assert str(output.download_url) == expected_url
+
+    def test_unsupported_channel(self):
+        """POSITRON only supports DAILY; release should raise."""
+        with pytest.raises(ValueError, match="is not supported for product"):
+            get_product_artifact_by_channel(
+                ProductEnum.POSITRON, ReleaseChannelEnum.RELEASE, SUPPORTED_OS["ubuntu"]["24"]
+            )
+
+    def test_version_override(self, patch_requests_get):
+        """version_templatable=True: a pinned version bypasses CDN and builds the URL offline."""
+        output = get_product_artifact_by_channel(
+            ProductEnum.POSITRON,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override="2026.07.0-100",
+        )
+        assert output.version == "2026.07.0-100"
+        assert str(output.download_url) == (
+            "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-100.tar.gz"
+        )
+
