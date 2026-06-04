@@ -8,19 +8,10 @@ from typer.testing import CliRunner
 from posit_bakery.cli.main import app
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from test.cli.conftest import settings_from_call
 
 runner = CliRunner()
 BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
-
-
-def _settings_from_call(mock):
-    """Extract the BakerySettings passed to BakeryConfig.from_context.
-
-    Handles both positional (build.py: from_context(context, settings))
-    and keyword (ci.py: from_context(context=context, settings=settings)) calls.
-    """
-    args, kwargs = mock.from_context.call_args
-    return kwargs.get("settings", args[1] if len(args) > 1 else None)
 
 
 class TestBuildDevSpec:
@@ -43,7 +34,7 @@ class TestBuildDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert isinstance(settings.dev_spec, DevBuildSpec)
         assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
         assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
@@ -60,7 +51,7 @@ class TestBuildDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert isinstance(settings.dev_spec, DevBuildSpec)
         assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
         assert settings.dev_spec.channel is None
@@ -102,7 +93,7 @@ class TestBuildDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert settings.dev_spec is None
 
 
@@ -128,7 +119,7 @@ class TestCiMatrixDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert isinstance(settings.dev_spec, DevBuildSpec)
         assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
         assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
@@ -146,7 +137,7 @@ class TestCiMatrixDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert isinstance(settings.dev_spec, DevBuildSpec)
         assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
         assert settings.dev_spec.channel is None
@@ -190,5 +181,5 @@ class TestCiMatrixDevSpec:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
-        settings = _settings_from_call(mock)
+        settings = settings_from_call(mock)
         assert settings.dev_spec is None

@@ -13,16 +13,10 @@ from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from test.cli.conftest import settings_from_call
 
 runner = CliRunner()
 BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
-
-
-def _channel_from_settings(mock):
-    """Extract dev_channel from the BakerySettings passed to from_context."""
-    args, kwargs = mock.from_context.call_args
-    settings = kwargs.get("settings", args[1] if len(args) > 1 else None)
-    return settings.dev_channel
 
 
 class TestCiMergeDevStreamDeprecation:
@@ -49,7 +43,7 @@ class TestCiMergeDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_merge):
         mock, meta = mock_merge
@@ -59,7 +53,7 @@ class TestCiMergeDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock).dev_channel == ReleaseChannelEnum.PREVIEW
 
 
 class TestCiReadmeDevStreamDeprecation:
@@ -79,7 +73,7 @@ class TestCiReadmeDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_readme) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock_readme).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_readme):
         result = runner.invoke(
@@ -88,7 +82,7 @@ class TestCiReadmeDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_readme) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock_readme).dev_channel == ReleaseChannelEnum.PREVIEW
 
 
 class TestCleanCacheRegistryDevStreamDeprecation:
@@ -107,7 +101,7 @@ class TestCleanCacheRegistryDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_clean) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock_clean).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_clean):
         result = runner.invoke(
@@ -126,7 +120,7 @@ class TestCleanCacheRegistryDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_clean) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock_clean).dev_channel == ReleaseChannelEnum.PREVIEW
 
 
 class TestCleanTempRegistryDevStreamDeprecation:
@@ -145,7 +139,7 @@ class TestCleanTempRegistryDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_clean) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock_clean).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_clean):
         result = runner.invoke(
@@ -164,7 +158,7 @@ class TestCleanTempRegistryDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_clean) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock_clean).dev_channel == ReleaseChannelEnum.PREVIEW
 
 
 class TestGetTagsDevStreamDeprecation:
@@ -183,7 +177,7 @@ class TestGetTagsDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_get) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock_get).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_get):
         result = runner.invoke(
@@ -192,7 +186,7 @@ class TestGetTagsDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_get) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock_get).dev_channel == ReleaseChannelEnum.PREVIEW
 
 
 class TestRunDgossDevStreamDeprecation:
@@ -216,7 +210,7 @@ class TestRunDgossDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_run) == ReleaseChannelEnum.DAILY
+        assert settings_from_call(mock_run).dev_channel == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_run):
         result = runner.invoke(
@@ -225,4 +219,4 @@ class TestRunDgossDevStreamDeprecation:
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert _channel_from_settings(mock_run) == ReleaseChannelEnum.PREVIEW
+        assert settings_from_call(mock_run).dev_channel == ReleaseChannelEnum.PREVIEW

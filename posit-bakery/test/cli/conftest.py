@@ -11,6 +11,16 @@ from test.cli.bakery_command import BakeryCommand
 from test.helpers import remove_images
 
 
+def settings_from_call(mock):
+    """Extract BakerySettings from a mocked BakeryConfig.from_context call.
+
+    Handles both positional (from_context(context, settings)) and keyword
+    (from_context(context=context, settings=settings)) calling conventions.
+    """
+    args, kwargs = mock.from_context.call_args
+    return kwargs.get("settings", args[1] if len(args) > 1 else None)
+
+
 @pytest.fixture(scope="session")
 def ci_testdata():
     """Return the path to the CI test data directory"""
