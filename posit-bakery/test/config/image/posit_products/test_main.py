@@ -61,6 +61,36 @@ helper_test_collection = [
     *[
         pytest.param(
             SUPPORTED_OS[_os_name][_os_version],
+            ProductEnum.POSITRON,
+            {
+                "download_json_os": "noble",
+                "os": SUPPORTED_OS[_os_name][_os_version],
+                "arch_identifier": "amd64",
+                "positron_cdn_arch": "x86_64",
+                "positron_pkg_arch": "x64",
+            },
+            id=f"positron-{_os_name}-{_os_version}",
+        )
+        for _os_name, _os_version in [("debian", "12"), ("ubuntu", "24")]
+    ],
+    *[
+        pytest.param(
+            SUPPORTED_OS[_os_name][_os_version],
+            ProductEnum.POSITRON,
+            {
+                "download_json_os": "jammy",
+                "os": SUPPORTED_OS[_os_name][_os_version],
+                "arch_identifier": "amd64",
+                "positron_cdn_arch": "x86_64",
+                "positron_pkg_arch": "x64",
+            },
+            id=f"positron-{_os_name}-{_os_version}",
+        )
+        for _os_name, _os_version in [("debian", "11"), ("ubuntu", "22")]
+    ],
+    *[
+        pytest.param(
+            SUPPORTED_OS[_os_name][_os_version],
             ProductEnum.CONNECT,
             {
                 "download_json_os": "jammy",
