@@ -1,5 +1,5 @@
 from .base import BaseImageDevelopmentVersion
-from .stream import ImageDevelopmentVersionFromProductStream
+from .channel import ImageDevelopmentVersionFromProductStream
 
 DevelopmentVersionTypes = ImageDevelopmentVersionFromProductStream
 DevelopmentVersionField = ImageDevelopmentVersionFromProductStream

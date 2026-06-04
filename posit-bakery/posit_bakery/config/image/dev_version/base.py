@@ -210,7 +210,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         raise NotImplementedError("Subclasses must implement get_url method.")
 
-    def get_release_stream(self) -> ReleaseChannelEnum | None:
+    def get_release_channel(self) -> ReleaseChannelEnum | None:
         """Return the release channel for this development version, if known.
 
         :return: The ReleaseChannelEnum value, or None if not applicable.
@@ -250,9 +250,9 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
         version = self.get_version()
         metadata = {}
-        release_stream = self.get_release_stream()
-        if release_stream is not None:
-            metadata["release_channel"] = release_stream
+        release_channel = self.get_release_channel()
+        if release_channel is not None:
+            metadata["release_channel"] = release_channel
         return ImageVersion(
             name=version,
             subpath=f".dev-{version}".replace(" ", "-").lower(),

@@ -7,7 +7,7 @@ from pydantic import Field, ValidationError, model_validator
 from posit_bakery.config.image.build_os import DEFAULT_OS, DEFAULT_PLATFORMS
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum, ReleaseStreamEnum
-from posit_bakery.config.image.posit_product.main import get_product_artifact_by_stream
+from posit_bakery.config.image.posit_product.main import get_product_artifact_by_channel
 from posit_bakery.config.image.version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         if self.resolved_version is not None:
             return self.resolved_version
         _os = self.get_primary_os()
-        result = get_product_artifact_by_stream(self.product, self.channel, _os.buildOS)
+        result = get_product_artifact_by_channel(self.product, self.channel, _os.buildOS)
         return result.version
 
     def get_url_by_os(self, generalize_architecture: bool = False) -> dict[str, str]:
@@ -86,7 +86,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         """
         url_by_os = {}
         for _os in self.os:
-            result = get_product_artifact_by_stream(self.product, self.channel, _os.buildOS)
+            result = get_product_artifact_by_channel(self.product, self.channel, _os.buildOS)
             if generalize_architecture:
                 url_by_os[_os.name] = str(result.architecture_generalized_download_url)
             else:
@@ -101,7 +101,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         Caches the version from the first successfully resolved OS so
         that get_version() can return it without a redundant fetch.
         """
-        # Local import avoids a circular import between stream.py and main.py.
+        # Local import avoids a circular import between channel.py and main.py.
         from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
 
         self.resolved_version = None
@@ -109,7 +109,7 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
         for os_version in self.os:
             try:
                 generalize = os_version.platforms != DEFAULT_PLATFORMS
-                result = get_product_artifact_by_stream(
+                result = get_product_artifact_by_channel(
                     self.product,
                     self.channel,
                     os_version.buildOS,
@@ -128,8 +128,8 @@ class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
                 log.warning(f"Excluding OS '{os_version.name}' from {repr(self)}: {e}")
         return resolved
 
-    def get_release_stream(self) -> ReleaseChannelEnum:
-        """Return the release channel for this product stream development version.
+    def get_release_channel(self) -> ReleaseChannelEnum:
+        """Return the release channel for this product channel development version.
 
         :return: The configured ReleaseChannelEnum value.
         """

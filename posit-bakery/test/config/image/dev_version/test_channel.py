@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
 from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum
-from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
+from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
 
 pytestmark = [
     pytest.mark.unit,
@@ -45,8 +45,8 @@ class TestImageDevelopmentVersionFromProductStream:
         Test that ImageDevelopmentVersionFromProductStream objects are correctly initialized
         and parented.
         """
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -69,8 +69,8 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_deduplicate_registries(self, caplog):
         """Test that duplicate registries are deduplicated."""
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -94,8 +94,8 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_check_os_not_empty(self, caplog):
         """Test that an BaseImageDevelopmentVersion must have at least one OS defined."""
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -112,8 +112,8 @@ class TestImageDevelopmentVersionFromProductStream:
         """Test that duplicate OSes are deduplicated."""
         mock_parent = MagicMock(spec=Image)
         mock_parent.path = Path("/tmp/path")
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -133,8 +133,8 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -152,8 +152,8 @@ class TestImageDevelopmentVersionFromProductStream:
             ValidationError,
             match="Only one OS can be marked as primary for image development version. Found 2 OSes marked primary.",
         ):
-            with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-                mock_get.return_value = ReleaseStreamResult(
+            with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+                mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
                 i = ImageDevelopmentVersionFromProductStream(
@@ -168,8 +168,8 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_no_primary_os_warning(self, caplog):
         """Test that a warning is logged if no primary OS is defined."""
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -191,8 +191,8 @@ class TestImageDevelopmentVersionFromProductStream:
             ValidationError,
             match="Only one of 'extraRegistries' or 'overrideRegistries' can be defined for image development version.",
         ):
-            with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-                mock_get.return_value = ReleaseStreamResult(
+            with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+                mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
                 i = ImageDevelopmentVersionFromProductStream(
@@ -219,8 +219,8 @@ class TestImageDevelopmentVersionFromProductStream:
             expected_registries[2],  # ghcr.io/posit-team
         ]
 
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -253,8 +253,8 @@ class TestImageDevelopmentVersionFromProductStream:
         mock_image_parent = MagicMock(spec=Image)
         mock_image_parent.merged_registries = parent_registries
 
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             i = ImageDevelopmentVersionFromProductStream(
@@ -318,15 +318,15 @@ class TestImageDevelopmentVersionFromProductStream:
         assert image_version.metadata.get("release_channel") == ReleaseChannelEnum.DAILY
         assert "release_stream" not in image_version.metadata
 
-    def test_get_release_stream_returns_stream(self, patch_requests_get):
-        """Test that get_release_stream returns the configured stream."""
+    def test_get_release_channel_returns_channel(self, patch_requests_get):
+        """Test that get_release_channel returns the configured channel."""
         dev_version = ImageDevelopmentVersionFromProductStream(
             sourceType="stream",
             product=ProductEnum.PACKAGE_MANAGER,
             channel=ReleaseChannelEnum.DAILY,
             os=[{"name": "Ubuntu 24.04", "primary": True}],
         )
-        assert dev_version.get_release_stream() == ReleaseChannelEnum.DAILY
+        assert dev_version.get_release_channel() == ReleaseChannelEnum.DAILY
 
     def test_as_image_version_metadata_contains_release_channel(self, patch_requests_get):
         """Test that as_image_version populates metadata with release_channel."""
@@ -379,8 +379,8 @@ class TestImageDevelopmentVersionFromProductStream:
             sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.DAILY, os=[mock_os]
         )
 
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0",
                 download_url=download_url,
             )
@@ -413,7 +413,7 @@ class TestImageDevelopmentVersionFromProductStream:
         )
         dv.pinned_version = "9999.99.0-daily+1.pro1"
         with patch(
-            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream",
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
             side_effect=DispatchVersionMismatchError("mismatch"),
         ):
             with pytest.raises(DispatchVersionMismatchError):
@@ -1016,8 +1016,8 @@ class TestByStream:
 
 class TestResolveOsUrls:
     def test_sets_artifact_download_url(self):
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
             dev = ImageDevelopmentVersionFromProductStream(
@@ -1031,7 +1031,7 @@ class TestResolveOsUrls:
             assert str(resolved_os[0].artifactDownloadURL) == "https://example.com/image.tar.gz"
 
     def test_excludes_os_on_resolution_failure(self):
-        good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
+        good = ReleaseChannelResult(version="1.0.0", download_url="https://example.com/good.deb")
 
         def side_effect(product, stream, build_os, **kwargs):
             if build_os.version == "26.04":
@@ -1039,7 +1039,7 @@ class TestResolveOsUrls:
             return good
 
         with patch(
-            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream", side_effect=side_effect
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel", side_effect=side_effect
         ):
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
@@ -1055,8 +1055,8 @@ class TestResolveOsUrls:
             assert resolved_os[0].name == "Ubuntu 24.04"
 
     def test_generalizes_url_for_multiplatform_os(self):
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/pkg_amd64.deb"
             )
             dev = ImageDevelopmentVersionFromProductStream(
@@ -1076,7 +1076,7 @@ class TestResolveOsUrls:
             assert "$TARGETARCH" in str(resolved_os[0].artifactDownloadURL)
 
     def test_all_os_fail_returns_empty(self):
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.side_effect = ValueError("no packages")
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
@@ -1088,7 +1088,7 @@ class TestResolveOsUrls:
             assert len(resolved_os) == 0
 
     def test_unexpected_exception_propagates(self):
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.side_effect = TypeError("unexpected bug")
             dev = ImageDevelopmentVersionFromProductStream(
                 sourceType="stream",
@@ -1100,7 +1100,7 @@ class TestResolveOsUrls:
                 dev._resolve_os_urls()
 
     def test_primary_os_excluded_falls_back_to_secondary(self):
-        good = ReleaseStreamResult(version="1.0.0", download_url="https://example.com/good.deb")
+        good = ReleaseChannelResult(version="1.0.0", download_url="https://example.com/good.deb")
 
         def side_effect(product, stream, build_os, **kwargs):
             if build_os.version == "26.04":
@@ -1112,7 +1112,7 @@ class TestResolveOsUrls:
         mock_parent.resolve_dependency_versions.return_value = []
 
         with patch(
-            "posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream", side_effect=side_effect
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel", side_effect=side_effect
         ):
             dev = ImageDevelopmentVersionFromProductStream(
                 parent=mock_parent,
