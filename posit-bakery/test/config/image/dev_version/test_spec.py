@@ -62,3 +62,18 @@ class TestDevBuildSpec:
     def test_unknown_fields_raise(self):
         with pytest.raises(ValidationError):
             DevBuildSpec.model_validate_json('{"version": "2026.05.0-dev+1-gSHA", "unexpected_field": "daily"}')
+
+    def test_explicit_none_version_with_release_branch(self):
+        spec = DevBuildSpec(version=None, release_branch="apple-blossom")
+        assert spec.version is None
+        assert spec.release_branch == "apple-blossom"
+
+    def test_explicit_none_release_branch_with_version(self):
+        spec = DevBuildSpec(version="2026.06.0-daily+143", release_branch=None)
+        assert spec.version == "2026.06.0-daily+143"
+        assert spec.release_branch is None
+
+    def test_json_null_version_with_release_branch(self):
+        spec = DevBuildSpec.model_validate_json('{"version": null, "release_branch": "apple-blossom"}')
+        assert spec.version is None
+        assert spec.release_branch == "apple-blossom"
