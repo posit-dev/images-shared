@@ -196,7 +196,7 @@ def build(
     latest: Annotated[
         Optional[bool],
         typer.Option(
-            "--latest/--no-latest",
+            "--latest",
             help="Build only the latest version of each image. Development versions are ignored by this filter.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
