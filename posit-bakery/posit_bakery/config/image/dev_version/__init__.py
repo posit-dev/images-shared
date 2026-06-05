@@ -4,11 +4,11 @@ from pydantic import Field
 
 from .base import BaseImageDevelopmentVersion
 from .channel import ImageDevelopmentVersionFromProductChannel
-from .dependency import ImageDevelopmentVersionFromDependencyPrerelease
+from .dependency import ImageDevelopmentVersionFromDependency
 
 DevelopmentVersionTypes = Union[
     ImageDevelopmentVersionFromProductChannel,
-    ImageDevelopmentVersionFromDependencyPrerelease,
+    ImageDevelopmentVersionFromDependency,
 ]
 DevelopmentVersionField = Annotated[DevelopmentVersionTypes, Field(discriminator="sourceType")]
 
@@ -16,7 +16,7 @@ DevelopmentVersionField = Annotated[DevelopmentVersionTypes, Field(discriminator
 __all__ = [
     "BaseImageDevelopmentVersion",
     "ImageDevelopmentVersionFromProductChannel",
-    "ImageDevelopmentVersionFromDependencyPrerelease",
+    "ImageDevelopmentVersionFromDependency",
     "DevelopmentVersionTypes",
     "DevelopmentVersionField",
 ]

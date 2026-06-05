@@ -9,25 +9,29 @@ from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersi
 from posit_bakery.config.image.version_os import ImageVersionOS
 
 
-class ImageDevelopmentVersionFromDependencyPrerelease(BaseImageDevelopmentVersion):
-    """Dev version sourced from the prerelease channel of a dependency constraint.
+class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
+    """Dev version sourced from a dependency constraint.
 
-    The dependency's constraint class must support ``prerelease=True``. Version
-    resolution delegates entirely to the dependency module; the Containerfile
-    template is responsible for constructing the download URL from Image.Version
-    and any values passed via the ``values`` field.
+    When ``prerelease=True``, the dependency's prerelease channel is resolved.
+    Version resolution delegates entirely to the dependency module; the
+    Containerfile template is responsible for constructing the download URL
+    from ``Image.Version`` and any values passed via the ``values`` field.
     """
 
-    sourceType: Literal["dependency-prerelease"] = "dependency-prerelease"
+    sourceType: Literal["dependency"] = "dependency"
     dependency: Annotated[
         SupportedDependencies,
-        Field(description="The dependency whose prerelease version to resolve."),
+        Field(description="The dependency to resolve a version for."),
     ]
+    prerelease: Annotated[
+        bool,
+        Field(default=False, description="Whether to resolve the dependency's prerelease channel."),
+    ] = False
 
     def get_version(self) -> str:
         constraint_class = get_dependency_constraint_class(self.dependency)
         constraint = constraint_class(
-            prerelease=True,
+            prerelease=self.prerelease,
             constraint=VersionConstraint(latest=True, count=1),
         )
         result = constraint.resolve_versions()
@@ -41,4 +45,4 @@ class ImageDevelopmentVersionFromDependencyPrerelease(BaseImageDevelopmentVersio
         return list(self.os)
 
     def __repr__(self):
-        return f'devVersion(sourceType="dependency-prerelease", dependency="{self.dependency}")'
+        return f'devVersion(sourceType="dependency", dependency="{self.dependency}", prerelease={self.prerelease})'
