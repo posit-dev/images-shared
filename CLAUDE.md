@@ -27,6 +27,10 @@ share the same structure: a `bakery.yaml` at the root, image directories with `t
 subdirectories containing Jinja2 templates, and rendered version directories. They all use
 `posit-bakery` (from this repo) as their build tool and share the same CI workflows.
 
+## Rebasing
+
+If asked to rebase a PR, prioritize caution and clarity over speed. Take the time to understand the changes in the base branch and how they interact with your changes. If there are conflicts, resolve them thoughtfully, ensuring that you don't accidentally remove important changes from the base branch or your PR. If you are unsure about how to resolve a conflict, ask for help or clarification. Never drop a feature or change without consulting the user.
+
 ## Posit Product Naming
 
 | Current Name | Legacy Name | ENV Prefix | Legacy Prefix | Helm Chart |
