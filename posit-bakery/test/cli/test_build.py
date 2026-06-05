@@ -1,19 +1,16 @@
 import json
 import re
 import subprocess
+from pathlib import Path
 from shutil import which
+from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
 from pytest_bdd import scenarios, then, parsers
-
-from unittest.mock import patch, MagicMock
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
-from posit_bakery.const import DevVersionInclusionEnum
 
 scenarios(
     "cli/build.feature",
