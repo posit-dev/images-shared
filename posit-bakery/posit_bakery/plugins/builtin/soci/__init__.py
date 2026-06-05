@@ -196,25 +196,36 @@ class SociPlugin(BakeryToolPlugin):
             )
             return results
 
-        def resolve_bin(finder: Any, fallback: str) -> str:
-            # A dry run executes nothing, so a missing tool must not abort the
-            # workflow — fall back to the bare name purely for the logged
-            # command. When the tool resolves we keep its real path so the
-            # dry-run output stays accurate. Outside a dry run a missing tool
-            # is still a hard error.
+        def is_standalone(opts: SociOptions) -> bool:
+            return opts.standalone if opts.standalone is not None else standalone
+
+        # Only the tools an eligible target actually executes need to be
+        # present: standalone mode bridges the registry with oras and never
+        # touches containerd (ctr), while the containerd-backed path uses ctr
+        # but not oras. soci is used in both modes.
+        needs_containerd = any(not is_standalone(opts) for _, opts, _ in eligible)
+        needs_standalone = any(is_standalone(opts) for _, opts, _ in eligible)
+
+        def resolve_bin(finder: Any, fallback: str, *, required: bool) -> str:
+            # A tool only has to resolve when it will actually be executed:
+            # a dry run executes nothing, and a tool no eligible target uses
+            # (e.g. ctr in standalone mode) is never invoked. In those cases
+            # fall back to the bare name purely for any logged command. When
+            # the tool resolves we keep its real path so output stays accurate.
+            # A tool a real run needs but cannot find is still a hard error.
             try:
                 return finder(base_path)
             except BakeryToolNotFoundError:
-                if dry_run:
+                if dry_run or not required:
                     return fallback
                 raise
 
-        soci_bin = resolve_bin(find_soci_bin, "soci")
-        ctr_bin = resolve_bin(find_ctr_bin, "ctr")
-        oras_bin = resolve_bin(find_oras_bin, "oras")
+        soci_bin = resolve_bin(find_soci_bin, "soci", required=True)
+        ctr_bin = resolve_bin(find_ctr_bin, "ctr", required=needs_containerd)
+        oras_bin = resolve_bin(find_oras_bin, "oras", required=needs_standalone)
 
         for target, opts, ref in eligible:
-            workflow_standalone = opts.standalone if opts.standalone is not None else standalone
+            workflow_standalone = is_standalone(opts)
             candidates = opts.candidate_namespaces or ["default", "moby"]
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,

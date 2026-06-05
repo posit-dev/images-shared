@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import posit_bakery.util as util
+from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci import SociPlugin
 from posit_bakery.plugins.builtin.soci.options import SociOptions
@@ -222,3 +223,64 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
     assert captured["soci_bin"] == "/custom/soci"
     assert captured["ctr_bin"] == "/custom/ctr"
     assert captured["oras_bin"] == "/custom/oras"
+
+
+def test_standalone_run_does_not_require_ctr(tmp_path, monkeypatch):
+    """Standalone mode never touches containerd, so a real (non-dry-run)
+    standalone conversion must not require `ctr` to be installed — only the
+    tools it actually executes (soci, oras)."""
+    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
+    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
+    monkeypatch.delenv("CTR_PATH", raising=False)
+    monkeypatch.setattr(util, "which", lambda name: None)
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True, standalone=True),
+        ),
+        patch("subprocess.run") as mock_run,
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            return_value="sha256:abc",
+        ),
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=False,
+            standalone=True,
+        )
+
+    assert [r.exit_code for r in results] == [0]
+
+
+def test_non_standalone_run_still_requires_ctr(tmp_path, monkeypatch):
+    """A real (non-dry-run) containerd-backed conversion does use `ctr`, so a
+    missing `ctr` must remain a hard error."""
+    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
+    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
+    monkeypatch.delenv("CTR_PATH", raising=False)
+    monkeypatch.setattr(util, "which", lambda name: None)
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True, standalone=False),
+        ),
+        patch("subprocess.run"),
+        pytest.raises(BakeryToolNotFoundError),
+    ):
+        plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=False,
+            standalone=False,
+        )
