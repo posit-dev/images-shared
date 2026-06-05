@@ -58,3 +58,38 @@ class TestRunDgossPlatformNormalization:
         settings = mock_config.from_context.call_args[0][1]
         assert settings.filter.image_platform == [expected]
         assert mock_plugin.execute.call_args[1]["platform"] == expected
+
+
+class TestRunDgossLatestFlag:
+    """The --latest flag is passed through to settings and warns with dev inclusion."""
+
+    def test_latest_passed_to_settings(self, mocked_bakery_run_dgoss):
+        mock_config, _ = mocked_bakery_run_dgoss
+        result = runner.invoke(
+            app,
+            ["run", "dgoss", "--latest", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.latest is True
+
+    def test_latest_default_false(self, mocked_bakery_run_dgoss):
+        mock_config, _ = mocked_bakery_run_dgoss
+        result = runner.invoke(
+            app,
+            ["run", "dgoss", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.latest is False
+
+    def test_latest_with_dev_versions_include_warns(self, mocked_bakery_run_dgoss, caplog):
+        result = runner.invoke(
+            app,
+            ["run", "dgoss", "--latest", "--dev-versions", "include", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert "--latest ignores development versions" in caplog.text

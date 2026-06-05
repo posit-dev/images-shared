@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, warn_if_latest_ignores_dev_versions
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -111,6 +111,15 @@ class DGossPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = MatrixVersionInclusionEnum.EXCLUDE,
+            latest: Annotated[
+                Optional[bool],
+                typer.Option(
+                    "--latest",
+                    help="Run tests only against the latest version of each image. "
+                    "Development versions are ignored by this filter.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = False,
             metadata_file: Annotated[
                 Optional[Path],
                 typer.Option(
@@ -153,8 +162,10 @@ class DGossPlugin(BakeryToolPlugin):
                 ),
                 dev_versions=dev_versions,
                 matrix_versions=matrix_versions,
+                latest=latest,
                 clean_temporary=clean,
             )
+            warn_if_latest_ignores_dev_versions(latest, dev_versions)
             c = BakeryConfig.from_context(context, settings)
 
             if metadata_file:
