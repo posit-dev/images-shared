@@ -193,6 +193,14 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    latest: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--latest/--no-latest",
+            help="Build only the latest version of each image. Development versions are ignored by this filter.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
 ) -> None:
     """Builds images in the context path
 
@@ -214,10 +222,18 @@ def build(
         dev_versions=dev_versions,
         dev_stream=dev_stream,
         matrix_versions=matrix_versions,
+        latest=latest,
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
     )
+
+    if latest and dev_versions in (DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE):
+        log.warning(
+            f"--latest ignores development versions; --dev-versions {dev_versions.value} "
+            "has no effect on the latest filter."
+        )
+
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     if plan:

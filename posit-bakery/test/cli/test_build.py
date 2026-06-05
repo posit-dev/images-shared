@@ -7,9 +7,80 @@ import pytest
 import python_on_whales
 from pytest_bdd import scenarios, then, parsers
 
+from unittest.mock import patch, MagicMock
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from posit_bakery.cli.main import app
+from posit_bakery.const import DevVersionInclusionEnum
+
 scenarios(
     "cli/build.feature",
 )
+
+runner = CliRunner()
+
+BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
+
+
+@pytest.fixture
+def mock_build_config():
+    """Mock BakeryConfig in the build command to capture settings without building."""
+    with patch("posit_bakery.cli.build.BakeryConfig") as mock:
+        instance = MagicMock()
+        instance.build_targets.return_value = None
+        mock.from_context.return_value = instance
+        yield mock
+
+
+class TestBuildLatestFlag:
+    def test_latest_passed_to_settings(self, mock_build_config):
+        result = runner.invoke(
+            app,
+            ["build", "--latest", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        settings = mock_build_config.from_context.call_args[0][1]
+        assert settings.latest is True
+
+    def test_latest_default_false(self, mock_build_config):
+        result = runner.invoke(
+            app,
+            ["build", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        settings = mock_build_config.from_context.call_args[0][1]
+        assert settings.latest is False
+
+    def test_latest_with_dev_versions_only_warns(self, mock_build_config, caplog):
+        result = runner.invoke(
+            app,
+            ["build", "--latest", "--dev-versions", "only", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "--latest ignores development versions" in caplog.text
+
+    def test_latest_with_dev_versions_include_warns(self, mock_build_config, caplog):
+        result = runner.invoke(
+            app,
+            ["build", "--latest", "--dev-versions", "include", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "--latest ignores development versions" in caplog.text
+
+    def test_no_warning_without_latest(self, mock_build_config, caplog):
+        result = runner.invoke(
+            app,
+            ["build", "--dev-versions", "include", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "--latest ignores development versions" not in caplog.text
 
 
 @then("the bake plan is valid", target_fixture="bake_plan_data")
