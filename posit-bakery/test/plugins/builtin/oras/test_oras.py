@@ -15,6 +15,8 @@ from posit_bakery.plugins.builtin.oras.oras import (
     OrasCopy,
     OrasIndexCopyWorkflow,
     OrasIndexCreateWorkflow,
+    OrasIndexVerifyWorkflow,
+    OrasManifestFetch,
     OrasManifestIndexCreate,
     OrasMergeWorkflow,
     OrasMergeWorkflowResult,
@@ -591,6 +593,128 @@ class TestOrasIndexCopyWorkflow:
         assert result.success is True
         # Two distinct destination repos => two oras cp invocations.
         assert mock_run.call_count == 2
+
+
+class TestOrasManifestFetch:
+    """Tests for the OrasManifestFetch command."""
+
+    def test_command_construction(self):
+        """The fetch command targets the given reference."""
+        cmd = OrasManifestFetch(
+            oras_bin="oras",
+            reference="docker.io/posit/test:1.0.0",
+        )
+        assert cmd.command == ["oras", "manifest", "fetch", "docker.io/posit/test:1.0.0"]
+
+    def test_command_construction_with_descriptor(self):
+        """The --descriptor flag fetches only the descriptor for a lightweight check."""
+        cmd = OrasManifestFetch(
+            oras_bin="oras",
+            reference="docker.io/posit/test:1.0.0",
+            descriptor=True,
+        )
+        assert cmd.command == ["oras", "manifest", "fetch", "--descriptor", "docker.io/posit/test:1.0.0"]
+
+    def test_command_construction_with_plain_http(self):
+        """The --plain-http flag is emitted before the reference."""
+        cmd = OrasManifestFetch(
+            oras_bin="oras",
+            reference="localhost:5000/test:dest",
+            descriptor=True,
+            plain_http=True,
+        )
+        assert cmd.command == [
+            "oras",
+            "manifest",
+            "fetch",
+            "--plain-http",
+            "--descriptor",
+            "localhost:5000/test:dest",
+        ]
+
+    def test_run_success(self):
+        """A zero exit code returns the completed process."""
+        cmd = OrasManifestFetch(oras_bin="oras", reference="docker.io/posit/test:1.0.0")
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=cmd.command, returncode=0, stdout=b'{"schemaVersion":2}', stderr=b""
+            )
+            result = cmd.run()
+        mock_run.assert_called_once_with(cmd.command, capture_output=True)
+        assert result.returncode == 0
+
+    def test_run_failure_raises(self):
+        """A missing reference (non-zero exit) raises BakeryToolRuntimeError."""
+        cmd = OrasManifestFetch(oras_bin="oras", reference="docker.io/posit/test:missing")
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=cmd.command, returncode=1, stdout=b"", stderr=b"not found"
+            )
+            with pytest.raises(BakeryToolRuntimeError):
+                cmd.run()
+
+
+class TestOrasIndexVerifyWorkflow:
+    """Tests for the standalone index-verify primitive."""
+
+    def test_verifies_each_destination_tag(self, mock_image_target_factory):
+        """Every final destination tag is fetched and reported as verified."""
+        target = mock_image_target_factory()
+        extra_tag = MagicMock()
+        extra_tag.destination = "docker.io/posit/test-image"
+        extra_tag.suffix = "1.0.0"
+        extra_tag.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
+        target.tags.append(extra_tag)
+
+        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b"")
+            result = workflow.run()
+
+        assert result.success is True
+        # One fetch per individual destination tag.
+        assert mock_run.call_count == 2
+        assert result.verified == [
+            "ghcr.io/posit-dev/test-image:1.0.0",
+            "docker.io/posit/test-image:1.0.0",
+        ]
+        # Verification uses a lightweight descriptor fetch.
+        assert mock_run.call_args_list[0].args[0][:3] == ["oras", "manifest", "fetch"]
+        assert "--descriptor" in mock_run.call_args_list[0].args[0]
+
+    def test_run_failure_reports_partial(self, mock_image_target_factory):
+        """A failed fetch surfaces an error and only the refs verified so far."""
+        target = mock_image_target_factory()
+        extra_tag = MagicMock()
+        extra_tag.destination = "docker.io/posit/test-image"
+        extra_tag.suffix = "1.0.0"
+        extra_tag.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
+        target.tags.append(extra_tag)
+
+        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"not found"),
+            ]
+            result = workflow.run()
+
+        assert result.success is False
+        assert result.error is not None
+        assert result.verified == ["ghcr.io/posit-dev/test-image:1.0.0"]
+
+    def test_dry_run_skips_execution(self, mock_image_target_factory):
+        """Dry run reports success without invoking oras."""
+        target = mock_image_target_factory()
+        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
+
+        with patch("subprocess.run") as mock_run:
+            result = workflow.run(dry_run=True)
+
+        mock_run.assert_not_called()
+        assert result.success is True
 
 
 @pytest.mark.slow

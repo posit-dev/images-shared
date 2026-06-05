@@ -17,6 +17,7 @@ Feature: merge
             | amd64-metadata.json |
             | arm64-metadata.json |
         * 4 targets are found in the metadata
+        * 4 destination tags are verified
         * the merge calls include:
             | cripittwood.azurecr.io/posit/test-multi/tmp:latest@sha256:f5d7d95a3801d05f91db1fa7b5bba9fdb3d5babc0332c56f0cca25407c93a2f1 |                                                                                                                            |
             | cripittwood.azurecr.io/posit/test-multi/tmp:latest@sha256:b0f70c272157281f3e70fcd1d890d6927a9268f4bd315e6d7cba677182bd6098 | cripittwood.azurecr.io/posit/test-multi/tmp:latest@sha256:22adb0b3d07e78916da03c81b899d5ded4aaff8098d40a9b8cb071c8c0f3a4a2 |

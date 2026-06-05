@@ -276,6 +276,7 @@ def publish(
     from posit_bakery.plugins.builtin.oras.oras import (
         OrasIndexCopyWorkflow,
         OrasIndexCreateWorkflow,
+        OrasIndexVerifyWorkflow,
         find_oras_bin,
     )
     from posit_bakery.plugins.registry import get_plugin
@@ -366,6 +367,7 @@ def publish(
 
     # Phase 3: index copy.
     copy_failed = False
+    copied_targets: list = []
     for t in targets:
         if t.uid not in temp_refs:
             continue
@@ -376,12 +378,29 @@ def publish(
         if not copy.success:
             log.error(f"index-copy failed for '{t}': {copy.error}")
             copy_failed = True
+        else:
+            copied_targets.append(t)
+
+    # Phase 4: verify each final destination tag resolves. This replaces the
+    # `docker buildx imagetools inspect` check the old `bakery ci merge` ran;
+    # ORAS is faster and more reliable for the existence check.
+    verify_failed = False
+    for t in copied_targets:
+        verify = OrasIndexVerifyWorkflow(
+            oras_bin=oras_bin,
+            image_target=t,
+        ).run(dry_run=dry_run)
+        if not verify.success:
+            log.error(f"verification failed for '{t}': {verify.error}")
+            verify_failed = True
+        else:
+            log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
 
     # The temporary indexes (and any SOCI-converted variants) are intentionally
     # left in place; they are cleaned up out-of-band by the clean.yml workflow
     # (bakery clean temp-registry) rather than deleted here.
 
-    if copy_failed:
+    if copy_failed or verify_failed:
         raise typer.Exit(code=1)
 
 

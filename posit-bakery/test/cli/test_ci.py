@@ -68,6 +68,17 @@ def patch_image_target_merge_method(mocker):
             result.success = True
             return result
 
+    class MockOrasIndexVerifyWorkflow:
+        def __init__(self, oras_bin, image_target):
+            self.image_target = image_target
+            self.oras_bin = oras_bin
+
+        def run(self, dry_run=False):
+            result = MagicMock()
+            result.success = True
+            result.verified = self.image_target.tags.as_strings()
+            return result
+
     # Patch the imports inside the publish function
     mocker.patch(
         "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
@@ -76,6 +87,10 @@ def patch_image_target_merge_method(mocker):
     mocker.patch(
         "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
         MockOrasIndexCopyWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+        MockOrasIndexVerifyWorkflow,
     )
     mocker.patch(
         "posit_bakery.plugins.builtin.oras.oras.find_oras_bin",
@@ -93,6 +108,11 @@ def check_log_metadata_targets(command_logs, datatable):
 @then(parsers.parse("{num_targets} targets are found in the metadata"))
 def check_log_metadata_targets(command_logs, num_targets):
     assert f"Found {num_targets} targets" in command_logs.text
+
+
+@then(parsers.parse("{num_verified:d} destination tags are verified"))
+def check_log_verified_targets(command_logs, num_verified):
+    assert command_logs.text.count("Verified '") == num_verified
 
 
 @then("the merge calls include:")

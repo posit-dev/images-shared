@@ -154,6 +154,35 @@ class OrasCopy(OrasCommand):
         return cmd
 
 
+class OrasManifestFetch(OrasCommand):
+    """Fetch a manifest (or its descriptor) to verify a reference exists.
+
+    Used as a post-copy existence check on final destination tags. ``oras
+    manifest fetch`` resolves the reference against the registry and exits
+    non-zero (raising :class:`BakeryToolRuntimeError`) if the tag is missing.
+    """
+
+    reference: Annotated[str, Field(description="Image reference whose manifest to fetch.")]
+    descriptor: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Fetch only the manifest descriptor instead of the full manifest body (lighter existence check).",
+        ),
+    ]
+
+    @property
+    def command(self) -> list[str]:
+        """Build the oras manifest fetch command."""
+        cmd = [self.oras_bin, "manifest", "fetch"]
+        if self.plain_http:
+            cmd.append("--plain-http")
+        if self.descriptor:
+            cmd.append("--descriptor")
+        cmd.append(self.reference)
+        return cmd
+
+
 class OrasIndexCreateResult(BaseModel):
     """Result of an ORAS manifest-index-create phase."""
 
@@ -231,6 +260,47 @@ class OrasIndexCopyWorkflow(BaseModel):
                 destinations=self.image_target.tags.as_strings(),
                 error=str(e),
             )
+
+
+class OrasIndexVerifyResult(BaseModel):
+    """Result of an ORAS index-verify phase."""
+
+    success: Annotated[bool, Field(description="Whether every destination tag was verified.")]
+    verified: Annotated[
+        list[str], Field(default_factory=list, description="Destination refs successfully verified, in order.")
+    ]
+    error: Annotated[str | None, Field(default=None, description="Error message on the first failed verification.")]
+
+
+class OrasIndexVerifyWorkflow(BaseModel):
+    """Verify that each final destination tag exists in its registry.
+
+    Run after :class:`OrasIndexCopyWorkflow` as a sanity check that the copied
+    indexes are actually resolvable. Each tag is fetched with ``oras manifest
+    fetch --descriptor``; the first missing tag aborts the workflow.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    image_target: Annotated[ImageTarget, Field(description="Target whose destination tags to verify.")]
+    plain_http: Annotated[bool, Field(default=False)]
+
+    def run(self, dry_run: bool = False) -> OrasIndexVerifyResult:
+        verified: list[str] = []
+        try:
+            for ref in self.image_target.tags.as_strings():
+                OrasManifestFetch(
+                    oras_bin=self.oras_bin,
+                    reference=ref,
+                    descriptor=True,
+                    plain_http=self.plain_http,
+                ).run(dry_run=dry_run)
+                verified.append(ref)
+            return OrasIndexVerifyResult(success=True, verified=verified)
+        except BakeryToolRuntimeError as e:
+            log.error(f"oras manifest verify failed: {e}")
+            return OrasIndexVerifyResult(success=False, verified=verified, error=str(e))
 
 
 class OrasMergeWorkflowResult(BaseModel):
