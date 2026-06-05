@@ -16,7 +16,6 @@ from posit_bakery.config.image.posit_product.const import (
     PACKAGE_MANAGER_PREVIEW_URL,
     CONNECT_DAILY_URL,
     DOWNLOADS_JSON_URL,
-    POSITRON_DAILY_CDN_URL_TEMPLATE,
 )
 from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError, VersionSubstitutionError
 from posit_bakery.config.shared import OSFamilyEnum
@@ -269,22 +268,6 @@ product_release_channel_url_map = {
             },
         ),
     },
-    ProductEnum.POSITRON: {
-        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
-            POSITRON_DAILY_CDN_URL_TEMPLATE,
-            OrderedDict(
-                [
-                    ("version", resolvers.StringMapPathResolver(["version"])),
-                    (
-                        "download_url",
-                        "https://cdn.posit.co/positron/dailies/pwb/{positron_cdn_arch}/"
-                        "positron-workbench-linux-{positron_pkg_arch}-{version}.tar.gz",
-                    ),
-                ]
-            ),
-            version_templatable=True,
-        ),
-    },
 }
 
 
@@ -354,11 +337,6 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
         if _os.family == OSFamilyEnum.DEBIAN_LIKE and _os.name.lower() == "debian":
             connect_daily_os_name = "ubuntu" + str(int(_os.majorVersion) * 2)
         meta["connect_daily_os_name"] = connect_daily_os_name
-
-    if product == ProductEnum.POSITRON:
-        # positron CDN uses x86_64 (path) and x64 (filename) for both amd64 and x86_64
-        meta["positron_cdn_arch"] = "x86_64" if arch_identifier in ("amd64", "x86_64") else arch_identifier
-        meta["positron_pkg_arch"] = "x64" if arch_identifier in ("amd64", "x86_64") else arch_identifier
 
     return meta
 

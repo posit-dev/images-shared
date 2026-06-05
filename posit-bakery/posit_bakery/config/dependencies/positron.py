@@ -1,11 +1,11 @@
 import abc
-from typing import Literal, ClassVar
+from typing import Annotated, Literal, ClassVar
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from posit_bakery.config.shared import BakeryYAMLModel
 from posit_bakery.util import cached_session
-from .const import POSITRON_RELEASES_URL_TEMPLATE, SupportedDependencies
+from .const import POSITRON_DAILY_URL_TEMPLATE, POSITRON_RELEASES_URL_TEMPLATE, SupportedDependencies
 from .dependency import DependencyVersions, DependencyConstraint
 from .version import DependencyVersion
 
@@ -21,6 +21,14 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
 
     dependency: Literal[SupportedDependencies.POSITRON] = SupportedDependencies.POSITRON
 
+    prerelease: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Whether to include the latest daily build.",
+        ),
+    ]
+
     @staticmethod
     def releases_url(target_arch: str = _DEFAULT_ARCH) -> str:
         """Return the releases URL for a given TARGETARCH value.
@@ -30,6 +38,16 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
         """
         arch = _ARCH_MAP[target_arch]
         return POSITRON_RELEASES_URL_TEMPLATE.format(arch=arch)
+
+    @staticmethod
+    def daily_url(target_arch: str = _DEFAULT_ARCH) -> str:
+        """Return the daily CDN URL for a given TARGETARCH value.
+
+        :param target_arch: Docker TARGETARCH value (amd64 or arm64).
+        :return: The fully-qualified daily releases URL.
+        """
+        arch = _ARCH_MAP[target_arch]
+        return POSITRON_DAILY_URL_TEMPLATE.format(arch=arch)
 
     def _fetch_versions(self) -> list[DependencyVersion]:
         """Fetch available Positron versions from Posit CDN.
@@ -47,6 +65,12 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
 
         releases = response.json().get("releases", [])
         versions = [DependencyVersion(r["version"]) for r in releases]
+
+        if self.prerelease:
+            response = session.get(self.daily_url())
+            response.raise_for_status()
+            data = response.json()
+            versions.append(DependencyVersion(data["version"]))
 
         return sorted(versions, reverse=True)
 

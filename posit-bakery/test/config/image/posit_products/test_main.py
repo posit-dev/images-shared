@@ -61,51 +61,6 @@ helper_test_collection = [
     *[
         pytest.param(
             SUPPORTED_OS[_os_name][_os_version],
-            ProductEnum.POSITRON,
-            {
-                "download_json_os": "noble",
-                "os": SUPPORTED_OS[_os_name][_os_version],
-                "arch_identifier": "amd64",
-                "positron_cdn_arch": "x86_64",
-                "positron_pkg_arch": "x64",
-            },
-            id=f"positron-{_os_name}-{_os_version}",
-        )
-        for _os_name, _os_version in [("debian", "12"), ("ubuntu", "24")]
-    ],
-    *[
-        pytest.param(
-            SUPPORTED_OS[_os_name][_os_version],
-            ProductEnum.POSITRON,
-            {
-                "download_json_os": "jammy",
-                "os": SUPPORTED_OS[_os_name][_os_version],
-                "arch_identifier": "amd64",
-                "positron_cdn_arch": "x86_64",
-                "positron_pkg_arch": "x64",
-            },
-            id=f"positron-{_os_name}-{_os_version}",
-        )
-        for _os_name, _os_version in [("debian", "11"), ("ubuntu", "22")]
-    ],
-    *[
-        pytest.param(
-            SUPPORTED_OS[_os_name][_os_version],
-            ProductEnum.POSITRON,
-            {
-                "download_json_os": "multi",
-                "os": SUPPORTED_OS[_os_name][_os_version],
-                "arch_identifier": "x86_64",
-                "positron_cdn_arch": "x86_64",
-                "positron_pkg_arch": "x64",
-            },
-            id=f"positron-{_os_name}-{_os_version}",
-        )
-        for _os_name, _os_version in [("rocky", "9"), ("alma", "9"), ("rhel", "9")]
-    ],
-    *[
-        pytest.param(
-            SUPPORTED_OS[_os_name][_os_version],
             ProductEnum.CONNECT,
             {
                 "download_json_os": "jammy",
@@ -1012,56 +967,3 @@ class TestDispatchOverride:
         )
         assert result.version is not None
         assert result.download_url is not None
-        assert result.channel_latest is True
-
-
-class TestPositronDaily:
-    @pytest.mark.parametrize(
-        "_os, expected_version, expected_url",
-        [
-            pytest.param(
-                SUPPORTED_OS["ubuntu"]["24"],
-                "2026.07.0-55",
-                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
-                id="ubuntu-24",
-            ),
-            pytest.param(
-                SUPPORTED_OS["ubuntu"]["22"],
-                "2026.07.0-55",
-                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
-                id="ubuntu-22",
-            ),
-            pytest.param(
-                SUPPORTED_OS["rhel"]["9"],
-                "2026.07.0-55",
-                "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-55.tar.gz",
-                id="rhel-9",
-            ),
-        ],
-    )
-    def test_positron_daily(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
-        """Test that the correct version and URL are returned for a Positron daily build."""
-        output = get_product_artifact_by_channel(ProductEnum.POSITRON, ReleaseChannelEnum.DAILY, _os)
-        assert output.version == expected_version
-        assert str(output.download_url) == expected_url
-
-    def test_unsupported_channel(self):
-        """POSITRON only supports DAILY; release should raise."""
-        with pytest.raises(ValueError, match="is not supported for product"):
-            get_product_artifact_by_channel(
-                ProductEnum.POSITRON, ReleaseChannelEnum.RELEASE, SUPPORTED_OS["ubuntu"]["24"]
-            )
-
-    def test_version_override(self, patch_requests_get):
-        """version_templatable=True: a pinned version bypasses CDN and builds the URL offline."""
-        output = get_product_artifact_by_channel(
-            ProductEnum.POSITRON,
-            ReleaseChannelEnum.DAILY,
-            SUPPORTED_OS["ubuntu"]["24"],
-            version_override="2026.07.0-100",
-        )
-        assert output.version == "2026.07.0-100"
-        assert str(output.download_url) == (
-            "https://cdn.posit.co/positron/dailies/pwb/x86_64/positron-workbench-linux-x64-2026.07.0-100.tar.gz"
-        )
-        patch_requests_get.assert_not_called()

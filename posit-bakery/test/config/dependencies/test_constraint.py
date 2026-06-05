@@ -149,6 +149,36 @@ class TestDependencyConstraint:
         vers = dep.resolve_versions()
         assert vers == expected_versions
 
+    def test_positron_prerelease_includes_daily(self, patch_requests_get):
+        """prerelease=True appends the daily build to the available versions."""
+        dep = PositronDependencyConstraint(
+            dependency="positron",
+            prerelease=True,
+            constraint={"latest": True, "count": 99},
+        )
+        versions = [str(v) for v in dep.available_versions()]
+        assert "2026.07.0-55" in versions  # daily build from testdata
+
+    def test_positron_prerelease_false_excludes_daily(self, patch_requests_get):
+        """prerelease=False (default) never fetches the daily URL."""
+        dep = PositronDependencyConstraint(
+            dependency="positron",
+            constraint={"latest": True, "count": 99},
+        )
+        versions = [str(v) for v in dep.available_versions()]
+        assert "2026.07.0-55" not in versions
+
+    def test_positron_prerelease_count_one(self, patch_requests_get):
+        """prerelease=True + count=1 resolves to the single latest version."""
+        dep = PositronDependencyConstraint(
+            dependency="positron",
+            prerelease=True,
+            constraint={"latest": True, "count": 1},
+        )
+        result = dep.resolve_versions()
+        assert len(result.versions) == 1
+        assert result.versions[0] == "2026.07.0-55"
+
 
 class TestGetDependencyConstraintClass:
     """Tests for the get_dependency_constraint_class helper function."""
