@@ -75,6 +75,44 @@ def test_skips_targets_without_enabled_option(tmp_path):
     assert on_result.artifacts["workflow_result"].success is True
 
 
+def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
+    """A SOCI-enabled target with no source ref for this run is not in scope
+    (e.g. it has no merge sources / build metadata in the provided files, like
+    other versions/streams when publishing one set of metadata). It must be
+    skipped, not reported as a conversion failure. Regression: such targets
+    surfaced as "SOCI convert failed: no source ref provided" and flipped the
+    whole `ci publish` run to a failure."""
+    plugin = SociPlugin()
+    t_ref = _make_target("a", enabled=True)
+    t_noref = _make_target("b", enabled=True)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True),
+        ),
+        patch("posit_bakery.plugins.builtin.soci.find_soci_bin", return_value="soci"),
+        patch("posit_bakery.plugins.builtin.soci.find_ctr_bin", return_value="ctr"),
+        patch("posit_bakery.plugins.builtin.soci.find_oras_bin", return_value="oras"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t_ref, t_noref],
+            source_refs={"a": "ref-a"},
+        )
+
+    noref = next(r for r in results if r.target.uid == "b")
+    assert noref.exit_code == 0
+    assert noref.artifacts is not None
+    assert noref.artifacts.get("skipped") is True
+    # The in-scope target still converts.
+    ref = next(r for r in results if r.target.uid == "a")
+    assert ref.exit_code == 0
+    assert ref.artifacts["workflow_result"].success is True
+
+
 def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
     plugin = SociPlugin()
     t = _make_target("a", enabled=False)

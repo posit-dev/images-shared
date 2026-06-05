@@ -177,13 +177,21 @@ class SociPlugin(BakeryToolPlugin):
                 continue
             ref = source_refs.get(target.uid)
             if not ref:
+                # SOCI is enabled for this target but it is not part of the
+                # current run — no source ref was produced for it (e.g. it has
+                # no merge sources / build metadata in the provided metadata,
+                # as happens for the other versions and dev streams when
+                # publishing a single set of files). There is nothing to
+                # convert, so skip it like a disabled target rather than
+                # reporting a spurious conversion failure.
                 results.append(
                     ToolCallResult(
-                        exit_code=1,
+                        exit_code=0,
                         tool_name="soci",
                         target=target,
                         stdout="",
-                        stderr=f"no source ref provided for target '{target.uid}'",
+                        stderr="",
+                        artifacts={"skipped": True, "reason": "no source ref provided for this run"},
                     )
                 )
                 continue
