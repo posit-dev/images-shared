@@ -350,15 +350,19 @@ def publish(
             source_refs=temp_refs,
             dry_run=dry_run,
         )
+        soci_failed = False
         for r in soci_results:
             artifacts = r.artifacts or {}
             if artifacts.get("skipped"):
                 continue
             wf = artifacts.get("workflow_result")
             if r.exit_code != 0:
-                soci.results(soci_results)  # raises typer.Exit(1)
+                soci_failed = True
+                continue
             if wf and getattr(wf, "destination_ref", None):
                 temp_refs[r.target.uid] = wf.destination_ref
+        if soci_failed:
+            soci.results(soci_results)  # raises typer.Exit(1)
 
     # Phase 3: index copy.
     copy_failed = False
