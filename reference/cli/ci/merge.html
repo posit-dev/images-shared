@@ -822,6 +822,8 @@ Options:
   --context PATH                  The root path to use. Defaults to the
                                   current working directory where invoked.
                                   [default: (.)]
+  --image-name TEXT               Filter merge to a specific image name
+                                  (regex, e.g. '^workbench$').
   --temp-registry TEXT            Temporary registry to use for multiplatform
                                   split/merge builds.
   --dry-run / --no-dry-run        If set, the merged images will not be pushed
@@ -852,6 +854,10 @@ Required.
 <dt><code><span class="doc-parameter-name">--context</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">PATH</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">/home/runner/work/images-shared/images-shared/posit-bakery/great-docs</span></code></dt>
 <dd>
 The root path to use. Defaults to the current working directory where invoked.
+</dd>
+<dt><code><span class="doc-parameter-name">--image-name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+Filter merge to a specific image name (regex, e.g.&nbsp;<code>^workbench$</code>).
 </dd>
 <dt><code><span class="doc-parameter-name">--temp-registry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
 <dd>
