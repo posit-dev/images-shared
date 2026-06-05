@@ -104,6 +104,7 @@ jobs:
       contents: read
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
+      image-matrix: ${{ steps.images-by-platform.outputs.image_matrix }}
 
     steps:
       - name: Checkout
@@ -129,6 +130,7 @@ jobs:
           [[ -n "$DEV_STREAM" ]] && ARGS+=(--dev-stream "$DEV_STREAM")
           result=$(bakery ci matrix "${ARGS[@]}")
           echo "platform_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+          echo "image_matrix=$(echo "$result" | jq --compact-output '[.[].image] | unique')" >> "$GITHUB_OUTPUT"
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
@@ -275,11 +277,15 @@ jobs:
           overwrite: 'true'
 
   merge:
-    name: "Merge/Push"
+    name: "Merge/Push ${{ matrix.image }}"
     permissions:
       contents: read
       packages: write
-    needs: [build-test]
+    needs: [matrix, build-test]
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(needs.matrix.outputs.image-matrix) }}
     runs-on: ${{ inputs.merge-builder }}
 
     steps:
@@ -360,10 +366,12 @@ jobs:
           CONTEXT: ${{ inputs.context }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           PUSH: ${{ inputs.push }}
+          IMAGE_NAME: ${{ matrix.image }}
         run: |
           if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
           bakery ci merge \
             --context "$CONTEXT" \
+            --image-name "^${IMAGE_NAME}$" \
             --temp-registry "$REGISTRY" \
             $PUSH_FLAG \
             ./*-metadata.json

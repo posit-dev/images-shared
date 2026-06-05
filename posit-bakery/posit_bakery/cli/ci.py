@@ -159,6 +159,13 @@ def merge(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter merge to a specific image name (regex, e.g. '^workbench$').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     temp_registry: Annotated[
         Optional[str],
         typer.Option(
@@ -194,6 +201,7 @@ def merge(
     ```
     """
     settings = BakerySettings(
+        filter=BakeryConfigFilter(image_name=image_name),
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         dev_stream=dev_stream,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
