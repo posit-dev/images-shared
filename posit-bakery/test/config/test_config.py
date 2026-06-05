@@ -357,6 +357,54 @@ class TestBakeryConfig:
             assert target.uid in expected_uids
 
     @pytest.mark.usefixtures("patch_requests_get")
+    def test_latest_filters_standard_versions(self, testdata_path):
+        """--latest keeps only the standard version marked latest: true."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^package-manager$"),
+                latest=True,
+            ),
+        )
+        assert len(config.targets) > 0
+        assert all(t.image_version.name == "2025.04.2-8" for t in config.targets)
+        assert all(t.image_version.latest for t in config.targets)
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_latest_filters_matrix_versions(self, testdata_path):
+        """--latest with matrix included keeps only the latest matrix combination."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^session$"),
+                matrix_versions=MatrixVersionInclusionEnum.ONLY,
+                latest=True,
+            ),
+        )
+        assert len(config.targets) == 1
+        target = config.targets[0]
+        assert target.image_version.latest
+        assert target.uid == "session-r4-5-1-python3-13-7-quarto1-7-34-ubuntu-24-04"
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_latest_warns_when_image_version_filter_matches_excluded(self, caplog, testdata_path):
+        """A warning is logged when --image-version matches a version excluded by --latest."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        config = BakeryConfig(
+            yaml_file,
+            BakerySettings(
+                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="2024.11.0-7"),
+                latest=True,
+            ),
+        )
+        assert len(config.targets) == 0
+        assert "WARNING" in caplog.text
+        assert "Version '2024.11.0-7' in image 'package-manager' matches --image-version filter" in caplog.text
+        assert "not the latest version (excluded by --latest)" in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
     def test_filter_warning_matrix_image_excluded_by_default(self, caplog, testdata_path):
         """Test that a warning is logged when --image-name matches a matrix image but it's excluded by default."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
