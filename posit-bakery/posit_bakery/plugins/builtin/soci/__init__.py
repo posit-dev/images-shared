@@ -6,6 +6,7 @@ from typing import Any
 
 import typer
 
+from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci.options import SociOptions
 from posit_bakery.plugins.builtin.oras.oras import find_oras_bin
@@ -195,9 +196,22 @@ class SociPlugin(BakeryToolPlugin):
             )
             return results
 
-        soci_bin = find_soci_bin(base_path)
-        ctr_bin = find_ctr_bin(base_path)
-        oras_bin = find_oras_bin(base_path)
+        def resolve_bin(finder: Any, fallback: str) -> str:
+            # A dry run executes nothing, so a missing tool must not abort the
+            # workflow — fall back to the bare name purely for the logged
+            # command. When the tool resolves we keep its real path so the
+            # dry-run output stays accurate. Outside a dry run a missing tool
+            # is still a hard error.
+            try:
+                return finder(base_path)
+            except BakeryToolNotFoundError:
+                if dry_run:
+                    return fallback
+                raise
+
+        soci_bin = resolve_bin(find_soci_bin, "soci")
+        ctr_bin = resolve_bin(find_ctr_bin, "ctr")
+        oras_bin = resolve_bin(find_oras_bin, "oras")
 
         for target, opts, ref in eligible:
             workflow_standalone = opts.standalone if opts.standalone is not None else standalone

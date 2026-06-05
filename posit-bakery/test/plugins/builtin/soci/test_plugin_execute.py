@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import posit_bakery.util as util
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci import SociPlugin
 from posit_bakery.plugins.builtin.soci.options import SociOptions
@@ -141,3 +142,83 @@ def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
     mock_find_soci.assert_not_called()
     mock_find_ctr.assert_not_called()
     mock_find_oras.assert_not_called()
+
+
+@pytest.fixture
+def missing_tools(monkeypatch):
+    """Simulate a host where soci/ctr/oras are not installed anywhere."""
+    real_which = util.which
+    monkeypatch.setattr(util, "which", lambda name: None if name in {"soci", "ctr", "oras"} else real_which(name))
+    for env in ("SOCI_PATH", "CTR_PATH", "ORAS_PATH"):
+        monkeypatch.delenv(env, raising=False)
+
+
+@pytest.mark.parametrize("standalone", [False, True])
+def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools, standalone):
+    """A dry-run executes nothing, so it must not abort when soci/ctr/oras are
+    absent from the host. Regression: ``ci publish --dry-run`` raised
+    BakeryToolNotFoundError because execute() resolved the binaries eagerly,
+    before the dry-run-aware workflow ran."""
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True, standalone=standalone),
+        ),
+        patch("subprocess.run") as mock_run,
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            return_value="sha256:abc",
+        ),
+    ):
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=True,
+            standalone=standalone,
+        )
+
+    mock_run.assert_not_called()
+    assert [r.exit_code for r in results] == [0]
+
+
+def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
+    """When a tool IS resolvable, the dry-run still surfaces its real path
+    (env var / PATH / project tools dir) rather than a bare fallback name, so
+    the logged commands remain accurate."""
+    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
+    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
+    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    captured = {}
+
+    def fake_run(self, dry_run=False):
+        captured["soci_bin"] = self.soci_bin
+        captured["ctr_bin"] = self.ctr_bin
+        captured["oras_bin"] = self.oras_bin
+        from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
+
+        return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True),
+        ),
+        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
+    ):
+        plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=True,
+        )
+
+    assert captured["soci_bin"] == "/custom/soci"
+    assert captured["ctr_bin"] == "/custom/ctr"
+    assert captured["oras_bin"] == "/custom/oras"
