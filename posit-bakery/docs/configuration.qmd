@@ -554,9 +554,9 @@ A DevBuildSpec is a typed payload passed to the `--dev-spec` CLI option to confi
 
 | Field | Description | Default Value | Example |
 |---|---|---|---|
-| `version`<br/>*string* | A specific development version to build (e.g., `2026.07.0-dev+345-gabc1234`). When set, `release_branch` and `channel` are ignored. Optional if `release_branch` is set. | — | `2026.07.0-dev+345-gabc1234` |
-| `channel`<br/>*string* | The release channel for version resolution (e.g., `stable`, `preview`). Only used when `version` is not set. | — | `preview` |
-| `release_branch`<br/>*string* | The release branch to fetch development artifacts from (e.g., `apple-blossom`, `2026.07`). When `version` is also set, this field is ignored — the branch is derived from the version's `YYYY.MM` segment. Required when `version` is not set. | — | `apple-blossom` |
+| `version`<br/>*string* | A specific development version to build (e.g., `2026.07.0-dev+345-gabc1234`). When set, `release_branch` is ignored — the branch is derived from the version's `YYYY.MM` segment. Optional if `release_branch` is set. | — | `2026.07.0-dev+345-gabc1234` |
+| `channel`<br/>*string* | The release channel for stream selection and disambiguation (e.g., `stable`, `preview`). Used whether or not `version` is set; must not conflict with `--dev-channel` if both are provided. | — | `preview` |
+| `release_branch`<br/>*string* | The release branch to fetch development artifacts from (e.g., `apple-blossom`, `2026.07`). Ignored when `version` is set. Required when `version` is not set. | — | `apple-blossom` |
 
 #### Example DevBuildSpec Usage
 
