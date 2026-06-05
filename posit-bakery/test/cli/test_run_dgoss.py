@@ -93,3 +93,12 @@ class TestRunDgossLatestFlag:
         )
         assert result.exit_code == 0, result.stdout
         assert "--latest ignores development versions" in caplog.text
+
+    def test_no_warning_without_latest(self, mocked_bakery_run_dgoss, caplog):
+        result = runner.invoke(
+            app,
+            ["run", "dgoss", "--dev-versions", "include", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert "--latest ignores development versions" not in caplog.text
