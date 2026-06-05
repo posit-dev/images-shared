@@ -286,6 +286,34 @@ class TestBakeryConfig:
                 # Release versions still present
                 assert len(release_targets) > 0
 
+    @patch("atexit.register")
+    def test_latest_excludes_development_versions(
+        self,
+        mock_atexit_register,
+        testdata_path,
+        patch_requests_get,
+    ):
+        """Test that --latest with --dev-versions include excludes development versions."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                config = BakeryConfig(
+                    yaml_file,
+                    BakerySettings(
+                        dev_versions=DevVersionInclusionEnum.INCLUDE,
+                        latest=True,
+                        clean_temporary=False,
+                        filter=BakeryConfigFilter(image_name="^package-manager$"),
+                    ),
+                )
+                # Targets are produced.
+                assert len(config.targets) > 0
+                # No target is a development version (the dev versions loaded by
+                # --dev-versions include are excluded by --latest).
+                assert all(not t.image_version.isDevelopmentVersion for t in config.targets)
+                # Every target is the latest release version.
+                assert all(t.image_version.name == "2025.04.2-8" for t in config.targets)
+
     def test_dev_stream_warning_when_dev_versions_excluded(
         self,
         caplog,
