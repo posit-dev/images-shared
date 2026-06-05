@@ -13,11 +13,6 @@ from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
 
-pytestmark = [
-    pytest.mark.unit,
-    pytest.mark.wizcli,
-]
-
 runner = CliRunner()
 
 BASIC_CONTEXT = str(Path(__file__).parent.parent.parent.parent / "resources" / "basic")
