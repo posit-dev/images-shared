@@ -1,8 +1,11 @@
 """SOCI CLI integration module."""
 
+import json
 import logging
 import re
+import shutil
 import subprocess
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Annotated, Literal
@@ -11,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.plugins.builtin.oras.oras import OrasCopy
 from posit_bakery.plugins.builtin.soci.options import SociOptions
 from posit_bakery.util import find_bin
 
@@ -260,6 +264,7 @@ class SociConvertWorkflow(BaseModel):
 
     soci_bin: Annotated[str, Field(description="Path to the soci binary.")]
     ctr_bin: Annotated[str, Field(description="Path to the ctr binary.")]
+    oras_bin: Annotated[str, Field(description="Path to the oras binary (used in standalone mode).")]
     image_target: Annotated[ImageTarget, Field(description="The image target.")]
     options: Annotated[SociOptions, Field(description="Per-target SOCI configuration.")]
     source_ref: Annotated[str, Field(description="Temp-registry ref to convert from.")]
@@ -271,20 +276,95 @@ class SociConvertWorkflow(BaseModel):
 
     @property
     def destination_ref(self) -> str:
+        """SOCI-enabled destination ref. A registry ref in both modes; in
+        standalone mode the on-disk OCI layouts are internal scratch and are
+        pushed here at the end via oras."""
         return f"{self.source_ref}-soci"
 
-    def _build_convert(self, namespace: str) -> SociConvert:
+    def _build_convert(
+        self,
+        namespace: str,
+        *,
+        source: str | None = None,
+        destination: str | None = None,
+        output_format: Literal["oci-archive", "oci-dir"] = "oci-archive",
+    ) -> SociConvert:
         return SociConvert(
             soci_bin=self.soci_bin,
             containerd_namespace=namespace,
             standalone=self.standalone,
-            source=self.source_ref,
-            destination=self.destination_ref,
+            source=source if source is not None else self.source_ref,
+            destination=destination if destination is not None else self.destination_ref,
             platforms=self.options.platforms,
             span_size=self.options.span_size,
             min_layer_size=self.options.min_layer_size,
             prefetch_files=self.options.prefetch_files,
             optimizations=self.options.optimizations,
+            output_format=output_format,
+        )
+
+    @staticmethod
+    def _read_converted_digest(layout: Path) -> str:
+        """Return the digest of the top-level manifest in a converted OCI
+        layout. soci writes the converted image to ``index.json`` without a
+        tag, so the only way to reference it for the push back is by digest."""
+        index = json.loads((layout / "index.json").read_text())
+        return index["manifests"][0]["digest"]
+
+    def _run_standalone(self, dry_run: bool = False) -> SociConvertWorkflowResult:
+        """Pull the source ref into an OCI layout, convert it to SOCI with
+        ``soci convert --standalone``, and push the converted layout back to
+        the registry — all without containerd.
+
+        oras bridges the registry on both ends: ``--to-oci-layout`` to
+        materialize the source as an OCI layout, ``--from-oci-layout`` to push
+        the converted result. The scratch layouts are removed afterward.
+        """
+        scratch = Path(tempfile.mkdtemp(prefix="soci-standalone-"))
+        src_layout = scratch / "src"
+        out_layout = scratch / "out"
+        try:
+            # 1. registry -> OCI layout. The layout tag is arbitrary; soci
+            #    reads the whole layout.
+            OrasCopy(
+                oras_bin=self.oras_bin,
+                source=self.source_ref,
+                destination=f"{src_layout}:image",
+                to_oci_layout=True,
+            ).run(dry_run=dry_run)
+
+            # 2. convert local layout -> local layout (directory so we can read
+            #    the resulting index.json for its digest).
+            self._build_convert(
+                self.candidate_namespaces[0],
+                source=str(src_layout),
+                destination=str(out_layout),
+                output_format="oci-dir",
+            ).run(dry_run=dry_run)
+
+            # 3. push converted layout -> registry, referenced by digest since
+            #    the converted layout carries no tag.
+            digest = "sha256:<dry-run>" if dry_run else self._read_converted_digest(out_layout)
+            OrasCopy(
+                oras_bin=self.oras_bin,
+                source=f"{out_layout}@{digest}",
+                destination=self.destination_ref,
+                from_oci_layout=True,
+            ).run(dry_run=dry_run)
+        except BakeryToolRuntimeError as e:
+            return SociConvertWorkflowResult(
+                success=False,
+                destination_ref=self.destination_ref,
+                resolved_namespace=None,
+                error=e.dump_stderr() or str(e),
+            )
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+
+        return SociConvertWorkflowResult(
+            success=True,
+            destination_ref=self.destination_ref,
+            resolved_namespace=None,
         )
 
     def _build_push(self, namespace: str) -> SociPush:
@@ -298,20 +378,7 @@ class SociConvertWorkflow(BaseModel):
     def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
         """Materialize source (if non-standalone), convert, and push."""
         if self.standalone:
-            try:
-                self._build_convert(self.candidate_namespaces[0]).run(dry_run=dry_run)
-            except BakeryToolRuntimeError as e:
-                return SociConvertWorkflowResult(
-                    success=False,
-                    destination_ref=self.destination_ref,
-                    resolved_namespace=None,
-                    error=e.dump_stderr() or str(e),
-                )
-            return SociConvertWorkflowResult(
-                success=True,
-                destination_ref=self.destination_ref,
-                resolved_namespace=None,
-            )
+            return self._run_standalone(dry_run=dry_run)
 
         last_error: str | None = None
         last_ns: str | None = None

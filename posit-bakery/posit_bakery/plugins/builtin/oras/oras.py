@@ -131,6 +131,14 @@ class OrasCopy(OrasCommand):
 
     source: Annotated[str, Field(description="Source image reference to copy.")]
     destination: Annotated[str, Field(description="Destination reference.")]
+    from_oci_layout: Annotated[
+        bool,
+        Field(default=False, description="Treat the source as an OCI image layout (tar or directory) path."),
+    ]
+    to_oci_layout: Annotated[
+        bool,
+        Field(default=False, description="Treat the destination as an OCI image layout (tar or directory) path."),
+    ]
 
     @property
     def command(self) -> list[str]:
@@ -138,6 +146,10 @@ class OrasCopy(OrasCommand):
         cmd = [self.oras_bin, "cp"]
         if self.plain_http:
             cmd.append("--plain-http")
+        if self.from_oci_layout:
+            cmd.append("--from-oci-layout")
+        if self.to_oci_layout:
+            cmd.append("--to-oci-layout")
         cmd.extend([self.source, self.destination])
         return cmd
 

@@ -47,6 +47,10 @@ def test_skips_targets_without_enabled_option(tmp_path):
             "posit_bakery.plugins.builtin.soci.find_ctr_bin",
             return_value="ctr",
         ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+            return_value="oras",
+        ),
         patch("subprocess.run") as mock_run,
     ):
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
@@ -89,6 +93,10 @@ def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
             "posit_bakery.plugins.builtin.soci.find_ctr_bin",
             return_value="ctr",
         ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+            return_value="oras",
+        ),
     ):
         results = plugin.execute(
             base_path=tmp_path,
@@ -118,6 +126,9 @@ def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
         patch(
             "posit_bakery.plugins.builtin.soci.find_ctr_bin",
         ) as mock_find_ctr,
+        patch(
+            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+        ) as mock_find_oras,
     ):
         results = plugin.execute(
             base_path=tmp_path,
@@ -129,3 +140,4 @@ def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
     assert results[0].artifacts.get("skipped") is True
     mock_find_soci.assert_not_called()
     mock_find_ctr.assert_not_called()
+    mock_find_oras.assert_not_called()

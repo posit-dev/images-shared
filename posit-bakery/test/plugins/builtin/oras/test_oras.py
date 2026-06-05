@@ -173,6 +173,36 @@ class TestOrasCopy:
         expected = ["oras", "cp", "ghcr.io/posit-dev/test/tmp:source", "docker.io/posit/test:dest"]
         assert cmd.command == expected
 
+    def test_command_construction_with_oci_layout_flags(self):
+        """OCI image layout flags are emitted before the source/destination args."""
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="/tmp/out@sha256:abc",
+            destination="ghcr.io/posit-dev/test:dest-soci",
+            from_oci_layout=True,
+        )
+        assert cmd.command == [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            "/tmp/out@sha256:abc",
+            "ghcr.io/posit-dev/test:dest-soci",
+        ]
+
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="ghcr.io/posit-dev/test:source",
+            destination="/tmp/src:image",
+            to_oci_layout=True,
+        )
+        assert cmd.command == [
+            "oras",
+            "cp",
+            "--to-oci-layout",
+            "ghcr.io/posit-dev/test:source",
+            "/tmp/src:image",
+        ]
+
     def test_run_success(self):
         """Test successful copy execution."""
         cmd = OrasCopy(

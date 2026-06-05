@@ -8,6 +8,7 @@ import typer
 
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.oras.oras import find_oras_bin
 from posit_bakery.plugins.builtin.soci.soci import (
     SociConvertWorkflow,
     find_ctr_bin,
@@ -148,7 +149,9 @@ class SociPlugin(BakeryToolPlugin):
 
         ``source_refs`` maps ``target.uid`` -> the temp-registry ref to
         convert (typically produced by the oras index-create phase). In
-        standalone mode, refs are filesystem paths instead.
+        standalone mode the refs are still registry refs; the OCI image
+        layouts that ``soci convert --standalone`` reads and writes are
+        internal scratch that the workflow materializes and pushes via oras.
 
         Targets whose resolved SociOptions has ``enabled=False`` are
         skipped with a ``skipped=True`` artifact entry.
@@ -194,6 +197,7 @@ class SociPlugin(BakeryToolPlugin):
 
         soci_bin = find_soci_bin(base_path)
         ctr_bin = find_ctr_bin(base_path)
+        oras_bin = find_oras_bin(base_path)
 
         for target, opts, ref in eligible:
             workflow_standalone = opts.standalone if opts.standalone is not None else standalone
@@ -201,6 +205,7 @@ class SociPlugin(BakeryToolPlugin):
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,
                 ctr_bin=ctr_bin,
+                oras_bin=oras_bin,
                 image_target=target,
                 options=opts,
                 source_ref=ref,
