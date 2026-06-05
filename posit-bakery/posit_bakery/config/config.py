@@ -321,6 +321,13 @@ class BakerySettings(BaseModel):
             default=MatrixVersionInclusionEnum.EXCLUDE,
         ),
     ]
+    latest: Annotated[
+        bool,
+        Field(
+            description="Build only the latest version of each image. Development versions are ignored.",
+            default=False,
+        ),
+    ]
     clean_temporary: Annotated[
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]

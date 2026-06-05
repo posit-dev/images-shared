@@ -374,6 +374,12 @@ class TestBakeryConfig:
         assert "matrix image excluded by default" in caplog.text
 
     @pytest.mark.usefixtures("patch_requests_get")
+    def test_settings_latest_defaults_false(self):
+        """The latest setting defaults to False and accepts True."""
+        assert BakerySettings().latest is False
+        assert BakerySettings(latest=True).latest is True
+
+    @pytest.mark.usefixtures("patch_requests_get")
     def test_filter_warning_non_matrix_image_excluded_by_matrix_only(self, caplog, testdata_path):
         """Test that a warning is logged when --image-name matches a non-matrix image but --matrix-versions only is set."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
