@@ -1,4 +1,26 @@
 {
-  "test-alpha-1-0-0-scratch": {},
-  "test-alpha-extra-1-0-0-scratch": {}
+  "test-alpha-1-0-0-scratch": {
+    "image.name": "ghcr.io/posit-dev/temp/test-alpha/tmp:1.0.0",
+    "containerimage.digest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    }
+  },
+  "test-alpha-extra-1-0-0-scratch": {
+    "image.name": "ghcr.io/posit-dev/temp/test-alpha-extra/tmp:1.0.0",
+    "containerimage.digest": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    }
+  }
 }

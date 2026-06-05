@@ -184,6 +184,13 @@ def merge(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory where invoked.")
     ] = auto_path(),
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter merge to a specific image name (regex, e.g. '^workbench$').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     temp_registry: Annotated[
         Optional[str],
         typer.Option(
@@ -220,6 +227,7 @@ def merge(
     publish(
         metadata_file=metadata_file,
         context=context,
+        image_name=image_name,
         temp_registry=temp_registry,
         dry_run=dry_run,
         dev_channel=dev_channel,
@@ -233,6 +241,13 @@ def publish(
     context: Annotated[
         Path, typer.Option(help="The root path to use. Defaults to the current working directory.")
     ] = auto_path(),
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter publish to a specific image name (regex, e.g. '^workbench$').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     temp_registry: Annotated[
         Optional[str],
         typer.Option(
@@ -286,6 +301,7 @@ def publish(
         if dev_channel is None:
             dev_channel = dev_stream
     settings = BakerySettings(
+        filter=BakeryConfigFilter(image_name=image_name),
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         dev_channel=dev_channel,
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
@@ -321,7 +337,17 @@ def publish(
     log.debug(", ".join(loaded_targets))
 
     oras_bin = find_oras_bin(config.base_path)
-    targets = sorted(config.targets, key=lambda t: t.push_sort_key)
+
+    # Act only on targets that were actually present in the provided metadata
+    # files, not every target defined in the config. Publishing a single set of
+    # files (e.g. one version / dev stream) otherwise drags in every other
+    # version and variant, which each phase then has to re-skip individually.
+    # The UIDs in loaded_targets all originate from config.targets, so the
+    # lookups always resolve.
+    targets = sorted(
+        (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
+        key=lambda t: t.push_sort_key,
+    )
 
     # Phase 1: index create. Failures abort.
     temp_refs: dict[str, str] = {}

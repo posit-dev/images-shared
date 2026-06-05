@@ -28,9 +28,11 @@ Feature: merge
         Given I call bakery ci merge
         * in a temp multiplatform context
         * with the arguments:
-            | --image-name    |
-            | ^test-multi$    |
-            | *-metadata.json |
+            | --image-name           |
+            | ^test-multi$           |
+            | --temp-registry        |
+            | ghcr.io/posit-dev/temp |
+            | *-metadata.json        |
         * with testdata ci/merge/multiplatform copied to context
         * with the context as the working directory
         * with image target merge method patched
@@ -60,9 +62,11 @@ Feature: merge
         Given I call bakery ci merge
         * in a temp merge-multi-image context
         * with the arguments:
-            | --image-name    |
-            | ^test-alpha$    |
-            | *-metadata.json |
+            | --image-name           |
+            | ^test-alpha$           |
+            | --temp-registry        |
+            | ghcr.io/posit-dev/temp |
+            | *-metadata.json        |
         * with testdata ci/merge/multi-image copied to context
         * with the context as the working directory
         * with image target merge method patched
