@@ -1,4 +1,3 @@
-import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -6,7 +5,11 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
+from posit_bakery.cli.common import (
+    with_verbosity_flags,
+    with_temporary_storage,
+    warn_if_latest_ignores_dev_versions,
+)
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
@@ -15,8 +18,6 @@ from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
-
-log = logging.getLogger(__name__)
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -228,11 +229,7 @@ def build(
         temp_registry=temp_registry,
     )
 
-    if latest and dev_versions in (DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE):
-        log.warning(
-            f"--latest ignores development versions; --dev-versions {dev_versions.value} "
-            "has no effect on the latest filter."
-        )
+    warn_if_latest_ignores_dev_versions(latest, dev_versions)
 
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 

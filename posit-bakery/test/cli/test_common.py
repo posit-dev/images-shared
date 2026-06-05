@@ -6,6 +6,7 @@ from posit_bakery.cli.common import (
     __make_value_map as make_value_map,
     __parse_dependency_constraint as parse_dependency_constraint,
     __parse_dependency_versions as parse_dependency_versions,
+    warn_if_latest_ignores_dev_versions,
 )
 from posit_bakery.config.dependencies import (
     PythonDependencyConstraint,
@@ -15,10 +16,40 @@ from posit_bakery.config.dependencies import (
     RDependencyVersions,
     QuartoDependencyVersions,
 )
+from posit_bakery.const import DevVersionInclusionEnum
 
 pytestmark = [
     pytest.mark.unit,
 ]
+
+
+class TestWarnIfLatestIgnoresDevVersions:
+    """Tests for the warn_if_latest_ignores_dev_versions helper."""
+
+    @pytest.mark.parametrize(
+        "dev_versions",
+        [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE],
+    )
+    def test_warns_when_latest_with_dev_inclusion(self, caplog, dev_versions):
+        warn_if_latest_ignores_dev_versions(True, dev_versions)
+        assert "--latest ignores development versions" in caplog.text
+        assert dev_versions.value in caplog.text
+
+    def test_no_warning_when_dev_versions_excluded(self, caplog):
+        warn_if_latest_ignores_dev_versions(True, DevVersionInclusionEnum.EXCLUDE)
+        assert "--latest ignores development versions" not in caplog.text
+
+    @pytest.mark.parametrize(
+        "dev_versions",
+        [
+            DevVersionInclusionEnum.ONLY,
+            DevVersionInclusionEnum.INCLUDE,
+            DevVersionInclusionEnum.EXCLUDE,
+        ],
+    )
+    def test_no_warning_when_latest_not_set(self, caplog, dev_versions):
+        warn_if_latest_ignores_dev_versions(False, dev_versions)
+        assert "--latest ignores development versions" not in caplog.text
 
 
 class TestMakeValueMap:
