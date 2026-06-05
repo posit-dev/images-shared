@@ -53,6 +53,8 @@ Before your first commit, install the repository's pre-commit hooks so changes a
 just setup
 ```
 
+For guidance on maintaining the Posit container image ecosystem (adding versions, diagnosing CI failures, updating dependencies), see the [maintainer guide](CONTRIBUTING.md).
+
 ## Code of Conduct
 
 We expect all contributors to adhere to the project's [Code of Conduct](CODE_OF_CONDUCT.md) and create a positive and inclusive community.
