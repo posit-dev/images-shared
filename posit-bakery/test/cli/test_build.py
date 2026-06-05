@@ -52,33 +52,6 @@ class TestBuildLatestFlag:
         settings = mock_build_config.from_context.call_args[0][1]
         assert settings.latest is False
 
-    def test_latest_with_dev_versions_only_warns(self, mock_build_config, caplog):
-        result = runner.invoke(
-            app,
-            ["build", "--latest", "--dev-versions", "only", "--context", BASIC_CONTEXT],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0
-        assert "--latest ignores development versions" in caplog.text
-
-    def test_latest_with_dev_versions_include_warns(self, mock_build_config, caplog):
-        result = runner.invoke(
-            app,
-            ["build", "--latest", "--dev-versions", "include", "--context", BASIC_CONTEXT],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0
-        assert "--latest ignores development versions" in caplog.text
-
-    def test_no_warning_without_latest(self, mock_build_config, caplog):
-        result = runner.invoke(
-            app,
-            ["build", "--dev-versions", "include", "--context", BASIC_CONTEXT],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0
-        assert "--latest ignores development versions" not in caplog.text
-
 
 @then("the bake plan is valid", target_fixture="bake_plan_data")
 def check_bake_plan_json(bakery_command):

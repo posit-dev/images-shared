@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, warn_if_latest_ignores_dev_versions
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -165,7 +165,6 @@ class DGossPlugin(BakeryToolPlugin):
                 latest=latest,
                 clean_temporary=clean,
             )
-            warn_if_latest_ignores_dev_versions(latest, dev_versions)
             c = BakeryConfig.from_context(context, settings)
 
             if metadata_file:

@@ -314,6 +314,42 @@ class TestBakeryConfig:
                 # Every target is the latest release version.
                 assert all(t.image_version.name == "2025.04.2-8" for t in config.targets)
 
+    @pytest.mark.parametrize(
+        "dev_versions",
+        [DevVersionInclusionEnum.INCLUDE, DevVersionInclusionEnum.ONLY],
+    )
+    @patch("atexit.register")
+    def test_latest_warns_when_combined_with_dev_inclusion(
+        self,
+        mock_atexit_register,
+        caplog,
+        testdata_path,
+        patch_requests_get,
+        dev_versions,
+    ):
+        """Test that --latest with --dev-versions include/only warns that dev versions are ignored."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                BakeryConfig(
+                    yaml_file,
+                    BakerySettings(
+                        dev_versions=dev_versions,
+                        latest=True,
+                        clean_temporary=False,
+                    ),
+                )
+        assert "WARNING" in caplog.text
+        assert "--latest ignores development versions" in caplog.text
+        assert dev_versions.value in caplog.text
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_latest_no_warning_when_dev_versions_excluded(self, caplog, testdata_path):
+        """Test that --latest with the default --dev-versions exclude emits no dev-version warning."""
+        yaml_file = testdata_path / "valid" / "complex.yaml"
+        BakeryConfig(yaml_file, BakerySettings(latest=True))
+        assert "--latest ignores development versions" not in caplog.text
+
     def test_dev_stream_warning_when_dev_versions_excluded(
         self,
         caplog,

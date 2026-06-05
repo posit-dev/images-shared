@@ -377,6 +377,15 @@ class BakeryConfig:
                 "Use --dev-versions include or --dev-versions only to enable dev stream filtering."
             )
 
+        if self.settings.latest and self.settings.dev_versions in (
+            DevVersionInclusionEnum.ONLY,
+            DevVersionInclusionEnum.INCLUDE,
+        ):
+            log.warning(
+                f"--latest ignores development versions; --dev-versions {self.settings.dev_versions.value} "
+                "has no effect on the latest filter."
+            )
+
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
             for image in self.model.images:
                 image.load_dev_versions()

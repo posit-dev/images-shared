@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, warn_if_latest_ignores_dev_versions
+from posit_bakery.cli.common import with_verbosity_flags
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
@@ -122,7 +122,6 @@ def tags(
             matrix_versions=matrix_versions,
             latest=latest,
         )
-        warn_if_latest_ignores_dev_versions(latest, dev_versions)
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
         if output == GetTagsOutputFormat.UID:

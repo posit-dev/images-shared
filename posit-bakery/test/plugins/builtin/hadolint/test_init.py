@@ -64,21 +64,3 @@ class TestHadolintRunLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
-
-    def test_latest_with_dev_versions_include_warns(self, mocked_hadolint_run, caplog):
-        result = runner.invoke(
-            app,
-            ["hadolint", "run", "--latest", "--dev-versions", "include", "--context", BASIC_CONTEXT],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0, result.stdout
-        assert "--latest ignores development versions" in caplog.text
-
-    def test_no_warning_without_latest(self, mocked_hadolint_run, caplog):
-        result = runner.invoke(
-            app,
-            ["hadolint", "run", "--dev-versions", "include", "--context", BASIC_CONTEXT],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0, result.stdout
-        assert "--latest ignores development versions" not in caplog.text

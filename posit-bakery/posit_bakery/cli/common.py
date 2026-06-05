@@ -14,24 +14,10 @@ from posit_bakery.config.dependencies import (
     DependencyConstraint,
     DependencyVersions,
 )
-from posit_bakery.const import DevVersionInclusionEnum
 from posit_bakery.log import init_logging
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
-
-
-def warn_if_latest_ignores_dev_versions(latest: bool, dev_versions: DevVersionInclusionEnum) -> None:
-    """Warn when ``--latest`` is combined with development-version inclusion.
-
-    The ``--latest`` filter always excludes development versions, so requesting them via
-    ``--dev-versions include`` or ``--dev-versions only`` has no effect on the result.
-    """
-    if latest and dev_versions in (DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE):
-        log.warning(
-            f"--latest ignores development versions; --dev-versions {dev_versions.value} "
-            "has no effect on the latest filter."
-        )
 
 
 def with_verbosity_flags(fn):

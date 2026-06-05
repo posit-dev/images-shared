@@ -5,11 +5,7 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import (
-    with_verbosity_flags,
-    with_temporary_storage,
-    warn_if_latest_ignores_dev_versions,
-)
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
@@ -228,8 +224,6 @@ def build(
         cache_registry=cache_registry,
         temp_registry=temp_registry,
     )
-
-    warn_if_latest_ignores_dev_versions(latest, dev_versions)
 
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
