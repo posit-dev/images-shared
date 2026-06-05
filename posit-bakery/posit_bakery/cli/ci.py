@@ -212,15 +212,15 @@ def merge(
         ),
     ] = None,
 ):
-    """Alias for `bakery ci publish --no-enable-soci`.
+    """Alias for `bakery ci publish`.
 
     Preserved for back-compat. New callers should prefer `bakery ci publish`.
+    SOCI conversion is driven by per-image/variant `soci` options.
     """
     publish(
         metadata_file=metadata_file,
         context=context,
         temp_registry=temp_registry,
-        enable_soci=False,
         dry_run=dry_run,
         dev_channel=dev_channel,
     )
@@ -239,10 +239,6 @@ def publish(
             help="Temporary registry to use for split/merge builds.", rich_help_panel="Build Configuration & Outputs"
         ),
     ] = None,
-    enable_soci: Annotated[
-        bool,
-        typer.Option("--enable-soci/--no-enable-soci", help="Run SOCI conversion between merge-create and merge-copy."),
-    ] = False,
     dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
     dev_channel: Annotated[
         Optional[ReleaseChannelEnum],
@@ -263,13 +259,17 @@ def publish(
     ] = None,
 ) -> None:
     """Publish multi-platform images by composing oras index-create →
-    optional soci-convert → oras index-copy.
+    soci-convert → oras index-copy.
+
+    SOCI conversion is driven entirely by configuration: each target is
+    converted only when its resolved SOCI options have ``enabled: true``
+    (set via the ``soci`` tool options on an image or variant). Targets
+    without SOCI enabled pass through the convert phase untouched.
 
     Temporary indexes are left in place and cleaned up out-of-band by the
     clean.yml workflow (bakery clean temp-registry) rather than deleted here.
 
-    Replaces `bakery ci merge`; the latter is preserved as a thin alias
-    that calls this command with `--no-enable-soci`.
+    Replaces `bakery ci merge`; the latter is preserved as a thin alias.
     """
     # Imports kept local to mirror existing patterns and to avoid bloating
     # module load time when this command isn't invoked.
@@ -342,28 +342,28 @@ def publish(
             raise typer.Exit(code=1)
         temp_refs[t.uid] = res.temp_ref  # type: ignore[assignment]
 
-    # Phase 2: SOCI convert (conditional).
-    if enable_soci:
-        soci = get_plugin("soci")
-        soci_results = soci.execute(
-            config.base_path,
-            targets,
-            source_refs=temp_refs,
-            dry_run=dry_run,
-        )
-        soci_failed = False
-        for r in soci_results:
-            artifacts = r.artifacts or {}
-            if artifacts.get("skipped"):
-                continue
-            wf = artifacts.get("workflow_result")
-            if r.exit_code != 0:
-                soci_failed = True
-                continue
-            if wf and getattr(wf, "destination_ref", None):
-                temp_refs[r.target.uid] = wf.destination_ref
-        if soci_failed:
-            soci.results(soci_results)  # raises typer.Exit(1)
+    # Phase 2: SOCI convert. Driven by per-target config; targets whose
+    # resolved SOCI options have enabled=False are skipped by the plugin.
+    soci = get_plugin("soci")
+    soci_results = soci.execute(
+        config.base_path,
+        targets,
+        source_refs=temp_refs,
+        dry_run=dry_run,
+    )
+    soci_failed = False
+    for r in soci_results:
+        artifacts = r.artifacts or {}
+        if artifacts.get("skipped"):
+            continue
+        wf = artifacts.get("workflow_result")
+        if r.exit_code != 0:
+            soci_failed = True
+            continue
+        if wf and getattr(wf, "destination_ref", None):
+            temp_refs[r.target.uid] = wf.destination_ref
+    if soci_failed:
+        soci.results(soci_results)  # raises typer.Exit(1)
 
     # Phase 3: index copy.
     copy_failed = False

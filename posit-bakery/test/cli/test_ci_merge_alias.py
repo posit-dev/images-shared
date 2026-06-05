@@ -10,7 +10,7 @@ from posit_bakery.cli.main import app
 pytestmark = [pytest.mark.unit]
 
 
-def test_merge_delegates_to_publish_with_soci_disabled(tmp_path):
+def test_merge_delegates_to_publish(tmp_path):
     runner = CliRunner()
     metadata_file = tmp_path / "fake-metadata.json"
     metadata_file.write_text("{}")
@@ -19,4 +19,5 @@ def test_merge_delegates_to_publish_with_soci_disabled(tmp_path):
         runner.invoke(app, ["ci", "merge", str(metadata_file)])
         assert mock_publish.called
         call_kwargs = mock_publish.call_args.kwargs
-        assert call_kwargs.get("enable_soci") is False
+        # SOCI is config-driven now; the alias no longer passes a soci flag.
+        assert "enable_soci" not in call_kwargs
