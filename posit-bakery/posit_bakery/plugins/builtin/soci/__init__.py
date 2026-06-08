@@ -244,7 +244,7 @@ class SociPlugin(BakeryToolPlugin):
         sudo = False
         if not standalone and not dry_run:
             try:
-                sudo = bool(soci_module.resolve_sudo_prefix(dry_run=dry_run))
+                sudo = bool(soci_module.resolve_sudo_prefix())
             except SociPrivilegeError as e:
                 log.error(str(e))
                 return [
