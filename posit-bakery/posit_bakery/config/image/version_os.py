@@ -21,7 +21,7 @@ def _resolve_name_to_build_os(name: str) -> BuildOS:
         log.warning(f"Could not identify '{name}' as a supported OS.")
         return SUPPORTED_OS["unknown"]
     match_dict = match.groupdict()
-    match_dict["name"] = match_dict.get("name", "").strip()
+    match_dict["name"] = match_dict.get("name", "").strip().rstrip("-")
 
     if match_dict["name"] in ALTERNATE_NAMES:
         match_dict["name"] = ALTERNATE_NAMES[match_dict["name"]]
@@ -31,6 +31,7 @@ def _resolve_name_to_build_os(name: str) -> BuildOS:
             if isinstance(SUPPORTED_OS.get(match_dict["name"]), BuildOS):
                 return SUPPORTED_OS[match_dict["name"]]
             else:
+                # Convert to int before max() to get numeric ordering (9 < 10), not lexical ("9" > "10")
                 latest = str(max([int(x) for x in SUPPORTED_OS[match_dict["name"]].keys()]))
                 return SUPPORTED_OS[match_dict["name"]][latest]
     else:
@@ -95,6 +96,14 @@ class ImageVersionOS(BakeryYAMLModel):
             pattern=URL_WITH_ENV_VARS_REGEX_PATTERN,
         ),
     ]
+    artifactOs: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="OS name for artifact download URL resolution when this OS cannot "
+            "resolve artifacts directly (e.g. scratch).",
+        ),
+    ]
 
     def __hash__(self):
         """Unique hash for an ImageVersionOS object."""
@@ -108,6 +117,16 @@ class ImageVersionOS(BakeryYAMLModel):
         if isinstance(other, ImageVersionOS):
             return hash(self) == hash(other)
         return False
+
+    @field_validator("artifactOs", mode="after")
+    @classmethod
+    def validate_artifact_os(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        resolved = _resolve_name_to_build_os(value)
+        if resolved == SUPPORTED_OS["unknown"]:
+            raise ValueError(f"artifactOs '{value}' is not a recognized OS name")
+        return value
 
     @field_validator("buildOS", mode="after")
     @classmethod
@@ -124,3 +143,9 @@ class ImageVersionOS(BakeryYAMLModel):
     def serialize_platforms(self, platforms: list[TargetPlatform]) -> list[str]:
         """Serialize the platforms field to a list of strings for YAML output."""
         return [platform.value for platform in platforms]
+
+    @property
+    def artifact_build_os(self) -> BuildOS:
+        if self.artifactOs is not None:
+            return _resolve_name_to_build_os(self.artifactOs)
+        return self.buildOS
