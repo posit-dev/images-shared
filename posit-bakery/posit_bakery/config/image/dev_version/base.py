@@ -6,7 +6,7 @@ from typing import Annotated, Self
 from pydantic import Field, field_validator, model_validator
 
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.config.image.version_os import ImageVersionOS
 from posit_bakery.config.registry import BaseRegistry, Registry
@@ -210,10 +210,10 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """
         raise NotImplementedError("Subclasses must implement get_url method.")
 
-    def get_release_stream(self) -> ReleaseStreamEnum | None:
-        """Return the release stream for this development version, if known.
+    def get_release_channel(self) -> ReleaseChannelEnum | None:
+        """Return the release channel for this development version, if known.
 
-        :return: The ReleaseStreamEnum value, or None if not applicable.
+        :return: The ReleaseChannelEnum value, or None if not applicable.
         """
         return None
 
@@ -239,8 +239,8 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         """Convert this development version to a standard image version.
 
         Calls _resolve_os_urls() to populate artifact download URLs.
-        The stream subclass overrides _resolve_os_urls() to exclude
-        OSes whose platform is unavailable in the product stream.
+        The channel subclass overrides _resolve_os_urls() to exclude
+        OSes whose platform is unavailable in the product channel.
 
         :raises RuntimeError: If no OSes remain after URL resolution.
         """
@@ -250,9 +250,9 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
         version = self.get_version()
         metadata = {}
-        release_stream = self.get_release_stream()
-        if release_stream is not None:
-            metadata["release_stream"] = release_stream
+        release_channel = self.get_release_channel()
+        if release_channel is not None:
+            metadata["release_channel"] = release_channel
         return ImageVersion(
             name=version,
             subpath=f".dev-{version}".replace(" ", "-").lower(),

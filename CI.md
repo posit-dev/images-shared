@@ -87,7 +87,8 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `dev-versions` | No | `exclude` | Dev version filter. One of `include`, `exclude`, `only`. |
 | `matrix-versions` | No | `exclude` | Matrix version filter (e.g., R × Python content or session images). One of `include`, `exclude`, `only`. |
 | `image-version` | No | `""` | Filter to a specific image version. Bakery strips a leading `v` automatically. |
-| `dev-stream` | No | `""` | Filter dev versions to a specific release stream (e.g., `daily`, `preview`). |
+| `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
+| `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
 | `push` | No | `false` | Push merged manifests to Docker Hub, GHCR, and Amazon Elastic Container Registry (ECR). |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
@@ -180,7 +181,8 @@ Builds, tests, and optionally pushes images on a single runner using QEMU for cr
 | `dev-versions` | No | `exclude` | Dev version filter (`include`, `exclude`, `only`). |
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
 | `image-version` | No | `""` | Filter to a specific image version. Leading `v` is stripped. |
-| `dev-stream` | No | `""` | Filter dev versions to a specific release stream. |
+| `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
+| `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
 | `push` | No | `false` | Push images to registries. |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |

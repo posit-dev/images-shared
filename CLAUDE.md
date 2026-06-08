@@ -170,7 +170,7 @@ This repo provides shared reusable GitHub Actions workflows that all product ima
 Each product repo has 2-3 workflow files that call the shared workflows:
 
 - **production.yml** — weekly + PR + push to main. Builds release versions, pushes to Docker Hub + GHCR.
-- **development.yml** — daily/hourly + PR + push to main. Builds dev stream versions, pushes to GHCR/ECR.
+- **development.yml** — daily/hourly + PR + push to main. Builds dev channel versions, pushes to GHCR/ECR.
 - **content.yml / session.yml** — weekly + PR + push to main. Builds matrix images (R x Python combinations).
 
 ### Build pipeline flow

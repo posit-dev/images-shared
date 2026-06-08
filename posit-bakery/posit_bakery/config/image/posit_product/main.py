@@ -10,7 +10,7 @@ from posit_bakery.config.image.posit_product import resolvers
 from posit_bakery.config.image.posit_product.const import (
     CALVER_REGEX_PATTERN,
     ProductEnum,
-    ReleaseStreamEnum,
+    ReleaseChannelEnum,
     WORKBENCH_DAILY_URL,
     PACKAGE_MANAGER_DAILY_URL,
     PACKAGE_MANAGER_PREVIEW_URL,
@@ -21,8 +21,8 @@ from posit_bakery.config.shared import OSFamilyEnum
 from posit_bakery.util import cached_session
 
 
-class ReleaseStreamResult(BaseModel):
-    """Represents a resulting artifact found in a release stream. This provides an easy validation for data we get."""
+class ReleaseChannelResult(BaseModel):
+    """Represents a resulting artifact found in a release channel. This provides an easy validation for data we get."""
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
     download_url: HttpUrl
@@ -34,17 +34,17 @@ class ReleaseStreamResult(BaseModel):
         return str(self.download_url).replace("amd64", "$TARGETARCH").replace("x86_64", "$TARGETARCH")
 
 
-class ReleaseStreamPath:
-    """Represents a path to a release stream and a map of resolvers to extract data from the fetched data."""
+class ReleaseChannelPath:
+    """Represents a path to a release channel and a map of resolvers to extract data from the fetched data."""
 
-    def __init__(self, stream_url: str, resolver_map: dict[str, resolvers.AbstractResolver | str]):
-        self.stream_url = stream_url
+    def __init__(self, channel_url: str, resolver_map: dict[str, resolvers.AbstractResolver | str]):
+        self.channel_url = channel_url
         self.resolver_map = resolver_map
 
-    def get(self, metadata: dict) -> ReleaseStreamResult:
-        """Fetches data from the stream URL and resolves the data using the given resolvers."""
+    def get(self, metadata: dict) -> ReleaseChannelResult:
+        """Fetches data from the channel URL and resolves the data using the given resolvers."""
         session = cached_session()
-        response = session.get(self.stream_url)
+        response = session.get(self.channel_url)
         response.raise_for_status()
         try:
             data = response.json()
@@ -61,22 +61,22 @@ class ReleaseStreamPath:
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
 
-        return ReleaseStreamResult(**result)
+        return ReleaseChannelResult(**result)
 
 
-# This map connects products to their respective release streams. Each release stream has a ReleaseStreamPath object
+# This map connects products to their respective release channels. Each release channel has a ReleaseChannelPath object
 # that defines one URL to fetch data from and a map of resolvers that can be used to extract a specified property
 # from the fetched data as it is expected to be formatted.
-product_release_stream_url_map = {
+product_release_channel_url_map = {
     ProductEnum.CONNECT: {
-        ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["connect", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(["connect", "installer", "{download_json_os}", "url"]),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseStreamPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             CONNECT_DAILY_URL,
             {
                 "version": resolvers.ChainedResolver(
@@ -97,14 +97,14 @@ product_release_stream_url_map = {
         ),
     },
     ProductEnum.PACKAGE_MANAGER: {
-        ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "url"]),
             },
         ),
-        ReleaseStreamEnum.PREVIEW: ReleaseStreamPath(
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
             PACKAGE_MANAGER_PREVIEW_URL,
             # This is intentionally stored as an OrderedDict to ensure version is resolved first so it can be passed
             # to the download_url resolver.
@@ -120,7 +120,7 @@ product_release_stream_url_map = {
                 ]
             ),
         ),
-        ReleaseStreamEnum.DAILY: ReleaseStreamPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             PACKAGE_MANAGER_DAILY_URL,
             OrderedDict(
                 [
@@ -136,7 +136,7 @@ product_release_stream_url_map = {
         ),
     },
     ProductEnum.WORKBENCH: {
-        ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -147,7 +147,7 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseStreamPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -160,7 +160,7 @@ product_release_stream_url_map = {
         ),
     },
     ProductEnum.WORKBENCH_SESSION: {
-        ReleaseStreamEnum.RELEASE: ReleaseStreamPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -171,7 +171,7 @@ product_release_stream_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseStreamPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -256,15 +256,15 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     return meta
 
 
-def get_product_artifact_by_stream(
-    product: ProductEnum, stream: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
-) -> ReleaseStreamResult:
-    """Fetches the version and download URL for a given product, release stream, and OS."""
-    if product not in product_release_stream_url_map:
+def get_product_artifact_by_channel(
+    product: ProductEnum, channel: ReleaseChannelEnum, os: BuildOS, generalize_arch: bool = True
+) -> ReleaseChannelResult:
+    """Fetches the version and download URL for a given product, release channel, and OS."""
+    if product not in product_release_channel_url_map:
         raise ValueError(f"Product {product} is not supported.")
-    if stream not in product_release_stream_url_map[product]:
-        raise ValueError(f"Stream {stream} is not supported for product {product}.")
+    if channel not in product_release_channel_url_map[product]:
+        raise ValueError(f"Channel {channel} is not supported for product {product}.")
 
     metadata = _make_resolver_metadata(os, product)
 
-    return product_release_stream_url_map[product][stream].get(metadata)
+    return product_release_channel_url_map[product][channel].get(metadata)

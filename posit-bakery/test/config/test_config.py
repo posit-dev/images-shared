@@ -12,7 +12,7 @@ from pydantic import ValidationError
 import posit_bakery
 from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryError
 from posit_bakery.image.image_metadata import BuildMetadata
@@ -227,24 +227,24 @@ class TestBakeryConfig:
                     assert len(version.os) == 2
 
     @pytest.mark.parametrize(
-        "dev_stream,expected_dev_version_count",
+        "dev_channel,expected_dev_version_count",
         [
             pytest.param(None, 2, id="no-filter-includes-all-dev-versions"),
-            pytest.param(ReleaseStreamEnum.PREVIEW, 1, id="preview-filter"),
-            pytest.param(ReleaseStreamEnum.DAILY, 1, id="daily-filter"),
-            pytest.param(ReleaseStreamEnum.RELEASE, 0, id="release-filter-no-match"),
+            pytest.param(ReleaseChannelEnum.PREVIEW, 1, id="preview-filter"),
+            pytest.param(ReleaseChannelEnum.DAILY, 1, id="daily-filter"),
+            pytest.param(ReleaseChannelEnum.RELEASE, 0, id="release-filter-no-match"),
         ],
     )
     @patch("atexit.register")
-    def test_dev_stream_filter(
+    def test_dev_channel_filter(
         self,
         mock_atexit_register,
-        dev_stream,
+        dev_channel,
         expected_dev_version_count,
         testdata_path,
         patch_requests_get,
     ):
-        """Test that dev_stream filters development versions by release stream."""
+        """Test that dev_channel filters development versions by release channel."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
         with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
             with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
@@ -252,7 +252,7 @@ class TestBakeryConfig:
                     yaml_file,
                     BakerySettings(
                         dev_versions=DevVersionInclusionEnum.ONLY,
-                        dev_stream=dev_stream,
+                        dev_channel=dev_channel,
                         clean_temporary=False,
                     ),
                 )
@@ -261,13 +261,13 @@ class TestBakeryConfig:
                 assert len(dev_targets) == expected_dev_version_count * 4
 
     @patch("atexit.register")
-    def test_dev_stream_filter_with_include(
+    def test_dev_channel_filter_with_include(
         self,
         mock_atexit_register,
         testdata_path,
         patch_requests_get,
     ):
-        """Test that dev_stream filters work with dev_versions=INCLUDE (mixed dev + release)."""
+        """Test that dev_channel filters work with dev_versions=INCLUDE (mixed dev + release)."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
         with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
             with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
@@ -275,7 +275,7 @@ class TestBakeryConfig:
                     yaml_file,
                     BakerySettings(
                         dev_versions=DevVersionInclusionEnum.INCLUDE,
-                        dev_stream=ReleaseStreamEnum.DAILY,
+                        dev_channel=ReleaseChannelEnum.DAILY,
                         clean_temporary=False,
                     ),
                 )
@@ -350,23 +350,42 @@ class TestBakeryConfig:
         BakeryConfig(yaml_file, BakerySettings(latest=True))
         assert "--latest ignores development versions" not in caplog.text
 
-    def test_dev_stream_warning_when_dev_versions_excluded(
+    def test_dev_channel_warning_when_dev_versions_excluded(
         self,
         caplog,
         testdata_path,
         patch_requests_get,
     ):
-        """Test that a warning is emitted when --dev-stream is set but dev versions are excluded."""
+        """Test that a warning is emitted when --dev-channel is set but dev versions are excluded."""
         yaml_file = testdata_path / "valid" / "complex.yaml"
         BakeryConfig(
             yaml_file,
             BakerySettings(
                 dev_versions=DevVersionInclusionEnum.EXCLUDE,
-                dev_stream=ReleaseStreamEnum.DAILY,
+                dev_channel=ReleaseChannelEnum.DAILY,
             ),
         )
         assert "WARNING" in caplog.text
-        assert "--dev-stream" in caplog.text
+        assert "--dev-channel" in caplog.text
+
+    def test_dev_stream_constructor_arg_migrates_to_dev_channel(self):
+        """BakerySettings(dev_stream=...) must migrate the value to dev_channel with a warning."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            settings = BakerySettings(dev_stream=ReleaseChannelEnum.DAILY)
+        assert settings.dev_channel == ReleaseChannelEnum.DAILY
+        assert any("dev_stream" in str(warning.message).lower() for warning in w)
+        assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
+
+    def test_dev_channel_wins_when_both_provided(self):
+        """When both dev_stream and dev_channel are provided, dev_channel wins."""
+        settings = BakerySettings(
+            dev_channel=ReleaseChannelEnum.PREVIEW,
+            dev_stream=ReleaseChannelEnum.DAILY,
+        )
+        assert settings.dev_channel == ReleaseChannelEnum.PREVIEW
 
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
@@ -1906,7 +1925,7 @@ class TestBakeryConfig:
         dev = release.model_copy(deep=True)
         dev.parent = release.parent
         dev.isDevelopmentVersion = True
-        dev.metadata = {"release_stream": ReleaseStreamEnum.DAILY}
+        dev.metadata = {"release_channel": ReleaseChannelEnum.DAILY}
         image.versions.append(dev)
 
         config.generate_image_targets(BakerySettings(dev_versions=DevVersionInclusionEnum.INCLUDE))

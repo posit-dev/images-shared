@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from posit_bakery.config import ImageVersion, Image, BaseRegistry, Registry, BakeryConfigDocument, ImageVariant
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum
 
 pytestmark = [
@@ -519,18 +519,18 @@ class TestImageVersion:
 
     def test_metadata_excluded_from_serialization(self):
         """Test that metadata is excluded from model_dump output."""
-        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily"})
+        i = ImageVersion(name="1.0.0", metadata={"release_channel": "daily"})
         dump = i.model_dump()
         assert "metadata" not in dump
 
     def test_metadata_stores_arbitrary_values(self):
         """Test that metadata can store arbitrary key-value pairs."""
-        i = ImageVersion(name="1.0.0", metadata={"release_stream": "daily", "custom_key": 42})
-        assert i.metadata["release_stream"] == "daily"
+        i = ImageVersion(name="1.0.0", metadata={"release_channel": "daily", "custom_key": 42})
+        assert i.metadata["release_channel"] == "daily"
         assert i.metadata["custom_key"] == 42
 
     @pytest.mark.parametrize(
-        "is_dev,dev_versions,dev_stream,metadata,expected_included,expected_reason_contains",
+        "is_dev,dev_versions,dev_channel,metadata,expected_included,expected_reason_contains",
         [
             # Release version, exclude dev → included
             pytest.param(False, DevVersionInclusionEnum.EXCLUDE, None, {}, True, None, id="release-exclude-dev"),
@@ -554,54 +554,54 @@ class TestImageVersion:
             pytest.param(True, DevVersionInclusionEnum.INCLUDE, None, {}, True, None, id="dev-include"),
             # Release version, include → included
             pytest.param(False, DevVersionInclusionEnum.INCLUDE, None, {}, True, None, id="release-include"),
-            # Dev version, stream matches → included
+            # Dev version, channel matches → included
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
-                {"release_stream": ReleaseStreamEnum.DAILY},
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": ReleaseChannelEnum.DAILY},
                 True,
                 None,
-                id="dev-stream-match",
+                id="dev-channel-match",
             ),
-            # Dev version, stream mismatch → excluded
+            # Dev version, channel mismatch → excluded
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
-                {"release_stream": ReleaseStreamEnum.PREVIEW},
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": ReleaseChannelEnum.PREVIEW},
                 False,
                 "does not match",
-                id="dev-stream-mismatch",
+                id="dev-channel-mismatch",
             ),
-            # Dev version, stream filter but no metadata → excluded
+            # Dev version, channel filter but no metadata → excluded
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
-                ReleaseStreamEnum.DAILY,
+                ReleaseChannelEnum.DAILY,
                 {},
                 False,
                 "does not match",
-                id="dev-stream-no-metadata",
+                id="dev-channel-no-metadata",
             ),
-            # Release version with stream filter → included (stream filter only applies to dev)
+            # Release version with channel filter → included (channel filter only applies to dev)
             pytest.param(
                 False,
                 DevVersionInclusionEnum.INCLUDE,
-                ReleaseStreamEnum.DAILY,
+                ReleaseChannelEnum.DAILY,
                 {},
                 True,
                 None,
-                id="release-with-stream-filter",
+                id="release-with-channel-filter",
             ),
         ],
     )
     def test_matches_dev_filter(
-        self, is_dev, dev_versions, dev_stream, metadata, expected_included, expected_reason_contains
+        self, is_dev, dev_versions, dev_channel, metadata, expected_included, expected_reason_contains
     ):
-        """Test matches_dev_filter with all combinations of dev_versions and dev_stream."""
+        """Test matches_dev_filter with all combinations of dev_versions and dev_channel."""
         v = ImageVersion(name="1.0.0", isDevelopmentVersion=is_dev, metadata=metadata)
-        included, reason = v.matches_dev_filter(dev_versions, dev_stream)
+        included, reason = v.matches_dev_filter(dev_versions, dev_channel)
         assert included == expected_included
         if expected_reason_contains is None:
             assert reason is None

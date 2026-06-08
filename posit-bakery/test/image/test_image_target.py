@@ -7,7 +7,7 @@ import python_on_whales
 
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.image.parsed_version import ParsedVersion
-from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
 from posit_bakery.image.image_metadata import BuildMetadata
@@ -140,11 +140,11 @@ class TestImageTarget:
         expected_uid = re.sub(r"[ .+/]", "-", f"{image.name}-{version.name}-{variant.name}-{os.name}").lower()
         assert basic_standard_image_target.uid == expected_uid
 
-    def test_uid_encodes_release_stream(self, get_config_obj):
-        """A dev-stream build and a release build of the same version get distinct UIDs.
+    def test_uid_encodes_release_channel(self, get_config_obj):
+        """A dev-channel build and a release build of the same version get distinct UIDs.
 
         Regression test for posit-dev/images-shared#553: the UID omitted the release
-        stream, so a daily/preview build of version X shared a UID with the release
+        channel, so a daily/preview build of version X shared a UID with the release
         build of X and `bakery ci merge` pushed the dev image to the release registries.
         """
         config = get_config_obj("basic")
@@ -162,7 +162,7 @@ class TestImageTarget:
 
         dev_version = version.model_copy(deep=True)
         dev_version.parent = version.parent
-        dev_version.metadata = {"release_stream": ReleaseStreamEnum.DAILY}
+        dev_version.metadata = {"release_channel": ReleaseChannelEnum.DAILY}
         dev_target = ImageTarget.new_image_target(
             repository=config.model.repository,
             image_version=dev_version,
@@ -171,7 +171,7 @@ class TestImageTarget:
         )
 
         assert release_target.uid != dev_target.uid
-        # Release UIDs stay unsuffixed; only dev streams carry a stream suffix.
+        # Release UIDs stay unsuffixed; only dev channels carry a channel suffix.
         assert release_target.uid == "test-image-1-0-0-standard-ubuntu-22-04"
         assert not release_target.uid.endswith("-release")
         assert dev_target.uid.endswith("-daily")
@@ -274,7 +274,7 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": basic_standard_image_target.image_variant.tagDisplayName,
             "OS": basic_standard_image_target.image_os.tagDisplayName,
-            "Stream": "",
+            "Channel": "",
         }
         assert basic_standard_image_target.tag_template_values == expected_values
 
@@ -284,40 +284,40 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": "",
             "OS": "",
-            "Stream": "",
+            "Channel": "",
         }
         basic_standard_image_target.image_variant = None
         basic_standard_image_target.image_os = None
         assert basic_standard_image_target.tag_template_values == expected_values
 
-    def test_stream_tags(self, basic_standard_image_target):
-        """Test that release_stream metadata produces stream-based floating tags."""
-        from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+    def test_channel_tags(self, basic_standard_image_target):
+        """Test that release_channel metadata produces channel-based floating tags."""
+        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 
         target = basic_standard_image_target
 
-        # No stream → no stream tags
-        assert target.image_version.metadata.get("release_stream") is None
-        stream_suffixes = [s for s in target.tag_suffixes if "daily" in s]
-        assert stream_suffixes == []
+        # No channel → no channel tags
+        assert target.image_version.metadata.get("release_channel") is None
+        channel_suffixes = [s for s in target.tag_suffixes if "daily" in s]
+        assert channel_suffixes == []
 
-        # Enum stream value
-        target.image_version.metadata["release_stream"] = ReleaseStreamEnum.DAILY
-        assert target.tag_template_values["Stream"] == "daily"
-        stream_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
-        assert "daily" in stream_suffixes
-        assert "daily-ubuntu-22.04" in stream_suffixes
-        assert "daily-std" in stream_suffixes
-        assert "daily-ubuntu-22.04-std" in stream_suffixes
+        # Enum channel value
+        target.image_version.metadata["release_channel"] = ReleaseChannelEnum.DAILY
+        assert target.tag_template_values["Channel"] == "daily"
+        channel_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
+        assert "daily" in channel_suffixes
+        assert "daily-ubuntu-22.04" in channel_suffixes
+        assert "daily-std" in channel_suffixes
+        assert "daily-ubuntu-22.04-std" in channel_suffixes
 
-        # Plain string stream value
-        target.image_version.metadata["release_stream"] = "preview"
-        assert target.tag_template_values["Stream"] == "preview"
-        stream_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
-        assert "preview" in stream_suffixes
+        # Plain string channel value
+        target.image_version.metadata["release_channel"] = "preview"
+        assert target.tag_template_values["Channel"] == "preview"
+        channel_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
+        assert "preview" in channel_suffixes
 
         # Clean up
-        del target.image_version.metadata["release_stream"]
+        del target.image_version.metadata["release_channel"]
 
     def test_tag_patterns_deduplication(self, get_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
@@ -336,7 +336,7 @@ class TestImageTarget:
             image_os=os,
         )
         # Check that the tag patterns are deduplicated to 12, the default tag patterns length
-        # (8 version-based + 4 stream-based)
+        # (8 version-based + 4 channel-based)
         assert len(target.tag_patterns) == 12
 
     def test_tag_patterns_filtering(self, get_config_obj):
@@ -354,8 +354,8 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        # 8 version-based + 4 stream-based (stream patterns pass filtering
-        # even when Stream is empty; they produce nothing during rendering)
+        # 8 version-based + 4 channel-based (channel patterns pass filtering
+        # even when Channel is empty; they produce nothing during rendering)
         assert len(target.tag_patterns) == 12
 
         # Test primary variant and primary OS, but not latest
