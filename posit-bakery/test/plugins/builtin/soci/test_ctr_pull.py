@@ -76,7 +76,7 @@ def test_sudo_prepends_prefix():
 
 def test_no_sudo_by_default():
     cmd = ContainerdImagePull(ctr_bin="ctr", image_ref="reg/img:tag")
-    assert cmd.command[0] == "ctr"
+    assert "sudo" not in cmd.command
 
 
 def test_dry_run_does_not_invoke_subprocess():
