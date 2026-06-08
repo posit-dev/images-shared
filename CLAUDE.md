@@ -27,35 +27,9 @@ share the same structure: a `bakery.yaml` at the root, image directories with `t
 subdirectories containing Jinja2 templates, and rendered version directories. They all use
 `posit-bakery` (from this repo) as their build tool and share the same CI workflows.
 
-### Worktrees for Cross-Repo Changes
+## Rebasing
 
-When making changes across repositories, use worktrees to isolate work from `main`. Multiple
-sessions may be running concurrently, so never work directly on `main` in any repo.
-
-- **Primary repo:** Use `EnterWorktree` with a descriptive name.
-- **Sibling repos:** Create worktrees via `git worktree add` before making changes. Store
-  them in `.claude/worktrees/<name>` within each repo (matching the `EnterWorktree` convention).
-
-```bash
-# Create a worktree in a sibling repo
-git -C ../images-connect worktree add .claude/worktrees/<name> -b <branch-name>
-```
-
-Read and write files via the worktree path (e.g., `../images-connect/.claude/worktrees/<name>/`)
-instead of the repo root. Clean up when finished:
-
-```bash
-git -C ../images-connect worktree remove .claude/worktrees/<name>
-```
-
-> **Note:** The `additionalDirectories` in `.claude/settings.json` point to the sibling repo
-> roots, not to worktree paths. File reads and writes via those directories will access the
-> repo root (typically on `main`). Always use the full worktree path when reading or writing
-> files in a sibling worktree.
-
-> **Bash commands:** Use `git -C <path>` instead of `cd <path> && git ...` for sibling repo
-> operations. The sandbox restricts `cd` to parent/sibling directories, but `git -C` runs
-> git from a target directory without changing the working directory.
+If asked to rebase a PR, prioritize caution and clarity over speed. Take the time to understand the changes in the base branch and how they interact with your changes. If there are conflicts, resolve them thoughtfully, ensuring that you don't accidentally remove important changes from the base branch or your PR. If you are unsure about how to resolve a conflict, ask for help or clarification. Never drop a feature or change without consulting the user.
 
 ## Posit Product Naming
 
