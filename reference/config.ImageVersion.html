@@ -1300,7 +1300,7 @@ The list of ImageVersionOS objects with at most one primary OS.
 <p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L134-L153" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>matches_dev_filter(dev_versions, dev_stream<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>matches_dev_filter(dev_versions, dev_channel<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <section id="parameters-6" class="level4 doc-parameters">
 <h4 class="doc-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
@@ -1310,9 +1310,9 @@ The list of ImageVersionOS objects with at most one primary OS.
 <dd>
 <p>Whether dev versions are included, excluded, or the only versions.</p>
 </dd>
-<dt><code><span class="doc-parameter-name">dev_stream</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ReleaseStreamEnum | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dt><code><span class="doc-parameter-name">dev_channel</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ReleaseChannelEnum | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
 <dd>
-If set, only include dev versions from this release stream.
+If set, only include dev versions from this release channel.
 </dd>
 </dl>
 </div>
