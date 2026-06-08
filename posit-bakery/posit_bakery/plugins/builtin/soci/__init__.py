@@ -57,6 +57,7 @@ class SociPlugin(BakeryToolPlugin):
         from posit_bakery.cli.common import with_verbosity_flags
         from posit_bakery.config.config import BakeryConfig, BakerySettings
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+        from posit_bakery.plugins.builtin.soci.options import SociModeEnum
         from posit_bakery.util import auto_path
 
         soci_app = typer.Typer(no_args_is_help=True)
@@ -74,10 +75,10 @@ class SociPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(help="Temporary registry to use for split/merge builds."),
             ] = None,
-            standalone: Annotated[
-                bool,
-                typer.Option(help="Run soci convert in standalone (no-containerd) mode."),
-            ] = False,
+            soci_mode: Annotated[
+                SociModeEnum,
+                typer.Option(help="SOCI conversion mode: 'standalone' (no containerd) or 'containerd'."),
+            ] = SociModeEnum.STANDALONE,
             dry_run: Annotated[
                 bool,
                 typer.Option(help="Log commands without executing them."),
@@ -86,7 +87,8 @@ class SociPlugin(BakeryToolPlugin):
             """Convert images referenced by build-metadata JSON files into SOCI-enabled images.
 
             \b
-            By default, operates against containerd (non-standalone mode).
+            By default, operates in standalone (no-containerd) mode; pass
+            `--soci-mode containerd` to convert against a running containerd.
             Targets without `tool: soci, enabled: true` in bakery.yaml are
             skipped.
             """
@@ -130,7 +132,7 @@ class SociPlugin(BakeryToolPlugin):
                 config.targets,
                 source_refs=source_refs,
                 dry_run=dry_run,
-                standalone=standalone,
+                standalone=(soci_mode is SociModeEnum.STANDALONE),
             )
             plugin.results(results)
 
