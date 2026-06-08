@@ -11,6 +11,7 @@ from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci import SociPlugin
 from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
 
 pytestmark = [pytest.mark.unit]
 
@@ -335,8 +336,6 @@ def test_execute_defaults_to_standalone_mode(tmp_path):
 
     def fake_run(self, dry_run=False):
         captured["standalone"] = self.standalone
-        from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
-
         return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
 
     with (

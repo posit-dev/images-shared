@@ -154,6 +154,9 @@ class SociPlugin(BakeryToolPlugin):
         layouts that ``soci convert --standalone`` reads and writes are
         internal scratch that the workflow materializes and pushes via oras.
 
+        ``standalone`` selects the containerd-free (oras-based) conversion
+        path and defaults to ``True``.
+
         Targets whose resolved SociOptions has ``enabled=False`` are
         skipped with a ``skipped=True`` artifact entry.
         """
@@ -231,7 +234,6 @@ class SociPlugin(BakeryToolPlugin):
         oras_bin = resolve_bin(find_oras_bin, "oras", required=needs_standalone)
 
         for target, opts, ref in eligible:
-            workflow_standalone = standalone
             candidates = opts.candidate_namespaces or ["default", "moby"]
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,
@@ -241,7 +243,7 @@ class SociPlugin(BakeryToolPlugin):
                 options=opts,
                 source_ref=ref,
                 candidate_namespaces=candidates,
-                standalone=workflow_standalone,
+                standalone=standalone,
             )
             wf_result = workflow.run(dry_run=dry_run)
             results.append(
