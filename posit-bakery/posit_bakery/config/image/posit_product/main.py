@@ -17,16 +17,9 @@ from posit_bakery.config.image.posit_product.const import (
     CONNECT_DAILY_URL,
     DOWNLOADS_JSON_URL,
 )
+from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
 from posit_bakery.config.shared import OSFamilyEnum
 from posit_bakery.util import cached_session
-
-
-class DispatchVersionMismatchError(Exception):
-    """Raised when a dispatched version override does not match the upstream manifest.
-
-    Must NOT subclass ValueError or RequestException so it escapes the per-OS
-    catch in _resolve_os_urls and the skip-on-error catch in load_dev_versions.
-    """
 
 
 class ReleaseChannelResult(BaseModel):

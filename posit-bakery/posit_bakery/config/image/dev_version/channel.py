@@ -102,7 +102,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         that get_version() can return it without a redundant fetch.
         """
         # Local import avoids a circular import between channel.py and main.py.
-        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+        from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
 
         self.resolved_version = None
         resolved = []

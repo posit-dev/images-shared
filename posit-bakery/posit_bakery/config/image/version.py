@@ -148,8 +148,9 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             return False, "not a development version (excluded by --dev-versions only)"
         if dev_channel is not None and self.isDevelopmentVersion:
             version_channel = self.metadata.get("release_channel")
+            vc_str = version_channel.value if version_channel is not None else None
             if version_channel != dev_channel:
-                return False, (f"dev channel '{version_channel}' does not match --dev-channel '{dev_channel.value}'")
+                return False, f"dev channel '{vc_str}' does not match --dev-channel '{dev_channel.value}'"
         return True, None
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
