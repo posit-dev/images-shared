@@ -122,6 +122,17 @@ class TestImageVersionOS:
         assert os1 != os3
         assert os2 != os3
 
+    @pytest.mark.parametrize("name", ["scratch", "Scratch", "SCRATCH", " scratch "])
+    def test_scratch_derives_empty_extension_and_tag(self, name):
+        i = ImageVersionOS(name=name)
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
+    def test_empty_extension_accepted_explicitly(self):
+        i = ImageVersionOS(name="Ubuntu 22.04", extension="", tagDisplayName="")
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
     @pytest.mark.parametrize(
         "input_name,expected_build_os",
         [
@@ -146,6 +157,8 @@ class TestImageVersionOS:
             ("Rocky Linux 10", SUPPORTED_OS["rocky"]["10"]),
             ("Rocky 9", SUPPORTED_OS["rocky"]["9"]),
             ("Rocky", SUPPORTED_OS["rocky"]["10"]),
+            ("Scratch", SUPPORTED_OS["scratch"]),
+            ("scratch", SUPPORTED_OS["scratch"]),
         ],
     )
     def test_populate_build_os(self, input_name, expected_build_os):

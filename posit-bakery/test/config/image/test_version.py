@@ -774,6 +774,32 @@ class TestImageVersion:
         warnings = [r for r in caplog.records if "Unparseable version string" in r.message]
         assert len(warnings) == 1
 
+    def test_non_primary_scratch_os_raises(self):
+        with pytest.raises(ValidationError, match="empty tagDisplayName"):
+            ImageVersion(
+                name="2026.05.0",
+                os=[
+                    {"name": "scratch", "primary": False},
+                    {"name": "Ubuntu 22.04", "primary": True},
+                ],
+            )
+
+    def test_single_scratch_os_auto_promoted_to_primary(self):
+        v = ImageVersion(name="2026.05.0", os=[{"name": "scratch"}])
+        assert v.os[0].primary
+        assert v.os[0].tagDisplayName == ""
+
+    def test_explicit_primary_scratch_in_multi_os_passes(self):
+        v = ImageVersion(
+            name="2026.05.0",
+            os=[
+                {"name": "scratch", "primary": True},
+                {"name": "Ubuntu 22.04", "primary": False},
+            ],
+        )
+        scratch_entry = next(o for o in v.os if o.name.lower() == "scratch")
+        assert scratch_entry.primary
+
 
 class TestIsLatestRelease:
     """The predicate shared by the --latest filter and `bakery ci matrix`'s latest field.
