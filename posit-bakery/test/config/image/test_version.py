@@ -91,8 +91,8 @@ class TestImageVersion:
         ImageVersion(name="1.0.0", os=[])
         assert "WARNING" in caplog.text
         assert (
-            "No OSes defined for image version '1.0.0'. At least one OS should be defined for complete tagging and "
-            "labeling of images." in caplog.text
+            "No OSes defined for the image configuration. At least one OS should be "
+            "defined for complete tagging and labeling of images." in caplog.text
         )
 
     def test_deduplicate_os(self, caplog):
@@ -110,7 +110,7 @@ class TestImageVersion:
         assert len(i.os) == 1
         assert i.os[0].name == "Ubuntu 22.04"
         assert "WARNING" in caplog.text
-        assert "Duplicate OS defined in config for image version '1.0.0': Ubuntu 22.04" in caplog.text
+        assert "Duplicate OS defined in the image configuration: Ubuntu 22.04" in caplog.text
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
@@ -124,7 +124,7 @@ class TestImageVersion:
         """Test that an error is raised if multiple primary OSes are defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one OS can be marked as primary for image version '1.0.0'. Found 2 OSes marked primary.",
+            match="Only one OS can be marked as primary for the image configuration. Found 2 OSes marked primary.",
         ):
             ImageVersion(
                 name="1.0.0",
@@ -139,8 +139,8 @@ class TestImageVersion:
         ImageVersion(name="1.0.0", os=[{"name": "Ubuntu 22.04"}, {"name": "Ubuntu 24.04"}])
         assert "WARNING" in caplog.text
         assert (
-            "No OS marked as primary for image version '1.0.0'. At least one OS should be marked as primary for "
-            "complete tagging and labeling of images." in caplog.text
+            "No OS marked as primary for the image configuration. "
+            "At least one OS should be marked as primary for complete tagging and labeling of images." in caplog.text
         )
 
     def test_check_duplicate_dependencies(self):
