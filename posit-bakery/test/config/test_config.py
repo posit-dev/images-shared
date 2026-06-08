@@ -400,7 +400,7 @@ class TestBakeryConfig:
 
     class TestDevBuildSpecApplication:
         def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
-            """No dev_spec: config loads normally, no pinned_version set."""
+            """No dev_spec: config loads normally, no version_override set."""
             yaml_file = testdata_path / "valid" / "complex.yaml"
             with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
                 with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
@@ -410,7 +410,7 @@ class TestBakeryConfig:
                     )
             for image in config.model.images:
                 for dv in image.devVersions:
-                    assert dv.pinned_version is None
+                    assert dv.version_override is None
 
         def test_pins_version_on_matching_channel(self, testdata_path, patch_requests_get):
             """dev_spec pins the matching stream dev version before resolution."""
@@ -425,9 +425,11 @@ class TestBakeryConfig:
             with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
                 with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
                     config = BakeryConfig(yaml_file, settings=settings)
-            pinned = [dv for image in config.model.images for dv in image.devVersions if dv.pinned_version is not None]
+            pinned = [
+                dv for image in config.model.images for dv in image.devVersions if dv.version_override is not None
+            ]
             assert len(pinned) == 1
-            assert pinned[0].pinned_version == "2026.05.0-dev+999-gSHA"
+            assert pinned[0].version_override == "2026.05.0-dev+999-gSHA"
 
         def test_ambiguity_raises_when_no_channel(self, tmp_path, patch_requests_get):
             """dev_spec without channel raises when image has two stream dev versions."""

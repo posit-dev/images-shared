@@ -31,7 +31,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             "get_version().",
         ),
     ]
-    pinned_version: Annotated[
+    version_override: Annotated[
         str | None,
         Field(
             exclude=True,
@@ -65,14 +65,14 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
     def get_version(self) -> str:
         """Retrieve the version from the specified product channel.
 
-        If pinned_version is set, returns it immediately without a network call.
+        If version_override is set, returns it immediately without a network call.
         If _resolve_os_urls() has already been called, returns the cached
         version. Otherwise fetches it from the primary OS channel.
 
         :return: The version string from the product channel.
         """
-        if self.pinned_version is not None:
-            return self.pinned_version
+        if self.version_override is not None:
+            return self.version_override
         if self.resolved_version is not None:
             return self.resolved_version
         _os = self.get_primary_os()
@@ -113,7 +113,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                     self.product,
                     self.channel,
                     os_version.buildOS,
-                    version_override=self.pinned_version,
+                    version_override=self.version_override,
                 )
                 if generalize:
                     os_version.artifactDownloadURL = str(result.architecture_generalized_download_url)

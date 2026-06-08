@@ -385,7 +385,7 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     when resolution runs.
     """
     # Local import to avoid circular import.
-    from posit_bakery.config.image.dev_version.channel import ImageDevelopmentVersionFromProductStream
+    from posit_bakery.config.image.dev_version.channel import ImageDevelopmentVersionFromProductChannel
 
     # Validate channel consistency: if both are set and differ, the pinned version
     # would be filtered out by --dev-channel. Fail loudly instead of silently skipping.
@@ -404,7 +404,7 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     candidates = [
         dv
         for dv in image.devVersions
-        if isinstance(dv, ImageDevelopmentVersionFromProductStream)
+        if isinstance(dv, ImageDevelopmentVersionFromProductChannel)
         and (target_channel is None or dv.channel == target_channel)
     ]
     if not candidates:
@@ -415,7 +415,7 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
             f"channel '{target_channel}'. Specify 'channel' in --dev-spec or pass "
             f"--dev-channel to disambiguate."
         )
-    candidates[0].pinned_version = settings.dev_spec.version
+    candidates[0].version_override = settings.dev_spec.version
 
 
 class BakeryConfig:

@@ -388,15 +388,15 @@ class TestImageDevelopmentVersionFromProductChannel:
             url_by_os = dev_version.get_url_by_os(generalize_architecture=generalize_architecture)
             assert url_by_os[mock_os.name] == expected_url
 
-    def test_pinned_version_returned_by_get_version(self, patch_requests_get):
-        """When pinned_version is set, get_version() returns it without a network call."""
-        dv = ImageDevelopmentVersionFromProductStream(
+    def test_version_override_returned_by_get_version(self, patch_requests_get):
+        """When version_override is set, get_version() returns it without a network call."""
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="package-manager",
             channel="daily",
             os=[{"name": "Ubuntu 24.04", "primary": True}],
         )
-        dv.pinned_version = "2026.05.0-dev+185-gSHA"
+        dv.version_override = "2026.05.0-dev+185-gSHA"
         assert dv.get_version() == "2026.05.0-dev+185-gSHA"
         patch_requests_get.assert_not_called()
 
@@ -405,13 +405,13 @@ class TestImageDevelopmentVersionFromProductChannel:
         from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
         from unittest.mock import patch
 
-        dv = ImageDevelopmentVersionFromProductStream(
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="workbench",
             channel="daily",
             os=[{"name": "Ubuntu 24.04", "primary": True}],
         )
-        dv.pinned_version = "9999.99.0-daily+1.pro1"
+        dv.version_override = "9999.99.0-daily+1.pro1"
         with patch(
             "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
             side_effect=DispatchVersionMismatchError("mismatch"),
