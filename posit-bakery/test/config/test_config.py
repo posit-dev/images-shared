@@ -858,7 +858,9 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / image.name / new_version).is_dir()
-        assert (context / image.name / new_version / f"Containerfile.{previous_os.extension}").is_file()
+        containerfile_suffix = previous_os.extension or previous_os.name.lower().strip()
+        containerfile_name = f"Containerfile.{containerfile_suffix}" if containerfile_suffix else "Containerfile"
+        assert (context / image.name / new_version / containerfile_name).is_file()
         expected_containerfile = textwrap.dedent("""\
         FROM scratch
 
