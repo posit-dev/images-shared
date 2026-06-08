@@ -2413,7 +2413,7 @@ class TestRMacros:
         "input,expected",
         [
             pytest.param(
-                (["4.6.0"],),
+                ["4.6.0"],
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/R
@@ -2422,10 +2422,10 @@ class TestRMacros:
                         curl -fsSL "https://cdn.posit.co/r/manylinux_2_34/R-4.6.0-manylinux_2_34${ARCH_SUFFIX}.tar.gz" \\
                             | tar -xz -C /opt/R/"""
                 ),
-                id="single-version-default-glibc",
+                id="single-version",
             ),
             pytest.param(
-                (["4.6.0", "4.4.3"],),
+                ["4.6.0", "4.4.3"],
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/R
@@ -2438,25 +2438,41 @@ class TestRMacros:
                         curl -fsSL "https://cdn.posit.co/r/manylinux_2_34/R-4.4.3-manylinux_2_34${ARCH_SUFFIX}.tar.gz" \\
                             | tar -xz -C /opt/R/"""
                 ),
-                id="multiple-versions-default-glibc",
+                id="multiple-versions",
             ),
             pytest.param(
-                (["4.6.0"], "2_28"),
+                "'4.6.0,4.4.3'",
                 textwrap.dedent(
                     """\
                     RUN mkdir -p /opt/R
                     RUN ARCH=$(uname -m) && \\
                         ARCH_SUFFIX=$([ "$ARCH" = "aarch64" ] && echo "-arm64" || echo "") && \\
-                        curl -fsSL "https://cdn.posit.co/r/manylinux_2_28/R-4.6.0-manylinux_2_28${ARCH_SUFFIX}.tar.gz" \\
+                        curl -fsSL "https://cdn.posit.co/r/manylinux_2_34/R-4.6.0-manylinux_2_34${ARCH_SUFFIX}.tar.gz" \\
+                            | tar -xz -C /opt/R/
+                    RUN ARCH=$(uname -m) && \\
+                        ARCH_SUFFIX=$([ "$ARCH" = "aarch64" ] && echo "-arm64" || echo "") && \\
+                        curl -fsSL "https://cdn.posit.co/r/manylinux_2_34/R-4.4.3-manylinux_2_34${ARCH_SUFFIX}.tar.gz" \\
                             | tar -xz -C /opt/R/"""
                 ),
-                id="explicit-glibc-version",
+                id="string-versions",
             ),
         ],
     )
     def test_run_install_manylinux(self, environment_with_macros, input, expected):
-        parts = [f'"{i}"' if isinstance(i, str) else str(i) for i in input]
-        template = '{%- import "r.j2" as r -%}\n{{ r.run_install_manylinux(' + ", ".join(parts) + ") }}"
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install_manylinux(' + str(input) + ") }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install_manylinux_explicit_glibc_version(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install_manylinux(["4.6.0"], "2_28") }}'
+        expected = textwrap.dedent(
+            """\
+            RUN mkdir -p /opt/R
+            RUN ARCH=$(uname -m) && \\
+                ARCH_SUFFIX=$([ "$ARCH" = "aarch64" ] && echo "-arm64" || echo "") && \\
+                curl -fsSL "https://cdn.posit.co/r/manylinux_2_28/R-4.6.0-manylinux_2_28${ARCH_SUFFIX}.tar.gz" \\
+                    | tar -xz -C /opt/R/"""
+        )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
