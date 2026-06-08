@@ -11,6 +11,8 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter
 from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.registry_management.clean import clean_caches as do_clean_caches
+from posit_bakery.registry_management.clean import clean_temporary as do_clean_temporary
 from posit_bakery.util import auto_path
 
 app = typer.Typer()
@@ -106,7 +108,8 @@ def cache_registry(
 
     log.info(f"Cleaning cache registries in {registry}")
 
-    errors = config.clean_caches(
+    errors = do_clean_caches(
+        targets=config.targets,
         remove_untagged=untagged,
         remove_older_than=timedelta(days=older_than) if older_than else None,
         dry_run=dry_run,
@@ -199,7 +202,8 @@ def temp_registry(
 
     log.info(f"Cleaning temporary registries in {registry}")
 
-    errors = config.clean_temporary(
+    errors = do_clean_temporary(
+        targets=config.targets,
         remove_untagged=untagged,
         remove_older_than=timedelta(days=older_than) if older_than else None,
         dry_run=dry_run,
