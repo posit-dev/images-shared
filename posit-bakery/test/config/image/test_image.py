@@ -9,7 +9,7 @@ from posit_bakery.config import Image, BakeryConfigDocument, BaseRegistry, Regis
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
-from posit_bakery.config.image.posit_product.main import ReleaseStreamResult
+from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
 from posit_bakery.config.tag import default_matrix_tag_patterns, default_tag_patterns
 
 pytestmark = [
@@ -674,8 +674,8 @@ class TestImage:
 
         stream_version = "1.1.0"
         stream_url = "https://example.com/image-daily.tar.gz"
-        with patch("posit_bakery.config.image.dev_version.stream.get_product_artifact_by_stream") as mock_get:
-            mock_get.return_value = ReleaseStreamResult(version=stream_version, download_url=stream_url)
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(version=stream_version, download_url=stream_url)
             i = Image(
                 name="my-image",
                 parent=mock_parent,

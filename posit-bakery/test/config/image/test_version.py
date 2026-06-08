@@ -554,7 +554,7 @@ class TestImageVersion:
             pytest.param(True, DevVersionInclusionEnum.INCLUDE, None, {}, True, None, id="dev-include"),
             # Release version, include → included
             pytest.param(False, DevVersionInclusionEnum.INCLUDE, None, {}, True, None, id="release-include"),
-            # Dev version, stream matches → included
+            # Dev version, channel matches → included
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
@@ -562,9 +562,9 @@ class TestImageVersion:
                 {"release_channel": ReleaseChannelEnum.DAILY},
                 True,
                 None,
-                id="dev-stream-match",
+                id="dev-channel-match",
             ),
-            # Dev version, stream mismatch → excluded
+            # Dev version, channel mismatch → excluded
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
@@ -572,9 +572,9 @@ class TestImageVersion:
                 {"release_channel": ReleaseChannelEnum.PREVIEW},
                 False,
                 "does not match",
-                id="dev-stream-mismatch",
+                id="dev-channel-mismatch",
             ),
-            # Dev version, stream filter but no metadata → excluded
+            # Dev version, channel filter but no metadata → excluded
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
@@ -582,9 +582,9 @@ class TestImageVersion:
                 {},
                 False,
                 "does not match",
-                id="dev-stream-no-metadata",
+                id="dev-channel-no-metadata",
             ),
-            # Release version with stream filter → included (stream filter only applies to dev)
+            # Release version with channel filter → included (channel filter only applies to dev)
             pytest.param(
                 False,
                 DevVersionInclusionEnum.INCLUDE,
@@ -592,7 +592,7 @@ class TestImageVersion:
                 {},
                 True,
                 None,
-                id="release-with-stream-filter",
+                id="release-with-channel-filter",
             ),
         ],
     )
