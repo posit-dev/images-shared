@@ -823,6 +823,9 @@ Options:
   --matrix-versions [include|exclude|only]
                                   Include or exclude versions defined in image
                                   matrix.  [default: exclude]
+  --latest                        Lint only the latest version of each image.
+                                  Development versions are ignored by this
+                                  filter.
   --failure-threshold TEXT        Exit with failure if any rule at or above
                                   this severity is violated. One of: error,
                                   warning, info, style, ignore, none.
@@ -879,6 +882,10 @@ Include or exclude development versions defined in config.
 <dt><code><span class="doc-parameter-name">--matrix-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">MatrixVersionInclusionEnum.EXCLUDE</span></code></dt>
 <dd>
 Include or exclude versions defined in image matrix.
+</dd>
+<dt><code><span class="doc-parameter-name">--latest</span></code></dt>
+<dd>
+Lint only the latest version of each image. Development versions are ignored by this filter.
 </dd>
 <dt><code><span class="doc-parameter-name">--failure-threshold</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
 <dd>

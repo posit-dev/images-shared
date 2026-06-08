@@ -814,6 +814,9 @@ Options:
   --matrix-versions [include|exclude|only]
                                   Include versions defined in image matrix.
                                   [default: exclude]
+  --latest                        Show tags only for the latest version of
+                                  each image. Development versions are ignored
+                                  by this filter.
   --output [component|uid]        Output format for tags.  [default:
                                   component]
   --context DIRECTORY             The root path to use. Defaults to the
@@ -855,6 +858,10 @@ Filter development versions to a specific release stream.
 <dt><code><span class="doc-parameter-name">--matrix-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">MatrixVersionInclusionEnum.EXCLUDE</span></code></dt>
 <dd>
 Include versions defined in image matrix.
+</dd>
+<dt><code><span class="doc-parameter-name">--latest</span></code></dt>
+<dd>
+Show tags only for the latest version of each image. Development versions are ignored by this filter.
 </dd>
 <dt><code><span class="doc-parameter-name">--output</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">GetTagsOutputFormat.COMPONENT</span></code></dt>
 <dd>

@@ -850,6 +850,9 @@ Options:
   --matrix-versions [include|exclude|only]
                                   Include or exclude versions defined in image
                                   matrix.  [default: exclude]
+  --latest                        Build only the latest version of each image.
+                                  Development versions are ignored by this
+                                  filter.
   -v, --verbose                   Enable debug logging
   -q, --quiet                     Supress all output except errors
   --help                          Show this message and exit.</code></pre>
@@ -942,6 +945,10 @@ Filter development versions to a specific release stream.
 <dt><code><span class="doc-parameter-name">--matrix-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">MatrixVersionInclusionEnum.EXCLUDE</span></code></dt>
 <dd>
 Include or exclude versions defined in image matrix.
+</dd>
+<dt><code><span class="doc-parameter-name">--latest</span></code></dt>
+<dd>
+Build only the latest version of each image. Development versions are ignored by this filter.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>
