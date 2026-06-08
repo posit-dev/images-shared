@@ -54,32 +54,36 @@ runs:
               .filter(r => r.id !== context.runId && r.conclusion !== 'cancelled')
               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            if (previousRuns.length === 0) {
-              core.info('No previous completed runs found, skipping notification');
-              return;
-            }
-
-            const previousRun = previousRuns[0];
             const currentFailed = currentResult !== 'success';
 
-            // Compare against the previous run's CI job conclusion (not the workflow
-            // conclusion) so that clean-job flaps don't trigger false notifications.
-            // Falls back to workflow conclusion if the CI job isn't found.
-            const { data: { jobs: prevJobs } } = await github.rest.actions.listJobsForWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: previousRun.id,
-              per_page: 100,
-            });
-            const prevCiJob = prevJobs.find(j => j.name === 'CI');
-            const previousConclusion = prevCiJob
-              ? prevCiJob.conclusion
-              : previousRun.conclusion;
-            const previousFailed = previousConclusion !== 'success';
+            if (previousRuns.length === 0) {
+              if (!currentFailed) {
+                core.info('No previous completed runs found and build passed, skipping notification');
+                return;
+              }
+              // No history — notify on failure directly (e.g. merge queue runs on ephemeral refs)
+            } else {
+              const previousRun = previousRuns[0];
 
-            if (currentFailed === previousFailed) {
-              core.info(`No state transition (current: ${currentResult}, previous: ${previousConclusion}), skipping`);
-              return;
+              // Compare against the previous run's CI job conclusion (not the workflow
+              // conclusion) so that clean-job flaps don't trigger false notifications.
+              // Falls back to workflow conclusion if the CI job isn't found.
+              const { data: { jobs: prevJobs } } = await github.rest.actions.listJobsForWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: previousRun.id,
+                per_page: 100,
+              });
+              const prevCiJob = prevJobs.find(j => j.name === 'CI');
+              const previousConclusion = prevCiJob
+                ? prevCiJob.conclusion
+                : previousRun.conclusion;
+              const previousFailed = previousConclusion !== 'success';
+
+              if (currentFailed === previousFailed) {
+                core.info(`No state transition (current: ${currentResult}, previous: ${previousConclusion}), skipping`);
+                return;
+              }
             }
 
             const runUrl = currentRun.html_url;
