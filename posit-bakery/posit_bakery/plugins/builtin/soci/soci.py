@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -12,13 +13,52 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from posit_bakery.error import BakeryToolRuntimeError
+from posit_bakery.error import BakeryError, BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.oras.oras import OrasCopy
 from posit_bakery.plugins.builtin.soci.options import SociOptions
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
+
+
+class SociPrivilegeError(BakeryError):
+    """Raised when SOCI containerd mode needs root but cannot elevate without
+    prompting the user for a password."""
+
+
+def resolve_sudo_prefix(*, dry_run: bool = False) -> list[str]:
+    """Resolve the command prefix that runs containerd-touching commands as root.
+
+    ``ctr image pull``, ``soci convert``, and ``soci push`` all talk to
+    containerd's root-owned socket. This returns the prefix to prepend to those
+    commands:
+
+    - ``[]`` when already running as root.
+    - ``["sudo", "-n"]`` when sudo is available without a prompt (NOPASSWD or a
+      cached credential); ``-n`` guarantees no interactive prompt.
+
+    On a real run it raises :class:`SociPrivilegeError` when sudo would prompt,
+    so the user is never asked for a password mid-run. On a dry run it never
+    raises and returns the best-effort prefix purely so logged commands are
+    accurate.
+
+    :param dry_run: When True, never raise; return ``["sudo", "-n"]`` for the
+        non-root case so the logged commands stay accurate.
+    :return: The prefix list to prepend to containerd commands.
+    :raises SociPrivilegeError: On a real run when not root and sudo would prompt.
+    """
+    if os.geteuid() == 0:
+        return []
+    passwordless = subprocess.run(["sudo", "-n", "true"], capture_output=True).returncode == 0
+    if passwordless:
+        return ["sudo", "-n"]
+    if dry_run:
+        return ["sudo", "-n"]
+    raise SociPrivilegeError(
+        "SOCI containerd mode needs root to talk to containerd. "
+        "Re-run as `sudo bakery ...`, or use `--soci-mode standalone`."
+    )
 
 
 def find_soci_bin(context: Path) -> str:
