@@ -122,6 +122,21 @@ class TestImageVersionOS:
         assert os1 != os3
         assert os2 != os3
 
+    def test_scratch_derives_empty_extension_and_tag(self):
+        i = ImageVersionOS(name="scratch")
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
+    def test_scratch_case_insensitive(self):
+        i = ImageVersionOS(name="Scratch")
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
+    def test_empty_extension_accepted_explicitly(self):
+        i = ImageVersionOS(name="Ubuntu 22.04", extension="", tagDisplayName="")
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
     @pytest.mark.parametrize(
         "input_name,expected_build_os",
         [
