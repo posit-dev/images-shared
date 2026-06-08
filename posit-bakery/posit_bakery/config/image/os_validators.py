@@ -19,7 +19,7 @@ class OSValidatorMixin:
 
         :return: The unmodified list of ImageVersionOS objects.
         """
-        if not (info.data.get("name") or info.data.get("namePattern")):
+        if not (info.data.get("name") or info.data.get("namePattern") or info.data.get("sourceType")):
             return os
         if not os:
             log.warning(
@@ -74,7 +74,7 @@ class OSValidatorMixin:
 
         :raises ValueError: If more than one OS is marked as primary.
         """
-        if not (info.data.get("name") or info.data.get("namePattern")):
+        if not (info.data.get("name") or info.data.get("namePattern") or info.data.get("sourceType")):
             return os
         primary_os_count = sum(1 for o in os if o.primary)
         if primary_os_count > 1:
@@ -92,6 +92,9 @@ class OSValidatorMixin:
     # Must run after make_single_os_primary: Pydantic v2 runs field validators in
     # declaration order within the class. Reordering this mixin will silently break
     # the auto-promote invariant for single-OS scratch configs.
+    #
+    # Intentionally unguarded: an untaggable OS entry is always a config error
+    # regardless of whether the parent model's name/namePattern/sourceType is valid.
     @field_validator("os", mode="after")
     @classmethod
     def error_untaggable_os(cls, os: list[ImageVersionOS], info: ValidationInfo) -> list[ImageVersionOS]:

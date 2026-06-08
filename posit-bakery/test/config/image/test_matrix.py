@@ -214,7 +214,7 @@ class TestImageMatrix:
         ImageMatrix(values={"go_version": ["1.24", "1.25"]}, os=[])
         assert "WARNING" in caplog.text
         assert (
-            "No OSes defined for image matrix with name pattern 'go_version{{ Values.go_version }}'. At least one OS should be "
+            "No OSes defined for the image configuration. At least one OS should be "
             "defined for complete tagging and labeling of images." in caplog.text
         )
 
@@ -233,9 +233,7 @@ class TestImageMatrix:
         assert len(matrix.os) == 1
         assert matrix.os[0].name == "Ubuntu 22.04"
         assert "WARNING" in caplog.text
-        assert (
-            "Duplicate OS defined in config for image matrix with name pattern 'go_version{{ Values.go_version }}': Ubuntu 22.04"
-        ) in caplog.text
+        assert ("Duplicate OS defined in the image configuration: Ubuntu 22.04") in caplog.text
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
@@ -249,7 +247,7 @@ class TestImageMatrix:
         """Test that an error is raised if multiple primary OSes are defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one OS can be marked as primary for image matrix with name pattern 'go_version{{ Values.go_version }}'. Found 2 OSes marked primary.",
+            match="Only one OS can be marked as primary for the image configuration. Found 2 OSes marked primary.",
         ):
             ImageMatrix(
                 values={"go_version": ["1.24", "1.25"]},
@@ -264,8 +262,8 @@ class TestImageMatrix:
         ImageMatrix(values={"go_version": ["1.24", "1.25"]}, os=[{"name": "Ubuntu 22.04"}, {"name": "Ubuntu 24.04"}])
         assert "WARNING" in caplog.text
         assert (
-            "No OS marked as primary for image matrix with name pattern 'go_version{{ Values.go_version }}'. At least one OS should be marked as primary for "
-            "complete tagging and labeling of images." in caplog.text
+            "No OS marked as primary for the image configuration. "
+            "At least one OS should be marked as primary for complete tagging and labeling of images." in caplog.text
         )
 
     def test_check_duplicate_dependencies(self):

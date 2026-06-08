@@ -104,8 +104,8 @@ class TestImageDevelopmentVersionFromProductChannel:
 
         assert "WARNING" in caplog.text
         assert (
-            "No OSes defined for image development version. At least one OS should be defined "
-            "for complete tagging and labeling of images." in caplog.text
+            "No OSes defined for the image configuration. At least one OS should be "
+            "defined for complete tagging and labeling of images." in caplog.text
         )
 
     def test_deduplicate_os(self, caplog):
@@ -129,7 +129,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         assert len(i.os) == 1
         assert i.os[0].name == "Ubuntu 22.04"
         assert "WARNING" in caplog.text
-        assert "Duplicate OS defined in config for image development version: Ubuntu 22.04" in caplog.text
+        assert "Duplicate OS defined in the image configuration: Ubuntu 22.04" in caplog.text
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
@@ -150,7 +150,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         """Test that an error is raised if multiple primary OSes are defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one OS can be marked as primary for image development version. Found 2 OSes marked primary.",
+            match="Only one OS can be marked as primary for the image configuration. Found 2 OSes marked primary.",
         ):
             with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
                 mock_get.return_value = ReleaseChannelResult(
@@ -181,8 +181,8 @@ class TestImageDevelopmentVersionFromProductChannel:
 
         assert "WARNING" in caplog.text
         assert (
-            "No OS marked as primary for image development version. At least one OS should be "
-            "marked as primary for complete tagging and labeling of images." in caplog.text
+            "No OS marked as primary for the image configuration. "
+            "At least one OS should be marked as primary for complete tagging and labeling of images." in caplog.text
         )
 
     def test_extra_registries_or_override_registries(self):

@@ -91,8 +91,8 @@ class TestImageVersion:
         ImageVersion(name="1.0.0", os=[])
         assert "WARNING" in caplog.text
         assert (
-            "No OSes defined for image version '1.0.0'. At least one OS should be defined for complete tagging and "
-            "labeling of images." in caplog.text
+            "No OSes defined for the image configuration. At least one OS should be "
+            "defined for complete tagging and labeling of images." in caplog.text
         )
 
     def test_deduplicate_os(self, caplog):
@@ -110,7 +110,7 @@ class TestImageVersion:
         assert len(i.os) == 1
         assert i.os[0].name == "Ubuntu 22.04"
         assert "WARNING" in caplog.text
-        assert "Duplicate OS defined in config for image version '1.0.0': Ubuntu 22.04" in caplog.text
+        assert "Duplicate OS defined in the image configuration: Ubuntu 22.04" in caplog.text
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
@@ -124,7 +124,7 @@ class TestImageVersion:
         """Test that an error is raised if multiple primary OSes are defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one OS can be marked as primary for image version '1.0.0'. Found 2 OSes marked primary.",
+            match="Only one OS can be marked as primary for the image configuration. Found 2 OSes marked primary.",
         ):
             ImageVersion(
                 name="1.0.0",
@@ -139,8 +139,8 @@ class TestImageVersion:
         ImageVersion(name="1.0.0", os=[{"name": "Ubuntu 22.04"}, {"name": "Ubuntu 24.04"}])
         assert "WARNING" in caplog.text
         assert (
-            "No OS marked as primary for image version '1.0.0'. At least one OS should be marked as primary for "
-            "complete tagging and labeling of images." in caplog.text
+            "No OS marked as primary for the image configuration. "
+            "At least one OS should be marked as primary for complete tagging and labeling of images." in caplog.text
         )
 
     def test_check_duplicate_dependencies(self):
@@ -712,3 +712,29 @@ class TestImageVersion:
         assert v.parsed_version is None
         warnings = [r for r in caplog.records if "Unparseable version string" in r.message]
         assert len(warnings) == 1
+
+    def test_non_primary_scratch_os_raises(self):
+        with pytest.raises(ValidationError, match="empty tagDisplayName"):
+            ImageVersion(
+                name="2026.05.0",
+                os=[
+                    {"name": "scratch", "primary": False},
+                    {"name": "Ubuntu 22.04", "primary": True},
+                ],
+            )
+
+    def test_single_scratch_os_auto_promoted_to_primary(self):
+        v = ImageVersion(name="2026.05.0", os=[{"name": "scratch"}])
+        assert v.os[0].primary
+        assert v.os[0].tagDisplayName == ""
+
+    def test_explicit_primary_scratch_in_multi_os_passes(self):
+        v = ImageVersion(
+            name="2026.05.0",
+            os=[
+                {"name": "scratch", "primary": True},
+                {"name": "Ubuntu 22.04", "primary": False},
+            ],
+        )
+        scratch_entry = next(o for o in v.os if o.name.lower() == "scratch")
+        assert scratch_entry.primary
