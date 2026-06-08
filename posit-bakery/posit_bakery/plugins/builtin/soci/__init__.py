@@ -143,7 +143,7 @@ class SociPlugin(BakeryToolPlugin):
         *,
         source_refs: dict[str, str] | None = None,
         dry_run: bool = False,
-        standalone: bool = False,
+        standalone: bool = True,
         **kwargs: Any,
     ) -> list[ToolCallResult]:
         """Run SOCI convert workflows against eligible targets.
@@ -204,15 +204,13 @@ class SociPlugin(BakeryToolPlugin):
             )
             return results
 
-        def is_standalone(opts: SociOptions) -> bool:
-            return opts.standalone if opts.standalone is not None else standalone
-
-        # Only the tools an eligible target actually executes need to be
-        # present: standalone mode bridges the registry with oras and never
-        # touches containerd (ctr), while the containerd-backed path uses ctr
-        # but not oras. soci is used in both modes.
-        needs_containerd = any(not is_standalone(opts) for _, opts, _ in eligible)
-        needs_standalone = any(is_standalone(opts) for _, opts, _ in eligible)
+        # Mode is uniform across the run (driven by the CLI). Only the tools an
+        # eligible target actually executes need to be present: standalone mode
+        # bridges the registry with oras and never touches containerd (ctr),
+        # while the containerd-backed path uses ctr but not oras. soci is used
+        # in both modes.
+        needs_containerd = not standalone
+        needs_standalone = standalone
 
         def resolve_bin(finder: Any, fallback: str, *, required: bool) -> str:
             # A tool only has to resolve when it will actually be executed:
@@ -233,7 +231,7 @@ class SociPlugin(BakeryToolPlugin):
         oras_bin = resolve_bin(find_oras_bin, "oras", required=needs_standalone)
 
         for target, opts, ref in eligible:
-            workflow_standalone = is_standalone(opts)
+            workflow_standalone = standalone
             candidates = opts.candidate_namespaces or ["default", "moby"]
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,

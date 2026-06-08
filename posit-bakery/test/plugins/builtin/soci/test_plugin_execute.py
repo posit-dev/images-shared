@@ -62,6 +62,7 @@ def test_skips_targets_without_enabled_option(tmp_path):
             base_path=tmp_path,
             targets=[t_off, t_on],
             source_refs={"a": "ref-a", "b": "ref-b"},
+            standalone=False,
         )
 
     assert len(results) == 2
@@ -101,6 +102,7 @@ def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
             base_path=tmp_path,
             targets=[t_ref, t_noref],
             source_refs={"a": "ref-a"},
+            standalone=False,
         )
 
     noref = next(r for r in results if r.target.uid == "b")
@@ -204,7 +206,7 @@ def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools, stand
     with (
         patch(
             "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True, standalone=standalone),
+            return_value=SociOptions(enabled=True),
         ),
         patch("subprocess.run") as mock_run,
         patch(
@@ -277,7 +279,7 @@ def test_standalone_run_does_not_require_ctr(tmp_path, monkeypatch):
     with (
         patch(
             "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True, standalone=True),
+            return_value=SociOptions(enabled=True),
         ),
         patch("subprocess.run") as mock_run,
         patch(
@@ -310,7 +312,7 @@ def test_non_standalone_run_still_requires_ctr(tmp_path, monkeypatch):
     with (
         patch(
             "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True, standalone=False),
+            return_value=SociOptions(enabled=True),
         ),
         patch("subprocess.run"),
         pytest.raises(BakeryToolNotFoundError),
@@ -322,3 +324,36 @@ def test_non_standalone_run_still_requires_ctr(tmp_path, monkeypatch):
             dry_run=False,
             standalone=False,
         )
+
+
+def test_execute_defaults_to_standalone_mode(tmp_path):
+    """execute() now defaults to standalone mode when no mode is passed."""
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    captured = {}
+
+    def fake_run(self, dry_run=False):
+        captured["standalone"] = self.standalone
+        from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
+
+        return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True),
+        ),
+        patch("posit_bakery.plugins.builtin.soci.find_soci_bin", return_value="soci"),
+        patch("posit_bakery.plugins.builtin.soci.find_ctr_bin", return_value="ctr"),
+        patch("posit_bakery.plugins.builtin.soci.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
+    ):
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+        )
+
+    assert captured["standalone"] is True
+    assert [r.exit_code for r in results] == [0]
