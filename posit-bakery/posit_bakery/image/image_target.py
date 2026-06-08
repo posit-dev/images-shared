@@ -695,7 +695,7 @@ class ImageTarget(BaseModel):
                     cache_from=cache_from,
                     cache_to=cache_to,
                     metadata_file=metadata_file,
-                    platforms=platforms or self.image_os.platforms,
+                    platforms=build_platforms,
                     target=self.build_target,
                     secrets=[s.as_cli_option() for s in self.resolved_build_secrets],
                     progress=False if SETTINGS.log_level >= logging.ERROR else "auto",
