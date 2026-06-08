@@ -16,7 +16,6 @@ def test_defaults():
     assert opts.prefetch_files == []
     assert opts.optimizations == []
     assert opts.platforms is None
-    assert opts.candidate_namespaces is None
 
 
 def test_overrides():
@@ -27,7 +26,6 @@ def test_overrides():
         prefetch_files=["/a", "/b"],
         optimizations=["xattr"],
         platforms=["linux/amd64"],
-        candidate_namespaces=["moby"],
     )
     assert opts.enabled is True
     assert opts.span_size == 4 * 1024 * 1024
@@ -35,7 +33,6 @@ def test_overrides():
     assert opts.prefetch_files == ["/a", "/b"]
     assert opts.optimizations == ["xattr"]
     assert opts.platforms == ["linux/amd64"]
-    assert opts.candidate_namespaces == ["moby"]
 
 
 def test_update_other_wins_when_self_unset():

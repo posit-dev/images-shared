@@ -42,13 +42,6 @@ class SociOptions(ToolOptions):
         list[str] | None,
         Field(default=None, description="Platforms to convert. None => --all-platforms."),
     ]
-    candidate_namespaces: Annotated[
-        list[str] | None,
-        Field(
-            default=None,
-            description="Containerd namespaces to probe for the source image. None => ['default', 'moby'].",
-        ),
-    ]
 
     def update(self, other: "SociOptions") -> "SociOptions":
         """Update this SociOptions instance with settings from another.
@@ -64,7 +57,6 @@ class SociOptions(ToolOptions):
             "prefetch_files",
             "optimizations",
             "platforms",
-            "candidate_namespaces",
         ):
             if field_name not in self.model_fields_set:
                 setattr(merged, field_name, getattr(other, field_name))
