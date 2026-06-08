@@ -356,3 +356,80 @@ def test_execute_defaults_to_standalone_mode(tmp_path):
 
     assert captured["standalone"] is True
     assert [r.exit_code for r in results] == [0]
+
+
+def test_containerd_run_resolves_sudo_once_and_threads_it(tmp_path, monkeypatch):
+    """A real containerd run resolves the sudo prefix once and passes the
+    resulting `sudo` flag into the workflow."""
+    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
+    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
+    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    captured = {}
+
+    def fake_run(self, dry_run=False):
+        captured["sudo"] = self.sudo
+        return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.resolve_sudo_prefix",
+            return_value=["sudo", "-n"],
+        ) as mock_resolve,
+        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
+    ):
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=False,
+            standalone=False,
+        )
+
+    assert [r.exit_code for r in results] == [0]
+    assert captured["sudo"] is True
+    mock_resolve.assert_called_once()
+
+
+def test_containerd_run_fails_fast_when_sudo_would_prompt(tmp_path, monkeypatch):
+    """When privilege resolution raises, the run reports a single failure and
+    does not invoke the workflow."""
+    from posit_bakery.plugins.builtin.soci.soci import SociPrivilegeError
+
+    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
+    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
+    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
+    plugin = SociPlugin()
+    t = _make_target("a", enabled=True)
+
+    def boom(self, dry_run=False):
+        raise AssertionError("workflow should not run when privilege resolution fails")
+
+    with (
+        patch(
+            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            return_value=SociOptions(enabled=True),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.resolve_sudo_prefix",
+            side_effect=SociPrivilegeError("needs root"),
+        ),
+        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", boom),
+    ):
+        results = plugin.execute(
+            base_path=tmp_path,
+            targets=[t],
+            source_refs={"a": "ref-a"},
+            dry_run=False,
+            standalone=False,
+        )
+
+    assert len(results) == 1
+    assert results[0].exit_code == 1
+    assert "needs root" in results[0].stderr

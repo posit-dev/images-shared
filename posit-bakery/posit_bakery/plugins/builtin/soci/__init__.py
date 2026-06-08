@@ -10,8 +10,10 @@ from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci.options import SociOptions
 from posit_bakery.plugins.builtin.oras.oras import find_oras_bin
+from posit_bakery.plugins.builtin.soci import soci as soci_module
 from posit_bakery.plugins.builtin.soci.soci import (
     SociConvertWorkflow,
+    SociPrivilegeError,
     find_ctr_bin,
     find_soci_bin,
 )
@@ -235,8 +237,27 @@ class SociPlugin(BakeryToolPlugin):
         ctr_bin = resolve_bin(find_ctr_bin, "ctr", required=needs_containerd)
         oras_bin = resolve_bin(find_oras_bin, "oras", required=needs_standalone)
 
+        # Containerd commands (ctr pull, soci convert, soci push) all hit
+        # containerd's root-owned socket. Resolve the privilege prefix once for
+        # the whole run: root needs nothing, passwordless sudo is fine, and
+        # anything else fails fast rather than prompting for a password mid-run.
+        sudo = False
+        if not standalone and not dry_run:
+            try:
+                sudo = bool(soci_module.resolve_sudo_prefix(dry_run=dry_run))
+            except SociPrivilegeError as e:
+                log.error(str(e))
+                return [
+                    ToolCallResult(
+                        exit_code=1,
+                        tool_name="soci",
+                        target=eligible[0][0],
+                        stdout="",
+                        stderr=str(e),
+                    )
+                ]
+
         for target, opts, ref in eligible:
-            candidates = opts.candidate_namespaces or ["default", "moby"]
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,
                 ctr_bin=ctr_bin,
@@ -244,8 +265,8 @@ class SociPlugin(BakeryToolPlugin):
                 image_target=target,
                 options=opts,
                 source_ref=ref,
-                candidate_namespaces=candidates,
                 standalone=standalone,
+                sudo=sudo,
             )
             wf_result = workflow.run(dry_run=dry_run)
             results.append(
