@@ -236,7 +236,7 @@ class TestBakeryConfig:
         ],
     )
     @patch("atexit.register")
-    def test_dev_stream_filter(
+    def test_dev_channel_filter(
         self,
         mock_atexit_register,
         dev_channel,
@@ -261,7 +261,7 @@ class TestBakeryConfig:
                 assert len(dev_targets) == expected_dev_version_count * 4
 
     @patch("atexit.register")
-    def test_dev_stream_filter_with_include(
+    def test_dev_channel_filter_with_include(
         self,
         mock_atexit_register,
         testdata_path,
@@ -350,7 +350,7 @@ class TestBakeryConfig:
         BakeryConfig(yaml_file, BakerySettings(latest=True))
         assert "--latest ignores development versions" not in caplog.text
 
-    def test_dev_stream_warning_when_dev_versions_excluded(
+    def test_dev_channel_warning_when_dev_versions_excluded(
         self,
         caplog,
         testdata_path,

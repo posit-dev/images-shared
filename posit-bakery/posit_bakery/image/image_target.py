@@ -397,7 +397,7 @@ class ImageTarget(BaseModel):
             "Variant": self.image_variant.tagDisplayName if self.image_variant else "",
             "OS": self.image_os.tagDisplayName if self.image_os else "",
             "Name": self.image_name,
-            "Stream": str(v.value if hasattr(v, "value") else v)
+            "Channel": str(v.value if hasattr(v, "value") else v)
             if (v := self.image_version.metadata.get("release_channel"))
             else "",
         }

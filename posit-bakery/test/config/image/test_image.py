@@ -672,10 +672,10 @@ class TestImage:
         mock_parent = MagicMock(spec=BakeryConfigDocument)
         mock_parent.path = context
 
-        stream_version = "1.1.0"
-        stream_url = "https://example.com/image-daily.tar.gz"
+        channel_version = "1.1.0"
+        channel_url = "https://example.com/image-daily.tar.gz"
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
-            mock_get.return_value = ReleaseChannelResult(version=stream_version, download_url=stream_url)
+            mock_get.return_value = ReleaseChannelResult(version=channel_version, download_url=channel_url)
             i = Image(
                 name="my-image",
                 parent=mock_parent,
@@ -696,14 +696,14 @@ class TestImage:
         assert len(i.versions) == 2
         assert i.get_version("1.0.0") is not None
 
-        assert i.get_version(stream_version) is not None
-        assert not i.get_version(stream_version).latest
-        assert i.get_version(stream_version).subpath == f".dev-{stream_version}"
-        assert i.get_version(stream_version).ephemeral
-        assert i.get_version(stream_version).isDevelopmentVersion
-        assert len(i.get_version(stream_version).os) == 1
-        assert i.get_version(stream_version).os[0].name == "Ubuntu 22.04"
-        assert str(i.get_version(stream_version).os[0].artifactDownloadURL) == stream_url
+        assert i.get_version(channel_version) is not None
+        assert not i.get_version(channel_version).latest
+        assert i.get_version(channel_version).subpath == f".dev-{channel_version}"
+        assert i.get_version(channel_version).ephemeral
+        assert i.get_version(channel_version).isDevelopmentVersion
+        assert len(i.get_version(channel_version).os) == 1
+        assert i.get_version(channel_version).os[0].name == "Ubuntu 22.04"
+        assert str(i.get_version(channel_version).os[0].artifactDownloadURL) == channel_url
 
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""

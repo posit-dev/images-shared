@@ -10,7 +10,7 @@ from posit_bakery.config.image.posit_product import resolvers
 from posit_bakery.config.image.posit_product.const import (
     CALVER_REGEX_PATTERN,
     ProductEnum,
-    ReleaseStreamEnum,
+    ReleaseChannelEnum,
     WORKBENCH_DAILY_URL,
     PACKAGE_MANAGER_DAILY_URL,
     PACKAGE_MANAGER_PREVIEW_URL,
@@ -69,14 +69,14 @@ class ReleaseChannelPath:
 # from the fetched data as it is expected to be formatted.
 product_release_channel_url_map = {
     ProductEnum.CONNECT: {
-        ReleaseStreamEnum.RELEASE: ReleaseChannelPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["connect", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(["connect", "installer", "{download_json_os}", "url"]),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseChannelPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             CONNECT_DAILY_URL,
             {
                 "version": resolvers.ChainedResolver(
@@ -97,14 +97,14 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.PACKAGE_MANAGER: {
-        ReleaseStreamEnum.RELEASE: ReleaseChannelPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "version"]),
                 "download_url": resolvers.StringMapPathResolver(["rspm", "installer", "{download_json_os}", "url"]),
             },
         ),
-        ReleaseStreamEnum.PREVIEW: ReleaseChannelPath(
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
             PACKAGE_MANAGER_PREVIEW_URL,
             # This is intentionally stored as an OrderedDict to ensure version is resolved first so it can be passed
             # to the download_url resolver.
@@ -120,7 +120,7 @@ product_release_channel_url_map = {
                 ]
             ),
         ),
-        ReleaseStreamEnum.DAILY: ReleaseChannelPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             PACKAGE_MANAGER_DAILY_URL,
             OrderedDict(
                 [
@@ -136,7 +136,7 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.WORKBENCH: {
-        ReleaseStreamEnum.RELEASE: ReleaseChannelPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -147,7 +147,7 @@ product_release_channel_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseChannelPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -160,7 +160,7 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.WORKBENCH_SESSION: {
-        ReleaseStreamEnum.RELEASE: ReleaseChannelPath(
+        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -171,7 +171,7 @@ product_release_channel_url_map = {
                 ),
             },
         ),
-        ReleaseStreamEnum.DAILY: ReleaseChannelPath(
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
                 "version": resolvers.StringMapPathResolver(
@@ -257,7 +257,7 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
 
 
 def get_product_artifact_by_channel(
-    product: ProductEnum, channel: ReleaseStreamEnum, os: BuildOS, generalize_arch: bool = True
+    product: ProductEnum, channel: ReleaseChannelEnum, os: BuildOS, generalize_arch: bool = True
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
     if product not in product_release_channel_url_map:

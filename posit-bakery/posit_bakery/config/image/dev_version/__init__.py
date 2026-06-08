@@ -1,13 +1,13 @@
 from .base import BaseImageDevelopmentVersion
-from .channel import ImageDevelopmentVersionFromProductStream
+from .channel import ImageDevelopmentVersionFromProductChannel
 
-DevelopmentVersionTypes = ImageDevelopmentVersionFromProductStream
-DevelopmentVersionField = ImageDevelopmentVersionFromProductStream
+DevelopmentVersionTypes = ImageDevelopmentVersionFromProductChannel
+DevelopmentVersionField = ImageDevelopmentVersionFromProductChannel
 
 
 __all__ = [
     "BaseImageDevelopmentVersion",
-    "ImageDevelopmentVersionFromProductStream",
+    "ImageDevelopmentVersionFromProductChannel",
     "DevelopmentVersionTypes",
     "DevelopmentVersionField",
 ]

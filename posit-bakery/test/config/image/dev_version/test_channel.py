@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.config import Image, BaseRegistry, ImageVersionOS
-from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductStream
+from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductChannel
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
 
@@ -15,41 +15,41 @@ pytestmark = [
 ]
 
 
-class TestImageDevelopmentVersionFromProductStream:
+class TestImageDevelopmentVersionFromProductChannel:
     def test_name_required(self):
-        """Test that an ImageDevelopmentVersionFromProductStream object requires a name."""
+        """Test that an ImageDevelopmentVersionFromProductChannel object requires a name."""
         with pytest.raises(ValidationError, match="Field required"):
-            ImageDevelopmentVersionFromProductStream()
+            ImageDevelopmentVersionFromProductChannel()
 
     def test_bad_product(self):
-        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid product."""
+        """Test that an ImageDevelopmentVersionFromProductChannel object requires a valid product."""
         with pytest.raises(ValidationError, match="Input should be"):
-            ImageDevelopmentVersionFromProductStream(
+            ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="invalid_product",
                 channel="daily",
             )
 
     def test_bad_channel(self):
-        """Test that an ImageDevelopmentVersionFromProductStream object requires a valid channel."""
+        """Test that an ImageDevelopmentVersionFromProductChannel object requires a valid channel."""
         with pytest.raises(ValidationError, match="Input should be"):
-            ImageDevelopmentVersionFromProductStream(
+            ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="workbench",
                 channel="invalid_channel",
             )
 
     def test_valid(self):
-        """Test creating a valid ImageDevelopmentVersionFromProductStream object with all fields.
+        """Test creating a valid ImageDevelopmentVersionFromProductChannel object with all fields.
 
-        Test that ImageDevelopmentVersionFromProductStream objects are correctly initialized
+        Test that ImageDevelopmentVersionFromProductChannel objects are correctly initialized
         and parented.
         """
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="workbench",
                 channel="daily",
@@ -73,7 +73,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="workbench",
                 channel="daily",
@@ -98,7 +98,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream", product="workbench", channel="daily", os=[]
             )
 
@@ -116,7 +116,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 parent=mock_parent,
                 sourceType="stream",
                 product="workbench",
@@ -137,7 +137,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream", product="workbench", channel="daily", os=[{"name": "Ubuntu 22.04"}]
             )
 
@@ -156,7 +156,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
-                i = ImageDevelopmentVersionFromProductStream(
+                i = ImageDevelopmentVersionFromProductChannel(
                     sourceType="stream",
                     product="workbench",
                     channel="daily",
@@ -172,7 +172,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="workbench",
                 channel="daily",
@@ -195,7 +195,7 @@ class TestImageDevelopmentVersionFromProductStream:
                 mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
-                i = ImageDevelopmentVersionFromProductStream(
+                i = ImageDevelopmentVersionFromProductChannel(
                     sourceType="stream",
                     product="workbench",
                     channel="daily",
@@ -223,7 +223,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 parent=mock_image_parent,
                 sourceType="stream",
                 product="workbench",
@@ -257,7 +257,7 @@ class TestImageDevelopmentVersionFromProductStream:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductStream(
+            i = ImageDevelopmentVersionFromProductChannel(
                 parent=mock_image_parent,
                 sourceType="stream",
                 product="workbench",
@@ -271,7 +271,7 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_channel_field_accepted(self, patch_requests_get):
         """bakery.yaml should accept 'channel' as the primary field name."""
-        dv = ImageDevelopmentVersionFromProductStream(
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="package-manager",
             channel="daily",
@@ -281,7 +281,7 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_stream_field_deprecated_alias(self, patch_requests_get, caplog):
         """bakery.yaml with 'stream' should still work but log a deprecation warning."""
-        dv = ImageDevelopmentVersionFromProductStream(
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="package-manager",
             stream="daily",
@@ -292,7 +292,7 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_channel_wins_when_both_stream_and_channel_supplied(self, caplog):
         """When both 'stream' and 'channel' are present, 'channel' wins and no warning is emitted."""
-        dv = ImageDevelopmentVersionFromProductStream(
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="package-manager",
             channel="daily",
@@ -307,7 +307,7 @@ class TestImageDevelopmentVersionFromProductStream:
         mock_parent = MagicMock(spec=Image)
         mock_parent.path = Path("/tmp/path")
         mock_parent.resolve_dependency_versions.return_value = []
-        dv = ImageDevelopmentVersionFromProductStream(
+        dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product="package-manager",
             channel="daily",
@@ -320,7 +320,7 @@ class TestImageDevelopmentVersionFromProductStream:
 
     def test_get_release_channel(self, patch_requests_get):
         """Test that get_release_channel returns the configured channel."""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product=ProductEnum.PACKAGE_MANAGER,
             channel=ReleaseChannelEnum.DAILY,
@@ -333,7 +333,7 @@ class TestImageDevelopmentVersionFromProductStream:
         mock_parent = MagicMock(spec=Image)
         mock_parent.path = Path("/tmp/path")
         mock_parent.resolve_dependency_versions.return_value = []
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",
             product=ProductEnum.PACKAGE_MANAGER,
             channel=ReleaseChannelEnum.PREVIEW,
@@ -375,7 +375,7 @@ class TestImageDevelopmentVersionFromProductStream:
     def test_get_url_by_os(self, download_url, generalize_architecture, expected_url):
         """Test that get_url_by_os returns the correct URL based on generalize_architecture flag."""
         mock_os = ImageVersionOS(name="Ubuntu 22.04")
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.DAILY, os=[mock_os]
         )
 
@@ -389,7 +389,7 @@ class TestImageDevelopmentVersionFromProductStream:
             assert url_by_os[mock_os.name] == expected_url
 
 
-class TestByStream:
+class TestByChannel:
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
         [
@@ -457,7 +457,7 @@ class TestByStream:
     )
     def test_connect_release(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Release"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.CONNECT, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -534,7 +534,7 @@ class TestByStream:
     )
     def test_connect_daily(self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Daily"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.CONNECT, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -609,7 +609,7 @@ class TestByStream:
         self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
     ):
         """Test that the correct URL is returned for a release version of PPM Release"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -684,7 +684,7 @@ class TestByStream:
         self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
     ):
         """Test that the correct URL is returned for a release version of PPM Preview"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.PREVIEW, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -759,7 +759,7 @@ class TestByStream:
         self, patch_requests_get, _os: ImageVersionOS, expected_version: str, expected_url: str
     ):
         """Test that the correct URL is returned for a release version of PPM Daily"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.PACKAGE_MANAGER, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -854,13 +854,13 @@ class TestByStream:
         expected_session_url: str,
     ):
         """Test that the correct URL is returned for a release version of Workbench Release"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
 
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, channel=ReleaseChannelEnum.RELEASE, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -970,13 +970,13 @@ class TestByStream:
         expected_session_url: str,
     ):
         """Test that the correct URL is returned for a release version of Workbench Daily"""
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.WORKBENCH, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_url
 
-        dev_version = ImageDevelopmentVersionFromProductStream(
+        dev_version = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream", product=ProductEnum.WORKBENCH_SESSION, channel=ReleaseChannelEnum.DAILY, os=[_os]
         )
         assert dev_version.get_version() == expected_version
@@ -989,7 +989,7 @@ class TestResolveOsUrls:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="connect",
                 channel="daily",
@@ -1010,7 +1010,7 @@ class TestResolveOsUrls:
         with patch(
             "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel", side_effect=side_effect
         ):
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="connect",
                 channel="daily",
@@ -1028,7 +1028,7 @@ class TestResolveOsUrls:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/pkg_amd64.deb"
             )
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="connect",
                 channel="daily",
@@ -1047,7 +1047,7 @@ class TestResolveOsUrls:
     def test_all_os_fail_returns_empty(self):
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.side_effect = ValueError("no packages")
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="connect",
                 channel="daily",
@@ -1059,7 +1059,7 @@ class TestResolveOsUrls:
     def test_unexpected_exception_propagates(self):
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.side_effect = TypeError("unexpected bug")
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="connect",
                 channel="daily",
@@ -1083,7 +1083,7 @@ class TestResolveOsUrls:
         with patch(
             "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel", side_effect=side_effect
         ):
-            dev = ImageDevelopmentVersionFromProductStream(
+            dev = ImageDevelopmentVersionFromProductChannel(
                 parent=mock_parent,
                 sourceType="stream",
                 product="connect",

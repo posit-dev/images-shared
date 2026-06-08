@@ -6,18 +6,18 @@ from pydantic import Field, ValidationError, model_validator
 
 from posit_bakery.config.image.build_os import DEFAULT_OS, DEFAULT_PLATFORMS
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
-from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.main import get_product_artifact_by_channel
 from posit_bakery.config.image.version_os import ImageVersionOS
 
 log = logging.getLogger(__name__)
 
 
-class ImageDevelopmentVersionFromProductStream(BaseImageDevelopmentVersion):
-    """Image development version sourced from a product stream."""
+class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
+    """Image development version sourced from a product release channel."""
 
     sourceType: Literal["stream"] = "stream"
-    product: Annotated[ProductEnum, Field(description="The ID of the product stream to use for this image version.")]
+    product: Annotated[ProductEnum, Field(description="The ID of the product channel to use for this image version.")]
     channel: Annotated[
         ReleaseChannelEnum,
         Field(description="The release channel to use for this image version (e.g. 'daily', 'preview')."),

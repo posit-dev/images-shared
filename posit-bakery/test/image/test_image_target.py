@@ -274,7 +274,7 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": basic_standard_image_target.image_variant.tagDisplayName,
             "OS": basic_standard_image_target.image_os.tagDisplayName,
-            "Stream": "",
+            "Channel": "",
         }
         assert basic_standard_image_target.tag_template_values == expected_values
 
@@ -284,7 +284,7 @@ class TestImageTarget:
             "Version": basic_standard_image_target.image_version.name,
             "Variant": "",
             "OS": "",
-            "Stream": "",
+            "Channel": "",
         }
         basic_standard_image_target.image_variant = None
         basic_standard_image_target.image_os = None
@@ -292,7 +292,7 @@ class TestImageTarget:
 
     def test_channel_tags(self, basic_standard_image_target):
         """Test that release_channel metadata produces channel-based floating tags."""
-        from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
+        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 
         target = basic_standard_image_target
 
@@ -302,8 +302,8 @@ class TestImageTarget:
         assert channel_suffixes == []
 
         # Enum channel value
-        target.image_version.metadata["release_channel"] = ReleaseStreamEnum.DAILY
-        assert target.tag_template_values["Stream"] == "daily"
+        target.image_version.metadata["release_channel"] = ReleaseChannelEnum.DAILY
+        assert target.tag_template_values["Channel"] == "daily"
         channel_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
         assert "daily" in channel_suffixes
         assert "daily-ubuntu-22.04" in channel_suffixes
@@ -312,7 +312,7 @@ class TestImageTarget:
 
         # Plain string channel value
         target.image_version.metadata["release_channel"] = "preview"
-        assert target.tag_template_values["Stream"] == "preview"
+        assert target.tag_template_values["Channel"] == "preview"
         channel_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
         assert "preview" in channel_suffixes
 
