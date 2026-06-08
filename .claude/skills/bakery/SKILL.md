@@ -54,7 +54,26 @@ When a task requires editing templates, macros, or `bakery.yaml` in a sibling re
 (`images-connect`, `images-workbench`, `images-package-manager`), read that repo's
 `CLAUDE.md` and `bakery.yaml` before making any changes there.
 
-### 4. Forward filter flags to `bakery ci merge`
+### 4. Matrix versions are excluded by default
+
+`--matrix-versions` defaults to `exclude`. Matrix images (e.g., `connect-content`,
+`workbench-session`) produce **zero build targets** unless you explicitly pass
+`--matrix-versions include` or `--matrix-versions only`.
+
+Always verify with `uv run bakery build --plan` or `uv run bakery get tags` before
+building — a plan with no targets means a filter flag is wrong or missing.
+
+### 5. `--dev-stream` is silently ignored without `--dev-versions`
+
+`--dev-stream` only takes effect when `--dev-versions` is `include` or `only`. When
+`--dev-versions exclude` (the default), bakery emits a warning and ignores `--dev-stream`
+entirely. Always pair them:
+
+```bash
+uv run bakery build --dev-versions only --dev-stream daily
+```
+
+### 6. Forward filter flags to `bakery ci merge`
 
 When modifying a CI workflow that uses `bakery ci merge`, ensure any filter flags
 passed to the build step are also passed to the merge step:
@@ -89,12 +108,22 @@ $EDITOR <image>/template/Containerfile.jinja
 uv run bakery update files --image-name <name> --image-version <version>
 ```
 
+### Preview what will be built
+
+```bash
+uv run bakery get tags                                  # list tags by component
+uv run bakery build --plan                              # full bake plan (JSON)
+```
+
+`--plan` only works with `--strategy bake` (the default). It errors with
+`--strategy build`.
+
 ### Build locally
 
 ```bash
-uv run bakery build --plan                              # dry run
 uv run bakery build                                     # build + load into Docker
 uv run bakery build --image-name connect --image-version 2025.08.0
+uv run bakery build --push --no-load                    # push to registry (CI pattern)
 ```
 
 ### Run goss tests
