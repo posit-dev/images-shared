@@ -22,6 +22,17 @@ app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
 
 
+def _parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> DevBuildSpec | None:
+    if value is None:
+        return None
+    from pydantic import ValidationError
+
+    try:
+        return DevBuildSpec.model_validate_json(value)
+    except ValidationError as e:
+        raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
+
+
 class RichHelpPanelEnum(str, Enum):
     """Enum for categorizing options into rich help panels."""
 
@@ -92,12 +103,13 @@ def matrix(
         ),
     ] = auto_path(),
     dev_spec: Annotated[
-        str | None,
+        Optional[str],
         typer.Option(
             "--dev-spec",
             envvar="BAKERY_DEV_SPEC",
             help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
             rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=_parse_dev_spec,
         ),
     ] = None,
 ) -> None:
@@ -124,18 +136,12 @@ def matrix(
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
         if dev_channel is None:
             dev_channel = dev_stream
-    parsed_dev_spec: DevBuildSpec | None = None
-    if dev_spec:
-        try:
-            parsed_dev_spec = DevBuildSpec.model_validate_json(dev_spec)
-        except Exception as e:
-            raise typer.BadParameter(f"--dev-spec is not valid JSON: {e}", param_hint="--dev-spec") from e
     try:
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
-            dev_spec=parsed_dev_spec,
+            dev_spec=dev_spec,  # type: ignore[arg-type]
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
