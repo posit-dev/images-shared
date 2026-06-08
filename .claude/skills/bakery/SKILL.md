@@ -86,10 +86,12 @@ uv run bakery build --dev-versions only \
 If both `--dev-spec` and `--dev-channel` are set, their `channel` values must match or
 bakery raises an error.
 
-### 6. Forward filter flags to `bakery ci merge`
+### 6. Forward filter flags to `bakery ci merge` and `clean`
 
-When modifying a CI workflow that uses `bakery ci merge`, ensure any filter flags
-passed to the build step are also passed to the merge step:
+When modifying a CI workflow, filter flags must be forwarded consistently across all
+three stages: build → merge, and build → clean.
+
+**Build → merge:** `bakery ci merge` must receive the same flags as the build step:
 
 - `--dev-versions [include|exclude|only]`
 - `--dev-channel [release|preview|daily]`
@@ -100,6 +102,56 @@ Mismatched flags cause the merge step to match metadata by UID and fan a single 
 image out to multiple targets — including targets in the wrong registry. A release
 version and a dev-stream version that share the same version number have identical UIDs
 and will collide. (Tracked as posit-dev/images-shared#553; fix in PR #554.)
+
+**Build → clean:** `clean.yml` must receive the same `dev-versions` value as the build
+that produced the images. If build uses `dev-versions: "only"` but clean uses the default
+`dev-versions: "exclude"`, the clean job targets the wrong set of images and dev artifacts
+accumulate.
+
+**Temp registry:** The `--temp-registry` value in `bakery ci merge` must exactly match the
+value used in the corresponding `bakery build` step. A mismatch causes the merge step to
+look for images that don't exist, failing with cryptic "image not found" errors.
+
+### 7. `bakery remove` is irreversible
+
+`bakery remove version` and `bakery remove image` delete the version directory **and**
+remove the entry from `bakery.yaml`. There is no dry-run flag and no confirmation prompt.
+Always confirm with the user before running either command.
+
+### 8. `bakery create version` marks the new version as latest by default
+
+`bakery create version` sets `latest: true` on the new version and **unmarks all other
+versions**. If the repo has a current release marked `latest`, creating a new version will
+silently demote it. Verify the intended `latest` state in `bakery.yaml` after running.
+
+### 9. `bakery update version --clean` deletes files before re-rendering
+
+The `--clean` flag on `bakery update version` defaults to `True`. It deletes all existing
+files in the version directory before re-rendering. Use `bakery update files` (scoped) for
+non-destructive re-renders.
+
+### 10. Use `bakery dgoss run`, not `bakery run dgoss`
+
+`bakery run dgoss` is deprecated and emits a warning. Use:
+
+```bash
+uv run bakery dgoss run
+```
+
+### 11. Guard `clean.yml` with a branch condition
+
+When calling `clean.yml` from a product repo workflow, always include a branch guard:
+
+```yaml
+clean:
+  if: always() && github.ref == 'refs/heads/main'
+  needs: [build]
+  uses: "posit-dev/images-shared/.github/workflows/clean.yml@main"
+```
+
+Without the `github.ref` guard, fork PRs will attempt to clean images from the main
+org's registry. Fork workflows lack write credentials so the job fails, and the failure
+is hard to diagnose.
 
 ## Common workflows
 
@@ -143,7 +195,7 @@ uv run bakery build --push --no-load                    # push to registry (CI p
 ### Run goss tests
 
 ```bash
-uv run bakery run dgoss
+uv run bakery dgoss run
 ```
 
 ### Inspect the CI matrix
