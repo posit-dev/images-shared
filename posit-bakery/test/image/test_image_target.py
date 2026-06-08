@@ -171,7 +171,7 @@ class TestImageTarget:
         )
 
         assert release_target.uid != dev_target.uid
-        # Release UIDs stay unsuffixed; only dev streams carry a stream suffix.
+        # Release UIDs stay unsuffixed; only dev channels carry a channel suffix.
         assert release_target.uid == "test-image-1-0-0-standard-ubuntu-22-04"
         assert not release_target.uid.endswith("-release")
         assert dev_target.uid.endswith("-daily")
@@ -290,31 +290,31 @@ class TestImageTarget:
         basic_standard_image_target.image_os = None
         assert basic_standard_image_target.tag_template_values == expected_values
 
-    def test_stream_tags(self, basic_standard_image_target):
-        """Test that release_channel metadata produces stream-based floating tags."""
+    def test_channel_tags(self, basic_standard_image_target):
+        """Test that release_channel metadata produces channel-based floating tags."""
         from posit_bakery.config.image.posit_product.const import ReleaseStreamEnum
 
         target = basic_standard_image_target
 
-        # No stream → no stream tags
+        # No channel → no channel tags
         assert target.image_version.metadata.get("release_channel") is None
-        stream_suffixes = [s for s in target.tag_suffixes if "daily" in s]
-        assert stream_suffixes == []
+        channel_suffixes = [s for s in target.tag_suffixes if "daily" in s]
+        assert channel_suffixes == []
 
-        # Enum stream value
+        # Enum channel value
         target.image_version.metadata["release_channel"] = ReleaseStreamEnum.DAILY
         assert target.tag_template_values["Stream"] == "daily"
-        stream_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
-        assert "daily" in stream_suffixes
-        assert "daily-ubuntu-22.04" in stream_suffixes
-        assert "daily-std" in stream_suffixes
-        assert "daily-ubuntu-22.04-std" in stream_suffixes
+        channel_suffixes = sorted([s for s in target.tag_suffixes if "daily" in s])
+        assert "daily" in channel_suffixes
+        assert "daily-ubuntu-22.04" in channel_suffixes
+        assert "daily-std" in channel_suffixes
+        assert "daily-ubuntu-22.04-std" in channel_suffixes
 
-        # Plain string stream value
+        # Plain string channel value
         target.image_version.metadata["release_channel"] = "preview"
         assert target.tag_template_values["Stream"] == "preview"
-        stream_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
-        assert "preview" in stream_suffixes
+        channel_suffixes = sorted([s for s in target.tag_suffixes if "preview" in s])
+        assert "preview" in channel_suffixes
 
         # Clean up
         del target.image_version.metadata["release_channel"]
@@ -336,7 +336,7 @@ class TestImageTarget:
             image_os=os,
         )
         # Check that the tag patterns are deduplicated to 12, the default tag patterns length
-        # (8 version-based + 4 stream-based)
+        # (8 version-based + 4 channel-based)
         assert len(target.tag_patterns) == 12
 
     def test_tag_patterns_filtering(self, get_config_obj):
@@ -354,7 +354,7 @@ class TestImageTarget:
             image_variant=variant,
             image_os=os,
         )
-        # 8 version-based + 4 stream-based (stream patterns pass filtering
+        # 8 version-based + 4 channel-based (channel patterns pass filtering
         # even when Stream is empty; they produce nothing during rendering)
         assert len(target.tag_patterns) == 12
 

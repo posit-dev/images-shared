@@ -5,8 +5,8 @@ from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseCh
 from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
-    get_product_artifact_by_stream,
-    ReleaseStreamResult,
+    get_product_artifact_by_channel,
+    ReleaseChannelResult,
 )
 
 pytestmark = [
@@ -173,7 +173,7 @@ class TestReleaseChannelEnum:
         assert ReleaseStreamEnum is ReleaseChannelEnum
 
 
-class TestReleaseStreamResult:
+class TestReleaseChannelResult:
     @pytest.mark.parametrize(
         "download_url,expected_url",
         [
@@ -190,8 +190,8 @@ class TestReleaseStreamResult:
         ],
     )
     def test_architecture_generalized_download_url(self, download_url, expected_url):
-        """Tests for architecture_generalized_download_url property of ReleaseStreamResult"""
-        result = ReleaseStreamResult(version="1.0.0", download_url=download_url)
+        """Tests for architecture_generalized_download_url property of ReleaseChannelResult"""
+        result = ReleaseChannelResult(version="1.0.0", download_url=download_url)
         assert str(result.architecture_generalized_download_url) == expected_url
 
 
@@ -215,16 +215,16 @@ class TestHelpers:
         assert output == expected
 
 
-class TestGetProductArtifactByStream:
+class TestGetProductArtifactByChannel:
     def test_bad_product(self):
         """Test that an invalid product raises an error"""
         with pytest.raises(ValueError):
-            get_product_artifact_by_stream("bad", "daily", SUPPORTED_OS["ubuntu"]["22"])
+            get_product_artifact_by_channel("bad", "daily", SUPPORTED_OS["ubuntu"]["22"])
 
-    def test_bad_stream(self):
-        """Test that an invalid stream raises an error"""
+    def test_bad_channel(self):
+        """Test that an invalid channel raises an error"""
         with pytest.raises(ValueError):
-            get_product_artifact_by_stream("connect", "preview", SUPPORTED_OS["ubuntu"]["22"])
+            get_product_artifact_by_channel("connect", "preview", SUPPORTED_OS["ubuntu"]["22"])
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -293,7 +293,7 @@ class TestGetProductArtifactByStream:
     )
     def test_connect_release(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Release"""
-        output = get_product_artifact_by_stream(ProductEnum.CONNECT, ReleaseStreamEnum.RELEASE, _os)
+        output = get_product_artifact_by_channel(ProductEnum.CONNECT, ReleaseStreamEnum.RELEASE, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
@@ -368,7 +368,7 @@ class TestGetProductArtifactByStream:
     )
     def test_connect_daily(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of Connect Daily"""
-        output = get_product_artifact_by_stream(ProductEnum.CONNECT, ReleaseStreamEnum.DAILY, _os)
+        output = get_product_artifact_by_channel(ProductEnum.CONNECT, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
@@ -439,7 +439,7 @@ class TestGetProductArtifactByStream:
     )
     def test_package_manager_release(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of PPM Release"""
-        output = get_product_artifact_by_stream(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.RELEASE, _os)
+        output = get_product_artifact_by_channel(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.RELEASE, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
@@ -510,7 +510,7 @@ class TestGetProductArtifactByStream:
     )
     def test_package_manager_preview(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of PPM Preview"""
-        output = get_product_artifact_by_stream(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.PREVIEW, _os)
+        output = get_product_artifact_by_channel(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.PREVIEW, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
@@ -581,7 +581,7 @@ class TestGetProductArtifactByStream:
     )
     def test_package_manager_daily(self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str):
         """Test that the correct URL is returned for a release version of PPM Daily"""
-        output = get_product_artifact_by_stream(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.DAILY, _os)
+        output = get_product_artifact_by_channel(ProductEnum.PACKAGE_MANAGER, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
@@ -669,11 +669,11 @@ class TestGetProductArtifactByStream:
         self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str, expected_session_url: str
     ):
         """Test that the correct URL is returned for a release version of Workbench Release"""
-        output = get_product_artifact_by_stream(ProductEnum.WORKBENCH, ReleaseStreamEnum.RELEASE, _os)
+        output = get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseStreamEnum.RELEASE, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
-        output = get_product_artifact_by_stream(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.RELEASE, _os)
+        output = get_product_artifact_by_channel(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.RELEASE, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_session_url
 
@@ -776,10 +776,10 @@ class TestGetProductArtifactByStream:
         self, patch_requests_get, _os: BuildOS, expected_version: str, expected_url: str, expected_session_url: str
     ):
         """Test that the correct URL is returned for a release version of Workbench Daily"""
-        output = get_product_artifact_by_stream(ProductEnum.WORKBENCH, ReleaseStreamEnum.DAILY, _os)
+        output = get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_url
 
-        output = get_product_artifact_by_stream(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.DAILY, _os)
+        output = get_product_artifact_by_channel(ProductEnum.WORKBENCH_SESSION, ReleaseStreamEnum.DAILY, _os)
         assert output.version == expected_version
         assert str(output.download_url) == expected_session_url
