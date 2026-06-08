@@ -59,7 +59,7 @@ def test_publish_passes_soci_mode_to_execute(tmp_path, mode_args, expected_stand
 
     fake_soci = MagicMock()
 
-    def fake_execute(base_path, targets, *, source_refs=None, dry_run=False, standalone=True, **kwargs):
+    def fake_execute(base_path, targets, *, source_refs=None, dry_run=False, standalone, **kwargs):
         captured["standalone"] = standalone
         return []
 
