@@ -23,57 +23,68 @@ def mock_target():
 
 @pytest.fixture
 def workflow(mock_target):
+    # The source/destination are registry refs; the OCI image layouts that
+    # soci convert reads/writes are internal scratch.
     return SociConvertWorkflow(
         soci_bin="soci",
-        ctr_bin="ctr",
         oras_bin="oras",
         image_target=mock_target,
         options=SociOptions(enabled=True),
         source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
     )
+
+
+def _ok_proc(cmd):
+    return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
 
 
 def test_destination_ref_appends_soci_suffix(workflow):
     assert workflow.destination_ref == "ghcr.io/posit-dev/test-image/tmp:merged-soci"
 
 
-def test_run_executes_pull_convert_push_in_order(workflow):
-    with patch("subprocess.run") as mock_run:
+def test_runs_oras_pull_convert_push_in_order(workflow):
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
+    ):
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
         result = workflow.run()
 
     assert result.success is True
     assert result.destination_ref == workflow.destination_ref
-    assert result.resolved_namespace == "default"
-    # 3 calls: ctr pull, soci convert, soci push
+    # No containerd: no ctr pull, no soci push.
+    # 3 calls: oras cp (registry -> layout), soci convert, oras cp (layout -> registry).
     assert mock_run.call_count == 3
     pull_args = mock_run.call_args_list[0].args[0]
     convert_args = mock_run.call_args_list[1].args[0]
     push_args = mock_run.call_args_list[2].args[0]
-    assert pull_args[:1] == ["ctr"]
-    assert "pull" in pull_args
+
+    assert pull_args[:2] == ["oras", "cp"]
+    assert "--to-oci-layout" in pull_args
+    assert pull_args[-2] == workflow.source_ref
+
     assert convert_args[:1] == ["soci"]
-    assert "convert" in convert_args
-    assert push_args[:1] == ["soci"]
-    assert "push" in push_args
+    assert "--standalone" in convert_args
+    assert "--format" in convert_args
+    assert "oci-dir" in convert_args
+
+    assert push_args[:2] == ["oras", "cp"]
+    assert "--from-oci-layout" in push_args
+    # source is the converted layout referenced by digest; destination is the registry ref.
+    assert push_args[-2].endswith("@sha256:abc123")
+    assert push_args[-1] == workflow.destination_ref
 
 
-def test_run_threads_sudo_into_all_containerd_commands(mock_target):
-    wf = SociConvertWorkflow(
-        soci_bin="soci",
-        ctr_bin="ctr",
-        oras_bin="oras",
-        image_target=mock_target,
-        options=SociOptions(enabled=True),
-        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
-        sudo=True,
-    )
-    with patch("subprocess.run") as mock_run:
+def test_does_not_invoke_ctr(workflow):
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
+    ):
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-        wf.run()
+        workflow.run()
 
     for call in mock_run.call_args_list:
-        assert call.args[0][:2] == ["sudo", "-n"]
+        assert call.args[0][:1] != ["ctr"]
 
 
 def test_dry_run_does_not_invoke_subprocess(workflow):
@@ -83,13 +94,10 @@ def test_dry_run_does_not_invoke_subprocess(workflow):
     assert result.success is True
 
 
-def _ok_proc(cmd):
-    return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
-
-
 def test_pull_failure_returns_error(workflow):
     def fake_run(cmd, capture_output):
-        if "pull" in cmd:
+        # Fail on the first oras cp (registry -> layout pull).
+        if cmd[:2] == ["oras", "cp"]:
             return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"pull boom")
         return _ok_proc(cmd)
 
@@ -97,7 +105,6 @@ def test_pull_failure_returns_error(workflow):
         result = workflow.run()
 
     assert result.success is False
-    assert result.resolved_namespace == "default"
     assert "pull boom" in (result.error or "")
 
 
@@ -111,89 +118,10 @@ def test_convert_failure_returns_error(workflow):
         result = workflow.run()
 
     assert result.success is False
-    assert result.resolved_namespace == "default"
     assert "convert boom" in (result.error or "")
 
 
-@pytest.fixture
-def standalone_workflow(mock_target):
-    # In standalone mode the source/destination are still registry refs; the
-    # OCI image layouts that soci convert reads/writes are internal scratch.
-    return SociConvertWorkflow(
-        soci_bin="soci",
-        ctr_bin="ctr",
-        oras_bin="oras",
-        image_target=mock_target,
-        options=SociOptions(enabled=True, standalone=True),
-        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
-        standalone=True,
-    )
-
-
-def test_standalone_destination_ref_appends_soci_suffix(standalone_workflow):
-    assert standalone_workflow.destination_ref == "ghcr.io/posit-dev/test-image/tmp:merged-soci"
-
-
-def test_standalone_runs_oras_pull_convert_push_in_order(standalone_workflow):
-    with (
-        patch("subprocess.run") as mock_run,
-        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-        result = standalone_workflow.run()
-
-    assert result.success is True
-    assert result.destination_ref == standalone_workflow.destination_ref
-    # No containerd in standalone mode: no ctr pull, no soci push.
-    # 3 calls: oras cp (registry -> layout), soci convert, oras cp (layout -> registry).
-    assert mock_run.call_count == 3
-    pull_args = mock_run.call_args_list[0].args[0]
-    convert_args = mock_run.call_args_list[1].args[0]
-    push_args = mock_run.call_args_list[2].args[0]
-
-    assert pull_args[:2] == ["oras", "cp"]
-    assert "--to-oci-layout" in pull_args
-    assert pull_args[-2] == standalone_workflow.source_ref
-
-    assert convert_args[:1] == ["soci"]
-    assert "--standalone" in convert_args
-    assert "--format" in convert_args
-    assert "oci-dir" in convert_args
-
-    assert push_args[:2] == ["oras", "cp"]
-    assert "--from-oci-layout" in push_args
-    # source is the converted layout referenced by digest; destination is the registry ref.
-    assert push_args[-2].endswith("@sha256:abc123")
-    assert push_args[-1] == standalone_workflow.destination_ref
-
-
-def test_standalone_does_not_invoke_ctr(standalone_workflow):
-    with (
-        patch("subprocess.run") as mock_run,
-        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-        standalone_workflow.run()
-
-    for call in mock_run.call_args_list:
-        assert call.args[0][:1] != ["ctr"]
-
-
-def test_standalone_pull_failure_returns_error(standalone_workflow):
-    def fake_run(cmd, capture_output):
-        # Fail on the first oras cp (registry -> layout pull).
-        if cmd[:2] == ["oras", "cp"]:
-            return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"pull boom")
-        return _ok_proc(cmd)
-
-    with patch("subprocess.run", side_effect=fake_run):
-        result = standalone_workflow.run()
-
-    assert result.success is False
-    assert "pull boom" in (result.error or "")
-
-
-def test_standalone_cleans_up_scratch_dir(standalone_workflow, tmp_path):
+def test_cleans_up_scratch_dir(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
@@ -203,14 +131,14 @@ def test_standalone_cleans_up_scratch_dir(standalone_workflow, tmp_path):
     ):
         scratch.mkdir()
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-        result = standalone_workflow.run()
+        result = workflow.run()
 
     assert result.success is True
     mock_mkdtemp.assert_called_once()
     assert not scratch.exists()
 
 
-def test_standalone_cleans_up_scratch_dir_on_failure(standalone_workflow, tmp_path):
+def test_cleans_up_scratch_dir_on_failure(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
@@ -220,7 +148,7 @@ def test_standalone_cleans_up_scratch_dir_on_failure(standalone_workflow, tmp_pa
     ):
         scratch.mkdir()
         with pytest.raises(RuntimeError):
-            standalone_workflow.run()
+            workflow.run()
 
     assert not scratch.exists()
 

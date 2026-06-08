@@ -26,16 +26,16 @@ def test_soci_convert_requires_metadata_file_argument():
     assert result.exit_code != 0
 
 
-def test_soci_convert_help_lists_soci_mode_option():
+def test_soci_convert_help_has_no_mode_option():
     runner = CliRunner()
     result = runner.invoke(app, ["soci", "convert", "--help"], env=_WIDE_TERM_ENV)
     assert result.exit_code == 0
-    assert "--soci-mode" in result.stdout
-    # The legacy boolean flag is gone.
+    # Conversion is standalone-only; there is no mode selector.
+    assert "--soci-mode" not in result.stdout
     assert "--standalone" not in result.stdout
 
 
-def test_soci_convert_rejects_invalid_mode():
+def test_soci_convert_rejects_unknown_option():
     runner = CliRunner()
-    result = runner.invoke(app, ["soci", "convert", "meta.json", "--soci-mode", "bogus"])
+    result = runner.invoke(app, ["soci", "convert", "meta.json", "--soci-mode", "containerd"])
     assert result.exit_code != 0

@@ -2,7 +2,7 @@
 
 import pytest
 
-from posit_bakery.plugins.builtin.soci.options import SociModeEnum, SociOptions
+from posit_bakery.plugins.builtin.soci.options import SociOptions
 
 pytestmark = [pytest.mark.unit]
 
@@ -83,9 +83,3 @@ def test_update_list_explicitly_set_to_empty():
     merged = base.update(override)
     # prefetch_files is in base.model_fields_set, so base's value should win
     assert merged.prefetch_files == []
-
-
-def test_soci_mode_enum_values():
-    assert SociModeEnum.CONTAINERD.value == "containerd"
-    assert SociModeEnum.STANDALONE.value == "standalone"
-    assert SociModeEnum("standalone") is SociModeEnum.STANDALONE

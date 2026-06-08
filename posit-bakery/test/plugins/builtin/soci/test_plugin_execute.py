@@ -1,17 +1,15 @@
 """Tests for SociPlugin.execute()."""
 
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import posit_bakery.util as util
-from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci import SociPlugin
 from posit_bakery.plugins.builtin.soci.options import SociOptions
-from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
+from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflow, SociConvertWorkflowResult
 
 pytestmark = [pytest.mark.unit]
 
@@ -47,12 +45,12 @@ def test_skips_targets_without_enabled_option(tmp_path):
             return_value="soci",
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_ctr_bin",
-            return_value="ctr",
-        ),
-        patch(
             "posit_bakery.plugins.builtin.soci.find_oras_bin",
             return_value="oras",
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            return_value="sha256:abc",
         ),
         patch("subprocess.run") as mock_run,
     ):
@@ -63,7 +61,6 @@ def test_skips_targets_without_enabled_option(tmp_path):
             base_path=tmp_path,
             targets=[t_off, t_on],
             source_refs={"a": "ref-a", "b": "ref-b"},
-            standalone=False,
         )
 
     assert len(results) == 2
@@ -94,8 +91,11 @@ def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
             return_value=SociOptions(enabled=True),
         ),
         patch("posit_bakery.plugins.builtin.soci.find_soci_bin", return_value="soci"),
-        patch("posit_bakery.plugins.builtin.soci.find_ctr_bin", return_value="ctr"),
         patch("posit_bakery.plugins.builtin.soci.find_oras_bin", return_value="oras"),
+        patch(
+            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            return_value="sha256:abc",
+        ),
         patch("subprocess.run") as mock_run,
     ):
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
@@ -103,7 +103,6 @@ def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
             base_path=tmp_path,
             targets=[t_ref, t_noref],
             source_refs={"a": "ref-a"},
-            standalone=False,
         )
 
     noref = next(r for r in results if r.target.uid == "b")
@@ -133,10 +132,6 @@ def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
             return_value="soci",
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_ctr_bin",
-            return_value="ctr",
-        ),
-        patch(
             "posit_bakery.plugins.builtin.soci.find_oras_bin",
             return_value="oras",
         ),
@@ -153,7 +148,7 @@ def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
 
 
 def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
-    """When all targets are disabled, execute should not require soci/ctr
+    """When all targets are disabled, execute should not require soci/oras
     binaries to be installed — the lookups should be skipped."""
     plugin = SociPlugin()
     t = _make_target("a", enabled=False)
@@ -167,9 +162,6 @@ def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
             "posit_bakery.plugins.builtin.soci.find_soci_bin",
         ) as mock_find_soci,
         patch(
-            "posit_bakery.plugins.builtin.soci.find_ctr_bin",
-        ) as mock_find_ctr,
-        patch(
             "posit_bakery.plugins.builtin.soci.find_oras_bin",
         ) as mock_find_oras,
     ):
@@ -182,22 +174,20 @@ def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
     assert len(results) == 1
     assert results[0].artifacts.get("skipped") is True
     mock_find_soci.assert_not_called()
-    mock_find_ctr.assert_not_called()
     mock_find_oras.assert_not_called()
 
 
 @pytest.fixture
 def missing_tools(monkeypatch):
-    """Simulate a host where soci/ctr/oras are not installed anywhere."""
+    """Simulate a host where soci/oras are not installed anywhere."""
     real_which = util.which
-    monkeypatch.setattr(util, "which", lambda name: None if name in {"soci", "ctr", "oras"} else real_which(name))
-    for env in ("SOCI_PATH", "CTR_PATH", "ORAS_PATH"):
+    monkeypatch.setattr(util, "which", lambda name: None if name in {"soci", "oras"} else real_which(name))
+    for env in ("SOCI_PATH", "ORAS_PATH"):
         monkeypatch.delenv(env, raising=False)
 
 
-@pytest.mark.parametrize("standalone", [False, True])
-def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools, standalone):
-    """A dry-run executes nothing, so it must not abort when soci/ctr/oras are
+def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools):
+    """A dry-run executes nothing, so it must not abort when soci/oras are
     absent from the host. Regression: ``ci publish --dry-run`` raised
     BakeryToolNotFoundError because execute() resolved the binaries eagerly,
     before the dry-run-aware workflow ran."""
@@ -220,7 +210,6 @@ def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools, stand
             targets=[t],
             source_refs={"a": "ref-a"},
             dry_run=True,
-            standalone=standalone,
         )
 
     mock_run.assert_not_called()
@@ -232,7 +221,6 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
     (env var / PATH / project tools dir) rather than a bare fallback name, so
     the logged commands remain accurate."""
     monkeypatch.setenv("SOCI_PATH", "/custom/soci")
-    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
     monkeypatch.setenv("ORAS_PATH", "/custom/oras")
     plugin = SociPlugin()
     t = _make_target("a", enabled=True)
@@ -241,10 +229,7 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
 
     def fake_run(self, dry_run=False):
         captured["soci_bin"] = self.soci_bin
-        captured["ctr_bin"] = self.ctr_bin
         captured["oras_bin"] = self.oras_bin
-        from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
-
         return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
 
     with (
@@ -262,14 +247,13 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
         )
 
     assert captured["soci_bin"] == "/custom/soci"
-    assert captured["ctr_bin"] == "/custom/ctr"
     assert captured["oras_bin"] == "/custom/oras"
 
 
-def test_standalone_run_does_not_require_ctr(tmp_path, monkeypatch):
-    """Standalone mode never touches containerd, so a real (non-dry-run)
-    standalone conversion must not require `ctr` to be installed — only the
-    tools it actually executes (soci, oras)."""
+def test_run_does_not_require_ctr(tmp_path, monkeypatch):
+    """Conversion never touches containerd, so a real (non-dry-run) conversion
+    must not require `ctr` to be installed — only the tools it actually
+    executes (soci, oras)."""
     monkeypatch.setenv("SOCI_PATH", "/custom/soci")
     monkeypatch.setenv("ORAS_PATH", "/custom/oras")
     monkeypatch.delenv("CTR_PATH", raising=False)
@@ -294,142 +278,6 @@ def test_standalone_run_does_not_require_ctr(tmp_path, monkeypatch):
             targets=[t],
             source_refs={"a": "ref-a"},
             dry_run=False,
-            standalone=True,
         )
 
     assert [r.exit_code for r in results] == [0]
-
-
-def test_non_standalone_run_still_requires_ctr(tmp_path, monkeypatch):
-    """A real (non-dry-run) containerd-backed conversion does use `ctr`, so a
-    missing `ctr` must remain a hard error."""
-    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
-    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
-    monkeypatch.delenv("CTR_PATH", raising=False)
-    monkeypatch.setattr(util, "which", lambda name: None)
-    plugin = SociPlugin()
-    t = _make_target("a", enabled=True)
-
-    with (
-        patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True),
-        ),
-        patch("subprocess.run"),
-        pytest.raises(BakeryToolNotFoundError),
-    ):
-        plugin.execute(
-            base_path=tmp_path,
-            targets=[t],
-            source_refs={"a": "ref-a"},
-            dry_run=False,
-            standalone=False,
-        )
-
-
-def test_execute_defaults_to_standalone_mode(tmp_path):
-    """execute() now defaults to standalone mode when no mode is passed."""
-    plugin = SociPlugin()
-    t = _make_target("a", enabled=True)
-
-    captured = {}
-
-    def fake_run(self, dry_run=False):
-        captured["standalone"] = self.standalone
-        return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
-
-    with (
-        patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True),
-        ),
-        patch("posit_bakery.plugins.builtin.soci.find_soci_bin", return_value="soci"),
-        patch("posit_bakery.plugins.builtin.soci.find_ctr_bin", return_value="ctr"),
-        patch("posit_bakery.plugins.builtin.soci.find_oras_bin", return_value="oras"),
-        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
-    ):
-        results = plugin.execute(
-            base_path=tmp_path,
-            targets=[t],
-            source_refs={"a": "ref-a"},
-        )
-
-    assert captured["standalone"] is True
-    assert [r.exit_code for r in results] == [0]
-
-
-def test_containerd_run_resolves_sudo_once_and_threads_it(tmp_path, monkeypatch):
-    """A real containerd run resolves the sudo prefix once and passes the
-    resulting `sudo` flag into the workflow."""
-    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
-    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
-    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
-    plugin = SociPlugin()
-    t = _make_target("a", enabled=True)
-
-    captured = {}
-
-    def fake_run(self, dry_run=False):
-        captured["sudo"] = self.sudo
-        return SociConvertWorkflowResult(success=True, destination_ref=self.destination_ref)
-
-    with (
-        patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True),
-        ),
-        patch(
-            "posit_bakery.plugins.builtin.soci.soci.resolve_sudo_prefix",
-            return_value=["sudo", "-n"],
-        ) as mock_resolve,
-        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
-    ):
-        results = plugin.execute(
-            base_path=tmp_path,
-            targets=[t],
-            source_refs={"a": "ref-a"},
-            dry_run=False,
-            standalone=False,
-        )
-
-    assert [r.exit_code for r in results] == [0]
-    assert captured["sudo"] is True
-    mock_resolve.assert_called_once()
-
-
-def test_containerd_run_fails_fast_when_sudo_would_prompt(tmp_path, monkeypatch):
-    """When privilege resolution raises, the run reports a single failure and
-    does not invoke the workflow."""
-    from posit_bakery.plugins.builtin.soci.soci import SociPrivilegeError
-
-    monkeypatch.setenv("SOCI_PATH", "/custom/soci")
-    monkeypatch.setenv("CTR_PATH", "/custom/ctr")
-    monkeypatch.setenv("ORAS_PATH", "/custom/oras")
-    plugin = SociPlugin()
-    t = _make_target("a", enabled=True)
-
-    def boom(self, dry_run=False):
-        raise AssertionError("workflow should not run when privilege resolution fails")
-
-    with (
-        patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
-            return_value=SociOptions(enabled=True),
-        ),
-        patch(
-            "posit_bakery.plugins.builtin.soci.soci.resolve_sudo_prefix",
-            side_effect=SociPrivilegeError("needs root"),
-        ),
-        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", boom),
-    ):
-        results = plugin.execute(
-            base_path=tmp_path,
-            targets=[t],
-            source_refs={"a": "ref-a"},
-            dry_run=False,
-            standalone=False,
-        )
-
-    assert len(results) == 1
-    assert results[0].exit_code == 1
-    assert "needs root" in results[0].stderr

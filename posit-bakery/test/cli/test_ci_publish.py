@@ -28,8 +28,8 @@ def test_publish_command_flags_present():
     assert result.exit_code == 0
     assert "--temp-registry" in result.stdout
     assert "--dry-run" in result.stdout
-    assert "--soci-mode" in result.stdout
-    # SOCI is config-driven; there is no longer a CLI flag for it.
+    # SOCI is config-driven and standalone-only; there is no CLI flag for it.
+    assert "--soci-mode" not in result.stdout
     assert "--enable-soci" not in result.stdout
 
 
@@ -41,15 +41,7 @@ def _fake_target(uid: str):
     return t
 
 
-@pytest.mark.parametrize(
-    ("mode_args", "expected_standalone"),
-    [
-        ([], True),  # default
-        (["--soci-mode", "standalone"], True),
-        (["--soci-mode", "containerd"], False),
-    ],
-)
-def test_publish_passes_soci_mode_to_execute(tmp_path, mode_args, expected_standalone):
+def test_publish_invokes_soci_execute_without_mode(tmp_path):
     captured = {}
 
     fake_config = MagicMock()
@@ -59,8 +51,9 @@ def test_publish_passes_soci_mode_to_execute(tmp_path, mode_args, expected_stand
 
     fake_soci = MagicMock()
 
-    def fake_execute(base_path, targets, *, source_refs=None, dry_run=False, standalone, **kwargs):
-        captured["standalone"] = standalone
+    def fake_execute(base_path, targets, *, source_refs=None, dry_run=False, **kwargs):
+        captured["called"] = True
+        captured["kwargs"] = kwargs
         return []
 
     fake_soci.execute.side_effect = fake_execute
@@ -73,9 +66,11 @@ def test_publish_passes_soci_mode_to_execute(tmp_path, mode_args, expected_stand
     ):
         result = runner.invoke(
             app,
-            ["ci", "publish", "meta.json", "--dry-run", *mode_args],
+            ["ci", "publish", "meta.json", "--dry-run"],
             env=_WIDE_TERM_ENV,
         )
 
     assert result.exit_code == 0, result.stdout
-    assert captured["standalone"] is expected_standalone
+    assert captured["called"] is True
+    # No mode/standalone selector is threaded through anymore.
+    assert "standalone" not in captured["kwargs"]

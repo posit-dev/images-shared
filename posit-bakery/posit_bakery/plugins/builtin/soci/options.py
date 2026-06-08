@@ -1,17 +1,9 @@
 from copy import deepcopy
-from enum import Enum
 from typing import Annotated, Literal
 
 from pydantic import Field
 
 from posit_bakery.config.tools.base import ToolOptions
-
-
-class SociModeEnum(str, Enum):
-    """SOCI conversion mode selected on the CLI."""
-
-    CONTAINERD = "containerd"
-    STANDALONE = "standalone"
 
 
 class SociOptions(ToolOptions):

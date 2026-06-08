@@ -10,11 +10,8 @@ from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.soci.options import SociOptions
 from posit_bakery.plugins.builtin.oras.oras import find_oras_bin
-from posit_bakery.plugins.builtin.soci import soci as soci_module
 from posit_bakery.plugins.builtin.soci.soci import (
     SociConvertWorkflow,
-    SociPrivilegeError,
-    find_ctr_bin,
     find_soci_bin,
 )
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
@@ -59,7 +56,6 @@ class SociPlugin(BakeryToolPlugin):
         from posit_bakery.cli.common import with_verbosity_flags
         from posit_bakery.config.config import BakeryConfig, BakerySettings
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-        from posit_bakery.plugins.builtin.soci.options import SociModeEnum
         from posit_bakery.util import auto_path
 
         soci_app = typer.Typer(no_args_is_help=True)
@@ -77,10 +73,6 @@ class SociPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(help="Temporary registry to use for split/merge builds."),
             ] = None,
-            soci_mode: Annotated[
-                SociModeEnum,
-                typer.Option(help="SOCI conversion mode: 'standalone' (no containerd) or 'containerd'."),
-            ] = SociModeEnum.STANDALONE,
             dry_run: Annotated[
                 bool,
                 typer.Option(help="Log commands without executing them."),
@@ -89,10 +81,8 @@ class SociPlugin(BakeryToolPlugin):
             """Convert images referenced by build-metadata JSON files into SOCI-enabled images.
 
             \b
-            By default, operates in standalone (no-containerd) mode; pass
-            `--soci-mode containerd` to convert against a running containerd.
-            Targets without `tool: soci, enabled: true` in bakery.yaml are
-            skipped.
+            Conversion runs in standalone (no-containerd) mode via oras. Targets
+            without `tool: soci, enabled: true` in bakery.yaml are skipped.
             """
             settings = BakerySettings(
                 dev_versions=DevVersionInclusionEnum.INCLUDE,
@@ -134,7 +124,6 @@ class SociPlugin(BakeryToolPlugin):
                 config.targets,
                 source_refs=source_refs,
                 dry_run=dry_run,
-                standalone=(soci_mode is SociModeEnum.STANDALONE),
             )
             plugin.results(results)
 
@@ -147,19 +136,18 @@ class SociPlugin(BakeryToolPlugin):
         *,
         source_refs: dict[str, str] | None = None,
         dry_run: bool = False,
-        standalone: bool = True,
         **kwargs: Any,
     ) -> list[ToolCallResult]:
         """Run SOCI convert workflows against eligible targets.
 
         ``source_refs`` maps ``target.uid`` -> the temp-registry ref to
-        convert (typically produced by the oras index-create phase). In
-        standalone mode the refs are still registry refs; the OCI image
-        layouts that ``soci convert --standalone`` reads and writes are
-        internal scratch that the workflow materializes and pushes via oras.
+        convert (typically produced by the oras index-create phase). The refs
+        are registry refs; the OCI image layouts that ``soci convert
+        --standalone`` reads and writes are internal scratch that the workflow
+        materializes and pushes via oras.
 
-        ``standalone`` selects the containerd-free (oras-based) conversion
-        path and defaults to ``True``.
+        Conversion always runs in standalone (containerd-free, oras-based)
+        mode.
 
         Targets whose resolved SociOptions has ``enabled=False`` are
         skipped with a ``skipped=True`` artifact entry.
@@ -211,68 +199,31 @@ class SociPlugin(BakeryToolPlugin):
             )
             return results
 
-        # Mode is uniform across the run (driven by the CLI). Only the tools an
-        # eligible target actually executes need to be present: standalone mode
-        # bridges the registry with oras and never touches containerd (ctr),
-        # while the containerd-backed path uses ctr but not oras. soci is used
-        # in both modes.
-        needs_containerd = not standalone
-        needs_standalone = standalone
-
-        def resolve_bin(finder: Any, fallback: str, *, required: bool) -> str:
-            # A tool only has to resolve when it will actually be executed:
-            # a dry run executes nothing, and a tool no eligible target uses
-            # (e.g. ctr in standalone mode) is never invoked. In those cases
-            # fall back to the bare name purely for any logged command. When
-            # the tool resolves we keep its real path so output stays accurate.
-            # A tool a real run needs but cannot find is still a hard error.
+        # Standalone conversion bridges the registry with oras and never
+        # touches containerd; both soci and oras must be present.
+        def resolve_bin(finder: Any, fallback: str) -> str:
+            # A tool only has to resolve when it will actually be executed: a
+            # dry run executes nothing, so fall back to the bare name purely
+            # for any logged command. When the tool resolves we keep its real
+            # path so output stays accurate. A tool a real run needs but cannot
+            # find is still a hard error.
             try:
                 return finder(base_path)
             except BakeryToolNotFoundError:
-                if dry_run or not required:
+                if dry_run:
                     return fallback
                 raise
 
-        soci_bin = resolve_bin(find_soci_bin, "soci", required=True)
-        ctr_bin = resolve_bin(find_ctr_bin, "ctr", required=needs_containerd)
-        oras_bin = resolve_bin(find_oras_bin, "oras", required=needs_standalone)
-
-        # Containerd commands (ctr pull, soci convert, soci push) all hit
-        # containerd's root-owned socket. Resolve the privilege prefix once for
-        # the whole run: root needs nothing, passwordless sudo is fine, and
-        # anything else fails fast rather than prompting for a password mid-run.
-        # Dry runs are skipped entirely: resolve_sudo_prefix probes `sudo -n`
-        # via subprocess, which would break the "a dry run touches nothing"
-        # contract. The tradeoff is that containerd dry-run logs omit the
-        # `sudo -n` prefix a real non-root run would use.
-        sudo = False
-        if not standalone and not dry_run:
-            try:
-                # A non-empty prefix ([sudo, -n]) means we must elevate; an
-                # empty prefix (already root) means no sudo is needed.
-                sudo = bool(soci_module.resolve_sudo_prefix())
-            except SociPrivilegeError as e:
-                log.error(str(e))
-                return [
-                    ToolCallResult(
-                        exit_code=1,
-                        tool_name="soci",
-                        target=eligible[0][0],
-                        stdout="",
-                        stderr=str(e),
-                    )
-                ]
+        soci_bin = resolve_bin(find_soci_bin, "soci")
+        oras_bin = resolve_bin(find_oras_bin, "oras")
 
         for target, opts, ref in eligible:
             workflow = SociConvertWorkflow(
                 soci_bin=soci_bin,
-                ctr_bin=ctr_bin,
                 oras_bin=oras_bin,
                 image_target=target,
                 options=opts,
                 source_ref=ref,
-                standalone=standalone,
-                sudo=sudo,
             )
             wf_result = workflow.run(dry_run=dry_run)
             results.append(

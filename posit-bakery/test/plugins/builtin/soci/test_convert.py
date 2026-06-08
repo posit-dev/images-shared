@@ -7,38 +7,37 @@ from posit_bakery.plugins.builtin.soci.soci import SociConvert
 pytestmark = [pytest.mark.unit]
 
 
-def test_default_non_standalone_command():
+def test_default_command():
     cmd = SociConvert(
         soci_bin="soci",
-        source="ghcr.io/posit-dev/test/tmp:src",
-        destination="ghcr.io/posit-dev/test/tmp:src-soci",
+        source="./img.tar",
+        destination="./img-soci.tar",
     )
     assert cmd.command == [
         "soci",
-        "--namespace",
-        "default",
         "convert",
+        "--standalone",
+        "--format",
+        "oci-archive",
         "--all-platforms",
-        "ghcr.io/posit-dev/test/tmp:src",
-        "ghcr.io/posit-dev/test/tmp:src-soci",
+        "./img.tar",
+        "./img-soci.tar",
     ]
 
 
-def test_with_explicit_namespace_and_address():
+def test_oci_dir_output_format():
     cmd = SociConvert(
         soci_bin="/opt/soci",
-        containerd_address="/run/containerd/alt.sock",
-        containerd_namespace="moby",
         source="src",
         destination="dst",
+        output_format="oci-dir",
     )
     assert cmd.command == [
         "/opt/soci",
-        "--address",
-        "/run/containerd/alt.sock",
-        "--namespace",
-        "moby",
         "convert",
+        "--standalone",
+        "--format",
+        "oci-dir",
         "--all-platforms",
         "src",
         "dst",
@@ -59,9 +58,10 @@ def test_with_specific_platforms_and_options():
     )
     assert cmd.command == [
         "soci",
-        "--namespace",
-        "default",
         "convert",
+        "--standalone",
+        "--format",
+        "oci-archive",
         "--platform",
         "linux/amd64",
         "--platform",
@@ -80,29 +80,3 @@ def test_with_specific_platforms_and_options():
         "src",
         "dst",
     ]
-
-
-def test_standalone_mode_includes_flag_and_format():
-    cmd = SociConvert(
-        soci_bin="soci",
-        source="./img.tar",
-        destination="./img-soci.tar",
-        standalone=True,
-        output_format="oci-archive",
-    )
-    assert "--standalone" in cmd.command
-    assert "--format" in cmd.command
-    assert "oci-archive" in cmd.command
-    # namespace flag is still emitted even in standalone — soci ignores it
-    # there; we keep the construction uniform.
-
-
-def test_convert_sudo_prepends_prefix():
-    cmd = SociConvert(soci_bin="soci", source="src", destination="dst", sudo=True)
-    assert cmd.command[:3] == ["sudo", "-n", "soci"]
-
-
-def test_convert_no_sudo_by_default():
-    cmd = SociConvert(soci_bin="soci", source="src", destination="dst")
-    assert cmd.command[0] == "soci"
-    assert "sudo" not in cmd.command

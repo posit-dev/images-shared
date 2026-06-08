@@ -1,5 +1,5 @@
 name: 'Setup SOCI'
-description: 'Installs the soci CLI and prepares containerd access.'
+description: 'Installs the soci CLI for standalone (no-containerd) SOCI conversion.'
 
 inputs:
   version:
@@ -41,11 +41,3 @@ runs:
         tar -xzf "tools/${tarball}" -C tools soci
         chmod +rx tools/soci
         rm -f "tools/${tarball}" "tools/${tarball}.sha256sum"
-    - name: Ensure containerd socket is accessible
-      shell: bash
-      run: |
-        if [ -S /run/containerd/containerd.sock ]; then
-          sudo chmod 666 /run/containerd/containerd.sock || true
-        else
-          echo "::warning::/run/containerd/containerd.sock not present; SOCI non-standalone mode will fail."
-        fi
