@@ -63,15 +63,28 @@ When a task requires editing templates, macros, or `bakery.yaml` in a sibling re
 Always verify with `uv run bakery build --plan` or `uv run bakery get tags` before
 building — a plan with no targets means a filter flag is wrong or missing.
 
-### 5. `--dev-stream` is silently ignored without `--dev-versions`
+### 5. Use `--dev-channel`, not `--dev-stream`
 
-`--dev-stream` only takes effect when `--dev-versions` is `include` or `only`. When
-`--dev-versions exclude` (the default), bakery emits a warning and ignores `--dev-stream`
-entirely. Always pair them:
+`--dev-stream` is deprecated (hidden, emits a warning). Use `--dev-channel` instead:
 
 ```bash
-uv run bakery build --dev-versions only --dev-stream daily
+uv run bakery build --dev-versions only --dev-channel daily
 ```
+
+`--dev-channel` is silently ignored when `--dev-versions` is `exclude` (the default) —
+bakery emits a warning but does not error. Always pair them.
+
+For CI dispatch builds that must pin an exact dev version, use `--dev-spec` (or the
+`BAKERY_DEV_SPEC` env var) instead of `--dev-channel`. It accepts a JSON payload and
+overrides CDN discovery for the matching channel:
+
+```bash
+uv run bakery build --dev-versions only \
+  --dev-spec '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'
+```
+
+If both `--dev-spec` and `--dev-channel` are set, their `channel` values must match or
+bakery raises an error.
 
 ### 6. Forward filter flags to `bakery ci merge`
 
@@ -79,7 +92,8 @@ When modifying a CI workflow that uses `bakery ci merge`, ensure any filter flag
 passed to the build step are also passed to the merge step:
 
 - `--dev-versions [include|exclude|only]`
-- `--dev-stream [release|preview|daily]`
+- `--dev-channel [release|preview|daily]`
+- `--dev-spec <json>` / `BAKERY_DEV_SPEC`
 - `--matrix-versions [include|exclude|only]`
 
 Mismatched flags cause the merge step to match metadata by UID and fan a single built
@@ -155,8 +169,9 @@ gh run view <run-id> -R posit-dev/<repo> --log-failed
 | `--image-variant <var>` | Scope to Standard or Minimal |
 | `--image-os <os>` | Scope to an OS |
 | `--image-platform <plat>` | Scope to a platform (e.g. `linux/amd64`) |
-| `--dev-versions [include\|exclude\|only]` | Include/exclude dev-stream versions |
-| `--dev-stream [release\|preview\|daily]` | Filter to a specific dev stream |
+| `--dev-versions [include\|exclude\|only]` | Include/exclude dev versions |
+| `--dev-channel [release\|preview\|daily]` | Filter to a specific dev channel (replaces deprecated `--dev-stream`) |
+| `--dev-spec <json>` / `BAKERY_DEV_SPEC` | Pin an exact dev version for dispatch builds |
 | `--matrix-versions [include\|exclude\|only]` | Include/exclude matrix versions |
 | `--plan` | Print the bake plan and exit (build only) |
 | `--push` / `--no-push` | Push to registry after build |
