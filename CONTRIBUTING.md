@@ -130,7 +130,7 @@ gh run view <run-id> -R posit-dev/<product-repo> --log-failed
 | Registry auth | Login step fails | Check `DOCKER_HUB_ACCESS_TOKEN` (Docker Hub) or `AWS_ROLE` + `id-token: write` (Amazon ECR) |
 | ARM64 runner unavailable | `build-arm64` job queued but never starts | Re-run the job; capacity usually clears |
 | Empty matrix after dispatch | `bakery ci matrix` returns `[]` | Dispatched version format didn't match bakery normalization; inspect `image-version` input |
-| Dev build pushed without `-preview` | Release version matches current daily dev-stream version | Known issue ([#553](https://github.com/posit-dev/images-shared/issues/553)); check `bakery ci merge` inputs |
+| Dev build pushed without `-preview` | Release version matches current daily dev-channel version | Known issue ([#553](https://github.com/posit-dev/images-shared/issues/553)); check `bakery ci merge` inputs |
 
 For the shared workflow reference (inputs, secrets, flow diagrams), see
 [CI.md](https://github.com/posit-dev/images-shared/blob/main/CI.md). For the
