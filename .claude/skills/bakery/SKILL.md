@@ -25,9 +25,15 @@ them directly.
 
 **Always:**
 1. Edit the template: `<image>/template/Containerfile.jinja` (or other `.jinja` files)
-2. Re-render: `uv run bakery update files`
+2. Re-render with filter flags scoped to the most recent version:
+   `uv run bakery update files --image-name <name> --image-version <version>`
 
-**Never:** edit a file under a version directory such as `2025.08.0/Containerfile`.
+**Never:** run `uv run bakery update files` without filter flags — it re-renders every
+version, which is almost never the right action.
+
+**Exception:** for systematic changes that must land in every version, it is often easier
+to render one version, make the change locally in that rendered file to validate it, then
+apply the edit to the template and re-render.
 
 ### 2. Invoke bakery with `uv run`
 
@@ -69,7 +75,7 @@ and will collide. (Tracked as posit-dev/images-shared#553; fix in PR #554.)
 ```bash
 uv run bakery create version <version>
 # Edit the generated template if the new version needs adjustments
-uv run bakery update files
+uv run bakery update files --image-name <name> --image-version <version>
 uv run bakery build --plan   # preview before building
 ```
 
@@ -79,10 +85,7 @@ uv run bakery build --plan   # preview before building
 # Edit the template — never the rendered output
 $EDITOR <image>/template/Containerfile.jinja
 
-# Re-render all affected version files
-uv run bakery update files
-
-# Or scope to a specific image/version
+# Re-render scoped to the most recent version (always specify filters)
 uv run bakery update files --image-name <name> --image-version <version>
 ```
 
