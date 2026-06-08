@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
@@ -18,17 +18,6 @@ from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
-
-
-def _parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> DevBuildSpec | None:
-    if value is None:
-        return None
-    from pydantic import ValidationError
-
-    try:
-        return DevBuildSpec.model_validate_json(value)
-    except ValidationError as e:
-        raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -224,13 +213,13 @@ def build(
         ),
     ] = False,
     dev_spec: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--dev-spec",
             envvar="BAKERY_DEV_SPEC",
             help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
             rich_help_panel=RichHelpPanelEnum.FILTERS,
-            callback=_parse_dev_spec,
+            callback=parse_dev_spec,
         ),
     ] = None,
 ) -> None:
@@ -262,7 +251,7 @@ def build(
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
-        dev_spec=dev_spec,  # type: ignore[arg-type]
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
     )
 
     config: BakeryConfig = BakeryConfig.from_context(context, settings)

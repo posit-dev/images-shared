@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated, Optional, Any
 
 import typer
+from pydantic import ValidationError
 
 from posit_bakery.config.dependencies import (
     get_dependency_versions_class,
@@ -14,10 +15,24 @@ from posit_bakery.config.dependencies import (
     DependencyConstraint,
     DependencyVersions,
 )
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.log import init_logging
 from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
+
+
+def parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> DevBuildSpec | None:
+    if value is None:
+        return None
+    try:
+        data = json.loads(value)
+    except json.JSONDecodeError as e:
+        raise typer.BadParameter(f"not valid JSON: {e}", ctx=ctx, param=param) from e
+    try:
+        return DevBuildSpec.model_validate(data)
+    except ValidationError as e:
+        raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
 
 
 def with_verbosity_flags(fn):

@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
@@ -20,17 +20,6 @@ from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
 log = logging.getLogger(__name__)
-
-
-def _parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> DevBuildSpec | None:
-    if value is None:
-        return None
-    from pydantic import ValidationError
-
-    try:
-        return DevBuildSpec.model_validate_json(value)
-    except ValidationError as e:
-        raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -103,13 +92,13 @@ def matrix(
         ),
     ] = auto_path(),
     dev_spec: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--dev-spec",
             envvar="BAKERY_DEV_SPEC",
             help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
             rich_help_panel=RichHelpPanelEnum.FILTERS,
-            callback=_parse_dev_spec,
+            callback=parse_dev_spec,
         ),
     ] = None,
 ) -> None:
@@ -141,7 +130,7 @@ def matrix(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
-            dev_spec=dev_spec,  # type: ignore[arg-type]
+            dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
