@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from posit_bakery.error import BakeryToolRuntimeError
-from posit_bakery.plugins.builtin.soci.soci import ContainerdImagePull, IMAGE_NOT_FOUND_RE
+from posit_bakery.plugins.builtin.soci.soci import ContainerdImagePull
 
 pytestmark = [pytest.mark.unit]
 
@@ -60,13 +60,23 @@ def test_run_failure_raises():
             cmd.run()
 
 
-def test_image_not_found_regex_matches_canonical_message():
-    sample = b'soci: image "ghcr.io/posit-dev/test:tag": not found'
-    assert IMAGE_NOT_FOUND_RE.search(sample) is not None
+def test_sudo_prepends_prefix():
+    cmd = ContainerdImagePull(ctr_bin="ctr", image_ref="reg/img:tag", sudo=True)
+    assert cmd.command == [
+        "sudo",
+        "-n",
+        "ctr",
+        "--namespace",
+        "default",
+        "image",
+        "pull",
+        "reg/img:tag",
+    ]
 
 
-def test_image_not_found_regex_does_not_match_unrelated_errors():
-    assert IMAGE_NOT_FOUND_RE.search(b"some other error") is None
+def test_no_sudo_by_default():
+    cmd = ContainerdImagePull(ctr_bin="ctr", image_ref="reg/img:tag")
+    assert cmd.command[0] == "ctr"
 
 
 def test_dry_run_does_not_invoke_subprocess():

@@ -207,10 +207,15 @@ class ContainerdImagePull(BaseModel):
             description="Pass --all-platforms; default ctr behavior is multi-platform without it, but explicit is safer.",
         ),
     ]
+    sudo: Annotated[
+        bool,
+        Field(default=False, description="Prefix the command with `sudo -n` (containerd needs root)."),
+    ]
 
     @property
     def command(self) -> list[str]:
-        cmd: list[str] = [self.ctr_bin]
+        cmd: list[str] = ["sudo", "-n"] if self.sudo else []
+        cmd.append(self.ctr_bin)
         if self.containerd_address:
             cmd += ["--address", self.containerd_address]
         cmd += ["--namespace", self.containerd_namespace, "image", "pull"]
