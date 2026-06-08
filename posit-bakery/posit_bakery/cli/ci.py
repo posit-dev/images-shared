@@ -411,16 +411,17 @@ def publish(
     # `docker buildx imagetools inspect` check the old `bakery ci merge` ran;
     # ORAS is faster and more reliable for the existence check.
     verify_failed = False
-    for t in copied_targets:
-        verify = OrasIndexVerifyWorkflow(
-            oras_bin=oras_bin,
-            image_target=t,
-        ).run(dry_run=dry_run)
-        if not verify.success:
-            log.error(f"verification failed for '{t}': {verify.error}")
-            verify_failed = True
-        else:
-            log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
+    if not dry_run:
+        for t in copied_targets:
+            verify = OrasIndexVerifyWorkflow(
+                oras_bin=oras_bin,
+                image_target=t,
+            ).run(dry_run=dry_run)
+            if not verify.success:
+                log.error(f"verification failed for '{t}': {verify.error}")
+                verify_failed = True
+            else:
+                log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
 
     # The temporary indexes (and any SOCI-converted variants) are intentionally
     # left in place; they are cleaned up out-of-band by the clean.yml workflow
