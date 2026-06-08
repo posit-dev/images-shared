@@ -26,7 +26,7 @@ class SociPrivilegeError(BakeryError):
     prompting the user for a password."""
 
 
-def resolve_sudo_prefix(*, dry_run: bool = False) -> list[str]:
+def resolve_sudo_prefix() -> list[str]:
     """Resolve the command prefix that runs containerd-touching commands as root.
 
     ``ctr image pull``, ``soci convert``, and ``soci push`` all talk to
@@ -37,22 +37,18 @@ def resolve_sudo_prefix(*, dry_run: bool = False) -> list[str]:
     - ``["sudo", "-n"]`` when sudo is available without a prompt (NOPASSWD or a
       cached credential); ``-n`` guarantees no interactive prompt.
 
-    On a real run it raises :class:`SociPrivilegeError` when sudo would prompt,
-    so the user is never asked for a password mid-run. On a dry run it never
-    raises and returns the best-effort prefix purely so logged commands are
-    accurate.
+    It raises :class:`SociPrivilegeError` when sudo would prompt, so the user is
+    never asked for a password mid-run. Callers that must not shell out (e.g. a
+    dry run, which the SOCI plugin keeps side-effect-free) should avoid calling
+    this entirely rather than passing a flag.
 
-    :param dry_run: When True, never raise; return ``["sudo", "-n"]`` for the
-        non-root case so the logged commands stay accurate.
     :return: The prefix list to prepend to containerd commands.
-    :raises SociPrivilegeError: On a real run when not root and sudo would prompt.
+    :raises SociPrivilegeError: When not root and sudo would prompt.
     """
     if os.geteuid() == 0:
         return []
     passwordless = subprocess.run(["sudo", "-n", "true"], capture_output=True).returncode == 0
     if passwordless:
-        return ["sudo", "-n"]
-    if dry_run:
         return ["sudo", "-n"]
     raise SociPrivilegeError(
         "SOCI containerd mode needs root to talk to containerd. "

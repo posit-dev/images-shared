@@ -32,12 +32,3 @@ def test_needs_password_raises():
         mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"")
         with pytest.raises(SociPrivilegeError):
             resolve_sudo_prefix()
-
-
-def test_dry_run_never_raises():
-    with (
-        patch("posit_bakery.plugins.builtin.soci.soci.os.geteuid", return_value=1000),
-        patch("subprocess.run") as mock_run,
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"")
-        assert resolve_sudo_prefix(dry_run=True) == ["sudo", "-n"]

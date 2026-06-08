@@ -241,9 +241,15 @@ class SociPlugin(BakeryToolPlugin):
         # containerd's root-owned socket. Resolve the privilege prefix once for
         # the whole run: root needs nothing, passwordless sudo is fine, and
         # anything else fails fast rather than prompting for a password mid-run.
+        # Dry runs are skipped entirely: resolve_sudo_prefix probes `sudo -n`
+        # via subprocess, which would break the "a dry run touches nothing"
+        # contract. The tradeoff is that containerd dry-run logs omit the
+        # `sudo -n` prefix a real non-root run would use.
         sudo = False
         if not standalone and not dry_run:
             try:
+                # A non-empty prefix ([sudo, -n]) means we must elevate; an
+                # empty prefix (already root) means no sudo is needed.
                 sudo = bool(soci_module.resolve_sudo_prefix())
             except SociPrivilegeError as e:
                 log.error(str(e))
