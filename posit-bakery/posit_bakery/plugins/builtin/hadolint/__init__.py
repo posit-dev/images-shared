@@ -100,6 +100,14 @@ class HadolintPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = MatrixVersionInclusionEnum.EXCLUDE,
+            latest: Annotated[
+                Optional[bool],
+                typer.Option(
+                    "--latest",
+                    help="Lint only the latest version of each image. Development versions are ignored by this filter.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = False,
             failure_threshold: Annotated[
                 Optional[str],
                 typer.Option(
@@ -211,6 +219,7 @@ class HadolintPlugin(BakeryToolPlugin):
                 ),
                 dev_versions=dev_versions,
                 matrix_versions=matrix_versions,
+                latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
 

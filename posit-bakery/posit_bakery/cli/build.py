@@ -1,4 +1,3 @@
-import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -15,8 +14,6 @@ from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
-
-log = logging.getLogger(__name__)
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -193,6 +190,14 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    latest: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--latest",
+            help="Build only the latest version of each image. Development versions are ignored by this filter.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
 ) -> None:
     """Builds images in the context path
 
@@ -214,10 +219,12 @@ def build(
         dev_versions=dev_versions,
         dev_stream=dev_stream,
         matrix_versions=matrix_versions,
+        latest=latest,
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
     )
+
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
     if plan:

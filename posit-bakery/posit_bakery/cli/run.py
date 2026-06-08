@@ -104,6 +104,15 @@ def dgoss(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.EXCLUDE,
+    latest: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--latest",
+            help="Run tests only against the latest version of each image. "
+            "Development versions are ignored by this filter.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
     metadata_file: Annotated[
         Optional[Path],
         typer.Option(
@@ -155,6 +164,7 @@ def dgoss(
         dev_versions=dev_versions,
         dev_stream=dev_stream,
         matrix_versions=matrix_versions,
+        latest=latest,
         clean_temporary=clean,
     )
     c = BakeryConfig.from_context(context, settings)

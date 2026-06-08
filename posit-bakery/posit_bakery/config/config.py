@@ -321,6 +321,13 @@ class BakerySettings(BaseModel):
             default=MatrixVersionInclusionEnum.EXCLUDE,
         ),
     ]
+    latest: Annotated[
+        bool,
+        Field(
+            description="Build only the latest version of each image. Development versions are ignored.",
+            default=False,
+        ),
+    ]
     clean_temporary: Annotated[
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
@@ -368,6 +375,15 @@ class BakeryConfig:
             log.warning(
                 "--dev-stream has no effect when development versions are excluded. "
                 "Use --dev-versions include or --dev-versions only to enable dev stream filtering."
+            )
+
+        if self.settings.latest and self.settings.dev_versions in (
+            DevVersionInclusionEnum.ONLY,
+            DevVersionInclusionEnum.INCLUDE,
+        ):
+            log.warning(
+                f"--latest ignores development versions; --dev-versions {self.settings.dev_versions.value} "
+                "has no effect on the latest filter."
             )
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
@@ -839,6 +855,20 @@ class BakeryConfig:
                         f"Skipping image version '{version.name}' in image '{image.name}' "
                         f"due to not matching version filter '{settings.filter.image_version}'"
                     )
+                    continue
+                if settings.latest and (not version.latest or version.isDevelopmentVersion):
+                    reason = (
+                        "development version ignored by --latest"
+                        if version.isDevelopmentVersion
+                        else "not the latest version (excluded by --latest)"
+                    )
+                    if version_filter_matched:
+                        log.warning(
+                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
+                            f"but is being skipped: {reason}"
+                        )
+                    else:
+                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
                     continue
                 for variant in image.variants or [None]:
                     if (
