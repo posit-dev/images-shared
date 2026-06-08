@@ -168,3 +168,29 @@ class TestImageVersionOS:
         os = ImageVersionOS(name=input_name)
 
         assert os.buildOS == expected_build_os
+
+
+class TestImageVersionOSArtifactOs:
+    def test_artifact_os_accepted_for_known_os(self):
+        i = ImageVersionOS(name="scratch", artifactOs="ubuntu-24.04")
+        assert i.artifactOs == "ubuntu-24.04"
+
+    def test_artifact_os_rejected_for_unknown_os(self):
+        with pytest.raises(ValidationError, match="not a recognized OS name"):
+            ImageVersionOS(name="scratch", artifactOs="not-a-real-os")
+
+    def test_artifact_os_defaults_to_none(self):
+        i = ImageVersionOS(name="scratch")
+        assert i.artifactOs is None
+
+    def test_artifact_build_os_returns_resolved_os_when_set(self):
+        i = ImageVersionOS(name="scratch", artifactOs="ubuntu-24.04")
+        assert i.artifact_build_os == SUPPORTED_OS["ubuntu"]["24"]
+
+    def test_artifact_build_os_falls_back_to_build_os_when_unset(self):
+        i = ImageVersionOS(name="Ubuntu 22.04")
+        assert i.artifact_build_os == SUPPORTED_OS["ubuntu"]["22"]
+
+    def test_artifact_build_os_for_scratch_without_artifact_os(self):
+        i = ImageVersionOS(name="scratch")
+        assert i.artifact_build_os == SUPPORTED_OS["scratch"]
