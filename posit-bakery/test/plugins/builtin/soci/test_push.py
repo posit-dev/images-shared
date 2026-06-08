@@ -83,3 +83,14 @@ def test_existing_index_allow():
         "allow",
         "reg/img:tag",
     ]
+
+
+def test_push_sudo_prepends_prefix():
+    cmd = SociPush(soci_bin="soci", image_ref="reg/img:tag", sudo=True)
+    assert cmd.command[:3] == ["sudo", "-n", "soci"]
+
+
+def test_push_no_sudo_by_default():
+    cmd = SociPush(soci_bin="soci", image_ref="reg/img:tag")
+    assert cmd.command[0] == "soci"
+    assert "sudo" not in cmd.command

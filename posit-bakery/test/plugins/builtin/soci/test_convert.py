@@ -95,3 +95,14 @@ def test_standalone_mode_includes_flag_and_format():
     assert "oci-archive" in cmd.command
     # namespace flag is still emitted even in standalone — soci ignores it
     # there; we keep the construction uniform.
+
+
+def test_convert_sudo_prepends_prefix():
+    cmd = SociConvert(soci_bin="soci", source="src", destination="dst", sudo=True)
+    assert cmd.command[:3] == ["sudo", "-n", "soci"]
+
+
+def test_convert_no_sudo_by_default():
+    cmd = SociConvert(soci_bin="soci", source="src", destination="dst")
+    assert cmd.command[0] == "soci"
+    assert "sudo" not in cmd.command
