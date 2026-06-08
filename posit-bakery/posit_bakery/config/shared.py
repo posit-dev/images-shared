@@ -10,12 +10,18 @@ from pydantic import BaseModel, ConfigDict
 
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 
+_OSLESS_NAMES = frozenset({"scratch"})
+
 # Shared field configuration for file extensions.
 ExtensionField = Annotated[
     str,
     Field(
-        default_factory=lambda data: re.sub(r"[^a-zA-Z0-9_-]", "", data.get("name", "").lower()),
-        pattern=r"^[a-zA-Z0-9_-]+$",
+        default_factory=lambda data: (
+            ""
+            if data.get("name", "").lower().strip() in _OSLESS_NAMES
+            else re.sub(r"[^a-zA-Z0-9_-]", "", data.get("name", "").lower())
+        ),
+        pattern=r"^[a-zA-Z0-9_-]*$",
         validate_default=True,
     ),
 ]
@@ -25,10 +31,12 @@ ExtensionField = Annotated[
 TagDisplayNameField = Annotated[
     str,
     Field(
-        default_factory=lambda data: re.sub(
-            REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", data.get("name", "").lower()
+        default_factory=lambda data: (
+            ""
+            if data.get("name", "").lower().strip() in _OSLESS_NAMES
+            else re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", data.get("name", "").lower())
         ),
-        pattern=r"^[a-zA-Z0-9_.-]+$",
+        pattern=r"^[a-zA-Z0-9_.-]*$",
         validate_default=True,
     ),
 ]
