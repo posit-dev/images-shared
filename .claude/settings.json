@@ -2,19 +2,7 @@
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
   },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-git-c.sh"
-          }
-        ]
-      }
-    ]
-  },
+  "hooks": {},
   "permissions": {
     "additionalDirectories": [
       "../images",
