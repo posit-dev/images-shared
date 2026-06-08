@@ -48,6 +48,14 @@ class SociCommand(BaseModel, ABC):
         bool,
         Field(default=False, description="Run without containerd (file-to-file mode)."),
     ]
+    sudo: Annotated[
+        bool,
+        Field(default=False, description="Prefix the command with `sudo -n` (containerd needs root)."),
+    ]
+
+    @property
+    def _sudo_prefix(self) -> list[str]:
+        return ["sudo", "-n"] if self.sudo else []
 
     @property
     @abstractmethod
@@ -109,7 +117,7 @@ class SociConvert(SociCommand):
 
     @property
     def command(self) -> list[str]:
-        cmd: list[str] = [self.soci_bin]
+        cmd: list[str] = [*self._sudo_prefix, self.soci_bin]
         if self.containerd_address:
             cmd += ["--address", self.containerd_address]
         cmd += ["--namespace", self.containerd_namespace, "convert"]
@@ -154,7 +162,7 @@ class SociPush(SociCommand):
 
     @property
     def command(self) -> list[str]:
-        cmd: list[str] = [self.soci_bin]
+        cmd: list[str] = [*self._sudo_prefix, self.soci_bin]
         if self.containerd_address:
             cmd += ["--address", self.containerd_address]
         cmd += ["--namespace", self.containerd_namespace, "push"]
