@@ -348,6 +348,8 @@ class SociConvertWorkflow(BaseModel):
             prefetch_files=self.options.prefetch_files,
             optimizations=self.options.optimizations,
             output_format=output_format,
+            # convert is shared with the standalone (oras, no-containerd) path,
+            # which must never sudo; only the containerd path elevates.
             sudo=self.sudo and not self.standalone,
         )
 

@@ -101,6 +101,20 @@ def test_pull_failure_returns_error(workflow):
     assert "pull boom" in (result.error or "")
 
 
+def test_convert_failure_returns_error(workflow):
+    def fake_run(cmd, capture_output):
+        if "convert" in cmd:
+            return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"convert boom")
+        return _ok_proc(cmd)
+
+    with patch("subprocess.run", side_effect=fake_run):
+        result = workflow.run()
+
+    assert result.success is False
+    assert result.resolved_namespace == "default"
+    assert "convert boom" in (result.error or "")
+
+
 @pytest.fixture
 def standalone_workflow(mock_target):
     # In standalone mode the source/destination are still registry refs; the
