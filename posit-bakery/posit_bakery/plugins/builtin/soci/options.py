@@ -1,9 +1,17 @@
 from copy import deepcopy
+from enum import Enum
 from typing import Annotated, Literal
 
 from pydantic import Field
 
 from posit_bakery.config.tools.base import ToolOptions
+
+
+class SociModeEnum(str, Enum):
+    """SOCI conversion mode selected on the CLI."""
+
+    CONTAINERD = "containerd"
+    STANDALONE = "standalone"
 
 
 class SociOptions(ToolOptions):
@@ -34,10 +42,6 @@ class SociOptions(ToolOptions):
         list[str] | None,
         Field(default=None, description="Platforms to convert. None => --all-platforms."),
     ]
-    standalone: Annotated[
-        bool | None,
-        Field(default=None, description="Standalone (no-containerd) mode. None => use workflow default."),
-    ]
     candidate_namespaces: Annotated[
         list[str] | None,
         Field(
@@ -60,7 +64,6 @@ class SociOptions(ToolOptions):
             "prefetch_files",
             "optimizations",
             "platforms",
-            "standalone",
             "candidate_namespaces",
         ):
             if field_name not in self.model_fields_set:

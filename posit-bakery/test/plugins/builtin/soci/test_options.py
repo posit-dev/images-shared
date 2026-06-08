@@ -2,7 +2,7 @@
 
 import pytest
 
-from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.soci.options import SociModeEnum, SociOptions
 
 pytestmark = [pytest.mark.unit]
 
@@ -16,7 +16,6 @@ def test_defaults():
     assert opts.prefetch_files == []
     assert opts.optimizations == []
     assert opts.platforms is None
-    assert opts.standalone is None
     assert opts.candidate_namespaces is None
 
 
@@ -28,7 +27,6 @@ def test_overrides():
         prefetch_files=["/a", "/b"],
         optimizations=["xattr"],
         platforms=["linux/amd64"],
-        standalone=False,
         candidate_namespaces=["moby"],
     )
     assert opts.enabled is True
@@ -37,7 +35,6 @@ def test_overrides():
     assert opts.prefetch_files == ["/a", "/b"]
     assert opts.optimizations == ["xattr"]
     assert opts.platforms == ["linux/amd64"]
-    assert opts.standalone is False
     assert opts.candidate_namespaces == ["moby"]
 
 
@@ -89,3 +86,9 @@ def test_update_list_explicitly_set_to_empty():
     merged = base.update(override)
     # prefetch_files is in base.model_fields_set, so base's value should win
     assert merged.prefetch_files == []
+
+
+def test_soci_mode_enum_values():
+    assert SociModeEnum.CONTAINERD.value == "containerd"
+    assert SociModeEnum.STANDALONE.value == "standalone"
+    assert SociModeEnum("standalone") is SociModeEnum.STANDALONE
