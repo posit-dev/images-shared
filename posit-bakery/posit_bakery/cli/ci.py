@@ -13,6 +13,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.plugins.builtin.soci.options import SociModeEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import push_readmes
 from posit_bakery.util import auto_path
@@ -272,14 +273,23 @@ def publish(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    soci_mode: Annotated[
+        SociModeEnum,
+        typer.Option(
+            help="SOCI conversion mode: 'standalone' (no containerd) or 'containerd'.",
+            rich_help_panel="Build Configuration & Outputs",
+        ),
+    ] = SociModeEnum.STANDALONE,
 ) -> None:
     """Publish multi-platform images by composing oras index-create →
     soci-convert → oras index-copy.
 
-    SOCI conversion is driven entirely by configuration: each target is
+    Which targets are converted is driven by configuration: each target is
     converted only when its resolved SOCI options have ``enabled: true``
     (set via the ``soci`` tool options on an image or variant). Targets
-    without SOCI enabled pass through the convert phase untouched.
+    without SOCI enabled pass through the convert phase untouched. The
+    conversion mode defaults to standalone (no containerd); pass
+    ``--soci-mode containerd`` to convert against a running containerd.
 
     Temporary indexes are left in place and cleaned up out-of-band by the
     clean.yml workflow (bakery clean temp-registry) rather than deleted here.
@@ -376,6 +386,7 @@ def publish(
         targets,
         source_refs=temp_refs,
         dry_run=dry_run,
+        standalone=(soci_mode is SociModeEnum.STANDALONE),
     )
     soci_failed = False
     for r in soci_results:
