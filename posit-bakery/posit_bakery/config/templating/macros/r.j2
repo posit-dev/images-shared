@@ -26,31 +26,35 @@ RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -fsSL https://rs
 find . -type f -name '[rR]-{{ version | trim }}.*\.(deb|rpm)' -delete
 {%- endmacro %}
 
-{# Downloads and extracts a manylinux_2_34 R tarball from cdn.posit.co/r directly to
-/opt/R/{version}/. Requires glibc >= 2.34 (RHEL 10, Ubuntu 22.04+, Debian 12+).
-Use in place of run_install when the platform cannot satisfy the RPM/deb dependencies.
+{# Downloads and extracts a manylinux R tarball from cdn.posit.co/r directly to
+/opt/R/{version}/. Use in place of run_install when the platform cannot satisfy
+the RPM/deb dependencies.
 
 :param version: The R version to install, e.g. "4.4.3"
+:param glibc_version: The manylinux glibc version string, e.g. "2_34" (default).
+    Requires the host glibc to be >= the chosen version.
 #}
-{% macro install_manylinux(version) -%}
+{% macro install_manylinux(version, glibc_version="2_34") -%}
 {%- set v = version | trim -%}
 ARCH=$(uname -m) && \
 ARCH_SUFFIX=$([ "$ARCH" = "aarch64" ] && echo "-arm64" || echo "") && \
-curl -fsSL "https://cdn.posit.co/r/manylinux_2_34/R-{{ v }}-manylinux_2_34${ARCH_SUFFIX}.tar.gz" \
+curl -fsSL "https://cdn.posit.co/r/manylinux_{{ glibc_version }}/R-{{ v }}-manylinux_{{ glibc_version }}${ARCH_SUFFIX}.tar.gz" \
     | tar -xz -C /opt/R/
 {%- endmacro %}
 
-{# Installs one or more versions of R from manylinux_2_34 tarballs as separate RUN statements
+{# Installs one or more versions of R from manylinux tarballs as separate RUN statements
 
 :param versions: A list of R versions or a comma separated string of R versions to install
+:param glibc_version: The manylinux glibc version string, e.g. "2_34" (default).
+    Passed through to install_manylinux.
 #}
-{% macro run_install_manylinux(versions) -%}
+{% macro run_install_manylinux(versions, glibc_version="2_34") -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") | map('trim') -%}
 {%- endif -%}
 RUN mkdir -p /opt/R
 {% for version in versions -%}
-RUN {{ install_manylinux(version) | indent(4) }}
+RUN {{ install_manylinux(version, glibc_version) | indent(4) }}
 {%- if not loop.last %}
 {% endif %}
 {%- endfor %}
