@@ -9,7 +9,6 @@ import typer
 from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
-from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
