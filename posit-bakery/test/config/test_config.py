@@ -350,6 +350,7 @@ class TestBakeryConfig:
         BakeryConfig(yaml_file, BakerySettings(latest=True))
         assert "--latest ignores development versions" not in caplog.text
 
+
     def test_dev_channel_warning_when_dev_versions_excluded(
         self,
         caplog,
