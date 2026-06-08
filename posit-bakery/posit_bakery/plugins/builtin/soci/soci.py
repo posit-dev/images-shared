@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-import re
 import shutil
 import subprocess
 import tempfile
@@ -220,11 +219,6 @@ class SociPush(SociCommand):
         return cmd
 
 
-IMAGE_NOT_FOUND_RE = re.compile(rb'image "[^"]+": not found')
-"""Matches soci's canonical "image not found" error so namespace probes can
-distinguish a missing image from a real error."""
-
-
 def find_ctr_bin(context: Path) -> str:
     """Resolve a path or PATH-resident name for the ctr binary.
 
@@ -321,11 +315,11 @@ class SociConvertWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="The image target.")]
     options: Annotated[SociOptions, Field(description="Per-target SOCI configuration.")]
     source_ref: Annotated[str, Field(description="Temp-registry ref to convert from.")]
-    candidate_namespaces: Annotated[
-        list[str],
-        Field(default_factory=lambda: ["default", "moby"], description="Namespaces to probe."),
-    ]
     standalone: Annotated[bool, Field(default=False, description="Standalone (no-containerd) mode.")]
+    sudo: Annotated[
+        bool,
+        Field(default=False, description="Prefix containerd commands with `sudo -n` (resolved once per run)."),
+    ]
 
     @property
     def destination_ref(self) -> str:
@@ -354,6 +348,7 @@ class SociConvertWorkflow(BaseModel):
             prefetch_files=self.options.prefetch_files,
             optimizations=self.options.optimizations,
             output_format=output_format,
+            sudo=self.sudo and not self.standalone,
         )
 
     @staticmethod
@@ -389,7 +384,7 @@ class SociConvertWorkflow(BaseModel):
             # 2. convert local layout -> local layout (directory so we can read
             #    the resulting index.json for its digest).
             self._build_convert(
-                self.candidate_namespaces[0],
+                "default",
                 source=str(src_layout),
                 destination=str(out_layout),
                 output_format="oci-dir",
@@ -426,6 +421,7 @@ class SociConvertWorkflow(BaseModel):
             containerd_namespace=namespace,
             image_ref=self.destination_ref,
             platforms=self.options.platforms,
+            sudo=self.sudo,
         )
 
     def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
@@ -433,51 +429,38 @@ class SociConvertWorkflow(BaseModel):
         if self.standalone:
             return self._run_standalone(dry_run=dry_run)
 
-        last_error: str | None = None
-        last_ns: str | None = None
-        for ns in self.candidate_namespaces:
-            last_ns = ns
-            try:
-                ContainerdImagePull(
-                    ctr_bin=self.ctr_bin,
-                    containerd_namespace=ns,
-                    image_ref=self.source_ref,
-                    all_platforms=True,
-                ).run(dry_run=dry_run)
-            except BakeryToolRuntimeError as e:
-                if e.stderr and IMAGE_NOT_FOUND_RE.search(e.stderr):
-                    last_error = f'image "{self.source_ref}": not found in namespace "{ns}"'
-                    log.debug(last_error)
-                    continue
-                log.error(f"SOCI workflow: ctr pull failed: {e}")
-                return SociConvertWorkflowResult(
-                    success=False,
-                    destination_ref=self.destination_ref,
-                    resolved_namespace=ns,
-                    error=e.dump_stderr() or str(e),
-                )
-
-            try:
-                self._build_convert(ns).run(dry_run=dry_run)
-                self._build_push(ns).run(dry_run=dry_run)
-            except BakeryToolRuntimeError as e:
-                log.error(f"SOCI workflow: convert/push failed in namespace '{ns}': {e}")
-                return SociConvertWorkflowResult(
-                    success=False,
-                    destination_ref=self.destination_ref,
-                    resolved_namespace=ns,
-                    error=e.dump_stderr() or str(e),
-                )
-
+        ns = "default"
+        try:
+            ContainerdImagePull(
+                ctr_bin=self.ctr_bin,
+                containerd_namespace=ns,
+                image_ref=self.source_ref,
+                all_platforms=True,
+                sudo=self.sudo,
+            ).run(dry_run=dry_run)
+        except BakeryToolRuntimeError as e:
+            log.error(f"SOCI workflow: ctr pull failed: {e}")
             return SociConvertWorkflowResult(
-                success=True,
+                success=False,
                 destination_ref=self.destination_ref,
                 resolved_namespace=ns,
+                error=e.dump_stderr() or str(e),
+            )
+
+        try:
+            self._build_convert(ns).run(dry_run=dry_run)
+            self._build_push(ns).run(dry_run=dry_run)
+        except BakeryToolRuntimeError as e:
+            log.error(f"SOCI workflow: convert/push failed in namespace '{ns}': {e}")
+            return SociConvertWorkflowResult(
+                success=False,
+                destination_ref=self.destination_ref,
+                resolved_namespace=ns,
+                error=e.dump_stderr() or str(e),
             )
 
         return SociConvertWorkflowResult(
-            success=False,
+            success=True,
             destination_ref=self.destination_ref,
-            resolved_namespace=last_ns,
-            error=last_error or "image not found in any candidate namespace",
+            resolved_namespace=ns,
         )
