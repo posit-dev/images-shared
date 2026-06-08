@@ -53,7 +53,7 @@ class TagPattern(BakeryYAMLModel):
                 continue
             if "{{ Variant }}" in pattern and not kwargs.get("Variant"):
                 continue
-            if "{{ Channel }}" in pattern and not kwargs.get("Stream"):
+            if "{{ Channel }}" in pattern and not kwargs.get("Channel"):
                 continue
 
             env = jinja2_env()

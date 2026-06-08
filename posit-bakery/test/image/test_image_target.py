@@ -355,7 +355,7 @@ class TestImageTarget:
             image_os=os,
         )
         # 8 version-based + 4 channel-based (channel patterns pass filtering
-        # even when Stream is empty; they produce nothing during rendering)
+        # even when Channel is empty; they produce nothing during rendering)
         assert len(target.tag_patterns) == 12
 
         # Test primary variant and primary OS, but not latest

@@ -683,7 +683,7 @@ class TestImage:
                     {
                         "sourceType": "stream",
                         "product": "workbench",
-                        "stream": "daily",
+                        "channel": "daily",
                         "os": [
                             {"name": "Ubuntu 22.04", "primary": True},
                         ],
