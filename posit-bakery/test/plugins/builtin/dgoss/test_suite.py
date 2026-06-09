@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -43,8 +44,6 @@ class TestDGossSuite:
 
     def test_run_parallel_mocked(self, get_tmpconfig, mocker):
         """Suite.run() drives commands through the executor without a real Docker daemon."""
-        import subprocess
-
         cfg = get_tmpconfig("basic")
         suite = DGossSuite(cfg.base_path, cfg.targets)
 

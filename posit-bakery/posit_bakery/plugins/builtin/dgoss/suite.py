@@ -77,7 +77,7 @@ class DGossSuite:
                         stdout=result.stdout,
                         stderr=result.stderr,
                         parse_error=result.exception,
-                        exit_code=result.returncode or 1,
+                        exit_code=result.returncode or 1,  # returncode is None on spawn failure
                         metadata={"environment_variables": dgoss_command.dgoss_environment},
                     )
                 )
@@ -130,6 +130,8 @@ class DGossSuite:
             else:
                 log.warning(f"[yellow bold]Goss tests failed for '{str(target)}'")
 
+        # on_result fires on the main thread (see ParallelShellExecutor), so handle_result's
+        # mutation of report_collection / errors needs no lock.
         executor = ParallelShellExecutor(max_workers=self.max_workers)
         executor.run(tasks, on_result=handle_result)
 
