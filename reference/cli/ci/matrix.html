@@ -824,7 +824,7 @@ window.onload = function () {
     }
   ]</code></pre>
 <p>Arguments: [IMAGE_NAME] The image name to isolate matrix to.</p>
-<p>Options: –dev-versions [include|exclude|only] Include or exclude development versions defined in config. [default: exclude] –dev-channel [release|preview|daily] Filter development versions to a specific release channel. –matrix-versions [include|exclude|only] Include or exclude versions defined in image matrix. [default: exclude] –image-version TEXT The image version to filter to. –exclude [version|dev|platform] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
+<p>Options: –dev-versions [include|exclude|only] Include or exclude development versions defined in config. [default: exclude] –dev-channel [release|preview|daily] Filter development versions to a specific release channel. –matrix-versions [include|exclude|only] Include or exclude versions defined in image matrix. [default: exclude] –image-version TEXT The image version to filter to. –exclude [version|dev|platform] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ [env var: BAKERY_DEV_SPEC] -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
 </div>
 </div>
 <section id="arguments" class="level2 doc-parameters">
@@ -865,6 +865,10 @@ Fields to exclude splitting the matrix by.
 <dt><code><span class="doc-parameter-name">--context</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">DIRECTORY</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">/home/runner/work/images-shared/images-shared/posit-bakery/great-docs</span></code></dt>
 <dd>
 The root path to use. Defaults to the current working directory where invoked.
+</dd>
+<dt><code><span class="doc-parameter-name">--dev-spec</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+JSON spec for a dispatched dev build. Ex: <code>{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}</code> Environment variable: <code>BAKERY_DEV_SPEC</code>.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>

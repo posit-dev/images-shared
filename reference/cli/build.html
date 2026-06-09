@@ -853,6 +853,10 @@ Options:
   --latest                        Build only the latest version of each image.
                                   Development versions are ignored by this
                                   filter.
+  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:
+                                  '{"version": "2026.05.0-dev+185-gSHA",
+                                  "channel": "daily"}'  [env var:
+                                  BAKERY_DEV_SPEC]
   -v, --verbose                   Enable debug logging
   -q, --quiet                     Supress all output except errors
   --help                          Show this message and exit.</code></pre>
@@ -949,6 +953,10 @@ Include or exclude versions defined in image matrix.
 <dt><code><span class="doc-parameter-name">--latest</span></code></dt>
 <dd>
 Build only the latest version of each image. Development versions are ignored by this filter.
+</dd>
+<dt><code><span class="doc-parameter-name">--dev-spec</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+JSON spec for a dispatched dev build. Ex: <code>{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}</code> Environment variable: <code>BAKERY_DEV_SPEC</code>.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>
