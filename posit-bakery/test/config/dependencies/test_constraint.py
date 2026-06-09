@@ -150,7 +150,7 @@ class TestDependencyConstraint:
         assert vers == expected_versions
 
     def test_positron_prerelease_includes_daily(self, patch_requests_get):
-        """prerelease=True appends the daily build to the available versions."""
+        """prerelease=True appends the daily build and it sorts to the front."""
         dep = PositronDependencyConstraint(
             dependency="positron",
             prerelease=True,
@@ -158,6 +158,7 @@ class TestDependencyConstraint:
         )
         versions = [str(v) for v in dep.available_versions()]
         assert "2026.07.0-55" in versions  # daily build from testdata
+        assert versions[0] == "2026.07.0-55"  # must be the highest version
 
     def test_positron_prerelease_false_excludes_daily(self, patch_requests_get):
         """prerelease=False (default) never fetches the daily URL."""
@@ -178,6 +179,36 @@ class TestDependencyConstraint:
         result = dep.resolve_versions()
         assert len(result.versions) == 1
         assert result.versions[0] == "2026.07.0-55"
+
+    def test_positron_prerelease_deduplicates_when_daily_matches_release(self, mocker):
+        """If the daily version already appears in the release list, it must appear only once."""
+        daily_version = "2026.03.0-212"  # matches the top release in testdata
+        daily_data = {"version": daily_version}
+
+        from posit_bakery.config.dependencies.const import POSITRON_DAILY_URL_TEMPLATE
+        from unittest.mock import MagicMock
+
+        original_get = mocker.patch("posit_bakery.util.CachedSession").return_value.get
+
+        def mock_get(url):
+            resp = MagicMock()
+            if url == POSITRON_DAILY_URL_TEMPLATE.format(arch="x86_64"):
+                resp.json.return_value = daily_data
+            else:
+                from test.config.conftest import patch_testdata_response
+
+                return patch_testdata_response(url)
+            return resp
+
+        original_get.side_effect = mock_get
+
+        dep = PositronDependencyConstraint(
+            dependency="positron",
+            prerelease=True,
+            constraint={"latest": True, "count": 99},
+        )
+        versions = [str(v) for v in dep.available_versions()]
+        assert versions.count(daily_version) == 1
 
 
 class TestGetDependencyConstraintClass:

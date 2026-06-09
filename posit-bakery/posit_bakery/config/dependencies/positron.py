@@ -72,7 +72,7 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
             data = response.json()
             versions.append(DependencyVersion(data["version"]))
 
-        return sorted(versions, reverse=True)
+        return sorted(set(versions), reverse=True)
 
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available Positron versions.

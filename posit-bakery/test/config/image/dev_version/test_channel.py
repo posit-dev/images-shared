@@ -403,7 +403,6 @@ class TestImageDevelopmentVersionFromProductChannel:
     def test_artifact_not_available_propagates_through_resolve_os_urls(self):
         """ArtifactNotAvailableError must NOT be swallowed by _resolve_os_urls."""
         from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError
-        from unittest.mock import patch
 
         dv = ImageDevelopmentVersionFromProductChannel(
             sourceType="stream",

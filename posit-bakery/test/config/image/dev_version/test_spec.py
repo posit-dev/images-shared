@@ -63,6 +63,14 @@ class TestDevBuildSpec:
         with pytest.raises(ValidationError):
             DevBuildSpec.model_validate_json('{"version": "2026.05.0-dev+185-gSHA", "channel": "nightly"}')
 
+    def test_empty_string_version_raises(self):
+        with pytest.raises(ValidationError):
+            DevBuildSpec(version="")
+
+    def test_whitespace_only_version_raises(self):
+        with pytest.raises(ValidationError):
+            DevBuildSpec(version="   ")
+
     def test_whitespace_version_is_stripped(self):
         spec = DevBuildSpec.model_validate_json('{"version": "  2026.05.0-dev+185-gSHA  "}')
         assert spec.version == "2026.05.0-dev+185-gSHA"
