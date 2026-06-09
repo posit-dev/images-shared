@@ -126,6 +126,16 @@ class DGossPlugin(BakeryToolPlugin):
                     help="Path to a build metadata file. If given, attempts to run tests against image artifacts in the file."
                 ),
             ] = None,
+            jobs: Annotated[
+                Optional[int],
+                typer.Option(
+                    "--jobs",
+                    "-j",
+                    show_default=False,
+                    help="Maximum number of dgoss commands to run concurrently. "
+                    "Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.",
+                ),
+            ] = None,
             clean: Annotated[
                 Optional[bool],
                 typer.Option(
@@ -170,7 +180,7 @@ class DGossPlugin(BakeryToolPlugin):
             if metadata_file:
                 c.load_build_metadata_from_file(metadata_file)
 
-            results = plugin.execute(c.base_path, c.targets, platform=platform)
+            results = plugin.execute(c.base_path, c.targets, platform=platform, jobs=jobs)
             plugin.results(results)
 
         app.add_typer(dgoss_app, name="dgoss", help="Run Goss tests against container images")
@@ -181,10 +191,11 @@ class DGossPlugin(BakeryToolPlugin):
         targets: list[ImageTarget],
         *,
         platform: str | None = None,
+        jobs: int | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:
         """Execute dgoss tests against the given image targets."""
-        suite = DGossSuite(base_path, targets, platform=platform)
+        suite = DGossSuite(base_path, targets, platform=platform, jobs=jobs)
         report_collection, errors = suite.run()
 
         # Build error lookup
