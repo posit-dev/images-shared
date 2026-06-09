@@ -26,6 +26,7 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -314,13 +315,21 @@ class BakerySettings(BaseModel):
             description="Filter development versions to a specific release channel.",
         ),
     ] = None
+    dev_spec: Annotated[
+        DevBuildSpec | None,
+        Field(
+            default=None,
+            description="Pinned dev build spec from a workflow dispatch. When set, overrides "
+            "CDN discovery for the matching channel dev version.",
+        ),
+    ] = None
 
     @model_validator(mode="before")
     @classmethod
     def migrate_dev_stream_to_dev_channel(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        if "dev_stream" in data and "dev_channel" not in data:
+        if "dev_stream" in data and data.get("dev_channel") is None:
             import warnings
 
             warnings.warn(
@@ -367,6 +376,46 @@ class BakerySettings(BaseModel):
     ]
     cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
     temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
+
+
+def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
+    """Pin the dispatched version onto the matching channel dev version.
+
+    Called before load_dev_versions() so the pinned version is set
+    when resolution runs.
+    """
+    # Local import to avoid circular import.
+    from posit_bakery.config.image.dev_version.channel import ImageDevelopmentVersionFromProductChannel
+
+    # Validate channel consistency: if both are set and differ, the pinned version
+    # would be filtered out by --dev-channel. Fail loudly instead of silently skipping.
+    if (
+        settings.dev_spec.channel is not None
+        and settings.dev_channel is not None
+        and settings.dev_spec.channel != settings.dev_channel
+    ):
+        raise ValueError(
+            f"Conflicting channels: --dev-spec has channel '{settings.dev_spec.channel.value}' "
+            f"but --dev-channel is '{settings.dev_channel.value}'. "
+            f"Either omit 'channel' from --dev-spec or ensure they match."
+        )
+
+    target_channel = settings.dev_spec.channel or settings.dev_channel
+    candidates = [
+        dv
+        for dv in image.devVersions
+        if isinstance(dv, ImageDevelopmentVersionFromProductChannel)
+        and (target_channel is None or dv.channel == target_channel)
+    ]
+    if not candidates:
+        return
+    if len(candidates) > 1:
+        raise ValueError(
+            f"Image '{image.name}' has {len(candidates)} dev versions matching "
+            f"channel '{target_channel}'. Specify 'channel' in --dev-spec or pass "
+            f"--dev-channel to disambiguate."
+        )
+    candidates[0].version_override = settings.dev_spec.version
 
 
 class BakeryConfig:
@@ -421,6 +470,9 @@ class BakeryConfig:
             )
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
+            if self.settings.dev_spec is not None:
+                for image in self.model.images:
+                    _apply_dev_spec(image, self.settings)
             for image in self.model.images:
                 image.load_dev_versions()
                 image.render_ephemeral_version_files()

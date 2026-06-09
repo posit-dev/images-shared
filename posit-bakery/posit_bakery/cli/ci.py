@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -90,6 +90,16 @@ def matrix(
             help="The root path to use. Defaults to the current working directory where invoked.",
         ),
     ] = auto_path(),
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=parse_dev_spec,
+        ),
+    ] = None,
 ) -> None:
     """Generates a JSON matrix of image versions for CI workflows to consume
 
@@ -119,6 +129,7 @@ def matrix(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
+            dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]

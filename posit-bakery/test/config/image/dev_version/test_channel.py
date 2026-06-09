@@ -388,6 +388,37 @@ class TestImageDevelopmentVersionFromProductChannel:
             url_by_os = dev_version.get_url_by_os(generalize_architecture=generalize_architecture)
             assert url_by_os[mock_os.name] == expected_url
 
+    def test_version_override_returned_by_get_version(self, patch_requests_get):
+        """When version_override is set, get_version() returns it without a network call."""
+        dv = ImageDevelopmentVersionFromProductChannel(
+            sourceType="stream",
+            product="package-manager",
+            channel="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dv.version_override = "2026.05.0-dev+185-gSHA"
+        assert dv.get_version() == "2026.05.0-dev+185-gSHA"
+        patch_requests_get.assert_not_called()
+
+    def test_mismatch_error_propagates_through_resolve_os_urls(self):
+        """DispatchVersionMismatchError must NOT be swallowed by _resolve_os_urls."""
+        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+        from unittest.mock import patch
+
+        dv = ImageDevelopmentVersionFromProductChannel(
+            sourceType="stream",
+            product="workbench",
+            channel="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dv.version_override = "9999.99.0-daily+1.pro1"
+        with patch(
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
+            side_effect=DispatchVersionMismatchError("mismatch"),
+        ):
+            with pytest.raises(DispatchVersionMismatchError):
+                dv._resolve_os_urls()
+
 
 class TestByChannel:
     @pytest.mark.parametrize(
@@ -1002,7 +1033,7 @@ class TestResolveOsUrls:
     def test_excludes_os_on_resolution_failure(self):
         good = ReleaseChannelResult(version="1.0.0", download_url="https://example.com/good.deb")
 
-        def side_effect(product, channel, build_os):
+        def side_effect(product, channel, build_os, **kwargs):
             if build_os.version == "26.04":
                 raise ValueError("no packages for ubuntu26")
             return good
@@ -1071,7 +1102,7 @@ class TestResolveOsUrls:
     def test_primary_os_excluded_falls_back_to_secondary(self):
         good = ReleaseChannelResult(version="1.0.0", download_url="https://example.com/good.deb")
 
-        def side_effect(product, channel, build_os):
+        def side_effect(product, channel, build_os, **kwargs):
             if build_os.version == "26.04":
                 raise ValueError("no packages for ubuntu26")
             return good

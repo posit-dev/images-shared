@@ -31,6 +31,16 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             "get_version().",
         ),
     ]
+    version_override: Annotated[
+        str | None,
+        Field(
+            exclude=True,
+            default=None,
+            description="Version pinned by a workflow dispatch spec. When set, bypasses CDN "
+            "discovery and is forwarded to the channel resolver for offline template rendering "
+            "(PPM) or manifest assertion (Connect, Workbench).",
+        ),
+    ]
 
     @model_validator(mode="before")
     @classmethod
@@ -55,11 +65,14 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
     def get_version(self) -> str:
         """Retrieve the version from the specified product channel.
 
+        If version_override is set, returns it immediately without a network call.
         If _resolve_os_urls() has already been called, returns the cached
         version. Otherwise fetches it from the primary OS channel.
 
         :return: The version string from the product channel.
         """
+        if self.version_override is not None:
+            return self.version_override
         if self.resolved_version is not None:
             return self.resolved_version
         _os = self.get_primary_os()
@@ -88,12 +101,20 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         Caches the version from the first successfully resolved OS so
         that get_version() can return it without a redundant fetch.
         """
+        # Local import avoids a circular import between channel.py and main.py.
+        from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
+
         self.resolved_version = None
         resolved = []
         for os_version in self.os:
             try:
                 generalize = os_version.platforms != DEFAULT_PLATFORMS
-                result = get_product_artifact_by_channel(self.product, self.channel, os_version.buildOS)
+                result = get_product_artifact_by_channel(
+                    self.product,
+                    self.channel,
+                    os_version.buildOS,
+                    version_override=self.version_override,
+                )
                 if generalize:
                     os_version.artifactDownloadURL = str(result.architecture_generalized_download_url)
                 else:
@@ -101,6 +122,8 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                 if self.resolved_version is None:
                     self.resolved_version = result.version
                 resolved.append(os_version)
+            except DispatchVersionMismatchError:
+                raise
             except (ValueError, ValidationError, requests.RequestException) as e:
                 log.warning(f"Excluding OS '{os_version.name}' from {repr(self)}: {e}")
         return resolved

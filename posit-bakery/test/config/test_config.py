@@ -387,6 +387,105 @@ class TestBakeryConfig:
         )
         assert settings.dev_channel == ReleaseChannelEnum.PREVIEW
 
+    def test_dev_stream_migrates_when_dev_channel_is_explicit_none(self):
+        """dev_stream must migrate even when dev_channel=None is passed explicitly."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            settings = BakerySettings(dev_stream=ReleaseChannelEnum.DAILY, dev_channel=None)
+        assert settings.dev_channel == ReleaseChannelEnum.DAILY
+        assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
+
+    class TestDevBuildSpecApplication:
+        def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
+            """No dev_spec: config loads normally, no version_override set."""
+            yaml_file = testdata_path / "valid" / "complex.yaml"
+            with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+                with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                    config = BakeryConfig(
+                        yaml_file,
+                        settings=BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY),
+                    )
+            for image in config.model.images:
+                for dv in image.devVersions:
+                    assert dv.version_override is None
+
+        def test_pins_version_on_matching_channel(self, testdata_path, patch_requests_get):
+            """dev_spec pins the matching stream dev version before resolution."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            yaml_file = testdata_path / "valid" / "complex.yaml"
+            spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.DAILY)
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_spec=spec,
+            )
+            with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+                with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                    config = BakeryConfig(yaml_file, settings=settings)
+            pinned = [
+                dv for image in config.model.images for dv in image.devVersions if dv.version_override is not None
+            ]
+            assert len(pinned) == 1
+            assert pinned[0].version_override == "2026.05.0-dev+999-gSHA"
+
+        def test_ambiguity_raises_when_no_channel(self, tmp_path, patch_requests_get):
+            """dev_spec without channel raises when image has two stream dev versions."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                "repository:\n"
+                "  url: https://github.com/posit-dev/test\n"
+                "images:\n"
+                "  - name: test-image\n"
+                "    devVersions:\n"
+                "      - sourceType: stream\n"
+                "        product: package-manager\n"
+                "        channel: daily\n"
+                "        os:\n"
+                "          - name: Ubuntu 24.04\n"
+                "            primary: true\n"
+                "      - sourceType: stream\n"
+                "        product: package-manager\n"
+                "        channel: preview\n"
+                "        os:\n"
+                "          - name: Ubuntu 24.04\n"
+                "            primary: true\n"
+            )
+            spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
+            settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+            with pytest.raises(ValueError, match="[Aa]mbig"):
+                BakeryConfig(bakery_yaml, settings=settings)
+
+        def test_conflicting_channels_raise(self, tmp_path, patch_requests_get):
+            """dev_spec.channel and --dev-channel must not conflict."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                "repository:\n"
+                "  url: https://github.com/posit-dev/test\n"
+                "images:\n"
+                "  - name: test-image\n"
+                "    devVersions:\n"
+                "      - sourceType: stream\n"
+                "        product: package-manager\n"
+                "        channel: daily\n"
+                "        os:\n"
+                "          - name: Ubuntu 24.04\n"
+                "            primary: true\n"
+            )
+            spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.DAILY)
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_spec=spec,
+                dev_channel=ReleaseChannelEnum.PREVIEW,  # conflicts with spec.channel
+            )
+            with pytest.raises(ValueError, match="[Cc]onfli"):
+                BakeryConfig(bakery_yaml, settings=settings)
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [

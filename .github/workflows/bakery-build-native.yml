@@ -42,6 +42,16 @@ on:
         default: ""
         required: false
         type: string
+      dev-version:
+        description: "Pinned dev version string for a dispatched build. Used with dev-channel to construct dev-spec."
+        default: ""
+        required: false
+        type: string
+      dev-spec:
+        description: "JSON spec for a dispatched dev build. If set, takes precedence over dev-version/dev-channel for spec construction."
+        default: ""
+        required: false
+        type: string
       push:
         description: "Whether to push images to registries [default: false]"
         default: false
@@ -127,12 +137,22 @@ jobs:
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           IMAGE_VERSION: ${{ inputs.image-version }}
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_SPEC: ${{ inputs.dev-spec }}
           CONTEXT: ${{ inputs.context }}
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
-          [[ -n "$DEV_CHANNEL" ]] && ARGS+=(--dev-channel "$DEV_CHANNEL")
+          if [[ -n "$DEV_SPEC" ]]; then
+            ARGS+=(--dev-spec "$DEV_SPEC")
+          elif [[ -n "$DEV_VERSION" ]]; then
+            DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
+              '{version: $v} + if $c != "" then {channel: $c} else {} end')
+            ARGS+=(--dev-spec "$DEV_SPEC_JSON")
+          elif [[ -n "$DEV_CHANNEL" ]]; then
+            ARGS+=(--dev-channel "$DEV_CHANNEL")
+          fi
           result=$(bakery ci matrix "${ARGS[@]}")
           echo "platform_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
           echo "image_matrix=$(echo "$result" | jq --compact-output '[.[].image] | unique')" >> "$GITHUB_OUTPUT"
@@ -229,6 +249,9 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_SPEC: ${{ inputs.dev-spec }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
@@ -240,6 +263,14 @@ jobs:
           if [ "$CACHE" = "true" ]; then
             CACHE_FLAGS=(--cache-registry "$REGISTRY")
           fi
+          DEV_SPEC_FLAGS=()
+          if [[ -n "$DEV_SPEC" ]]; then
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
+          elif [[ -n "$DEV_VERSION" ]]; then
+            DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
+              '{version: $v} + if $c != "" then {channel: $c} else {} end')
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
+          fi
           bakery build \
             --strategy build --pull \
             --retry "$RETRY" \
@@ -249,6 +280,7 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             "${CACHE_FLAGS[@]}" \
+            "${DEV_SPEC_FLAGS[@]}" \
             --temp-registry "$REGISTRY" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT" \

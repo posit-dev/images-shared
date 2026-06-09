@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -5,15 +6,18 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image import ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
+
+log = logging.getLogger(__name__)
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -208,6 +212,16 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = False,
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=parse_dev_spec,
+        ),
+    ] = None,
 ) -> None:
     """Builds images in the context path
 
@@ -237,9 +251,14 @@ def build(
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
     )
 
-    config: BakeryConfig = BakeryConfig.from_context(context, settings)
+    try:
+        config: BakeryConfig = BakeryConfig.from_context(context, settings)
+    except DispatchVersionMismatchError as e:
+        stderr_console.print(f"❌ {e}", style="error")
+        raise typer.Exit(code=1)
 
     if plan:
         if strategy == ImageBuildStrategy.BUILD:
