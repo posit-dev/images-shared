@@ -99,7 +99,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         result = get_product_artifact_by_channel(
             self.product,
             self.channel,
-            _os.buildOS,
+            _os.artifact_build_os,
             release_branch=self.release_branch or "latest",
         )
         return result.version
@@ -114,7 +114,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             result = get_product_artifact_by_channel(
                 self.product,
                 self.channel,
-                _os.buildOS,
+                _os.artifact_build_os,
                 version_override=self.version_override,
                 release_branch=self.release_branch or "latest",
             )
@@ -147,7 +147,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                 result = get_product_artifact_by_channel(
                     self.product,
                     self.channel,
-                    os_version.buildOS,
+                    os_version.artifact_build_os,
                     version_override=self.version_override,
                     release_branch=self.release_branch or "latest",
                 )

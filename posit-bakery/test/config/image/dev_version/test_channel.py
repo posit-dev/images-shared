@@ -1033,6 +1033,48 @@ class TestByChannel:
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
 
 
+class TestArtifactOsForScratch:
+    def test_resolve_os_urls_uses_artifact_os_for_scratch(self):
+        from posit_bakery.config.image.build_os import SUPPORTED_OS
+        from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
+
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version="2026.05.0",
+                download_url="https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb",
+            )
+            version = ImageDevelopmentVersionFromProductChannel(
+                sourceType="stream",
+                product="connect",
+                channel="daily",
+                os=[{"name": "scratch", "artifactOs": "ubuntu-24.04"}],
+            )
+            version._resolve_os_urls()
+
+        for call in mock_get.call_args_list:
+            assert call.args[2] == SUPPORTED_OS["ubuntu"]["24"]
+
+    def test_get_version_uses_artifact_os_for_scratch(self):
+        from posit_bakery.config.image.build_os import SUPPORTED_OS
+        from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
+
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version="2026.05.0",
+                download_url="https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb",
+            )
+            version = ImageDevelopmentVersionFromProductChannel(
+                sourceType="stream",
+                product="connect",
+                channel="daily",
+                os=[{"name": "scratch", "artifactOs": "ubuntu-24.04", "primary": True}],
+            )
+            result = version.get_version()
+
+        assert result == "2026.05.0"
+        assert mock_get.call_args.args[2] == SUPPORTED_OS["ubuntu"]["24"]
+
+
 class TestResolveOsUrls:
     def test_sets_artifact_download_url(self):
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
