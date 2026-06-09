@@ -40,3 +40,34 @@ class TestDGossSuite:
                 json.load(f)
 
         remove_images(basic_tmpconfig)
+
+    def test_run_parallel_mocked(self, get_tmpconfig, mocker):
+        """Suite.run() drives commands through the executor without a real Docker daemon."""
+        import subprocess
+
+        cfg = get_tmpconfig("basic")
+        suite = DGossSuite(cfg.base_path, cfg.targets)
+
+        goss_json = json.dumps(
+            {
+                "summary": {
+                    "test-count": 2,
+                    "failed-count": 0,
+                    "skipped-count": 0,
+                    "summary-line": "Count: 2, Failed: 0, Skipped: 0",
+                    "total-duration": 1234567,
+                }
+            }
+        ).encode("utf-8")
+        fake = subprocess.CompletedProcess(args=[], returncode=0, stdout=goss_json, stderr=b"")
+        mocker.patch("posit_bakery.parallel.executor.subprocess.run", return_value=fake)
+
+        report_collection, errors = suite.run()
+
+        assert errors is None
+        assert len(report_collection.get("test-image")) == 2
+        for target in suite.image_targets:
+            results_file = cfg.base_path / "results" / "dgoss" / target.image_name / f"{target.uid}.json"
+            assert results_file.exists()
+            with open(results_file) as f:
+                json.load(f)
