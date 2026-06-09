@@ -5,9 +5,12 @@ from typing import Annotated, Union
 from pydantic import BaseModel, Field, field_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
-from posit_bakery.config.shared import BakeryYAMLModel, ExtensionField, TagDisplayNameField
+from posit_bakery.config.shared import BakeryYAMLModel
+from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
 from .posit_product.const import URL_WITH_ENV_VARS_REGEX_PATTERN
+
+_OSLESS_NAMES = frozenset({"scratch"})
 
 log = logging.getLogger(__name__)
 
@@ -63,16 +66,30 @@ class ImageVersionOS(BakeryYAMLModel):
         Field(default=DEFAULT_PLATFORMS, description="List of platforms to build for this image."),
     ]
     extension: Annotated[
-        ExtensionField,
+        str,
         Field(
+            default_factory=lambda data: (
+                ""
+                if data.get("name", "").lower().strip() in _OSLESS_NAMES
+                else re.sub(r"[^a-zA-Z0-9_-]", "", data.get("name", "").lower())
+            ),
+            pattern=r"^[a-zA-Z0-9_-]*$",
+            validate_default=True,
             description="File extension used in the Containerfile filename in the pattern "
             "Containerfile.<os>.<variant> for this OS. Set to an empty string if no extension is needed.",
             examples=["ubuntu2204", "debian12"],
         ),
     ]
     tagDisplayName: Annotated[
-        TagDisplayNameField,
+        str,
         Field(
+            default_factory=lambda data: (
+                ""
+                if data.get("name", "").lower().strip() in _OSLESS_NAMES
+                else re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", data.get("name", "").lower())
+            ),
+            pattern=r"^[a-zA-Z0-9_.-]*$",
+            validate_default=True,
             description="The name used in image tags for this OS. This is used to create the tag "
             "in the format <image>:<version>-<os>-<variant>.",
             examples=["ubuntu-22.04", "debian-12"],
