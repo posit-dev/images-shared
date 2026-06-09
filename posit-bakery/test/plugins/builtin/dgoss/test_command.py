@@ -25,18 +25,16 @@ class TestDGossCommand:
         assert basic_standard_image_target.context.version_path / "test" == dgoss_command.test_path
         assert dgoss_command.wait == 1
 
-    def test_dgoss_environment(self, basic_standard_image_target):
+    def test_dgoss_environment(self, basic_standard_image_target, monkeypatch):
         """Test that DGossCommand dgoss_environment returns the expected environment variables."""
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
         expected_env = {
             "GOSS_FILES_PATH": str(basic_standard_image_target.context.version_path / "test"),
             "GOSS_SLEEP": "1",
             "GOSS_OPTS": "--format json --no-color",
         }
-        for key, value in expected_env.items():
-            assert dgoss_command.dgoss_environment[key] == value, (
-                f"Expected {key} to be {value}, got {dgoss_command.dgoss_environment[key]}"
-            )
+        assert dgoss_command.dgoss_environment == expected_env
 
     def test_image_environment(self, basic_standard_image_target):
         """Test that DGossCommand image_environment returns the expected environment variables."""

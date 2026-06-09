@@ -1038,10 +1038,11 @@ class TestArtifactOsForScratch:
         from posit_bakery.config.image.build_os import SUPPORTED_OS
         from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
 
+        expected_url = "https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb"
         with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
             mock_get.return_value = ReleaseChannelResult(
                 version="2026.05.0",
-                download_url="https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb",
+                download_url=expected_url,
             )
             version = ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
@@ -1049,10 +1050,12 @@ class TestArtifactOsForScratch:
                 channel="daily",
                 os=[{"name": "scratch", "artifactOs": "ubuntu-24.04"}],
             )
-            version._resolve_os_urls()
+            resolved = version._resolve_os_urls()
 
         for call in mock_get.call_args_list:
             assert call.args[2] == SUPPORTED_OS["ubuntu"]["24"]
+        assert len(resolved) == 1
+        assert resolved[0].artifactDownloadURL == expected_url
 
     def test_get_version_uses_artifact_os_for_scratch(self):
         from posit_bakery.config.image.build_os import SUPPORTED_OS
