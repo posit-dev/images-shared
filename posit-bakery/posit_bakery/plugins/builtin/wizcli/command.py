@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator
 
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
-from posit_bakery.util import find_bin
+from posit_bakery.util import SensitiveArg, find_bin
 
 
 def find_wizcli_bin(context: ImageTargetContext) -> str | None:
@@ -85,7 +85,7 @@ class WizCLICommand(BaseModel):
 
     @computed_field
     @property
-    def command(self) -> list[str]:
+    def command(self) -> list:
         cmd = [self.wizcli_bin, "scan", "container-image"]
 
         # Image reference
@@ -122,7 +122,7 @@ class WizCLICommand(BaseModel):
         if self.client_id:
             cmd.extend(["--client-id", self.client_id])
         if self.client_secret:
-            cmd.extend(["--client-secret", self.client_secret])
+            cmd.extend(["--client-secret", SensitiveArg(self.client_secret)])
         if self.use_device_code:
             cmd.append("--use-device-code")
         if self.no_browser:

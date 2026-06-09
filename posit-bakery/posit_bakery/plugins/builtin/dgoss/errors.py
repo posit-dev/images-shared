@@ -31,7 +31,7 @@ class BakeryDGossError(BakeryToolRuntimeError):
         s = f"{self.message}\n"
         s += f"  - Exit code: {self.exit_code}\n"
         s += f"  - Command output: \n{textwrap.indent(self.dump_stdout(), '      ')}\n"
-        s += f"  - Command executed: {' '.join(self.cmd)}\n"
+        s += f"  - Command executed: {' '.join(str(x) for x in self.cmd)}\n"
         if self.metadata:
             s += "  - Metadata:\n"
             for key, value in self.metadata.items():

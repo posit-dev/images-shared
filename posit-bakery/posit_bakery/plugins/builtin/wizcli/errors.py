@@ -50,7 +50,7 @@ class BakeryWizCLIError(BakeryToolRuntimeError):
         stdout_dump = self.dump_stdout()
         if stdout_dump:
             s += f"  - Output:\n{textwrap.indent(stdout_dump, '      ')}\n"
-        s += f"  - Command executed: {' '.join(self.cmd)}\n"
+        s += f"  - Command executed: {' '.join(str(x) for x in self.cmd)}\n"
         if self.metadata:
             s += "  - Metadata:\n"
             for key, value in self.metadata.items():

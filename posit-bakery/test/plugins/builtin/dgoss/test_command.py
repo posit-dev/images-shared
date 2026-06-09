@@ -55,26 +55,61 @@ class TestDGossCommand:
         }
         assert dgoss_command.image_environment == expected_env
 
-    def test_image_environment_forwards_github_token_in_actions(self, basic_standard_image_target, monkeypatch):
-        """Inside a GitHub Actions run GITHUB_TOKEN is forwarded as GH_TOKEN."""
+    def test_dgoss_environment_forwards_github_token_in_actions(self, basic_standard_image_target, monkeypatch):
+        """Inside a GitHub Actions run GITHUB_TOKEN is forwarded as GH_TOKEN in
+        the dgoss subprocess environment (not embedded in command-line args)."""
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
         monkeypatch.setenv("GITHUB_TOKEN", "ghs_test_value")
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
-        assert dgoss_command.image_environment["GH_TOKEN"] == "ghs_test_value"
-
-    def test_image_environment_skips_github_token_outside_actions(self, basic_standard_image_target, monkeypatch):
-        """Local runs with GITHUB_TOKEN set (e.g. from gh CLI) do not forward it,
-        so the raw token never appears in the dgoss command line outside the
-        GitHub Actions log-masking environment."""
-        monkeypatch.setenv("GITHUB_TOKEN", "ghs_developer_pat")
-        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert dgoss_command.dgoss_environment["GH_TOKEN"] == "ghs_test_value"
         assert "GH_TOKEN" not in dgoss_command.image_environment
 
-    def test_image_environment_omits_gh_token_when_token_unset(self, basic_standard_image_target, monkeypatch):
+    def test_dgoss_environment_skips_github_token_outside_actions(self, basic_standard_image_target, monkeypatch):
+        """Local runs with GITHUB_TOKEN set (e.g. from gh CLI) do not forward it."""
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_developer_pat")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert "GH_TOKEN" not in dgoss_command.dgoss_environment
+        assert "GH_TOKEN" not in dgoss_command.image_environment
+
+    def test_dgoss_environment_omits_gh_token_when_token_unset(self, basic_standard_image_target, monkeypatch):
         """In GitHub Actions but with no token (rare, but possible) GH_TOKEN is omitted."""
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert "GH_TOKEN" not in dgoss_command.dgoss_environment
         assert "GH_TOKEN" not in dgoss_command.image_environment
+
+    def test_redacted_dgoss_environment_masks_gh_keys(self, basic_standard_image_target, monkeypatch):
+        """GH_* values are replaced with *** in the redacted view; other keys are unchanged."""
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_real_token")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        redacted = dgoss_command.redacted_dgoss_environment
+        assert redacted["GH_TOKEN"] == "***"
+        assert "ghs_real_token" not in redacted.values()
+        assert redacted["GOSS_FILES_PATH"] == dgoss_command.dgoss_environment["GOSS_FILES_PATH"]
+        assert redacted["GOSS_OPTS"] == dgoss_command.dgoss_environment["GOSS_OPTS"]
+
+    def test_container_passthrough_env_vars_includes_gh_keys(self, basic_standard_image_target, monkeypatch):
+        """container_passthrough_env_vars lists GH_* keys set in dgoss_environment."""
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_test_value")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert dgoss_command.container_passthrough_env_vars == ["GH_TOKEN"]
+
+    def test_container_passthrough_env_vars_empty_outside_actions(self, basic_standard_image_target, monkeypatch):
+        """No keys forwarded when GITHUB_ACTIONS is not set."""
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert dgoss_command.container_passthrough_env_vars == []
+
+    def test_gh_token_not_in_command_args(self, basic_standard_image_target, monkeypatch):
+        """GH_TOKEN value must never appear as a KEY=VALUE arg — only as '-e GH_TOKEN'."""
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_TOKEN", "ghs_secret_value")
+        dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
+        assert "ghs_secret_value" not in dgoss_command.command
+        pairs = [dgoss_command.command[i : i + 2] for i in range(len(dgoss_command.command) - 1)]
+        assert ["-e", "GH_TOKEN"] in pairs, "Expected '-e GH_TOKEN' (name-only) in command"
 
     def test_volume_mounts(self, basic_standard_image_target):
         """Test that DGossCommand volume_mounts returns the expected volume mounts."""

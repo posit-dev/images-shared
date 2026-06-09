@@ -146,6 +146,8 @@ class TestImageVersionOS:
             ("Rocky Linux 10", SUPPORTED_OS["rocky"]["10"]),
             ("Rocky 9", SUPPORTED_OS["rocky"]["9"]),
             ("Rocky", SUPPORTED_OS["rocky"]["10"]),
+            ("Scratch", SUPPORTED_OS["scratch"]),
+            ("scratch", SUPPORTED_OS["scratch"]),
         ],
     )
     def test_populate_build_os(self, input_name, expected_build_os):

@@ -9,6 +9,46 @@ from requests_cache import CachedSession
 
 from posit_bakery.error import BakeryToolNotFoundError
 
+
+class SensitiveArg:
+    """Wraps a CLI argument value that must not appear in logs or error output.
+
+    Use for credentials passed as command-line flags (e.g. ``--client-secret VALUE``).
+    ``str()`` and ``repr()`` return ``***``; ``.value`` returns the real string for
+    subprocess execution. Use ``exec_args()`` to unwrap a command list before passing
+    it to ``subprocess.run()``.
+
+    Example::
+
+        cmd = ["wizcli", "scan", "--client-secret", SensitiveArg(secret)]
+        log.debug("Running: %s", display_command(cmd))   # --client-secret ***
+        subprocess.run(exec_args(cmd), ...)              # real value forwarded
+    """
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def __str__(self) -> str:
+        return "***"
+
+    def __repr__(self) -> str:
+        return "SensitiveArg(***)"
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+
+def display_command(cmd: list) -> str:
+    """Join a command list for display, redacting any SensitiveArg values."""
+    return " ".join(str(x) for x in cmd)
+
+
+def exec_args(cmd: list) -> list[str]:
+    """Unwrap a command list for subprocess execution, revealing SensitiveArg values."""
+    return [x.value if isinstance(x, SensitiveArg) else x for x in cmd]
+
+
 log = logging.getLogger(__name__)
 
 
