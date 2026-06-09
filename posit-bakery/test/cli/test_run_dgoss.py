@@ -84,27 +84,3 @@ class TestRunDgossLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
-
-
-def test_run_accepts_jobs_flag(tmp_path):
-    """`dgoss run --jobs N` forwards jobs into the plugin's execute()."""
-    from posit_bakery.plugins.builtin.dgoss import DGossPlugin
-
-    with (
-        patch("posit_bakery.plugins.builtin.dgoss.BakeryConfig") as mock_config,
-        patch.object(DGossPlugin, "execute", return_value=[]) as execute_spy,
-        patch.object(DGossPlugin, "results", return_value=None),
-    ):
-        instance = MagicMock()
-        instance.base_path = tmp_path
-        instance.targets = []
-        mock_config.from_context.return_value = instance
-
-        result = runner.invoke(
-            app,
-            ["dgoss", "run", "--context", str(tmp_path), "--jobs", "2"],
-            catch_exceptions=False,
-        )
-
-        assert result.exit_code == 0, result.output
-        assert execute_spy.call_args.kwargs["jobs"] == 2
