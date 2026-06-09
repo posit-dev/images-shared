@@ -173,6 +173,7 @@ An Image represents a container image managed by the project. Each image has one
 | `versions`<br/>*[ImageVersion](#imageversion) array*                                    | The list of versions for the image. Each version should have its own directory under the image's `subpath`. Cannot be used with `matrix`. | `[]`                                      | `- name: 2025.07.0`                                                                                   |
 | `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`.               |                                           | See [ImageMatrix](#imagematrix)                                                                       |
 | `options`<br/>*[ToolOptions](#tooloptions) array*                                       | A list of options to pass to a supported tool when performing an action against the image.                                                | `[]`                                      | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>                             |
+| `devVersions`<br/>*[ImageDevelopmentVersion](#imagedevelopmentversion) array*           | Ephemeral versions resolved at build time from a product channel or dependency prerelease. Built when `--dev-versions include` or `--dev-versions only` is passed. | `[]` | See [ImageDevelopmentVersion](#imagedevelopmentversion) |
 
 #### Example Image
 
@@ -230,6 +231,81 @@ images:
           - name: Ubuntu 22.04
             extension: ubuntu2204
             tagDisplayName: ubuntu22.04
+```
+
+### ImageDevelopmentVersion
+
+An `ImageDevelopmentVersion` defines an ephemeral version resolved at build time. Unlike static `versions`, it is not stored on disk — Bakery fetches the version string (and optionally download URLs) from an external source each time a dev build runs. Development versions are included when `--dev-versions include` or `--dev-versions only` is passed to `bakery build` or `bakery ci matrix`.
+
+Each entry carries a `sourceType` discriminator that selects the resolution strategy.
+
+**Common fields** (all sourceTypes):
+
+| Field                                                                                    | Description                                                                                                                         | Default | Example                           |
+|------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|---------|-----------------------------------|
+| `sourceType`<br/>*string*                                                                | *(Required)* Resolution strategy. `"stream"` resolves from a product release channel; `"dependency"` resolves from a dependency prerelease. | | `stream`, `dependency` |
+| `os`<br/>*[ImageVersionOS](#imageversionos) array*                                       | Operating systems to build for.                                                                                                     | `[]`    | `- name: Ubuntu 24.04`            |
+| `extraRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array*    | Additional registries to push this dev version to. Cannot be set alongside `overrideRegistries`.                                   | `[]`    |                                   |
+| `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | Replaces all inherited registries for this dev version. Cannot be set alongside `extraRegistries`.                                 | `[]`    |                                   |
+| `values`<br/>*map[string, string]*                                                       | Arbitrary key-value pairs passed to Jinja2 templates when rendering this dev version.                                               | `{}`    | `POSITRON_CHANNEL: dailies`       |
+
+#### `sourceType: stream` — Product Channel
+
+Resolves the version from a Posit product release channel. The artifact download URL is fetched from the channel's CDN and injected into the Containerfile template.
+
+| Field                      | Description                                          | Example                                              |
+|----------------------------|------------------------------------------------------|------------------------------------------------------|
+| `product`<br/>*string*     | *(Required)* The Posit product ID.                   | `workbench`, `workbench-session`, `connect`, `package-manager` |
+| `channel`<br/>*string*     | *(Required)* The release channel.                    | `daily`, `preview`                                   |
+
+**Example:**
+
+```yaml
+devVersions:
+  - sourceType: stream
+    product: workbench
+    channel: daily
+    overrideRegistries:
+      - host: ghcr.io
+        namespace: posit-dev
+        repository: workbench-preview
+    os:
+      - name: Ubuntu 24.04
+        primary: true
+        platforms:
+          - linux/amd64
+          - linux/arm64
+      - name: Ubuntu 22.04
+```
+
+#### `sourceType: dependency` — Dependency Prerelease
+
+Resolves the version via the dependency constraint system rather than a product channel. The Containerfile template is responsible for constructing the download URL from `Image.Version` and any `values` passed.
+
+| Field                       | Description                                                                                                           | Default | Example    |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------------------|---------|------------|
+| `dependency`<br/>*string*   | *(Required)* The dependency to resolve a version for. Must be a supported dependency type.                            |         | `positron` |
+| `prerelease`<br/>*bool*     | When `true`, includes the dependency's prerelease channel in version resolution.                                      | `false` | `true`     |
+
+**Example:**
+
+```yaml
+devVersions:
+  - sourceType: dependency
+    dependency: positron
+    prerelease: true
+    values:
+      POSITRON_CHANNEL: dailies
+    overrideRegistries:
+      - host: ghcr.io
+        namespace: posit-dev
+        repository: workbench-positron-init-preview
+    os:
+      - name: Ubuntu 24.04
+        primary: true
+        platforms:
+          - linux/amd64
+          - linux/arm64
 ```
 
 ### ImageVariant
@@ -329,8 +405,8 @@ At the image level, these are specified through a VersionConstraint.
 | `constraint`<br/>*[VersionConstraint](#versionconstraint)* | *(Required)* Constraints to apply to calculate versions. |               | <pre>latest: true<br/>count: 2</pre> |
 
 ::: {.callout-note}
-The `quarto` dependency type supports an additional `prerelease` field (default: `false`).
-When `true`, prerelease versions of Quarto are included in the version calculation.
+The `quarto` and `positron` dependency types support an additional `prerelease` field (default: `false`).
+When `true`, prerelease versions are included in the version calculation.
 :::
 
 Each Dependency defines the dependency type, as well as the versions of the dependency that will be installed.
