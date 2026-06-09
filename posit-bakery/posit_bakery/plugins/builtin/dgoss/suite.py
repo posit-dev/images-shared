@@ -9,6 +9,7 @@ import pydantic
 
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.plugins.builtin.dgoss.command import DGossCommand
+from posit_bakery.util import display_command
 from posit_bakery.plugins.builtin.dgoss.errors import BakeryDGossError
 from posit_bakery.plugins.builtin.dgoss.report import GossJsonReportCollection, GossJsonReport
 from posit_bakery.image.image_target import ImageTarget
@@ -33,8 +34,8 @@ class DGossSuite:
 
         for dgoss_command in self.dgoss_commands:
             log.info(f"[bright_blue bold]=== Running Goss tests for '{str(dgoss_command.image_target)}' ===")
-            log.debug(f"[bright_black]Environment variables: {dgoss_command.dgoss_environment}")
-            log.debug(f"[bright_black]Executing dgoss command: {' '.join(dgoss_command.command)}")
+            log.debug(f"[bright_black]Environment variables: {dgoss_command.redacted_dgoss_environment}")
+            log.debug(f"[bright_black]Executing dgoss command: {display_command(dgoss_command.command)}")
 
             run_env = os.environ.copy()
             run_env.update(dgoss_command.dgoss_environment)
@@ -89,7 +90,7 @@ class DGossSuite:
                         stderr=p.stderr,
                         parse_error=parse_err,
                         exit_code=exit_code,
-                        metadata={"environment_variables": dgoss_command.dgoss_environment},
+                        metadata={"environment_variables": dgoss_command.redacted_dgoss_environment},
                     )
                 )
             elif exit_code == 0:

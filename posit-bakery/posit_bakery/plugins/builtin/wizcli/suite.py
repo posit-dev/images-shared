@@ -7,6 +7,7 @@ from pathlib import Path
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
+from posit_bakery.util import display_command, exec_args
 from posit_bakery.plugins.builtin.wizcli.errors import (
     BakeryWizCLIError,
     WIZCLI_EXIT_CODE_POLICY_VIOLATION,
@@ -69,7 +70,7 @@ class WizCLISuite:
 
         for wizcli_command in self.wizcli_commands:
             log.info(f"[bright_blue bold]=== Scanning '{str(wizcli_command.image_target)}' with WizCLI ===")
-            log.debug(f"[bright_black]Executing wizcli command: {' '.join(wizcli_command.command)}")
+            log.debug(f"[bright_black]Executing wizcli command: {display_command(wizcli_command.command)}")
 
             # Ensure output directory exists
             wizcli_command.results_file.parent.mkdir(parents=True, exist_ok=True)
@@ -80,7 +81,7 @@ class WizCLISuite:
             # clutter to stderr. Always capture stdout for error reporting on failure;
             # suppress stderr unless verbose mode is active.
             p = subprocess.run(
-                wizcli_command.command,
+                exec_args(wizcli_command.command),
                 env=run_env,
                 cwd=self.context,
                 stdout=subprocess.PIPE,

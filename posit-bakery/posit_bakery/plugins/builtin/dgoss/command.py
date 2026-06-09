@@ -67,6 +67,18 @@ class DGossCommand(BaseModel):
             env["GOSS_PATH"] = self.goss_bin
         if self.wait > 0:
             env["GOSS_SLEEP"] = str(self.wait)
+        # Forward GITHUB_TOKEN as GH_TOKEN so `quarto list tools` (and similar)
+        # can authenticate api.github.com calls and avoid the 60/hr anonymous
+        # rate limit that intermittently fails dgoss runs.
+        # Placed here (subprocess env) rather than image_environment so the
+        # value is never embedded in command-line arguments — it's forwarded to
+        # the container via `-e GH_TOKEN` (name-only), which docker inherits
+        # from the subprocess environment. Gate on GITHUB_ACTIONS=true to avoid
+        # forwarding a developer's local gh CLI token.
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if github_token:
+                env["GH_TOKEN"] = github_token
         return env
 
     @property
@@ -92,20 +104,22 @@ class DGossCommand(BaseModel):
             for arg, value in self.image_target.build_args.items():
                 env_var = f"BUILD_ARG_{arg.upper()}"
                 e[env_var] = value
-
-        # Forward the runner's GITHUB_TOKEN as GH_TOKEN so `quarto list tools`
-        # (and similar) can authenticate api.github.com calls and avoid the
-        # 60/hr anonymous rate limit that intermittently fails dgoss runs.
-        # Gate on GITHUB_ACTIONS=true so we only forward in environments where
-        # GitHub's automatic log masking redacts the value — a local run that
-        # happens to have GITHUB_TOKEN set (e.g. a developer's gh CLI session)
-        # would echo the raw token into the `-e GH_TOKEN=…` command logging.
-        if os.environ.get("GITHUB_ACTIONS") == "true":
-            github_token = os.environ.get("GITHUB_TOKEN")
-            if github_token:
-                e["GH_TOKEN"] = github_token
-
         return e
+
+    @property
+    def redacted_dgoss_environment(self) -> dict[str, str]:
+        """Return dgoss_environment with GH_* values redacted for logging and error metadata."""
+        return {k: "***" if k.startswith("GH_") else v for k, v in self.dgoss_environment.items()}
+
+    @property
+    def container_passthrough_env_vars(self) -> list[str]:
+        """Return env var names to forward to the container via '-e KEY' (no value).
+
+        These are set in dgoss_environment (subprocess env) and inherited by the
+        container via docker's name-only -e form. Values are never embedded in
+        command-line arguments, so they cannot appear in logs or error output.
+        """
+        return [k for k in self.dgoss_environment if k.startswith("GH_")]
 
     @property
     def volume_mounts(self) -> list[tuple[str, str]]:
@@ -159,6 +173,12 @@ class DGossCommand(BaseModel):
             if value is not None:
                 env_value = re.sub(r"([\"\'\\$`!*?&#()|<>;\[\]{}\s])", r"\\\1", value)
                 cmd.extend(["-e", f"{env_var}={env_value}"])
+        # Secret env vars: pass name-only so docker inherits the value from the
+        # subprocess environment (dgoss_environment). The token value is never
+        # embedded in command-line arguments and will not appear in logs or
+        # error output.
+        for env_var in self.container_passthrough_env_vars:
+            cmd.extend(["-e", env_var])
         cmd.append("--init")
         if self.runtime_options:
             # TODO: We may want to validate this to ensure options are not duplicated.

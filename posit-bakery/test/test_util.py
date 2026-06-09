@@ -5,10 +5,63 @@ import pytest
 
 from posit_bakery import util
 from posit_bakery.error import BakeryToolNotFoundError
+from posit_bakery.util import SensitiveArg, display_command, exec_args
 
 pytestmark = [
     pytest.mark.unit,
 ]
+
+
+class TestSensitiveArg:
+    def test_str_returns_redacted(self):
+        assert str(SensitiveArg("real-secret")) == "***"
+
+    def test_repr_returns_redacted(self):
+        assert repr(SensitiveArg("real-secret")) == "SensitiveArg(***)"
+
+    def test_value_returns_real_value(self):
+        assert SensitiveArg("real-secret").value == "real-secret"
+
+    def test_empty_string_value(self):
+        assert SensitiveArg("").value == ""
+        assert str(SensitiveArg("")) == "***"
+
+
+class TestDisplayCommand:
+    def test_plain_strings(self):
+        assert display_command(["wizcli", "scan", "--no-color"]) == "wizcli scan --no-color"
+
+    def test_redacts_sensitive_arg(self):
+        cmd = ["wizcli", "--client-secret", SensitiveArg("tok")]
+        assert display_command(cmd) == "wizcli --client-secret ***"
+        assert "tok" not in display_command(cmd)
+
+    def test_mixed_list(self):
+        cmd = ["prog", SensitiveArg("s1"), "middle", SensitiveArg("s2")]
+        result = display_command(cmd)
+        assert result == "prog *** middle ***"
+        assert "s1" not in result
+        assert "s2" not in result
+
+    def test_empty_list(self):
+        assert display_command([]) == ""
+
+
+class TestExecArgs:
+    def test_unwraps_sensitive_arg(self):
+        cmd = ["wizcli", "--client-secret", SensitiveArg("tok")]
+        assert exec_args(cmd) == ["wizcli", "--client-secret", "tok"]
+
+    def test_passes_through_plain_strings(self):
+        cmd = ["prog", "arg1", "arg2"]
+        assert exec_args(cmd) == ["prog", "arg1", "arg2"]
+
+    def test_mixed_list(self):
+        cmd = ["prog", SensitiveArg("s"), "plain"]
+        assert exec_args(cmd) == ["prog", "s", "plain"]
+
+    def test_empty_list(self):
+        assert exec_args([]) == []
 
 
 def test_find_bin_by_environ(mocker):

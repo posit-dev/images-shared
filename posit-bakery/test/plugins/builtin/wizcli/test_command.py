@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
+from posit_bakery.util import SensitiveArg, display_command
 
 pytestmark = [
     pytest.mark.unit,
@@ -81,7 +82,7 @@ class TestWizCLICommand:
         assert "--scan-go-standard-library=false" in command_str
 
     def test_command_with_auth_options(self, basic_standard_image_target):
-        """Test that auth CLI options are passed through."""
+        """Test that auth CLI options are passed through, with client_secret redacted."""
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
         cmd = WizCLICommand.from_image_target(
             image_target=basic_standard_image_target,
@@ -92,7 +93,13 @@ class TestWizCLICommand:
         assert "--client-id" in cmd.command
         assert "my-id" in cmd.command
         assert "--client-secret" in cmd.command
-        assert "my-secret" in cmd.command
+        # The secret value must be wrapped in SensitiveArg — never a plain string.
+        secret_arg = cmd.command[cmd.command.index("--client-secret") + 1]
+        assert isinstance(secret_arg, SensitiveArg)
+        assert secret_arg.value == "my-secret"
+        assert str(secret_arg) == "***"
+        # display_command must not reveal the value.
+        assert "my-secret" not in display_command(cmd.command)
 
     def test_command_with_device_code_flags(self, basic_standard_image_target):
         """Test that boolean auth flags are included when set."""

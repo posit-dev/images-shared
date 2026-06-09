@@ -8,6 +8,7 @@ from pathlib import Path
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.hadolint.command import HadolintCommand
+from posit_bakery.util import display_command
 from posit_bakery.plugins.builtin.hadolint.errors import BakeryHadolintError
 from posit_bakery.plugins.builtin.hadolint.options import HadolintOptions
 from posit_bakery.plugins.builtin.hadolint.report import HadolintReport, HadolintReportCollection
@@ -62,7 +63,7 @@ class HadolintSuite:
                 log.debug(f"[bright_black]Shared targets: {', '.join(other_uids)}")
             else:
                 log.info(f"[bright_blue bold]=== Running hadolint for '{str(target)}' ===")
-            log.debug(f"[bright_black]Executing hadolint command: {' '.join(representative.command)}")
+            log.debug(f"[bright_black]Executing hadolint command: {display_command(representative.command)}")
 
             run_env = os.environ.copy()
             p = subprocess.run(representative.command, env=run_env, capture_output=True)

@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget, Tag
-from posit_bakery.util import find_bin
+from posit_bakery.util import display_command, find_bin
 
 log = logging.getLogger(__name__)
 
@@ -55,10 +55,10 @@ class OrasCommand(BaseModel, ABC):
         :raises BakeryToolRuntimeError: If the command fails.
         """
         cmd = self.command
-        log.debug(f"Executing oras command: {' '.join(cmd)}")
+        log.debug(f"Executing oras command: {display_command(cmd)}")
 
         if dry_run:
-            log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
+            log.info(f"[DRY RUN] Would execute: {display_command(cmd)}")
             return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
 
         result = subprocess.run(cmd, capture_output=True)
