@@ -1,7 +1,11 @@
+import glob
 import io
 import os
+import signal
 import sys
+import tempfile
 import threading
+import time
 
 import pytest
 from rich.console import Console
@@ -154,3 +158,58 @@ class TestParallelShellExecutor:
         assert ex_term._resolve_use_live(2) is True
         assert ex_term._resolve_use_live(1) is False  # single task -> no live table
         assert ex_plain._resolve_use_live(2) is False  # non-terminal -> no live table
+
+
+class TestParallelShellExecutorTimeout:
+    def _executor(self, max_workers):
+        return ParallelShellExecutor(max_workers=max_workers, console=Console(file=io.StringIO()), use_live=False)
+
+    def test_timeout_marks_result(self):
+        # Sleeps 5s but times out at 0.3s -> killed, flagged timed_out, not raised.
+        tasks = [ShellTask(key="t", cmd=[sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.3)]
+        start = time.monotonic()
+        results = self._executor(1).run(tasks)
+        elapsed = time.monotonic() - start
+        assert results[0].timed_out is True
+        assert results[0].ok is False
+        assert results[0].returncode != 0
+        assert elapsed < 4  # killed well before the 5s sleep would finish
+
+    def test_no_timeout_when_none(self):
+        tasks = [ShellTask(key="t", cmd=[sys.executable, "-c", "pass"], timeout=None)]
+        results = self._executor(1).run(tasks)
+        assert results[0].timed_out is False
+        assert results[0].ok is True
+
+
+class TestParallelShellExecutorInterrupt:
+    def test_sigint_cancels_queued_and_terminates_running(self, tmp_path):
+        # 8 tasks, 2 workers, each writes a start marker then sleeps 3s then an end marker.
+        # SIGINT fires 0.3s in. Expect: KeyboardInterrupt raised, no task reaches its end
+        # marker (running ones killed), not all started (queued ones cancelled), returns fast.
+        script = "import sys,time;open(sys.argv[1],'w').close();time.sleep(3);open(sys.argv[2],'w').close()"
+        tasks = [
+            ShellTask(key=str(i), cmd=[sys.executable, "-c", script, str(tmp_path / f"s{i}"), str(tmp_path / f"e{i}")])
+            for i in range(8)
+        ]
+
+        def fire():
+            time.sleep(0.3)
+            os.kill(os.getpid(), signal.SIGINT)
+
+        threading.Thread(target=fire, daemon=True).start()
+        ex = ParallelShellExecutor(max_workers=2, console=Console(file=io.StringIO()), use_live=False)
+        start = time.monotonic()
+        interrupted = False
+        try:
+            ex.run(tasks)
+        except KeyboardInterrupt:
+            interrupted = True
+        elapsed = time.monotonic() - start
+
+        started = len(glob.glob(str(tmp_path / "s*")))
+        ended = len(glob.glob(str(tmp_path / "e*")))
+        assert interrupted is True
+        assert ended == 0  # nothing ran to completion (running tasks were killed)
+        assert started < 8  # queued tasks were cancelled, not launched
+        assert elapsed < 3  # returned promptly, did not drain the full queue
