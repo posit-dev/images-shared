@@ -122,13 +122,9 @@ class TestImageVersionOS:
         assert os1 != os3
         assert os2 != os3
 
-    def test_scratch_derives_empty_extension_and_tag(self):
-        i = ImageVersionOS(name="scratch")
-        assert i.extension == ""
-        assert i.tagDisplayName == ""
-
-    def test_scratch_case_insensitive(self):
-        i = ImageVersionOS(name="Scratch")
+    @pytest.mark.parametrize("name", ["scratch", "Scratch", "SCRATCH", " scratch "])
+    def test_scratch_derives_empty_extension_and_tag(self, name):
+        i = ImageVersionOS(name=name)
         assert i.extension == ""
         assert i.tagDisplayName == ""
 
@@ -161,6 +157,8 @@ class TestImageVersionOS:
             ("Rocky Linux 10", SUPPORTED_OS["rocky"]["10"]),
             ("Rocky 9", SUPPORTED_OS["rocky"]["9"]),
             ("Rocky", SUPPORTED_OS["rocky"]["10"]),
+            ("Scratch", SUPPORTED_OS["scratch"]),
+            ("scratch", SUPPORTED_OS["scratch"]),
         ],
     )
     def test_populate_build_os(self, input_name, expected_build_os):
