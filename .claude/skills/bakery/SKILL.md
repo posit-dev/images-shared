@@ -48,31 +48,13 @@ uv run bakery create version 1.2.3
 Bare `bakery` is not on the system PATH — it is installed via uv in the `posit-bakery/`
 project and only available through `uv run`.
 
-### 3. Read `bakery.yaml` before choosing filter flag values
-
-`--image-name`, `--image-version`, `--image-os`, and `--image-variant` must match
-values declared in `bakery.yaml`. Before running any command that takes these flags,
-read `bakery.yaml` in the target repo to find the exact names — don't guess or infer
-them from directory names or context.
-
-```bash
-# Check image names, versions, and OS configs before scoping a command
-cat bakery.yaml
-```
-
-Key fields to look for:
-- `images[].name` → valid `--image-name` values
-- `images[].versions[].name` → valid `--image-version` values
-- `images[].versions[].os[].name` → valid `--image-os` values
-- `images[].variants[].name` → valid `--image-variant` values
-
-### 5. Read sibling repos before cross-repo changes
+### 3. Read sibling repos before cross-repo changes
 
 When a task requires editing templates, macros, or `bakery.yaml` in a sibling repo
 (`images-connect`, `images-workbench`, `images-package-manager`), read that repo's
 `CLAUDE.md` and `bakery.yaml` before making any changes there.
 
-### 6. Matrix versions are excluded by default
+### 4. Matrix versions are excluded by default
 
 `--matrix-versions` defaults to `exclude`. Matrix images (e.g., `connect-content`,
 `workbench-session`) produce **zero build targets** unless you explicitly pass
@@ -81,7 +63,7 @@ When a task requires editing templates, macros, or `bakery.yaml` in a sibling re
 Always verify with `uv run bakery build --plan` or `uv run bakery get tags` before
 building — a plan with no targets means a filter flag is wrong or missing.
 
-### 7. Use `--dev-channel`, not `--dev-stream`
+### 5. Use `--dev-channel`, not `--dev-stream`
 
 `--dev-stream` is deprecated (hidden, emits a warning). Use `--dev-channel` instead:
 
@@ -104,7 +86,7 @@ uv run bakery build --dev-versions only \
 If both `--dev-spec` and `--dev-channel` are set, their `channel` values must match or
 bakery raises an error.
 
-### 8. Forward filter flags to `bakery ci merge` and `clean`
+### 6. Forward filter flags to `bakery ci merge` and `clean`
 
 When modifying a CI workflow, filter flags must be forwarded consistently across all
 three stages: build → merge, and build → clean.
@@ -130,25 +112,25 @@ accumulate.
 value used in the corresponding `bakery build` step. A mismatch causes the merge step to
 look for images that don't exist, failing with cryptic "image not found" errors.
 
-### 9. `bakery remove` is irreversible
+### 7. `bakery remove` is irreversible
 
 `bakery remove version` and `bakery remove image` delete the version directory **and**
 remove the entry from `bakery.yaml`. There is no dry-run flag and no confirmation prompt.
 Always confirm with the user before running either command.
 
-### 10. `bakery create version` marks the new version as latest by default
+### 8. `bakery create version` marks the new version as latest by default
 
 `bakery create version` sets `latest: true` on the new version and **unmarks all other
 versions**. If the repo has a current release marked `latest`, creating a new version will
 silently demote it. Verify the intended `latest` state in `bakery.yaml` after running.
 
-### 11. `bakery update version --clean` deletes files before re-rendering
+### 9. `bakery update version --clean` deletes files before re-rendering
 
 The `--clean` flag on `bakery update version` defaults to `True`. It deletes all existing
 files in the version directory before re-rendering. Use `bakery update files` (scoped) for
 non-destructive re-renders.
 
-### 12. Use `bakery dgoss run`, not `bakery run dgoss`
+### 10. Use `bakery dgoss run`, not `bakery run dgoss`
 
 `bakery run dgoss` is deprecated and emits a warning. Use:
 
@@ -156,7 +138,7 @@ non-destructive re-renders.
 uv run bakery dgoss run
 ```
 
-### 13. Guard `clean.yml` with a branch condition
+### 11. Guard `clean.yml` with a branch condition
 
 When calling `clean.yml` from a product repo workflow, always include a branch guard:
 
