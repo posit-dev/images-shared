@@ -1,4 +1,5 @@
 import abc
+from functools import cache
 from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
@@ -31,18 +32,21 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
         arch = _ARCH_MAP[target_arch]
         return POSITRON_RELEASES_URL_TEMPLATE.format(arch=arch)
 
-    def _fetch_versions(self) -> list[DependencyVersion]:
+    @staticmethod
+    @cache
+    def _fetch_versions() -> list[DependencyVersion]:
         """Fetch available Positron versions from Posit CDN.
 
         Uses the default architecture for version discovery since the version
         list is identical across architectures.
 
-        This method uses caching to avoid repeated network requests.
+        Memoized so the fetch+parse runs once per bakery invocation regardless
+        of how many constraint instances ask for it.
 
         :return: A sorted list of available Positron versions.
         """
         session = cached_session()
-        response = session.get(self.releases_url())
+        response = session.get(PositronDependency.releases_url())
         response.raise_for_status()
 
         releases = response.json().get("releases", [])

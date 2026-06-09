@@ -1,4 +1,5 @@
 import abc
+from functools import cache
 from typing import Literal, ClassVar
 
 from pydantic import ConfigDict
@@ -17,10 +18,13 @@ class PythonDependency(BakeryYAMLModel, abc.ABC):
 
     dependency: Literal[SupportedDependencies.PYTHON] = SupportedDependencies.PYTHON
 
-    def _fetch_versions(self) -> list[DependencyVersion]:
+    @staticmethod
+    @cache
+    def _fetch_versions() -> list[DependencyVersion]:
         """Fetch available Python versions from astral-sh/python-build-standalone.
 
-        This method uses caching to avoid repeated network requests.
+        Memoized so the fetch+parse runs once per bakery invocation regardless
+        of how many constraint instances ask for it.
 
         The results only include cpython builds for linux.
         Prerelease versions are excluded.
