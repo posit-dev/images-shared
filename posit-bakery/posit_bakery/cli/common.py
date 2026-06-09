@@ -26,11 +26,7 @@ def parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | 
     if value is None:
         return None
     try:
-        data = json.loads(value)
-    except json.JSONDecodeError as e:
-        raise typer.BadParameter(f"not valid JSON: {e}", ctx=ctx, param=param) from e
-    try:
-        return DevBuildSpec.model_validate(data)
+        return DevBuildSpec.model_validate_json(value)
     except ValidationError as e:
         raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
 
