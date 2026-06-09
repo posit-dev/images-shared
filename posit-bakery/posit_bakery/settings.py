@@ -9,6 +9,20 @@ import typer
 from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
 
 
+def _parse_max_concurrency() -> int:
+    """Parse BAKERY_MAX_CONCURRENCY, falling back to the default on a missing or malformed value."""
+    raw = os.environ.get("BAKERY_MAX_CONCURRENCY")
+    if raw is None or raw == "":
+        return DEFAULT_MAX_CONCURRENCY
+    try:
+        return int(raw)
+    except ValueError:
+        logging.getLogger(__name__).warning(
+            "Invalid BAKERY_MAX_CONCURRENCY=%r; falling back to default %d.", raw, DEFAULT_MAX_CONCURRENCY
+        )
+        return DEFAULT_MAX_CONCURRENCY
+
+
 class Settings:
     """Application settings and paths."""
 
@@ -18,7 +32,7 @@ class Settings:
         self.temporary_storage: Path = Path(tempfile.gettempdir())
         self.log_level: str | int = logging.INFO
         self.architecture = self.get_host_architecture()
-        self.max_concurrency: int = int(os.environ.get("BAKERY_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY))
+        self.max_concurrency: int = _parse_max_concurrency()
 
     @staticmethod
     def get_host_architecture() -> str:

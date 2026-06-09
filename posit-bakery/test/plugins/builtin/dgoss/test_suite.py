@@ -3,6 +3,8 @@ import subprocess
 
 import pytest
 
+from posit_bakery.error import BakeryToolRuntimeErrorGroup
+from posit_bakery.plugins.builtin.dgoss.errors import BakeryDGossError
 from posit_bakery.plugins.builtin.dgoss.suite import DGossSuite
 from test.helpers import remove_images
 
@@ -70,3 +72,24 @@ class TestDGossSuite:
             assert results_file.exists()
             with open(results_file) as f:
                 json.load(f)
+
+    def test_jobs_sets_max_workers(self, get_config_obj):
+        cfg = get_config_obj("basic")
+        # jobs is clamped to the number of commands (2 targets in the basic config)
+        assert DGossSuite(cfg.base_path, cfg.targets, jobs=1).max_workers == 1
+        assert DGossSuite(cfg.base_path, cfg.targets, jobs=5).max_workers == 2
+
+    def test_run_spawn_failure_records_errors(self, get_tmpconfig, mocker):
+        cfg = get_tmpconfig("basic")
+        suite = DGossSuite(cfg.base_path, cfg.targets)
+        mocker.patch(
+            "posit_bakery.parallel.executor.subprocess.run",
+            side_effect=FileNotFoundError("dgoss not found"),
+        )
+
+        report_collection, errors = suite.run()
+
+        assert len(report_collection) == 0
+        assert isinstance(errors, BakeryToolRuntimeErrorGroup)
+        assert len(errors.exceptions) == 2
+        assert all(isinstance(e, BakeryDGossError) for e in errors.exceptions)
