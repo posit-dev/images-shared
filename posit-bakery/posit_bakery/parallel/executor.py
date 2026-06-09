@@ -16,7 +16,7 @@ class ShellTask:
     env: dict[str, str] | None = None
     cwd: Path | None = None
     label: str | None = None
-    payload: Any = None
+    payload: Any = None  # opaque caller data, passed through unchanged to ShellResult.task.payload
 
     @property
     def display_label(self) -> str:

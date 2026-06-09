@@ -53,3 +53,10 @@ class TestResolveMaxWorkers:
     def test_never_below_one(self, monkeypatch):
         monkeypatch.setattr("posit_bakery.parallel.executor.SETTINGS.max_concurrency", DEFAULT_MAX_CONCURRENCY)
         assert resolve_max_workers(None, n_tasks=0) == 1
+
+    def test_negative_jobs_ignored(self, monkeypatch):
+        monkeypatch.setattr("posit_bakery.parallel.executor.SETTINGS.max_concurrency", 5)
+        assert resolve_max_workers(-1, n_tasks=10) == 5
+
+    def test_positive_jobs_clamped_when_no_tasks(self):
+        assert resolve_max_workers(5, n_tasks=0) == 1
