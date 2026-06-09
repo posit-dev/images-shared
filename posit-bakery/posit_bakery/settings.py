@@ -1,9 +1,12 @@
 import logging
+import os
 import platform
 import tempfile
 from pathlib import Path
 
 import typer
+
+from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
 
 
 class Settings:
@@ -15,6 +18,7 @@ class Settings:
         self.temporary_storage: Path = Path(tempfile.gettempdir())
         self.log_level: str | int = logging.INFO
         self.architecture = self.get_host_architecture()
+        self.max_concurrency: int = int(os.environ.get("BAKERY_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY))
 
     @staticmethod
     def get_host_architecture() -> str:

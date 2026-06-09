@@ -35,3 +35,5 @@ POSIT_LABEL_PREFIX = "co.posit.image"
 OCI_LABEL_PREFIX = "org.opencontainers.image"
 
 JINJA2_TEMPLATE_EXTENSIONS = {".jinja2", ".j2", ".jinja"}
+
+DEFAULT_MAX_CONCURRENCY = 4
