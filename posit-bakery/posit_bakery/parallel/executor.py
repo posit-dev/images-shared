@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import signal
 import subprocess
 import threading
 import time
@@ -15,9 +17,24 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from posit_bakery.log import stderr_console
 from posit_bakery.settings import SETTINGS
 
-# Grace period (seconds) to let a SIGTERM'd child exit cleanly — e.g. dgoss removing its
-# container via its EXIT trap — before we escalate to SIGKILL.
+# Grace period (seconds) to let a SIGTERM'd child group exit cleanly — e.g. dgoss removing
+# its container via its EXIT trap — before we escalate to SIGKILL.
 TERMINATE_GRACE_SECONDS = 10.0
+
+
+def _signal_process_group(proc: subprocess.Popen, sig: int) -> None:
+    """Send `sig` to the child's whole process group, so a wrapper (e.g. dgoss) and the
+    processes it spawned (e.g. docker) are all signalled together. Falls back to signalling
+    just the process where process groups are unavailable (non-POSIX) or the child is already
+    gone. Best-effort: never raises.
+    """
+    try:
+        os.killpg(os.getpgid(proc.pid), sig)
+    except (ProcessLookupError, PermissionError, OSError, AttributeError):
+        try:
+            proc.send_signal(sig)
+        except Exception:
+            pass
 
 
 @dataclass
@@ -99,7 +116,12 @@ class ParallelShellExecutor:
         start = time.monotonic()
         try:
             proc = subprocess.Popen(
-                task.cmd, env=task.env, cwd=task.cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                task.cmd,
+                env=task.env,
+                cwd=task.cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True,
             )
         except Exception as exc:  # spawn failures (FileNotFoundError, PermissionError, ...)
             return ShellResult(
@@ -135,37 +157,25 @@ class ParallelShellExecutor:
 
     @staticmethod
     def _stop(proc: subprocess.Popen, grace: float = TERMINATE_GRACE_SECONDS) -> None:
-        """Stop a child gracefully: SIGTERM, wait up to grace, then SIGKILL if still alive."""
-        try:
-            proc.terminate()
-        except Exception:
-            return
+        """Stop a child group gracefully: SIGTERM the group, wait up to grace, then SIGKILL it."""
+        _signal_process_group(proc, signal.SIGTERM)
         try:
             proc.wait(timeout=grace)
         except subprocess.TimeoutExpired:
-            try:
-                proc.kill()
-            except Exception:
-                pass
+            _signal_process_group(proc, signal.SIGKILL)
 
     def _terminate_active(self, grace: float = TERMINATE_GRACE_SECONDS) -> None:
-        """Terminate every in-flight child: SIGTERM all, then SIGKILL stragglers after a shared grace window."""
+        """Terminate every in-flight child group: SIGTERM all, then SIGKILL stragglers after a shared grace window."""
         with self._lock:
             procs = list(self._active)
         for proc in procs:
-            try:
-                proc.terminate()
-            except Exception:
-                pass
+            _signal_process_group(proc, signal.SIGTERM)
         deadline = time.monotonic() + grace
         for proc in procs:
             try:
                 proc.wait(timeout=max(0.0, deadline - time.monotonic()))
             except subprocess.TimeoutExpired:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
+                _signal_process_group(proc, signal.SIGKILL)
             except Exception:
                 pass
 
