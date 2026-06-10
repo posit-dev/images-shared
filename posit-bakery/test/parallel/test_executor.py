@@ -181,30 +181,44 @@ class TestParallelShellExecutorTimeout:
         assert results[0].timed_out is False
         assert results[0].ok is True
 
-    def test_timeout_terminates_whole_process_group(self, tmp_path):
-        import time as _t
-
+    def test_terminate_kills_whole_process_group(self, tmp_path):
+        # A parent task spawns a grandchild that writes an incrementing heartbeat. We wait until the
+        # grandchild is actually writing (readiness) and THEN interrupt -- rather than relying on a
+        # fixed timer that races interpreter startup under heavy CI parallelism. If only the parent
+        # were signalled, the reparented grandchild would keep writing; terminating the whole process
+        # group stops it.
         hb = tmp_path / "heartbeat"
         grandchild_src = (
             "import time\n"
-            f"i = 0\n"
-            f"while True:\n"
+            "i = 0\n"
+            "while True:\n"
             f"    open({str(hb)!r}, 'w').write(str(i))\n"
-            f"    i += 1\n"
-            f"    time.sleep(0.05)\n"
+            "    i += 1\n"
+            "    time.sleep(0.05)\n"
         )
-        # Parent spawns the grandchild (which inherits the parent's new session/process group)
-        # and waits on it. If only the parent were killed, the reparented grandchild would keep
-        # writing the heartbeat; killing the whole group stops it.
         parent_src = "import subprocess, sys\ng = subprocess.Popen([sys.executable, '-c', sys.argv[1]])\ng.wait()\n"
-        tasks = [ShellTask(key="t", cmd=[sys.executable, "-c", parent_src, grandchild_src], timeout=0.5)]
-        self._executor(1).run(tasks)
+        tasks = [ShellTask(key="t", cmd=[sys.executable, "-c", parent_src, grandchild_src])]
 
-        _t.sleep(0.3)
+        def fire():
+            # Wait until the grandchild is up and writing, then interrupt; gating on readiness
+            # (rather than a fixed delay) keeps this deterministic under any runner load.
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline and not hb.exists():
+                time.sleep(0.02)
+            time.sleep(0.1)  # let the grandchild record a few beats
+            os.kill(os.getpid(), signal.SIGINT)
+
+        threading.Thread(target=fire, daemon=True).start()
+        try:
+            self._executor(1).run(tasks)
+        except KeyboardInterrupt:
+            pass
+
+        assert hb.exists()  # grandchild started and wrote at least once
         v1 = hb.read_text()
-        _t.sleep(0.5)
+        time.sleep(0.5)
         v2 = hb.read_text()
-        assert v1 == v2  # grandchild stopped writing -> the entire process group was terminated
+        assert v1 == v2  # heartbeat frozen -> the whole process group (incl. grandchild) was terminated
 
 
 class TestParallelShellExecutorInterrupt:
