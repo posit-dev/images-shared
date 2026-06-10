@@ -50,6 +50,7 @@ class DGossSuite:
                     cwd=self.context,
                     label=str(dgoss_command.image_target),
                     payload=dgoss_command,
+                    timeout=dgoss_command.timeout if dgoss_command.timeout > 0 else None,
                 )
             )
 
@@ -65,6 +66,25 @@ class DGossSuite:
             image_subdir = results_dir / target.image_name
             image_subdir.mkdir(parents=True, exist_ok=True)
             results_file = image_subdir / f"{target.uid}.json"
+
+            if result.timed_out:
+                log.error(f"dgoss for image '{str(target)}' timed out after {dgoss_command.timeout}s")
+                errors.append(
+                    BakeryDGossError(
+                        f"dgoss execution timed out for image '{str(target)}' after {dgoss_command.timeout}s",
+                        "dgoss",
+                        cmd=dgoss_command.command,
+                        stdout=result.stdout,
+                        stderr=result.stderr,
+                        parse_error=result.exception,
+                        exit_code=result.returncode if result.returncode is not None else 1,
+                        metadata={
+                            "environment_variables": dgoss_command.dgoss_environment,
+                            "timeout": dgoss_command.timeout,
+                        },
+                    )
+                )
+                return
 
             # A spawn failure (e.g. dgoss binary missing) is an execution error, not a test failure.
             if result.exception is not None:
