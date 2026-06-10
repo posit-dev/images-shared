@@ -104,6 +104,7 @@ class ParallelShellExecutor:
         self._use_live = use_live
         self._active: set[subprocess.Popen] = set()
         self._lock = threading.Lock()
+        self._shutdown = False
 
     def _resolve_use_live(self, n_tasks: int) -> bool:
         """Decide whether to render a live table: explicit override, else TTY + not quiet + >1 task."""
@@ -129,7 +130,25 @@ class ParallelShellExecutor:
             )
 
         with self._lock:
-            self._active.add(proc)
+            if self._shutdown:
+                interrupted = True
+            else:
+                self._active.add(proc)
+                interrupted = False
+        if interrupted:
+            # An interrupt began before this child was registered; stop it now so it
+            # cannot escape termination. The returned result is discarded as run() unwinds.
+            self._stop(proc)
+            stdout, stderr = proc.communicate()
+            return ShellResult(
+                task=task,
+                returncode=proc.returncode,
+                stdout=stdout or b"",
+                stderr=stderr or b"",
+                duration=time.monotonic() - start,
+                exception=None,
+                timed_out=False,
+            )
         timed_out = False
         exception: Exception | None = None
         timeout = task.timeout if (task.timeout is not None and task.timeout > 0) else None
@@ -194,6 +213,7 @@ class ParallelShellExecutor:
         if not tasks:
             return []
 
+        self._shutdown = False
         use_live = self._resolve_use_live(len(tasks))
         results_by_key: dict[str, ShellResult] = {}
         progress: Progress | None = None
@@ -234,7 +254,10 @@ class ParallelShellExecutor:
                 future_map = {pool.submit(self._run_one, task): task for task in tasks}
                 consume(future_map)
         except BaseException:
-            # Interrupted (e.g. Ctrl-C): drop queued tasks and stop running children, then propagate.
+            # Interrupted (e.g. Ctrl-C): stop accepting/continuing work, drop queued tasks,
+            # and terminate running children, then propagate.
+            with self._lock:
+                self._shutdown = True
             pool.shutdown(wait=False, cancel_futures=True)
             self._terminate_active()
             raise

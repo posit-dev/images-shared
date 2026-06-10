@@ -238,3 +238,17 @@ class TestParallelShellExecutorInterrupt:
         assert ended == 0  # nothing ran to completion (running tasks were killed)
         assert started < 8  # queued tasks were cancelled, not launched
         assert elapsed < 3  # returned promptly, did not drain the full queue
+
+    def test_run_one_stops_child_when_shutdown_already_started(self):
+        # If an interrupt has already flipped the shutdown flag, a child spawned by a
+        # straggler worker must be stopped immediately rather than run to completion.
+        ex = ParallelShellExecutor(max_workers=1, console=Console(file=io.StringIO()), use_live=False)
+        with ex._lock:
+            ex._shutdown = True
+        task = ShellTask(key="t", cmd=[sys.executable, "-c", "import time; time.sleep(30)"])
+        start = time.monotonic()
+        result = ex._run_one(task)
+        elapsed = time.monotonic() - start
+        assert elapsed < 3  # stopped promptly, not waited out for 30s
+        assert result.returncode != 0  # the child was signalled, not a clean exit
+        assert ex._active == set()  # never registered (or already discarded)
