@@ -18,6 +18,7 @@ class TagPatternFilter(str, Enum):
     LATEST_PATCH = "latestPatch"  # Matches matrix rows that are the latest patch for their minor combination.
     PRIMARY_OS = "primaryOS"  # Matches image targets using the primary OS.
     PRIMARY_VARIANT = "primaryVariant"  # Matches image targets of the primary variant.
+    CHANNEL_LATEST = "channelLatest"  # Suppresses tags when the build targets an older-than-head channel version.
 
 
 class TagPattern(BakeryYAMLModel):
@@ -129,19 +130,19 @@ def default_tag_patterns() -> list[TagPattern]:
         *_shared_latest_tag_patterns(),
         TagPattern(
             patterns=["{{ Channel }}-{{ OS }}-{{ Variant }}"],
-            only=[TagPatternFilter.ALL],
+            only=[TagPatternFilter.CHANNEL_LATEST],
         ),
         TagPattern(
             patterns=["{{ Channel }}-{{ Variant }}"],
-            only=[TagPatternFilter.PRIMARY_OS],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS],
         ),
         TagPattern(
             patterns=["{{ Channel }}-{{ OS }}"],
-            only=[TagPatternFilter.PRIMARY_VARIANT],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_VARIANT],
         ),
         TagPattern(
             patterns=["{{ Channel }}"],
-            only=[TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
     ]
 

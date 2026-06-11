@@ -17,7 +17,7 @@ from posit_bakery.config.image.posit_product.const import (
     CONNECT_DAILY_URL,
     DOWNLOADS_JSON_URL,
 )
-from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
+from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError, VersionSubstitutionError
 from posit_bakery.config.shared import OSFamilyEnum
 from posit_bakery.util import cached_session
 
@@ -27,6 +27,7 @@ class ReleaseChannelResult(BaseModel):
 
     version: Annotated[str, Field(pattern=CALVER_REGEX_PATTERN)]
     download_url: HttpUrl
+    channel_latest: bool = True
 
     @computed_field
     @property
@@ -50,7 +51,10 @@ class ReleaseChannelPath:
 
     def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
         """Fetches data from the channel URL and resolves the data using the given resolvers."""
+        channel_url = self.channel_url.format_map(metadata)
+
         if version_override is not None and self.version_templatable:
+            # PPM: build artifact URL from template, then probe it and check channel head.
             result: dict = {"version": version_override}
             url_safe_result = {f"url_safe_{k}": quote(str(v), safe="") for k, v in result.items()}
             for key, resolver in self.resolver_map.items():
@@ -58,10 +62,35 @@ class ReleaseChannelPath:
                     continue
                 if isinstance(resolver, str):
                     result[key] = resolver.format(**metadata, **result, **url_safe_result)
-            return ReleaseChannelResult(**result)
+
+            session = cached_session()
+
+            # Determine channel_latest by comparing override against the current channel version.
+            channel_latest = False
+            current_response = session.get(channel_url)
+            current_response.raise_for_status()
+            try:
+                current_data = current_response.json()
+            except requests.exceptions.JSONDecodeError:
+                current_data = current_response.text
+            # PPM channel endpoints return a plain-text version string, not JSON.
+            # channel_latest stays False if the response is JSON (no known products do this).
+            if isinstance(current_data, str):
+                channel_latest = version_override.strip() == current_data.strip()
+
+            # HEAD probe to confirm the artifact exists.
+            artifact_url = str(result.get("download_url", ""))
+            if artifact_url:
+                head_response = session.head(artifact_url, allow_redirects=True)
+                if not head_response.ok:
+                    raise ArtifactNotAvailableError(
+                        f"Artifact not available at {artifact_url!r}: HTTP {head_response.status_code}"
+                    )
+
+            return ReleaseChannelResult(**result, channel_latest=channel_latest)
 
         session = cached_session()
-        response = session.get(self.channel_url)
+        response = session.get(channel_url)
         response.raise_for_status()
         try:
             data = response.json()
@@ -78,12 +107,42 @@ class ReleaseChannelPath:
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
 
-        if version_override is not None and result.get("version") != version_override:
-            raise DispatchVersionMismatchError(
-                f"Dispatched version {version_override!r} does not match manifest version "
-                f"{result.get('version')!r} at {self.channel_url!r}. "
-                f"The upstream manifest has not propagated the dispatched build yet."
-            )
+        if version_override is not None:
+            # Manifest-based products (Connect, Workbench): substitute the version token in
+            # the manifest URL and probe the resulting artifact URL.
+            manifest_version: str = result.get("version", "")
+            url_str: str = result.get("download_url", "")
+
+            # Try each known transform until we find the manifest version in the URL.
+            candidates = [
+                (manifest_version, version_override),
+                (quote(manifest_version, safe=""), quote(version_override, safe="")),
+                (manifest_version.replace("+", "-"), version_override.replace("+", "-")),
+            ]
+            substituted_url = None
+            for needle, replacement in candidates:
+                if needle and needle in url_str:
+                    substituted_url = url_str.replace(needle, replacement)
+                    break
+
+            if substituted_url is None:
+                raise VersionSubstitutionError(
+                    f"Cannot substitute version {version_override!r} into URL {url_str!r}: "
+                    f"manifest version {manifest_version!r} not found under any known transform."
+                )
+
+            result["download_url"] = substituted_url
+            result["version"] = version_override
+
+            channel_latest = version_override.strip() == manifest_version.strip()
+
+            head_response = session.head(substituted_url, allow_redirects=True)
+            if not head_response.ok:
+                raise ArtifactNotAvailableError(
+                    f"Artifact not available at {substituted_url!r}: HTTP {head_response.status_code}"
+                )
+
+            return ReleaseChannelResult(**result, channel_latest=channel_latest)
 
         return ReleaseChannelResult(**result)
 
@@ -287,6 +346,7 @@ def get_product_artifact_by_channel(
     channel: ReleaseChannelEnum,
     os: BuildOS,
     version_override: str | None = None,
+    release_branch: str = "latest",
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
     if product not in product_release_channel_url_map:
@@ -295,5 +355,6 @@ def get_product_artifact_by_channel(
         raise ValueError(f"Channel {channel} is not supported for product {product}.")
 
     metadata = _make_resolver_metadata(os, product)
+    metadata["release_branch"] = release_branch
 
     return product_release_channel_url_map[product][channel].get(metadata, version_override)

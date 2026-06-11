@@ -11,7 +11,10 @@ from pytest_bdd import scenarios, then, parsers
 from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
-from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
+from posit_bakery.config.image.posit_product.errors import (
+    ArtifactNotAvailableError,
+    VersionSubstitutionError,
+)
 
 scenarios(
     "cli/build.feature",
@@ -32,12 +35,23 @@ def mock_build_config():
         yield mock
 
 
-class TestDispatchVersionMismatch:
-    def test_mismatch_exits_with_clean_message(self):
-        """DispatchVersionMismatchError should print a plain message, not a traceback."""
-        msg = "Dispatched version '9999.99.0' does not match manifest version '2026.04.0'"
+class TestBuildErrorHandling:
+    def test_artifact_not_available_exits_with_clean_message(self):
+        """ArtifactNotAvailableError should print a plain message, not a traceback."""
+        msg = "Artifact not available for version '2026.04.0-dev+5-gabcdef'"
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
-            mock.from_context.side_effect = DispatchVersionMismatchError(msg)
+            mock.from_context.side_effect = ArtifactNotAvailableError(msg)
+            result = runner.invoke(app, ["build", "--context", BASIC_CONTEXT], catch_exceptions=False)
+
+        assert result.exit_code == 1
+        assert msg in result.output
+        assert "Traceback" not in result.output
+
+    def test_version_substitution_error_exits_with_clean_message(self):
+        """VersionSubstitutionError should print a plain message, not a traceback."""
+        msg = "Cannot substitute '2026.04.0-dev+5-gabcdef' into URL"
+        with patch("posit_bakery.cli.build.BakeryConfig") as mock:
+            mock.from_context.side_effect = VersionSubstitutionError(msg)
             result = runner.invoke(app, ["build", "--context", BASIC_CONTEXT], catch_exceptions=False)
 
         assert result.exit_code == 1

@@ -10,7 +10,15 @@ import pytest
 from pydantic import ValidationError
 
 import posit_bakery
-from posit_bakery.config.config import BakeryConfigDocument, BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.config.config import (
+    BakeryConfigDocument,
+    BakeryConfig,
+    BakeryConfigFilter,
+    BakerySettings,
+    _apply_dev_spec,
+    _extract_calver_minor,
+)
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -1313,7 +1321,7 @@ class TestBakeryConfig:
 
             # Install R
             RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                find . -type f -name '[rR]-4.5.1.*\.(deb|rpm)' -delete
+                find . -type f -name '[rR]-4.5.1.*\\.(deb|rpm)' -delete
 
             # Install Quarto
             RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
@@ -2215,3 +2223,73 @@ class TestBakeryConfig:
         mock_ghcr_client.assert_called_once()
         mock_ghcr_client_instance.get_package_versions.assert_called_once()
         mock_ghcr_client_instance.delete_package_version.assert_not_called()
+
+
+class TestApplyDevSpecReleaseBranch:
+    """release_branch is set from YYYY.MM when version is set, or directly from spec."""
+
+    def _make_image(self, tmp_path):
+        """Return a minimal Image with one workbench daily dev version."""
+        doc = BakeryConfigDocument(
+            base_path=tmp_path,
+            **{
+                "repository": {"url": "https://github.com/posit-dev/test"},
+                "images": [
+                    {
+                        "name": "test-image",
+                        "devVersions": [
+                            {
+                                "sourceType": "stream",
+                                "product": "workbench",
+                                "channel": "daily",
+                                "os": [{"name": "Ubuntu 24.04", "primary": True}],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        return doc.images[0]
+
+    def test_version_sets_calver_release_branch(self, tmp_path):
+        """version in DevBuildSpec pins version and derives YYYY.MM release_branch."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(version="2026.06.0-daily+143-gABC")
+        settings = BakerySettings(
+            dev_versions=DevVersionInclusionEnum.ONLY,
+            dev_spec=spec,
+        )
+        _apply_dev_spec(image, settings)
+        dv = image.devVersions[0]
+        assert dv.version_override == "2026.06.0-daily+143-gABC"
+        assert dv.release_branch == "2026.06"
+
+    def test_release_branch_only_sets_branch(self, tmp_path):
+        """release_branch in DevBuildSpec sets release_branch directly; version_override stays None."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(release_branch="apple-blossom")
+        settings = BakerySettings(
+            dev_versions=DevVersionInclusionEnum.ONLY,
+            dev_spec=spec,
+        )
+        _apply_dev_spec(image, settings)
+        dv = image.devVersions[0]
+        assert dv.version_override is None
+        assert dv.release_branch == "apple-blossom"
+
+    def test_version_takes_precedence_over_release_branch(self, tmp_path):
+        """When both are set, version wins; release_branch is YYYY.MM, not spec.release_branch."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(version="2026.06.0-daily+143-gABC", release_branch="apple-blossom")
+        settings = BakerySettings(
+            dev_versions=DevVersionInclusionEnum.ONLY,
+            dev_spec=spec,
+        )
+        _apply_dev_spec(image, settings)
+        dv = image.devVersions[0]
+        assert dv.version_override == "2026.06.0-daily+143-gABC"
+        assert dv.release_branch == "2026.06"
+
+    def test_extract_calver_minor_rejects_trailing_garbage(self):
+        with pytest.raises(ValueError, match="not a valid CalVer"):
+            _extract_calver_minor("2026.06.0-daily+143 trailing garbage")

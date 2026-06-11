@@ -346,6 +346,16 @@ class ImageTarget(BaseModel):
         return self.image_variant.primary
 
     @property
+    def is_channel_latest(self) -> bool:
+        """Check whether this build targets the current channel head.
+
+        Returns False when the build was dispatched with an older version override so
+        that floating {{ Channel }} tags (which should always point at the head) are
+        suppressed. Defaults to True for non-channel sources.
+        """
+        return bool(self.image_version.metadata.get("channel_latest", True))
+
+    @property
     def push_sort_key(self) -> tuple[str, bool, "ParsedVersion", int, str, str, str]:
         """Deterministic ordering for push to ordered-display registries (e.g. Docker Hub).
 
@@ -412,7 +422,12 @@ class ImageTarget(BaseModel):
 
         filtered_patterns = []
         for tag_pattern in unique_patterns:
-            # Only go through additional filters if ALL is not applied.
+            # CHANNEL_LATEST gates floating channel tags — patterns using only ALL skip this
+            # check and always emit.
+            if TagPatternFilter.CHANNEL_LATEST in tag_pattern.only and not self.is_channel_latest:
+                continue
+
+            # Only go through the remaining filters if ALL is not applied.
             if TagPatternFilter.ALL not in tag_pattern.only:
                 # Skip pattern marked as latest if not latest version.
                 if TagPatternFilter.LATEST in tag_pattern.only and not self.is_latest:

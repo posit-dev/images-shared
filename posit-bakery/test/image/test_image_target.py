@@ -319,6 +319,39 @@ class TestImageTarget:
         # Clean up
         del target.image_version.metadata["release_channel"]
 
+    def test_is_channel_latest_defaults_true(self, basic_standard_image_target):
+        """Targets without channel_latest metadata report True (safe default)."""
+        assert basic_standard_image_target.image_version.metadata.get("channel_latest") is None
+        assert basic_standard_image_target.is_channel_latest is True
+
+    def test_is_channel_latest_false_suppresses_channel_tags(self, basic_standard_image_target):
+        """Floating channel tags are suppressed when channel_latest is False."""
+        target = basic_standard_image_target
+        target.image_version.metadata["release_channel"] = ReleaseChannelEnum.DAILY
+        target.image_version.metadata["channel_latest"] = False
+
+        assert target.is_channel_latest is False
+
+        # Version-pinned tags still emit.
+        assert any("1.0.0" in s for s in target.tag_suffixes)
+        # Floating channel tags do not.
+        assert not any("daily" in s for s in target.tag_suffixes)
+
+        del target.image_version.metadata["release_channel"]
+        del target.image_version.metadata["channel_latest"]
+
+    def test_is_channel_latest_true_emits_channel_tags(self, basic_standard_image_target):
+        """Floating channel tags emit when channel_latest is True."""
+        target = basic_standard_image_target
+        target.image_version.metadata["release_channel"] = ReleaseChannelEnum.DAILY
+        target.image_version.metadata["channel_latest"] = True
+
+        assert target.is_channel_latest is True
+        assert any("daily" in s for s in target.tag_suffixes)
+
+        del target.image_version.metadata["release_channel"]
+        del target.image_version.metadata["channel_latest"]
+
     def test_tag_patterns_deduplication(self, get_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
         basic_config_obj = get_config_obj("basic")
