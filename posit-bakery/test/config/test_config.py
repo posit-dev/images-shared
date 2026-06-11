@@ -1395,7 +1395,7 @@ class TestBakeryConfig:
 
             # Install R
             RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                find . -type f -name '[rR]-4.5.1.*\.(deb|rpm)' -delete
+                find . -type f -name '[rR]-4.5.1.*\\.(deb|rpm)' -delete
 
             # Install Quarto
             RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
