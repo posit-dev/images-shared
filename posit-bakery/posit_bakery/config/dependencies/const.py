@@ -24,6 +24,8 @@ QUARTO_PREVIOUS_VERSIONS_URL = (
 # All available Positron releases for Workbench
 # The URL contains an architecture segment (x86_64 or arm64).
 POSITRON_RELEASES_URL_TEMPLATE = "https://cdn.posit.co/positron/releases/pwb/{arch}/all-releases.json"
+# Latest Positron daily build for Workbench
+POSITRON_DAILY_URL_TEMPLATE = "https://cdn.posit.co/positron/dailies/pwb/{arch}/releases.json"
 
 
 @yaml_object(yaml)

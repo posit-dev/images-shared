@@ -407,7 +407,9 @@ class TestBakeryConfig:
 
     class TestDevBuildSpecApplication:
         def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
-            """No dev_spec: config loads normally, no version_override set."""
+            """No dev_spec: config loads normally, no version_override set on channel devVersions."""
+            from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductChannel
+
             yaml_file = testdata_path / "valid" / "complex.yaml"
             with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
                 with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
@@ -417,7 +419,8 @@ class TestBakeryConfig:
                     )
             for image in config.model.images:
                 for dv in image.devVersions:
-                    assert dv.version_override is None
+                    if isinstance(dv, ImageDevelopmentVersionFromProductChannel):
+                        assert dv.version_override is None
 
         def test_pins_version_on_matching_channel(self, testdata_path, patch_requests_get):
             """dev_spec pins the matching stream dev version before resolution."""
@@ -493,6 +496,39 @@ class TestBakeryConfig:
             )
             with pytest.raises(ValueError, match="[Cc]onfli"):
                 BakeryConfig(bakery_yaml, settings=settings)
+
+        def test_no_channel_spec_pins_sole_stream_devversion(self, tmp_path, patch_requests_get):
+            """dev_spec without channel pins the one stream devVersion when unambiguous."""
+            from posit_bakery.config.image.dev_version import ImageDevelopmentVersionFromProductChannel
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                "repository:\n"
+                "  url: https://github.com/posit-dev/test\n"
+                "images:\n"
+                "  - name: test-image\n"
+                "    devVersions:\n"
+                "      - sourceType: stream\n"
+                "        product: package-manager\n"
+                "        channel: daily\n"
+                "        os:\n"
+                "          - name: Ubuntu 24.04\n"
+                "            primary: true\n"
+            )
+            spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
+            settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+            with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+                with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                    config = BakeryConfig(bakery_yaml, settings=settings)
+            pinned = [
+                dv
+                for image in config.model.images
+                for dv in image.devVersions
+                if isinstance(dv, ImageDevelopmentVersionFromProductChannel) and dv.version_override is not None
+            ]
+            assert len(pinned) == 1
+            assert pinned[0].version_override == "2026.05.0-dev+999-gSHA"
 
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",

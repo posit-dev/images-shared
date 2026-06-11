@@ -32,6 +32,8 @@ CONNECT_DAILY = PRODUCT_TESTDATA_DIR / "connect_latest-packages.json"
 PACKAGE_MANAGER_PREVIEW = PRODUCT_TESTDATA_DIR / "rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_DAILY = PRODUCT_TESTDATA_DIR / "rstudio-pm-rc-latest.txt"
 WORKBENCH_DAILY = PRODUCT_TESTDATA_DIR / "workbench_index.json"
+POSITRON_DAILY_X86_64 = DEPENDENCIES_TESTDATA_DIR / "positron_daily_x86_64.json"
+POSITRON_DAILY_ARM64 = DEPENDENCIES_TESTDATA_DIR / "positron_daily_arm64.json"
 
 
 @pytest.fixture
@@ -71,6 +73,10 @@ def patch_testdata_response(url: str):
         mock_response.text = QUARTO_PREVIOUS_VERSIONS.read_text()
     elif url == dependencies_const.POSITRON_RELEASES_URL_TEMPLATE.format(arch="x86_64"):
         mock_response.json.return_value = json.loads(POSITRON_RELEASES.read_text())
+    elif url == dependencies_const.POSITRON_DAILY_URL_TEMPLATE.format(arch="x86_64"):
+        mock_response.json.return_value = json.loads(POSITRON_DAILY_X86_64.read_text())
+    elif url == dependencies_const.POSITRON_DAILY_URL_TEMPLATE.format(arch="arm64"):
+        mock_response.json.return_value = json.loads(POSITRON_DAILY_ARM64.read_text())
     # Mock responses for Posit products
     elif url == product_const.DOWNLOADS_JSON_URL:
         mock_response.json.return_value = json.loads(DOWNLOADS_JSON.read_text())

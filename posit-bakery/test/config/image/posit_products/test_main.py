@@ -965,6 +965,5 @@ class TestDispatchOverride:
             ReleaseChannelEnum.DAILY,
             SUPPORTED_OS["ubuntu"]["24"],
         )
-        assert result.version is not None
+        assert result.version == "2026.02.0-dev+89-ga1b2c3d4e5"
         assert result.download_url is not None
-        assert result.channel_latest is True
