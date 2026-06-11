@@ -112,6 +112,20 @@ class TestImageVersion:
         assert "WARNING" in caplog.text
         assert "Duplicate OS defined in the image configuration: Ubuntu 22.04" in caplog.text
 
+    def test_conflicting_artifact_os_raises(self):
+        """Duplicate OS entries with different artifactOs values are a config error."""
+        mock_parent = MagicMock(spec=Image)
+        mock_parent.path = Path("/tmp/path")
+        with pytest.raises(ValidationError, match="Conflicting artifactOs values for OS 'scratch'"):
+            ImageVersion(
+                parent=mock_parent,
+                name="1.0.0",
+                os=[
+                    {"name": "scratch", "artifactOs": "ubuntu-22.04", "primary": True},
+                    {"name": "scratch", "artifactOs": "ubuntu-24.04"},
+                ],
+            )
+
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
         i = ImageVersion(name="1.0.0", os=[{"name": "Ubuntu 22.04"}])

@@ -40,7 +40,15 @@ class OSValidatorMixin:
         """
         unique_oses = set(os)
         for unique_os in unique_oses:
-            if os.count(unique_os) > 1:
+            dupes = [o for o in os if o == unique_os]
+            if len(dupes) > 1:
+                artifact_os_values = {o.artifactOs for o in dupes}
+                if len(artifact_os_values) > 1:
+                    raise ValueError(
+                        f"Conflicting artifactOs values for OS '{unique_os.name}': "
+                        f"{sorted(str(v) for v in artifact_os_values)}. "
+                        "Each OS entry must have a consistent artifactOs."
+                    )
                 log.warning(f"Duplicate OS defined in the image configuration: {unique_os.name}")
 
         return sorted(list(unique_oses), key=lambda o: o.name)
