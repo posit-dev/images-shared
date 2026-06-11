@@ -860,6 +860,7 @@ class TestDispatchOverride:
 
     def test_connect_daily_override_substitutes_url(self, patch_requests_get):
         """Connect override substitutes the version in the manifest URL."""
+        patch_requests_get.return_value.head.return_value.ok = True
         override = "2025.04.0-dev+5-gabcdef1234"
         result = get_product_artifact_by_channel(
             ProductEnum.CONNECT,
@@ -873,6 +874,7 @@ class TestDispatchOverride:
 
     def test_workbench_daily_override_substitutes_url(self, patch_requests_get):
         """Workbench override substitutes the version in the manifest URL."""
+        patch_requests_get.return_value.head.return_value.ok = True
         override = "2025.04.0-daily+300.pro3"
         result = get_product_artifact_by_channel(
             ProductEnum.WORKBENCH,
@@ -904,6 +906,7 @@ class TestDispatchOverride:
 
     def test_connect_channel_latest_true_when_override_equals_head(self, patch_requests_get):
         """channel_latest is True when the override matches the Connect manifest version."""
+        patch_requests_get.return_value.head.return_value.ok = True
         # Connect daily fixture version is "2025.04.0-dev+10-gbe0a4a3d31"
         override = "2025.04.0-dev+10-gbe0a4a3d31"
         result = get_product_artifact_by_channel(
