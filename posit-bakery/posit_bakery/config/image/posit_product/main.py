@@ -73,6 +73,8 @@ class ReleaseChannelPath:
                 current_data = current_response.json()
             except requests.exceptions.JSONDecodeError:
                 current_data = current_response.text
+            # PPM channel endpoints return a plain-text version string, not JSON.
+            # channel_latest stays False if the response is JSON (no known products do this).
             if isinstance(current_data, str):
                 channel_latest = version_override.strip() == current_data.strip()
 

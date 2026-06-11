@@ -12,7 +12,6 @@ from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
-    DispatchVersionMismatchError,
     VersionSubstitutionError,
 )
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -260,7 +259,7 @@ def build(
 
     try:
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
-    except (DispatchVersionMismatchError, ArtifactNotAvailableError, VersionSubstitutionError) as e:
+    except (ArtifactNotAvailableError, VersionSubstitutionError) as e:
         stderr_console.print(f"❌ {e}", style="error")
         raise typer.Exit(code=1)
 

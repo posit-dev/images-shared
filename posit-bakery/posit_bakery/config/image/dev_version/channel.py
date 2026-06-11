@@ -115,6 +115,7 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                 self.product,
                 self.channel,
                 _os.buildOS,
+                version_override=self.version_override,
                 release_branch=self.release_branch or "latest",
             )
             if generalize_architecture:

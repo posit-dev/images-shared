@@ -422,8 +422,8 @@ class ImageTarget(BaseModel):
 
         filtered_patterns = []
         for tag_pattern in unique_patterns:
-            # CHANNEL_LATEST is checked unconditionally — it must fire even for patterns
-            # that carry ALL, because floating channel tags must never point at a stale build.
+            # CHANNEL_LATEST gates floating channel tags — patterns using only ALL skip this
+            # check and always emit.
             if TagPatternFilter.CHANNEL_LATEST in tag_pattern.only and not self.is_channel_latest:
                 continue
 
