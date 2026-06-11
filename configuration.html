@@ -783,10 +783,7 @@ window.onload = function () {
   <li><a href="#nameemail" id="toc-nameemail" class="nav-link" data-scroll-target="#nameemail">NameEmail</a></li>
   <li><a href="#tagpattern" id="toc-tagpattern" class="nav-link" data-scroll-target="#tagpattern">TagPattern</a></li>
   <li><a href="#tooloptions" id="toc-tooloptions" class="nav-link" data-scroll-target="#tooloptions">ToolOptions</a></li>
-  </ul></li>
-  <li><a href="#environment-variables" id="toc-environment-variables" class="nav-link" data-scroll-target="#environment-variables">Environment Variables</a>
-  <ul class="collapse">
-  <li><a href="#example-usage" id="toc-example-usage" class="nav-link" data-scroll-target="#example-usage">Example Usage</a></li>
+  <li><a href="#devbuildspec" id="toc-devbuildspec" class="nav-link" data-scroll-target="#devbuildspec">DevBuildSpec</a></li>
   </ul></li>
   <li><a href="#see-also" id="toc-see-also" class="nav-link" data-scroll-target="#see-also">See Also</a></li>
   </ul>
@@ -1892,38 +1889,53 @@ Note
 </section>
 </section>
 </section>
-</section>
-<section id="environment-variables" class="level2">
-<h2 class="anchored" data-anchor-id="environment-variables">Environment Variables</h2>
-<p>The following environment variables can be used to configure Bakery behavior at runtime when building a project targeting Workbench Daily builds.</p>
+<section id="devbuildspec" class="level3">
+<h3 class="anchored" data-anchor-id="devbuildspec">DevBuildSpec</h3>
+<p>A DevBuildSpec is a typed payload passed to the <code>--dev-spec</code> CLI option to configure development (daily) version builds. It supports either a dispatch-pinned version or a branch-targeted discovery build. At least one of <code>version</code> or <code>release_branch</code> must be set.</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Variable</th>
+<th>Field</th>
 <th>Description</th>
-<th>Default</th>
+<th>Default Value</th>
+<th>Example</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>BAKERY_WORKBENCH_RELEASE_BRANCH</code></td>
-<td>Override the Workbench dailies release branch used when fetching daily build artifacts. Workbench tracks multiple release branches (e.g., <code>globemaster-allium</code>, <code>apple-blossom</code>) for daily builds. Set this variable to build a daily development version from a previous release’s branch instead of the latest.</td>
-<td><code>latest</code></td>
+<td><code>version</code><br><em>string</em></td>
+<td>A specific development version to build (e.g., <code>2026.07.0-dev+345-gabc1234</code>). When set, <code>release_branch</code> is ignored — the branch is derived from the version’s <code>YYYY.MM</code> segment. Optional if <code>release_branch</code> is set.</td>
+<td>—</td>
+<td><code>2026.07.0-dev+345-gabc1234</code></td>
+</tr>
+<tr class="even">
+<td><code>channel</code><br><em>string</em></td>
+<td>The release channel for stream selection and disambiguation (e.g., <code>stable</code>, <code>preview</code>). Used whether or not <code>version</code> is set; must not conflict with <code>--dev-channel</code> if both are provided.</td>
+<td>—</td>
+<td><code>preview</code></td>
+</tr>
+<tr class="odd">
+<td><code>release_branch</code><br><em>string</em></td>
+<td>The release branch to fetch development artifacts from (e.g., <code>apple-blossom</code>, <code>2026.07</code>). Ignored when <code>version</code> is set. Required when <code>version</code> is not set.</td>
+<td>—</td>
+<td><code>apple-blossom</code></td>
 </tr>
 </tbody>
 </table>
-<section id="example-usage" class="level3">
-<h3 class="anchored" data-anchor-id="example-usage">Example Usage</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build the latest daily (default behavior)</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span>
+<section id="example-devbuildspec-usage" class="level4">
+<h4 class="anchored" data-anchor-id="example-devbuildspec-usage">Example DevBuildSpec Usage</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a specific pinned development version</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-spec</span> <span class="st">'{"version": "2026.07.0-dev+345-gabc1234"}'</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a daily from the "globemaster-allium" release branch</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="va">BAKERY_WORKBENCH_RELEASE_BRANCH</span><span class="op">=</span>globemaster-allium <span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Build from the "apple-blossom" release branch</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-spec</span> <span class="st">'{"release_branch": "apple-blossom"}'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
 </section>
 </section>
 <section id="see-also" class="level2">
