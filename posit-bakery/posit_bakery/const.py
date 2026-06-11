@@ -24,6 +24,8 @@ class GetTagsOutputFormat(str, Enum):
     UID = "uid"
 
 
+REGEX_OS_EXTENSION_PATTERN = r"^[a-zA-Z0-9_-]*$"
+REGEX_OS_TAG_DISPLAY_NAME_PATTERN = r"^[a-zA-Z0-9_.-]*$"
 REGEX_FULL_IMAGE_TAG_PATTERN = (
     r"^(?P<repository>[\w.\-_]+((?::\d+|)(?=/[a-z0-9._-]+/[a-z0-9._-]+))|)"
     r"(?:/|)(?P<image>[a-z0-9.\-_]+(?:/[a-z0-9.\-_]+|))(:(?P<tag>[\w.\-_]{1,127})|)$"
