@@ -31,6 +31,16 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             "get_version().",
         ),
     ]
+    resolved_channel_latest: Annotated[
+        bool,
+        Field(
+            exclude=True,
+            default=True,
+            description="Whether the resolved version equals the current channel head. "
+            "Populated by _resolve_os_urls(); used to suppress floating {{ Channel }} tags "
+            "for builds targeting older versions.",
+        ),
+    ]
     version_override: Annotated[
         str | None,
         Field(
@@ -118,13 +128,17 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
         """Resolve artifact URLs per-OS, excluding OSes whose platform
         is not yet available in the product channel.
 
-        Caches the version from the first successfully resolved OS so
-        that get_version() can return it without a redundant fetch.
+        Caches the version and channel_latest flag from the first successfully
+        resolved OS so that get_version() can return them without a redundant fetch.
         """
         # Local import avoids a circular import between channel.py and main.py.
-        from posit_bakery.config.image.posit_product.errors import DispatchVersionMismatchError
+        from posit_bakery.config.image.posit_product.errors import (
+            ArtifactNotAvailableError,
+            VersionSubstitutionError,
+        )
 
         self.resolved_version = None
+        self.resolved_channel_latest = True
         resolved = []
         for os_version in self.os:
             try:
@@ -142,12 +156,42 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
                     os_version.artifactDownloadURL = str(result.download_url)
                 if self.resolved_version is None:
                     self.resolved_version = result.version
+                    self.resolved_channel_latest = result.channel_latest
                 resolved.append(os_version)
-            except DispatchVersionMismatchError:
+            except (ArtifactNotAvailableError, VersionSubstitutionError):
                 raise
             except (ValueError, ValidationError, requests.RequestException) as e:
                 log.warning(f"Excluding OS '{os_version.name}' from {repr(self)}: {e}")
         return resolved
+
+    def as_image_version(self):
+        """Convert to a standard image version, adding channel_latest to metadata."""
+        # Local import mirrors the pattern in base.py to avoid any circular-import risk.
+        from posit_bakery.config.image.version import ImageVersion
+
+        resolved_os = self._resolve_os_urls()
+        if not resolved_os:
+            raise RuntimeError(f"No OSes could be resolved for {repr(self)}")
+
+        version = self.get_version()
+        metadata = {"channel_latest": self.resolved_channel_latest}
+        release_channel = self.get_release_channel()
+        if release_channel is not None:
+            metadata["release_channel"] = release_channel
+        return ImageVersion(
+            name=version,
+            subpath=f".dev-{version}".replace(" ", "-").lower(),
+            parent=self.parent,
+            extraRegistries=self.extraRegistries,
+            overrideRegistries=self.overrideRegistries,
+            os=resolved_os,
+            values=self.values,
+            latest=False,
+            dependencies=self.parent.resolve_dependency_versions(),
+            ephemeral=True,
+            isDevelopmentVersion=True,
+            metadata=metadata,
+        )
 
     def get_release_channel(self) -> ReleaseChannelEnum:
         """Return the release channel for this product channel development version.

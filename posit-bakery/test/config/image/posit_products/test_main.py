@@ -819,9 +819,14 @@ class TestGetProductArtifactByChannelReleaseBranch:
 
 
 class TestDispatchOverride:
-    def test_ppm_daily_override_renders_offline(self, mocker):
-        """Template streams must NOT hit the network when version_override is supplied."""
-        spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+    def test_ppm_daily_override_uses_template_url(self, mocker):
+        """PPM override builds the artifact URL from the template and probes it."""
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+        mock_session.return_value.head.return_value.ok = True
+
         override = "2026.05.0-dev+185-g8a23833f57"
         result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
@@ -829,13 +834,20 @@ class TestDispatchOverride:
             SUPPORTED_OS["ubuntu"]["24"],
             version_override=override,
         )
-        spy.assert_not_called()
         assert result.version == override
         assert "2026.05.0-dev%2B185-g8a23833f57" in str(result.download_url)
+        # Override differs from fixture head (2026.02.0-dev+89-...), so not channel latest.
+        assert result.channel_latest is False
+        mock_session.return_value.head.assert_called_once()
 
-    def test_ppm_preview_override_renders_offline(self, mocker):
-        """Preview stream is also templatable — no network on override."""
-        spy = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+    def test_ppm_preview_override_uses_template_url(self, mocker):
+        """PPM preview override builds the URL from template, probes, checks channel head."""
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+        mock_session.return_value.head.return_value.ok = True
+
         override = "2026.05.0-dev+185-g8a23833f57"
         result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
@@ -843,35 +855,83 @@ class TestDispatchOverride:
             SUPPORTED_OS["ubuntu"]["24"],
             version_override=override,
         )
-        spy.assert_not_called()
+        assert result.version == override
+        assert result.channel_latest is False
+
+    def test_connect_daily_override_substitutes_url(self, patch_requests_get):
+        """Connect override substitutes the version in the manifest URL."""
+        override = "2025.04.0-dev+5-gabcdef1234"
+        result = get_product_artifact_by_channel(
+            ProductEnum.CONNECT,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert result.version == override
+        assert "2025.04.0-dev%2B5-gabcdef1234" in str(result.download_url)
+        assert result.channel_latest is False
+
+    def test_workbench_daily_override_substitutes_url(self, patch_requests_get):
+        """Workbench override substitutes the version in the manifest URL."""
+        override = "2025.04.0-daily+300.pro3"
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert result.version == override
+        assert "2025.04.0-daily-300.pro3" in str(result.download_url)
+        assert result.channel_latest is False
+
+    def test_ppm_channel_latest_true_when_override_equals_head(self, mocker):
+        """channel_latest is True when the override exactly matches the channel head."""
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+        mock_session.return_value.head.return_value.ok = True
+
+        # PPM daily fixture head is "2026.02.0-dev+89-ga1b2c3d4e5"
+        override = "2026.02.0-dev+89-ga1b2c3d4e5"
+        result = get_product_artifact_by_channel(
+            ProductEnum.PACKAGE_MANAGER,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert result.channel_latest is True
+
+    def test_connect_channel_latest_true_when_override_equals_head(self, patch_requests_get):
+        """channel_latest is True when the override matches the Connect manifest version."""
+        # Connect daily fixture version is "2025.04.0-dev+10-gbe0a4a3d31"
+        override = "2025.04.0-dev+10-gbe0a4a3d31"
+        result = get_product_artifact_by_channel(
+            ProductEnum.CONNECT,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert result.channel_latest is True
         assert result.version == override
 
-    def test_connect_daily_override_mismatch_raises(self, patch_requests_get):
-        """Manifest streams must raise DispatchVersionMismatchError when versions differ."""
-        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+    def test_artifact_not_available_raises(self, patch_requests_get):
+        """A 404 HEAD on the substituted URL raises ArtifactNotAvailableError."""
+        from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError
 
-        with pytest.raises(DispatchVersionMismatchError):
+        patch_requests_get.return_value.head.return_value.ok = False
+        patch_requests_get.return_value.head.return_value.status_code = 404
+
+        with pytest.raises(ArtifactNotAvailableError):
             get_product_artifact_by_channel(
                 ProductEnum.CONNECT,
                 ReleaseChannelEnum.DAILY,
                 SUPPORTED_OS["ubuntu"]["24"],
-                version_override="9999.99.0-dev+1-gdeadbeef",
-            )
-
-    def test_workbench_daily_override_mismatch_raises(self, patch_requests_get):
-        """Workbench daily is a manifest stream — mismatch raises."""
-        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
-
-        with pytest.raises(DispatchVersionMismatchError):
-            get_product_artifact_by_channel(
-                ProductEnum.WORKBENCH,
-                ReleaseChannelEnum.DAILY,
-                SUPPORTED_OS["ubuntu"]["24"],
-                version_override="9999.99.0-daily+1.pro1",
+                version_override="2025.04.0-dev+5-gabcdef1234",
             )
 
     def test_no_override_scheduled_path_unchanged(self, patch_requests_get):
-        """With version_override=None, behavior is identical to before this task."""
+        """With version_override=None, behavior is identical to before this change."""
         result = get_product_artifact_by_channel(
             ProductEnum.PACKAGE_MANAGER,
             ReleaseChannelEnum.DAILY,
@@ -879,3 +939,4 @@ class TestDispatchOverride:
         )
         assert result.version is not None
         assert result.download_url is not None
+        assert result.channel_latest is True

@@ -341,7 +341,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         )
         dev_version.parent = mock_parent
         image_version = dev_version.as_image_version()
-        assert image_version.metadata == {"release_channel": ReleaseChannelEnum.PREVIEW}
+        assert image_version.metadata == {"release_channel": ReleaseChannelEnum.PREVIEW, "channel_latest": True}
 
     @pytest.mark.parametrize(
         "download_url,generalize_architecture,expected_url",
@@ -400,9 +400,9 @@ class TestImageDevelopmentVersionFromProductChannel:
         assert dv.get_version() == "2026.05.0-dev+185-gSHA"
         patch_requests_get.assert_not_called()
 
-    def test_mismatch_error_propagates_through_resolve_os_urls(self):
-        """DispatchVersionMismatchError must NOT be swallowed by _resolve_os_urls."""
-        from posit_bakery.config.image.posit_product.main import DispatchVersionMismatchError
+    def test_artifact_not_available_propagates_through_resolve_os_urls(self):
+        """ArtifactNotAvailableError must NOT be swallowed by _resolve_os_urls."""
+        from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError
         from unittest.mock import patch
 
         dv = ImageDevelopmentVersionFromProductChannel(
@@ -414,9 +414,28 @@ class TestImageDevelopmentVersionFromProductChannel:
         dv.version_override = "9999.99.0-daily+1.pro1"
         with patch(
             "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
-            side_effect=DispatchVersionMismatchError("mismatch"),
+            side_effect=ArtifactNotAvailableError("artifact missing"),
         ):
-            with pytest.raises(DispatchVersionMismatchError):
+            with pytest.raises(ArtifactNotAvailableError):
+                dv._resolve_os_urls()
+
+    def test_version_substitution_error_propagates_through_resolve_os_urls(self):
+        """VersionSubstitutionError must NOT be swallowed by _resolve_os_urls."""
+        from posit_bakery.config.image.posit_product.errors import VersionSubstitutionError
+        from unittest.mock import patch
+
+        dv = ImageDevelopmentVersionFromProductChannel(
+            sourceType="stream",
+            product="connect",
+            channel="daily",
+            os=[{"name": "Ubuntu 24.04", "primary": True}],
+        )
+        dv.version_override = "9999.99.0-dev+1-gdeadbeef"
+        with patch(
+            "posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel",
+            side_effect=VersionSubstitutionError("cannot substitute"),
+        ):
+            with pytest.raises(VersionSubstitutionError):
                 dv._resolve_os_urls()
 
 
