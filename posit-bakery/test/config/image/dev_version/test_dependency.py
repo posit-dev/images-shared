@@ -40,6 +40,13 @@ class TestValidation:
                 os=[_UBUNTU_24_OS],
             )
 
+    def test_channel_defaults_none(self):
+        dev = ImageDevelopmentVersionFromDependency(
+            dependency="positron",
+            os=[_UBUNTU_24_OS],
+        )
+        assert dev.channel is None
+
     def test_prerelease_defaults_false(self):
         dev = ImageDevelopmentVersionFromDependency(
             dependency="positron",
@@ -268,8 +275,8 @@ class TestAsImageVersion:
         iv = dev.as_image_version()
         assert iv.values == {"POSITRON_CHANNEL": "dailies"}
 
-    def test_no_release_channel_in_metadata(self, patch_requests_get):
-        """dependency-sourced dev versions carry no release_channel metadata."""
+    def test_no_release_channel_in_metadata_when_channel_absent(self, patch_requests_get):
+        """When channel is not set, release_channel is absent from metadata."""
         dev = ImageDevelopmentVersionFromDependency(
             parent=_mock_parent(),
             dependency="positron",
@@ -278,6 +285,18 @@ class TestAsImageVersion:
         )
         iv = dev.as_image_version()
         assert "release_channel" not in iv.metadata
+
+    def test_release_channel_in_metadata_when_channel_set(self, patch_requests_get):
+        """When channel is set, release_channel appears in metadata."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent(),
+            dependency="positron",
+            prerelease=True,
+            channel="daily",
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.metadata["release_channel"] == "daily"
 
     def test_os_preserved(self, patch_requests_get):
         dev = ImageDevelopmentVersionFromDependency(

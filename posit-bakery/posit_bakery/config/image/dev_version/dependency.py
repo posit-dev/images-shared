@@ -6,6 +6,7 @@ from posit_bakery.config.dependencies import get_dependency_constraint_class
 from posit_bakery.config.dependencies.const import SupportedDependencies
 from posit_bakery.config.dependencies.version import VersionConstraint
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version_os import ImageVersionOS
 
 
@@ -27,6 +28,10 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         bool,
         Field(default=False, description="Whether to resolve the dependency's prerelease channel."),
     ] = False
+    channel: Annotated[
+        ReleaseChannelEnum | None,
+        Field(default=None, description="Release channel for this dev version (e.g. 'daily', 'preview')."),
+    ] = None
 
     def get_version(self) -> str:
         constraint_class = get_dependency_constraint_class(self.dependency)
@@ -43,6 +48,9 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
     def _resolve_os_urls(self) -> list[ImageVersionOS]:
         # URL construction is handled by the Containerfile template via values.
         return list(self.os)
+
+    def get_release_channel(self) -> ReleaseChannelEnum | None:
+        return self.channel
 
     def __repr__(self):
         return f'devVersion(sourceType="dependency", dependency="{self.dependency}", prerelease={self.prerelease})'
