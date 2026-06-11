@@ -2,6 +2,7 @@ import pytest
 
 from posit_bakery.config.image.build_os import SUPPORTED_OS, BuildOS
 from posit_bakery.config.image.posit_product.const import ProductEnum, ReleaseChannelEnum, ReleaseStreamEnum
+from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError, VersionSubstitutionError
 from posit_bakery.config.image.posit_product.main import (
     _parse_download_json_os_identifier,
     _make_resolver_metadata,
@@ -798,7 +799,7 @@ class TestGetProductArtifactByChannelReleaseBranch:
         get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"])
 
         called_url = mock_session.return_value.get.call_args[0][0]
-        assert "latest" in called_url
+        assert called_url == "https://dailies.rstudio.com/rstudio/latest/index.json"
 
     def test_named_release_branch_formats_url(self, mocker):
         from test.config.conftest import patch_testdata_response
@@ -815,7 +816,7 @@ class TestGetProductArtifactByChannelReleaseBranch:
         )
 
         called_url = mock_session.return_value.get.call_args[0][0]
-        assert "apple-blossom" in called_url
+        assert called_url == "https://dailies.rstudio.com/rstudio/apple-blossom/index.json"
 
 
 class TestDispatchOverride:
@@ -918,10 +919,34 @@ class TestDispatchOverride:
         assert result.channel_latest is True
         assert result.version == override
 
+    def test_version_substitution_error_when_version_not_in_url(self, mocker):
+        """VersionSubstitutionError raised when the manifest URL contains no substitutable token."""
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_response = mocker.MagicMock()
+        # URL deliberately omits the version — no substitution is possible under any transform.
+        mock_response.json.return_value = {
+            "packages": [
+                {
+                    "platform": "ubuntu24/amd64",
+                    "version": "2025.04.0-dev+10-gbe0a4a3d31",
+                    "url": "https://cdn.posit.co/connect/opaque-path/artifact.deb",
+                }
+            ]
+        }
+        mock_session.return_value.get.return_value = mock_response
+
+        with pytest.raises(VersionSubstitutionError):
+            get_product_artifact_by_channel(
+                ProductEnum.CONNECT,
+                ReleaseChannelEnum.DAILY,
+                SUPPORTED_OS["ubuntu"]["24"],
+                version_override="2025.04.0-dev+5-gabcdef1234",
+            )
+
     def test_artifact_not_available_raises(self, patch_requests_get):
         """A 404 HEAD on the substituted URL raises ArtifactNotAvailableError."""
-        from posit_bakery.config.image.posit_product.errors import ArtifactNotAvailableError
-
         patch_requests_get.return_value.head.return_value.ok = False
         patch_requests_get.return_value.head.return_value.status_code = 404
 

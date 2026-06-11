@@ -35,7 +35,7 @@ def mock_build_config():
         yield mock
 
 
-class TestDispatchVersionMismatch:
+class TestBuildErrorHandling:
     def test_artifact_not_available_exits_with_clean_message(self):
         """ArtifactNotAvailableError should print a plain message, not a traceback."""
         msg = "Artifact not available for version '2026.04.0-dev+5-gabcdef'"

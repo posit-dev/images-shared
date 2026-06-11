@@ -34,6 +34,10 @@ class TestDevBuildSpec:
         with pytest.raises(ValidationError, match="at least one of"):
             DevBuildSpec(channel=ReleaseChannelEnum.DAILY)
 
+    def test_empty_string_version_raises(self):
+        with pytest.raises(ValidationError, match="version must not be empty"):
+            DevBuildSpec(version="", release_branch="apple-blossom")
+
     def test_empty_version_raises(self):
         with pytest.raises(ValidationError, match="version must not be empty"):
             DevBuildSpec(version="   ")
