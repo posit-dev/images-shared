@@ -140,12 +140,13 @@ def matrix(
         for img in images:
             entry = {"image": img.name}
             versions = img.versions
-            if (img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
-                img.matrix is not None and matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
-            ):
+            if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
                 continue
-            elif img.matrix is not None and matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                versions = img.matrix.to_image_versions()
+            elif img.matrix is not None:
+                if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
+                    versions = img.matrix.to_image_versions()
+                # If EXCLUDE: fall through using img.versions (devVersions are appended
+                # there by load_dev_versions). The dev_versions filter below handles the rest.
             for ver in versions:
                 included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
                 if not included:

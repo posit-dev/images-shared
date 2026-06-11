@@ -232,6 +232,17 @@ product_release_channel_url_map = {
                 ),
             },
         ),
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
+            WORKBENCH_DAILY_URL,
+            {
+                "version": resolvers.StringMapPathResolver(
+                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
+                ),
+                "download_url": resolvers.StringMapPathResolver(
+                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
+                ),
+            },
+        ),
         ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
@@ -253,6 +264,17 @@ product_release_channel_url_map = {
                 ),
                 "download_url": resolvers.StringMapPathResolver(
                     ["rstudio", "pro", "stable", "session", "installer", "{download_json_os}", "url"]
+                ),
+            },
+        ),
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
+            WORKBENCH_DAILY_URL,
+            {
+                "version": resolvers.StringMapPathResolver(
+                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
+                ),
+                "download_url": resolvers.StringMapPathResolver(
+                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
                 ),
             },
         ),
