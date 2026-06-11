@@ -18,7 +18,6 @@ class TestParseUnparseable:
         [
             "",
             "latest",
-            "R4.3.3-python3.11.15",
             "v1.2.3",
             "not a version",
             "1",  # only one release component
@@ -59,6 +58,11 @@ class TestParseRoundtrip:
             ("2026.4.0-rc.1", (2026, 4, 0), "rc.1", None),
             # Edge: build only.
             ("2026.4.0+abc", (2026, 4, 0), None, "abc"),
+            # Dep-prefixed: single dependency version.
+            ("R4.3.3", (4, 3, 3), None, None),
+            ("python3.13.14", (3, 13, 14), None, None),
+            # Dep-prefixed: compound matrix version — prerelease holds the second component.
+            ("R4.3.3-python3.11.15", (4, 3, 3), "python3.11.15", None),
         ],
     )
     def test_parses_and_roundtrips(self, value, release, prerelease, build, caplog):
