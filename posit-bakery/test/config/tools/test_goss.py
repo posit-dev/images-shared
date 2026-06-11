@@ -38,3 +38,16 @@ class TestGoss:
 
         for key, value in expected.items():
             assert getattr(merged, key) == value, f"Expected {key} to be {value}, got {getattr(merged, key)}"
+
+    def test_timeout_default_is_900(self):
+        assert GossOptions().timeout == 900
+
+    def test_timeout_merge_prefers_explicit_value(self):
+        base = GossOptions()  # timeout left at default
+        override = GossOptions(timeout=120)
+        assert base.update(override).timeout == 120
+
+    def test_timeout_merge_keeps_explicit_when_set(self):
+        base = GossOptions(timeout=30)  # explicitly set
+        override = GossOptions(timeout=120)
+        assert base.update(override).timeout == 30

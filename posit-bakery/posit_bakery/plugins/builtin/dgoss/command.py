@@ -6,6 +6,7 @@ from typing import Annotated, Self, Literal
 from pydantic import BaseModel, Field, model_validator, computed_field
 
 from posit_bakery.image.image_target import ImageTargetContext, ImageTarget
+from posit_bakery.plugins.builtin.dgoss.options import DEFAULT_GOSS_TIMEOUT_SECONDS
 from posit_bakery.util import find_bin
 
 
@@ -54,6 +55,7 @@ class DGossCommand(BaseModel):
     test_path: Annotated[Path | None, Field(default_factory=lambda data: find_test_path(data["image_target"].context))]
     runtime_options: Annotated[str | None, Field(default=None, description="Additional runtime options for dgoss.")]
     wait: Annotated[int, Field(default=0)]
+    timeout: Annotated[int, Field(default=DEFAULT_GOSS_TIMEOUT_SECONDS)]
     image_command: Annotated[str, Field(default="sleep infinity")]
 
     @property
@@ -128,6 +130,7 @@ class DGossCommand(BaseModel):
                 args["runtime_options"] = goss_options.runtimeOptions
                 args["image_command"] = goss_options.command
                 args["wait"] = goss_options.wait
+                args["timeout"] = goss_options.timeout
         return cls(**args)
 
     @model_validator(mode="after")

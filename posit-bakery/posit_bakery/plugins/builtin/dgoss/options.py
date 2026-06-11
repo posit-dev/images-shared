@@ -5,6 +5,8 @@ from pydantic import Field
 
 from posit_bakery.config.tools.base import ToolOptions
 
+DEFAULT_GOSS_TIMEOUT_SECONDS = 900  # 15 minutes
+
 
 class GossOptions(ToolOptions):
     """Configuration options for Goss testing."""
@@ -21,6 +23,14 @@ class GossOptions(ToolOptions):
             default=0,
             description="Time to wait before running tests, in seconds. Used as the value passed to the 'GOSS_SLEEP' "
             "environment variable.",
+        ),
+    ]
+    timeout: Annotated[
+        int,
+        Field(
+            default=DEFAULT_GOSS_TIMEOUT_SECONDS,
+            description="Maximum seconds to allow a dgoss container to run before it is terminated. "
+            "Set to 0 to disable the timeout.",
         ),
     ]
 
@@ -40,5 +50,7 @@ class GossOptions(ToolOptions):
             and "runtimeOptions" not in self.model_fields_set
         ):
             merged_options.runtimeOptions = other.runtimeOptions
+        if self.__pydantic_fields__["timeout"].default == self.timeout and "timeout" not in self.model_fields_set:
+            merged_options.timeout = other.timeout
 
         return merged_options

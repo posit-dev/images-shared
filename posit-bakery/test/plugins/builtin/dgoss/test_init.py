@@ -88,3 +88,17 @@ class TestDgossRunLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
+
+
+class TestDgossRunJobsFlag:
+    """The --jobs flag is forwarded to DGossPlugin.execute()."""
+
+    def test_jobs_forwarded_to_execute(self, mocked_dgoss_run):
+        _, mock_execute = mocked_dgoss_run
+        result = runner.invoke(
+            app,
+            ["dgoss", "run", "--context", BASIC_CONTEXT, "--jobs", "2"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["jobs"] == 2

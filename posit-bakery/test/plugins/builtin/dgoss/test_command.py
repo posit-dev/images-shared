@@ -25,6 +25,11 @@ class TestDGossCommand:
         assert basic_standard_image_target.context.version_path / "test" == dgoss_command.test_path
         assert dgoss_command.wait == 1
 
+    def test_command_timeout_defaults_to_900(self, basic_standard_image_target):
+        """Test that DGossCommand defaults to a 900-second timeout when not specified in goss options."""
+        cmd = DGossCommand.from_image_target(basic_standard_image_target)
+        assert cmd.timeout == 900
+
     def test_dgoss_environment(self, basic_standard_image_target):
         """Test that DGossCommand dgoss_environment returns the expected environment variables."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)
