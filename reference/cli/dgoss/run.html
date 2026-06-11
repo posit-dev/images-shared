@@ -840,6 +840,10 @@ Options:
   --metadata-file PATH            Path to a build metadata file. If given,
                                   attempts to run tests against image
                                   artifacts in the file.
+  -j, --jobs INTEGER              Maximum number of dgoss commands to run
+                                  concurrently. Defaults to the
+                                  BAKERY_MAX_CONCURRENCY env var or a built-in
+                                  default.
   --clean / --no-clean            Clean up intermediary and temporary files
                                   after building. Can be helpful for
                                   debugging.  [default: clean]
@@ -891,6 +895,10 @@ Run tests only against the latest version of each image. Development versions ar
 <dt><code><span class="doc-parameter-name">--metadata-file</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">PATH</span></code></dt>
 <dd>
 Path to a build metadata file. If given, attempts to run tests against image artifacts in the file.
+</dd>
+<dt><code><span class="doc-parameter-name">-j, --jobs</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">INTEGER</span></code></dt>
+<dd>
+Maximum number of dgoss commands to run concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.
 </dd>
 <dt><code><span class="doc-parameter-name">--clean, --no-clean</span></code></dt>
 <dd>
