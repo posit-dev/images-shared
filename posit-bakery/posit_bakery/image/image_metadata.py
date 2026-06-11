@@ -148,12 +148,16 @@ class BuildMetadata(BaseModel):
     @property
     def image_tags(self) -> list[str]:
         """Returns the list of tags associated with the built image."""
+        if not self.image_name:
+            return []
         tags = self.image_name.split(",")
         return [tag.strip() for tag in tags if tag.strip()]
 
     @property
     def image_ref(self) -> str | None:
         """Returns the full image reference including name and digest."""
+        if not self.image_tags:
+            return None
         primary_tag = self.image_tags[0]
         if primary_tag and self.container_image_digest:
             return f"{primary_tag}@{self.container_image_digest}"

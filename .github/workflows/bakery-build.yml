@@ -3,6 +3,12 @@
 # This workflow will be called to build individual images so should be kept
 # as shallow as possible.
 
+# Note: SOCI conversion is intentionally not wired into this workflow.
+# Unlike bakery-build-native.yml, this QEMU-based workflow has no
+# separate merge phase to inject SOCI between. Product repos that need
+# SOCI should use bakery-build-native.yml instead. See
+# docs/superpowers/specs/2026-05-18-soci-indexing-design.md.
+
 name: Bakery
 
 on:

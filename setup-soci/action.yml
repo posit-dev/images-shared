@@ -1,0 +1,43 @@
+name: 'Setup SOCI'
+description: 'Installs the soci CLI for standalone (no-containerd) SOCI conversion.'
+
+inputs:
+  version:
+    description: "The SOCI release version to install"
+    required: false
+    default: "v0.13.0"
+  architecture:
+    description: "The system architecture (e.g., amd64, arm64). If not set, it will be detected automatically."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Make tools directory
+      shell: bash
+      run: mkdir -p tools
+    - name: Install soci
+      shell: bash
+      env:
+        SOCI_VERSION: ${{ inputs.version }}
+        SOCI_ARCH: ${{ inputs.architecture }}
+      run: |
+        arch="$SOCI_ARCH"
+        if [ -z "$arch" ]; then
+          arch=$(uname -m)
+        fi
+        if [ "$arch" = "x86_64" ]; then arch="amd64"; fi
+        if [ "$arch" = "aarch64" ]; then arch="arm64"; fi
+
+        version_no_v="${SOCI_VERSION#v}"
+        tarball="soci-snapshotter-${version_no_v}-linux-${arch}.tar.gz"
+        url="https://github.com/awslabs/soci-snapshotter/releases/download/${SOCI_VERSION}/${tarball}"
+        sums_url="https://github.com/awslabs/soci-snapshotter/releases/download/${SOCI_VERSION}/${tarball}.sha256sum"
+
+        curl -fsSL "$url" -o "tools/${tarball}"
+        curl -fsSL "$sums_url" -o "tools/${tarball}.sha256sum"
+        (cd tools && sha256sum -c "${tarball}.sha256sum")
+        tar -xzf "tools/${tarball}" -C tools soci
+        chmod +rx tools/soci
+        rm -f "tools/${tarball}" "tools/${tarball}.sha256sum"

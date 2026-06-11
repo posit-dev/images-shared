@@ -42,34 +42,60 @@ def copy_ci_testdata_to_context(bakery_command, ci_testdata, testdata_path):
 def patch_image_target_merge_method(mocker):
     calls = []
 
-    def patched_execute(base_path, targets, platform=None, **kwargs):
-        results = []
-        for target in targets:
-            try:
-                sources = target.get_merge_sources()
-            except Exception:
-                continue
-            if not sources:
-                continue
-            dry_run = kwargs.get("dry_run", False)
+    # Track calls to OrasIndexCreateWorkflow and OrasIndexCopyWorkflow
+    class MockOrasIndexCreateWorkflow:
+        def __init__(self, oras_bin, image_target, annotations, plain_http=False):
+            self.image_target = image_target
+            self.oras_bin = oras_bin
+            self.annotations = annotations
+            self.plain_http = plain_http
+
+        def run(self, dry_run=False):
+            sources = self.image_target.get_merge_sources()
             calls.append((sources, dry_run))
-            results.append(
-                ToolCallResult(
-                    exit_code=0,
-                    tool_name="oras",
-                    target=target,
-                    stdout="",
-                    stderr="",
-                    artifacts={"workflow_result": MagicMock(success=True, destinations=[])},
-                )
-            )
-        return results
+            result = MagicMock()
+            result.success = True
+            result.temp_ref = f"temp-ref-{self.image_target.uid}"
+            return result
 
-    mock_plugin = MagicMock()
-    mock_plugin.execute = patched_execute
-    mock_plugin.results = MagicMock()
+    class MockOrasIndexCopyWorkflow:
+        def __init__(self, oras_bin, image_target):
+            self.image_target = image_target
+            self.oras_bin = oras_bin
 
-    mocker.patch("posit_bakery.plugins.registry.get_plugin", return_value=mock_plugin)
+        def run(self, source, dry_run=False):
+            result = MagicMock()
+            result.success = True
+            return result
+
+    class MockOrasIndexVerifyWorkflow:
+        def __init__(self, oras_bin, image_target):
+            self.image_target = image_target
+            self.oras_bin = oras_bin
+
+        def run(self, dry_run=False):
+            result = MagicMock()
+            result.success = True
+            result.verified = self.image_target.tags.as_strings()
+            return result
+
+    # Patch the imports inside the publish function
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
+        MockOrasIndexCreateWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
+        MockOrasIndexCopyWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+        MockOrasIndexVerifyWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.find_oras_bin",
+        return_value="/mock/oras",
+    )
     return calls
 
 
@@ -82,6 +108,11 @@ def check_log_metadata_targets(command_logs, datatable):
 @then(parsers.parse("{num_targets} targets are found in the metadata"))
 def check_log_metadata_targets(command_logs, num_targets):
     assert f"Found {num_targets} targets" in command_logs.text
+
+
+@then(parsers.parse("{num_verified:d} destination tags are verified"))
+def check_log_verified_targets(command_logs, num_verified):
+    assert command_logs.text.count("Verified '") == num_verified
 
 
 @then("the merge calls include:")

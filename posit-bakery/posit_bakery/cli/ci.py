@@ -219,22 +219,84 @@ def merge(
         ),
     ] = None,
 ):
-    """Merges multiple metadata files with single-platform images into a single multi-platform image by UID.
-    This command is intended for use in CI workflows that utilize native builders for multiplatform builds.
-    Easier multiplatform builds can be achieved by using emulation (Docker and QEMU), but builds in emulation typically
-    suffer severe performance disadvantages.
-    This command should be ran after multiple `bakery build --strategy build --platform <platform>
-    --metadata-file <path> --temp-registry <registry>` commands have been executed for different platforms. The
-    resulting metadata files can be fed into this command to merge and push combined multi-platform images. Matches are
-    made by the top-level Image UID keys in the metadata files. Single entries with no other matches will be tagged and
-    pushed as is. If an entry has no matching UID in the project, it will be skipped with a delayed error.
-    Metadata files are expected to be JSON with the following structure:
-    ```json
-    {
-      "<Image UID>": {metadata...}
-    }
-    ```
+    """Alias for `bakery ci publish`.
+
+    Preserved for back-compat. New callers should prefer `bakery ci publish`.
+    SOCI conversion is driven by per-image/variant `soci` options.
     """
+    publish(
+        metadata_file=metadata_file,
+        context=context,
+        image_name=image_name,
+        temp_registry=temp_registry,
+        dry_run=dry_run,
+        dev_channel=dev_channel,
+    )
+
+
+@app.command()
+@with_verbosity_flags
+def publish(
+    metadata_file: Annotated[list[Path], typer.Argument(help="Path to input build metadata JSON file(s).")],
+    context: Annotated[
+        Path, typer.Option(help="The root path to use. Defaults to the current working directory.")
+    ] = auto_path(),
+    image_name: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Filter publish to a specific image name (regex, e.g. '^workbench$').",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    temp_registry: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Temporary registry to use for split/merge builds.", rich_help_panel="Build Configuration & Outputs"
+        ),
+    ] = None,
+    dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
+    dev_channel: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-channel",
+            help="Filter development versions to a specific release channel.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    dev_stream: Annotated[
+        Optional[ReleaseChannelEnum],
+        typer.Option(
+            "--dev-stream",
+            help="Deprecated: use --dev-channel instead.",
+            hidden=True,
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+) -> None:
+    """Publish multi-platform images by composing oras index-create →
+    soci-convert → oras index-copy.
+
+    Which targets are converted is driven by configuration: each target is
+    converted only when its resolved SOCI options have ``enabled: true``
+    (set via the ``soci`` tool options on an image or variant). Targets
+    without SOCI enabled pass through the convert phase untouched. Conversion
+    runs in standalone (no containerd) mode via oras.
+
+    Temporary indexes are left in place and cleaned up out-of-band by the
+    clean.yml workflow (bakery clean temp-registry) rather than deleted here.
+
+    Replaces `bakery ci merge`; the latter is preserved as a thin alias.
+    """
+    # Imports kept local to mirror existing patterns and to avoid bloating
+    # module load time when this command isn't invoked.
+    from posit_bakery.plugins.builtin.oras.oras import (
+        OrasIndexCopyWorkflow,
+        OrasIndexCreateWorkflow,
+        OrasIndexVerifyWorkflow,
+        find_oras_bin,
+    )
+    from posit_bakery.plugins.registry import get_plugin
+
     if dev_stream is not None:
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
         if dev_channel is None:
@@ -249,51 +311,125 @@ def merge(
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-    # Resolve glob patterns in metadata_file arguments
     resolved_files: list[Path] = []
-    for file in metadata_file:
-        if "*" in str(file) or "?" in str(file) or "[" in str(file):
-            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(str(file))))
+    for f in metadata_file:
+        s = str(f)
+        if "*" in s or "?" in s or "[" in s:
+            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(s)))
         else:
-            resolved_files.append(file.absolute())
+            resolved_files.append(f.absolute())
     metadata_file = resolved_files
 
     log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
 
     files_ok = True
     loaded_targets: list[str] = []
-    for file in metadata_file:
+    for f in metadata_file:
         try:
-            loaded_targets.extend(config.load_build_metadata_from_file(file))
+            loaded_targets.extend(config.load_build_metadata_from_file(f))
         except Exception as e:
-            log.error(f"Failed to load metadata from file '{file}'")
-            log.error(str(e))
+            log.error(f"Failed to load metadata from file '{f}': {e}")
             files_ok = False
-    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
-
     if not files_ok:
-        log.error("One or more metadata files are invalid, aborting merge.")
         raise typer.Exit(code=1)
 
+    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
     log.info(f"Found {len(loaded_targets)} targets")
     log.debug(", ".join(loaded_targets))
 
-    # Imported locally for patching in CLI tests
-    from posit_bakery.plugins.registry import get_plugin
+    oras_bin = find_oras_bin(config.base_path)
 
-    oras = get_plugin("oras")
-    results = oras.execute(config.base_path, config.targets, dry_run=dry_run)
+    # Act only on targets that were actually present in the provided metadata
+    # files, not every target defined in the config. Publishing a single set of
+    # files (e.g. one version / dev stream) otherwise drags in every other
+    # version and variant, which each phase then has to re-skip individually.
+    # The UIDs in loaded_targets all originate from config.targets, so the
+    # lookups always resolve.
+    targets = sorted(
+        (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
+        key=lambda t: t.push_sort_key,
+    )
 
-    # CI-specific: verify final manifests with imagetools inspect
+    # Phase 1: index create. Failures abort.
+    temp_refs: dict[str, str] = {}
+    for t in targets:
+        if not t.get_merge_sources():
+            log.debug(f"Skipping target '{t}' (no merge sources).")
+            continue
+        if not t.settings.temp_registry:
+            log.error(f"Cannot publish '{t}': temp_registry not configured.")
+            raise typer.Exit(code=1)
+        res = OrasIndexCreateWorkflow(
+            oras_bin=oras_bin,
+            image_target=t,
+            annotations=t.labels,
+        ).run(dry_run=dry_run)
+        if not res.success:
+            log.error(f"index-create failed for '{t}': {res.error}")
+            raise typer.Exit(code=1)
+        temp_refs[t.uid] = res.temp_ref
+
+    # Phase 2: SOCI convert. Driven by per-target config; targets whose
+    # resolved SOCI options have enabled=False are skipped by the plugin.
+    soci = get_plugin("soci")
+    soci_results = soci.execute(
+        config.base_path,
+        targets,
+        source_refs=temp_refs,
+        dry_run=dry_run,
+    )
+    soci_failed = False
+    for r in soci_results:
+        artifacts = r.artifacts or {}
+        if artifacts.get("skipped"):
+            continue
+        wf = artifacts.get("workflow_result")
+        if r.exit_code != 0:
+            soci_failed = True
+            continue
+        if wf and getattr(wf, "destination_ref", None):
+            temp_refs[r.target.uid] = wf.destination_ref
+    if soci_failed:
+        soci.results(soci_results)  # raises typer.Exit(1)
+
+    # Phase 3: index copy.
+    copy_failed = False
+    copied_targets: list = []
+    for t in targets:
+        if t.uid not in temp_refs:
+            continue
+        copy = OrasIndexCopyWorkflow(
+            oras_bin=oras_bin,
+            image_target=t,
+        ).run(source=temp_refs[t.uid], dry_run=dry_run)
+        if not copy.success:
+            log.error(f"index-copy failed for '{t}': {copy.error}")
+            copy_failed = True
+        else:
+            copied_targets.append(t)
+
+    # Phase 4: verify each final destination tag resolves. This replaces the
+    # `docker buildx imagetools inspect` check the old `bakery ci merge` ran;
+    # ORAS is faster and more reliable for the existence check.
+    verify_failed = False
     if not dry_run:
-        for result in results:
-            if result.exit_code == 0 and result.artifacts:
-                workflow_result = result.artifacts.get("workflow_result")
-                if workflow_result and workflow_result.destinations:
-                    manifest = python_on_whales.docker.buildx.imagetools.inspect(workflow_result.destinations[0])
-                    stdout_console.print_json(manifest.model_dump_json(indent=2, exclude_unset=True, exclude_none=True))
+        for t in copied_targets:
+            verify = OrasIndexVerifyWorkflow(
+                oras_bin=oras_bin,
+                image_target=t,
+            ).run(dry_run=dry_run)
+            if not verify.success:
+                log.error(f"verification failed for '{t}': {verify.error}")
+                verify_failed = True
+            else:
+                log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
 
-    oras.results(results)
+    # The temporary indexes (and any SOCI-converted variants) are intentionally
+    # left in place; they are cleaned up out-of-band by the clean.yml workflow
+    # (bakery clean temp-registry) rather than deleted here.
+
+    if copy_failed or verify_failed:
+        raise typer.Exit(code=1)
 
 
 @app.command()

@@ -548,6 +548,46 @@ A GossOption represents options for `dgoss` tests against an image target.
 | `command`<br/>*string*             | The command to run within the `dgoss` container. This can be used to start a service in the container for testing.                                            | `sleep infinity`                                                                                                   | `start-server`   |
 | `wait`<br/>*int*                   | The number of seconds to wait after container startup before running tests. Useful if there is a service that needs to complete its startup prior to testing. | `0`                                                                                                                | `30`             |
 
+#### SociOptions
+
+A SociOption configures [SOCI](https://github.com/awslabs/soci-snapshotter) (Seekable OCI) index generation for an image target. SOCI indexes let container runtimes lazily pull image layers, reducing startup latency for large images.
+
+SOCI options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant's options are merged over the image's options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step via `bakery soci convert` (standalone) or as part of `bakery ci publish` (config-driven), and only acts on targets where `enabled` is `true`.
+
+| Field                                | Description                                                                                                                                      | Default Value                | Example                  |
+|--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|--------------------------|
+| `tool`<br/>*"soci" literal string*   | *(Required)* The name of the tool.                                                                                                               |                              | `soci`                   |
+| `enabled`<br/>*bool*                 | Enable SOCI conversion for this target. Targets without `enabled: true` are skipped during conversion.                                           | `false`                      | `true`                   |
+| `span_size`<br/>*int*                | SOCI zTOC span size, in bytes. If unset, the SOCI default is used.                                                                               | SOCI default                 | `4194304`                |
+| `min_layer_size`<br/>*int*           | Minimum layer size, in bytes, for a layer to be indexed. Smaller layers are skipped. If unset, the SOCI default is used.                         | SOCI default                 | `10485760`               |
+| `prefetch_files`<br/>*string array*  | Files to mark for prefetch in the SOCI index.                                                                                                    | `[]`                         | <pre>- /opt/app/bin/server</pre> |
+| `optimizations`<br/>*string array*   | Optional SOCI optimizations to apply (e.g. `xattr`).                                                                                             | `[]`                         | <pre>- xattr</pre>       |
+| `platforms`<br/>*string array*       | Platforms to convert. If unset, all platforms in the source image are converted (`--all-platforms`).                                             | All platforms                | <pre>- linux/amd64<br/>- linux/arm64</pre> |
+
+##### Example SociOptions
+
+```yaml
+images:
+  - name: workbench
+    options:
+      - tool: soci
+        enabled: true
+        min_layer_size: 10485760
+    variants:
+      - name: Standard
+        extension: std
+        tagDisplayName: std
+        primary: true
+        options:
+          # Override the image-level SOCI settings for this variant only.
+          - tool: soci
+            enabled: true
+            span_size: 4194304
+            platforms:
+              - linux/amd64
+              - linux/arm64
+```
+
 ## Environment Variables
 
 The following environment variables can be used to configure Bakery behavior at runtime when building a project targeting Workbench Daily builds.

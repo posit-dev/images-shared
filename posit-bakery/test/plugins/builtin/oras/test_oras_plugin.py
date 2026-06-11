@@ -213,61 +213,6 @@ class TestOrasPluginExecute:
         assert msg.endswith("a-first, c-second, b-third, d-last"), msg
 
 
-class TestOrasPluginResults:
-    """Tests for OrasPlugin.results() output behavior."""
-
-    @staticmethod
-    def _failed_result() -> "ToolCallResult":
-        from posit_bakery.plugins.protocol import ToolCallResult
-
-        workflow_result = OrasMergeWorkflowResult(
-            success=False,
-            error="oras command failed",
-            stdout="oras stdout details",
-            stderr="oras stderr details",
-        )
-        return ToolCallResult(
-            exit_code=1,
-            tool_name="oras",
-            target="test-image:1.0.0",
-            stdout="",
-            stderr=workflow_result.error,
-            artifacts={"workflow_result": workflow_result},
-        )
-
-    def test_results_dumps_command_output_when_not_quiet(self, plugin, monkeypatch):
-        """Failed merges dump the captured oras stdout/stderr when not quiet."""
-        from posit_bakery.log import stderr_console
-        from posit_bakery.settings import SETTINGS
-
-        monkeypatch.setattr(SETTINGS, "log_level", logging.INFO)
-
-        with stderr_console.capture() as capture:
-            with pytest.raises(typer.Exit):
-                plugin.results([self._failed_result()])
-
-        output = capture.get()
-        assert "oras stdout details" in output
-        assert "oras stderr details" in output
-
-    def test_results_suppresses_command_output_when_quiet(self, plugin, monkeypatch):
-        """Failed merges suppress the captured oras stdout/stderr when quiet."""
-        from posit_bakery.log import stderr_console
-        from posit_bakery.settings import SETTINGS
-
-        monkeypatch.setattr(SETTINGS, "log_level", logging.ERROR)
-
-        with stderr_console.capture() as capture:
-            with pytest.raises(typer.Exit):
-                plugin.results([self._failed_result()])
-
-        output = capture.get()
-        # The error summary is still shown, but the verbose dumps are not.
-        assert "Error merging" in output
-        assert "oras stdout details" not in output
-        assert "oras stderr details" not in output
-
-
 class TestOrasPluginCLI:
     def test_register_cli_adds_oras_command(self, plugin):
         app = typer.Typer()

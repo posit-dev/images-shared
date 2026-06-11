@@ -387,6 +387,9 @@ jobs:
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
 
+      - name: Setup SOCI
+        uses: "posit-dev/images-shared/setup-soci@main"
+
       - name: Download Metadata
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -397,7 +400,7 @@ jobs:
         run: |
           ls -ltra .
 
-      - name: Merge/Push
+      - name: Publish
         env:
           GIT_SHA: ${{ github.sha }}
           CONTEXT: ${{ inputs.context }}
@@ -406,7 +409,7 @@ jobs:
           IMAGE_NAME: ${{ matrix.image }}
         run: |
           if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
-          bakery ci merge \
+          bakery ci publish \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
             --temp-registry "$REGISTRY" \

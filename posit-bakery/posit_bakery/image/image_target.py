@@ -715,8 +715,13 @@ class ImageTarget(BaseModel):
         sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
         collected_platforms = set()
         for metadata in sorted_metadata:
+            ref = metadata.image_ref
+            if ref is None:
+                # Metadata without a resolvable image ref (e.g. missing image.name)
+                # can't be merged; skip it rather than emitting a null source.
+                continue
             if metadata.platform not in collected_platforms:
-                sources.append(metadata.image_ref)
+                sources.append(ref)
                 collected_platforms.add(metadata.platform)
 
         return sources
