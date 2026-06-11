@@ -6,7 +6,11 @@ from pydantic import BaseModel, Field, field_validator, field_serializer
 from pydantic_core.core_schema import ValidationInfo
 
 from posit_bakery.config.shared import BakeryYAMLModel
-from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
+from posit_bakery.const import (
+    REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN,
+    REGEX_OS_EXTENSION_PATTERN,
+    REGEX_OS_TAG_DISPLAY_NAME_PATTERN,
+)
 from .build_os import BuildOS, SUPPORTED_OS, ALTERNATE_NAMES, TargetPlatform, DEFAULT_PLATFORMS
 from .posit_product.const import URL_WITH_ENV_VARS_REGEX_PATTERN
 
@@ -73,7 +77,7 @@ class ImageVersionOS(BakeryYAMLModel):
                 if data.get("name", "").lower().strip() in _OSLESS_NAMES
                 else re.sub(r"[^a-zA-Z0-9_-]", "", data.get("name", "").lower())
             ),
-            pattern=r"^[a-zA-Z0-9_-]*$",
+            pattern=REGEX_OS_EXTENSION_PATTERN,
             validate_default=True,
             description="File extension used in the Containerfile filename in the pattern "
             "Containerfile.<os>.<variant> for this OS. Set to an empty string if no extension is needed.",
@@ -88,7 +92,7 @@ class ImageVersionOS(BakeryYAMLModel):
                 if data.get("name", "").lower().strip() in _OSLESS_NAMES
                 else re.sub(REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN, "-", data.get("name", "").lower())
             ),
-            pattern=r"^[a-zA-Z0-9_.-]*$",
+            pattern=REGEX_OS_TAG_DISPLAY_NAME_PATTERN,
             validate_default=True,
             description="The name used in image tags for this OS. This is used to create the tag "
             "in the format <image>:<version>-<os>-<variant>.",
