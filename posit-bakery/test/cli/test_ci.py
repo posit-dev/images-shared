@@ -144,6 +144,7 @@ class TestVersionMatches:
             ("2026.03.1", "2026.03"),
             ("2026.05.0-dev+15-gSHA", "2026.05.0-dev"),
             ("R4.5.3-python3.14.3", "R4.5.3-python3.14.3"),
+            ("R4.5.3-python3.14.3", "R4.5.3"),
         ],
     )
     def test_matches(self, ver_name, filter_version):
