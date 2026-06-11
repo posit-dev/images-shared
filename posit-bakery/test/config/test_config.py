@@ -858,14 +858,14 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / image.name / new_version).is_dir()
-        assert (context / image.name / new_version / f"Containerfile.{previous_os.extension}").is_file()
+        containerfile_name = f"Containerfile.{previous_os.extension}" if previous_os.extension else "Containerfile"
+        assert (context / image.name / new_version / containerfile_name).is_file()
         expected_containerfile = textwrap.dedent("""\
         FROM scratch
 
         COPY scratch/2.0.0/deps/packages.txt /tmp/packages.txt
         """)
-        assert expected_containerfile == (context / image.name / new_version / "Containerfile.scratch").read_text()
-        assert (context / image.name / new_version / "Containerfile.scratch").is_file()
+        assert expected_containerfile == (context / image.name / new_version / containerfile_name).read_text()
         assert (context / image.name / new_version / "deps").is_dir()
         assert (context / image.name / new_version / "deps" / "packages.txt").is_file()
         assert (context / image.name / new_version / "test").is_dir()
@@ -895,13 +895,13 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "scratch" / "2" / "0" / "0").is_dir()
-        assert (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch").is_file()
+        assert (context / "scratch" / "2" / "0" / "0" / "Containerfile").is_file()
         expected_containerfile = textwrap.dedent("""\
         FROM scratch
 
         COPY scratch/2/0/0/deps/packages.txt /tmp/packages.txt
         """)
-        assert expected_containerfile == (context / "scratch" / "2" / "0" / "0" / "Containerfile.scratch").read_text()
+        assert expected_containerfile == (context / "scratch" / "2" / "0" / "0" / "Containerfile").read_text()
 
     def test_create_version_exists_force(self, get_tmpcontext):
         """Test creating an existing version in the BakeryConfig with force works."""
@@ -928,10 +928,10 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / "scratch" / "1").is_dir()
-        assert (context / "scratch" / "1" / "Containerfile.scratch").is_file()
+        assert (context / "scratch" / "1" / "Containerfile").is_file()
         assert (
             "COPY scratch/1/deps/packages.txt /tmp/packages.txt"
-            in (context / "scratch" / "1" / "Containerfile.scratch").read_text()
+            in (context / "scratch" / "1" / "Containerfile").read_text()
         )
         assert not (context / "1.0.0").is_dir()
 

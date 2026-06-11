@@ -47,3 +47,10 @@ Feature: matrix
             | --image-version | 9.9.9 |
         When I execute the command
         Then The command fails
+
+    Scenario: Generating a full CI matrix for the multiversion suite
+        Given I call bakery ci matrix
+        * in the multiversion context
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/multiversion/default.json

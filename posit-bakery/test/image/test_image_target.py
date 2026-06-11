@@ -1137,6 +1137,26 @@ class TestImageTarget:
 
         assert len(basic_standard_image_target.get_merge_sources()) == 0
 
+    def test_containerfile_with_scratch_os_has_no_os_component(self, basic_standard_image_target):
+        """Scratch OS (empty extension) with no variant produces a plain Containerfile."""
+        from posit_bakery.config import ImageVersionOS
+
+        basic_standard_image_target.image_os = ImageVersionOS(name="scratch")
+        basic_standard_image_target.image_variant = None
+        assert basic_standard_image_target.containerfile.name == "Containerfile"
+
+    @pytest.mark.build
+    def test_build_uses_build_platforms_when_image_os_is_none(self, basic_standard_image_target):
+        """build() uses DEFAULT_PLATFORMS when image_os is None instead of crashing."""
+        basic_standard_image_target.image_os = None
+        with (
+            patch("python_on_whales.docker.build") as mock_build,
+            patch("pathlib.Path.is_file", return_value=True),
+        ):
+            basic_standard_image_target.build()
+        call_kwargs = mock_build.call_args[1]
+        assert call_kwargs["platforms"] == ["linux/amd64"]
+
     def test_get_merge_sources_single_platform(self, basic_standard_image_target):
         """Test get_merge_sources works with single platform."""
         basic_standard_image_target.build_metadata = [

@@ -122,6 +122,17 @@ class TestImageVersionOS:
         assert os1 != os3
         assert os2 != os3
 
+    @pytest.mark.parametrize("name", ["scratch", "Scratch", "SCRATCH", " scratch "])
+    def test_scratch_derives_empty_extension_and_tag(self, name):
+        i = ImageVersionOS(name=name)
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
+    def test_empty_extension_accepted_explicitly(self):
+        i = ImageVersionOS(name="Ubuntu 22.04", extension="", tagDisplayName="")
+        assert i.extension == ""
+        assert i.tagDisplayName == ""
+
     @pytest.mark.parametrize(
         "input_name,expected_build_os",
         [
@@ -146,6 +157,8 @@ class TestImageVersionOS:
             ("Rocky Linux 10", SUPPORTED_OS["rocky"]["10"]),
             ("Rocky 9", SUPPORTED_OS["rocky"]["9"]),
             ("Rocky", SUPPORTED_OS["rocky"]["10"]),
+            ("Scratch", SUPPORTED_OS["scratch"]),
+            ("scratch", SUPPORTED_OS["scratch"]),
         ],
     )
     def test_populate_build_os(self, input_name, expected_build_os):
@@ -153,3 +166,29 @@ class TestImageVersionOS:
         os = ImageVersionOS(name=input_name)
 
         assert os.buildOS == expected_build_os
+
+
+class TestImageVersionOSArtifactOs:
+    def test_artifact_os_accepted_for_known_os(self):
+        i = ImageVersionOS(name="scratch", artifactOs="ubuntu-24.04")
+        assert i.artifactOs == "ubuntu-24.04"
+
+    def test_artifact_os_rejected_for_unknown_os(self):
+        with pytest.raises(ValidationError, match="not a recognized OS name"):
+            ImageVersionOS(name="scratch", artifactOs="not-a-real-os")
+
+    def test_artifact_os_defaults_to_none(self):
+        i = ImageVersionOS(name="scratch")
+        assert i.artifactOs is None
+
+    def test_artifact_build_os_returns_resolved_os_when_set(self):
+        i = ImageVersionOS(name="scratch", artifactOs="ubuntu-24.04")
+        assert i.artifact_build_os == SUPPORTED_OS["ubuntu"]["24"]
+
+    def test_artifact_build_os_falls_back_to_build_os_when_unset(self):
+        i = ImageVersionOS(name="Ubuntu 22.04")
+        assert i.artifact_build_os == SUPPORTED_OS["ubuntu"]["22"]
+
+    def test_artifact_build_os_for_scratch_without_artifact_os(self):
+        i = ImageVersionOS(name="scratch")
+        assert i.artifact_build_os == SUPPORTED_OS["scratch"]

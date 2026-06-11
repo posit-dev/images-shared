@@ -104,8 +104,8 @@ class TestImageDevelopmentVersionFromProductChannel:
 
         assert "WARNING" in caplog.text
         assert (
-            "No OSes defined for image development version. At least one OS should be defined "
-            "for complete tagging and labeling of images." in caplog.text
+            "No OSes defined for the image configuration. At least one OS should be "
+            "defined for complete tagging and labeling of images." in caplog.text
         )
 
     def test_deduplicate_os(self, caplog):
@@ -129,7 +129,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         assert len(i.os) == 1
         assert i.os[0].name == "Ubuntu 22.04"
         assert "WARNING" in caplog.text
-        assert "Duplicate OS defined in config for image development version: Ubuntu 22.04" in caplog.text
+        assert "Duplicate OS defined in the image configuration: Ubuntu 22.04" in caplog.text
 
     def test_make_single_os_primary(self, caplog):
         """Test that if only one OS is defined, it is automatically made primary."""
@@ -150,7 +150,7 @@ class TestImageDevelopmentVersionFromProductChannel:
         """Test that an error is raised if multiple primary OSes are defined."""
         with pytest.raises(
             ValidationError,
-            match="Only one OS can be marked as primary for image development version. Found 2 OSes marked primary.",
+            match="Only one OS can be marked as primary for the image configuration. Found 2 OSes marked primary.",
         ):
             with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
                 mock_get.return_value = ReleaseChannelResult(
@@ -181,8 +181,8 @@ class TestImageDevelopmentVersionFromProductChannel:
 
         assert "WARNING" in caplog.text
         assert (
-            "No OS marked as primary for image development version. At least one OS should be "
-            "marked as primary for complete tagging and labeling of images." in caplog.text
+            "No OS marked as primary for the image configuration. "
+            "At least one OS should be marked as primary for complete tagging and labeling of images." in caplog.text
         )
 
     def test_extra_registries_or_override_registries(self):
@@ -1031,6 +1031,51 @@ class TestByChannel:
         )
         assert dev_version.get_version() == expected_version
         assert dev_version.get_url_by_os()[_os.name] == expected_session_url
+
+
+class TestArtifactOsForScratch:
+    def test_resolve_os_urls_uses_artifact_os_for_scratch(self):
+        from posit_bakery.config.image.build_os import SUPPORTED_OS
+        from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
+
+        expected_url = "https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb"
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version="2026.05.0",
+                download_url=expected_url,
+            )
+            version = ImageDevelopmentVersionFromProductChannel(
+                sourceType="stream",
+                product="connect",
+                channel="daily",
+                os=[{"name": "scratch", "artifactOs": "ubuntu-24.04"}],
+            )
+            resolved = version._resolve_os_urls()
+
+        for call in mock_get.call_args_list:
+            assert call.args[2] == SUPPORTED_OS["ubuntu"]["24"]
+        assert len(resolved) == 1
+        assert resolved[0].artifactDownloadURL == expected_url
+
+    def test_get_version_uses_artifact_os_for_scratch(self):
+        from posit_bakery.config.image.build_os import SUPPORTED_OS
+        from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
+
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version="2026.05.0",
+                download_url="https://cdn.posit.co/connect/daily/ubuntu2404/amd64/rstudio-connect_2026.05.0_amd64.deb",
+            )
+            version = ImageDevelopmentVersionFromProductChannel(
+                sourceType="stream",
+                product="connect",
+                channel="daily",
+                os=[{"name": "scratch", "artifactOs": "ubuntu-24.04", "primary": True}],
+            )
+            result = version.get_version()
+
+        assert result == "2026.05.0"
+        assert mock_get.call_args.args[2] == SUPPORTED_OS["ubuntu"]["24"]
 
 
 class TestResolveOsUrls:
