@@ -187,7 +187,7 @@ class OrasIndexCreateResult(BaseModel):
     """Result of an ORAS manifest-index-create phase."""
 
     success: Annotated[bool, Field(description="Whether the create phase succeeded.")]
-    temp_ref: Annotated[str | None, Field(default=None, description="The temp ref of the created index.")]
+    temp_ref: Annotated[str, Field(description="The temp ref of the created index.")]
     error: Annotated[str | None, Field(default=None, description="Error message on failure.")]
 
 
