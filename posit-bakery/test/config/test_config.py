@@ -493,20 +493,6 @@ class TestBakeryConfig:
                 """Return a minimal Image with one workbench daily dev version."""
                 from posit_bakery.config.config import BakeryConfigDocument
 
-                bakery_yaml = tmp_path / "bakery.yaml"
-                bakery_yaml.write_text(
-                    "repository:\n"
-                    "  url: https://github.com/posit-dev/test\n"
-                    "images:\n"
-                    "  - name: test-image\n"
-                    "    devVersions:\n"
-                    "      - sourceType: stream\n"
-                    "        product: workbench\n"
-                    "        channel: daily\n"
-                    "        os:\n"
-                    "          - name: Ubuntu 24.04\n"
-                    "            primary: true\n"
-                )
                 doc = BakeryConfigDocument(
                     base_path=tmp_path,
                     **{

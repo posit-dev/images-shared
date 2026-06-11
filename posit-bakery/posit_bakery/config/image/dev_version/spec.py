@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from posit_bakery.config.image.posit_product.const import CALVER_REGEX_PATTERN, ReleaseChannelEnum
 
 
 class DevBuildSpec(BaseModel):
@@ -24,6 +24,8 @@ class DevBuildSpec(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("version must not be empty")
+        if not CALVER_REGEX_PATTERN.fullmatch(v):
+            raise ValueError(f"version {v!r} is not a valid CalVer string (e.g. '2026.06.0-daily+143')")
         return v
 
     @field_validator("release_branch")

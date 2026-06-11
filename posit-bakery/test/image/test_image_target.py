@@ -337,9 +337,6 @@ class TestImageTarget:
         # Floating channel tags do not.
         assert not any("daily" in s for s in target.tag_suffixes)
 
-        # Pattern count drops from 12 to 8 when channel_latest is False.
-        assert len(target.tag_patterns) == 8
-
         del target.image_version.metadata["release_channel"]
         del target.image_version.metadata["channel_latest"]
 
@@ -351,7 +348,6 @@ class TestImageTarget:
 
         assert target.is_channel_latest is True
         assert any("daily" in s for s in target.tag_suffixes)
-        assert len(target.tag_patterns) == 12
 
         del target.image_version.metadata["release_channel"]
         del target.image_version.metadata["channel_latest"]

@@ -38,6 +38,10 @@ class TestDevBuildSpec:
         with pytest.raises(ValidationError, match="version must not be empty"):
             DevBuildSpec(version="   ")
 
+    def test_non_calver_version_raises(self):
+        with pytest.raises(ValidationError, match="CalVer"):
+            DevBuildSpec(version="not-a-calver")
+
     def test_empty_release_branch_raises(self):
         with pytest.raises(ValidationError, match="release_branch must not be empty"):
             DevBuildSpec(release_branch="")
