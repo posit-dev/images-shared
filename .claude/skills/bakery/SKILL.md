@@ -1,0 +1,241 @@
+---
+name: bakery
+description: >
+  Use when working in any Posit container image repo (images-connect,
+  images-workbench, images-package-manager, images-shared) on tasks involving:
+  editing Containerfile templates, adding or updating image versions, running
+  bakery commands, or modifying CI workflows that call bakery ci matrix/merge.
+  Encodes critical invariants and common workflows to prevent known mistakes.
+---
+
+# bakery
+
+Posit Bakery is the CLI for building, testing, and managing container images across
+the posit-dev image repos. This skill encodes critical invariants and common workflows.
+
+## Critical invariants
+
+Check these before acting on any bakery-related task.
+
+### 1. Never edit rendered files — only templates
+
+Image repos contain Jinja2 templates in `template/` directories **and** rendered output
+in version directories (e.g., `2025.08.0/`). Rendered files are generated — never edit
+them directly.
+
+**Always:**
+1. Edit the template: `<image>/template/Containerfile.jinja` (or other `.jinja` files)
+2. Re-render with filter flags scoped to the most recent version:
+   `uv run bakery update files --image-name <name> --image-version <version>`
+
+**Never:** run `uv run bakery update files` without filter flags — it re-renders every
+version, which is almost never the right action.
+
+**Exception:** for systematic changes that must land in every version, it is often easier
+to render one version, make the change locally in that rendered file to validate it, then
+apply the edit to the template and re-render.
+
+### 2. Invoke bakery with `uv run`
+
+Always prefix bakery commands with `uv run`:
+
+```bash
+uv run bakery build --plan
+uv run bakery update files
+uv run bakery create version 1.2.3
+```
+
+Bare `bakery` is not on the system PATH — it is installed via uv in the `posit-bakery/`
+project and only available through `uv run`.
+
+### 3. Read sibling repos before cross-repo changes
+
+When a task requires editing templates, macros, or `bakery.yaml` in a sibling repo
+(`images-connect`, `images-workbench`, `images-package-manager`), read that repo's
+`CLAUDE.md` and `bakery.yaml` before making any changes there.
+
+### 4. Matrix versions are excluded by default
+
+`--matrix-versions` defaults to `exclude`. Matrix images (e.g., `connect-content`,
+`workbench-session`) produce **zero build targets** unless you explicitly pass
+`--matrix-versions include` or `--matrix-versions only`.
+
+Always verify with `uv run bakery build --plan` or `uv run bakery get tags` before
+building — a plan with no targets means a filter flag is wrong or missing.
+
+### 5. Use `--dev-channel`, not `--dev-stream`
+
+`--dev-stream` is deprecated (hidden, emits a warning). Use `--dev-channel` instead:
+
+```bash
+uv run bakery build --dev-versions only --dev-channel daily
+```
+
+`--dev-channel` is silently ignored when `--dev-versions` is `exclude` (the default) —
+bakery emits a warning but does not error. Always pair them.
+
+For CI dispatch builds that must pin an exact dev version, use `--dev-spec` (or the
+`BAKERY_DEV_SPEC` env var) instead of `--dev-channel`. It accepts a JSON payload and
+overrides CDN discovery for the matching channel:
+
+```bash
+uv run bakery build --dev-versions only \
+  --dev-spec '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'
+```
+
+If both `--dev-spec` and `--dev-channel` are set, their `channel` values must match or
+bakery raises an error.
+
+### 6. Forward filter flags to `bakery ci merge` and `clean`
+
+When modifying a CI workflow, filter flags must be forwarded consistently across all
+three stages: build → merge, and build → clean.
+
+**Build → merge:** `bakery ci merge` must receive the same flags as the build step:
+
+- `--dev-versions [include|exclude|only]`
+- `--dev-channel [release|preview|daily]`
+- `--dev-spec <json>` / `BAKERY_DEV_SPEC`
+- `--matrix-versions [include|exclude|only]`
+
+Mismatched flags cause the merge step to match metadata by UID and fan a single built
+image out to multiple targets — including targets in the wrong registry. A release
+version and a dev-stream version that share the same version number have identical UIDs
+and will collide. (Tracked as posit-dev/images-shared#553; fix in PR #554.)
+
+**Build → clean:** `clean.yml` must receive the same `dev-versions` value as the build
+that produced the images. If build uses `dev-versions: "only"` but clean uses the default
+`dev-versions: "exclude"`, the clean job targets the wrong set of images and dev artifacts
+accumulate.
+
+**Temp registry:** The `--temp-registry` value in `bakery ci merge` must exactly match the
+value used in the corresponding `bakery build` step. A mismatch causes the merge step to
+look for images that don't exist, failing with cryptic "image not found" errors.
+
+### 7. `bakery remove` is irreversible
+
+`bakery remove version` and `bakery remove image` delete the version directory **and**
+remove the entry from `bakery.yaml`. There is no dry-run flag and no confirmation prompt.
+Always confirm with the user before running either command.
+
+### 8. `bakery create version` marks the new version as latest by default
+
+`bakery create version` sets `latest: true` on the new version and **unmarks all other
+versions**. If the repo has a current release marked `latest`, creating a new version will
+silently demote it. Verify the intended `latest` state in `bakery.yaml` after running.
+
+### 9. `bakery update version --clean` deletes files before re-rendering
+
+The `--clean` flag on `bakery update version` defaults to `True`. It deletes all existing
+files in the version directory before re-rendering. Use `bakery update files` (scoped) for
+non-destructive re-renders.
+
+### 10. Use `bakery dgoss run`, not `bakery run dgoss`
+
+`bakery run dgoss` is deprecated and emits a warning. Use:
+
+```bash
+uv run bakery dgoss run
+```
+
+### 11. Guard `clean.yml` with a branch condition
+
+When calling `clean.yml` from a product repo workflow, always include a branch guard:
+
+```yaml
+clean:
+  if: always() && github.ref == 'refs/heads/main'
+  needs: [build]
+  uses: "posit-dev/images-shared/.github/workflows/clean.yml@main"
+```
+
+Without the `github.ref` guard, fork PRs will attempt to clean images from the main
+org's registry. Fork workflows lack write credentials so the job fails, and the failure
+is hard to diagnose.
+
+## Common workflows
+
+### Add a new image version
+
+```bash
+uv run bakery create version <version>
+# Edit the generated template if the new version needs adjustments
+uv run bakery update files --image-name <name> --image-version <version>
+uv run bakery build --plan   # preview before building
+```
+
+### Update a template (Containerfile, goss tests, etc.)
+
+```bash
+# Edit the template — never the rendered output
+$EDITOR <image>/template/Containerfile.jinja
+
+# Re-render scoped to the most recent version (always specify filters)
+uv run bakery update files --image-name <name> --image-version <version>
+```
+
+### Preview what will be built
+
+```bash
+uv run bakery get tags                                  # list tags by component
+uv run bakery build --plan                              # full bake plan (JSON)
+```
+
+`--plan` only works with `--strategy bake` (the default). It errors with
+`--strategy build`.
+
+### Build locally
+
+```bash
+uv run bakery build                                     # build + load into Docker
+uv run bakery build --image-name connect --image-version 2025.08.0
+uv run bakery build --push --no-load                    # push to registry (CI pattern)
+```
+
+### Run goss tests
+
+```bash
+uv run bakery dgoss run
+```
+
+### Inspect the CI matrix
+
+```bash
+uv run bakery ci matrix
+```
+
+### Debug a CI failure
+
+```bash
+gh run list -R posit-dev/<repo>
+gh run view <run-id> -R posit-dev/<repo>
+gh run view <run-id> -R posit-dev/<repo> --log-failed
+```
+
+## Key CLI flags
+
+| Flag | Purpose |
+|------|---------|
+| `--image-name <name>` | Scope to an image (regex) |
+| `--image-version <ver>` | Scope to a version |
+| `--image-variant <var>` | Scope to Standard or Minimal |
+| `--image-os <os>` | Scope to an OS |
+| `--image-platform <plat>` | Scope to a platform (e.g. `linux/amd64`) |
+| `--dev-versions [include\|exclude\|only]` | Include/exclude dev versions |
+| `--dev-channel [release\|preview\|daily]` | Filter to a specific dev channel (replaces deprecated `--dev-stream`) |
+| `--dev-spec <json>` / `BAKERY_DEV_SPEC` | Pin an exact dev version for dispatch builds |
+| `--matrix-versions [include\|exclude\|only]` | Include/exclude matrix versions |
+| `--plan` | Print the bake plan and exit (build only) |
+| `--push` / `--no-push` | Push to registry after build |
+| `--strategy [bake\|build]` | `bake` = Docker Buildx parallel; `build` = sequential |
+
+## Template variables
+
+Available in all Jinja2 templates:
+
+- `Image.Version`, `Image.Variant`, `Image.IsDevelopmentVersion`
+- `Image.OS` with `.Name`, `.Family`, `.Version`, `.Codename`
+- `Path.Base`, `Path.Image`, `Path.Version`
+- `Dependencies.python`, `Dependencies.R`, `Dependencies.quarto` (lists of version strings)
+
+Custom filters: `tagSafe`, `stripMetadata`, `condense`, `regexReplace`, `quote`, `split`
