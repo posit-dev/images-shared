@@ -105,12 +105,28 @@ class ParallelShellExecutor:
         self._active: set[subprocess.Popen] = set()
         self._lock = threading.Lock()
         self._shutdown = False
+        self._progress: Progress | None = None
+        self._progress_ids: dict[str, Any] = {}
 
     def _resolve_use_live(self, n_tasks: int) -> bool:
         """Decide whether to render a live table: explicit override, else TTY + not quiet + >1 task."""
         if self._use_live is not None:
             return self._use_live
         return self.console.is_terminal and SETTINGS.log_level < logging.ERROR and n_tasks > 1
+
+    def _mark_running(self, task: ShellTask) -> None:
+        """Flip a task's live-table row from queued to running and start its timer.
+
+        Safe to call from worker threads: Rich Progress mutations are internally locked and
+        are not console output. No-op when no live Progress is attached.
+        """
+        progress = self._progress
+        if progress is None:
+            return
+        task_id = self._progress_ids.get(task.key)
+        if task_id is not None:
+            progress.start_task(task_id)
+            progress.update(task_id, description=f"[bright_blue]running {task.display_label}")
 
     def _run_one(self, task: ShellTask) -> ShellResult:
         """Run one task as a tracked child process, enforcing task.timeout if set."""
@@ -149,6 +165,7 @@ class ParallelShellExecutor:
                 exception=None,
                 timed_out=False,
             )
+        self._mark_running(task)
         timed_out = False
         exception: Exception | None = None
         timeout = task.timeout if (task.timeout is not None and task.timeout > 0) else None
@@ -214,6 +231,8 @@ class ParallelShellExecutor:
             return []
 
         self._shutdown = False
+        self._progress = None
+        self._progress_ids = {}
         use_live = self._resolve_use_live(len(tasks))
         results_by_key: dict[str, ShellResult] = {}
         progress: Progress | None = None
@@ -227,6 +246,7 @@ class ParallelShellExecutor:
                 console=self.console,
                 transient=False,
             )
+            self._progress = progress
 
         def consume(future_map: dict) -> None:
             for future in as_completed(future_map):
@@ -247,7 +267,10 @@ class ParallelShellExecutor:
             if progress is not None:
                 with progress:
                     for task in tasks:
-                        progress_ids[task.key] = progress.add_task(f"[quiet]queued {task.display_label}", total=1)
+                        progress_ids[task.key] = progress.add_task(
+                            f"[quiet]{'queued':<7} {task.display_label}", total=1, start=False
+                        )
+                    self._progress_ids = progress_ids
                     future_map = {pool.submit(self._run_one, task): task for task in tasks}
                     consume(future_map)
             else:
@@ -263,5 +286,8 @@ class ParallelShellExecutor:
             raise
         else:
             pool.shutdown(wait=True)
+        finally:
+            self._progress = None
+            self._progress_ids = {}
 
         return [results_by_key[task.key] for task in tasks]

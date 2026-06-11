@@ -9,6 +9,7 @@ import time
 
 import pytest
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
 from posit_bakery.parallel import ParallelShellExecutor, ShellResult, ShellTask, resolve_max_workers
@@ -158,6 +159,44 @@ class TestParallelShellExecutor:
         assert ex_term._resolve_use_live(2) is True
         assert ex_term._resolve_use_live(1) is False  # single task -> no live table
         assert ex_plain._resolve_use_live(2) is False  # non-terminal -> no live table
+
+    def test_run_one_marks_row_running(self):
+        # When a Progress is attached, _run_one flips its row from queued to running and
+        # starts the row's timer. (Completion -> ✓ happens later on the main thread, not here.)
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+            console=Console(file=io.StringIO()),
+        )
+        ex = ParallelShellExecutor(max_workers=1, console=Console(file=io.StringIO()), use_live=False)
+        task = ShellTask(key="k", cmd=[sys.executable, "-c", "pass"], label="my-task")
+        task_id = progress.add_task("[quiet]queued  my-task", total=1, start=False)
+        ex._progress = progress
+        ex._progress_ids = {"k": task_id}
+
+        ex._run_one(task)
+
+        row = progress.tasks[task_id]
+        assert row.started is True  # _run_one started the row's timer
+        assert "running" in row.description  # row flipped to running
+
+    def test_run_one_no_progress_is_noop(self):
+        # With no Progress attached (the default), _run_one must run fine and not error.
+        ex = ParallelShellExecutor(max_workers=1, console=Console(file=io.StringIO()), use_live=False)
+        result = ex._run_one(ShellTask(key="k", cmd=[sys.executable, "-c", "pass"]))
+        assert result.ok is True
+
+    def test_run_live_progress_smoke(self):
+        # Force the live path with a terminal-like StringIO console; assert run() still
+        # returns ordered, successful results (exercises add_task(start=False) -> running -> done).
+        ex = ParallelShellExecutor(
+            max_workers=2, console=Console(file=io.StringIO(), force_terminal=True), use_live=True
+        )
+        tasks = [ShellTask(key=str(i), cmd=[sys.executable, "-c", "pass"]) for i in range(3)]
+        results = ex.run(tasks)
+        assert [r.task.key for r in results] == ["0", "1", "2"]
+        assert all(r.ok for r in results)
 
 
 class TestParallelShellExecutorTimeout:
