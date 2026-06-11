@@ -552,7 +552,7 @@ A GossOption represents options for `dgoss` tests against an image target.
 
 A SociOption configures [SOCI](https://github.com/awslabs/soci-snapshotter) (Seekable OCI) index generation for an image target. SOCI indexes let container runtimes lazily pull image layers, reducing startup latency for large images.
 
-SOCI options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant's options are merged over the image's options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step (for example, via `bakery soci convert` or the `--soci-mode` flag on `bakery ci publish`) and only acts on targets where `enabled` is `true`.
+SOCI options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant's options are merged over the image's options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step via `bakery soci convert` (standalone) or as part of `bakery ci publish` (config-driven), and only acts on targets where `enabled` is `true`.
 
 | Field                                | Description                                                                                                                                      | Default Value                | Example                  |
 |--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|--------------------------|
