@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from posit_bakery.config.dependencies.const import SupportedDependencies
+
 # Local under TYPE_CHECKING to avoid a circular import: version.py imports
 # this module at runtime, so importing ImageVersion eagerly would cycle.
 if TYPE_CHECKING:
@@ -17,12 +19,17 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Alternation of known dependency name prefixes, longest first.
+_DEP_ALT = "|".join(re.escape(d.value) for d in sorted(SupportedDependencies, key=lambda d: len(d.value), reverse=True))
+
 # Anchored grammar:
+#   [<dep>]        optional SupportedDependencies name (e.g. "R", "python")
 #   <release>      one or more dot-separated digit groups, minimum two groups
 #   -<prerelease>  optional, semver prerelease alphabet
 #   +<build>       optional, semver build alphabet
 _VERSION_RE = re.compile(
-    r"^(?P<release>\d+(?:\.\d+)+)"
+    r"^(?:" + _DEP_ALT + r")?"
+    r"(?P<release>\d+(?:\.\d+)+)"
     r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?"
     r"(?:\+(?P<build>[0-9A-Za-z.-]+))?$"
 )
