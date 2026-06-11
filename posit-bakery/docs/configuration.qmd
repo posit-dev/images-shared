@@ -286,6 +286,7 @@ Resolves the version via the dependency constraint system rather than a product 
 |-----------------------------|-----------------------------------------------------------------------------------------------------------------------|---------|------------|
 | `dependency`<br/>*string*   | *(Required)* The dependency to resolve a version for. Must be a supported dependency type.                            |         | `positron` |
 | `prerelease`<br/>*bool*     | When `true`, includes the dependency's prerelease channel in version resolution.                                      | `false` | `true`     |
+| `channel`<br/>*string*      | The release channel for this dev version. Populates the `{{ Channel }}` tag variable. Omit for stable dependency resolution. `"release"` is not accepted. | *(none)* | `daily`, `preview` |
 
 **Example:**
 
@@ -294,6 +295,7 @@ devVersions:
   - sourceType: dependency
     dependency: positron
     prerelease: true
+    channel: daily
     values:
       POSITRON_CHANNEL: dailies
     overrideRegistries:
