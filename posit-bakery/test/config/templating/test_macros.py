@@ -1272,7 +1272,7 @@ class TestPythonMacros:
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
             ENV UV_PYTHON_PREFERENCE=only-managed
-            RUN uv python install 3.12.11 3.11.9
+            RUN uv self update && uv python install 3.12.11 3.11.9
             RUN mv /opt/python/cpython-3.12.11-linux-*/ /opt/python/3.12.11 && \\
                 mv /opt/python/cpython-3.11.9-linux-*/ /opt/python/3.11.9
 
@@ -1295,7 +1295,7 @@ class TestPythonMacros:
             ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
             ENV UV_PYTHON_INSTALL_DIR=/opt/python
             ENV UV_PYTHON_PREFERENCE=only-managed
-            RUN uv python install 3.12.11 3.11.9
+            RUN uv self update && uv python install 3.12.11 3.11.9
             RUN mv /opt/python/cpython-3.12.11-linux-*/ /opt/python/3.12.11 && \\
                 mv /opt/python/cpython-3.11.9-linux-*/ /opt/python/3.11.9
 
@@ -1320,7 +1320,7 @@ class TestPythonMacros:
             ENV UV_PYTHON_PREFERENCE=only-managed
 
             ARG PYTHON_VERSION
-            RUN uv python install $PYTHON_VERSION
+            RUN uv self update && uv python install $PYTHON_VERSION
             RUN mv /opt/python/cpython-$PYTHON_VERSION-linux-*/ /opt/python/$PYTHON_VERSION
 
             """
