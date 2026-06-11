@@ -79,9 +79,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c2b04ac753575a39acaa53a016e0db1c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../site_libs/bootstrap/bootstrap-dark-94e0a0e58c662ab5509f4bd22617ba7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-27aa839fe1d509286e02b83e7f71da62.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": true,
@@ -804,9 +804,10 @@ Options:
   --help  Show this message and exit.
 
 Commands:
-  matrix  Generates a JSON matrix of image versions for CI workflows to...
-  merge   Merges multiple metadata files with single-platform images into...
-  readme  Push image READMEs to Docker Hub.</code></pre>
+  matrix   Generates a JSON matrix of image versions for CI workflows to...
+  merge    Alias for `bakery ci publish`.
+  publish  Publish multi-platform images by composing oras index-create →...
+  readme   Push image READMEs to Docker Hub.</code></pre>
 </div>
 </div>
 <section id="commands" class="level2 doc-parameters">
@@ -819,7 +820,11 @@ Commands:
 </dd>
 <dt><code><span class="doc-parameter-name">merge</span></code></dt>
 <dd>
-<a href="../../reference/cli/ci/merge.html">Merges multiple metadata files with single-platform images into a single multi-platform image by UID.</a>
+<a href="../../reference/cli/ci/merge.html">Alias for <code>bakery ci publish</code>.</a>
+</dd>
+<dt><code><span class="doc-parameter-name">publish</span></code></dt>
+<dd>
+<a href="../../reference/cli/ci/publish.html">Publish multi-platform images by composing oras index-create → soci-convert → oras index-copy.</a>
 </dd>
 <dt><code><span class="doc-parameter-name">readme</span></code></dt>
 <dd>

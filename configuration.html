@@ -81,9 +81,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-c2b04ac753575a39acaa53a016e0db1c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-94e0a0e58c662ab5509f4bd22617ba7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-27aa839fe1d509286e02b83e7f71da62.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": true,
@@ -1804,6 +1804,93 @@ Note
 </tbody>
 </table>
 </section>
+<section id="socioptions" class="level4">
+<h4 class="anchored" data-anchor-id="socioptions">SociOptions</h4>
+<p>A SociOption configures <a href="https://github.com/awslabs/soci-snapshotter">SOCI</a> (Seekable OCI) index generation for an image target. SOCI indexes let container runtimes lazily pull image layers, reducing startup latency for large images.</p>
+<p>SOCI options can be set in the <code>options</code> array of an <a href="#image">Image</a> or an <a href="#imagevariant">ImageVariant</a>. When both are present, the variant’s options are merged over the image’s options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step via <code>bakery soci convert</code> (standalone) or as part of <code>bakery ci publish</code> (config-driven), and only acts on targets where <code>enabled</code> is <code>true</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 60%">
+<col style="width: 12%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+<th>Default Value</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>tool</code><br><em>“soci” literal string</em></td>
+<td><em>(Required)</em> The name of the tool.</td>
+<td></td>
+<td><code>soci</code></td>
+</tr>
+<tr class="even">
+<td><code>enabled</code><br><em>bool</em></td>
+<td>Enable SOCI conversion for this target. Targets without <code>enabled: true</code> are skipped during conversion.</td>
+<td><code>false</code></td>
+<td><code>true</code></td>
+</tr>
+<tr class="odd">
+<td><code>span_size</code><br><em>int</em></td>
+<td>SOCI zTOC span size, in bytes. If unset, the SOCI default is used.</td>
+<td>SOCI default</td>
+<td><code>4194304</code></td>
+</tr>
+<tr class="even">
+<td><code>min_layer_size</code><br><em>int</em></td>
+<td>Minimum layer size, in bytes, for a layer to be indexed. Smaller layers are skipped. If unset, the SOCI default is used.</td>
+<td>SOCI default</td>
+<td><code>10485760</code></td>
+</tr>
+<tr class="odd">
+<td><code>prefetch_files</code><br><em>string array</em></td>
+<td>Files to mark for prefetch in the SOCI index.</td>
+<td><code>[]</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>optimizations</code><br><em>string array</em></td>
+<td>Optional SOCI optimizations to apply (e.g.&nbsp;<code>xattr</code>).</td>
+<td><code>[]</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>platforms</code><br><em>string array</em></td>
+<td>Platforms to convert. If unset, all platforms in the source image are converted (<code>--all-platforms</code>).</td>
+<td>All platforms</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<section id="example-socioptions" class="level5">
+<h5 class="anchored" data-anchor-id="example-socioptions">Example SociOptions</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">images</span><span class="kw">:</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> workbench</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">options</span><span class="kw">:</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">tool</span><span class="kw">:</span><span class="at"> soci</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">min_layer_size</span><span class="kw">:</span><span class="at"> </span><span class="dv">10485760</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">variants</span><span class="kw">:</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Standard</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">extension</span><span class="kw">:</span><span class="at"> std</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">tagDisplayName</span><span class="kw">:</span><span class="at"> std</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">primary</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">options</span><span class="kw">:</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co">          # Override the image-level SOCI settings for this variant only.</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="kw">-</span><span class="at"> </span><span class="fu">tool</span><span class="kw">:</span><span class="at"> soci</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="at">            </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="at">            </span><span class="fu">span_size</span><span class="kw">:</span><span class="at"> </span><span class="dv">4194304</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="at">            </span><span class="fu">platforms</span><span class="kw">:</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="at">              </span><span class="kw">-</span><span class="at"> linux/amd64</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="at">              </span><span class="kw">-</span><span class="at"> linux/arm64</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
 </section>
 </section>
 <section id="environment-variables" class="level2">
@@ -1832,11 +1919,11 @@ Note
 </table>
 <section id="example-usage" class="level3">
 <h3 class="anchored" data-anchor-id="example-usage">Example Usage</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build the latest daily (default behavior)</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a daily from the "globemaster-allium" release branch</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="va">BAKERY_WORKBENCH_RELEASE_BRANCH</span><span class="op">=</span>globemaster-allium <span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build the latest daily (default behavior)</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a daily from the "globemaster-allium" release branch</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="va">BAKERY_WORKBENCH_RELEASE_BRANCH</span><span class="op">=</span>globemaster-allium <span class="ex">bakery</span> build <span class="at">--dev-versions</span> only</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="see-also" class="level2">

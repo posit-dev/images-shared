@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>bakery build – Posit Bakery</title>
+<title>bakery soci – Posit Bakery</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -367,7 +367,7 @@ window.onload = function () {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery build</span></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery soci</span></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -756,9 +756,9 @@ window.onload = function () {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#bakery-build" id="toc-bakery-build" class="nav-link active" data-scroll-target="#bakery-build"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery build</span></a>
+  <li><a href="#bakery-soci" id="toc-bakery-soci" class="nav-link active" data-scroll-target="#bakery-soci"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery soci</span></a>
   <ul class="collapse">
-  <li><a href="#options" id="toc-options" class="nav-link" data-scroll-target="#options">Options</a></li>
+  <li><a href="#commands" id="toc-commands" class="nav-link" data-scroll-target="#commands">Commands</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -769,7 +769,7 @@ window.onload = function () {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery build</span></h1>
+<h1 class="title"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery soci</span></h1>
 </div>
 
 
@@ -786,185 +786,34 @@ window.onload = function () {
 </header>
 
 
-<section id="bakery-build" class="level1">
-<h1><span class="doc-object-name doc-function doc-label doc-label-cli">bakery build</span></h1>
+<section id="bakery-soci" class="level1">
+<h1><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery soci</span></h1>
 <div class="doc-subject">
-<p>Build images using buildkit bake (aliases: b, bake)</p>
+<p>Convert images to SOCI-enabled images</p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> build <span class="pp">[</span><span class="ss">OPTIONS</span><span class="pp">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> soci COMMAND <span class="pp">[</span><span class="ss">ARGS</span><span class="pp">]</span>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="details" data-summary="Full --help output">
 <div class="cli-manpage">
-<pre><code>Usage: bakery build [OPTIONS]
+<pre><code>Usage: bakery soci [OPTIONS] COMMAND [ARGS]...
 
-  Build images using buildkit bake (aliases: b, bake)
+  Convert images to SOCI-enabled images
 
 Options:
-  --context DIRECTORY             The root path to use. Defaults to the
-                                  current working directory where invoked.
-                                  [default: (.)]
-  --strategy [build|bake]         The strategy to use when building the image.
-                                  'bake' requires Docker Buildkit and builds
-                                  images in parallel. 'build' can use generic
-                                  container builders, such as Podman, and
-                                  builds images sequentially.  [default: bake]
-  --fail-fast                     Terminate builds on the first failure.
-  --retry INTEGER RANGE           Number of times to retry a failed build.
-                                  [default: 0; x&gt;=0]
-  --plan                          Print the bake plan and exit.
-  --load / --no-load              Load the image to Docker after building.
-                                  [default: load]
-  --push / --no-push              Push the image to its registry tags after
-                                  building.  [default: no-push]
-  --clean / --no-clean            Clean up intermediary and temporary files
-                                  after building. Disable for debugging.
-                                  [default: clean]
-  --metadata-file PATH            The path to write JSON build metadata to
-                                  once builds are finished.
-  --pull / --no-pull              Always pull the latest version of base
-                                  images.  [default: no-pull]
-  --cache / --no-cache            Enable layer caching for image builds.
-                                  [default: cache]
-  --cache-registry TEXT           External registry to use for layer caching.
-  --temp-registry TEXT            Temporary registry to use for multiplatform
-                                  split/merge builds.
-  --image-name TEXT               The image name or a regex pattern to isolate
-                                  builds to.
-  --image-version TEXT            The image version or version prefix to
-                                  isolate builds to.
-  --image-variant TEXT            The image type to isolate builds to.
-  --image-os TEXT                 The image OS name or a regex pattern to
-                                  isolate builds to.
-  --image-platform TEXT           The image platform(s) to isolate builds to,
-                                  e.g. 'linux/amd64'. Image build targets
-                                  incompatible with the given platform(s) will
-                                  be skipped.
-  --dev-versions [include|exclude|only]
-                                  Include or exclude development version
-                                  builds defined in config.  [default:
-                                  exclude]
-  --dev-channel [release|preview|daily]
-                                  Filter development versions to a specific
-                                  release channel.
-  --matrix-versions [include|exclude|only]
-                                  Include or exclude versions defined in image
-                                  matrix.  [default: exclude]
-  --latest                        Build only the latest version of each image.
-                                  Development versions are ignored by this
-                                  filter.
-  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:
-                                  '{"version": "2026.05.0-dev+185-gSHA",
-                                  "channel": "daily"}'  [env var:
-                                  BAKERY_DEV_SPEC]
-  -v, --verbose                   Enable debug logging
-  -q, --quiet                     Supress all output except errors
-  --help                          Show this message and exit.</code></pre>
+  --help  Show this message and exit.
+
+Commands:
+  convert  Convert images referenced by build-metadata JSON files into...</code></pre>
 </div>
 </div>
-<section id="options" class="level2 doc-parameters">
-<h2 class="doc-parameters anchored" data-anchor-id="options">Options</h2>
+<section id="commands" class="level2 doc-parameters">
+<h2 class="doc-parameters anchored" data-anchor-id="commands">Commands</h2>
 <div class="doc-definition-items">
 <dl>
-<dt><code><span class="doc-parameter-name">--context</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">DIRECTORY</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">/home/runner/work/images-shared/images-shared/posit-bakery/great-docs</span></code></dt>
+<dt><code><span class="doc-parameter-name">convert</span></code></dt>
 <dd>
-The root path to use. Defaults to the current working directory where invoked.
-</dd>
-<dt><code><span class="doc-parameter-name">--strategy</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">ImageBuildStrategy.BAKE</span></code></dt>
-<dd>
-The strategy to use when building the image. <code>bake</code> requires Docker Buildkit and builds images in parallel. <code>build</code> can use generic container builders, such as Podman, and builds images sequentially.
-</dd>
-<dt><code><span class="doc-parameter-name">--fail-fast</span></code></dt>
-<dd>
-Terminate builds on the first failure.
-</dd>
-<dt><code><span class="doc-parameter-name">--retry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">INTEGER RANGE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">0</span></code></dt>
-<dd>
-Number of times to retry a failed build.
-</dd>
-<dt><code><span class="doc-parameter-name">--plan</span></code></dt>
-<dd>
-Print the bake plan and exit.
-</dd>
-<dt><code><span class="doc-parameter-name">--load, --no-load</span></code></dt>
-<dd>
-Load the image to Docker after building.
-</dd>
-<dt><code><span class="doc-parameter-name">--push, --no-push</span></code></dt>
-<dd>
-Push the image to its registry tags after building.
-</dd>
-<dt><code><span class="doc-parameter-name">--clean, --no-clean</span></code></dt>
-<dd>
-Clean up intermediary and temporary files after building. Disable for debugging.
-</dd>
-<dt><code><span class="doc-parameter-name">--metadata-file</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">PATH</span></code></dt>
-<dd>
-The path to write JSON build metadata to once builds are finished.
-</dd>
-<dt><code><span class="doc-parameter-name">--pull, --no-pull</span></code></dt>
-<dd>
-Always pull the latest version of base images.
-</dd>
-<dt><code><span class="doc-parameter-name">--cache, --no-cache</span></code></dt>
-<dd>
-Enable layer caching for image builds.
-</dd>
-<dt><code><span class="doc-parameter-name">--cache-registry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-External registry to use for layer caching.
-</dd>
-<dt><code><span class="doc-parameter-name">--temp-registry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-Temporary registry to use for multiplatform split/merge builds.
-</dd>
-<dt><code><span class="doc-parameter-name">--image-name</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-The image name or a regex pattern to isolate builds to.
-</dd>
-<dt><code><span class="doc-parameter-name">--image-version</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-The image version or version prefix to isolate builds to.
-</dd>
-<dt><code><span class="doc-parameter-name">--image-variant</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-The image type to isolate builds to.
-</dd>
-<dt><code><span class="doc-parameter-name">--image-os</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-The image OS name or a regex pattern to isolate builds to.
-</dd>
-<dt><code><span class="doc-parameter-name">--image-platform</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-The image platform(s) to isolate builds to, e.g.&nbsp;<code>linux/amd64</code>. Image build targets incompatible with the given platform(s) will be skipped.
-</dd>
-<dt><code><span class="doc-parameter-name">--dev-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">DevVersionInclusionEnum.EXCLUDE</span></code></dt>
-<dd>
-Include or exclude development version builds defined in config.
-</dd>
-<dt><code><span class="doc-parameter-name">--dev-channel</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span></code></dt>
-<dd>
-Filter development versions to a specific release channel.
-</dd>
-<dt><code><span class="doc-parameter-name">--matrix-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">MatrixVersionInclusionEnum.EXCLUDE</span></code></dt>
-<dd>
-Include or exclude versions defined in image matrix.
-</dd>
-<dt><code><span class="doc-parameter-name">--latest</span></code></dt>
-<dd>
-Build only the latest version of each image. Development versions are ignored by this filter.
-</dd>
-<dt><code><span class="doc-parameter-name">--dev-spec</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
-<dd>
-JSON spec for a dispatched dev build. Ex: <code>{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}</code> Environment variable: <code>BAKERY_DEV_SPEC</code>.
-</dd>
-<dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
-<dd>
-Enable debug logging
-</dd>
-<dt><code><span class="doc-parameter-name">-q, --quiet</span></code></dt>
-<dd>
-Supress all output except errors
+<a href="../../reference/cli/soci/convert.html">Convert images referenced by build-metadata JSON files into SOCI-enabled images.</a>
 </dd>
 </dl>
 </div>

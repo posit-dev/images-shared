@@ -79,9 +79,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-c2b04ac753575a39acaa53a016e0db1c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-94e0a0e58c662ab5509f4bd22617ba7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../../site_libs/bootstrap/bootstrap-dc8d92e929e8efd7628712b0943f96fd.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-27aa839fe1d509286e02b83e7f71da62.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": true,
@@ -790,29 +790,22 @@ window.onload = function () {
 <section id="bakery-ci-merge" class="level1">
 <h1><span class="doc-object-name doc-function doc-label doc-label-cli">bakery ci merge</span></h1>
 <div class="doc-subject">
-<p>Merges multiple metadata files with single-platform images into a single multi-platform image by UID. This command is intended for use in CI workflows that utilize native builders for multiplatform builds. Easier multiplatform builds can be achieved by using emulation (Docker and QEMU), but builds in emulation typically suffer severe performance disadvantages. This command should be ran after multiple <code>bakery build --strategy build --platform &lt;platform&gt; --metadata-file &lt;path&gt;</code>–temp-registry<code>&lt;registry&gt;</code> commands have been executed for different platforms. The resulting metadata files can be fed into this command to merge and push combined multi-platform images. Matches are made by the top-level Image UID keys in the metadata files. Single entries with no other matches will be tagged and pushed as is. If an entry has no matching UID in the project, it will be skipped with a delayed error. Metadata files are expected to be JSON with the following structure: <code>json {   "&lt;Image UID&gt;": {metadata...} }</code></p>
+<p>Alias for <code>bakery ci publish</code>.</p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> ci merge <span class="pp">[</span><span class="ss">OPTIONS</span><span class="pp">]</span> METADATA_FILE...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="doc-text">
+<p>Preserved for back-compat. New callers should prefer <code>bakery ci publish</code>. SOCI conversion is driven by per-image/variant <code>soci</code> options.</p>
 </div>
 <div class="details" data-summary="Full --help output">
 <div class="cli-manpage">
 <pre><code>Usage: bakery ci merge [OPTIONS] METADATA_FILE...
 
-  Merges multiple metadata files with single-platform images into a single
-  multi-platform image by UID. This command is intended for use in CI
-  workflows that utilize native builders for multiplatform builds. Easier
-  multiplatform builds can be achieved by using emulation (Docker and QEMU),
-  but builds in emulation typically suffer severe performance disadvantages.
-  This command should be ran after multiple `bakery build --strategy build
-  --platform &lt;platform&gt; --metadata-file &lt;path&gt; --temp-registry &lt;registry&gt;`
-  commands have been executed for different platforms. The resulting metadata
-  files can be fed into this command to merge and push combined multi-platform
-  images. Matches are made by the top-level Image UID keys in the metadata
-  files. Single entries with no other matches will be tagged and pushed as is.
-  If an entry has no matching UID in the project, it will be skipped with a
-  delayed error. Metadata files are expected to be JSON with the following
-  structure: ```json {   "&lt;Image UID&gt;": {metadata...} } ```
+  Alias for `bakery ci publish`.
+
+  Preserved for back-compat. New callers should prefer `bakery ci publish`.
+  SOCI conversion is driven by per-image/variant `soci` options.
 
 Arguments:
   METADATA_FILE...  Path to input build metadata JSON file(s) to merge.
