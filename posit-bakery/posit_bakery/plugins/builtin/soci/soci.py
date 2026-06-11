@@ -15,6 +15,7 @@ from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.oras.oras import OrasCopy
 from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.retry import RetryPolicy, retry_on_transient
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
@@ -134,6 +135,7 @@ class SociConvertWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="The image target.")]
     options: Annotated[SociOptions, Field(description="Per-target SOCI configuration.")]
     source_ref: Annotated[str, Field(description="Temp-registry ref to convert from.")]
+    retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
     @property
     def destination_ref(self) -> str:
@@ -183,13 +185,20 @@ class SociConvertWorkflow(BaseModel):
         out_layout = scratch / "out"
         try:
             # 1. registry -> OCI layout. The layout tag is arbitrary; soci
-            #    reads the whole layout.
-            OrasCopy(
+            #    reads the whole layout. Retry transient registry errors: the
+            #    temp-registry index/children may still be propagating when
+            #    this pull first reads them (registry eventual consistency).
+            pull = OrasCopy(
                 oras_bin=self.oras_bin,
                 source=self.source_ref,
                 destination=f"{src_layout}:image",
                 to_oci_layout=True,
-            ).run(dry_run=dry_run)
+            )
+            retry_on_transient(
+                lambda: pull.run(dry_run=dry_run),
+                policy=self.retry_policy,
+                description=f"soci pull for '{self.image_target.uid}'",
+            )
 
             # 2. convert local layout -> local layout (directory so we can read
             #    the resulting index.json for its digest).
