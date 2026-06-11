@@ -58,11 +58,10 @@ class TestParseRoundtrip:
             ("2026.4.0-rc.1", (2026, 4, 0), "rc.1", None),
             # Edge: build only.
             ("2026.4.0+abc", (2026, 4, 0), None, "abc"),
-            # Dep-prefixed: single dependency version.
+            # Dep-prefixed: single and compound matrix versions.
             ("R4.3.3", (4, 3, 3), None, None),
             ("python3.13.14", (3, 13, 14), None, None),
-            # Dep-prefixed: compound matrix version — prerelease holds the second component.
-            ("R4.3.3-python3.11.15", (4, 3, 3), "python3.11.15", None),
+            ("R4.3.3-python3.11.15", (4, 3, 3), None, None),
         ],
     )
     def test_parses_and_roundtrips(self, value, release, prerelease, build, caplog):
@@ -189,3 +188,26 @@ class TestVersionSortKey:
         # (Python's sort is stable). Parseable entries follow in ascending order.
         assert names[:2] == ["R4.3.3-python3.11.15", "garbage"]
         assert names[2:] == ["2026.04.0", "2026.04.1", "2026.05.0-dev+62-g1ca9367735"]
+
+
+class TestDepVersions:
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("R4.3.3", (("R", (4, 3, 3)),)),
+            ("python3.13.14", (("python", (3, 13, 14)),)),
+            ("R4.3.3-python3.11.15", (("R", (4, 3, 3)), ("python", (3, 11, 15)))),
+            ("R4.3-python3.11-quarto1.4", (("R", (4, 3)), ("python", (3, 11)), ("quarto", (1, 4)))),
+        ],
+    )
+    def test_dep_versions_populated(self, value, expected, caplog):
+        caplog.set_level(logging.WARNING)
+        parsed = ParsedVersion.parse(value)
+        assert parsed is not None
+        assert parsed.dep_versions == expected
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+    def test_pure_calver_has_no_dep_versions(self):
+        parsed = ParsedVersion.parse("2026.04.0-dev+92")
+        assert parsed is not None
+        assert parsed.dep_versions is None
