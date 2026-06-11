@@ -22,6 +22,7 @@ from posit_bakery.parallel import (
     ShellJob,
     resolve_max_workers,
 )
+from posit_bakery.plugins.builtin.imagetools import oras as oras_mod
 from posit_bakery.plugins.builtin.imagetools import soci as soci_mod
 from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.plugins.builtin.imagetools.oras import find_oras_bin
@@ -84,6 +85,32 @@ class ImageToolsPlugin(BakeryToolPlugin):
             soci_mod.get_soci_options_for_target(t).enabled for t in targets
         )
         soci_bin = _resolve_bin(find_soci_bin, base_path, dry_run, "soci") if needs_soci else "soci"
+
+        # Pre-flight (create-bearing flows only): wait for every per-platform source digest to
+        # be readable before any target references it. Those manifests are pushed by digest from
+        # separate build runners, and registries with read-after-write behaviour (notably GHCR)
+        # can briefly 404 them; polling here turns propagation lag into condition-based waiting
+        # and names the lagging digest, rather than failing a downstream phase opaquely (#591).
+        if PublishPhase.CREATE in phases:
+            all_sources = sorted({s for t in targets for s in t.get_merge_sources()})
+            if all_sources:
+                log.info(f"Waiting for {len(all_sources)} source digest(s) to be readable before publishing.")
+                wait = oras_mod.OrasWaitForSourcesWorkflow(oras_bin=oras_bin, sources=all_sources).run(dry_run=dry_run)
+                if not wait.success:
+                    log.error(f"Source digests not available: {wait.error}")
+                    return [
+                        ToolCallResult(
+                            exit_code=1,
+                            tool_name="imagetools",
+                            target=target,
+                            stdout="",
+                            stderr=wait.error or "source digests not available",
+                            artifacts={"error": wait.error},
+                        )
+                        for target in targets
+                    ]
+                if wait.ready:
+                    log.info(f"All {len(wait.ready)} source digest(s) readable after {wait.waited_seconds:.0f}s.")
 
         shell_jobs: list[ShellJob] = []
         for target in targets:

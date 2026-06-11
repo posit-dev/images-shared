@@ -80,7 +80,22 @@ def patch_image_target_merge_method(mocker):
             result.verified = self.image_target.tags.as_strings()
             return result
 
+    class MockOrasWaitForSourcesWorkflow:
+        # Stub the pre-flight source-digest wait so the (non-dry-run) merge scenario does not
+        # actually poll a real registry for 10 minutes.
+        def __init__(self, oras_bin, sources, **kwargs):
+            self.sources = sources
+
+        def run(self, dry_run=False, **kwargs):
+            from posit_bakery.plugins.builtin.imagetools.oras import OrasSourcesReadyResult
+
+            return OrasSourcesReadyResult(success=True, ready=self.sources)
+
     # Patch the imports inside the publish function
+    mocker.patch(
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+        MockOrasWaitForSourcesWorkflow,
+    )
     mocker.patch(
         "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
         MockOrasIndexCreateWorkflow,
