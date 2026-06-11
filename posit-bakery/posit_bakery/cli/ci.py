@@ -367,7 +367,7 @@ def publish(
         if not res.success:
             log.error(f"index-create failed for '{t}': {res.error}")
             raise typer.Exit(code=1)
-        temp_refs[t.uid] = res.temp_ref  # type: ignore[assignment]
+        temp_refs[t.uid] = res.temp_ref
 
     # Phase 2: SOCI convert. Driven by per-target config; targets whose
     # resolved SOCI options have enabled=False are skipped by the plugin.
