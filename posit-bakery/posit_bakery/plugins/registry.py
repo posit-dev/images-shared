@@ -51,7 +51,12 @@ def _register_plugin_tool_options() -> None:
     for plugin in _plugins.values():
         tool_options_class = getattr(plugin, "tool_options_class", None)
         if tool_options_class is not None:
-            register_tool_options(plugin.name, tool_options_class)
+            # Key by the options class's own `tool` discriminator rather than the plugin name:
+            # a single plugin may own a tool whose name differs from it (e.g. imagetools owns
+            # the `soci` tool options). Falls back to the plugin name if the field is absent.
+            tool_field = tool_options_class.model_fields.get("tool")
+            tool_name = getattr(tool_field, "default", None) or plugin.name
+            register_tool_options(tool_name, tool_options_class)
             registered_any = True
 
     if registered_any:

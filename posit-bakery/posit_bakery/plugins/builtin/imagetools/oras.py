@@ -4,13 +4,16 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Self
+from typing import TYPE_CHECKING, Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget, Tag
 from posit_bakery.util import find_bin
+
+if TYPE_CHECKING:
+    from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
 
@@ -47,10 +50,20 @@ class OrasCommand(BaseModel, ABC):
         """Return the full command to execute."""
         ...
 
-    def run(self, dry_run: bool = False) -> subprocess.CompletedProcess:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+        step_label: str | None = None,
+    ) -> subprocess.CompletedProcess:
         """Execute the oras command.
 
         :param dry_run: If True, log the command without executing it.
+        :param runner: When given, execute through this CommandRunner (tracked-spawn, plus the
+            runner's retry/timeout policy) instead of calling subprocess directly. Production
+            callers always pass a runner; the direct path remains for low-level unit tests.
+        :param step_label: Live-table step label forwarded to the runner.
         :return: The completed process result.
         :raises BakeryToolRuntimeError: If the command fails.
         """
@@ -60,6 +73,21 @@ class OrasCommand(BaseModel, ABC):
         if dry_run:
             log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
             return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+        if runner is not None:
+            result = runner.run(cmd, step_label=step_label)
+            if not result.ok:
+                raise BakeryToolRuntimeError(
+                    message="oras command failed",
+                    tool_name="oras",
+                    cmd=cmd,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    exit_code=result.returncode if result.returncode is not None else 1,
+                )
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=result.returncode or 0, stdout=result.stdout, stderr=result.stderr
+            )
 
         result = subprocess.run(cmd, capture_output=True)
 
@@ -208,7 +236,12 @@ class OrasIndexCreateWorkflow(BaseModel):
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
 
-    def run(self, dry_run: bool = False) -> OrasIndexCreateResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+    ) -> OrasIndexCreateResult:
         try:
             OrasManifestIndexCreate(
                 oras_bin=self.oras_bin,
@@ -216,7 +249,7 @@ class OrasIndexCreateWorkflow(BaseModel):
                 destination=self.temp_index_tag,
                 annotations=self.annotations,
                 plain_http=self.plain_http,
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner, step_label="index create")
             return OrasIndexCreateResult(success=True, temp_ref=self.temp_index_tag)
         except BakeryToolRuntimeError as e:
             log.error(f"oras index-create failed: {e}")
@@ -240,7 +273,13 @@ class OrasIndexCopyWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="Target whose tags to fan out to.")]
     plain_http: Annotated[bool, Field(default=False)]
 
-    def run(self, source: str, dry_run: bool = False) -> OrasIndexCopyResult:
+    def run(
+        self,
+        source: str,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+    ) -> OrasIndexCopyResult:
         try:
             destinations = []
             for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
@@ -250,7 +289,7 @@ class OrasIndexCopyWorkflow(BaseModel):
                     source=source,
                     destination=combined,
                     plain_http=self.plain_http,
-                ).run(dry_run=dry_run)
+                ).run(dry_run=dry_run, runner=runner, step_label="index copy")
                 destinations.append(combined)
             return OrasIndexCopyResult(success=True, destinations=destinations)
         except BakeryToolRuntimeError as e:
@@ -286,7 +325,12 @@ class OrasIndexVerifyWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="Target whose destination tags to verify.")]
     plain_http: Annotated[bool, Field(default=False)]
 
-    def run(self, dry_run: bool = False) -> OrasIndexVerifyResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+    ) -> OrasIndexVerifyResult:
         verified: list[str] = []
         try:
             for ref in self.image_target.tags.as_strings():
@@ -295,7 +339,7 @@ class OrasIndexVerifyWorkflow(BaseModel):
                     reference=ref,
                     descriptor=True,
                     plain_http=self.plain_http,
-                ).run(dry_run=dry_run)
+                ).run(dry_run=dry_run, runner=runner, step_label="verify")
                 verified.append(ref)
             return OrasIndexVerifyResult(success=True, verified=verified)
         except BakeryToolRuntimeError as e:
@@ -350,7 +394,12 @@ class OrasMergeWorkflow(BaseModel):
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
 
-    def run(self, dry_run: bool = False) -> OrasMergeWorkflowResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+    ) -> OrasMergeWorkflowResult:
         """Compose create → copy. Preserved as a single call for back-compat
         with the `bakery oras merge` CLI.
 
@@ -364,7 +413,7 @@ class OrasMergeWorkflow(BaseModel):
             image_target=self.image_target,
             annotations=self.annotations,
             plain_http=self.plain_http,
-        ).run(dry_run=dry_run)
+        ).run(dry_run=dry_run, runner=runner)
         if not create.success:
             return OrasMergeWorkflowResult(
                 success=False,
@@ -377,7 +426,7 @@ class OrasMergeWorkflow(BaseModel):
             oras_bin=self.oras_bin,
             image_target=self.image_target,
             plain_http=self.plain_http,
-        ).run(source=create.temp_ref, dry_run=dry_run)
+        ).run(source=create.temp_ref, dry_run=dry_run, runner=runner)
 
         return OrasMergeWorkflowResult(
             success=copy.success,
