@@ -224,6 +224,10 @@ def merge(
     Preserved for back-compat. New callers should prefer `bakery ci publish`.
     SOCI conversion is driven by per-image/variant `soci` options.
     """
+    if dev_stream is not None:
+        log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+        if dev_channel is None:
+            dev_channel = dev_stream
     publish(
         metadata_file=metadata_file,
         context=context,
