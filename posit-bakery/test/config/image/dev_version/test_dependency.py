@@ -40,6 +40,15 @@ class TestValidation:
                 os=[_UBUNTU_24_OS],
             )
 
+    def test_channel_release_rejected(self):
+        """channel: release is invalid — omitting channel already signals release."""
+        with pytest.raises(ValidationError, match="channel.*release.*not valid"):
+            ImageDevelopmentVersionFromDependency(
+                dependency="positron",
+                os=[_UBUNTU_24_OS],
+                channel="release",
+            )
+
     def test_channel_defaults_none(self):
         dev = ImageDevelopmentVersionFromDependency(
             dependency="positron",

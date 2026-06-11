@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from posit_bakery.config.dependencies import get_dependency_constraint_class
 from posit_bakery.config.dependencies.const import SupportedDependencies
@@ -32,6 +32,16 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         ReleaseChannelEnum | None,
         Field(default=None, description="Release channel for this dev version (e.g. 'daily', 'preview')."),
     ] = None
+
+    @field_validator("channel", mode="after")
+    @classmethod
+    def channel_not_release(cls, v: ReleaseChannelEnum | None) -> ReleaseChannelEnum | None:
+        if v == ReleaseChannelEnum.RELEASE:
+            raise ValueError(
+                "channel: 'release' is not valid for dependency-sourced dev versions. "
+                "Omit channel (leave as null) for stable dependency resolution."
+            )
+        return v
 
     def get_version(self) -> str:
         constraint_class = get_dependency_constraint_class(self.dependency)
