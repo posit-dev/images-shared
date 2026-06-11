@@ -31,6 +31,8 @@ class SummaryOutputFormat(str, Enum):
     JSON = "json"
 
 
+# Extension allows letters, digits, underscores, and hyphens (e.g. "ubuntu2204").
+# Tag display names additionally allow dots (e.g. "ubuntu-22.04").
 REGEX_OS_EXTENSION_PATTERN = r"^[a-zA-Z0-9_-]*$"
 REGEX_OS_TAG_DISPLAY_NAME_PATTERN = r"^[a-zA-Z0-9_.-]*$"
 REGEX_FULL_IMAGE_TAG_PATTERN = (
