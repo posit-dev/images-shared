@@ -372,34 +372,10 @@ class TestCiPublishDevSpec:
 
     def test_dev_spec_invalid_json_rejected(self):
         """Invalid JSON in --dev-spec causes a non-zero exit."""
-        with (
-            patch("posit_bakery.cli.ci.BakeryConfig"),
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
-            patch("posit_bakery.plugins.registry.get_plugin"),
-        ):
-            result = runner.invoke(
-                app,
-                ["ci", "publish", "/fake/metadata.json", "--context", BASIC_CONTEXT, "--dev-spec", "not-json"],
-            )
+        result, _ = self._invoke(["--dev-spec", "not-json"])
         assert result.exit_code != 0
 
     def test_dev_spec_invalid_schema_rejected(self):
         """JSON with unknown fields is rejected (extra='forbid' on DevBuildSpec)."""
-        with (
-            patch("posit_bakery.cli.ci.BakeryConfig"),
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
-            patch("posit_bakery.plugins.registry.get_plugin"),
-        ):
-            result = runner.invoke(
-                app,
-                [
-                    "ci",
-                    "publish",
-                    "/fake/metadata.json",
-                    "--context",
-                    BASIC_CONTEXT,
-                    "--dev-spec",
-                    '{"version": "1.0.0", "chanenl": "daily"}',
-                ],
-            )
+        result, _ = self._invoke(["--dev-spec", '{"version": "1.0.0", "chanenl": "daily"}'])
         assert result.exit_code != 0
