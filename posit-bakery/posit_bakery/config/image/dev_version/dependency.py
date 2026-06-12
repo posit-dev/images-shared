@@ -44,6 +44,8 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         return v
 
     def get_version(self) -> str:
+        if self.version_override is not None:
+            return self.version_override
         constraint_class = get_dependency_constraint_class(self.dependency)
         constraint = constraint_class(
             prerelease=self.prerelease,

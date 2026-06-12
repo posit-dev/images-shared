@@ -349,3 +349,24 @@ class TestRepr:
         assert 'sourceType="dependency"' in r
         assert "positron" in r
         assert "prerelease=True" in r
+
+
+class TestVersionOverride:
+    def test_version_override_defaults_none(self):
+        """The shared version_override field defaults to None."""
+        dev = ImageDevelopmentVersionFromDependency(
+            dependency="positron",
+            os=[_UBUNTU_24_OS],
+        )
+        assert dev.version_override is None
+
+    def test_version_override_short_circuits_resolution(self):
+        """When version_override is set, get_version() returns it without a network call."""
+        dev = ImageDevelopmentVersionFromDependency(
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        dev.version_override = "2026.06.0-99"
+        # No patch_requests_get fixture: a network call would error, proving none happens.
+        assert dev.get_version() == "2026.06.0-99"
