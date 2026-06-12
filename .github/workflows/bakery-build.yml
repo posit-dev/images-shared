@@ -270,9 +270,20 @@ jobs:
           IMAGE_VERSION: ${{ matrix.img.version }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_SPEC: ${{ inputs.dev-spec }}
           CONTEXT: ${{ inputs.context }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          DEV_SPEC_FLAGS=()
+          if [[ -n "$DEV_SPEC" ]]; then
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
+          elif [[ -n "$DEV_VERSION" ]]; then
+            DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
+              '{version: $v} + if $c != "" then {channel: $c} else {} end')
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
+          fi
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
@@ -280,6 +291,7 @@ jobs:
             --image-version "$IMAGE_VERSION" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
             --context "$CONTEXT"
 
       - name: Push

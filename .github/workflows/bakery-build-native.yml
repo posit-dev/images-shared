@@ -316,10 +316,27 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_SPEC: ${{ inputs.dev-spec }}
+          RELEASE_BRANCH: ${{ inputs.release-branch }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          DEV_SPEC_FLAGS=()
+          if [[ -n "$DEV_SPEC" ]]; then
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
+          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
+            DEV_SPEC_JSON=$(jq -cn \
+              --arg v "$DEV_VERSION" \
+              --arg c "$DEV_CHANNEL" \
+              --arg b "$RELEASE_BRANCH" \
+              'if $v != "" then {version: $v} else {} end
+               + if $c != "" then {channel: $c} else {} end
+               + if $b != "" then {release_branch: $b} else {} end')
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
+          fi
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
@@ -328,6 +345,7 @@ jobs:
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
       - name: Upload Metadata
@@ -431,12 +449,30 @@ jobs:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           PUSH: ${{ inputs.push }}
           IMAGE_NAME: ${{ matrix.image }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_SPEC: ${{ inputs.dev-spec }}
+          RELEASE_BRANCH: ${{ inputs.release-branch }}
         run: |
           if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
+          DEV_SPEC_FLAGS=()
+          if [[ -n "$DEV_SPEC" ]]; then
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
+          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
+            DEV_SPEC_JSON=$(jq -cn \
+              --arg v "$DEV_VERSION" \
+              --arg c "$DEV_CHANNEL" \
+              --arg b "$RELEASE_BRANCH" \
+              'if $v != "" then {version: $v} else {} end
+               + if $c != "" then {channel: $c} else {} end
+               + if $b != "" then {release_branch: $b} else {} end')
+            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
+          fi
           bakery ci publish \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
             --temp-registry "$REGISTRY" \
+            "${DEV_SPEC_FLAGS[@]}" \
             $PUSH_FLAG \
             ./*-metadata.json
 
