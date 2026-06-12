@@ -50,7 +50,7 @@ def patch_image_target_merge_method(mocker):
             self.annotations = annotations
             self.plain_http = plain_http
 
-        def run(self, dry_run=False):
+        def run(self, dry_run=False, **kwargs):
             sources = self.image_target.get_merge_sources()
             calls.append((sources, dry_run))
             result = MagicMock()
@@ -63,9 +63,10 @@ def patch_image_target_merge_method(mocker):
             self.image_target = image_target
             self.oras_bin = oras_bin
 
-        def run(self, source, dry_run=False):
+        def run(self, source, dry_run=False, **kwargs):
             result = MagicMock()
             result.success = True
+            result.destinations = self.image_target.tags.as_strings()
             return result
 
     class MockOrasIndexVerifyWorkflow:
@@ -73,27 +74,42 @@ def patch_image_target_merge_method(mocker):
             self.image_target = image_target
             self.oras_bin = oras_bin
 
-        def run(self, dry_run=False):
+        def run(self, dry_run=False, **kwargs):
             result = MagicMock()
             result.success = True
             result.verified = self.image_target.tags.as_strings()
             return result
 
+    class MockOrasWaitForSourcesWorkflow:
+        # Stub the pre-flight source-digest wait so the (non-dry-run) merge scenario does not
+        # actually poll a real registry for 10 minutes.
+        def __init__(self, oras_bin, sources, **kwargs):
+            self.sources = sources
+
+        def run(self, dry_run=False, **kwargs):
+            from posit_bakery.plugins.builtin.imagetools.oras import OrasSourcesReadyResult
+
+            return OrasSourcesReadyResult(success=True, ready=self.sources)
+
     # Patch the imports inside the publish function
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+        MockOrasWaitForSourcesWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
         MockOrasIndexCreateWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow",
         MockOrasIndexCopyWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
         MockOrasIndexVerifyWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.find_oras_bin",
+        "posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin",
         return_value="/mock/oras",
     )
     return calls

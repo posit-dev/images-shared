@@ -10,7 +10,7 @@ from pydantic import Field
 from typing import Annotated
 
 from posit_bakery.error import BakeryToolNotFoundError, BakeryToolRuntimeError
-from posit_bakery.plugins.builtin.soci.soci import SociCommand, find_soci_bin
+from posit_bakery.plugins.builtin.imagetools.soci import SociCommand, find_soci_bin
 
 pytestmark = [pytest.mark.unit]
 

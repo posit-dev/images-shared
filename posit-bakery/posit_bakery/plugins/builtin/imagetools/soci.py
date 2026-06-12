@@ -7,15 +7,18 @@ import subprocess
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.oras.oras import OrasCopy
-from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.oras import OrasCopy
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.util import find_bin
+
+if TYPE_CHECKING:
+    from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
 
@@ -42,10 +45,19 @@ class SociCommand(BaseModel, ABC):
         """Return the full command to execute."""
         ...
 
-    def run(self, dry_run: bool = False) -> subprocess.CompletedProcess:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+        step_label: str | None = None,
+    ) -> subprocess.CompletedProcess:
         """Execute the soci command.
 
         :param dry_run: If True, log the command without executing it.
+        :param runner: When given, execute through this CommandRunner (tracked-spawn, plus the
+            runner's retry/timeout policy) instead of calling subprocess directly.
+        :param step_label: Live-table step label forwarded to the runner.
         :return: The completed process result.
         :raises BakeryToolRuntimeError: On non-zero exit.
         """
@@ -55,6 +67,21 @@ class SociCommand(BaseModel, ABC):
         if dry_run:
             log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
             return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+        if runner is not None:
+            result = runner.run(cmd, step_label=step_label)
+            if not result.ok:
+                raise BakeryToolRuntimeError(
+                    message="soci command failed",
+                    tool_name="soci",
+                    cmd=cmd,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    exit_code=result.returncode if result.returncode is not None else 1,
+                )
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=result.returncode or 0, stdout=result.stdout, stderr=result.stderr
+            )
 
         result = subprocess.run(cmd, capture_output=True)
 
@@ -168,7 +195,12 @@ class SociConvertWorkflow(BaseModel):
         index = json.loads((layout / "index.json").read_text())
         return index["manifests"][0]["digest"]
 
-    def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        runner: "CommandRunner | None" = None,
+    ) -> SociConvertWorkflowResult:
         """Pull the source ref into an OCI layout, convert it to SOCI with
         ``soci convert --standalone``, and push the converted layout back to
         the registry.
@@ -176,6 +208,9 @@ class SociConvertWorkflow(BaseModel):
         oras bridges the registry on both ends: ``--to-oci-layout`` to
         materialize the source as an OCI layout, ``--from-oci-layout`` to push
         the converted result. The scratch layouts are removed afterward.
+
+        When a ``runner`` is supplied each step executes through it (tracked-spawn, plus the
+        runner's retry/timeout policy); otherwise the steps run via direct subprocess.
         """
         log.info(f"Running SOCI conversion on {self.image_target.uid}")
         scratch = Path(tempfile.mkdtemp(prefix="soci-standalone-"))
@@ -189,7 +224,7 @@ class SociConvertWorkflow(BaseModel):
                 source=self.source_ref,
                 destination=f"{src_layout}:image",
                 to_oci_layout=True,
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner, step_label="soci pull")
 
             # 2. convert local layout -> local layout (directory so we can read
             #    the resulting index.json for its digest).
@@ -197,7 +232,7 @@ class SociConvertWorkflow(BaseModel):
                 source=str(src_layout),
                 destination=str(out_layout),
                 output_format="oci-dir",
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner, step_label="soci convert")
 
             # 3. push converted layout -> registry, referenced by digest since
             #    the converted layout carries no tag.
@@ -207,7 +242,7 @@ class SociConvertWorkflow(BaseModel):
                 source=f"{out_layout}@{digest}",
                 destination=self.destination_ref,
                 from_oci_layout=True,
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner, step_label="soci push")
         except BakeryToolRuntimeError as e:
             return SociConvertWorkflowResult(
                 success=False,
@@ -221,3 +256,27 @@ class SociConvertWorkflow(BaseModel):
             success=True,
             destination_ref=self.destination_ref,
         )
+
+
+def get_soci_options_for_target(target: ImageTarget) -> SociOptions:
+    """Resolve effective SociOptions for the given target, merging
+    variant-level options over image-version-parent-level options where
+    both exist. Returns a defaulted SociOptions (enabled=False) if no
+    soci configuration is present.
+    """
+    # Local helper to keep the resolution logic in one place.
+    image_opts = None
+    variant_opts = None
+    parent = getattr(target.image_version, "parent", None)
+    for opt in getattr(parent, "options", []) or []:
+        if isinstance(opt, SociOptions):
+            image_opts = opt
+            break
+    variant = getattr(target, "image_variant", None)
+    for opt in getattr(variant, "options", []) or []:
+        if isinstance(opt, SociOptions):
+            variant_opts = opt
+            break
+    if variant_opts and image_opts:
+        return variant_opts.update(image_opts)
+    return variant_opts or image_opts or SociOptions()

@@ -1,4 +1,4 @@
-"""Tests for SociPlugin.results()."""
+"""Tests for ImageToolsPlugin.results() (shared by publish / oras merge / soci convert)."""
 
 from unittest.mock import MagicMock
 
@@ -6,8 +6,8 @@ import pytest
 import typer
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.soci import SociPlugin
-from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflowResult
+from posit_bakery.plugins.builtin.imagetools import ImageToolsPlugin
+from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflowResult
 from posit_bakery.plugins.protocol import ToolCallResult
 
 pytestmark = [pytest.mark.unit]
@@ -35,12 +35,12 @@ def _result(exit_code: int, workflow_success: bool, target_uid: str = "t") -> To
 
 
 def test_all_success_does_not_raise():
-    SociPlugin().results([_result(0, True)])
+    ImageToolsPlugin().results([_result(0, True)])
 
 
 def test_any_failure_raises_typer_exit():
     with pytest.raises(typer.Exit) as exc:
-        SociPlugin().results([_result(0, True), _result(1, False, "u")])
+        ImageToolsPlugin().results([_result(0, True), _result(1, False, "u")])
     assert exc.value.exit_code == 1
 
 
@@ -56,4 +56,4 @@ def test_skipped_results_do_not_raise():
         stderr="",
         artifacts={"skipped": True, "reason": "soci.enabled is false"},
     )
-    SociPlugin().results([skipped])
+    ImageToolsPlugin().results([skipped])

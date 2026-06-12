@@ -2,7 +2,7 @@
 
 import pytest
 
-from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 
 pytestmark = [pytest.mark.unit]
 

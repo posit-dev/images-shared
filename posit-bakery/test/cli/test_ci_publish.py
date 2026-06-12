@@ -61,7 +61,7 @@ def test_publish_invokes_soci_execute_without_mode(tmp_path):
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
-        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
     ):
         result = runner.invoke(
