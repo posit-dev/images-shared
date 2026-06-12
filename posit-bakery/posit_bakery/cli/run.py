@@ -137,7 +137,7 @@ def dgoss(
     """Runs dgoss tests against images in the context path
 
     \b
-    DEPRECATED: Use 'bakery dgoss run' instead.
+    DEPRECATED: Use 'bakery dgoss run' instead. This command will be removed in a future release.
 
     \b
     If no options are provided, the command test all images in the project and write test results to the `results/`
@@ -152,11 +152,14 @@ def dgoss(
     `DGOSS_BIN` environment variables if not present in the system PATH.
     """
     warnings.warn(
-        "'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.",
+        "'bakery run dgoss' is deprecated and will be removed in a future release. Use 'bakery dgoss run' instead.",
         DeprecationWarning,
         stacklevel=2,
     )
-    stderr_console.print("[yellow]Warning: 'bakery run dgoss' is deprecated. Use 'bakery dgoss run' instead.[/yellow]")
+    stderr_console.print(
+        "[yellow]Warning: 'bakery run dgoss' is deprecated and will be removed in a future release. "
+        "Use 'bakery dgoss run' instead.[/yellow]"
+    )
 
     # Autoselect host architecture platform if not specified.
     image_platform = image_platform or SETTINGS.architecture

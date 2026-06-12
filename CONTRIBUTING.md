@@ -73,7 +73,7 @@ shared template change needs to apply retroactively.
 
     ```bash
     bakery build --image-name <name> --image-version <edition>
-    bakery run dgoss --image-name <name> --image-version <edition>
+    bakery dgoss run --image-name <name> --image-version <edition>
     ```
 
 4. Open a pull request (PR) that includes both the template change and the re-rendered version

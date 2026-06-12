@@ -98,7 +98,7 @@ This is a monorepo containing multiple projects:
 Run `bakery --help` and `bakery <command> --help` for full command reference.
 Commands have aliases: `build`/`b`, `create`/`c`, `run`/`r`, `update`/`u`, `remove`/`rm`.
 
-Key commands for product repos: `bakery build`, `bakery build --plan`, `bakery run dgoss`,
+Key commands for product repos: `bakery build`, `bakery build --plan`, `bakery dgoss run`,
 `bakery update files`, `bakery create version`, `bakery ci matrix`.
 
 ## Image Templating System
