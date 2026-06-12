@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import textwrap
@@ -2385,15 +2386,15 @@ class TestApplyDevSpecDependency:
 
     def test_branch_only_spec_skips_dependency_with_warning(self, tmp_path, caplog):
         """A branch-only spec cannot pin a dependency dev version: warns, leaves override None."""
-        import logging
-
         image = self._make_image(tmp_path)
         spec = DevBuildSpec(release_branch="apple-blossom")
         settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
         with caplog.at_level(logging.WARNING):
             _apply_dev_spec(image, settings)
         assert image.devVersions[0].version_override is None
-        assert "cannot pin a dependency-sourced dev version" in caplog.text
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "cannot pin a dependency-sourced dev version" in warnings[0].message
 
     def test_ambiguous_candidates_raise(self, tmp_path):
         """Two dev versions matching the same channel raise a disambiguation error."""
