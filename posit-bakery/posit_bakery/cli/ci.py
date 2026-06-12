@@ -244,7 +244,7 @@ def merge(
         temp_registry=temp_registry,
         dry_run=dry_run,
         dev_channel=dev_channel,
-        dev_spec=dev_spec,  # type: ignore[arg-type]
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
     )
 
 
