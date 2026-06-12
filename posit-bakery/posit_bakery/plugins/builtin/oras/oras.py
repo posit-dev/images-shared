@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget, Tag
-from posit_bakery.retry import RetryPolicy, retry_on_transient
+from posit_bakery.retry import RetryPolicy, is_transient_error, retry_on_transient
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
@@ -366,8 +366,10 @@ class OrasWaitForSourcesWorkflow(BaseModel):
                 plain_http=self.plain_http,
             ).run(dry_run=False)
             return True
-        except BakeryToolRuntimeError:
-            return False
+        except BakeryToolRuntimeError as e:
+            if is_transient_error(e):
+                return False
+            raise
 
     def run(
         self,

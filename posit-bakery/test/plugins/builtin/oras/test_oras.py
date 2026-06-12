@@ -951,6 +951,29 @@ class TestOrasWaitForSourcesWorkflow:
         assert result.missing == ["ghcr.io/posit-dev/test/tmp@sha256:b"]
         assert "still unreadable" in result.error
 
+    def test_non_transient_error_raises_immediately(self):
+        """A non-transient fetch error (e.g. auth) must not be polled on — it
+        raises right away instead of burning the full timeout."""
+        wf = OrasWaitForSourcesWorkflow(
+            oras_bin="oras",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:a"],
+            poll_interval=5.0,
+            timeout=600.0,
+        )
+        sleep = MagicMock()
+
+        def side_effect(cmd, capture_output):
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+            )
+
+        with patch("subprocess.run", side_effect=side_effect):
+            with pytest.raises(BakeryToolRuntimeError):
+                wf.run(sleep=sleep, now=lambda: 0.0)
+
+        # Failed fast: no backoff sleep, no waiting for the timeout.
+        sleep.assert_not_called()
+
     def test_dry_run_skips_polling(self):
         wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=["ghcr.io/posit-dev/test/tmp@sha256:a"])
         with patch("subprocess.run") as mock_run:

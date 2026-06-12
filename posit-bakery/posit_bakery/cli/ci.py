@@ -294,6 +294,7 @@ def publish(
     """
     # Imports kept local to mirror existing patterns and to avoid bloating
     # module load time when this command isn't invoked.
+    from posit_bakery.error import BakeryToolRuntimeError
     from posit_bakery.plugins.builtin.oras.oras import (
         OrasIndexCopyWorkflow,
         OrasIndexCreateWorkflow,
@@ -365,10 +366,17 @@ def publish(
     all_sources = sorted({s for t in targets for s in t.get_merge_sources()})
     if all_sources:
         log.info(f"Waiting for {len(all_sources)} source digest(s) to be readable before publishing.")
-        wait = OrasWaitForSourcesWorkflow(
-            oras_bin=oras_bin,
-            sources=all_sources,
-        ).run(dry_run=dry_run)
+        try:
+            wait = OrasWaitForSourcesWorkflow(
+                oras_bin=oras_bin,
+                sources=all_sources,
+            ).run(dry_run=dry_run)
+        except BakeryToolRuntimeError as e:
+            # A non-transient registry error (auth, bad reference, ...) while
+            # probing sources is fatal and won't self-heal — surface it cleanly
+            # rather than letting it escape as an unhandled traceback.
+            log.error(f"Failed while waiting for source digests: {e.dump_stderr() or e}")
+            raise typer.Exit(code=1)
         if not wait.success:
             log.error(f"Source digests not available: {wait.error}")
             raise typer.Exit(code=1)

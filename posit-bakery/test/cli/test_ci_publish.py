@@ -165,3 +165,43 @@ def test_publish_aborts_when_sources_never_ready(tmp_path):
     assert result.exit_code == 1
     # Aborted before SOCI convert.
     fake_soci.execute.assert_not_called()
+
+
+def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
+    """A non-transient registry error during the wait exits cleanly (code 1)
+    rather than escaping as an unhandled traceback."""
+    from posit_bakery.error import BakeryToolRuntimeError
+
+    sources = ["ghcr.io/posit-dev/test/tmp@sha256:amd64"]
+    target = _fake_target("uid1", merge_sources=sources)
+    target.settings.temp_registry = "ghcr.io/posit-dev"
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
+    fake_config.get_image_target_by_uid.return_value = target
+
+    fake_wait_instance = MagicMock()
+    fake_wait_instance.run.side_effect = BakeryToolRuntimeError(
+        message="oras command failed",
+        tool_name="oras",
+        cmd=["oras", "manifest", "fetch"],
+        stdout=b"",
+        stderr=b"unauthorized: authentication required",
+    )
+
+    fake_soci = MagicMock()
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", return_value=fake_wait_instance),
+        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
+
+    # Clean exit, not an unhandled exception.
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    fake_soci.execute.assert_not_called()
