@@ -53,26 +53,34 @@ _TRANSIENT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 )
 
 
-def _env_int(name: str, default: int) -> int:
+def _env_int(name: str, default: int, min_value: int = 0) -> int:
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
         return default
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError:
         log.warning(f"Ignoring invalid {name}={raw!r}; using default {default}.")
         return default
+    if value < min_value:
+        log.warning(f"Ignoring {name}={raw!r}; using default {default}.")
+        return default
+    return value
 
 
-def _env_float(name: str, default: float) -> float:
+def _env_float(name: str, default: float, min_value: float = 0.0) -> float:
     raw = os.environ.get(name)
     if raw is None or raw.strip() == "":
         return default
     try:
-        return float(raw)
+        value = float(raw)
     except ValueError:
         log.warning(f"Ignoring invalid {name}={raw!r}; using default {default}.")
         return default
+    if value < min_value:
+        log.warning(f"Ignoring {name}={raw!r}; using default {default}.")
+        return default
+    return value
 
 
 class RetryPolicy(BaseModel):
@@ -87,15 +95,15 @@ class RetryPolicy(BaseModel):
     - ``BAKERY_REGISTRY_RETRY_MULTIPLIER`` (default 2.0)
     """
 
-    max_attempts: Annotated[int, Field(default_factory=lambda: _env_int("BAKERY_REGISTRY_RETRY_ATTEMPTS", 5), ge=1)]
+    max_attempts: Annotated[int, Field(default_factory=lambda: _env_int("BAKERY_REGISTRY_RETRY_ATTEMPTS", 5, 1), ge=1)]
     initial_backoff: Annotated[
-        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_INITIAL_BACKOFF", 2.0), ge=0)
+        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_INITIAL_BACKOFF", 2.0, 0), ge=0)
     ]
     max_backoff: Annotated[
-        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_MAX_BACKOFF", 32.0), ge=0)
+        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_MAX_BACKOFF", 32.0, 0), ge=0)
     ]
     multiplier: Annotated[
-        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_MULTIPLIER", 2.0), ge=1)
+        float, Field(default_factory=lambda: _env_float("BAKERY_REGISTRY_RETRY_MULTIPLIER", 2.0, 1), ge=1)
     ]
 
 
