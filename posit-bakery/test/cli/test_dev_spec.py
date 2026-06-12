@@ -183,3 +183,67 @@ class TestCiMatrixDevSpec:
         assert result.exit_code == 0, result.output
         settings = settings_from_call(mock)
         assert settings.dev_spec is None
+
+
+class TestDgossRunDevSpec:
+    """Tests for --dev-spec / BAKERY_DEV_SPEC in bakery dgoss run."""
+
+    def _invoke(self, extra_args: list[str], env: dict | None = None):
+        with (
+            patch("posit_bakery.plugins.builtin.dgoss.BakeryConfig") as mock_config,
+            patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.execute", return_value=[]),
+            patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.results"),
+        ):
+            instance = MagicMock()
+            instance.base_path = Path(BASIC_CONTEXT)
+            instance.targets = []
+            mock_config.from_context.return_value = instance
+            result = runner.invoke(
+                app,
+                ["dgoss", "run", "--context", BASIC_CONTEXT] + extra_args,
+                env=env,
+                catch_exceptions=False,
+            )
+            return result, mock_config
+
+    def test_dev_spec_via_flag(self):
+        """--dev-spec JSON is parsed and forwarded to BakerySettings in dgoss run."""
+        result, mock = self._invoke(
+            ["--dev-versions", "only", "--dev-spec", '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}']
+        )
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert isinstance(settings.dev_spec, DevBuildSpec)
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
+
+    def test_dev_spec_via_env_var(self):
+        """BAKERY_DEV_SPEC env var works in dgoss run."""
+        result, mock = self._invoke(
+            ["--dev-versions", "only"],
+            env={"BAKERY_DEV_SPEC": '{"version": "2026.05.0-dev+185-gSHA"}'},
+        )
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert isinstance(settings.dev_spec, DevBuildSpec)
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert settings.dev_spec.channel is None
+
+    def test_dev_spec_absent_is_none(self):
+        """When --dev-spec is absent, BakerySettings.dev_spec is None."""
+        result, mock = self._invoke([])
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert settings.dev_spec is None
+
+    def test_dev_spec_invalid_json_rejected(self):
+        """Invalid JSON in --dev-spec causes a non-zero exit."""
+        result, _ = self._invoke(["--dev-spec", "not-json"])
+        assert result.exit_code != 0
+
+    def test_dev_channel_forwarded_to_settings(self):
+        """--dev-channel is forwarded to BakerySettings.dev_channel."""
+        result, mock = self._invoke(["--dev-versions", "only", "--dev-channel", "daily"])
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert settings.dev_channel == ReleaseChannelEnum.DAILY

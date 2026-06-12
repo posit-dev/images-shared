@@ -7,7 +7,8 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -104,6 +105,33 @@ class DGossPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_channel: Annotated[
+                Optional[ReleaseChannelEnum],
+                typer.Option(
+                    "--dev-channel",
+                    help="Filter development versions to a specific release channel.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            dev_stream: Annotated[
+                Optional[ReleaseChannelEnum],
+                typer.Option(
+                    "--dev-stream",
+                    help="Deprecated: use --dev-channel instead.",
+                    hidden=True,
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
             matrix_versions: Annotated[
                 Optional[MatrixVersionInclusionEnum],
                 typer.Option(
@@ -162,6 +190,10 @@ class DGossPlugin(BakeryToolPlugin):
             if not platform.startswith("linux/"):
                 platform = f"linux/{platform}"
 
+            if dev_stream is not None:
+                log.warning("--dev-stream is deprecated, use --dev-channel instead.")
+                if dev_channel is None:
+                    dev_channel = dev_stream
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
                     image_name=image_name,
@@ -171,6 +203,8 @@ class DGossPlugin(BakeryToolPlugin):
                     image_platform=[platform],
                 ),
                 dev_versions=dev_versions,
+                dev_channel=dev_channel,
+                dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
                 matrix_versions=matrix_versions,
                 latest=latest,
                 clean_temporary=clean,
