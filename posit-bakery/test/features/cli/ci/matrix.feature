@@ -47,3 +47,12 @@ Feature: matrix
             | --image-version | 9.9.9 |
         When I execute the command
         Then The command fails
+
+    Scenario: Filtering the CI matrix by image name excludes non-matching images
+        Given I call bakery ci matrix
+        * in the merge-multi-image context
+        * with the arguments:
+            | test-alpha$ |
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/merge-multi-image/image_name_filter.json

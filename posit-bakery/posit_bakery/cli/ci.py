@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import re
 import python_on_whales
 from enum import Enum
 from pathlib import Path
@@ -132,7 +133,7 @@ def matrix(
             dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
-        images = [i for i in c.model.images]
+        images = [i for i in c.model.images if image_name is None or re.search(image_name, i.name) is not None]
 
         data = []
         for img in images:
