@@ -34,6 +34,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      image-name:
+        description: "Filter to a specific image name or pattern (e.g., 'workbench', '^workbench$')"
+        default: ""
+        required: false
+        type: string
       image-version:
         description: "Filter to a specific image version. A leading 'v' is stripped automatically."
         default: ""
@@ -131,6 +136,7 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          IMAGE_NAME_FILTER: ${{ inputs.image-name }}
           IMAGE_VERSION: ${{ inputs.image-version }}
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           DEV_VERSION: ${{ inputs.dev-version }}
@@ -140,6 +146,7 @@ jobs:
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
+          [[ -n "$IMAGE_NAME_FILTER" ]] && ARGS+=("$IMAGE_NAME_FILTER")
           if [[ -n "$DEV_SPEC" ]]; then
             ARGS+=(--dev-spec "$DEV_SPEC")
           elif [[ -n "$DEV_VERSION" ]]; then
