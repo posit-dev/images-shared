@@ -63,7 +63,9 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             exclude=True,
             default=None,
             description="Version pinned by a workflow dispatch spec (--dev-spec). When set, "
-            "bypasses CDN/dependency discovery so the build targets exactly this version.",
+            "bypasses CDN/dependency discovery so the build targets exactly this version. "
+            "The stream model also forwards it to the channel resolver for URL construction; "
+            "the dependency model returns it directly from get_version().",
         ),
     ]
 
