@@ -2,14 +2,16 @@ import hashlib
 import itertools
 import logging
 import subprocess
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Callable, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget, Tag
+from posit_bakery.retry import RetryPolicy, is_transient_error, retry_on_transient
 from posit_bakery.util import find_bin
 
 log = logging.getLogger(__name__)
@@ -200,6 +202,7 @@ class OrasIndexCreateWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="Target this index represents.")]
     annotations: Annotated[dict[str, str], Field(default_factory=dict)]
     plain_http: Annotated[bool, Field(default=False)]
+    retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
     @property
     def temp_index_tag(self) -> str:
@@ -209,14 +212,22 @@ class OrasIndexCreateWorkflow(BaseModel):
         )
 
     def run(self, dry_run: bool = False) -> OrasIndexCreateResult:
+        # Retry transient registry errors: the per-platform source manifests
+        # are pushed by digest from separate runners and may not yet be
+        # readable here due to registry eventual consistency.
+        cmd = OrasManifestIndexCreate(
+            oras_bin=self.oras_bin,
+            sources=self.image_target.get_merge_sources(),
+            destination=self.temp_index_tag,
+            annotations=self.annotations,
+            plain_http=self.plain_http,
+        )
         try:
-            OrasManifestIndexCreate(
-                oras_bin=self.oras_bin,
-                sources=self.image_target.get_merge_sources(),
-                destination=self.temp_index_tag,
-                annotations=self.annotations,
-                plain_http=self.plain_http,
-            ).run(dry_run=dry_run)
+            retry_on_transient(
+                lambda: cmd.run(dry_run=dry_run),
+                policy=self.retry_policy,
+                description=f"index-create for '{self.image_target.uid}'",
+            )
             return OrasIndexCreateResult(success=True, temp_ref=self.temp_index_tag)
         except BakeryToolRuntimeError as e:
             log.error(f"oras index-create failed: {e}")
@@ -239,18 +250,26 @@ class OrasIndexCopyWorkflow(BaseModel):
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
     image_target: Annotated[ImageTarget, Field(description="Target whose tags to fan out to.")]
     plain_http: Annotated[bool, Field(default=False)]
+    retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
     def run(self, source: str, dry_run: bool = False) -> OrasIndexCopyResult:
         try:
             destinations = []
             for destination, tags in itertools.groupby(self.image_target.tags, lambda x: x.destination):
                 combined = destination + ":" + ",".join(t.suffix for t in tags)
-                OrasCopy(
+                copy = OrasCopy(
                     oras_bin=self.oras_bin,
                     source=source,
                     destination=combined,
                     plain_http=self.plain_http,
-                ).run(dry_run=dry_run)
+                )
+                # Retry transient registry errors: the temp-registry source
+                # index may still be propagating when the copy first reads it.
+                retry_on_transient(
+                    lambda c=copy: c.run(dry_run=dry_run),
+                    policy=self.retry_policy,
+                    description=f"index-copy for '{self.image_target.uid}' -> {combined}",
+                )
                 destinations.append(combined)
             return OrasIndexCopyResult(success=True, destinations=destinations)
         except BakeryToolRuntimeError as e:
@@ -301,6 +320,108 @@ class OrasIndexVerifyWorkflow(BaseModel):
         except BakeryToolRuntimeError as e:
             log.error(f"oras manifest verify failed: {e}")
             return OrasIndexVerifyResult(success=False, verified=verified, error=str(e))
+
+
+class OrasSourcesReadyResult(BaseModel):
+    """Result of a pre-flight source-digest availability wait."""
+
+    success: Annotated[bool, Field(description="Whether every source digest became readable before the timeout.")]
+    ready: Annotated[
+        list[str], Field(default_factory=list, description="Source refs confirmed readable, in resolution order.")
+    ]
+    missing: Annotated[
+        list[str], Field(default_factory=list, description="Source refs still unreadable when the wait gave up.")
+    ]
+    waited_seconds: Annotated[float, Field(default=0.0, description="Wall-clock seconds spent waiting.")]
+    error: Annotated[str | None, Field(default=None, description="Diagnostic message on timeout.")]
+
+
+class OrasWaitForSourcesWorkflow(BaseModel):
+    """Poll source digests until they are all readable from the registry.
+
+    Per-platform manifests are pushed *by digest* from separate build runners,
+    and registries with read-after-write (eventual consistency) behaviour —
+    notably GHCR — may briefly 404 those digests when the publish runner first
+    asks for them. This pre-flight turns "hope it has propagated" into
+    condition-based waiting: each source is probed with ``oras manifest fetch
+    --descriptor`` (a lightweight existence check) and removed from the pending
+    set once it resolves. The wait succeeds as soon as every source resolves,
+    and fails (logging exactly which digests lagged) once ``timeout`` elapses.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
+    sources: Annotated[list[str], Field(description="Source refs (registry refs, typically by-digest) to await.")]
+    timeout: Annotated[float, Field(default=600.0, description="Maximum seconds to wait for all sources (10 min).")]
+    poll_interval: Annotated[float, Field(default=5.0, description="Seconds between polling sweeps.")]
+    plain_http: Annotated[bool, Field(default=False)]
+
+    def _is_available(self, ref: str) -> bool:
+        try:
+            OrasManifestFetch(
+                oras_bin=self.oras_bin,
+                reference=ref,
+                descriptor=True,
+                plain_http=self.plain_http,
+            ).run(dry_run=False)
+            return True
+        except BakeryToolRuntimeError as e:
+            if is_transient_error(e):
+                return False
+            raise
+
+    def run(
+        self,
+        dry_run: bool = False,
+        *,
+        sleep: Callable[[float], None] = time.sleep,
+        now: Callable[[], float] = time.monotonic,
+    ) -> OrasSourcesReadyResult:
+        """Probe each source until all resolve or ``timeout`` elapses.
+
+        :param dry_run: When True, report success without contacting the
+            registry (nothing has been pushed to wait on).
+        :param sleep: Sleep function, injectable for testing.
+        :param now: Monotonic clock, injectable for testing.
+        """
+        unique_sources = list(dict.fromkeys(self.sources))
+        if dry_run or not unique_sources:
+            return OrasSourcesReadyResult(success=True, ready=unique_sources)
+
+        start = now()
+        ready: list[str] = []
+        pending = list(unique_sources)
+        while True:
+            still_pending: list[str] = []
+            for ref in pending:
+                if self._is_available(ref):
+                    ready.append(ref)
+                else:
+                    still_pending.append(ref)
+            pending = still_pending
+
+            if not pending:
+                return OrasSourcesReadyResult(success=True, ready=ready, waited_seconds=now() - start)
+
+            elapsed = now() - start
+            if elapsed >= self.timeout:
+                return OrasSourcesReadyResult(
+                    success=False,
+                    ready=ready,
+                    missing=pending,
+                    waited_seconds=elapsed,
+                    error=(
+                        f"{len(pending)} source digest(s) still unreadable after {elapsed:.0f}s "
+                        f"(timeout {self.timeout:.0f}s): {', '.join(pending)}"
+                    ),
+                )
+
+            log.info(
+                f"Waiting on {len(pending)} source digest(s) to become readable "
+                f"({elapsed:.0f}s/{self.timeout:.0f}s elapsed); retrying in {self.poll_interval:.0f}s."
+            )
+            sleep(self.poll_interval)
 
 
 class OrasMergeWorkflowResult(BaseModel):

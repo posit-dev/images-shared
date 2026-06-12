@@ -294,10 +294,12 @@ def publish(
     """
     # Imports kept local to mirror existing patterns and to avoid bloating
     # module load time when this command isn't invoked.
+    from posit_bakery.error import BakeryToolRuntimeError
     from posit_bakery.plugins.builtin.oras.oras import (
         OrasIndexCopyWorkflow,
         OrasIndexCreateWorkflow,
         OrasIndexVerifyWorkflow,
+        OrasWaitForSourcesWorkflow,
         find_oras_bin,
     )
     from posit_bakery.plugins.registry import get_plugin
@@ -354,6 +356,32 @@ def publish(
         (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
         key=lambda t: t.push_sort_key,
     )
+
+    # Pre-flight: wait for every per-platform source digest to be readable
+    # before we touch them. Those manifests are pushed by digest from separate
+    # build runners, and registries with read-after-write (eventual
+    # consistency) behaviour — notably GHCR — can briefly 404 them. Polling
+    # here turns propagation lag into condition-based waiting and logs exactly
+    # which digest lagged, rather than failing a downstream phase opaquely.
+    all_sources = sorted({s for t in targets for s in t.get_merge_sources()})
+    if all_sources:
+        log.info(f"Waiting for {len(all_sources)} source digest(s) to be readable before publishing.")
+        try:
+            wait = OrasWaitForSourcesWorkflow(
+                oras_bin=oras_bin,
+                sources=all_sources,
+            ).run(dry_run=dry_run)
+        except BakeryToolRuntimeError as e:
+            # A non-transient registry error (auth, bad reference, ...) while
+            # probing sources is fatal and won't self-heal — surface it cleanly
+            # rather than letting it escape as an unhandled traceback.
+            log.error(f"Failed while waiting for source digests: {e.dump_stderr() or e}")
+            raise typer.Exit(code=1)
+        if not wait.success:
+            log.error(f"Source digests not available: {wait.error}")
+            raise typer.Exit(code=1)
+        if wait.ready:
+            log.info(f"All {len(wait.ready)} source digest(s) readable after {wait.waited_seconds:.0f}s.")
 
     # Phase 1: index create. Failures abort.
     temp_refs: dict[str, str] = {}

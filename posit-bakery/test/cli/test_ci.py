@@ -79,7 +79,24 @@ def patch_image_target_merge_method(mocker):
             result.verified = self.image_target.tags.as_strings()
             return result
 
+    class MockOrasWaitForSourcesWorkflow:
+        def __init__(self, oras_bin, sources, **kwargs):
+            self.oras_bin = oras_bin
+            self.sources = sources
+
+        def run(self, dry_run=False, **kwargs):
+            result = MagicMock()
+            result.success = True
+            result.ready = list(self.sources)
+            result.missing = []
+            result.waited_seconds = 0.0
+            return result
+
     # Patch the imports inside the publish function
+    mocker.patch(
+        "posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow",
+        MockOrasWaitForSourcesWorkflow,
+    )
     mocker.patch(
         "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
         MockOrasIndexCreateWorkflow,

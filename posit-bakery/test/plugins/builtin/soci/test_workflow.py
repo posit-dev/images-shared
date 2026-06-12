@@ -153,6 +153,41 @@ def test_cleans_up_scratch_dir_on_failure(workflow, tmp_path):
     assert not scratch.exists()
 
 
+def test_pull_retries_transient_then_succeeds(mock_target):
+    """A transient registry error on the SOCI pull is retried, not fatal."""
+    from posit_bakery.retry import RetryPolicy
+
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+        retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+    )
+
+    attempts = {"pull": 0}
+
+    def fake_run(cmd, capture_output):
+        # First oras cp is the registry -> layout pull; fail it transiently once.
+        if cmd[:2] == ["oras", "cp"] and "--to-oci-layout" in cmd:
+            attempts["pull"] += 1
+            if attempts["pull"] == 1:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"sha256:x: not found")
+        return _ok_proc(cmd)
+
+    with (
+        patch("subprocess.run", side_effect=fake_run),
+        patch("posit_bakery.retry.time.sleep") as sleep,
+        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
+    ):
+        result = workflow.run()
+
+    assert result.success is True
+    assert attempts["pull"] == 2
+    sleep.assert_called_once()
+
+
 def test_read_converted_digest_reads_index_json(workflow, tmp_path):
     layout = tmp_path / "out"
     layout.mkdir()

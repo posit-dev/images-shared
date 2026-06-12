@@ -20,7 +20,9 @@ from posit_bakery.plugins.builtin.oras.oras import (
     OrasManifestIndexCreate,
     OrasMergeWorkflow,
     OrasMergeWorkflowResult,
+    OrasWaitForSourcesWorkflow,
 )
+from posit_bakery.retry import RetryPolicy
 
 pytestmark = [
     pytest.mark.unit,
@@ -789,3 +791,200 @@ class TestOrasMergeWorkflowIntegration:
 
         assert workflow.plain_http is True
         assert workflow.oras_bin == "oras"
+
+
+class TestOrasIndexCreateWorkflowRetry:
+    """The index-create primitive retries transient registry errors."""
+
+    @pytest.fixture
+    def workflow(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        return OrasIndexCreateWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            annotations={"k": "v"},
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+    def test_retries_transient_not_found_then_succeeds(self, workflow):
+        attempts = {"n": 0}
+
+        def side_effect(cmd, capture_output):
+            attempts["n"] += 1
+            if attempts["n"] < 3:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"sha256:abc: not found")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+        with patch("subprocess.run", side_effect=side_effect), patch("posit_bakery.retry.time.sleep") as sleep:
+            result = workflow.run()
+
+        assert result.success is True
+        assert attempts["n"] == 3
+        assert sleep.call_count == 2
+
+    def test_non_transient_error_fails_without_retry(self, workflow):
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("posit_bakery.retry.time.sleep") as sleep,
+        ):
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+            )
+            result = workflow.run()
+
+        assert result.success is False
+        assert mock_run.call_count == 1
+        sleep.assert_not_called()
+
+
+class TestOrasIndexCopyWorkflowRetry:
+    """The index-copy primitive retries transient registry errors."""
+
+    def test_retries_transient_then_succeeds(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCopyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+        attempts = {"n": 0}
+
+        def side_effect(cmd, capture_output):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"manifest unknown")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
+
+        with patch("subprocess.run", side_effect=side_effect), patch("posit_bakery.retry.time.sleep"):
+            result = workflow.run(source="ghcr.io/posit-dev/test-image/tmp:src")
+
+        assert result.success is True
+        # 1 failed + 1 retried success for the single destination.
+        assert attempts["n"] == 2
+
+
+class TestOrasWaitForSourcesWorkflow:
+    """Tests for the pre-flight source-digest availability wait."""
+
+    def _ok(self, cmd):
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"{}", stderr=b"")
+
+    def _missing(self, cmd):
+        return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"not found")
+
+    def test_all_sources_ready_first_sweep(self):
+        wf = OrasWaitForSourcesWorkflow(
+            oras_bin="oras",
+            sources=[
+                "ghcr.io/posit-dev/test/tmp@sha256:a",
+                "ghcr.io/posit-dev/test/tmp@sha256:b",
+            ],
+        )
+        sleep = MagicMock()
+        with patch("subprocess.run", side_effect=lambda cmd, capture_output: self._ok(cmd)):
+            result = wf.run(sleep=sleep, now=lambda: 0.0)
+
+        assert result.success is True
+        assert result.ready == [
+            "ghcr.io/posit-dev/test/tmp@sha256:a",
+            "ghcr.io/posit-dev/test/tmp@sha256:b",
+        ]
+        assert result.missing == []
+        sleep.assert_not_called()
+
+    def test_waits_until_source_appears(self):
+        wf = OrasWaitForSourcesWorkflow(
+            oras_bin="oras",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:a"],
+            poll_interval=5.0,
+            timeout=600.0,
+        )
+        # First sweep: missing. Second sweep: present.
+        responses = {"n": 0}
+
+        def side_effect(cmd, capture_output):
+            responses["n"] += 1
+            return self._missing(cmd) if responses["n"] == 1 else self._ok(cmd)
+
+        clock = {"t": 0.0}
+
+        def now():
+            return clock["t"]
+
+        def sleep(seconds):
+            clock["t"] += seconds
+
+        with patch("subprocess.run", side_effect=side_effect):
+            result = wf.run(sleep=sleep, now=now)
+
+        assert result.success is True
+        assert result.ready == ["ghcr.io/posit-dev/test/tmp@sha256:a"]
+        assert result.waited_seconds == 5.0
+
+    def test_times_out_and_reports_missing(self):
+        wf = OrasWaitForSourcesWorkflow(
+            oras_bin="oras",
+            sources=[
+                "ghcr.io/posit-dev/test/tmp@sha256:a",
+                "ghcr.io/posit-dev/test/tmp@sha256:b",
+            ],
+            poll_interval=5.0,
+            timeout=10.0,
+        )
+
+        # 'a' is always present; 'b' never appears.
+        def side_effect(cmd, capture_output):
+            ref = cmd[-1]
+            return self._ok(cmd) if ref.endswith("sha256:a") else self._missing(cmd)
+
+        clock = {"t": 0.0}
+
+        def sleep(seconds):
+            clock["t"] += seconds
+
+        with patch("subprocess.run", side_effect=side_effect):
+            result = wf.run(sleep=sleep, now=lambda: clock["t"])
+
+        assert result.success is False
+        assert result.ready == ["ghcr.io/posit-dev/test/tmp@sha256:a"]
+        assert result.missing == ["ghcr.io/posit-dev/test/tmp@sha256:b"]
+        assert "still unreadable" in result.error
+
+    def test_non_transient_error_raises_immediately(self):
+        """A non-transient fetch error (e.g. auth) must not be polled on — it
+        raises right away instead of burning the full timeout."""
+        wf = OrasWaitForSourcesWorkflow(
+            oras_bin="oras",
+            sources=["ghcr.io/posit-dev/test/tmp@sha256:a"],
+            poll_interval=5.0,
+            timeout=600.0,
+        )
+        sleep = MagicMock()
+
+        def side_effect(cmd, capture_output):
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+            )
+
+        with patch("subprocess.run", side_effect=side_effect):
+            with pytest.raises(BakeryToolRuntimeError):
+                wf.run(sleep=sleep, now=lambda: 0.0)
+
+        # Failed fast: no backoff sleep, no waiting for the timeout.
+        sleep.assert_not_called()
+
+    def test_dry_run_skips_polling(self):
+        wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=["ghcr.io/posit-dev/test/tmp@sha256:a"])
+        with patch("subprocess.run") as mock_run:
+            result = wf.run(dry_run=True)
+        mock_run.assert_not_called()
+        assert result.success is True
+
+    def test_no_sources_is_success(self):
+        wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=[])
+        with patch("subprocess.run") as mock_run:
+            result = wf.run()
+        mock_run.assert_not_called()
+        assert result.success is True
+        assert result.ready == []

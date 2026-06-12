@@ -33,11 +33,13 @@ def test_publish_command_flags_present():
     assert "--enable-soci" not in result.stdout
 
 
-def _fake_target(uid: str):
+def _fake_target(uid: str, merge_sources: list[str] | None = None):
     t = MagicMock()
     t.uid = uid
     t.push_sort_key = 0
-    t.get_merge_sources.return_value = []  # skip phase 1 (index-create)
+    # Default: no merge sources, which skips phase 1 (index-create) and the
+    # pre-flight source wait.
+    t.get_merge_sources.return_value = merge_sources or []
     return t
 
 
@@ -74,3 +76,132 @@ def test_publish_invokes_soci_execute_without_mode(tmp_path):
     assert captured["called"] is True
     # No mode/standalone selector is threaded through anymore.
     assert "standalone" not in captured["kwargs"]
+
+
+def test_publish_waits_for_sources_then_proceeds(tmp_path):
+    """The pre-flight wait is invoked with the targets' merge-source digests."""
+    sources = [
+        "ghcr.io/posit-dev/test/tmp@sha256:amd64",
+        "ghcr.io/posit-dev/test/tmp@sha256:arm64",
+    ]
+    target = _fake_target("uid1", merge_sources=sources)
+    target.settings.temp_registry = "ghcr.io/posit-dev"
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
+    fake_config.get_image_target_by_uid.return_value = target
+
+    captured = {}
+
+    fake_wait_instance = MagicMock()
+    fake_wait_instance.run.return_value = MagicMock(success=True, ready=sources, missing=[], waited_seconds=3.0)
+
+    def fake_wait_ctor(**kwargs):
+        captured["wait_kwargs"] = kwargs
+        return fake_wait_instance
+
+    fake_soci = MagicMock()
+    fake_soci.execute.return_value = []
+
+    # Make the downstream phases succeed so we exercise the path past the wait.
+    fake_create_result = MagicMock(success=True, temp_ref="ghcr.io/posit-dev/test/tmp:created")
+    fake_copy_result = MagicMock(success=True, destinations=["ghcr.io/posit-dev/test:1.0.0"], error=None)
+    fake_verify_result = MagicMock(success=True, verified=["ghcr.io/posit-dev/test:1.0.0"], error=None)
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", side_effect=fake_wait_ctor),
+        patch(
+            "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=fake_create_result)),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=fake_copy_result)),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=fake_verify_result)),
+        ),
+        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
+
+    assert result.exit_code == 0, result.stdout
+    fake_wait_instance.run.assert_called_once()
+    assert sorted(captured["wait_kwargs"]["sources"]) == sorted(sources)
+
+
+def test_publish_aborts_when_sources_never_ready(tmp_path):
+    """A wait timeout aborts the publish before any phase runs."""
+    sources = ["ghcr.io/posit-dev/test/tmp@sha256:amd64"]
+    target = _fake_target("uid1", merge_sources=sources)
+    target.settings.temp_registry = "ghcr.io/posit-dev"
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
+    fake_config.get_image_target_by_uid.return_value = target
+
+    fake_wait_instance = MagicMock()
+    fake_wait_instance.run.return_value = MagicMock(
+        success=False, ready=[], missing=sources, waited_seconds=600.0, error="still unreadable"
+    )
+
+    fake_soci = MagicMock()
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", return_value=fake_wait_instance),
+        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
+
+    assert result.exit_code == 1
+    # Aborted before SOCI convert.
+    fake_soci.execute.assert_not_called()
+
+
+def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
+    """A non-transient registry error during the wait exits cleanly (code 1)
+    rather than escaping as an unhandled traceback."""
+    from posit_bakery.error import BakeryToolRuntimeError
+
+    sources = ["ghcr.io/posit-dev/test/tmp@sha256:amd64"]
+    target = _fake_target("uid1", merge_sources=sources)
+    target.settings.temp_registry = "ghcr.io/posit-dev"
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
+    fake_config.get_image_target_by_uid.return_value = target
+
+    fake_wait_instance = MagicMock()
+    fake_wait_instance.run.side_effect = BakeryToolRuntimeError(
+        message="oras command failed",
+        tool_name="oras",
+        cmd=["oras", "manifest", "fetch"],
+        stdout=b"",
+        stderr=b"unauthorized: authentication required",
+    )
+
+    fake_soci = MagicMock()
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", return_value=fake_wait_instance),
+        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
+
+    # Clean exit, not an unhandled exception.
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    fake_soci.execute.assert_not_called()
