@@ -140,25 +140,16 @@ jobs:
         with:
           version: ${{ inputs.version }}
 
-      - name: Images by Version/Platform
-        id: images-by-platform
+      - name: Resolve dev-spec
+        id: resolve-dev-spec
         env:
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          IMAGE_NAME_FILTER: ${{ inputs.image-name }}
-          IMAGE_VERSION: ${{ inputs.image-version }}
-          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
-          DEV_VERSION: ${{ inputs.dev-version }}
           DEV_SPEC: ${{ inputs.dev-spec }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           RELEASE_BRANCH: ${{ inputs.release-branch }}
-          CONTEXT: ${{ inputs.context }}
         run: |
-          IMAGE_VERSION="${IMAGE_VERSION#v}"
-          ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
-          [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
-          [[ -n "$IMAGE_NAME_FILTER" ]] && ARGS+=(-- "$IMAGE_NAME_FILTER")
           if [[ -n "$DEV_SPEC" ]]; then
-            ARGS+=(--dev-spec "$DEV_SPEC")
+            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
             DEV_SPEC_JSON=$(jq -cn \
               --arg v "$DEV_VERSION" \
@@ -167,10 +158,31 @@ jobs:
               'if $v != "" then {version: $v} else {} end
                + if $c != "" then {channel: $c} else {} end
                + if $b != "" then {release_branch: $b} else {} end')
-            ARGS+=(--dev-spec "$DEV_SPEC_JSON")
+            echo "dev-spec=$DEV_SPEC_JSON" >> "$GITHUB_OUTPUT"
+          else
+            echo "dev-spec=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Images by Version/Platform
+        id: images-by-platform
+        env:
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          IMAGE_NAME_FILTER: ${{ inputs.image-name }}
+          IMAGE_VERSION: ${{ inputs.image-version }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          IMAGE_VERSION="${IMAGE_VERSION#v}"
+          ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
+          [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
+          if [[ -n "$DEV_SPEC_RESOLVED" ]]; then
+            ARGS+=(--dev-spec "$DEV_SPEC_RESOLVED")
           elif [[ -n "$DEV_CHANNEL" ]]; then
             ARGS+=(--dev-channel "$DEV_CHANNEL")
           fi
+          [[ -n "$IMAGE_NAME_FILTER" ]] && ARGS+=(-- "$IMAGE_NAME_FILTER")
           result=$(bakery ci matrix "${ARGS[@]}")
           echo "platform_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
           echo "image_matrix=$(echo "$result" | jq --compact-output '[.[].image] | unique')" >> "$GITHUB_OUTPUT"
@@ -258,6 +270,28 @@ jobs:
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/}
           echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+      - name: Resolve dev-spec
+        id: resolve-dev-spec
+        env:
+          DEV_SPEC: ${{ inputs.dev-spec }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
+          RELEASE_BRANCH: ${{ inputs.release-branch }}
+        run: |
+          if [[ -n "$DEV_SPEC" ]]; then
+            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
+            DEV_SPEC_JSON=$(jq -cn \
+              --arg v "$DEV_VERSION" \
+              --arg c "$DEV_CHANNEL" \
+              --arg b "$RELEASE_BRANCH" \
+              'if $v != "" then {version: $v} else {} end
+               + if $c != "" then {channel: $c} else {} end
+               + if $b != "" then {release_branch: $b} else {} end')
+            echo "dev-spec=$DEV_SPEC_JSON" >> "$GITHUB_OUTPUT"
+          else
+            echo "dev-spec=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build
         env:
           GIT_SHA: ${{ github.sha }}
@@ -267,10 +301,7 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
-          DEV_VERSION: ${{ inputs.dev-version }}
-          DEV_SPEC: ${{ inputs.dev-spec }}
-          RELEASE_BRANCH: ${{ inputs.release-branch }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
@@ -283,18 +314,7 @@ jobs:
             CACHE_FLAGS=(--cache-registry "$REGISTRY")
           fi
           DEV_SPEC_FLAGS=()
-          if [[ -n "$DEV_SPEC" ]]; then
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
-          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
-            DEV_SPEC_JSON=$(jq -cn \
-              --arg v "$DEV_VERSION" \
-              --arg c "$DEV_CHANNEL" \
-              --arg b "$RELEASE_BRANCH" \
-              'if $v != "" then {version: $v} else {} end
-               + if $c != "" then {channel: $c} else {} end
-               + if $b != "" then {release_branch: $b} else {} end')
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
-          fi
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery build \
             --strategy build --pull \
             --retry "$RETRY" \
@@ -316,27 +336,13 @@ jobs:
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
-          DEV_VERSION: ${{ inputs.dev-version }}
-          DEV_SPEC: ${{ inputs.dev-spec }}
-          RELEASE_BRANCH: ${{ inputs.release-branch }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DEV_SPEC_FLAGS=()
-          if [[ -n "$DEV_SPEC" ]]; then
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
-          elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
-            DEV_SPEC_JSON=$(jq -cn \
-              --arg v "$DEV_VERSION" \
-              --arg c "$DEV_CHANNEL" \
-              --arg b "$RELEASE_BRANCH" \
-              'if $v != "" then {version: $v} else {} end
-               + if $c != "" then {channel: $c} else {} end
-               + if $b != "" then {release_branch: $b} else {} end')
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
-          fi
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
@@ -442,22 +448,16 @@ jobs:
         run: |
           ls -ltra .
 
-      - name: Publish
+      - name: Resolve dev-spec
+        id: resolve-dev-spec
         env:
-          GIT_SHA: ${{ github.sha }}
-          CONTEXT: ${{ inputs.context }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
-          PUSH: ${{ inputs.push }}
-          IMAGE_NAME: ${{ matrix.image }}
-          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
-          DEV_VERSION: ${{ inputs.dev-version }}
           DEV_SPEC: ${{ inputs.dev-spec }}
+          DEV_VERSION: ${{ inputs.dev-version }}
+          DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           RELEASE_BRANCH: ${{ inputs.release-branch }}
         run: |
-          if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
-          DEV_SPEC_FLAGS=()
           if [[ -n "$DEV_SPEC" ]]; then
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC")
+            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
             DEV_SPEC_JSON=$(jq -cn \
               --arg v "$DEV_VERSION" \
@@ -466,8 +466,23 @@ jobs:
               'if $v != "" then {version: $v} else {} end
                + if $c != "" then {channel: $c} else {} end
                + if $b != "" then {release_branch: $b} else {} end')
-            DEV_SPEC_FLAGS+=(--dev-spec "$DEV_SPEC_JSON")
+            echo "dev-spec=$DEV_SPEC_JSON" >> "$GITHUB_OUTPUT"
+          else
+            echo "dev-spec=" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Publish
+        env:
+          GIT_SHA: ${{ github.sha }}
+          CONTEXT: ${{ inputs.context }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          PUSH: ${{ inputs.push }}
+          IMAGE_NAME: ${{ matrix.image }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+        run: |
+          if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery ci publish \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
