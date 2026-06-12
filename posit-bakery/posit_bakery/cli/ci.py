@@ -133,8 +133,6 @@ def matrix(
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images]
-        if image_name is not None:
-            images = [i for i in images if i.name == image_name]
 
         data = []
         for img in images:
