@@ -41,16 +41,6 @@ class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
             "for builds targeting older versions.",
         ),
     ]
-    version_override: Annotated[
-        str | None,
-        Field(
-            exclude=True,
-            default=None,
-            description="Version pinned by a workflow dispatch spec. When set, bypasses CDN "
-            "discovery and is forwarded to the channel resolver for offline template rendering "
-            "(PPM) or manifest assertion (Connect, Workbench).",
-        ),
-    ]
     release_branch: Annotated[
         str | None,
         Field(

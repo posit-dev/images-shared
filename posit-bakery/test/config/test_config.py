@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import textwrap
@@ -2329,3 +2330,82 @@ class TestApplyDevSpecReleaseBranch:
     def test_extract_calver_minor_rejects_trailing_garbage(self):
         with pytest.raises(ValueError, match="not a valid CalVer"):
             _extract_calver_minor("2026.06.0-daily+143 trailing garbage")
+
+
+class TestApplyDevSpecDependency:
+    """--dev-spec pins dependency-sourced dev versions, matched by channel."""
+
+    def _make_image(self, tmp_path, *, channel="daily", extra_dev_versions=None):
+        """Return a minimal Image with one positron daily dependency dev version."""
+        dev_version = {
+            "sourceType": "dependency",
+            "dependency": "positron",
+            "prerelease": True,
+            "channel": channel,
+            "os": [{"name": "Ubuntu 24.04", "primary": True}],
+        }
+        doc = BakeryConfigDocument(
+            base_path=tmp_path,
+            **{
+                "repository": {"url": "https://github.com/posit-dev/test"},
+                "images": [
+                    {
+                        "name": "test-positron-init",
+                        "devVersions": [dev_version, *(extra_dev_versions or [])],
+                    }
+                ],
+            },
+        )
+        return doc.images[0]
+
+    def test_version_pins_dependency_dev_version(self, tmp_path):
+        """version in DevBuildSpec sets version_override on the matching dependency dev version."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(version="2026.06.0-99", channel="daily")
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+        _apply_dev_spec(image, settings)
+        assert image.devVersions[0].version_override == "2026.06.0-99"
+
+    def test_channel_mismatch_is_noop(self, tmp_path):
+        """A dev-spec channel that matches no dev version leaves version_override unset."""
+        image = self._make_image(tmp_path, channel="daily")
+        spec = DevBuildSpec(version="2026.06.0-99", channel="preview")
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+        _apply_dev_spec(image, settings)
+        assert image.devVersions[0].version_override is None
+
+    def test_release_branch_ignored_for_dependency(self, tmp_path):
+        """release_branch is not applicable to dependency dev versions and is not set."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(version="2026.06.0-99", channel="daily", release_branch="apple-blossom")
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+        _apply_dev_spec(image, settings)
+        dv = image.devVersions[0]
+        assert dv.version_override == "2026.06.0-99"
+        assert not hasattr(dv, "release_branch")
+
+    def test_branch_only_spec_skips_dependency_with_warning(self, tmp_path, caplog):
+        """A branch-only spec cannot pin a dependency dev version: warns, leaves override None."""
+        image = self._make_image(tmp_path)
+        spec = DevBuildSpec(release_branch="apple-blossom")
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+        with caplog.at_level(logging.WARNING):
+            _apply_dev_spec(image, settings)
+        assert image.devVersions[0].version_override is None
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "cannot pin a dependency-sourced dev version" in warnings[0].message
+
+    def test_ambiguous_candidates_raise(self, tmp_path):
+        """Two dev versions matching the same channel raise a disambiguation error."""
+        extra = {
+            "sourceType": "stream",
+            "product": "workbench",
+            "channel": "daily",
+            "os": [{"name": "Ubuntu 24.04", "primary": True}],
+        }
+        image = self._make_image(tmp_path, channel="daily", extra_dev_versions=[extra])
+        spec = DevBuildSpec(version="2026.06.0-99", channel="daily")
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
+        with pytest.raises(ValueError, match="dev versions matching"):
+            _apply_dev_spec(image, settings)

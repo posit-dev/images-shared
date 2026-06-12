@@ -57,6 +57,17 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             description="Arbitrary key-value pairs used in template rendering.",
         ),
     ]
+    version_override: Annotated[
+        str | None,
+        Field(
+            exclude=True,
+            default=None,
+            description="Version pinned by a workflow dispatch spec (--dev-spec). When set, "
+            "bypasses CDN/dependency discovery so the build targets exactly this version. "
+            "The stream model also forwards it to the channel resolver for URL construction; "
+            "the dependency model returns it directly from get_version().",
+        ),
+    ]
 
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
