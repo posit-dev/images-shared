@@ -241,6 +241,11 @@ class TestDgossRunDevSpec:
         result, _ = self._invoke(["--dev-spec", "not-json"])
         assert result.exit_code != 0
 
+    def test_dev_spec_invalid_schema_rejected(self):
+        """JSON with unknown fields is rejected in dgoss run (extra='forbid' on DevBuildSpec)."""
+        result, _ = self._invoke(["--dev-spec", '{"version": "1.0.0", "chanenl": "daily"}'])
+        assert result.exit_code != 0
+
     def test_dev_channel_forwarded_to_settings(self):
         """--dev-channel is forwarded to BakerySettings.dev_channel."""
         result, mock = self._invoke(["--dev-versions", "only", "--dev-channel", "daily"])
