@@ -139,7 +139,8 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
         run: |
           if [[ -n "$DEV_SPEC" ]]; then
-            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+            DEV_SPEC_COMPACT=$(echo "$DEV_SPEC" | jq -c .)
+            echo "dev-spec=$DEV_SPEC_COMPACT" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" ]]; then
             DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
               '{version: $v} + if $c != "" then {channel: $c} else {} end')
@@ -246,7 +247,8 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
         run: |
           if [[ -n "$DEV_SPEC" ]]; then
-            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+            DEV_SPEC_COMPACT=$(echo "$DEV_SPEC" | jq -c .)
+            echo "dev-spec=$DEV_SPEC_COMPACT" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" ]]; then
             DEV_SPEC_JSON=$(jq -cn --arg v "$DEV_VERSION" --arg c "$DEV_CHANNEL" \
               '{version: $v} + if $c != "" then {channel: $c} else {} end')

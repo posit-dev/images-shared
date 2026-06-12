@@ -149,7 +149,8 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.release-branch }}
         run: |
           if [[ -n "$DEV_SPEC" ]]; then
-            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+            DEV_SPEC_COMPACT=$(echo "$DEV_SPEC" | jq -c .)
+            echo "dev-spec=$DEV_SPEC_COMPACT" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
             DEV_SPEC_JSON=$(jq -cn \
               --arg v "$DEV_VERSION" \
@@ -279,7 +280,8 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.release-branch }}
         run: |
           if [[ -n "$DEV_SPEC" ]]; then
-            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+            DEV_SPEC_COMPACT=$(echo "$DEV_SPEC" | jq -c .)
+            echo "dev-spec=$DEV_SPEC_COMPACT" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
             DEV_SPEC_JSON=$(jq -cn \
               --arg v "$DEV_VERSION" \
@@ -457,7 +459,8 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.release-branch }}
         run: |
           if [[ -n "$DEV_SPEC" ]]; then
-            echo "dev-spec=$DEV_SPEC" >> "$GITHUB_OUTPUT"
+            DEV_SPEC_COMPACT=$(echo "$DEV_SPEC" | jq -c .)
+            echo "dev-spec=$DEV_SPEC_COMPACT" >> "$GITHUB_OUTPUT"
           elif [[ -n "$DEV_VERSION" || -n "$RELEASE_BRANCH" ]]; then
             DEV_SPEC_JSON=$(jq -cn \
               --arg v "$DEV_VERSION" \
