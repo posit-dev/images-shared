@@ -60,6 +60,23 @@ class TestRunDgossPlatformNormalization:
         assert mock_plugin.execute.call_args[1]["platform"] == expected
 
 
+class TestRunDgossDeprecationWarning:
+    """bakery run dgoss must emit a visible deprecation warning that names the
+    preferred command and states the old form will eventually be removed."""
+
+    def test_emits_deprecation_warning(self, mocked_bakery_run_dgoss):
+        result = runner.invoke(
+            app,
+            ["run", "dgoss", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        combined = result.output
+        assert "deprecated" in combined.lower()
+        assert "bakery dgoss run" in combined
+        assert "removed" in combined.lower()
+
+
 class TestRunDgossLatestFlag:
     """The --latest flag is passed through to settings and warns with dev inclusion."""
 

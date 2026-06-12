@@ -56,7 +56,7 @@ Each has the same set of caller workflows:
 | Caller | Trigger | Calls |
 |---|---|---|
 | `pr.yml` | `pull_request` | `bakery-build-pr.yml` with `cache: false`, because the images exceed the per-layer cache size limit in GHCR and registry caching silently fails. |
-| `waml.yml` (Azure ML), `wgcw.yml` (Google Cloud Workstations) | weekly cron + push to main + dispatch | Hand-rolled matrix → build → test → push pipeline using the [`setup-bakery`](setup-bakery) and [`setup-goss`](setup-goss) composite actions plus direct `bakery build` and `bakery run dgoss` calls. `wgcw.yml` additionally authenticates to Google Cloud Platform (GCP) via OpenID Connect (OIDC) and uses a GCP Artifact Registry (`us-central1-docker.pkg.dev/cloud-workstations-cache`) as its build cache. Each workflow's gating `ci` job calls the [`slack-build-notify`](.github/actions/slack-build-notify) composite action to post build outcomes to Slack. |
+| `waml.yml` (Azure ML), `wgcw.yml` (Google Cloud Workstations) | weekly cron + push to main + dispatch | Hand-rolled matrix → build → test → push pipeline using the [`setup-bakery`](setup-bakery) and [`setup-goss`](setup-goss) composite actions plus direct `bakery build` and `bakery dgoss run` calls. `wgcw.yml` additionally authenticates to Google Cloud Platform (GCP) via OpenID Connect (OIDC) and uses a GCP Artifact Registry (`us-central1-docker.pkg.dev/cloud-workstations-cache`) as its build cache. Each workflow's gating `ci` job calls the [`slack-build-notify`](.github/actions/slack-build-notify) composite action to post build outcomes to Slack. |
 | `release.yml` | `workflow_dispatch` | Hand-rolled version-bump workflow using the [`setup-bakery`](setup-bakery) composite action and direct `bakery update version` / `bakery create version` / `bakery remove version` calls. Does not call `product-release.yml`. |
 
 ## Cron schedule across consumer repos
@@ -146,13 +146,13 @@ flowchart TD
     subgraph build_amd64[Build/Test amd64]
         a_setup[Checkout + bakery + goss + docker + buildx + oras] --> a_login[Login GHCR/DH/ECR]
         a_login --> a_build["bakery build --strategy build<br/>--push to temp registry"]
-        a_build --> a_test["bakery run dgoss"]
+        a_build --> a_test["bakery dgoss run"]
         a_test --> a_meta[Upload metadata artifact]
     end
     subgraph build_arm64[Build/Test arm64]
         r_setup[Checkout + bakery + goss + docker + buildx + oras] --> r_login[Login GHCR/DH/ECR]
         r_login --> r_build["bakery build --strategy build<br/>--push to temp registry"]
-        r_build --> r_test["bakery run dgoss"]
+        r_build --> r_test["bakery dgoss run"]
         r_test --> r_meta[Upload metadata artifact]
     end
     subgraph merge[Merge / Push]
@@ -204,7 +204,7 @@ flowchart TD
     subgraph build[Build / Test / Push]
         b_setup[Checkout + bakery + goss + QEMU + buildx] --> b_login[Login GHCR/DH/ECR]
         b_login --> b_build["bakery build --load --pull"]
-        b_build --> b_test["bakery run dgoss"]
+        b_build --> b_test["bakery dgoss run"]
         b_test --> b_push{"push=true?"}
         b_push -- yes --> b_pushrun["bakery build --push"]
         b_push -- no --> b_skip[skip]
