@@ -146,7 +146,7 @@ jobs:
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
-          [[ -n "$IMAGE_NAME_FILTER" ]] && ARGS+=("$IMAGE_NAME_FILTER")
+          [[ -n "$IMAGE_NAME_FILTER" ]] && ARGS+=(-- "$IMAGE_NAME_FILTER")
           if [[ -n "$DEV_SPEC" ]]; then
             ARGS+=(--dev-spec "$DEV_SPEC")
           elif [[ -n "$DEV_VERSION" ]]; then
