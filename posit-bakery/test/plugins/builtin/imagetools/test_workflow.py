@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.soci.options import SociOptions
-from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflow
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow
 
 pytestmark = [pytest.mark.unit]
 
@@ -125,7 +125,9 @@ def test_cleans_up_scratch_dir(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
-        patch("posit_bakery.plugins.builtin.soci.soci.tempfile.mkdtemp", return_value=str(scratch)) as mock_mkdtemp,
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.soci.tempfile.mkdtemp", return_value=str(scratch)
+        ) as mock_mkdtemp,
         patch("subprocess.run") as mock_run,
         patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
     ):
@@ -142,7 +144,7 @@ def test_cleans_up_scratch_dir_on_failure(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
-        patch("posit_bakery.plugins.builtin.soci.soci.tempfile.mkdtemp", return_value=str(scratch)),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.tempfile.mkdtemp", return_value=str(scratch)),
         patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)),
         patch.object(SociConvertWorkflow, "_read_converted_digest", side_effect=RuntimeError("boom")),
     ):
