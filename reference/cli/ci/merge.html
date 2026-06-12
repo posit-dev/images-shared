@@ -824,6 +824,10 @@ Options:
   --dev-channel [release|preview|daily]
                                   Filter development versions to a specific
                                   release channel.
+  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:
+                                  '{"version": "2026.05.0-dev+185-gSHA",
+                                  "channel": "daily"}'  [env var:
+                                  BAKERY_DEV_SPEC]
   -v, --verbose                   Enable debug logging
   -q, --quiet                     Supress all output except errors
   --help                          Show this message and exit.</code></pre>
@@ -863,6 +867,10 @@ If set, the merged images will not be pushed to the registry.
 <dt><code><span class="doc-parameter-name">--dev-channel</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span></code></dt>
 <dd>
 Filter development versions to a specific release channel.
+</dd>
+<dt><code><span class="doc-parameter-name">--dev-spec</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+JSON spec for a dispatched dev build. Ex: <code>{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}</code> Environment variable: <code>BAKERY_DEV_SPEC</code>.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>
