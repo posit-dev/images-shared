@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from posit_bakery.config.dependencies.const import SupportedDependencies
+
 # Local under TYPE_CHECKING to avoid a circular import: version.py imports
 # this module at runtime, so importing ImageVersion eagerly would cycle.
 if TYPE_CHECKING:
@@ -17,15 +19,24 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Anchored grammar:
+# Alternation of known dependency name prefixes, longest first.
+_DEP_ALT = "|".join(re.escape(d.value) for d in sorted(SupportedDependencies, key=lambda d: len(d.value), reverse=True))
+
+# Anchored grammar (calver/semver — no dep prefix):
 #   <release>      one or more dot-separated digit groups, minimum two groups
 #   -<prerelease>  optional, semver prerelease alphabet
 #   +<build>       optional, semver build alphabet
-_VERSION_RE = re.compile(
+_CALVER_RE = re.compile(
     r"^(?P<release>\d+(?:\.\d+)+)"
     r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?"
     r"(?:\+(?P<build>[0-9A-Za-z.-]+))?$"
 )
+
+# Dep-prefixed version grammar (e.g. "R4.3.3" or "R4.3.3-python3.13.14"):
+#   one or more {dep-name}{release} components separated by hyphens
+_SINGLE_DEP = r"(?:" + _DEP_ALT + r")\d+(?:\.\d+)+"
+_MATRIX_RE = re.compile(r"^" + _SINGLE_DEP + r"(?:-" + _SINGLE_DEP + r")*$")
+_DEP_PAIR_RE = re.compile(r"(?P<dep>" + _DEP_ALT + r")(?P<version>\d+(?:\.\d+)+)")
 
 
 @dataclass(frozen=True)
@@ -43,6 +54,8 @@ class ParsedVersion:
     release: tuple[int, ...]
     prerelease: str | None = None
     build: str | None = None
+    # Non-None for dep-prefixed strings; each entry is (dep_name, version_tuple).
+    dep_versions: tuple[tuple[str, tuple[int, ...]], ...] | None = None
 
     def __str__(self) -> str:
         return self.original
@@ -53,17 +66,23 @@ class ParsedVersion:
         if not isinstance(value, str):
             log.warning("Unparseable version string: %r", value)
             return None
-        match = _VERSION_RE.match(value)
-        if match is None:
-            log.warning("Unparseable version string: %r", value)
-            return None
-        release = tuple(int(part) for part in match.group("release").split("."))
-        return cls(
-            original=value,
-            release=release,
-            prerelease=match.group("prerelease"),
-            build=match.group("build"),
-        )
+        match = _CALVER_RE.match(value)
+        if match is not None:
+            release = tuple(int(part) for part in match.group("release").split("."))
+            return cls(
+                original=value,
+                release=release,
+                prerelease=match.group("prerelease"),
+                build=match.group("build"),
+            )
+        if _MATRIX_RE.match(value):
+            pairs = tuple(
+                (m.group("dep"), tuple(int(x) for x in m.group("version").split(".")))
+                for m in _DEP_PAIR_RE.finditer(value)
+            )
+            return cls(original=value, release=pairs[0][1], dep_versions=pairs)
+        log.warning("Unparseable version string: %r", value)
+        return None
 
     def _release_key(self, length: int) -> tuple[int, ...]:
         """Zero-pad ``self.release`` to ``length`` for length-tolerant comparison."""

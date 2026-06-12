@@ -266,6 +266,10 @@ def version_matches(ver_name: str, filter_version: str) -> bool:
     ver = ParsedVersion.parse(ver_name)
     filt = ParsedVersion.parse(filter_version)
     if ver is not None and filt is not None:
+        if ver.dep_versions is not None or filt.dep_versions is not None:
+            if ver.dep_versions is None or filt.dep_versions is None:
+                return False
+            return ver.dep_versions[: len(filt.dep_versions)] == filt.dep_versions
         return ver.release[: len(filt.release)] == filt.release and (
             filt.prerelease is None or ver.prerelease == filt.prerelease
         )
