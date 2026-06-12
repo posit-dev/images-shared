@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -107,6 +107,16 @@ def dgoss(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=parse_dev_spec,
+        ),
+    ] = None,
     matrix_versions: Annotated[
         Optional[MatrixVersionInclusionEnum],
         typer.Option(
@@ -180,6 +190,7 @@ def dgoss(
         ),
         dev_versions=dev_versions,
         dev_channel=dev_channel,
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         matrix_versions=matrix_versions,
         latest=latest,
         clean_temporary=clean,

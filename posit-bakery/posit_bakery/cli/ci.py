@@ -217,6 +217,16 @@ def merge(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=parse_dev_spec,
+        ),
+    ] = None,
 ):
     """Alias for `bakery ci publish`.
 
@@ -234,6 +244,7 @@ def merge(
         temp_registry=temp_registry,
         dry_run=dry_run,
         dev_channel=dev_channel,
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
     )
 
 
@@ -275,6 +286,16 @@ def publish(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    dev_spec: Annotated[
+        str | None,
+        typer.Option(
+            "--dev-spec",
+            envvar="BAKERY_DEV_SPEC",
+            help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+            callback=parse_dev_spec,
+        ),
+    ] = None,
 ) -> None:
     """Publish multi-platform images by composing oras index-create →
     soci-convert → oras index-copy.
@@ -310,6 +331,7 @@ def publish(
         filter=BakeryConfigFilter(image_name=image_name),
         dev_versions=DevVersionInclusionEnum.INCLUDE,
         dev_channel=dev_channel,
+        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
         clean_temporary=False,
         temp_registry=temp_registry,
