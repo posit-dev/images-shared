@@ -316,3 +316,90 @@ class TestRunDgossDevSpec:
         """JSON with unknown fields is rejected (extra='forbid' on DevBuildSpec)."""
         result, _ = self._invoke(["--dev-spec", '{"version": "1.0.0", "chanenl": "daily"}'])
         assert result.exit_code != 0
+
+
+class TestCiPublishDevSpec:
+    """Tests for --dev-spec / BAKERY_DEV_SPEC in bakery ci publish."""
+
+    def _invoke(self, extra_args: list[str], env: dict | None = None):
+        with (
+            patch("posit_bakery.cli.ci.BakeryConfig") as mock_config,
+            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
+            patch("posit_bakery.plugins.registry.get_plugin") as mock_get_plugin,
+        ):
+            instance = MagicMock()
+            instance.load_build_metadata_from_file.return_value = []
+            instance.base_path = Path(BASIC_CONTEXT)
+            mock_config.from_context.return_value = instance
+            mock_soci = MagicMock()
+            mock_soci.execute.return_value = []
+            mock_get_plugin.return_value = mock_soci
+            result = runner.invoke(
+                app,
+                ["ci", "publish", "/fake/metadata.json", "--context", BASIC_CONTEXT] + extra_args,
+                env=env,
+                catch_exceptions=False,
+            )
+            return result, mock_config
+
+    def test_dev_spec_via_flag(self):
+        """--dev-spec JSON is parsed and forwarded to BakerySettings in ci publish."""
+        result, mock = self._invoke(["--dev-spec", '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'])
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert isinstance(settings.dev_spec, DevBuildSpec)
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
+
+    def test_dev_spec_via_env_var(self):
+        """BAKERY_DEV_SPEC env var works in ci publish."""
+        result, mock = self._invoke(
+            [],
+            env={"BAKERY_DEV_SPEC": '{"version": "2026.05.0-dev+185-gSHA"}'},
+        )
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert isinstance(settings.dev_spec, DevBuildSpec)
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert settings.dev_spec.channel is None
+
+    def test_dev_spec_absent_is_none(self):
+        """When --dev-spec is absent, BakerySettings.dev_spec is None."""
+        result, mock = self._invoke([])
+        assert result.exit_code == 0, result.output
+        settings = settings_from_call(mock)
+        assert settings.dev_spec is None
+
+    def test_dev_spec_invalid_json_rejected(self):
+        """Invalid JSON in --dev-spec causes a non-zero exit."""
+        with (
+            patch("posit_bakery.cli.ci.BakeryConfig"),
+            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
+            patch("posit_bakery.plugins.registry.get_plugin"),
+        ):
+            result = runner.invoke(
+                app,
+                ["ci", "publish", "/fake/metadata.json", "--context", BASIC_CONTEXT, "--dev-spec", "not-json"],
+            )
+        assert result.exit_code != 0
+
+    def test_dev_spec_invalid_schema_rejected(self):
+        """JSON with unknown fields is rejected (extra='forbid' on DevBuildSpec)."""
+        with (
+            patch("posit_bakery.cli.ci.BakeryConfig"),
+            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
+            patch("posit_bakery.plugins.registry.get_plugin"),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "ci",
+                    "publish",
+                    "/fake/metadata.json",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--dev-spec",
+                    '{"version": "1.0.0", "chanenl": "daily"}',
+                ],
+            )
+        assert result.exit_code != 0
