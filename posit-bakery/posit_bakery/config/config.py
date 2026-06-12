@@ -401,8 +401,9 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     Called before load_dev_versions() so the pinned version is set
     when resolution runs.
     """
-    # Local import to avoid circular import.
+    # Local imports to avoid circular import.
     from posit_bakery.config.image.dev_version.channel import ImageDevelopmentVersionFromProductChannel
+    from posit_bakery.config.image.dev_version.dependency import ImageDevelopmentVersionFromDependency
 
     # Validate channel consistency: if both are set and differ, the pinned version
     # would be filtered out by --dev-channel. Fail loudly instead of silently skipping.
@@ -421,8 +422,8 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
     candidates = [
         dv
         for dv in image.devVersions
-        if isinstance(dv, ImageDevelopmentVersionFromProductChannel)
-        and (target_channel is None or dv.channel == target_channel)
+        if isinstance(dv, (ImageDevelopmentVersionFromProductChannel, ImageDevelopmentVersionFromDependency))
+        and (target_channel is None or dv.get_release_channel() == target_channel)
     ]
     if not candidates:
         return
@@ -432,13 +433,24 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
             f"channel '{target_channel}'. Specify 'channel' in --dev-spec or pass "
             f"--dev-channel to disambiguate."
         )
-    candidates[0].version_override = settings.dev_spec.version  # None for branch-only specs
-    if settings.dev_spec.version is not None:
-        # Extract YYYY.MM from the pinned version to target the correct branch URL.
-        # The dailies API supports YYYY.MM path segments (e.g. /rstudio/2026.06/index.json).
-        candidates[0].release_branch = _extract_calver_minor(settings.dev_spec.version)
-    elif settings.dev_spec.release_branch is not None:
-        candidates[0].release_branch = settings.dev_spec.release_branch
+
+    candidate = candidates[0]
+    candidate.version_override = settings.dev_spec.version  # None for branch-only specs
+
+    if isinstance(candidate, ImageDevelopmentVersionFromProductChannel):
+        if settings.dev_spec.version is not None:
+            # Extract YYYY.MM from the pinned version to target the correct branch URL.
+            # The dailies API supports YYYY.MM path segments (e.g. /rstudio/2026.06/index.json).
+            candidate.release_branch = _extract_calver_minor(settings.dev_spec.version)
+        elif settings.dev_spec.release_branch is not None:
+            candidate.release_branch = settings.dev_spec.release_branch
+    elif settings.dev_spec.version is None:
+        # Dependency-sourced dev versions resolve from a fixed dependency endpoint
+        # with no release-branch concept, so a branch-only spec cannot pin them.
+        log.warning(
+            f"Image '{image.name}': --dev-spec without a version cannot pin a "
+            f"dependency-sourced dev version; building the latest resolved version."
+        )
 
 
 class BakeryConfig:
