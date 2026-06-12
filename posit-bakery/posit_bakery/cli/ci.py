@@ -75,6 +75,14 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    latest: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--latest",
+            help="Include only the latest version of each image. For matrix images, includes only the highest-version combination.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -150,6 +158,8 @@ def matrix(
                 if not included:
                     continue
                 if image_version is not None and not version_matches(ver.name, image_version):
+                    continue
+                if latest and not ver.latest:
                     continue
 
                 if BakeryCIMatrixFieldEnum.VERSION not in exclude:

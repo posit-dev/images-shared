@@ -35,6 +35,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      latest-only:
+        description: "Build only the latest version of each image (faster PR checks)"
+        default: false
+        required: false
+        type: boolean
       retry:
         description: "Number of times to retry a failed build"
         default: 1
@@ -102,9 +107,12 @@ jobs:
           IS_FORK: ${{ needs.detect.outputs.is-fork }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          LATEST_ONLY: ${{ inputs.latest-only }}
           BAKERY_CONTEXT: ${{ inputs.context }}
         run: |
-          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$BAKERY_CONTEXT" | jq --compact-output .)
+          LATEST_FLAGS=()
+          if [ "$LATEST_ONLY" = "true" ]; then LATEST_FLAGS=(--latest); fi
+          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${LATEST_FLAGS[@]}" --context "$BAKERY_CONTEXT" | jq --compact-output .)
           if [ "$IS_FORK" = "true" ]; then
             # Skip arm64 for fork PRs — paid runners may not be available
             FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --compact-output '[.[] | select(.platform != "linux/arm64")]')
@@ -116,9 +124,12 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          LATEST_ONLY: ${{ inputs.latest-only }}
           BAKERY_CONTEXT: ${{ inputs.context }}
         run: |
-          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$BAKERY_CONTEXT")
+          LATEST_FLAGS=()
+          if [ "$LATEST_ONLY" = "true" ]; then LATEST_FLAGS=(--latest); fi
+          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${LATEST_FLAGS[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build-test:
