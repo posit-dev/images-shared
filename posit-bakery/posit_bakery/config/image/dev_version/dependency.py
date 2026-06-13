@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 
-from posit_bakery.config.dependencies import get_dependency_constraint_class
+from posit_bakery.config.dependencies import get_dependency_constraint_class, get_dependency_versions_class
 from posit_bakery.config.dependencies.const import SupportedDependencies
 from posit_bakery.config.dependencies.version import VersionConstraint
 from posit_bakery.config.image.dev_version.base import BaseImageDevelopmentVersion
@@ -53,6 +53,10 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         )
         result = constraint.resolve_versions()
         return str(result.versions[0])
+
+    def _get_dependencies_for_matrix(self, version: str) -> list:
+        cls = get_dependency_versions_class(self.dependency)
+        return [cls(versions=[version])]
 
     def get_url_by_os(self, generalize_architecture: bool = False) -> dict[str, str]:
         return {}

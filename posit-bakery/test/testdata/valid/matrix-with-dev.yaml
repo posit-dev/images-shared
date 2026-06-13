@@ -1,0 +1,29 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+
+images:
+  - name: "positron-session"
+    devVersions:
+      - sourceType: "dependency"
+        dependency: "positron"
+        prerelease: true
+        channel: "daily"
+        values:
+          POSITRON_CHANNEL: "dailies"
+        os:
+          - name: "Ubuntu 24.04"
+            primary: true
+            platforms:
+              - "linux/amd64"
+    matrix:
+      namePattern: "{{ Dependencies.positron }}"
+      dependencyConstraints:
+        - dependency: positron
+          constraint:
+            latest: true
+            count: 2
+      os:
+        - name: "Ubuntu 24.04"
+          primary: true
+          platforms:
+            - "linux/amd64"
