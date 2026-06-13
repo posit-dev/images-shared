@@ -49,6 +49,7 @@ ALTERNATE_NAMES = {
     "red hat": "rhel",
     "rh": "rhel",
     "el": "rhel",
+    "ubi": "rhel",
     "almalinux": "alma",
     "alma linux": "alma",
     "rockylinux": "rocky",
