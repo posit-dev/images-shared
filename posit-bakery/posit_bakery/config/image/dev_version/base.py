@@ -246,12 +246,26 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
                 os_version.artifactDownloadURL = default_urls.get(os_version.name, "")
         return list(self.os)
 
+    def _get_dependencies_for_matrix(self, version: str) -> list:
+        """Return the dependency list to attach when the parent image has a matrix.
+
+        The default returns the parent's image-level constraints, which is correct
+        for stream-based dev versions. Subclasses override this when the dev version
+        itself carries the meaningful dependency dimension (e.g. a dependency-sourced
+        dev version where the resolved version *is* the matrix axis).
+        """
+        return self.parent.resolve_dependency_versions()
+
     def as_image_version(self):
         """Convert this development version to a standard image version.
 
         Calls _resolve_os_urls() to populate artifact download URLs.
         The channel subclass overrides _resolve_os_urls() to exclude
         OSes whose platform is unavailable in the product channel.
+
+        When the parent image has a matrix, the returned ImageVersion reuses the
+        matrix's subpath and is flagged as a matrix version so it shares the same
+        Containerfile template as the production matrix builds.
 
         :raises RuntimeError: If no OSes remain after URL resolution.
         """
@@ -264,17 +278,31 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         release_channel = self.get_release_channel()
         if release_channel is not None:
             metadata["release_channel"] = release_channel
+
+        has_matrix_parent = self.parent is not None and self.parent.matrix is not None
+        if has_matrix_parent:
+            subpath = self.parent.matrix.subpath
+            ephemeral = False
+            is_matrix_version = True
+            dependencies = self._get_dependencies_for_matrix(version)
+        else:
+            subpath = f".dev-{version}".replace(" ", "-").lower()
+            ephemeral = True
+            is_matrix_version = False
+            dependencies = self.parent.resolve_dependency_versions()
+
         return ImageVersion(
             name=version,
-            subpath=f".dev-{version}".replace(" ", "-").lower(),
+            subpath=subpath,
             parent=self.parent,
             extraRegistries=self.extraRegistries,
             overrideRegistries=self.overrideRegistries,
             os=resolved_os,
             values=self.values,
             latest=False,
-            dependencies=self.parent.resolve_dependency_versions(),
-            ephemeral=True,
+            dependencies=dependencies,
+            ephemeral=ephemeral,
             isDevelopmentVersion=True,
+            isMatrixVersion=is_matrix_version,
             metadata=metadata,
         )
