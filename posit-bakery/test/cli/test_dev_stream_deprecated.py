@@ -195,7 +195,8 @@ class TestRunDgossDevStreamDeprecation:
         with patch("posit_bakery.cli.run.BakeryConfig") as mock_config:
             instance = MagicMock()
             instance.base_path = Path(BASIC_CONTEXT)
-            instance.targets = []
+            # Non-empty so the zero-match guard does not abort the happy-path runs.
+            instance.targets = [MagicMock()]
             mock_config.from_context.return_value = instance
             with patch("posit_bakery.cli.run.get_plugin") as mock_plugin:
                 mock_dgoss = MagicMock()

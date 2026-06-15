@@ -28,7 +28,8 @@ def mocked_dgoss_run():
     with patch("posit_bakery.plugins.builtin.dgoss.BakeryConfig") as mock_config:
         instance = MagicMock()
         instance.base_path = Path(BASIC_CONTEXT)
-        instance.targets = []
+        # Non-empty so the zero-match guard does not abort the happy-path runs.
+        instance.targets = [MagicMock()]
         mock_config.from_context.return_value = instance
         with (
             patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.execute") as mock_execute,
@@ -88,6 +89,52 @@ class TestDgossRunLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
+
+
+class TestDgossRunImageVersionFilter:
+    """Regression coverage: `--image-version` must reach the filter verbatim.
+
+    ``BakeryConfigFilter.image_version`` is consumed by ``version_matches()``,
+    which does segment-aware (not regex) matching, so the value must NOT be
+    regex-escaped. Escaping a calver build string like ``2026.01.2+418.pro1``
+    into ``2026\\.01\\.2\\+418\\.pro1`` made the filter match no versions, so
+    `dgoss run` silently tested nothing and the CI workflow passed."""
+
+    def test_image_version_passed_verbatim(self, mocked_dgoss_run):
+        mock_config, _ = mocked_dgoss_run
+        version = "2026.01.2+418.pro1"
+        result = runner.invoke(
+            app,
+            ["dgoss", "run", "--context", BASIC_CONTEXT, "--image-version", version],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_version == version
+
+
+class TestDgossRunZeroMatchGuard:
+    """A filter that matches no targets must fail loudly, not silently pass.
+
+    Before the guard, `dgoss run` with a non-matching filter exited 0 having
+    tested nothing, hiding broken CI jobs."""
+
+    def test_no_targets_exits_nonzero(self):
+        with patch("posit_bakery.plugins.builtin.dgoss.BakeryConfig") as mock_config:
+            instance = MagicMock()
+            instance.base_path = Path(BASIC_CONTEXT)
+            instance.targets = []
+            mock_config.from_context.return_value = instance
+            with patch("posit_bakery.plugins.builtin.dgoss.DGossPlugin.execute") as mock_execute:
+                result = runner.invoke(
+                    app,
+                    ["dgoss", "run", "--context", BASIC_CONTEXT, "--image-version", "9999.99.99"],
+                    catch_exceptions=False,
+                )
+        assert result.exit_code == 1
+        assert "No image targets" in result.output
+        assert "9999.99.99" in result.output
+        mock_execute.assert_not_called()
 
 
 class TestDgossRunJobsFlag:

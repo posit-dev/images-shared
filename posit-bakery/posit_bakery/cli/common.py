@@ -4,7 +4,7 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Annotated, Optional, Any
+from typing import Annotated, Optional, Any, TYPE_CHECKING
 
 import typer
 from pydantic import ValidationError
@@ -16,10 +16,55 @@ from posit_bakery.config.dependencies import (
     DependencyVersions,
 )
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
-from posit_bakery.log import init_logging
+from posit_bakery.log import init_logging, stderr_console
 from posit_bakery.settings import SETTINGS
 
+# Runtime import would cycle (config.config indirectly imports the CLI package),
+# and these are only needed for type hints.
+if TYPE_CHECKING:
+    from posit_bakery.config.config import BakeryConfig, BakerySettings
+
 log = logging.getLogger(__name__)
+
+
+def exit_if_no_targets(config: "BakeryConfig", settings: "BakerySettings") -> None:
+    """Abort the command when the active filters resolved to zero image targets.
+
+    A ``build`` or ``dgoss run`` that matches no targets is almost always a
+    mistake — a typo'd or non-existent ``--image-version``, an over-narrow
+    combination of filters, or a ``--dev-versions``/``--matrix-versions``
+    selection that excludes everything. Exiting 0 in that case let broken CI
+    jobs pass while building/testing nothing, so fail loudly and echo the
+    active filters back to aid debugging.
+    """
+    if config.targets:
+        return
+    active = _describe_active_filters(settings)
+    detail = f" matching {active}" if active else ""
+    stderr_console.print(
+        f"❌ No image targets{detail}. Check the --image-name, --image-version, "
+        "--image-variant, --image-os, and --image-platform filters along with the "
+        "--dev-versions/--matrix-versions selection.",
+        style="error",
+    )
+    raise typer.Exit(code=1)
+
+
+def _describe_active_filters(settings: "BakerySettings") -> str:
+    """Render the set filters as a human-readable ``--flag value`` list."""
+    f = settings.filter
+    parts = [
+        f"--{name} {value!r}"
+        for name, value in (
+            ("image-name", f.image_name),
+            ("image-version", f.image_version),
+            ("image-variant", f.image_variant),
+            ("image-os", f.image_os),
+            ("image-platform", f.image_platform),
+        )
+        if value
+    ]
+    return ", ".join(parts)
 
 
 def parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> DevBuildSpec | None:

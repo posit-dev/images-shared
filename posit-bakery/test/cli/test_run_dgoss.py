@@ -25,7 +25,8 @@ def mocked_bakery_run_dgoss():
     with patch("posit_bakery.cli.run.BakeryConfig") as mock_config:
         instance = MagicMock()
         instance.base_path = Path(BASIC_CONTEXT)
-        instance.targets = []
+        # Non-empty so the zero-match guard does not abort the happy-path runs.
+        instance.targets = [MagicMock()]
         mock_config.from_context.return_value = instance
         with patch("posit_bakery.cli.run.get_plugin") as mock_get_plugin:
             mock_plugin = MagicMock()
@@ -75,6 +76,28 @@ class TestRunDgossDeprecationWarning:
         assert "deprecated" in combined.lower()
         assert "bakery dgoss run" in combined
         assert "removed" in combined.lower()
+
+
+class TestRunDgossZeroMatchGuard:
+    """The deprecated path must also fail loudly when no targets match."""
+
+    def test_no_targets_exits_nonzero(self):
+        with patch("posit_bakery.cli.run.BakeryConfig") as mock_config:
+            instance = MagicMock()
+            instance.base_path = Path(BASIC_CONTEXT)
+            instance.targets = []
+            mock_config.from_context.return_value = instance
+            with patch("posit_bakery.cli.run.get_plugin") as mock_get_plugin:
+                mock_plugin = MagicMock()
+                mock_get_plugin.return_value = mock_plugin
+                result = runner.invoke(
+                    app,
+                    ["run", "dgoss", "--context", BASIC_CONTEXT, "--image-version", "9999.99.99"],
+                    catch_exceptions=False,
+                )
+        assert result.exit_code == 1
+        assert "No image targets" in result.output
+        mock_plugin.execute.assert_not_called()
 
 
 class TestRunDgossLatestFlag:

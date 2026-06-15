@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec, exit_if_no_targets
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -262,6 +262,8 @@ def build(
     except (ArtifactNotAvailableError, VersionSubstitutionError) as e:
         stderr_console.print(f"❌ {e}", style="error")
         raise typer.Exit(code=1)
+
+    exit_if_no_targets(config, settings)
 
     if plan:
         if strategy == ImageBuildStrategy.BUILD:

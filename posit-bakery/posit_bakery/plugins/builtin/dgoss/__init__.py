@@ -1,5 +1,4 @@
 import logging
-import re
 import warnings
 from enum import Enum
 from pathlib import Path
@@ -7,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -197,7 +196,7 @@ class DGossPlugin(BakeryToolPlugin):
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
                     image_name=image_name,
-                    image_version=re.escape(image_version) if image_version else None,
+                    image_version=image_version,
                     image_variant=image_variant,
                     image_os=image_os,
                     image_platform=[platform],
@@ -210,6 +209,8 @@ class DGossPlugin(BakeryToolPlugin):
                 clean_temporary=clean,
             )
             c = BakeryConfig.from_context(context, settings)
+
+            exit_if_no_targets(c, settings)
 
             if metadata_file:
                 c.load_build_metadata_from_file(metadata_file)

@@ -59,6 +59,40 @@ class TestBuildErrorHandling:
         assert "Traceback" not in result.output
 
 
+class TestBuildZeroMatchGuard:
+    """A filter that matches no targets must fail the build, not silently pass."""
+
+    def test_no_targets_exits_nonzero(self):
+        with patch("posit_bakery.cli.build.BakeryConfig") as mock:
+            instance = MagicMock()
+            instance.targets = []
+            mock.from_context.return_value = instance
+            result = runner.invoke(
+                app,
+                ["build", "--context", BASIC_CONTEXT, "--image-version", "9999.99.99"],
+                catch_exceptions=False,
+            )
+        assert result.exit_code == 1
+        assert "No image targets" in result.output
+        assert "9999.99.99" in result.output
+        instance.build_targets.assert_not_called()
+
+    def test_no_targets_blocks_plan_output(self):
+        """--plan must also fail rather than emit an empty bake plan."""
+        with patch("posit_bakery.cli.build.BakeryConfig") as mock:
+            instance = MagicMock()
+            instance.targets = []
+            mock.from_context.return_value = instance
+            result = runner.invoke(
+                app,
+                ["build", "--plan", "--context", BASIC_CONTEXT, "--image-version", "9999.99.99"],
+                catch_exceptions=False,
+            )
+        assert result.exit_code == 1
+        assert "No image targets" in result.output
+        instance.bake_plan_targets.assert_not_called()
+
+
 class TestBuildLatestFlag:
     def test_latest_passed_to_settings(self, mock_build_config):
         result = runner.invoke(

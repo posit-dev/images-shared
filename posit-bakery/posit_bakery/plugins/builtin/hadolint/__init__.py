@@ -1,12 +1,11 @@
 import logging
-import re
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -212,7 +211,7 @@ class HadolintPlugin(BakeryToolPlugin):
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
                     image_name=image_name,
-                    image_version=re.escape(image_version) if image_version else None,
+                    image_version=image_version,
                     image_variant=image_variant,
                     image_os=image_os,
                     image_platform=[],
@@ -222,6 +221,8 @@ class HadolintPlugin(BakeryToolPlugin):
                 latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
+
+            exit_if_no_targets(c, settings)
 
             # Build options override from CLI flags
             override_dict = {}
