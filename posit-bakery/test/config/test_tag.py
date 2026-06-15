@@ -158,6 +158,54 @@ def test_default_matrix_tag_patterns_includes_strip_patch_under_latest_patch_fil
         )
 
 
+def test_default_matrix_tag_patterns_includes_channel_patterns():
+    """Matrix tag patterns include floating {{ Channel }} patterns gated by CHANNEL_LATEST.
+
+    These give matrix dev images channel-head tags (e.g. "daily", "daily-min") that the
+    CHANNEL_LATEST filter suppresses for builds targeting an older-than-head version.
+    """
+    patterns = default_matrix_tag_patterns()
+    channel_patterns = [p for p in patterns if any("{{ Channel }}" in pat for pat in p.patterns)]
+
+    # The composite "{{ Version }}" axis is dropped for channel tags, so only the primary-reduced
+    # variants are emitted to avoid collisions across matrix combinations.
+    expected = {
+        (("{{ Channel }}-{{ Variant }}",), (TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS)),
+        (("{{ Channel }}-{{ OS }}",), (TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_VARIANT)),
+        (
+            ("{{ Channel }}",),
+            (TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT),
+        ),
+    }
+    assert {(tuple(p.patterns), tuple(p.only)) for p in channel_patterns} == expected
+
+    # Every channel pattern must be gated by CHANNEL_LATEST so older-than-head builds suppress them.
+    for pattern in channel_patterns:
+        assert TagPatternFilter.CHANNEL_LATEST in pattern.only, (
+            f"Channel pattern must be gated by CHANNEL_LATEST: {pattern.patterns} only={pattern.only}"
+        )
+
+
+def test_default_matrix_channel_patterns_render_with_channel():
+    """Channel patterns render floating channel tags when a Channel value is supplied."""
+    patterns = [p for p in default_matrix_tag_patterns() if any("{{ Channel }}" in pat for pat in p.patterns)]
+    rendered = []
+    for pattern in patterns:
+        rendered.extend(pattern.render(Channel="daily", OS="ubuntu2404", Variant="min"))
+
+    assert set(rendered) == {"daily-min", "daily-ubuntu2404", "daily"}
+
+
+def test_default_matrix_channel_patterns_render_nothing_without_channel():
+    """Channel patterns produce no tags when no Channel value is supplied (non-channel images)."""
+    patterns = [p for p in default_matrix_tag_patterns() if any("{{ Channel }}" in pat for pat in p.patterns)]
+    rendered = []
+    for pattern in patterns:
+        rendered.extend(pattern.render(Version="R4.3.3-python3.11.15", OS="ubuntu2404", Variant="min"))
+
+    assert rendered == []
+
+
 def test_default_matrix_tag_patterns_strip_patch_renders_minor_tags():
     """stripPatch-filtered tag patterns produce minor-only tags from composite matrix versions."""
     patterns = [p for p in default_matrix_tag_patterns() if TagPatternFilter.LATEST_PATCH in p.only]

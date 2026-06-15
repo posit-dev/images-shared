@@ -317,6 +317,36 @@ class TestAsImageVersion:
         iv = dev.as_image_version()
         assert iv.metadata["release_channel"] == "daily"
 
+    def test_channel_latest_true_in_metadata_when_resolving_head(self, patch_requests_get):
+        """Resolving the latest version marks channel_latest True so floating Channel tags emit."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent(),
+            dependency="positron",
+            prerelease=True,
+            channel="daily",
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.metadata["channel_latest"] is True
+
+    def test_channel_latest_false_in_metadata_with_version_override(self):
+        """A dev build pinned to an older version must mark channel_latest False so the floating
+        Channel tag is suppressed (it should keep pointing at the head, not the pinned build).
+
+        Regression test: resolved_channel_latest was previously never surfaced into metadata, so
+        is_channel_latest defaulted to True and the floating Channel tag emitted for older pins.
+        """
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent(),
+            dependency="positron",
+            channel="daily",
+            os=[_UBUNTU_24_OS],
+        )
+        # version_override short-circuits resolution, so no network call is made.
+        dev.version_override = "2020.01.0-1"
+        iv = dev.as_image_version()
+        assert iv.metadata["channel_latest"] is False
+
     def test_os_preserved(self, patch_requests_get):
         dev = ImageDevelopmentVersionFromDependency(
             parent=_mock_parent(),
