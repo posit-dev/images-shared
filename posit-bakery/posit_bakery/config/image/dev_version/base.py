@@ -275,6 +275,13 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
 
         version = self.get_version()
         metadata = {}
+        # Dev versions that track a channel head expose resolved_channel_latest (set during
+        # version resolution). Surface it so floating {{ Channel }} tags are suppressed when the
+        # build targets an older-than-head version. getattr keeps this safe for any future
+        # subclass that does not track a channel; absence defaults is_channel_latest to True.
+        resolved_channel_latest = getattr(self, "resolved_channel_latest", None)
+        if resolved_channel_latest is not None:
+            metadata["channel_latest"] = resolved_channel_latest
         release_channel = self.get_release_channel()
         if release_channel is not None:
             metadata["release_channel"] = release_channel

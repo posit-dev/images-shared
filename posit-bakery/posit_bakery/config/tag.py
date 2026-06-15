@@ -194,5 +194,17 @@ def default_matrix_tag_patterns() -> list[TagPattern]:
             patterns=["{{ Version | stripPatch }}"],
             only=[TagPatternFilter.LATEST_PATCH, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
         ),
+        TagPattern(
+            patterns=["{{ Channel }}-{{ Variant }}"],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS],
+        ),
+        TagPattern(
+            patterns=["{{ Channel }}-{{ OS }}"],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_VARIANT],
+        ),
+        TagPattern(
+            patterns=["{{ Channel }}"],
+            only=[TagPatternFilter.CHANNEL_LATEST, TagPatternFilter.PRIMARY_OS, TagPatternFilter.PRIMARY_VARIANT],
+        ),
         *_shared_latest_tag_patterns(),
     ]
