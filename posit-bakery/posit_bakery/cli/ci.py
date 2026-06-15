@@ -143,7 +143,13 @@ def matrix(
                 continue
             elif img.matrix is not None:
                 if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                    versions = img.matrix.to_image_versions()
+                    if dev_versions == DevVersionInclusionEnum.ONLY:
+                        pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
+                    elif dev_versions == DevVersionInclusionEnum.INCLUDE:
+                        dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
+                        versions = img.matrix.to_image_versions() + dev_versions_loaded
+                    else:
+                        versions = img.matrix.to_image_versions()
                 # If EXCLUDE: fall through using img.versions (devVersions are appended
                 # there by load_dev_versions). The dev_versions filter below handles the rest.
             for ver in versions:
