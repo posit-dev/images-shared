@@ -953,7 +953,16 @@ class BakeryConfig:
                     log.warning(f"Image '{image.name}' matches --image-name filter but is being skipped: {reason}")
                 continue
             elif image.matrix is not None and settings.matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                versions = image.matrix.to_image_versions()
+                if settings.dev_versions == DevVersionInclusionEnum.ONLY:
+                    # Dev versions are already in image.versions (from load_dev_versions()).
+                    # Matrix production versions (isDevelopmentVersion=False) would all be
+                    # filtered out by --dev-versions only, so there is nothing to merge.
+                    pass
+                elif settings.dev_versions == DevVersionInclusionEnum.INCLUDE:
+                    dev_versions_loaded = [v for v in image.versions if v.isDevelopmentVersion]
+                    versions = image.matrix.to_image_versions() + dev_versions_loaded
+                else:
+                    versions = image.matrix.to_image_versions()
             targets_before = len(targets)
             for version in versions:
                 version_filter_matched = settings.filter.image_version is not None and version_matches(

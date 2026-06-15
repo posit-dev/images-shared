@@ -584,6 +584,44 @@ class TestBakeryConfig:
             assert target.uid in expected_uids
 
     @pytest.mark.usefixtures("patch_requests_get")
+    def test_dev_versions_only_with_matrix_image_yields_dev_target(self, testdata_path):
+        """--dev-versions only on a matrix image with devVersions yields the dev version, not zero targets."""
+        yaml_file = testdata_path / "valid" / "matrix-with-dev.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            config = BakeryConfig(
+                yaml_file,
+                BakerySettings(
+                    filter=BakeryConfigFilter(image_name="^positron-session$"),
+                    dev_versions=DevVersionInclusionEnum.ONLY,
+                    matrix_versions=MatrixVersionInclusionEnum.ONLY,
+                ),
+            )
+        assert len(config.targets) == 1
+        target = config.targets[0]
+        assert target.image_version.isDevelopmentVersion is True
+        assert target.image_version.name == "2026.07.0-55"
+        assert target.image_version.isMatrixVersion is True
+
+    @pytest.mark.usefixtures("patch_requests_get")
+    def test_dev_versions_include_with_matrix_image_yields_all_targets(self, testdata_path):
+        """--dev-versions include on a matrix image with devVersions yields matrix + dev targets."""
+        yaml_file = testdata_path / "valid" / "matrix-with-dev.yaml"
+        with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+            config = BakeryConfig(
+                yaml_file,
+                BakerySettings(
+                    filter=BakeryConfigFilter(image_name="^positron-session$"),
+                    dev_versions=DevVersionInclusionEnum.INCLUDE,
+                    matrix_versions=MatrixVersionInclusionEnum.ONLY,
+                ),
+            )
+        matrix_targets = [t for t in config.targets if not t.image_version.isDevelopmentVersion]
+        dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
+        assert len(matrix_targets) == 2
+        assert len(dev_targets) == 1
+        assert dev_targets[0].image_version.name == "2026.07.0-55"
+
+    @pytest.mark.usefixtures("patch_requests_get")
     def test_latest_filters_standard_versions(self, testdata_path):
         """--latest keeps only the standard version marked latest: true."""
         yaml_file = testdata_path / "valid" / "complex.yaml"

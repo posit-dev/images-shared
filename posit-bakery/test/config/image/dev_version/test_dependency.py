@@ -9,6 +9,7 @@ from posit_bakery.config.image.dev_version import (
     DevelopmentVersionField,
     ImageDevelopmentVersionFromDependency,
 )
+from posit_bakery.config.image.matrix import ImageMatrix
 
 pytestmark = [
     pytest.mark.unit,
@@ -22,7 +23,16 @@ _UBUNTU_22_OS = {"name": "Ubuntu 22.04"}
 def _mock_parent():
     parent = MagicMock(spec=Image)
     parent.path = Path("/tmp/test")
+    parent.matrix = None
     parent.resolve_dependency_versions.return_value = []
+    return parent
+
+
+def _mock_parent_with_matrix(matrix_subpath="matrix"):
+    parent = _mock_parent()
+    matrix = MagicMock(spec=ImageMatrix)
+    matrix.subpath = matrix_subpath
+    parent.matrix = matrix
     return parent
 
 
@@ -370,3 +380,63 @@ class TestVersionOverride:
         dev.version_override = "2026.06.0-99"
         # No patch_requests_get fixture: a network call would error, proving none happens.
         assert dev.get_version() == "2026.06.0-99"
+
+
+class TestAsImageVersionWithMatrixParent:
+    def test_uses_matrix_subpath(self, patch_requests_get):
+        """When parent has a matrix, subpath is the matrix subpath, not an ephemeral .dev-* path."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent_with_matrix("matrix"),
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.subpath == "matrix"
+
+    def test_not_ephemeral_for_matrix_parent(self, patch_requests_get):
+        """When parent has a matrix, the ImageVersion is not ephemeral (directory already exists)."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent_with_matrix(),
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.ephemeral is False
+
+    def test_is_matrix_version_for_matrix_parent(self, patch_requests_get):
+        """When parent has a matrix, the ImageVersion is flagged as a matrix version."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent_with_matrix(),
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.isMatrixVersion is True
+
+    def test_dependency_version_passed_as_build_arg(self, patch_requests_get):
+        """When parent has a matrix, the resolved dependency version appears in dependencies."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent_with_matrix(),
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        positron_deps = [d for d in iv.dependencies if d.dependency == "positron"]
+        assert len(positron_deps) == 1
+        assert "2026.07.0-55" in positron_deps[0].versions
+
+    def test_non_matrix_parent_still_ephemeral(self, patch_requests_get):
+        """When parent has no matrix, the original ephemeral .dev-* behaviour is unchanged."""
+        dev = ImageDevelopmentVersionFromDependency(
+            parent=_mock_parent(),
+            dependency="positron",
+            prerelease=True,
+            os=[_UBUNTU_24_OS],
+        )
+        iv = dev.as_image_version()
+        assert iv.ephemeral is True
+        assert iv.subpath.startswith(".dev-")
