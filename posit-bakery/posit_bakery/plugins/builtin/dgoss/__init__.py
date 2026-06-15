@@ -1,5 +1,4 @@
 import logging
-import re
 import warnings
 from enum import Enum
 from pathlib import Path
@@ -197,7 +196,7 @@ class DGossPlugin(BakeryToolPlugin):
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
                     image_name=image_name,
-                    image_version=re.escape(image_version) if image_version else None,
+                    image_version=image_version,
                     image_variant=image_variant,
                     image_os=image_os,
                     image_platform=[platform],

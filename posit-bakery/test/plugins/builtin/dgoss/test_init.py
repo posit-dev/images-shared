@@ -90,6 +90,28 @@ class TestDgossRunLatestFlag:
         assert settings.latest is False
 
 
+class TestDgossRunImageVersionFilter:
+    """Regression coverage: `--image-version` must reach the filter verbatim.
+
+    ``BakeryConfigFilter.image_version`` is consumed by ``version_matches()``,
+    which does segment-aware (not regex) matching, so the value must NOT be
+    regex-escaped. Escaping a calver build string like ``2026.01.2+418.pro1``
+    into ``2026\\.01\\.2\\+418\\.pro1`` made the filter match no versions, so
+    `dgoss run` silently tested nothing and the CI workflow passed."""
+
+    def test_image_version_passed_verbatim(self, mocked_dgoss_run):
+        mock_config, _ = mocked_dgoss_run
+        version = "2026.01.2+418.pro1"
+        result = runner.invoke(
+            app,
+            ["dgoss", "run", "--context", BASIC_CONTEXT, "--image-version", version],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_version == version
+
+
 class TestDgossRunJobsFlag:
     """The --jobs flag is forwarded to DGossPlugin.execute()."""
 
