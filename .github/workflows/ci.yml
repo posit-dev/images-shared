@@ -176,6 +176,7 @@ jobs:
       packages: write
     uses: "./.github/workflows/bakery-build-pr.yml"
     with:
+      version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
 
