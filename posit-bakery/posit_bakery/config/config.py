@@ -1179,7 +1179,7 @@ class BakeryConfig:
                             pull=pull,
                             cache=cache,
                             platforms=platforms,
-                            metadata_file=True if metadata_file else False,
+                            metadata_file=True if metadata_file else None,
                         ),
                         retry=retry,
                         label=str(target),
