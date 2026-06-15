@@ -30,7 +30,8 @@ def mocked_wizcli_scan():
     with patch("posit_bakery.plugins.builtin.wizcli.BakeryConfig") as mock_config:
         instance = MagicMock()
         instance.base_path = Path(BASIC_CONTEXT)
-        instance.targets = []
+        # Non-empty so the zero-match guard does not abort the happy-path runs.
+        instance.targets = [MagicMock()]
         mock_config.from_context.return_value = instance
         with (
             patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.execute") as mock_execute,
@@ -38,6 +39,27 @@ def mocked_wizcli_scan():
         ):
             mock_execute.return_value = []
             yield mock_config, mock_execute
+
+
+class TestWizcliScanZeroMatchGuard:
+    """A filter that matches no targets must fail loudly, not silently pass."""
+
+    def test_no_targets_exits_nonzero(self):
+        with patch("posit_bakery.plugins.builtin.wizcli.BakeryConfig") as mock_config:
+            instance = MagicMock()
+            instance.base_path = Path(BASIC_CONTEXT)
+            instance.targets = []
+            mock_config.from_context.return_value = instance
+            with patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.execute") as mock_execute:
+                result = runner.invoke(
+                    app,
+                    ["wizcli", "scan", "--context", BASIC_CONTEXT, "--image-version", "9999.99.99"],
+                    catch_exceptions=False,
+                )
+        assert result.exit_code == 1
+        assert "No image targets" in result.output
+        assert "9999.99.99" in result.output
+        mock_execute.assert_not_called()
 
 
 class TestWizcliScanLatestFlag:

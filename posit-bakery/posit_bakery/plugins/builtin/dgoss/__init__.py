@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -209,6 +209,8 @@ class DGossPlugin(BakeryToolPlugin):
                 clean_temporary=clean,
             )
             c = BakeryConfig.from_context(context, settings)
+
+            exit_if_no_targets(c, settings)
 
             if metadata_file:
                 c.load_build_metadata_from_file(metadata_file)

@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -233,6 +233,8 @@ class WizCLIPlugin(BakeryToolPlugin):
                 latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
+
+            exit_if_no_targets(c, settings)
 
             if metadata_file:
                 c.load_build_metadata_from_file(metadata_file)
