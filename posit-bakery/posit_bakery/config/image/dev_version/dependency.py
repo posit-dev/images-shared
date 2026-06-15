@@ -32,6 +32,16 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         ReleaseChannelEnum | None,
         Field(default=None, description="Release channel for this dev version (e.g. 'daily', 'preview')."),
     ] = None
+    resolved_channel_latest: Annotated[
+        bool,
+        Field(
+            exclude=True,
+            default=False,
+            description="Whether the resolved version equals the current channel head. "
+            "Populated by _resolve_os_urls(); used to suppress floating {{ Channel }} tags "
+            "for builds targeting older versions.",
+        ),
+    ]
 
     @field_validator("channel", mode="after")
     @classmethod
@@ -44,14 +54,21 @@ class ImageDevelopmentVersionFromDependency(BaseImageDevelopmentVersion):
         return v
 
     def get_version(self) -> str:
+        # If overridden by a dev spec, return immediately and do not assume latest.
         if self.version_override is not None:
             return self.version_override
+
+        # If resolving a version, assume latest.
+        self.resolved_channel_latest = True
+
+        # Resolve the latest version via constraint with prerelease.
         constraint_class = get_dependency_constraint_class(self.dependency)
         constraint = constraint_class(
             prerelease=self.prerelease,
             constraint=VersionConstraint(latest=True, count=1),
         )
         result = constraint.resolve_versions()
+
         return str(result.versions[0])
 
     def _get_dependencies_for_matrix(self, version: str) -> list:
