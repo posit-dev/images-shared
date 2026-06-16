@@ -1,11 +1,13 @@
 import json
 import re
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
 from posit_bakery.config.config import version_matches
+from posit_bakery.config.image.version import ImageVersion
 
 from posit_bakery.plugins.protocol import ToolCallResult
 
@@ -154,6 +156,70 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
 
     for expected in expected_calls:
         assert expected in calls
+
+
+class TestDevVersionDedup:
+    """Regression tests for Bug 1: dev versions must not appear twice in change-aware matrix output."""
+
+    def test_no_duplicate_dev_versions_with_dev_versions_exclude(self, mocker, resource_path, tmp_path):
+        """When --dev-versions exclude (default) and a template change triggers include_dev,
+        the matrix must contain each dev version exactly once.
+
+        load_dev_versions is monkeypatched to return one deterministic fake dev ImageVersion
+        so the test remains hermetic (no external HTTP calls).
+        """
+        # Stable fake dev version with a deterministic name.
+        fake_dev = ImageVersion(
+            name="2026.01.0-dev+1-gABC",
+            isDevelopmentVersion=True,
+            subpath="dev",
+            path=tmp_path,
+        )
+
+        def _patched_load_dev_versions(self_image):
+            """Append exactly one fake dev version, mimicking the real unconditional append."""
+            self_image.versions.append(fake_dev)
+
+        mocker.patch(
+            "posit_bakery.config.image.image.Image.load_dev_versions",
+            _patched_load_dev_versions,
+        )
+
+        # A template change for `app` sets include_dev=True on the change set.
+        changed_files_path = tmp_path / "changed.txt"
+        changed_files_path.write_text("app/template/Containerfile.ubuntu2204.jinja2\n")
+
+        from typer.testing import CliRunner
+        from posit_bakery.cli.main import app as bakery_app
+
+        runner = CliRunner()
+        result = runner.invoke(
+            bakery_app,
+            [
+                "ci",
+                "matrix",
+                "--quiet",
+                "--context",
+                str(resource_path / "changeset"),
+                "--changed-files-from",
+                str(changed_files_path),
+                # Default: --dev-versions exclude; do not pass it explicitly to
+                # verify the bug regression under the default baseline.
+            ],
+            catch_exceptions=True,
+            env={"TERM": "dumb", "NO_COLOR": "true"},
+        )
+
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        matrix = json.loads(result.stdout.strip())
+
+        dev_entries = [e for e in matrix if e.get("dev") is True]
+        dev_names = [e["version"] for e in dev_entries]
+
+        # The fake dev version must appear exactly once (Bug 1 regression).
+        assert dev_names.count("2026.01.0-dev+1-gABC") == 1, (
+            f"Expected dev version to appear exactly once, got: {dev_names}"
+        )
 
 
 class TestVersionMatches:

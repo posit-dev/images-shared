@@ -1,10 +1,12 @@
 import subprocess
+import types
 from pathlib import Path
 
 import pytest
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes, git_changed_files
+from posit_bakery.config.changeset import classify_changes, git_changed_files, ImageChangeSet
+from posit_bakery.cli.ci import _version_selected
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -114,3 +116,59 @@ def test_matrix_image_change_selects_latest_and_dev(changeset_config):
 def test_unattributable_path_fails_safe_to_full(changeset_config):
     sel = classify_changes(changeset_config, ["scripts/shared-tool.sh"])
     assert sel.full is True
+
+
+def _fake_ver(**kwargs) -> types.SimpleNamespace:
+    """Create a minimal fake version object for _version_selected tests."""
+    defaults = {
+        "isDevelopmentVersion": False,
+        "isMatrixVersion": False,
+        "latest": False,
+        "name": "1.0.0",
+    }
+    defaults.update(kwargs)
+    return types.SimpleNamespace(**defaults)
+
+
+class TestVersionSelected:
+    """Unit tests for the _version_selected helper in posit_bakery.cli.ci."""
+
+    def test_dev_version_included_when_include_dev_true(self):
+        ver = _fake_ver(isDevelopmentVersion=True)
+        cs = ImageChangeSet(include_dev=True)
+        assert _version_selected(ver, cs) is True
+
+    def test_dev_version_excluded_when_include_dev_false(self):
+        ver = _fake_ver(isDevelopmentVersion=True)
+        cs = ImageChangeSet(include_dev=False)
+        assert _version_selected(ver, cs) is False
+
+    def test_matrix_latest_version_included_when_flag_and_latest(self):
+        ver = _fake_ver(isMatrixVersion=True, latest=True)
+        cs = ImageChangeSet(include_matrix_latest=True)
+        assert _version_selected(ver, cs) is True
+
+    def test_matrix_non_latest_version_excluded_even_when_flag(self):
+        ver = _fake_ver(isMatrixVersion=True, latest=False)
+        cs = ImageChangeSet(include_matrix_latest=True)
+        assert _version_selected(ver, cs) is False
+
+    def test_matrix_latest_version_excluded_when_flag_false(self):
+        ver = _fake_ver(isMatrixVersion=True, latest=True)
+        cs = ImageChangeSet(include_matrix_latest=False)
+        assert _version_selected(ver, cs) is False
+
+    def test_release_version_included_by_name(self):
+        ver = _fake_ver(name="2.0.0")
+        cs = ImageChangeSet(versions={"2.0.0"})
+        assert _version_selected(ver, cs) is True
+
+    def test_release_version_excluded_when_not_in_set(self):
+        ver = _fake_ver(name="1.0.0")
+        cs = ImageChangeSet(versions={"2.0.0"})
+        assert _version_selected(ver, cs) is False
+
+    def test_release_version_included_by_include_all_release(self):
+        ver = _fake_ver(name="1.0.0")
+        cs = ImageChangeSet(include_all_release=True)
+        assert _version_selected(ver, cs) is True

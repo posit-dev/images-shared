@@ -229,33 +229,37 @@ def matrix(
 
             entry = {"image": img.name}
 
-            # Build the candidate version list for this image.
-            versions = img.versions
-            if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
-                continue
-            elif img.matrix is not None:
-                if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                    if dev_versions == DevVersionInclusionEnum.ONLY:
-                        pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
-                    elif dev_versions == DevVersionInclusionEnum.INCLUDE:
-                        dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
-                        versions = img.matrix.to_image_versions() + dev_versions_loaded
-                    else:
-                        versions = img.matrix.to_image_versions()
-                # If EXCLUDE: fall through using img.versions (devVersions are appended
-                # there by load_dev_versions). The dev_versions filter below handles the rest.
-
             if cs is not None:
-                # Change-aware: add dev / matrix-latest versions the global flags excluded.
-                if cs.include_dev:
+                # Change-aware: build candidates purely from this image's change set.
+                # _version_selected() gates each candidate by type (release / dev /
+                # matrix-latest), so the list only needs to *contain* each wanted
+                # version exactly once.
+                if cs.include_dev and dev_versions == DevVersionInclusionEnum.EXCLUDE:
+                    # Dev versions are not loaded under the EXCLUDE baseline; load them
+                    # now. (Under INCLUDE/ONLY, BakeryConfig already loaded them at
+                    # config time, so loading again would duplicate entries.)
                     img.load_dev_versions()
-                    versions = list(img.versions)
-                if cs.include_matrix_latest and img.matrix is not None:
-                    # Only inject the latest slice when matrix versions were globally
-                    # excluded; otherwise `versions` already holds the full matrix
-                    # (including the latest rows) and re-adding would duplicate them.
-                    if matrix_versions == MatrixVersionInclusionEnum.EXCLUDE:
-                        versions = list(versions) + [v for v in img.matrix.to_image_versions() if v.latest]
+                versions = list(img.versions)
+                if img.matrix is not None:
+                    versions = versions + img.matrix.to_image_versions()
+            else:
+                # Full-matrix path (no change-awareness). Preserves the matrix+dev
+                # filtering fix (commit 92c72833 / generate_image_targets): when matrix
+                # versions are included, fold the already-loaded dev versions into the
+                # matrix product per the dev_versions setting so they survive the
+                # matches_dev_filter check below.
+                versions = list(img.versions)
+                if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
+                    continue
+                elif img.matrix is not None:
+                    if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
+                        if dev_versions == DevVersionInclusionEnum.ONLY:
+                            pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
+                        elif dev_versions == DevVersionInclusionEnum.INCLUDE:
+                            dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
+                            versions = img.matrix.to_image_versions() + dev_versions_loaded
+                        else:
+                            versions = img.matrix.to_image_versions()
 
             for ver in versions:
                 if cs is not None and not _version_selected(ver, cs):
