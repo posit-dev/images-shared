@@ -843,8 +843,8 @@ Options:
   --driver TEXT                   Driver used to scan image (extract, mount,
                                   mountWithLayers).
   --timeout TEXT                  Timeout for the scan (e.g. 1h, 30m).
-  --no-publish / --no-no-publish  Disable publishing scan results to the Wiz
-                                  portal.  [default: no-no-publish]
+  --no-publish                    Disable publishing scan results to the Wiz
+                                  portal.
   --scan-context-id TEXT          Context identifier that defines scan
                                   granularity.
   --log TEXT                      File path for wizcli debug logs.
@@ -852,11 +852,8 @@ Options:
                                   WIZ_CLIENT_ID env var).
   --client-secret TEXT            Wiz service account client secret (overrides
                                   WIZ_CLIENT_SECRET env var).
-  --use-device-code / --no-use-device-code
-                                  Use device code flow for authentication.
-                                  [default: no-use-device-code]
-  --no-browser / --no-no-browser  Do not open browser for device code flow.
-                                  [default: no-no-browser]
+  --use-device-code               Use device code flow for authentication.
+  --no-browser                    Do not open browser for device code flow.
   -v, --verbose                   Enable debug logging
   -q, --quiet                     Supress all output except errors
   --help                          Show this message and exit.</code></pre>
@@ -918,7 +915,7 @@ Driver used to scan image (extract, mount, mountWithLayers).
 <dd>
 Timeout for the scan (e.g.&nbsp;1h, 30m).
 </dd>
-<dt><code><span class="doc-parameter-name">--no-publish, --no-no-publish</span></code></dt>
+<dt><code><span class="doc-parameter-name">--no-publish</span></code></dt>
 <dd>
 Disable publishing scan results to the Wiz portal.
 </dd>
@@ -938,11 +935,11 @@ Wiz service account client ID (overrides WIZ_CLIENT_ID env var).
 <dd>
 Wiz service account client secret (overrides WIZ_CLIENT_SECRET env var).
 </dd>
-<dt><code><span class="doc-parameter-name">--use-device-code, --no-use-device-code</span></code></dt>
+<dt><code><span class="doc-parameter-name">--use-device-code</span></code></dt>
 <dd>
 Use device code flow for authentication.
 </dd>
-<dt><code><span class="doc-parameter-name">--no-browser, --no-no-browser</span></code></dt>
+<dt><code><span class="doc-parameter-name">--no-browser</span></code></dt>
 <dd>
 Do not open browser for device code flow.
 </dd>
