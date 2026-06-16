@@ -146,8 +146,9 @@ class WizCLIPlugin(BakeryToolPlugin):
                 ),
             ] = None,
             no_publish: Annotated[
-                bool,
+                Optional[bool],
                 typer.Option(
+                    "--no-publish",
                     help="Disable publishing scan results to the Wiz portal.",
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
@@ -187,15 +188,17 @@ class WizCLIPlugin(BakeryToolPlugin):
                 ),
             ] = None,
             use_device_code: Annotated[
-                bool,
+                Optional[bool],
                 typer.Option(
+                    "--use-device-code",
                     help="Use device code flow for authentication.",
                     rich_help_panel=RichHelpPanelEnum.AUTH,
                 ),
             ] = False,
             no_browser: Annotated[
-                bool,
+                Optional[bool],
                 typer.Option(
+                    "--no-browser",
                     help="Do not open browser for device code flow.",
                     rich_help_panel=RichHelpPanelEnum.AUTH,
                 ),
