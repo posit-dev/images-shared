@@ -56,3 +56,30 @@ Feature: matrix
         When I execute the command
         Then The command succeeds
         * the matrix matches testdata ci/matrix/merge-multi-image/image_name_filter.json
+
+    Scenario: A version-dir change builds only that version
+        Given I call bakery ci matrix
+        * in the changeset context
+        * with changed files in changed-files.txt:
+            | app/1.0.0/Containerfile.ubuntu2204.std |
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/changeset/version_only.json
+
+    Scenario: A Markdown-only change yields an empty matrix
+        Given I call bakery ci matrix
+        * in the changeset context
+        * with changed files in changed-files.txt:
+            | README.md |
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/changeset/empty.json
+
+    Scenario: A bakery.yaml change falls back to the full matrix
+        Given I call bakery ci matrix
+        * in the changeset context
+        * with changed files in changed-files.txt:
+            | bakery.yaml |
+        When I execute the command
+        Then The command succeeds
+        * the matrix matches testdata ci/matrix/changeset/full.json

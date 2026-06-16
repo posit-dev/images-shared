@@ -23,6 +23,14 @@ def check_matrix_output(bakery_command, ci_testdata, testdata_file):
     assert actual_matrix == expected_matrix
 
 
+@given(parsers.parse("with changed files in {filename}:"))
+def write_changed_files_to_context(bakery_command, filename, datatable):
+    changed_file_path = bakery_command.context / filename
+    lines = [row[0] for row in datatable]
+    changed_file_path.write_text("\n".join(lines) + "\n")
+    bakery_command.add_args(["--changed-files-from", str(changed_file_path)])
+
+
 @given(parsers.parse("with testdata {testdata_path} copied to context"))
 def copy_ci_testdata_to_context(bakery_command, ci_testdata, testdata_path):
     testdata_source = ci_testdata / testdata_path
