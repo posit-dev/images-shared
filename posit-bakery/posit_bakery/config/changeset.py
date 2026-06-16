@@ -36,6 +36,8 @@ def git_changed_files(repo_root: Path, base_ref: str) -> list[str]:
 _IGNORE_EXACT = {".gitignore", ".pre-commit-config.yaml"}
 _IGNORE_PREFIXES = (".idea/", ".claude/", ".github/")
 # Paths that conservatively trigger a full build (fail safe).
+# NOTE: the _FULL check must run before the _IGNORE check below, because
+# ".github/workflows/" is a strict sub-prefix of the ignored ".github/".
 _FULL_EXACT = {"bakery.yaml", "bakery.yml"}
 _FULL_PREFIXES = (".github/workflows/",)
 

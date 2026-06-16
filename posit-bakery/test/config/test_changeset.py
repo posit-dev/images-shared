@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from posit_bakery.config.changeset import git_changed_files
+from posit_bakery.config import BakeryConfig
+from posit_bakery.config.changeset import classify_changes, git_changed_files
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -38,10 +39,6 @@ def test_git_changed_files_returns_posix_relative_paths(temp_git_repo: Path):
     changed = git_changed_files(temp_git_repo, "main")
     assert all(not c.startswith("/") for c in changed)
     assert all("\\" not in c for c in changed)
-
-
-from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes
 
 
 @pytest.fixture
@@ -87,6 +84,7 @@ def test_template_change_selects_dev_versions(changeset_config):
     cs = sel.images["app"]
     assert cs.include_dev is True
     assert cs.versions == set()
+    assert cs.include_all_release is False
 
 
 def test_version_and_template_change_unions(changeset_config):
