@@ -41,8 +41,11 @@ class WizScanReport(BaseModel):
         raw = filepath.read_text()
         data = json.loads(raw)
 
-        # Re-write with indentation for human readability if the file is minified
-        formatted = json.dumps(data, indent=2)
+        # Re-write with indentation for human readability if the file is minified.
+        # Include a trailing newline so the output matches POSIX/end-of-file-fixer
+        # conventions; otherwise an already-formatted file would be rewritten on
+        # every load (stripping the newline) and ping-pong against pre-commit.
+        formatted = json.dumps(data, indent=2) + "\n"
         if formatted != raw:
             filepath.write_text(formatted)
 
