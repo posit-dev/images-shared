@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 class ImageDevelopmentVersionFromProductChannel(BaseImageDevelopmentVersion):
     """Image development version sourced from a product release channel."""
 
-    sourceType: Literal["stream"] = "stream"
+    sourceType: Literal["channel", "stream"]
     product: Annotated[ProductEnum, Field(description="The ID of the product channel to use for this image version.")]
     channel: Annotated[
         ReleaseChannelEnum,
