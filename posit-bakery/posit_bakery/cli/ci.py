@@ -2,6 +2,8 @@ import glob
 import json
 import logging
 import re
+import subprocess
+import sys
 import python_on_whales
 from enum import Enum
 from pathlib import Path
@@ -11,6 +13,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
+from posit_bakery.config.changeset import classify_changes, ImageChangeSet, MatrixSelection
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -32,6 +35,54 @@ class BakeryCIMatrixFieldEnum(str, Enum):
     VERSION = "version"
     DEV = "dev"
     PLATFORM = "platform"
+
+
+def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None, rebase_root: Path) -> list[str] | None:
+    """Return the changed-file list for change-aware filtering, or None to disable it.
+
+    ``--changed-files-from`` takes precedence over ``--base-ref``. Git paths are
+    relative to the repo root; they are rebased onto ``rebase_root`` and paths
+    outside the root are dropped.
+    """
+    if changed_files_from is not None:
+        if changed_files_from == "-":
+            raw = sys.stdin.read()
+        else:
+            raw = Path(changed_files_from).read_text()
+        return [line.strip() for line in raw.splitlines() if line.strip()]
+
+    if base_ref is None:
+        return None
+
+    # Local import: git diff is only needed on this rarely-used code path.
+    from posit_bakery.config.changeset import git_changed_files
+
+    toplevel = subprocess.run(
+        ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    repo_root = Path(toplevel)
+    rebased: list[str] = []
+    for rel in git_changed_files(repo_root, base_ref):
+        abs_path = repo_root / rel
+        try:
+            rebased.append((abs_path.relative_to(rebase_root)).as_posix())
+        except ValueError:
+            # Changed file lives outside this bakery context (monorepo) -> not our concern.
+            continue
+    return rebased
+
+
+def _version_selected(ver, cs: ImageChangeSet) -> bool:
+    """Whether a candidate version is wanted by a change set."""
+    if getattr(ver, "isDevelopmentVersion", False):
+        return cs.include_dev
+    if getattr(ver, "isMatrixVersion", False):
+        return cs.include_matrix_latest and bool(getattr(ver, "latest", False))
+    # Plain release version.
+    return cs.include_all_release or ver.name in cs.versions
 
 
 @app.command()
@@ -101,6 +152,27 @@ def matrix(
             callback=parse_dev_spec,
         ),
     ] = None,
+    base_ref: Annotated[
+        Optional[str],
+        typer.Option(
+            "--base-ref",
+            envvar="BAKERY_BASE_REF",
+            show_default=False,
+            help="Git ref to diff against (merge-base) to build only changed images/versions. "
+            "When unset, the full matrix is emitted.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
+    changed_files_from: Annotated[
+        Optional[str],
+        typer.Option(
+            "--changed-files-from",
+            show_default=False,
+            help="Read changed file paths (one per line; '-' for stdin) instead of running git diff. "
+            "Overrides --base-ref.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
 ) -> None:
     """Generates a JSON matrix of image versions for CI workflows to consume
 
@@ -135,9 +207,28 @@ def matrix(
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images if image_name is None or re.search(image_name, i.name) is not None]
 
+        selection: MatrixSelection | None = None
+        changed = _resolve_changed_files(base_ref, changed_files_from, c.base_path)
+        if changed is not None:
+            selection = classify_changes(c, changed)
+            if selection.full:
+                # Fail-safe / repo-wide change: behave exactly as a full matrix.
+                selection = None
+            else:
+                log.info(
+                    "Change-aware matrix: %s",
+                    {name: vars(cs) for name, cs in selection.images.items()} or "no affected images",
+                )
+
         data = []
         for img in images:
+            if selection is not None and img.name not in selection.images:
+                continue
+            cs = selection.images[img.name] if selection is not None else None
+
             entry = {"image": img.name}
+
+            # Build the candidate version list for this image.
             versions = img.versions
             if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
                 continue
@@ -152,10 +243,22 @@ def matrix(
                         versions = img.matrix.to_image_versions()
                 # If EXCLUDE: fall through using img.versions (devVersions are appended
                 # there by load_dev_versions). The dev_versions filter below handles the rest.
+
+            if cs is not None:
+                # Change-aware: add dev / matrix-latest versions the global flags excluded.
+                if cs.include_dev:
+                    img.load_dev_versions()
+                    versions = list(img.versions)
+                if cs.include_matrix_latest and img.matrix is not None:
+                    versions = list(versions) + [v for v in img.matrix.to_image_versions() if v.latest]
+
             for ver in versions:
-                included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
-                if not included:
+                if cs is not None and not _version_selected(ver, cs):
                     continue
+                if cs is None:
+                    included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
+                    if not included:
+                        continue
                 if image_version is not None and not version_matches(ver.name, image_version):
                     continue
 
