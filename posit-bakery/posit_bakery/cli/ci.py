@@ -16,6 +16,7 @@ from posit_bakery.config import BakeryConfig
 from posit_bakery.config.changeset import classify_changes, ImageChangeSet, MatrixSelection
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import push_readmes
@@ -75,7 +76,7 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
     return rebased
 
 
-def _version_selected(ver, cs: ImageChangeSet) -> bool:
+def _version_selected(ver: ImageVersion, cs: ImageChangeSet) -> bool:
     """Whether a candidate version is wanted by a change set."""
     if getattr(ver, "isDevelopmentVersion", False):
         return cs.include_dev
@@ -250,7 +251,11 @@ def matrix(
                     img.load_dev_versions()
                     versions = list(img.versions)
                 if cs.include_matrix_latest and img.matrix is not None:
-                    versions = list(versions) + [v for v in img.matrix.to_image_versions() if v.latest]
+                    # Only inject the latest slice when matrix versions were globally
+                    # excluded; otherwise `versions` already holds the full matrix
+                    # (including the latest rows) and re-adding would duplicate them.
+                    if matrix_versions == MatrixVersionInclusionEnum.EXCLUDE:
+                        versions = list(versions) + [v for v in img.matrix.to_image_versions() if v.latest]
 
             for ver in versions:
                 if cs is not None and not _version_selected(ver, cs):
