@@ -99,6 +99,36 @@ Do not backport cosmetic changes, new feature additions, or non-security depende
 
 - **Version format mismatch.** Product repos dispatch with raw git-describe versions (e.g., `v2026.03.0-473-g072bb6fd1f`). Bakery normalizes these to semver-with-metadata (e.g., `2026.03.0-dev+473-g072bb6fd1f`). If `bakery ci matrix` produces an empty matrix after a dispatch, the formats did not align. The shared workflows strip a leading `v` automatically. Check the rest of the version string against bakery's normalization.
 
+## Change-aware PR builds
+
+`bakery ci matrix` supports `--base-ref <ref>` and `--changed-files-from <file|->` to emit
+only the matrix entries affected by a PR's changed files. This keeps PR CI fast: a template
+change builds only the images whose templates changed; a version-directory change builds only
+that version.
+
+**This filtering applies to PR builds only.** Push-to-main, scheduled, and release builds
+call `bakery ci matrix` without `--base-ref`, so they always build the full matrix.
+
+### Classification rules
+
+After ignoring Markdown (`*.md`) paths, changed files are classified as follows:
+
+| Changed path | What builds |
+|---|---|
+| `bakery.yaml` / `bakery.yml` or `.github/workflows/**` | Full matrix (fail-safe) |
+| `<image>/template/**` | That image's dev versions (if any are declared) |
+| `<image>/<version-subpath>/**` | That release version only |
+| An image-root file or unrecognized subdir under an image | That image's release versions (fail-safe) |
+| Matrix image (e.g. `connect-content`) | Latest matrix slice + dev versions if declared |
+| Anything else not attributable and not ignored | Full matrix (fail-safe) |
+
+### Branch protection
+
+Because per-image build jobs may not run on docs-only PRs, branch protection rules should
+require the always-green **Build/Test result** gate job rather than individual build jobs.
+The gate job is defined in `bakery-build-pr.yml` and always runs, even when no images need
+to be built.
+
 ## Diagnose a build failure
 
 **1. Find the failing run:**
