@@ -90,6 +90,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Install
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -103,8 +105,13 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
-          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$BAKERY_CONTEXT" | jq --compact-output .)
+          BASE_FLAG=()
+          if [ -n "$BASE_REF" ]; then
+            BASE_FLAG=(--base-ref "$BASE_REF")
+          fi
+          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --context "$BAKERY_CONTEXT" | jq --compact-output .)
           if [ "$IS_FORK" = "true" ]; then
             # Skip arm64 for fork PRs — paid runners may not be available
             FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --compact-output '[.[] | select(.platform != "linux/arm64")]')
@@ -117,8 +124,13 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
-          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --exclude platform --context "$BAKERY_CONTEXT")
+          BASE_FLAG=()
+          if [ -n "$BASE_REF" ]; then
+            BASE_FLAG=(--base-ref "$BASE_REF")
+          fi
+          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
   build-test:
@@ -188,13 +200,18 @@ jobs:
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          IMG_DEV: ${{ matrix.img.dev }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           REGISTRY_OWNER: ${{ github.repository_owner }}
           CACHE: ${{ inputs.cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [ "$IMG_DEV" = "true" ]; then
+            DEV_VERSIONS=only
+          else
+            DEV_VERSIONS=exclude
+          fi
           CACHE_FLAGS=()
           if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then
             CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
@@ -215,11 +232,16 @@ jobs:
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
           IMAGE_PLATFORM: ${{ matrix.img.platform }}
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          IMG_DEV: ${{ matrix.img.dev }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [ "$IMG_DEV" = "true" ]; then
+            DEV_VERSIONS=only
+          else
+            DEV_VERSIONS=exclude
+          fi
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
@@ -229,3 +251,22 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             --context "$BAKERY_CONTEXT"
+
+  build-test-result:
+    name: Build/Test result
+    needs: build-test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Report
+        env:
+          RESULT: ${{ needs.build-test.result }}
+        run: |
+          # 'skipped' (empty matrix) and 'success' both pass; only real failures block.
+          if [ "$RESULT" = "failure" ] || [ "$RESULT" = "cancelled" ]; then
+            echo "build-test result: $RESULT"
+            exit 1
+          fi
+          echo "build-test result: $RESULT (ok)"
