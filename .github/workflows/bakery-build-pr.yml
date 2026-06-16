@@ -138,6 +138,9 @@ jobs:
     needs:
       - detect
       - matrix
+    # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
+    # Guard here so an empty change-aware matrix produces 'skipped' instead of 'failure'.
+    if: ${{ needs.matrix.outputs.platform-matrix != '[]' }}
     timeout-minutes: 120
     permissions:
       contents: read
