@@ -59,7 +59,7 @@ Feature: matrix
 
     Scenario: A version-dir change builds only that version
         Given I call bakery ci matrix
-        * in the changeset context
+        * in a temp changeset context
         * with changed files in changed-files.txt:
             | app/1.0.0/Containerfile.ubuntu2204.std |
         When I execute the command
@@ -68,7 +68,7 @@ Feature: matrix
 
     Scenario: A Markdown-only change yields an empty matrix
         Given I call bakery ci matrix
-        * in the changeset context
+        * in a temp changeset context
         * with changed files in changed-files.txt:
             | README.md |
         When I execute the command
@@ -77,7 +77,7 @@ Feature: matrix
 
     Scenario: A bakery.yaml change falls back to the full matrix
         Given I call bakery ci matrix
-        * in the changeset context
+        * in a temp changeset context
         * with changed files in changed-files.txt:
             | bakery.yaml |
         When I execute the command
