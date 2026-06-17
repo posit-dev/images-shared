@@ -7,6 +7,8 @@ updates:
       - "/setup-*"
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns:
