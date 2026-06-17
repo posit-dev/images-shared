@@ -3,13 +3,13 @@ name: Checks
 on:
   workflow_call:
     inputs:
-      run-pre-commit:
+      pre-commit-run:
         description: "Run the pre-commit job"
         default: true
         required: false
         type: boolean
-      run-zizmor:
-        description: "Run the zizmor job"
+      lychee-run:
+        description: "Run the lychee link-check job"
         default: true
         required: false
         type: boolean
@@ -18,8 +18,8 @@ on:
         default: true
         required: false
         type: boolean
-      run-lychee:
-        description: "Run the lychee link-check job"
+      zizmor-run:
+        description: "Run the zizmor job"
         default: true
         required: false
         type: boolean
@@ -50,7 +50,7 @@ defaults:
 jobs:
   pre-commit:
     name: Pre-commit
-    if: inputs.run-pre-commit
+    if: inputs.pre-commit-run
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -80,7 +80,7 @@ jobs:
 
   zizmor:
     name: Zizmor
-    if: inputs.run-zizmor
+    if: inputs.zizmor-run
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -96,7 +96,7 @@ jobs:
 
   lychee:
     name: Lychee
-    if: inputs.run-lychee
+    if: inputs.lychee-run
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
