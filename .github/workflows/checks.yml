@@ -3,23 +3,18 @@ name: Checks
 on:
   workflow_call:
     inputs:
-      pre-commit-run:
-        description: "Run the pre-commit job"
-        default: true
+      lychee-args:
+        description: "Arguments passed to lychee. The default **/*.*md glob matches both Markdown (.md) and Quarto (.qmd) files."
+        default: "--cache --no-progress --max-cache-age 1d **/*.*md"
         required: false
-        type: boolean
+        type: string
       lychee-run:
         description: "Run the lychee link-check job"
         default: true
         required: false
         type: boolean
-      zizmor-advanced-security:
-        description: "Upload zizmor results to GitHub Advanced Security. Requires security-events: write on the caller. Set to false for repos without GHAS."
-        default: true
-        required: false
-        type: boolean
-      zizmor-run:
-        description: "Run the zizmor job"
+      pre-commit-run:
+        description: "Run the pre-commit job"
         default: true
         required: false
         type: boolean
@@ -33,11 +28,16 @@ on:
         default: ""
         required: false
         type: string
-      lychee-args:
-        description: "Arguments passed to lychee. The default **/*.*md glob matches both Markdown (.md) and Quarto (.qmd) files."
-        default: "--cache --no-progress --max-cache-age 1d **/*.*md"
+      zizmor-advanced-security:
+        description: "Upload zizmor results to GitHub Advanced Security. Requires security-events: write on the caller. Set to false for repos without GHAS."
+        default: true
         required: false
-        type: string
+        type: boolean
+      zizmor-run:
+        description: "Run the zizmor job"
+        default: true
+        required: false
+        type: boolean
 
 defaults:
   run:
