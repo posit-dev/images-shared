@@ -13,6 +13,11 @@ on:
         default: true
         required: false
         type: boolean
+      zizmor-advanced-security:
+        description: "Upload zizmor results to GitHub Advanced Security. Requires security-events: write on the caller. Set to false for repos without GHAS."
+        default: true
+        required: false
+        type: boolean
       run-lychee:
         description: "Run the lychee link-check job"
         default: true
@@ -86,6 +91,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d  # v0.5.6
+        with:
+          advanced-security: ${{ inputs.zizmor-advanced-security }}
 
   lychee:
     name: Lychee
