@@ -1,0 +1,15 @@
+# Hosts that rate-limit, require auth, or otherwise false-positive.
+# One regex per line (matched against each URL). Extend as real failures surface.
+https://example.com
+https://support.posit.co
+https://packagemanager.posit.co
+https://p3m.dev
+https://twitter.com
+
+# Bare directory paths that 404 (no index served)
+https://dl.posit.co/public/open/
+
+# Private Posit/RStudio source repos (return 404 to unauthenticated link checks)
+https://github.com/posit-dev/connect/
+https://github.com/rstudio/package-manager/
+https://github.com/rstudio/rstudio-pro/
