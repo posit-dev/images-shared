@@ -48,12 +48,19 @@ backward compatibility but is ignored.
 
 {# Command to install TinyTeX using the Quarto CLI
 
+`CI=true` is set inline so Quarto's `runningInCI()` check passes inside
+container builds. When it passes, Quarto collapses its TinyTeX download
+progress bar to a single line; otherwise it renders an animated progress bar
+that, written to a non-TTY build log, emits tens of thousands of redundant
+lines (one per download tick). The variable is scoped to this command only, so
+it does not leak into the built image.
+
 :param quarto_binary: The path to the Quarto binary.
 :param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
 :param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
 {% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
-GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}{{ quarto_binary }} install tinytex --no-prompt{% if update_path %} --update-path{% endif %}
+GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}CI=true {{ quarto_binary }} install tinytex --no-prompt{% if update_path %} --update-path{% endif %}
 {%- endmacro %}
 
 {# Command to install a specific version of Quarto from the Posit Open
