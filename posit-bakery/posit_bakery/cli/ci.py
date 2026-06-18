@@ -135,6 +135,14 @@ def matrix(
         c = BakeryConfig.from_context(context=context, settings=settings)
         images = [i for i in c.model.images if image_name is None or re.search(image_name, i.name) is not None]
 
+        # A --dev-spec carrying a channel implies the matrix should be filtered to that
+        # channel. The shared CI workflow folds the dispatched channel into the dev-spec
+        # and stops passing --dev-channel, so without this the other channels' dev versions
+        # would still be emitted (only the matching one gets its version pinned).
+        effective_dev_channel = settings.dev_channel
+        if effective_dev_channel is None and settings.dev_spec is not None:
+            effective_dev_channel = settings.dev_spec.channel
+
         data = []
         for img in images:
             entry = {"image": img.name}
@@ -153,7 +161,7 @@ def matrix(
                 # If EXCLUDE: fall through using img.versions (devVersions are appended
                 # there by load_dev_versions). The dev_versions filter below handles the rest.
             for ver in versions:
-                included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
+                included, _ = ver.matches_dev_filter(dev_versions, effective_dev_channel)
                 if not included:
                     continue
                 if image_version is not None and not version_matches(ver.name, image_version):

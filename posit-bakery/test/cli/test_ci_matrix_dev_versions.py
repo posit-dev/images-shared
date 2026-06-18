@@ -171,3 +171,72 @@ class TestCiMatrixDevVersionsInclude:
         versions_in_output = {e["version"] for e in data}
         assert prod_ver1.name not in versions_in_output
         assert prod_ver2.name not in versions_in_output
+
+
+@pytest.fixture
+def mock_config_with_two_channel_dev_image():
+    """Patch BakeryConfig to return one non-matrix image carrying both a
+    daily and a preview dev version (the workbench/session-init shape)."""
+    daily = _make_version("2026.99.0+237", is_dev=True, channel=ReleaseChannelEnum.DAILY)
+    preview = _make_version("2026.99.0+240", is_dev=True, channel=ReleaseChannelEnum.PREVIEW)
+    img = MagicMock()
+    img.name = "workbench"
+    img.matrix = None
+    img.versions = [daily, preview]
+
+    with patch("posit_bakery.cli.ci.BakeryConfig") as mock:
+        instance = MagicMock()
+        instance.model.images = [img]
+        mock.from_context.return_value = instance
+        yield mock, daily, preview
+
+
+class TestCiMatrixDevSpecChannelFilter:
+    """A --dev-spec carrying a channel filters the matrix to that channel even
+    when --dev-channel is omitted. The shared workflow folds the channel into
+    the dev-spec and drops --dev-channel, so the matrix must honor it."""
+
+    def test_filters_to_dev_spec_channel(self, mock_config_with_two_channel_dev_image):
+        _, daily, preview = mock_config_with_two_channel_dev_image
+        result = runner.invoke(
+            app,
+            [
+                "ci",
+                "matrix",
+                "--context",
+                BASIC_CONTEXT,
+                "--dev-versions",
+                "only",
+                "--dev-spec",
+                '{"version": "2026.99.0+240", "channel": "preview"}',
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.stdout.strip())
+        versions = {e["version"] for e in data}
+        assert preview.name in versions
+        assert daily.name not in versions
+
+    def test_branch_only_dev_spec_does_not_filter(self, mock_config_with_two_channel_dev_image):
+        """A branch-only dev-spec carries no channel, so all channels stay in the matrix."""
+        _, daily, preview = mock_config_with_two_channel_dev_image
+        result = runner.invoke(
+            app,
+            [
+                "ci",
+                "matrix",
+                "--context",
+                BASIC_CONTEXT,
+                "--dev-versions",
+                "only",
+                "--dev-spec",
+                '{"release_branch": "2026.06"}',
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.stdout.strip())
+        versions = {e["version"] for e in data}
+        assert preview.name in versions
+        assert daily.name in versions
