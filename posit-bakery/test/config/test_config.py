@@ -566,6 +566,48 @@ class TestBakeryConfig:
             assert len(pinned) == 1
             assert pinned[0].version_override == "2026.05.0-dev+999-gSHA"
 
+        def test_build_targets_filter_to_dev_spec_channel(self, tmp_path, patch_requests_get):
+            """generate_image_targets must drop the off-channel dev version when only
+            --dev-spec carries the channel (Bug 3). The build path used the raw
+            dev_channel (None here) and built both daily and preview; it must use
+            effective_dev_channel instead."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                          - sourceType: stream
+                            product: package-manager
+                            channel: preview
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
+            )
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_spec=DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+                with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                    config = BakeryConfig(bakery_yaml, settings=settings)
+
+            channels = {t.image_version.metadata.get("release_channel") for t in config.targets}
+            assert config.targets, "expected at least one preview target"
+            assert ReleaseChannelEnum.PREVIEW in channels
+            assert ReleaseChannelEnum.DAILY not in channels
+
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
         [

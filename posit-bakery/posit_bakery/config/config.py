@@ -985,7 +985,7 @@ class BakeryConfig:
                 version_filter_matched = settings.filter.image_version is not None and version_matches(
                     version.name, settings.filter.image_version
                 )
-                included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_channel)
+                included, reason = version.matches_dev_filter(settings.dev_versions, settings.effective_dev_channel)
                 if not included:
                     if version_filter_matched:
                         log.warning(
