@@ -260,6 +260,12 @@ class TestVersionMatches:
             ("2026.05.0-dev+15-gSHA", "2026.05.0-dev"),
             ("R4.5.3-python3.14.3", "R4.5.3-python3.14.3"),
             ("R4.5.3-python3.14.3", "R4.5.3"),
+            # Build metadata (+...) is intentionally ignored per semver §10, so two
+            # dev versions that differ only in +build match the same --image-version
+            # filter. This is why --image-version cannot disambiguate same-build dev
+            # versions across channels (Bug 3); effective_dev_channel does that.
+            ("2026.06.0+240.pro3", "2026.06.0+240.pro1"),
+            ("2026.06.0+240.daily", "2026.06.0+240.preview"),
         ],
     )
     def test_matches(self, ver_name, filter_version):
