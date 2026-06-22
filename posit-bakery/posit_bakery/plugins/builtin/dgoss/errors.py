@@ -33,7 +33,7 @@ class BakeryDGossError(BakeryToolRuntimeError):
         stdout_dump = self.dump_stdout()
         if stdout_dump:
             s += f"  - Command output:\n{textwrap.indent(stdout_dump, '      ')}\n"
-        stderr_dump = self.dump_stderr()
+        stderr_dump = self.dump_stderr(lines=50)
         if stderr_dump:
             s += f"  - Error output:\n{textwrap.indent(stderr_dump, '      ')}\n"
         s += f"  - Command executed: {' '.join(self.cmd)}\n"
