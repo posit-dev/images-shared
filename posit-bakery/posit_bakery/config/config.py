@@ -361,6 +361,23 @@ class BakerySettings(BaseModel):
         )
         return self.dev_channel
 
+    @property
+    def effective_dev_channel(self) -> ReleaseChannelEnum | None:
+        """Channel used to filter dev versions, honoring both --dev-channel and --dev-spec.
+
+        A --dev-spec carrying a channel implies dev versions should be filtered to
+        that channel. The shared CI workflow folds the dispatched channel into the
+        dev-spec and stops passing --dev-channel, so without this derivation the
+        other channels' dev versions leak through both the matrix output and the
+        build target list. --dev-channel wins when explicitly set; _apply_dev_spec
+        validates that the two never conflict.
+        """
+        if self.dev_channel is not None:
+            return self.dev_channel
+        if self.dev_spec is not None:
+            return self.dev_spec.channel
+        return None
+
     matrix_versions: Annotated[
         MatrixVersionInclusionEnum,
         Field(

@@ -406,6 +406,41 @@ class TestBakeryConfig:
         assert settings.dev_channel == ReleaseChannelEnum.DAILY
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
 
+    class TestEffectiveDevChannel:
+        """effective_dev_channel centralizes the dev-channel derivation so the
+        matrix path (cli/ci.py) and the build path (generate_image_targets)
+        filter dev versions by the same channel."""
+
+        def test_returns_dev_channel_when_set(self):
+            settings = BakerySettings(dev_channel=ReleaseChannelEnum.DAILY)
+            assert settings.effective_dev_channel == ReleaseChannelEnum.DAILY
+
+        def test_derives_channel_from_dev_spec_when_dev_channel_absent(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(
+                dev_spec=DevBuildSpec(version="2026.06.0+240", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            assert settings.effective_dev_channel == ReleaseChannelEnum.PREVIEW
+
+        def test_none_when_dev_spec_is_branch_only(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(dev_spec=DevBuildSpec(release_branch="2026.06"))
+            assert settings.effective_dev_channel is None
+
+        def test_none_when_no_channel_and_no_spec(self):
+            assert BakerySettings().effective_dev_channel is None
+
+        def test_dev_channel_takes_precedence_over_matching_spec(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(
+                dev_channel=ReleaseChannelEnum.PREVIEW,
+                dev_spec=DevBuildSpec(version="2026.06.0+240", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            assert settings.effective_dev_channel == ReleaseChannelEnum.PREVIEW
+
     class TestDevBuildSpecApplication:
         def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
             """No dev_spec: config loads normally, no version_override set on channel devVersions."""
