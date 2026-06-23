@@ -161,3 +161,27 @@ class TestDGossSuite:
         suite.run()
         assert captured["tasks"]
         assert all(t.timeout == 900 for t in captured["tasks"])  # default 900 from GossOptions
+
+
+class TestBakeryDGossError:
+    def test_str_includes_stderr_when_present(self):
+        err = BakeryDGossError(
+            message="dgoss execution failed for image 'test-image'",
+            tool_name="dgoss",
+            cmd=["dgoss", "run", "test-image"],
+            stdout=b"",
+            stderr=b"Error response from daemon: pull access denied",
+            exit_code=125,
+        )
+        assert "Error response from daemon" in str(err)
+
+    def test_str_omits_stderr_section_when_empty(self):
+        err = BakeryDGossError(
+            message="dgoss execution failed for image 'test-image'",
+            tool_name="dgoss",
+            cmd=["dgoss", "run", "test-image"],
+            stdout=b'{"summary": {}}',
+            stderr=b"",
+            exit_code=1,
+        )
+        assert "Error output" not in str(err)
