@@ -435,7 +435,10 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
             f"Either omit 'channel' from --dev-spec or ensure they match."
         )
 
-    target_channel = settings.dev_spec.channel or settings.dev_channel
+    # The conflict check above guarantees dev_spec.channel and dev_channel agree
+    # when both are set, so effective_dev_channel (the value the matrix and build
+    # filters use) resolves to the same target channel here.
+    target_channel = settings.effective_dev_channel
     candidates = [
         dv
         for dv in image.devVersions
