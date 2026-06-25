@@ -1,0 +1,59 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+  vendor: "Posit Software, PBC"
+  maintainer:
+    name: "Posit Docker Team"
+    email: "docker@posit.co"
+  authors:
+    - name: "Author 1"
+      email: "author1@posit.co"
+
+registries:
+  - host: "ghcr.io"
+    namespace: "posit-dev"
+
+images:
+  - name: "app"
+    variants:
+      - name: "Standard"
+        extension: "std"
+        tagDisplayName: "std"
+        primary: true
+    devVersions:
+      - sourceType: stream
+        product: connect
+        stream: daily
+        os:
+          - name: Ubuntu 24.04
+            primary: true
+    versions:
+      - name: 2.0.0
+        subpath: "2.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+      - name: 1.0.0
+        subpath: "1.0.0"
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+  - name: "content"
+    variants:
+      - name: "Base"
+        extension: "base"
+        tagDisplayName: "base"
+        primary: true
+    matrix:
+      dependencyConstraints:
+        - dependency: R
+          constraint:
+            count: 2
+            latest: true
+        - dependency: python
+          constraint:
+            count: 2
+            latest: true
+      os:
+        - name: "Ubuntu 24.04"
+          primary: true

@@ -76,6 +76,24 @@ def patch_temporary_directory(request, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def restore_settings_log_level():
+    """Restore SETTINGS.log_level after each test.
+
+    SETTINGS is a module-global singleton, and CLI verbosity flags (--quiet/--verbose)
+    mutate SETTINGS.log_level in-process when commands are exercised via CliRunner.
+    Without restoring it, the mutation leaks into later tests in the same worker — e.g.
+    a --quiet invocation sets log_level=ERROR, which then makes
+    ParallelShellExecutor._resolve_use_live (which reads SETTINGS.log_level) return False
+    unexpectedly.
+    """
+    from posit_bakery.settings import SETTINGS
+
+    original = SETTINGS.log_level
+    yield
+    SETTINGS.log_level = original
+
+
+@pytest.fixture(autouse=True)
 def _disable_image_build_cache(request, mocker: MockFixture):
     """Disable Docker layer caching for image_build tests.
 

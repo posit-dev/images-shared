@@ -1,11 +1,15 @@
 import json
+import logging
 import re
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
+from posit_bakery.cli.ci import _resolve_changed_files
 from posit_bakery.config.config import version_matches
+from posit_bakery.config.image.version import ImageVersion
 
 from posit_bakery.plugins.protocol import ToolCallResult
 
@@ -21,6 +25,14 @@ def check_matrix_output(bakery_command, ci_testdata, testdata_file):
     expected_matrix = json.loads(testdata_file.read_text().strip())
     actual_matrix = json.loads(bakery_command.result.stdout.strip())
     assert actual_matrix == expected_matrix
+
+
+@given(parsers.parse("with changed files in {filename}:"))
+def write_changed_files_to_context(bakery_command, filename, datatable):
+    changed_file_path = bakery_command.context / filename
+    lines = [row[0] for row in datatable]
+    changed_file_path.write_text("\n".join(lines) + "\n")
+    bakery_command.add_args(["--changed-files-from", str(changed_file_path)])
 
 
 @given(parsers.parse("with testdata {testdata_path} copied to context"))
@@ -146,6 +158,92 @@ def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_metho
 
     for expected in expected_calls:
         assert expected in calls
+
+
+def test_resolve_changed_files_warns_when_base_ref_also_given(tmp_path, caplog):
+    """--changed-files-from overrides --base-ref; the override must not be silent.
+
+    When both are supplied, --changed-files-from wins (its paths are used verbatim,
+    no git is run), and a warning announces that --base-ref is ignored.
+    """
+    changes = tmp_path / "changed.txt"
+    changes.write_text("app/template/Containerfile\n")
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_changed_files(
+            base_ref="origin/main",
+            changed_files_from=str(changes),
+            rebase_root=tmp_path,
+        )
+
+    assert result == ["app/template/Containerfile"]
+    assert any("--base-ref" in record.message and "ignored" in record.message.lower() for record in caplog.records), (
+        f"expected a warning that --base-ref is ignored, got: {[r.message for r in caplog.records]}"
+    )
+
+
+class TestChangeAwareFlagIntersection:
+    """Change-aware mode must still honor --dev-versions / --matrix-versions.
+
+    The change set narrows the per-caller selection; it must not override the
+    flags. Otherwise the production, development, and content PR jobs all build
+    the same set instead of their disjoint slices.
+    """
+
+    def _run(self, resource_path, changed_files_path, *extra_args):
+        from typer.testing import CliRunner
+        from posit_bakery.cli.main import app as bakery_app
+
+        runner = CliRunner()
+        result = runner.invoke(
+            bakery_app,
+            [
+                "ci",
+                "matrix",
+                "--quiet",
+                "--context",
+                str(resource_path / "changeset"),
+                "--changed-files-from",
+                str(changed_files_path),
+                *extra_args,
+            ],
+            catch_exceptions=True,
+            env={"TERM": "dumb", "NO_COLOR": "true"},
+        )
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        return json.loads(result.stdout.strip())
+
+    def test_matrix_only_skips_non_matrix_image(self, resource_path, tmp_path):
+        """A release-dir change under --matrix-versions only must skip the non-matrix
+        image entirely, instead of building it as if the flag were absent."""
+        changed = tmp_path / "changed.txt"
+        changed.write_text("app/1.0.0/Containerfile.ubuntu2204.std\n")
+
+        matrix = self._run(resource_path, changed, "--matrix-versions", "only")
+
+        assert matrix == [], f"expected the non-matrix image to be skipped, got: {matrix}"
+
+    def test_template_change_excluded_under_dev_versions_exclude(self, mocker, resource_path, tmp_path):
+        """A template-only change under --dev-versions exclude must build nothing: no
+        release version was touched and dev versions are excluded. (The development
+        job, with --dev-versions only, is what builds the dev versions.)"""
+        fake_dev = ImageVersion(
+            name="2026.01.0-dev+1-gABC",
+            isDevelopmentVersion=True,
+            subpath="dev",
+            path=tmp_path,
+        )
+        mocker.patch(
+            "posit_bakery.config.image.image.Image.load_dev_versions",
+            lambda self_image: self_image.versions.append(fake_dev),
+        )
+
+        changed = tmp_path / "changed.txt"
+        changed.write_text("app/template/Containerfile.ubuntu2204.jinja2\n")
+
+        matrix = self._run(resource_path, changed, "--dev-versions", "exclude")
+
+        assert matrix == [], f"expected an empty matrix under --dev-versions exclude, got: {matrix}"
 
 
 class TestVersionMatches:
