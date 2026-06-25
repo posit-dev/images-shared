@@ -1,0 +1,51 @@
+name: Bakery Skill Eval
+
+on:
+  pull_request:
+    paths:
+      - ".claude/skills/bakery/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".claude/skills/bakery/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          enable-cache: false
+
+      - name: Install dependencies
+        working-directory: .claude/skills/bakery/evals
+        run: uv sync
+
+      - name: Run evals
+        working-directory: .claude/skills/bakery/evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run inspect eval task.py --model anthropic/claude-sonnet-4-6
+
+      - name: Upload eval logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: eval-logs
+          path: .claude/skills/bakery/evals/logs/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -235,6 +235,14 @@ def matrix(
                     {name: vars(cs) for name, cs in selection.images.items()} or "no affected images",
                 )
 
+        # A --dev-spec carrying a channel implies the matrix should be filtered to that
+        # channel. The shared CI workflow folds the dispatched channel into the dev-spec
+        # and stops passing --dev-channel, so without this the other channels' dev versions
+        # would still be emitted (only the matching one gets its version pinned).
+        effective_dev_channel = settings.dev_channel
+        if effective_dev_channel is None and settings.dev_spec is not None:
+            effective_dev_channel = settings.dev_spec.channel
+
         data = []
         for img in images:
             if selection is not None and img.name not in selection.images:
@@ -265,7 +273,7 @@ def matrix(
             for ver in versions:
                 # The caller's flags decide which kinds of version are eligible
                 # (release / dev / matrix), in both full and change-aware modes.
-                included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
+                included, _ = ver.matches_dev_filter(dev_versions, effective_dev_channel)
                 if not included:
                     continue
                 # In change-aware mode the change set then narrows to the versions

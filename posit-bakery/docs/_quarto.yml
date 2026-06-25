@@ -10,6 +10,7 @@ website:
   page-navigation: true
   back-to-top-navigation: true
   bread-crumbs: true
+  llms-txt: true
   navbar:
     left:
     - text: "Home"

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1-never-edit-rendered-files",
+    "input": "I need to update the apt packages installed in the connect Standard image for version 2025.08.0. The file connect/2025.08.0/Containerfile has the package list. What do I do?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Identifies that connect/2025.08.0/Containerfile is a rendered file and must not be edited directly\"}, {\"id\": 2, \"description\": \"Directs editing of the template, e.g. connect/template/Containerfile.jinja\"}, {\"id\": 3, \"description\": \"Re-renders with --image-name connect and --image-version 2025.08.0 flags\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Recommends editing the rendered file connect/2025.08.0/Containerfile directly\"}, {\"id\": \"f2\", \"description\": \"Runs uv run bakery update files without any --image-name or --image-version filter flags\"}]}"
+  },
+  {
+    "id": "2-uv-invocation",
+    "input": "I want to build the connect image locally to test my template changes. What command should I run?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Uses uv run bakery build (with the uv run prefix)\"}, {\"id\": 2, \"description\": \"Mentions --plan for a dry run before building\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Recommends running bare 'bakery build' without the 'uv run' prefix\"}]}"
+  },
+  {
+    "id": "3-scoped-render-required",
+    "input": "I've edited the Containerfile.jinja template for the connect image. How do I re-render the version files?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Uses uv run bakery update files with --image-name and --image-version flags to scope the render\"}, {\"id\": 2, \"description\": \"Recommends scoping to the most recent version rather than re-rendering all versions\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Recommends running uv run bakery update files with no filter flags, which re-renders every version\"}]}"
+  },
+  {
+    "id": "4-cross-repo-read-first",
+    "input": "I need to update the Python installation macro (python.j2) used in images-workbench templates. What's my first step?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Reads images-workbench/CLAUDE.md before making changes\"}, {\"id\": 2, \"description\": \"Reads images-workbench/bakery.yaml before making changes\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Proceeds directly to editing python.j2 or workbench templates without reading the sibling repo's CLAUDE.md and bakery.yaml first\"}]}"
+  },
+  {
+    "id": "5-ci-merge-flag-forwarding",
+    "input": "I'm updating development.yml to build only daily dev images. I've added --dev-versions only and --dev-channel daily to the bakery build step, and set BAKERY_DEV_SPEC on dispatch. What else needs to change?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Adds --dev-versions only to the bakery ci merge step\"}, {\"id\": 2, \"description\": \"Adds --dev-channel daily (or the same channel value) to the bakery ci merge step\"}, {\"id\": 3, \"description\": \"Forwards BAKERY_DEV_SPEC (or --dev-spec) to the bakery ci merge step as well\"}, {\"id\": 4, \"description\": \"Explains that the merge step must receive the same filter flags as the build step to avoid UID mismatches\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Declares the change complete after only updating the build step, without mentioning the merge step\"}, {\"id\": \"f2\", \"description\": \"Uses --dev-stream instead of --dev-channel\"}]}"
+  },
+  {
+    "id": "6-version-creation-flow",
+    "input": "I need to add version 2026.06.0 to the connect image in images-connect. Walk me through the steps.",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Uses uv run bakery create version 2026.06.0 (with uv run prefix)\"}, {\"id\": 2, \"description\": \"Re-renders with uv run bakery update files scoped to --image-name connect --image-version 2026.06.0\"}, {\"id\": 3, \"description\": \"Includes a build --plan or bakery get tags step to preview before building\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Recommends hand-editing bakery.yaml to add the version instead of using bakery create version\"}, {\"id\": \"f2\", \"description\": \"Uses bare bakery commands without the uv run prefix\"}, {\"id\": \"f3\", \"description\": \"Runs uv run bakery update files without filter flags\"}]}"
+  },
+  {
+    "id": "7-dev-channel-not-dev-stream",
+    "input": "I want to build only the daily dev-stream images. What flags do I pass to bakery build?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Uses --dev-channel daily (not --dev-stream daily)\"}, {\"id\": 2, \"description\": \"Includes --dev-versions include or --dev-versions only alongside --dev-channel\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Uses the deprecated --dev-stream flag instead of --dev-channel\"}]}"
+  },
+  {
+    "id": "8-dev-channel-requires-dev-versions",
+    "input": "I ran: uv run bakery build --dev-channel daily. No dev images were built. Why?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Identifies that --dev-versions defaults to exclude, so --dev-channel is silently ignored\"}, {\"id\": 2, \"description\": \"Provides the corrected command with --dev-versions include or --dev-versions only alongside --dev-channel daily\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Attributes the problem to a missing --dev-stream flag or other unrelated cause\"}]}"
+  },
+  {
+    "id": "9-dev-spec-for-dispatch",
+    "input": "We're setting up a workflow dispatch that lets CI pin an exact dev version to build, rather than resolving the latest from CDN. How should I wire this up with bakery?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Uses --dev-spec (or BAKERY_DEV_SPEC env var) with a JSON payload containing version and channel fields\"}, {\"id\": 2, \"description\": \"Shows or describes the JSON payload format, e.g. {\\\"version\\\": \\\"2026.05.0-dev+185-gSHA\\\", \\\"channel\\\": \\\"daily\\\"}\"}, {\"id\": 3, \"description\": \"Notes that --dev-versions include or only is still required alongside --dev-spec\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Uses --dev-channel alone without mentioning --dev-spec for pinning an exact version\"}, {\"id\": \"f2\", \"description\": \"Uses the deprecated --dev-stream flag\"}]}"
+  },
+  {
+    "id": "10-matrix-versions-excluded-by-default",
+    "input": "I want to build the connect-content matrix images. I ran uv run bakery build and nothing was built. What's wrong?",
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Identifies that --matrix-versions defaults to exclude, so matrix images are silently skipped\"}, {\"id\": 2, \"description\": \"Provides the corrected command with --matrix-versions include or --matrix-versions only\"}, {\"id\": 3, \"description\": \"Suggests running uv run bakery get tags or uv run bakery build --plan first to verify targets are non-empty\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Attributes the problem to a missing --dev-versions flag or other unrelated cause\"}]}"
+  }
+]
