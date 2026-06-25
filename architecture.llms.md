@@ -1,0 +1,309 @@
+# Architecture
+
+This page shows how Bakery’s commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.
+
+## Process Diagrams
+
+### Legend
+
+``` mermaid
+flowchart TB
+
+    subgraph Legend
+        input[/"Input"/]
+        output[/"Output"/]
+        implemented["Implemented"]
+        inprogress["Work In Progress"]
+        planned["Planned Work"]
+        bakery[["bakery command"]]
+        external[["3rd Party Tool"]]
+        tool["Container Tooling"]
+        reg[("Container Registry")]
+
+        input -. "input" .-> implemented -. "output" .-> output
+        input -. "input" .-> inprogress
+        input -. "input" .-> planned
+        tool o-- "uses" --o output
+        output -. "input" .-> bakery
+        bakery -- "call" --> external -.-> reg
+    end
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class bakery,tool,pti tooling
+    class external external
+    class inprogress progress
+    class planned todo
+```
+
+Legend for Diagrams
+
+### Workflow
+
+``` mermaid
+flowchart TD
+
+    create[["bakery create"]]
+    project[/Bakery Project/]
+    create -.-> project
+
+    build[["bakery build"]]
+    image[/Container Image/]
+    project -.-> build -.-> image
+
+    run[["bakery run"]]
+    results[/"Test & Scan Results"/]
+    image -.-> run -.-> results
+
+    reg[(Image Registry)]
+    sec[(Reporting Platform)]
+
+    image -.-> reg
+    results -.-> sec
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class create,build,run tooling
+    class push external
+    class inprogress progress
+    class planned todo
+```
+
+Bakery Workflow Overview
+
+### Create
+
+``` mermaid
+flowchart TD
+
+    subgraph "bakery"
+        direction TB
+
+        templatesDefault[/Default Jinja2 Templates/]
+        createProject[[bakery create project]]
+        createImage[[bakery create image]]
+        createVersion[[bakery create version]]
+    end
+
+    subgraph "GitHub Repository"
+        direction TB
+        subgraph "Project"
+            config[/bakery.yaml/]
+
+            subgraph "Image"
+                templatesImage[/Image Jinja2 Templates/]
+
+                subgraph "Image Version"
+                    containerfile[/Containerfile/]
+
+                    deps[/dependencies/]
+                    tests[/goss.yaml/]
+                end
+                deps -.-> containerfile
+            end
+        end
+
+        templatesDefault -.-> createProject -.-> config
+
+        config -.-> createImage
+        createImage -.-> config
+        templatesDefault -.-> createImage -.-> templatesImage
+
+        templatesImage -.-> createVersion -.-> tests & deps & containerfile
+        createVersion -.-> config
+        config -.-> createVersion
+    end
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class createProject,createImage,createVersion tooling
+```
+
+Bakery Project Creation Workflow
+
+### Build
+
+``` mermaid
+flowchart TD
+
+    subgraph "Project"
+        direction LR
+
+        config[/"bakery.yaml"/]
+        containerfile[/"Containerfile(s)"/]
+    end
+
+    build[[bakery build]]
+    plan[/".docker-bake.json<br/>(temporary file)"/]
+    bake[[docker buildx bake]]
+    image[/"Container Image(s)"/]
+
+    config -.-> build -.-> plan
+    plan & containerfile -.-> bake
+    build --> bake -.-> image
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class build tooling
+    class bake external
+```
+
+Bakery Build Workflow
+
+### Run Tests
+
+``` mermaid
+flowchart TD
+
+    subgraph "Container Artifacts"
+        direction LR
+        containerfile[/Containerfile/]
+        tests[/goss.yaml/]
+        image[/Container Image/]
+    end
+
+
+    results[/"Test & Scan Results"/]
+
+    lint[[hadolint]]
+    runLint[[bakery hadolint run]]
+    runLint --> lint
+    containerfile -.-> lint -.-> results
+
+    dgoss[[dgoss]]
+    runDgoss[[bakery dgoss run]]
+    image & tests -.-> dgoss
+    runDgoss --> dgoss
+    dgoss -.-> results
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class runLint,runDgoss tooling
+    class lint,dgoss external
+
+    %% Mark what we are working on and is in flight %%
+    class inprogress,snyk progress
+    class planned,openscap,results todo
+```
+
+Bakery Testing Workflow
+
+### Run Security Scans
+
+``` mermaid
+flowchart TD
+
+    image[/"Container Image(s)"/]
+    results[/"Test & Scan results"/]
+
+    trivy[[trivy]]
+    runTrivy[[bakery trivy run]]
+    runTrivy --> trivy
+    image -.-> trivy -.-> results
+
+    wizcli[[wizcli]]
+    runWizcli[[bakery wizcli scan]]
+    runWizcli --> wizcli
+    image -.-> wizcli -.-> results
+
+    openscap[[openscap]]
+    runOpenscap[[bakery openscap run]]
+    runOpenscap --> openscap
+    image -.-> openscap -.-> results
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class runTrivy,runOpenscap,runWizcli tooling
+    class trivy,openscap,wizcli external
+
+    %% Mark what we are working on and is in flight %%
+    class inprogress,trivy todo
+    class openscap,results todo
+```
+
+Bakery Scanning Workflow
+
+### Publish
+
+Image signing and coordinated publishing to registries and reporting platforms are planned. Currently, images are pushed during `bakery build --push` or through CI workflows.
+
+``` mermaid
+flowchart TD
+
+    image[/"Container Image(s)"/]
+    results[/"Test & Scan Results"/]
+
+    sign["Sign Image(s)"]
+    push["Push Image(s) & Results"]
+    image -.-> sign --> push
+
+    reg[("Image Registries")]
+    sec[("Reporting Platform(s)")]
+    image -.-> push -.-> reg
+    results -.-> push -.-> sec
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    %% Mark what we are working on and is in flight %%
+    class results,sign todo
+```
+
+Bakery Publishing Workflow
+
+For multiplatform builds, we prefer to build and test images on their native platforms rather than emulating all builds on a single platform. The resulting single platform images are pushed to a temporary registry, pulled in a dependent stage, and merged to an OCI index using [ORAS](https://oras.land/) before pushing to the final registry.
+
+``` mermaid
+flowchart TD
+
+    amd64_image[/"Container Image (AMD64)"/]
+    arm64_image[/"Container Image (ARM64)"/]
+    results[/"Test & Scan Results"/]
+
+    sign["Sign Image(s)"]
+    push_temp["Push to Temporary Registry"]
+    merge[["bakery oras merge"]]
+    push["Push Artifacts to Final Registry & Reporting Platform"]
+    amd64_image -.-> push_temp
+    arm64_image -.-> push_temp
+    push_temp -.-> merge -.-> sign --> push
+
+    reg[("Image Registries")]
+    sec[("Reporting Platform(s)")]
+    push -.-> reg
+    results -.-> push -.-> sec
+
+    classDef tooling fill:#7494B1,color:#fff
+    classDef external fill:grey,color:#fff
+    classDef progress stroke-dasharray: 2 2
+    classDef todo stroke-dasharray: 3 8
+
+    class merge tooling
+
+    %% Mark what we are working on and is in flight %%
+    class results,sign todo
+```
+
+Bakery Multiplatform Publishing Workflow
+
+Back to top
