@@ -41,11 +41,20 @@ class BakeryCIMatrixFieldEnum(str, Enum):
 def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None, rebase_root: Path) -> list[str] | None:
     """Return the changed-file list for change-aware filtering, or None to disable it.
 
-    ``--changed-files-from`` takes precedence over ``--base-ref``. Git paths are
-    relative to the repo root; they are rebased onto ``rebase_root`` and paths
-    outside the root are dropped.
+    ``--changed-files-from`` takes precedence over ``--base-ref``, and the two use
+    different path conventions.
+
+    - ``--base-ref`` runs ``git diff`` (paths relative to the repo root), then
+      rebases them onto ``rebase_root`` (the bakery context) and drops paths outside
+      it.
+    - ``--changed-files-from`` paths are used verbatim and must already be relative
+      to the bakery context root. They are not rebased, so do not pipe raw
+      ``git diff --name-only`` output here unless the context is the repo root. Use
+      ``--base-ref`` when you have a git checkout.
     """
     if changed_files_from is not None:
+        if base_ref is not None:
+            log.warning("--base-ref is ignored because --changed-files-from is set.")
         if changed_files_from == "-":
             raw = sys.stdin.read()
         else:
@@ -169,8 +178,8 @@ def matrix(
         typer.Option(
             "--changed-files-from",
             show_default=False,
-            help="Read changed file paths (one per line; '-' for stdin) instead of running git diff. "
-            "Overrides --base-ref.",
+            help="Read changed file paths (one per line, '-' for stdin), relative to the "
+            "bakery context root, instead of running git diff. Overrides --base-ref.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,

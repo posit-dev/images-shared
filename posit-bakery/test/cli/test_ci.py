@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -6,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
+from posit_bakery.cli.ci import _resolve_changed_files
 from posit_bakery.config.config import version_matches
 from posit_bakery.config.image.version import ImageVersion
 
@@ -220,6 +222,28 @@ class TestDevVersionDedup:
         assert dev_names.count("2026.01.0-dev+1-gABC") == 1, (
             f"Expected dev version to appear exactly once, got: {dev_names}"
         )
+
+
+def test_resolve_changed_files_warns_when_base_ref_also_given(tmp_path, caplog):
+    """--changed-files-from overrides --base-ref; the override must not be silent.
+
+    When both are supplied, --changed-files-from wins (its paths are used verbatim,
+    no git is run), and a warning announces that --base-ref is ignored.
+    """
+    changes = tmp_path / "changed.txt"
+    changes.write_text("app/template/Containerfile\n")
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_changed_files(
+            base_ref="origin/main",
+            changed_files_from=str(changes),
+            rebase_root=tmp_path,
+        )
+
+    assert result == ["app/template/Containerfile"]
+    assert any("--base-ref" in record.message and "ignored" in record.message.lower() for record in caplog.records), (
+        f"expected a warning that --base-ref is ignored, got: {[r.message for r in caplog.records]}"
+    )
 
 
 class TestVersionMatches:
