@@ -155,6 +155,12 @@ only be used when there is a legitimate reason, such as:
 When a local import is used, add a comment explaining why it is local rather than at the
 top of the file.
 
+### Tests
+
+Build multi-line string literals in tests (e.g. inline `bakery.yaml` fixtures) with
+`textwrap.dedent("""\ ... """)`, not `"line\n" "line\n"` concatenation. Dedent is the
+established pattern across `test/`.
+
 ## CI/CD Architecture
 
 This repo provides shared reusable GitHub Actions workflows that all product image repos call:

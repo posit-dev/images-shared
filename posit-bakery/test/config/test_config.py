@@ -406,6 +406,41 @@ class TestBakeryConfig:
         assert settings.dev_channel == ReleaseChannelEnum.DAILY
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
 
+    class TestEffectiveDevChannel:
+        """effective_dev_channel centralizes the dev-channel derivation so the
+        matrix path (cli/ci.py) and the build path (generate_image_targets)
+        filter dev versions by the same channel."""
+
+        def test_returns_dev_channel_when_set(self):
+            settings = BakerySettings(dev_channel=ReleaseChannelEnum.DAILY)
+            assert settings.effective_dev_channel == ReleaseChannelEnum.DAILY
+
+        def test_derives_channel_from_dev_spec_when_dev_channel_absent(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(
+                dev_spec=DevBuildSpec(version="2026.06.0+240", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            assert settings.effective_dev_channel == ReleaseChannelEnum.PREVIEW
+
+        def test_none_when_dev_spec_is_branch_only(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(dev_spec=DevBuildSpec(release_branch="2026.06"))
+            assert settings.effective_dev_channel is None
+
+        def test_none_when_no_channel_and_no_spec(self):
+            assert BakerySettings().effective_dev_channel is None
+
+        def test_dev_channel_takes_precedence_over_matching_spec(self):
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            settings = BakerySettings(
+                dev_channel=ReleaseChannelEnum.PREVIEW,
+                dev_spec=DevBuildSpec(version="2026.06.0+240", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            assert settings.effective_dev_channel == ReleaseChannelEnum.PREVIEW
+
     class TestDevBuildSpecApplication:
         def test_inert_when_no_spec(self, testdata_path, patch_requests_get):
             """No dev_spec: config loads normally, no version_override set on channel devVersions."""
@@ -448,23 +483,25 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: preview\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                          - sourceType: stream
+                            product: package-manager
+                            channel: preview
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
             settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
@@ -477,17 +514,19 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.DAILY)
             settings = BakerySettings(
@@ -505,17 +544,19 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
             settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
@@ -530,6 +571,48 @@ class TestBakeryConfig:
             ]
             assert len(pinned) == 1
             assert pinned[0].version_override == "2026.05.0-dev+999-gSHA"
+
+        def test_build_targets_filter_to_dev_spec_channel(self, tmp_path, patch_requests_get):
+            """generate_image_targets must drop the off-channel dev version when only
+            --dev-spec carries the channel (Bug 3). The build path used the raw
+            dev_channel (None here) and built both daily and preview; it must use
+            effective_dev_channel instead."""
+            from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+
+            bakery_yaml = tmp_path / "bakery.yaml"
+            bakery_yaml.write_text(
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                          - sourceType: stream
+                            product: package-manager
+                            channel: preview
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
+            )
+            settings = BakerySettings(
+                dev_versions=DevVersionInclusionEnum.ONLY,
+                dev_spec=DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.PREVIEW),
+            )
+            with patch.object(posit_bakery.config.image.Image, "render_ephemeral_version_files"):
+                with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
+                    config = BakeryConfig(bakery_yaml, settings=settings)
+
+            channels = {t.image_version.metadata.get("release_channel") for t in config.targets}
+            assert config.targets, "expected at least one preview target"
+            assert ReleaseChannelEnum.PREVIEW in channels
+            assert ReleaseChannelEnum.DAILY not in channels
 
     @pytest.mark.parametrize(
         "include_matrix_versions,expected_uids",
