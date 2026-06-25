@@ -105,6 +105,8 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
+          # PR-only: empty on merge_group/push/scheduled, which intentionally
+          # fall back to the full matrix. Do not wire in merge_group.base_sha.
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
           BASE_FLAG=()
@@ -124,6 +126,8 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
+          # PR-only: empty on merge_group/push/scheduled, which intentionally
+          # fall back to the full matrix. Do not wire in merge_group.base_sha.
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
           BASE_FLAG=()
