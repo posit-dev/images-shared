@@ -39,7 +39,7 @@ The output is a JSON array of objects with the following structure:
 
 Arguments: \[IMAGE_NAME\] The image name to isolate matrix to.
 
-Options: –dev-versions \[include\|exclude\|only\] Include or exclude development versions defined in config. \[default: exclude\] –dev-channel \[release\|preview\|daily\] Filter development versions to a specific release channel. –matrix-versions \[include\|exclude\|only\] Include or exclude versions defined in image matrix. \[default: exclude\] –image-version TEXT The image version to filter to. –exclude \[version\|dev\|platform\] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. \[default: (.)\] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ \[env var: BAKERY_DEV_SPEC\] -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. \`\`\`
+Options: –dev-versions \[include\|exclude\|only\] Include or exclude development versions defined in config. \[default: exclude\] –dev-channel \[release\|preview\|daily\] Filter development versions to a specific release channel. –matrix-versions \[include\|exclude\|only\] Include or exclude versions defined in image matrix. \[default: exclude\] –image-version TEXT The image version to filter to. –exclude \[version\|dev\|platform\] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. \[default: (.)\] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ \[env var: BAKERY_DEV_SPEC\] –base-ref TEXT Git ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. \[env var: BAKERY_BASE_REF\] –changed-files-from TEXT Read changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides –base-ref. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. \`\`\`
 
 ## Arguments
 
@@ -68,6 +68,12 @@ The root path to use. Defaults to the current working directory where invoked.
 
 `--dev-spec``:`` ``TEXT`  
 JSON spec for a dispatched dev build. Ex: `{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}` Environment variable: `BAKERY_DEV_SPEC`.
+
+`--base-ref``:`` ``TEXT`  
+Git ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. Environment variable: `BAKERY_BASE_REF`.
+
+`--changed-files-from``:`` ``TEXT`  
+Read changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides `--base-ref`.
 
 `-v, --verbose`  
 Enable debug logging

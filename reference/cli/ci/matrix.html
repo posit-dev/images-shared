@@ -824,7 +824,7 @@ window.onload = function () {
     }
   ]</code></pre>
 <p>Arguments: [IMAGE_NAME] The image name to isolate matrix to.</p>
-<p>Options: –dev-versions [include|exclude|only] Include or exclude development versions defined in config. [default: exclude] –dev-channel [release|preview|daily] Filter development versions to a specific release channel. –matrix-versions [include|exclude|only] Include or exclude versions defined in image matrix. [default: exclude] –image-version TEXT The image version to filter to. –exclude [version|dev|platform] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ [env var: BAKERY_DEV_SPEC] -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
+<p>Options: –dev-versions [include|exclude|only] Include or exclude development versions defined in config. [default: exclude] –dev-channel [release|preview|daily] Filter development versions to a specific release channel. –matrix-versions [include|exclude|only] Include or exclude versions defined in image matrix. [default: exclude] –image-version TEXT The image version to filter to. –exclude [version|dev|platform] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ [env var: BAKERY_DEV_SPEC] –base-ref TEXT Git ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. [env var: BAKERY_BASE_REF] –changed-files-from TEXT Read changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides –base-ref. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
 </div>
 </div>
 <section id="arguments" class="level2 doc-parameters">
@@ -869,6 +869,14 @@ The root path to use. Defaults to the current working directory where invoked.
 <dt><code><span class="doc-parameter-name">--dev-spec</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
 <dd>
 JSON spec for a dispatched dev build. Ex: <code>{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}</code> Environment variable: <code>BAKERY_DEV_SPEC</code>.
+</dd>
+<dt><code><span class="doc-parameter-name">--base-ref</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+Git ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. Environment variable: <code>BAKERY_BASE_REF</code>.
+</dd>
+<dt><code><span class="doc-parameter-name">--changed-files-from</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+Read changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides <code>--base-ref</code>.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>
