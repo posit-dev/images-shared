@@ -41,11 +41,20 @@ class BakeryCIMatrixFieldEnum(str, Enum):
 def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None, rebase_root: Path) -> list[str] | None:
     """Return the changed-file list for change-aware filtering, or None to disable it.
 
-    ``--changed-files-from`` takes precedence over ``--base-ref``. Git paths are
-    relative to the repo root; they are rebased onto ``rebase_root`` and paths
-    outside the root are dropped.
+    ``--changed-files-from`` takes precedence over ``--base-ref``, and the two use
+    different path conventions.
+
+    - ``--base-ref`` runs ``git diff`` (paths relative to the repo root), then
+      rebases them onto ``rebase_root`` (the bakery context) and drops paths outside
+      it.
+    - ``--changed-files-from`` paths are used verbatim and must already be relative
+      to the bakery context root. They are not rebased, so do not pipe raw
+      ``git diff --name-only`` output here unless the context is the repo root. Use
+      ``--base-ref`` when you have a git checkout.
     """
     if changed_files_from is not None:
+        if base_ref is not None:
+            log.warning("--base-ref is ignored because --changed-files-from is set.")
         if changed_files_from == "-":
             raw = sys.stdin.read()
         else:
@@ -77,11 +86,16 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
 
 
 def _version_selected(ver: ImageVersion, cs: ImageChangeSet) -> bool:
-    """Whether a candidate version is wanted by a change set."""
-    if getattr(ver, "isDevelopmentVersion", False):
+    """Whether a candidate version was touched by the change set.
+
+    Pure narrowing predicate. Type/channel eligibility (--dev-versions,
+    --matrix-versions, --dev-channel) is enforced separately by the caller via
+    matches_dev_filter, so this only answers "did the PR touch this version?".
+    """
+    if ver.isDevelopmentVersion:
         return cs.include_dev
-    if getattr(ver, "isMatrixVersion", False):
-        return cs.include_matrix_latest and bool(getattr(ver, "latest", False))
+    if ver.isMatrixVersion:
+        return cs.include_matrix_latest and ver.latest
     # Plain release version.
     return cs.include_all_release or ver.name in cs.versions
 
@@ -169,8 +183,8 @@ def matrix(
         typer.Option(
             "--changed-files-from",
             show_default=False,
-            help="Read changed file paths (one per line; '-' for stdin) instead of running git diff. "
-            "Overrides --base-ref.",
+            help="Read changed file paths (one per line, '-' for stdin), relative to the "
+            "bakery context root, instead of running git diff. Overrides --base-ref.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -229,45 +243,35 @@ def matrix(
 
             entry = {"image": img.name}
 
-            if cs is not None:
-                # Change-aware: build candidates purely from this image's change set.
-                # _version_selected() gates each candidate by type (release / dev /
-                # matrix-latest), so the list only needs to *contain* each wanted
-                # version exactly once.
-                if cs.include_dev and dev_versions == DevVersionInclusionEnum.EXCLUDE:
-                    # Dev versions are not loaded under the EXCLUDE baseline; load them
-                    # now. (Under INCLUDE/ONLY, BakeryConfig already loaded them at
-                    # config time, so loading again would duplicate entries.)
-                    img.load_dev_versions()
-                versions = list(img.versions)
-                if img.matrix is not None:
-                    versions = versions + img.matrix.to_image_versions()
-            else:
-                # Full-matrix path (no change-awareness). Preserves the matrix+dev
-                # filtering fix (commit 92c72833 / generate_image_targets): when matrix
-                # versions are included, fold the already-loaded dev versions into the
-                # matrix product per the dev_versions setting so they survive the
-                # matches_dev_filter check below.
-                versions = list(img.versions)
-                if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
-                    continue
-                elif img.matrix is not None:
-                    if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                        if dev_versions == DevVersionInclusionEnum.ONLY:
-                            pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
-                        elif dev_versions == DevVersionInclusionEnum.INCLUDE:
-                            dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
-                            versions = img.matrix.to_image_versions() + dev_versions_loaded
-                        else:
-                            versions = img.matrix.to_image_versions()
+            # Candidate versions honor --dev-versions / --matrix-versions identically
+            # whether or not change-aware filtering is active. Preserves the matrix+dev
+            # filtering fix (commit 92c72833 / generate_image_targets): when matrix
+            # versions are included, fold the already-loaded dev versions into the
+            # matrix product per the dev_versions setting so they survive the
+            # matches_dev_filter check below.
+            versions = list(img.versions)
+            if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
+                continue
+            elif img.matrix is not None:
+                if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
+                    if dev_versions == DevVersionInclusionEnum.ONLY:
+                        pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
+                    elif dev_versions == DevVersionInclusionEnum.INCLUDE:
+                        dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
+                        versions = img.matrix.to_image_versions() + dev_versions_loaded
+                    else:
+                        versions = img.matrix.to_image_versions()
 
             for ver in versions:
+                # The caller's flags decide which kinds of version are eligible
+                # (release / dev / matrix), in both full and change-aware modes.
+                included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
+                if not included:
+                    continue
+                # In change-aware mode the change set then narrows to the versions
+                # the PR actually touched. It only ever removes candidates.
                 if cs is not None and not _version_selected(ver, cs):
                     continue
-                if cs is None:
-                    included, _ = ver.matches_dev_filter(dev_versions, dev_channel)
-                    if not included:
-                        continue
                 if image_version is not None and not version_matches(ver.name, image_version):
                     continue
 
