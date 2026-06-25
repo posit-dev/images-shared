@@ -483,23 +483,25 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: preview\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                          - sourceType: stream
+                            product: package-manager
+                            channel: preview
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
             settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
@@ -512,17 +514,19 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA", channel=ReleaseChannelEnum.DAILY)
             settings = BakerySettings(
@@ -540,17 +544,19 @@ class TestBakeryConfig:
 
             bakery_yaml = tmp_path / "bakery.yaml"
             bakery_yaml.write_text(
-                "repository:\n"
-                "  url: https://github.com/posit-dev/test\n"
-                "images:\n"
-                "  - name: test-image\n"
-                "    devVersions:\n"
-                "      - sourceType: stream\n"
-                "        product: package-manager\n"
-                "        channel: daily\n"
-                "        os:\n"
-                "          - name: Ubuntu 24.04\n"
-                "            primary: true\n"
+                textwrap.dedent("""\
+                    repository:
+                      url: https://github.com/posit-dev/test
+                    images:
+                      - name: test-image
+                        devVersions:
+                          - sourceType: stream
+                            product: package-manager
+                            channel: daily
+                            os:
+                              - name: Ubuntu 24.04
+                                primary: true
+                    """)
             )
             spec = DevBuildSpec(version="2026.05.0-dev+999-gSHA")
             settings = BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, dev_spec=spec)
