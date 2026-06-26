@@ -137,6 +137,13 @@ jobs:
           result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
+      - name: Upload CDN cache
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: bakery-cdn-cache
+          path: /tmp/bakery_cache/
+          if-no-files-found: ignore
+
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
     needs:
@@ -198,6 +205,13 @@ jobs:
         run: |
           PLATFORM=${BUILD_PLATFORM#linux/}
           echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+
+      - name: Restore CDN cache
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: bakery-cdn-cache
+          path: /tmp/bakery_cache/
 
       - name: Build
         env:
