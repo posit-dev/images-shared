@@ -13,8 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.oras.oras import OrasCopy
-from posit_bakery.plugins.builtin.soci.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.oras import OrasCopy
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.retry import RetryPolicy, retry_on_transient
 from posit_bakery.util import find_bin
 

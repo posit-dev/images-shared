@@ -1,4 +1,4 @@
-"""Tests for the OrasPlugin."""
+"""Tests for the ORAS merge side of the ImageToolsPlugin (merge_execute)."""
 
 import logging
 import subprocess
@@ -9,8 +9,8 @@ import pytest
 import typer
 
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext, ImageTargetSettings, StringableList
-from posit_bakery.plugins.builtin.oras import OrasPlugin
-from posit_bakery.plugins.builtin.oras.oras import OrasMergeWorkflowResult
+from posit_bakery.plugins.builtin.imagetools import ImageToolsPlugin
+from posit_bakery.plugins.builtin.imagetools.oras import OrasMergeWorkflowResult
 from posit_bakery.plugins.protocol import BakeryToolPlugin
 
 pytestmark = [pytest.mark.unit]
@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.unit]
 
 @pytest.fixture
 def plugin():
-    return OrasPlugin()
+    return ImageToolsPlugin()
 
 
 @pytest.fixture
@@ -59,25 +59,25 @@ def mock_target_without_sources():
     return mock_target
 
 
-class TestOrasPluginProtocol:
+class TestImageToolsPluginProtocol:
     def test_implements_protocol(self, plugin):
         assert isinstance(plugin, BakeryToolPlugin)
 
     def test_name(self, plugin):
-        assert plugin.name == "oras"
+        assert plugin.name == "imagetools"
 
     def test_description(self, plugin):
-        assert plugin.description == "Merge multi-platform images using ORAS"
+        assert plugin.description == "Merge and SOCI-convert multi-platform images (ORAS + SOCI)"
 
 
-class TestOrasPluginExecute:
-    def test_execute_success(self, plugin, mock_target_with_sources):
+class TestImageToolsPluginMergeExecute:
+    def test_merge_execute_success(self, plugin, mock_target_with_sources):
         with (
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-            results = plugin.execute(
+            results = plugin.merge_execute(
                 Path("/project"),
                 [mock_target_with_sources],
             )
@@ -88,18 +88,18 @@ class TestOrasPluginExecute:
         assert results[0].target is mock_target_with_sources
         assert results[0].artifacts["workflow_result"].success is True
 
-    def test_execute_skips_targets_without_sources(self, plugin, mock_target_without_sources):
-        results = plugin.execute(
+    def test_merge_execute_skips_targets_without_sources(self, plugin, mock_target_without_sources):
+        results = plugin.merge_execute(
             Path("/project"),
             [mock_target_without_sources],
         )
 
         assert len(results) == 0
 
-    def test_execute_missing_temp_registry(self, plugin, mock_target_with_sources):
+    def test_merge_execute_missing_temp_registry(self, plugin, mock_target_with_sources):
         mock_target_with_sources.settings.temp_registry = None
 
-        results = plugin.execute(
+        results = plugin.merge_execute(
             Path("/project"),
             [mock_target_with_sources],
         )
@@ -108,15 +108,15 @@ class TestOrasPluginExecute:
         assert results[0].exit_code == 1
         assert "temp_registry" in results[0].stderr
 
-    def test_execute_workflow_failure(self, plugin, mock_target_with_sources):
+    def test_merge_execute_workflow_failure(self, plugin, mock_target_with_sources):
         with (
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=1, stdout=b"", stderr=b"create failed"
             )
-            results = plugin.execute(
+            results = plugin.merge_execute(
                 Path("/project"),
                 [mock_target_with_sources],
             )
@@ -125,12 +125,12 @@ class TestOrasPluginExecute:
         assert results[0].exit_code == 1
         assert results[0].artifacts["workflow_result"].success is False
 
-    def test_execute_dry_run(self, plugin, mock_target_with_sources):
+    def test_merge_execute_dry_run(self, plugin, mock_target_with_sources):
         with (
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
             patch("subprocess.run") as mock_run,
         ):
-            results = plugin.execute(
+            results = plugin.merge_execute(
                 Path("/project"),
                 [mock_target_with_sources],
                 dry_run=True,
@@ -141,13 +141,13 @@ class TestOrasPluginExecute:
         assert results[0].exit_code == 0
         assert results[0].artifacts["workflow_result"].success is True
 
-    def test_execute_mixed_targets(self, plugin, mock_target_with_sources, mock_target_without_sources):
+    def test_merge_execute_mixed_targets(self, plugin, mock_target_with_sources, mock_target_without_sources):
         with (
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
-            results = plugin.execute(
+            results = plugin.merge_execute(
                 Path("/project"),
                 [mock_target_with_sources, mock_target_without_sources],
             )
@@ -156,7 +156,7 @@ class TestOrasPluginExecute:
         assert len(results) == 1
         assert results[0].target is mock_target_with_sources
 
-    def test_execute_processes_targets_in_push_sort_key_order(self, plugin, caplog):
+    def test_merge_execute_processes_targets_in_push_sort_key_order(self, plugin, caplog):
         """Targets are processed in ascending push_sort_key order, regardless of input order."""
 
         def make_target(name, sort_key):
@@ -196,15 +196,15 @@ class TestOrasPluginExecute:
             return OrasMergeWorkflowResult(success=True, destinations=[])
 
         with (
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
+            patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
             patch(
-                "posit_bakery.plugins.builtin.oras.OrasMergeWorkflow.run",
+                "posit_bakery.plugins.builtin.imagetools.oras.OrasMergeWorkflow.run",
                 autospec=True,
                 side_effect=fake_run,
             ),
-            caplog.at_level(logging.INFO, logger="posit_bakery.plugins.builtin.oras"),
+            caplog.at_level(logging.INFO, logger="posit_bakery.plugins.builtin.imagetools.imagetools"),
         ):
-            plugin.execute(Path("/project"), targets)
+            plugin.merge_execute(Path("/project"), targets)
 
         assert call_order == expected_order, f"got {call_order}, want {expected_order}"
         order_log_lines = [r for r in caplog.records if "ORAS merge order:" in r.getMessage()]
@@ -213,11 +213,14 @@ class TestOrasPluginExecute:
         assert msg.endswith("a-first, c-second, b-third, d-last"), msg
 
 
-class TestOrasPluginCLI:
-    def test_register_cli_adds_oras_command(self, plugin):
+class TestImageToolsPluginCLI:
+    def test_register_cli_adds_command_groups(self, plugin):
         app = typer.Typer()
         plugin.register_cli(app)
 
-        # Verify the oras group was registered
+        # The canonical `imagetools` group plus the hidden back-compat aliases
+        # (`oras`, `soci`) should all be registered.
         group_names = [g.name for g in app.registered_groups]
+        assert "imagetools" in group_names
         assert "oras" in group_names
+        assert "soci" in group_names

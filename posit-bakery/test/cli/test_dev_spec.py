@@ -321,56 +321,56 @@ class TestRunDgossDevSpec:
 
 
 class TestCiPublishDevSpec:
-    """Tests for --dev-spec / BAKERY_DEV_SPEC in bakery ci publish."""
+    """Tests for --dev-spec / BAKERY_DEV_SPEC in bakery ci publish.
+
+    The orchestration lives in ``ImageToolsPlugin.publish``; ``ci publish`` is a
+    thin wrapper, so these tests assert the parsed ``dev_spec`` is forwarded to
+    the plugin (which threads it into BakerySettings).
+    """
 
     def _invoke(self, extra_args: list[str], env: dict | None = None):
-        with (
-            patch("posit_bakery.cli.ci.BakeryConfig") as mock_config,
-            patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value=Path("/fake/oras")),
-            patch("posit_bakery.plugins.registry.get_plugin") as mock_get_plugin,
-        ):
-            instance = MagicMock()
-            instance.load_build_metadata_from_file.return_value = []
-            instance.base_path = Path(BASIC_CONTEXT)
-            mock_config.from_context.return_value = instance
-            mock_soci = MagicMock()
-            mock_soci.execute.return_value = []
-            mock_get_plugin.return_value = mock_soci
+        with patch("posit_bakery.plugins.registry.get_plugin") as mock_get_plugin:
+            plugin = MagicMock()
+            mock_get_plugin.return_value = plugin
             result = runner.invoke(
                 app,
                 ["ci", "publish", "/fake/metadata.json", "--context", BASIC_CONTEXT] + extra_args,
                 env=env,
                 catch_exceptions=False,
             )
-            return result, mock_config
+            return result, plugin
+
+    @staticmethod
+    def _forwarded_dev_spec(plugin):
+        """Extract the dev_spec forwarded to the delegated plugin.publish call."""
+        return plugin.publish.call_args.kwargs["dev_spec"]
 
     def test_dev_spec_via_flag(self):
-        """--dev-spec JSON is parsed and forwarded to BakerySettings in ci publish."""
-        result, mock = self._invoke(["--dev-spec", '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'])
+        """--dev-spec JSON is parsed and forwarded to the plugin in ci publish."""
+        result, plugin = self._invoke(["--dev-spec", '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'])
         assert result.exit_code == 0, result.output
-        settings = settings_from_call(mock)
-        assert isinstance(settings.dev_spec, DevBuildSpec)
-        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
-        assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
+        dev_spec = self._forwarded_dev_spec(plugin)
+        assert isinstance(dev_spec, DevBuildSpec)
+        assert dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert dev_spec.channel == ReleaseChannelEnum.DAILY
 
     def test_dev_spec_via_env_var(self):
         """BAKERY_DEV_SPEC env var works in ci publish."""
-        result, mock = self._invoke(
+        result, plugin = self._invoke(
             [],
             env={"BAKERY_DEV_SPEC": '{"version": "2026.05.0-dev+185-gSHA"}'},
         )
         assert result.exit_code == 0, result.output
-        settings = settings_from_call(mock)
-        assert isinstance(settings.dev_spec, DevBuildSpec)
-        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
-        assert settings.dev_spec.channel is None
+        dev_spec = self._forwarded_dev_spec(plugin)
+        assert isinstance(dev_spec, DevBuildSpec)
+        assert dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert dev_spec.channel is None
 
     def test_dev_spec_absent_is_none(self):
-        """When --dev-spec is absent, BakerySettings.dev_spec is None."""
-        result, mock = self._invoke([])
+        """When --dev-spec is absent, the forwarded dev_spec is None."""
+        result, plugin = self._invoke([])
         assert result.exit_code == 0, result.output
-        settings = settings_from_call(mock)
-        assert settings.dev_spec is None
+        assert self._forwarded_dev_spec(plugin) is None
 
     def test_dev_spec_invalid_json_rejected(self):
         """Invalid JSON in --dev-spec causes a non-zero exit."""
