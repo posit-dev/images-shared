@@ -73,6 +73,41 @@ class ShellResult:
         return self.exception is None and self.returncode == 0
 
 
+@dataclass
+class ShellJob:
+    """A unit of work that runs an ordered sequence of commands.
+
+    ``run`` receives a :class:`CommandRunner` bound to this job and uses it to invoke each
+    command in order; the executor runs jobs concurrently up to the worker bound. The
+    callable's return value is surfaced on :attr:`JobResult.value`.
+    """
+
+    key: str
+    run: Callable[["CommandRunner"], Any]
+    label: str | None = None
+    payload: Any = None  # opaque caller data, passed through unchanged on JobResult.job.payload
+
+    @property
+    def display_label(self) -> str:
+        """Human-facing label for live output; falls back to job key."""
+        return self.label or self.key
+
+
+@dataclass
+class JobResult:
+    """The outcome of running a ShellJob."""
+
+    job: ShellJob
+    value: Any = None
+    exception: Exception | None = None
+    duration: float = 0.0
+
+    @property
+    def ok(self) -> bool:
+        """True when the job callable returned without raising."""
+        return self.exception is None
+
+
 def resolve_max_workers(jobs: int | None, n_tasks: int) -> int:
     """Resolve the worker count: --jobs override, else SETTINGS, clamped to [1, n_tasks].
 
@@ -114,8 +149,8 @@ class ParallelShellExecutor:
             return self._use_live
         return self.console.is_terminal and SETTINGS.log_level < logging.ERROR and n_tasks > 1
 
-    def _mark_running(self, task: ShellTask) -> None:
-        """Flip a task's live-table row from queued to running and start its timer.
+    def _mark_running_row(self, key: str, label: str) -> None:
+        """Flip a live-table row from queued to running and start its timer.
 
         Safe to call from worker threads: Rich Progress mutations are internally locked and
         are not console output. No-op when no live Progress is attached.
@@ -123,10 +158,18 @@ class ParallelShellExecutor:
         progress = self._progress
         if progress is None:
             return
-        task_id = self._progress_ids.get(task.key)
-        if task_id is not None:
-            progress.start_task(task_id)
-            progress.update(task_id, description=f"[bright_blue]running {task.display_label}")
+        row_id = self._progress_ids.get(key)
+        if row_id is not None:
+            progress.start_task(row_id)
+            progress.update(row_id, description=f"[bright_blue]running {label}")
+
+    def _mark_running(self, task: ShellTask) -> None:
+        """Flip a task's live-table row from queued to running and start its timer.
+
+        Safe to call from worker threads: Rich Progress mutations are internally locked and
+        are not console output. No-op when no live Progress is attached.
+        """
+        self._mark_running_row(task.key, task.display_label)
 
     def _spawn_and_communicate(
         self,
@@ -210,6 +253,16 @@ class ParallelShellExecutor:
             timed_out=timed_out,
         )
 
+    def _run_job(self, job: ShellJob) -> JobResult:
+        """Run one job's callable, handing it a CommandRunner bound to the job."""
+        start = time.monotonic()
+        runner = CommandRunner(self, job.key, job.display_label)
+        try:
+            value = job.run(runner)
+        except Exception as exc:  # job callable raised; surface without crashing pool
+            return JobResult(job=job, value=None, exception=exc, duration=time.monotonic() - start)
+        return JobResult(job=job, value=value, exception=None, duration=time.monotonic() - start)
+
     @staticmethod
     def _stop(proc: subprocess.Popen, grace: float = TERMINATE_GRACE_SECONDS) -> None:
         """Stop a child group gracefully: SIGTERM the group, wait up to grace, then SIGKILL it."""
@@ -246,14 +299,45 @@ class ParallelShellExecutor:
         terminates in-flight child processes before re-raising, so Ctrl-C is responsive and
         does not leave orphaned children.
         """
-        if not tasks:
+        return self._execute_pool(tasks, worker=self._run_one, on_result=on_result)
+
+    def run_jobs(
+        self,
+        jobs: list[ShellJob],
+        *,
+        on_result: Callable[[JobResult], None] | None = None,
+    ) -> list[JobResult]:
+        """Run all jobs (each an ordered command sequence) concurrently, returning results in input order.
+
+        Each job's callable runs on a worker thread with a :class:`CommandRunner` bound to it;
+        commands it spawns are tracked exactly like task runs, so timeout enforcement,
+        process-group termination, and interrupt-safety all apply. ``on_result`` fires per job
+        on the main thread (so callers can mutate shared state without locks).
+        """
+        return self._execute_pool(jobs, worker=self._run_job, on_result=on_result)
+
+    def _execute_pool(
+        self,
+        units: list,
+        *,
+        worker: Callable[[Any], Any],
+        on_result: Callable[[Any], None] | None,
+    ) -> list:
+        """Shared driver for :meth:`run` and :meth:`run_jobs`.
+
+        ``units`` each expose ``.key`` and ``.display_label``; ``worker`` maps a unit to its
+        result, and the result must expose ``.ok`` (used to render live table's check/cross mark).
+        Owns the thread pool, live-table lifecycle, interrupt handling, and input-order result
+        assembly so both call paths share identical Ctrl-C and process-group-termination semantics.
+        """
+        if not units:
             return []
 
         self._shutdown = False
         self._progress = None
         self._progress_ids = {}
-        use_live = self._resolve_use_live(len(tasks))
-        results_by_key: dict[str, ShellResult] = {}
+        use_live = self._resolve_use_live(len(units))
+        results_by_key: dict[str, Any] = {}
         progress: Progress | None = None
         progress_ids: dict[str, Any] = {}
 
@@ -270,12 +354,12 @@ class ParallelShellExecutor:
         def consume(future_map: dict) -> None:
             for future in as_completed(future_map):
                 result = future.result()
-                results_by_key[result.task.key] = result
+                results_by_key[future_map[future].key] = result
                 if progress is not None:
                     status = "[green3]✓" if result.ok else "[bright_red]✗"
                     progress.update(
-                        progress_ids[result.task.key],
-                        description=f"{status} {result.task.display_label}",
+                        progress_ids[future_map[future].key],
+                        description=f"{status} {future_map[future].display_label}",
                         completed=1,
                     )
                 if on_result is not None:
@@ -285,18 +369,18 @@ class ParallelShellExecutor:
         try:
             if progress is not None:
                 with progress:
-                    for task in tasks:
-                        progress_ids[task.key] = progress.add_task(
-                            f"[quiet]{'queued':<7} {task.display_label}", total=1, start=False
+                    for unit in units:
+                        progress_ids[unit.key] = progress.add_task(
+                            f"[quiet]{'queued':<7} {unit.display_label}", total=1, start=False
                         )
                     self._progress_ids = progress_ids
-                    future_map = {pool.submit(self._run_one, task): task for task in tasks}
+                    future_map = {pool.submit(worker, unit): unit for unit in units}
                     consume(future_map)
             else:
-                future_map = {pool.submit(self._run_one, task): task for task in tasks}
+                future_map = {pool.submit(worker, unit): unit for unit in units}
                 consume(future_map)
         except BaseException:
-            # Interrupted (e.g. Ctrl-C): stop accepting/continuing work, drop queued tasks,
+            # Interrupted (e.g. Ctrl-C): stop accepting/continuing work, drop queued units,
             # and terminate running children, then propagate.
             with self._lock:
                 self._shutdown = True
@@ -309,4 +393,42 @@ class ParallelShellExecutor:
             self._progress = None
             self._progress_ids = {}
 
-        return [results_by_key[task.key] for task in tasks]
+        return [results_by_key[unit.key] for unit in units]
+
+
+class CommandRunner:
+    """Executes commands within a ShellJob, binding subprocess lifecycle to the job's executor.
+
+    Each job receives a CommandRunner instance bound to itself; the runner's ``run()`` method
+    spawns subprocesses via the shared executor's tracked-spawn primitives, so timeout
+    enforcement, process-group termination, and interrupt-safety all apply transparently.
+    """
+
+    def __init__(self, executor: "ParallelShellExecutor", key: str, label: str | None = None) -> None:
+        self._executor = executor
+        self._key = key
+        self._label = label or key
+
+    def run(
+        self,
+        cmd: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        cwd: Path | None = None,
+    ) -> subprocess.CompletedProcess:
+        """Run ``cmd`` as a tracked child process and return completed result.
+
+        Does not raise on non-zero exit — callers with raise-on-failure semantics
+        (e.g. ``OrasCommand.run()``) check ``returncode`` themselves, exactly as when
+        calling ``subprocess.run()`` directly.
+        """
+        returncode, stdout, stderr, _timed_out, exception = self._executor._spawn_and_communicate(
+            cmd,
+            env=env,
+            cwd=cwd,
+            timeout=None,
+            on_started=lambda: self._executor._mark_running_row(self._key, self._label),
+        )
+        if exception is not None:
+            raise exception
+        return subprocess.CompletedProcess(args=cmd, returncode=returncode, stdout=stdout, stderr=stderr)

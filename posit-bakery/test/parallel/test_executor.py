@@ -12,7 +12,15 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
-from posit_bakery.parallel import ParallelShellExecutor, ShellResult, ShellTask, resolve_max_workers
+from posit_bakery.parallel import (
+    CommandRunner,
+    JobResult,
+    ParallelShellExecutor,
+    ShellJob,
+    ShellResult,
+    ShellTask,
+    resolve_max_workers,
+)
 
 PY = sys.executable
 
@@ -305,3 +313,82 @@ class TestParallelShellExecutorInterrupt:
         assert elapsed < 3  # stopped promptly, not waited out for 30s
         assert result.returncode != 0  # the child was signalled, not a clean exit
         assert ex._active == set()  # never registered (or already discarded)
+
+
+class TestShellJob:
+    def test_display_label_defaults_to_key(self):
+        job = ShellJob(key="abc", run=lambda runner: None)
+        assert job.display_label == "abc"
+
+    def test_display_label_uses_label_when_set(self):
+        job = ShellJob(key="abc", run=lambda runner: None, label="My Label")
+        assert job.display_label == "My Label"
+
+
+class TestJobResult:
+    def test_ok_true_on_no_exception(self):
+        job = ShellJob(key="a", run=lambda runner: None)
+        result = JobResult(job=job, value=42)
+        assert result.ok is True
+
+    def test_ok_false_on_exception(self):
+        job = ShellJob(key="a", run=lambda runner: None)
+        result = JobResult(job=job, value=None, exception=RuntimeError("boom"))
+        assert result.ok is False
+
+
+class TestParallelShellExecutorJobs:
+    def _executor(self, max_workers):
+        return ParallelShellExecutor(
+            max_workers=max_workers,
+            console=Console(file=io.StringIO()),
+            use_live=False,
+        )
+
+    def test_empty_jobs_returns_empty(self):
+        assert self._executor(2).run_jobs([]) == []
+
+    def test_results_returned_in_input_order(self):
+        # Sleep durations are inverted vs. input order so completion order differs.
+        durations = {"a": 0.30, "b": 0.05, "c": 0.15}
+
+        def make_run(d):
+            return lambda runner: runner.run([PY, "-c", f"import time; time.sleep({d})"]).returncode
+
+        jobs = [ShellJob(key=k, run=make_run(d)) for k, d in durations.items()]
+        results = self._executor(3).run_jobs(jobs)
+        assert [r.job.key for r in results] == ["a", "b", "c"]
+
+    def test_job_exception_isolated_others_still_run(self):
+        def boom(runner):
+            raise RuntimeError("target blew up")
+
+        def ok(runner):
+            return runner.run([PY, "-c", "pass"]).returncode
+
+        jobs = [ShellJob(key="bad", run=boom), ShellJob(key="good", run=ok)]
+        results = self._executor(2).run_jobs(jobs)
+        by_key = {r.job.key: r for r in results}
+        assert by_key["bad"].ok is False
+        assert isinstance(by_key["bad"].exception, RuntimeError)
+        assert by_key["good"].ok is True
+        assert by_key["good"].value == 0
+
+    def test_runner_run_returns_completed_process(self):
+        captured = {}
+
+        def run(runner):
+            captured["result"] = runner.run([PY, "-c", "import sys; sys.stdout.write('out'); sys.exit(3)"])
+
+        self._executor(1).run_jobs([ShellJob(key="a", run=run)])
+        result = captured["result"]
+        assert result.returncode == 3
+        assert result.stdout == b"out"
+
+    def test_runner_run_spawn_failure_raises(self):
+        def run(runner):
+            runner.run(["definitely-not-a-real-binary-zzz"])
+
+        results = self._executor(1).run_jobs([ShellJob(key="a", run=run)])
+        assert results[0].ok is False
+        assert isinstance(results[0].exception, (FileNotFoundError, OSError))
