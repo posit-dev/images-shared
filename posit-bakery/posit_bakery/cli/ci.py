@@ -397,6 +397,16 @@ def publish(
             help="Temporary registry to use for split/merge builds.", rich_help_panel="Build Configuration & Outputs"
         ),
     ] = None,
+    jobs: Annotated[
+        Optional[int],
+        typer.Option(
+            "--jobs",
+            "-j",
+            show_default=False,
+            help="Maximum number of targets to publish concurrently. "
+            "Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.",
+        ),
+    ] = None,
     dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
     dev_channel: Annotated[
         Optional[ReleaseChannelEnum],
@@ -459,6 +469,7 @@ def publish(
         dry_run=dry_run,
         dev_channel=dev_channel,
         dev_spec=dev_spec,
+        jobs=jobs,
     )
 
 

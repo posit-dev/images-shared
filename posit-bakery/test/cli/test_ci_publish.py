@@ -248,3 +248,37 @@ def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
     assert result.exit_code == 1
     assert result.exception is None or isinstance(result.exception, SystemExit)
     mock_create.assert_not_called()
+
+
+def test_publish_jobs_flag_present():
+    runner = CliRunner()
+    result = runner.invoke(app, ["ci", "publish", "--help"], env=_WIDE_TERM_ENV)
+    assert result.exit_code == 0
+    assert "--jobs" in result.stdout
+    assert "-j" in result.stdout
+
+
+def test_publish_jobs_flag_passed_through(tmp_path):
+    captured = {}
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    fake_config.load_build_metadata_from_file.return_value = []
+    fake_config.get_image_target_by_uid.return_value = None
+
+    def fake_publish(self, *args, **kwargs):
+        captured["jobs"] = kwargs.get("jobs")
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.imagetools.ImageToolsPlugin.publish",
+            autospec=True,
+            side_effect=fake_publish,
+        ),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json", "--jobs", "4"], env=_WIDE_TERM_ENV)
+
+    assert result.exit_code == 0, result.stdout
+    assert captured["jobs"] == 4
