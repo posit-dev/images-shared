@@ -14,9 +14,10 @@ orchestration delegates to per target). ORAS merge is exposed via the dedicated
 publish orchestration via :meth:`publish`.
 """
 
+from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 
@@ -26,6 +27,9 @@ from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.plugins.builtin.imagetools.oras import OrasMergeWorkflow, find_oras_bin
 from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, find_soci_bin
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
+
+if TYPE_CHECKING:
+    from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +56,94 @@ def get_soci_options_for_target(target: ImageTarget) -> SociOptions:
     if variant_opts and image_opts:
         return variant_opts.update(image_opts)
     return variant_opts or image_opts or SociOptions()
+
+
+@dataclass
+class _PublishStage1Result:
+    """Outcome of running wait + index-create + (optional) soci-convert for one target."""
+
+    target: ImageTarget
+    success: bool = True
+    skipped: bool = False
+    skip_reason: str | None = None
+    temp_ref: str | None = None
+    error: str | None = None
+    failed_phase: str | None = None
+
+
+def _run_publish_stage1(
+    target: ImageTarget,
+    oras_bin: str,
+    soci_bin: str,
+    dry_run: bool,
+    *,
+    runner: "CommandRunner | None" = None,
+) -> _PublishStage1Result:
+    """Wait for a target's own sources, create its temp index, then SOCI-convert it if enabled.
+
+    Runs entirely for one target so it can be wrapped in a ``ShellJob`` and fanned out across
+    the parallel executor; one target's failure does not affect any other target. Imports the
+    oras/soci workflow classes locally (mirroring the rest of this module) so test patches on
+    the source modules are honoured at call time.
+    """
+    from posit_bakery.error import BakeryToolRuntimeError
+    from posit_bakery.plugins.builtin.imagetools.oras import OrasIndexCreateWorkflow, OrasWaitForSourcesWorkflow
+    from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow
+
+    if not target.get_merge_sources():
+        return _PublishStage1Result(target=target, skipped=True, skip_reason="no merge sources")
+    if not target.settings.temp_registry:
+        return _PublishStage1Result(
+            target=target,
+            success=False,
+            failed_phase="create",
+            error=f"Cannot publish '{target}': temp_registry not configured.",
+        )
+
+    sources = sorted(set(target.get_merge_sources()))
+    try:
+        wait = OrasWaitForSourcesWorkflow(oras_bin=oras_bin, sources=sources).run(dry_run=dry_run, runner=runner)
+    except BakeryToolRuntimeError as e:
+        # Non-transient registry error (auth, bad reference, ...) while probing sources:
+        # fatal for this target and won't self-heal, but must not escape as an unhandled
+        # exception out of a worker thread.
+        return _PublishStage1Result(
+            target=target,
+            success=False,
+            failed_phase="wait",
+            error=f"Failed while waiting on source digests: {e.dump_stderr() or e}",
+        )
+    if not wait.success:
+        return _PublishStage1Result(
+            target=target,
+            success=False,
+            failed_phase="wait",
+            error=f"Source digests not available: {wait.error}",
+        )
+
+    create = OrasIndexCreateWorkflow(
+        oras_bin=oras_bin,
+        image_target=target,
+        annotations=target.labels,
+    ).run(dry_run=dry_run, runner=runner)
+    if not create.success:
+        return _PublishStage1Result(target=target, success=False, failed_phase="create", error=create.error)
+    temp_ref = create.temp_ref
+
+    soci_opts = get_soci_options_for_target(target)
+    if soci_opts.enabled:
+        soci = SociConvertWorkflow(
+            soci_bin=soci_bin,
+            oras_bin=oras_bin,
+            image_target=target,
+            options=soci_opts,
+            source_ref=temp_ref,
+        ).run(dry_run=dry_run, runner=runner)
+        if not soci.success:
+            return _PublishStage1Result(target=target, success=False, failed_phase="soci", error=soci.error)
+        temp_ref = soci.destination_ref
+
+    return _PublishStage1Result(target=target, temp_ref=temp_ref)
 
 
 class ImageToolsPlugin(BakeryToolPlugin):
