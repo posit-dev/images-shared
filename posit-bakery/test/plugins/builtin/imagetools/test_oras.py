@@ -44,6 +44,38 @@ def test_get_repository_from_ref(ref, expected_repo):
     assert result == expected_repo
 
 
+class TestOrasCommandRunner:
+    """Tests for OrasCommand.run()'s optional CommandRunner routing."""
+
+    def test_runner_used_when_provided(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=cmd.command, returncode=0, stdout=b"ok", stderr=b""
+        )
+
+        result = cmd.run(runner=fake_runner)
+
+        fake_runner.run.assert_called_once_with(cmd.command)
+        assert result.returncode == 0
+
+    def test_subprocess_run_used_when_runner_omitted(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=cmd.command, returncode=0, stdout=b"", stderr=b"")
+            cmd.run()
+        mock_run.assert_called_once_with(cmd.command, capture_output=True)
+
+    def test_runner_failure_raises_tool_error(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=cmd.command, returncode=1, stdout=b"", stderr=b"nope"
+        )
+        with pytest.raises(BakeryToolRuntimeError):
+            cmd.run(runner=fake_runner)
+
+
 class TestOrasManifestIndexCreate:
     """Tests for the OrasManifestIndexCreate command."""
 
@@ -573,6 +605,15 @@ class TestOrasIndexCreateWorkflow:
         cmd = mock_run.call_args.args[0]
         assert cmd[:4] == ["oras", "manifest", "index", "create"]
 
+    def test_index_create_passes_runner_through(self, workflow):
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(args=["oras"], returncode=0, stdout=b"", stderr=b"")
+
+        result = workflow.run(runner=fake_runner)
+
+        assert result.success is True
+        fake_runner.run.assert_called_once()
+
 
 class TestOrasIndexCopyWorkflow:
     """Tests for the standalone index-copy primitive."""
@@ -986,5 +1027,15 @@ class TestOrasWaitForSourcesWorkflow:
         with patch("subprocess.run") as mock_run:
             result = wf.run()
         mock_run.assert_not_called()
+
+    def test_wait_for_sources_passes_runner_through(self):
+        wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=["ghcr.io/posit-dev/test/tmp@sha256:a"])
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=["oras"], returncode=0, stdout=b"{}", stderr=b""
+        )
+
+        result = wf.run(sleep=MagicMock(), now=lambda: 0.0, runner=fake_runner)
+
         assert result.success is True
-        assert result.ready == []
+        fake_runner.run.assert_called_once()
