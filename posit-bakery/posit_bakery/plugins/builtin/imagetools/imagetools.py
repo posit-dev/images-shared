@@ -537,34 +537,40 @@ class ImageToolsPlugin(BakeryToolPlugin):
         dry_run: bool = False,
         dev_channel: Any = None,
         dev_spec: Any = None,
+        jobs: int | None = None,
     ) -> None:
-        """Publish multi-platform images by composing oras index-create →
-        soci-convert → oras index-copy → verify.
+        """Publish multi-platform images by composing wait -> index-create -> soci-convert ->
+        index-copy -> verify.
 
-        Which targets are converted is driven by configuration: each target is
-        converted only when its resolved SOCI options have ``enabled: true``
-        (set via the ``soci`` tool options on an image or variant). Targets
-        without SOCI enabled pass through the convert phase untouched.
-        Conversion runs in standalone (no containerd) mode via oras.
+        Targets are converted into SOCI-enabled images only when their resolved SOCI options
+        have ``enabled: true`` (set via ``soci`` tool options on the image variant). Targets
+        without SOCI enabled pass through that step untouched. Conversion runs in standalone
+        (no containerd) mode via oras.
 
-        Temporary indexes are left in place and cleaned up out-of-band by the
-        clean.yml workflow (``bakery clean temp-registry``) rather than deleted
-        here.
+        Stage 1 (wait for that target's own sources, then index-create, then soci-convert)
+        runs concurrently across targets, bounded by ``jobs`` (falls back to
+        ``SETTINGS.max_concurrency``); one target's failure does not block any other target.
+        Stage 2 (index-copy, the actual registry push) is sequential and runs in
+        ``push_sort_key`` order so registries that display tags by push time (e.g. Docker
+        Hub) still show the latest version as most recent. Stage 3 (verify) is sequential and
+        read-only.
 
-        Raises ``typer.Exit(1)`` on any phase failure.
+        Temporary indexes are left in place; they are cleaned up out-of-band by the clean.yml
+        workflow (``bakery clean temp-registry``) rather than deleted here.
+
+        Raises ``typer.Exit(1)`` if any target failed Stage 1, or if any index-copy or verify
+        failed.
         """
         from posit_bakery.config import BakeryConfig
         from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-        from posit_bakery.error import BakeryToolRuntimeError
+        from posit_bakery.parallel import ParallelShellExecutor, ShellJob, resolve_max_workers
 
-        # Imported here to mirror existing patterns and keep the test seams
-        # (which patch these on the source module) working at call time.
+        # Imported locally to mirror existing patterns and keep test seams (patch on the
+        # source module) working at call time.
         from posit_bakery.plugins.builtin.imagetools.oras import (
             OrasIndexCopyWorkflow,
-            OrasIndexCreateWorkflow,
             OrasIndexVerifyWorkflow,
-            OrasWaitForSourcesWorkflow,
             find_oras_bin,
         )
 
@@ -599,6 +605,14 @@ class ImageToolsPlugin(BakeryToolPlugin):
         log.debug(", ".join(loaded_targets))
 
         oras_bin = find_oras_bin(config.base_path)
+        try:
+            soci_bin = find_soci_bin(config.base_path)
+        except BakeryToolNotFoundError:
+            # A real run needs soci but cannot find it is still a hard error; a dry run
+            # executes nothing, so fall back to the bare name purely for logged commands.
+            if not dry_run:
+                raise
+            soci_bin = "soci"
 
         # Act only on targets that were actually present in the provided metadata
         # files, not every target defined in the config. Publishing a single set of
@@ -611,76 +625,44 @@ class ImageToolsPlugin(BakeryToolPlugin):
             key=lambda t: t.push_sort_key,
         )
 
-        # Pre-flight: wait for every per-platform source digest to be readable
-        # before we touch them. Those manifests are pushed by digest from separate
-        # build runners, and registries with read-after-write (eventual
-        # consistency) behaviour — notably GHCR — can briefly 404 them. Polling
-        # here turns propagation lag into condition-based waiting and logs exactly
-        # which digest lagged, rather than failing a downstream phase opaquely.
-        all_sources = sorted({s for t in targets for s in t.get_merge_sources()})
-        if all_sources:
-            log.info(f"Waiting for {len(all_sources)} source digest(s) to be readable before publishing.")
-            try:
-                wait = OrasWaitForSourcesWorkflow(
-                    oras_bin=oras_bin,
-                    sources=all_sources,
-                ).run(dry_run=dry_run)
-            except BakeryToolRuntimeError as e:
-                # A non-transient registry error (auth, bad reference, ...) while
-                # probing sources is fatal and won't self-heal — surface it cleanly
-                # rather than letting it escape as an unhandled traceback.
-                log.error(f"Failed while waiting for source digests: {e.dump_stderr() or e}")
-                raise typer.Exit(code=1)
-            if not wait.success:
-                log.error(f"Source digests not available: {wait.error}")
-                raise typer.Exit(code=1)
-            if wait.ready:
-                log.info(f"All {len(wait.ready)} source digest(s) readable after {wait.waited_seconds:.0f}s.")
+        # Stage 1: wait for each target's own sources, then index-create, then soci-convert.
+        # Runs concurrently across targets; one target's failure is isolated to it.
+        shell_jobs = [
+            ShellJob(
+                key=t.uid,
+                label=str(t),
+                run=lambda runner, t=t: _run_publish_stage1(t, oras_bin, soci_bin, dry_run, runner=runner),
+            )
+            for t in targets
+        ]
+        executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(shell_jobs)))
+        job_results = executor.run_jobs(shell_jobs)
 
-        # Phase 1: index create. Failures abort.
+        stage1_failed = False
         temp_refs: dict[str, str] = {}
-        for t in targets:
-            if not t.get_merge_sources():
-                log.debug(f"Skipping target '{t}' (no merge sources).")
+        for jr in job_results:
+            if not jr.ok:
+                stage1_failed = True
+                log.error(f"publish Stage 1 crashed for '{jr.job.display_label}': {jr.exception}")
                 continue
-            if not t.settings.temp_registry:
-                log.error(f"Cannot publish '{t}': temp_registry not configured.")
-                raise typer.Exit(code=1)
-            res = OrasIndexCreateWorkflow(
-                oras_bin=oras_bin,
-                image_target=t,
-                annotations=t.labels,
-            ).run(dry_run=dry_run)
-            if not res.success:
-                log.error(f"index-create failed for '{t}': {res.error}")
-                raise typer.Exit(code=1)
-            temp_refs[t.uid] = res.temp_ref
+            stage1_result: _PublishStage1Result = jr.value
+            if stage1_result.skipped:
+                log.debug(f"Skipping target '{stage1_result.target}' ({stage1_result.skip_reason}).")
+                continue
+            if not stage1_result.success:
+                stage1_failed = True
+                log.error(
+                    f"publish Stage 1 failed for '{stage1_result.target}' "
+                    f"at phase '{stage1_result.failed_phase}': {stage1_result.error}"
+                )
+                continue
+            temp_refs[stage1_result.target.uid] = stage1_result.temp_ref
 
-        # Phase 2: SOCI convert. Driven by per-target config; targets whose
-        # resolved SOCI options have enabled=False are skipped by execute().
-        soci_results = self.execute(
-            config.base_path,
-            targets,
-            source_refs=temp_refs,
-            dry_run=dry_run,
-        )
-        soci_failed = False
-        for r in soci_results:
-            artifacts = r.artifacts or {}
-            if artifacts.get("skipped"):
-                continue
-            wf = artifacts.get("workflow_result")
-            if r.exit_code != 0:
-                soci_failed = True
-                continue
-            if wf and getattr(wf, "destination_ref", None):
-                temp_refs[r.target.uid] = wf.destination_ref
-        if soci_failed:
-            self.results(soci_results)  # raises typer.Exit(1)
-
-        # Phase 3: index copy.
+        # Stage 2: index copy. Sequential, in push_sort_key order (targets is already sorted
+        # that way) -- this is the only stage that must stay ordered, since it is the actual
+        # registry push that determines what registries display as "most recent".
         copy_failed = False
-        copied_targets: list = []
+        copied_targets: list[ImageTarget] = []
         for t in targets:
             if t.uid not in temp_refs:
                 continue
@@ -694,9 +676,8 @@ class ImageToolsPlugin(BakeryToolPlugin):
             else:
                 copied_targets.append(t)
 
-        # Phase 4: verify each final destination tag resolves. This replaces the
-        # `docker buildx imagetools inspect` check the old `bakery ci merge` ran;
-        # ORAS is faster and more reliable for the existence check.
+        # Stage 3: verify each final destination tag resolves. Read-only and order-independent,
+        # so it stays a simple sequential loop.
         verify_failed = False
         if not dry_run:
             for t in copied_targets:
@@ -710,9 +691,9 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 else:
                     log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
 
-        # The temporary indexes (and any SOCI-converted variants) are intentionally
-        # left in place; they are cleaned up out-of-band by the clean.yml workflow
-        # (bakery clean temp-registry) rather than deleted here.
+        # The temporary indexes (and any SOCI-converted variants) are intentionally left in
+        # place; they are cleaned up out-of-band by the clean.yml workflow (bakery clean
+        # temp-registry) rather than deleted here.
 
-        if copy_failed or verify_failed:
+        if stage1_failed or copy_failed or verify_failed:
             raise typer.Exit(code=1)
