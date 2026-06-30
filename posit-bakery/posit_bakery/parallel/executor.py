@@ -128,22 +128,35 @@ class ParallelShellExecutor:
             progress.start_task(task_id)
             progress.update(task_id, description=f"[bright_blue]running {task.display_label}")
 
-    def _run_one(self, task: ShellTask) -> ShellResult:
-        """Run one task as a tracked child process, enforcing task.timeout if set."""
-        start = time.monotonic()
+    def _spawn_and_communicate(
+        self,
+        cmd: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        cwd: Path | None = None,
+        timeout: float | None = None,
+        on_started: Callable[[], None] | None = None,
+    ) -> tuple[int | None, bytes, bytes, bool, Exception | None]:
+        """Spawn a tracked child process and communicate with it, handling timeout and shutdown.
+
+        Spawns a subprocess in a new session (process group), registers it as active, and
+        manages its lifecycle: timeout enforcement, graceful termination on interrupt/timeout,
+        and tracking for Ctrl-C safety. Calls on_started() just before communicate() blocks.
+        Returns (returncode, stdout, stderr, timed_out, exception). exception is set on
+        spawn failure (e.g. FileNotFoundError) or on an unhandled timeout/interrupt artifact;
+        callers with raise-on-failure semantics check it themselves.
+        """
         try:
             proc = subprocess.Popen(
-                task.cmd,
-                env=task.env,
-                cwd=task.cwd,
+                cmd,
+                env=env,
+                cwd=cwd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=True,
             )
         except Exception as exc:  # spawn failures (FileNotFoundError, PermissionError, ...)
-            return ShellResult(
-                task=task, returncode=None, stdout=b"", stderr=b"", duration=time.monotonic() - start, exception=exc
-            )
+            return None, b"", b"", False, exc
 
         with self._lock:
             if self._shutdown:
@@ -153,25 +166,19 @@ class ParallelShellExecutor:
                 interrupted = False
         if interrupted:
             # An interrupt began before this child was registered; stop it now so it
-            # cannot escape termination. The returned result is discarded as run() unwinds.
+            # cannot escape termination. The returned result is discarded as run()/run_jobs() unwinds.
             self._stop(proc)
             stdout, stderr = proc.communicate()
-            return ShellResult(
-                task=task,
-                returncode=proc.returncode,
-                stdout=stdout or b"",
-                stderr=stderr or b"",
-                duration=time.monotonic() - start,
-                exception=None,
-                timed_out=False,
-            )
-        self._mark_running(task)
+            return proc.returncode, stdout or b"", stderr or b"", False, None
+
+        if on_started is not None:
+            on_started()
         timed_out = False
         exception: Exception | None = None
-        timeout = task.timeout if (task.timeout is not None and task.timeout > 0) else None
+        eff_timeout = timeout if (timeout is not None and timeout > 0) else None
         try:
             try:
-                stdout, stderr = proc.communicate(timeout=timeout)
+                stdout, stderr = proc.communicate(timeout=eff_timeout)
             except subprocess.TimeoutExpired as exc:
                 timed_out = True
                 exception = exc
@@ -181,11 +188,23 @@ class ParallelShellExecutor:
             with self._lock:
                 self._active.discard(proc)
 
+        return proc.returncode, stdout or b"", stderr or b"", timed_out, exception
+
+    def _run_one(self, task: ShellTask) -> ShellResult:
+        """Run one task as a tracked child process, enforcing task.timeout if set."""
+        start = time.monotonic()
+        returncode, stdout, stderr, timed_out, exception = self._spawn_and_communicate(
+            task.cmd,
+            env=task.env,
+            cwd=task.cwd,
+            timeout=task.timeout,
+            on_started=lambda: self._mark_running(task),
+        )
         return ShellResult(
             task=task,
-            returncode=proc.returncode,
-            stdout=stdout or b"",
-            stderr=stderr or b"",
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
             duration=time.monotonic() - start,
             exception=exception,
             timed_out=timed_out,
