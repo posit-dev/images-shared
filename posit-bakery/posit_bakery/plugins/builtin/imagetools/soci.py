@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +17,9 @@ from posit_bakery.plugins.builtin.imagetools.oras import OrasCopy
 from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.retry import RetryPolicy, retry_on_transient
 from posit_bakery.util import find_bin
+
+if TYPE_CHECKING:
+    from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
 
@@ -43,10 +46,13 @@ class SociCommand(BaseModel, ABC):
         """Return the full command to execute."""
         ...
 
-    def run(self, dry_run: bool = False) -> subprocess.CompletedProcess:
+    def run(self, dry_run: bool = False, runner: "CommandRunner | None" = None) -> subprocess.CompletedProcess:
         """Execute the soci command.
 
         :param dry_run: If True, log the command without executing it.
+        :param runner: When provided, spawn through this tracked :class:`CommandRunner`
+            instead of calling ``subprocess.run()`` directly. See ``OrasCommand.run()`` for
+            why this exists.
         :return: The completed process result.
         :raises BakeryToolRuntimeError: On non-zero exit.
         """
@@ -57,7 +63,7 @@ class SociCommand(BaseModel, ABC):
             log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
             return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
 
-        result = subprocess.run(cmd, capture_output=True)
+        result = runner.run(cmd) if runner is not None else subprocess.run(cmd, capture_output=True)
 
         if result.returncode != 0:
             raise BakeryToolRuntimeError(
@@ -170,7 +176,7 @@ class SociConvertWorkflow(BaseModel):
         index = json.loads((layout / "index.json").read_text())
         return index["manifests"][0]["digest"]
 
-    def run(self, dry_run: bool = False) -> SociConvertWorkflowResult:
+    def run(self, dry_run: bool = False, runner: "CommandRunner | None" = None) -> SociConvertWorkflowResult:
         """Pull the source ref into an OCI layout, convert it to SOCI with
         ``soci convert --standalone``, and push the converted layout back to
         the registry.
@@ -195,7 +201,7 @@ class SociConvertWorkflow(BaseModel):
                 to_oci_layout=True,
             )
             retry_on_transient(
-                lambda: pull.run(dry_run=dry_run),
+                lambda: pull.run(dry_run=dry_run, runner=runner),
                 policy=self.retry_policy,
                 description=f"soci pull for '{self.image_target.uid}'",
             )
@@ -206,7 +212,7 @@ class SociConvertWorkflow(BaseModel):
                 source=str(src_layout),
                 destination=str(out_layout),
                 output_format="oci-dir",
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner)
 
             # 3. push converted layout -> registry, referenced by digest since
             #    the converted layout carries no tag.
@@ -216,7 +222,7 @@ class SociConvertWorkflow(BaseModel):
                 source=f"{out_layout}@{digest}",
                 destination=self.destination_ref,
                 from_oci_layout=True,
-            ).run(dry_run=dry_run)
+            ).run(dry_run=dry_run, runner=runner)
         except BakeryToolRuntimeError as e:
             return SociConvertWorkflowResult(
                 success=False,

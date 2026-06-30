@@ -195,3 +195,27 @@ def test_read_converted_digest_reads_index_json(workflow, tmp_path):
     layout.mkdir()
     (layout / "index.json").write_text('{"schemaVersion":2,"manifests":[{"digest":"sha256:deadbeef","size":7849}]}')
     assert workflow._read_converted_digest(layout) == "sha256:deadbeef"
+
+
+def test_runner_passed_to_pull_convert_push(workflow, tmp_path):
+    fake_runner = MagicMock()
+    captured_runners = []
+
+    def fake_oras_copy_run(self, dry_run=False, runner=None):
+        captured_runners.append(runner)
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    def fake_soci_convert_run(self, dry_run=False, runner=None):
+        captured_runners.append(runner)
+        (tmp_path / "index.json").write_text('{"manifests": [{"digest": "sha256:abc"}]}')
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    with (
+        patch("posit_bakery.plugins.builtin.imagetools.soci.OrasCopy.run", fake_oras_copy_run),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.SociConvert.run", fake_soci_convert_run),
+        patch.object(workflow, "_read_converted_digest", return_value="sha256:abc"),
+    ):
+        result = workflow.run(runner=fake_runner)
+
+    assert result.success is True
+    assert captured_runners == [fake_runner, fake_runner, fake_runner]
