@@ -348,6 +348,12 @@ class TestParallelShellExecutorJobs:
     def test_empty_jobs_returns_empty(self):
         assert self._executor(2).run_jobs([]) == []
 
+    def test_job_value_is_callable_return(self):
+        job = ShellJob(key="a", run=lambda runner: runner.run([PY, "-c", "print('hi')"]).stdout.decode().strip())
+        results = self._executor(1).run_jobs([job])
+        assert results[0].ok is True
+        assert results[0].value == "hi"
+
     def test_results_returned_in_input_order(self):
         # Sleep durations are inverted vs. input order so completion order differs.
         durations = {"a": 0.30, "b": 0.05, "c": 0.15}
@@ -392,3 +398,45 @@ class TestParallelShellExecutorJobs:
         results = self._executor(1).run_jobs([ShellJob(key="a", run=run)])
         assert results[0].ok is False
         assert isinstance(results[0].exception, (FileNotFoundError, OSError))
+
+    def test_on_result_called_once_per_job_on_main_thread(self):
+        jobs = [ShellJob(key=str(i), run=lambda runner: runner.run([PY, "-c", "pass"]).returncode) for i in range(5)]
+        seen_keys = []
+        seen_threads = set()
+
+        def on_result(result):
+            seen_keys.append(result.job.key)
+            seen_threads.add(threading.get_ident())
+
+        self._executor(3).run_jobs(jobs, on_result=on_result)
+        assert sorted(seen_keys) == sorted(j.key for j in jobs)
+        assert seen_threads == {threading.main_thread().ident}
+
+    def test_sigint_terminates_in_flight_children(self, tmp_path):
+        # Mirrors TestParallelShellExecutor.test_sigint_cancels_queued_and_terminates_running
+        # for the ShellTask path: confirms run_jobs() shares the same interrupt-safety
+        # primitive rather than re-testing every nuance of it.
+        marker = tmp_path / "started"
+        script = f"import pathlib,time; pathlib.Path({str(marker)!r}).write_text('1'); time.sleep(5)"
+
+        def run(runner):
+            runner.run([PY, "-c", script])
+
+        ex = self._executor(1)
+        result_holder = {}
+
+        def driver():
+            try:
+                result_holder["results"] = ex.run_jobs([ShellJob(key="a", run=run)])
+            except BaseException as exc:
+                result_holder["exc"] = exc
+
+        thread = threading.Thread(target=driver)
+        thread.start()
+        while not marker.exists():
+            time.sleep(0.01)
+        with ex._lock:
+            ex._shutdown = True
+        ex._terminate_active()
+        thread.join(timeout=5)
+        assert not thread.is_alive()
