@@ -62,7 +62,7 @@ def patch_image_target_merge_method(mocker):
             self.annotations = annotations
             self.plain_http = plain_http
 
-        def run(self, dry_run=False):
+        def run(self, dry_run=False, runner=None):
             sources = self.image_target.get_merge_sources()
             calls.append((sources, dry_run))
             result = MagicMock()
