@@ -22,6 +22,20 @@ from posit_bakery.settings import SETTINGS
 # its container via its EXIT trap — before we escalate to SIGKILL.
 TERMINATE_GRACE_SECONDS = 10.0
 
+# Slice width for CommandRunner.sleep()'s interruptible backoff wait. Short
+# enough that a shutdown request is noticed promptly without busy-waiting.
+RETRY_SLEEP_SLICE_SECONDS = 0.5
+
+
+class ExecutorInterrupted(Exception):
+    """Raised by :meth:`CommandRunner.sleep` when the bound executor's shutdown
+    flag flips mid-wait.
+
+    Lets a job blocked in retry backoff unwind within one slice of a shutdown
+    request (e.g. Ctrl-C) instead of finishing its full sleep and blocking
+    process exit via ThreadPoolExecutor's atexit thread-join.
+    """
+
 
 def _signal_process_group(proc: subprocess.Popen, sig: int) -> None:
     """Send `sig` to the child's whole process group, so a wrapper (e.g. dgoss) and the
@@ -438,3 +452,21 @@ class CommandRunner:
         if exception is not None:
             raise exception
         return subprocess.CompletedProcess(args=cmd, returncode=returncode, stdout=stdout, stderr=stderr)
+
+    def sleep(self, seconds: float, *, slice_seconds: float = RETRY_SLEEP_SLICE_SECONDS) -> None:
+        """Sleep for ``seconds``, waking early to raise :class:`ExecutorInterrupted`
+        if the bound executor's shutdown flag flips mid-wait.
+
+        Passed as the ``sleep`` callable to
+        :func:`posit_bakery.retry.retry_on_transient` when retrying inside a
+        parallel job, so a job blocked in backoff notices a shutdown request
+        within one slice instead of blocking process exit.
+        """
+        remaining = seconds
+        while remaining > 0:
+            if self._executor._shutdown:
+                raise ExecutorInterrupted(f"shutdown requested during backoff for '{self._key}'")
+            time.sleep(min(slice_seconds, remaining))
+            remaining -= slice_seconds
+        if self._executor._shutdown:
+            raise ExecutorInterrupted(f"shutdown requested during backoff for '{self._key}'")

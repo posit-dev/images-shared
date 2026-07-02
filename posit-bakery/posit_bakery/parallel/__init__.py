@@ -1,5 +1,6 @@
 from posit_bakery.parallel.executor import (
     CommandRunner,
+    ExecutorInterrupted,
     JobResult,
     ParallelShellExecutor,
     ShellJob,
@@ -10,6 +11,7 @@ from posit_bakery.parallel.executor import (
 
 __all__ = [
     "CommandRunner",
+    "ExecutorInterrupted",
     "JobResult",
     "ParallelShellExecutor",
     "ShellJob",
