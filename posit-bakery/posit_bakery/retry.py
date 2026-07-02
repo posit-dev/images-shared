@@ -127,6 +127,7 @@ def retry_on_transient(
     *,
     policy: RetryPolicy | None = None,
     description: str = "registry operation",
+    sleep: Callable[[float], None] | None = None,
 ) -> T:
     """Call ``func`` retrying transient :class:`BakeryToolRuntimeError`s.
 
@@ -139,11 +140,19 @@ def retry_on_transient(
     :param policy: Retry configuration; a default (env-tunable) policy is used
         when omitted.
     :param description: Human-readable label for log messages.
+    :param sleep: Sleep function used between retry attempts. When omitted
+        (``None``), ``time.sleep`` is looked up fresh on each call rather than
+        bound as a parameter default, so tests that
+        ``patch("posit_bakery.retry.time.sleep")`` keep working. Pass
+        ``CommandRunner.sleep`` when retrying inside a parallel job so backoff
+        waits notice a shutdown request promptly instead of blocking process
+        exit.
     :return: Whatever ``func`` returns on success.
     :raises BakeryToolRuntimeError: The last error if all attempts fail or the
         first non-transient error encountered.
     """
     policy = policy or RetryPolicy()
+    effective_sleep = sleep if sleep is not None else time.sleep
     backoff = policy.initial_backoff
     for attempt in range(1, policy.max_attempts + 1):
         try:
@@ -161,7 +170,7 @@ def retry_on_transient(
                 f"(attempt {attempt}/{policy.max_attempts}); retrying in {backoff:.1f}s. "
                 f"Error: {e.dump_stderr() or e}"
             )
-            time.sleep(backoff)
+            effective_sleep(backoff)
             backoff = min(backoff * policy.multiplier, policy.max_backoff)
     # Unreachable: the loop either returns or raises on the final attempt.
     raise AssertionError("retry_on_transient exhausted its loop without returning or raising")

@@ -133,6 +133,41 @@ class TestRetryOnTransient:
         # 10, then 100->capped 20, then 20, then 20.
         assert [c.args[0] for c in sleep.call_args_list] == [10.0, 20.0, 20.0, 20.0]
 
+    def test_uses_provided_sleep_callable_instead_of_time_sleep(self):
+        attempts = {"n": 0}
+        sleep_calls = []
+
+        def fn():
+            attempts["n"] += 1
+            if attempts["n"] < 2:
+                raise _tool_error(stderr=b"sha256:deadbeef: not found")
+            return "ok"
+
+        def fake_sleep(seconds):
+            sleep_calls.append(seconds)
+
+        with patch("posit_bakery.retry.time.sleep") as real_sleep:
+            result = retry_on_transient(fn, policy=RetryPolicy(max_attempts=5, initial_backoff=2.0), sleep=fake_sleep)
+
+        assert result == "ok"
+        assert sleep_calls == [2.0]
+        real_sleep.assert_not_called()
+
+    def test_none_sleep_falls_back_to_time_sleep(self):
+        attempts = {"n": 0}
+
+        def fn():
+            attempts["n"] += 1
+            if attempts["n"] < 2:
+                raise _tool_error(stderr=b"sha256:deadbeef: not found")
+            return "ok"
+
+        with patch("posit_bakery.retry.time.sleep") as real_sleep:
+            result = retry_on_transient(fn, policy=RetryPolicy(max_attempts=5, initial_backoff=2.0), sleep=None)
+
+        assert result == "ok"
+        real_sleep.assert_called_once_with(2.0)
+
 
 class TestRetryPolicyEnv:
     def test_reads_defaults_from_env(self, monkeypatch):
