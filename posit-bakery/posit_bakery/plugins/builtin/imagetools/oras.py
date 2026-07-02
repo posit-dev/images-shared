@@ -313,17 +313,25 @@ class OrasIndexVerifyWorkflow(BaseModel):
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
     image_target: Annotated[ImageTarget, Field(description="Target whose destination tags to verify.")]
     plain_http: Annotated[bool, Field(default=False)]
+    retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
     def run(self, dry_run: bool = False) -> OrasIndexVerifyResult:
         verified: list[str] = []
         try:
             for ref in self.image_target.tags.as_strings():
-                OrasManifestFetch(
+                fetch = OrasManifestFetch(
                     oras_bin=self.oras_bin,
                     reference=ref,
                     descriptor=True,
                     plain_http=self.plain_http,
-                ).run(dry_run=dry_run)
+                )
+                # Retry transient registry errors: the copy phase's write may
+                # still be propagating when this verify fetch first reads it.
+                retry_on_transient(
+                    lambda f=fetch: f.run(dry_run=dry_run),
+                    policy=self.retry_policy,
+                    description=f"index-verify for '{self.image_target.uid}' -> {ref}",
+                )
                 verified.append(ref)
             return OrasIndexVerifyResult(success=True, verified=verified)
         except BakeryToolRuntimeError as e:

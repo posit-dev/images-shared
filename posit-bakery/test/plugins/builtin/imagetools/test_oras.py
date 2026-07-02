@@ -740,7 +740,9 @@ class TestOrasIndexVerifyWorkflow:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b""),
-                subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"not found"),
+                subprocess.CompletedProcess(
+                    args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+                ),
             ]
             result = workflow.run()
 
@@ -758,6 +760,54 @@ class TestOrasIndexVerifyWorkflow:
 
         mock_run.assert_not_called()
         assert result.success is True
+
+
+class TestOrasIndexVerifyWorkflowRetry:
+    """The index-verify primitive retries transient registry errors."""
+
+    def test_retries_transient_not_found_then_succeeds(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+        attempts = {"n": 0}
+
+        def side_effect(cmd, capture_output):
+            attempts["n"] += 1
+            if attempts["n"] < 2:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"manifest unknown")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"{}", stderr=b"")
+
+        with patch("subprocess.run", side_effect=side_effect), patch("posit_bakery.retry.time.sleep") as sleep:
+            result = workflow.run()
+
+        assert result.success is True
+        assert attempts["n"] == 2
+        sleep.assert_called_once()
+
+    def test_non_transient_error_fails_without_retry(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("posit_bakery.retry.time.sleep") as sleep,
+        ):
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+            )
+            result = workflow.run()
+
+        assert result.success is False
+        assert mock_run.call_count == 1
+        sleep.assert_not_called()
 
 
 @pytest.mark.slow
