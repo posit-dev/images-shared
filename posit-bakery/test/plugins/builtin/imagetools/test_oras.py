@@ -877,6 +877,25 @@ class TestOrasIndexCreateWorkflowRetry:
         assert mock_run.call_count == 1
         sleep.assert_not_called()
 
+    def test_uses_runner_sleep_for_backoff_when_runner_provided(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCreateWorkflow(oras_bin="oras", image_target=target, annotations={"k": "v"})
+        runner = MagicMock()
+
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.retry_on_transient", return_value=None) as mock_retry:
+            workflow.run(runner=runner)
+
+        assert mock_retry.call_args.kwargs["sleep"] is runner.sleep
+
+    def test_sleep_is_none_without_runner(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCreateWorkflow(oras_bin="oras", image_target=target, annotations={"k": "v"})
+
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.retry_on_transient", return_value=None) as mock_retry:
+            workflow.run()
+
+        assert mock_retry.call_args.kwargs["sleep"] is None
+
 
 class TestOrasIndexCopyWorkflowRetry:
     """The index-copy primitive retries transient registry errors."""

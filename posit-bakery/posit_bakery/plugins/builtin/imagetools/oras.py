@@ -235,6 +235,7 @@ class OrasIndexCreateWorkflow(BaseModel):
                 lambda: cmd.run(dry_run=dry_run, runner=runner),
                 policy=self.retry_policy,
                 description=f"index-create for '{self.image_target.uid}'",
+                sleep=runner.sleep if runner is not None else None,
             )
             return OrasIndexCreateResult(success=True, temp_ref=self.temp_index_tag)
         except BakeryToolRuntimeError as e:
