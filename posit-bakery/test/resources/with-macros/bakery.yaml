@@ -18,6 +18,9 @@ registries:
 
 images:
   - name: "test-image"
+    buildSecrets:
+      - id: github_token
+        envVar: GITHUB_TOKEN
     dependencyConstraints:
       - dependency: R
         constraint:
