@@ -573,6 +573,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
             OrasIndexVerifyWorkflow,
             find_oras_bin,
         )
+        from posit_bakery.plugins.builtin.imagetools.soci import find_soci_bin
 
         settings = BakerySettings(
             filter=BakeryConfigFilter(image_name=image_name),
@@ -605,14 +606,6 @@ class ImageToolsPlugin(BakeryToolPlugin):
         log.debug(", ".join(loaded_targets))
 
         oras_bin = find_oras_bin(config.base_path)
-        try:
-            soci_bin = find_soci_bin(config.base_path)
-        except BakeryToolNotFoundError:
-            # A real run needs soci but cannot find it is still a hard error; a dry run
-            # executes nothing, so fall back to the bare name purely for logged commands.
-            if not dry_run:
-                raise
-            soci_bin = "soci"
 
         # Act only on targets that were actually present in the provided metadata
         # files, not every target defined in the config. Publishing a single set of
@@ -624,6 +617,16 @@ class ImageToolsPlugin(BakeryToolPlugin):
             (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
             key=lambda t: t.push_sort_key,
         )
+
+        try:
+            soci_bin = find_soci_bin(config.base_path)
+        except BakeryToolNotFoundError:
+            # A dry run executes nothing, and a run where no target has SOCI enabled never
+            # touches soci_bin, so neither needs the binary to actually be installed. Only a
+            # real run with at least one SOCI-enabled target makes this a hard error.
+            if not dry_run and any(get_soci_options_for_target(t).enabled for t in targets):
+                raise
+            soci_bin = "soci"
 
         # Stage 1: wait for each target's own sources, then index-create, then soci-convert.
         # Runs concurrently across targets; one target's failure is isolated to it.

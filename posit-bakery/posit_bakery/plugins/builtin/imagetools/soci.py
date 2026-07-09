@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
@@ -24,8 +25,12 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+@cache
 def find_soci_bin(context: Path) -> str:
     """Resolve a path or PATH-resident name for the soci binary.
+
+    Memoized so a publish run with multiple SOCI-enabled targets resolves the
+    binary once, rather than once per target.
 
     :param context: Project context to search for the binary in.
     :return: Path to the soci binary, or the bare name "soci" when it
