@@ -102,9 +102,6 @@ jobs:
       - name: Setup ORAS CLI
         uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
 
-      - name: Setup SOCI
-        uses: ./setup-soci
-
       - name: Add tools/ to path
         run: echo "${GITHUB_WORKSPACE}/tools" >> "$GITHUB_PATH"
 
