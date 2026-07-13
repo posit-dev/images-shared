@@ -14,6 +14,7 @@ orchestration delegates to per target). ORAS merge is exposed via the dedicated
 publish orchestration via :meth:`publish`.
 """
 
+import glob as glob_module
 import logging
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,18 @@ from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, fi
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
 
 log = logging.getLogger(__name__)
+
+
+def _resolve_metadata_files(metadata_file: list[Path]) -> list[Path]:
+    """Expand any glob patterns in the metadata file arguments."""
+    resolved_files: list[Path] = []
+    for f in metadata_file:
+        s = str(f)
+        if "*" in s or "?" in s or "[" in s:
+            resolved_files.extend(sorted(Path(x).absolute() for x in glob_module.glob(s)))
+        else:
+            resolved_files.append(f.absolute())
+    return resolved_files
 
 
 def get_soci_options_for_target(target: ImageTarget) -> SociOptions:
@@ -66,7 +79,6 @@ class ImageToolsPlugin(BakeryToolPlugin):
         ``soci-convert`` subcommands. The former ``bakery oras`` and
         ``bakery soci`` groups are preserved as hidden back-compat aliases.
         """
-        import glob as glob_module
         from typing import Annotated, Optional
 
         from posit_bakery.cli.common import with_verbosity_flags
@@ -75,17 +87,6 @@ class ImageToolsPlugin(BakeryToolPlugin):
         from posit_bakery.util import auto_path
 
         plugin = self
-
-        def _resolve_metadata_files(metadata_file: list[Path]) -> list[Path]:
-            """Expand any glob patterns in the metadata file arguments."""
-            resolved_files: list[Path] = []
-            for f in metadata_file:
-                s = str(f)
-                if "*" in s or "?" in s or "[" in s:
-                    resolved_files.extend(sorted(Path(x).absolute() for x in glob_module.glob(s)))
-                else:
-                    resolved_files.append(f.absolute())
-            return resolved_files
 
         @with_verbosity_flags
         def merge(
@@ -460,8 +461,6 @@ class ImageToolsPlugin(BakeryToolPlugin):
 
         Raises ``typer.Exit(1)`` on any phase failure.
         """
-        import glob as glob_module
-
         from posit_bakery.config import BakeryConfig
         from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -488,14 +487,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
 
-        resolved_files: list[Path] = []
-        for f in metadata_file:
-            s = str(f)
-            if "*" in s or "?" in s or "[" in s:
-                resolved_files.extend(sorted(Path(x).absolute() for x in glob_module.glob(s)))
-            else:
-                resolved_files.append(f.absolute())
-        metadata_file = resolved_files
+        metadata_file = _resolve_metadata_files(metadata_file)
 
         log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
 
