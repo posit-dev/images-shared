@@ -402,6 +402,7 @@ def publish(
         typer.Option(
             "--jobs",
             "-j",
+            min=1,
             show_default=False,
             help="Maximum number of targets to publish concurrently. "
             "Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.",
