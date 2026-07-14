@@ -14,6 +14,7 @@ from typing import Any, Callable
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
+from posit_bakery.const import DEFAULT_COMMAND_TIMEOUT_SECONDS
 from posit_bakery.log import stderr_console
 from posit_bakery.settings import SETTINGS
 
@@ -415,18 +416,23 @@ class CommandRunner:
         *,
         env: dict[str, str] | None = None,
         cwd: Path | None = None,
+        timeout: float | None = DEFAULT_COMMAND_TIMEOUT_SECONDS,
     ) -> subprocess.CompletedProcess:
         """Run ``cmd`` as a tracked child process and return completed result.
 
         Does not raise on non-zero exit — callers with raise-on-failure semantics
         (e.g. ``OrasCommand.run()``) check ``returncode`` themselves, exactly as when
         calling ``subprocess.run()`` directly.
+
+        :param timeout: Seconds to allow before killing the child; defaults to
+            :data:`DEFAULT_COMMAND_TIMEOUT_SECONDS` so a hung ``oras``/``soci`` call
+            can't block a publish run forever. Pass ``None`` for no bound.
         """
         returncode, stdout, stderr, _timed_out, exception = self._executor._spawn_and_communicate(
             cmd,
             env=env,
             cwd=cwd,
-            timeout=None,
+            timeout=timeout,
             on_started=lambda: self._executor._mark_running_row(self._key, self._label),
         )
         if exception is not None:
