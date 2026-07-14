@@ -1329,9 +1329,14 @@ class TestBakeryConfig:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                apt-get install -yqq --no-install-recommends locales && \\
+                localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
+            ENV LANG=en_US.UTF-8
+            ENV LANGUAGE=en_US:en
+            ENV LC_ALL=en_US.UTF-8
 
             COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
             RUN apt-get update -yqq && \\
@@ -1375,9 +1380,14 @@ class TestBakeryConfig:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                apt-get install -yqq --no-install-recommends locales && \\
+                localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
+            ENV LANG=en_US.UTF-8
+            ENV LANGUAGE=en_US:en
+            ENV LC_ALL=en_US.UTF-8
 
             COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
             RUN apt-get update -yqq && \\

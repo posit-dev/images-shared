@@ -588,6 +588,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
+                    apt-get install -yqq --no-install-recommends locales && \\
+                    localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
@@ -611,6 +613,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
+                    apt-get install -yqq --no-install-recommends locales && \\
+                    localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')"
                     """
                 ),
@@ -632,6 +636,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
+                    apt-get install -yqq --no-install-recommends locales && \\
+                    localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                     apt-get clean -yqq && \\
@@ -656,6 +662,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
+                    apt-get install -yqq --no-install-recommends locales && \\
+                    localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
@@ -679,6 +687,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
+                    apt-get install -yqq --no-install-recommends locales && \\
+                    localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -710,9 +720,14 @@ class TestAptMacros:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                apt-get install -yqq --no-install-recommends locales && \\
+                localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
+            ENV LANG=en_US.UTF-8
+            ENV LANGUAGE=en_US:en
+            ENV LC_ALL=en_US.UTF-8
             """
         )
         assert rendered == expected
@@ -732,10 +747,15 @@ class TestAptMacros:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                apt-get install -yqq --no-install-recommends locales && \\
+                localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
+            ENV LANG=en_US.UTF-8
+            ENV LANGUAGE=en_US:en
+            ENV LC_ALL=en_US.UTF-8
             """
         )
         assert rendered == expected
@@ -755,7 +775,58 @@ class TestAptMacros:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
+                apt-get install -yqq --no-install-recommends locales && \\
+                localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 codename=noble bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
+            ENV LANG=en_US.UTF-8
+            ENV LANGUAGE=en_US:en
+            ENV LC_ALL=en_US.UTF-8
+            """
+        )
+        assert rendered == expected
+
+    @pytest.mark.parametrize("locale", [False, None], ids=["false", "none"])
+    def test_setup_locale_disabled(self, environment_with_macros, locale):
+        template = f'{{%- import "apt.j2" as apt -%}}\n{{{{ apt.setup(locale={locale}) }}}}\n'
+        rendered = environment_with_macros.from_string(template).render()
+        expected = textwrap.dedent(
+            """\
+            echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+            apt-get update -yqq --fix-missing && \\
+            apt-get upgrade -yqq && \\
+            apt-get dist-upgrade -yqq && \\
+            apt-get autoremove -yqq --purge && \\
+            apt-get install -yqq --no-install-recommends \\
+                curl \\
+                ca-certificates \\
+                gnupg \\
+                tar && \\
+            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*
+            """
+        )
+        assert rendered == expected
+
+    @pytest.mark.parametrize("locale", [False, None], ids=["false", "none"])
+    def test_run_setup_locale_disabled(self, environment_with_macros, locale):
+        template = f'{{%- import "apt.j2" as apt -%}}\n{{{{ apt.run_setup(locale={locale}) }}}}\n'
+        rendered = environment_with_macros.from_string(template).render()
+        expected = textwrap.dedent(
+            """\
+            RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \\
+                apt-get update -yqq --fix-missing && \\
+                apt-get upgrade -yqq && \\
+                apt-get dist-upgrade -yqq && \\
+                apt-get autoremove -yqq --purge && \\
+                apt-get install -yqq --no-install-recommends \\
+                    curl \\
+                    ca-certificates \\
+                    gnupg \\
+                    tar && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             """
