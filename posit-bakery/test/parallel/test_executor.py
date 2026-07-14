@@ -414,29 +414,34 @@ class TestParallelShellExecutorJobs:
 
     def test_sigint_terminates_in_flight_children(self, tmp_path):
         # Mirrors TestParallelShellExecutor.test_sigint_cancels_queued_and_terminates_running
-        # for the ShellTask path: confirms run_jobs() shares the same interrupt-safety
-        # primitive rather than re-testing every nuance of it.
+        # for the ShellJob path, firing a real SIGINT so the full run_jobs() -> run() ->
+        # _execute_pool() interrupt-handling chain is exercised end to end, rather than
+        # calling _terminate_active() directly and skipping the KeyboardInterrupt path.
         marker = tmp_path / "started"
-        script = f"import pathlib,time; pathlib.Path({str(marker)!r}).write_text('1'); time.sleep(5)"
+        ended = tmp_path / "ended"
+        script = (
+            f"import pathlib,time; pathlib.Path({str(marker)!r}).write_text('1'); "
+            f"time.sleep(5); pathlib.Path({str(ended)!r}).write_text('1')"
+        )
 
         def run(runner):
             runner.run([PY, "-c", script])
 
+        def fire():
+            while not marker.exists():
+                time.sleep(0.01)
+            os.kill(os.getpid(), signal.SIGINT)
+
+        threading.Thread(target=fire, daemon=True).start()
         ex = self._executor(1)
-        result_holder = {}
+        start = time.monotonic()
+        interrupted = False
+        try:
+            ex.run_jobs([ShellJob(key="a", run=run)])
+        except KeyboardInterrupt:
+            interrupted = True
+        elapsed = time.monotonic() - start
 
-        def driver():
-            try:
-                result_holder["results"] = ex.run_jobs([ShellJob(key="a", run=run)])
-            except BaseException as exc:
-                result_holder["exc"] = exc
-
-        thread = threading.Thread(target=driver)
-        thread.start()
-        while not marker.exists():
-            time.sleep(0.01)
-        with ex._lock:
-            ex._shutdown = True
-        ex._terminate_active()
-        thread.join(timeout=5)
-        assert not thread.is_alive()
+        assert interrupted is True
+        assert elapsed < 5  # terminated promptly, did not wait out the 5s sleep
+        assert not ended.exists()  # child was killed, not left to finish
