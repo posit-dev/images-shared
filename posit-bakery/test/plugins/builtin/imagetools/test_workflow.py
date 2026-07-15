@@ -190,6 +190,41 @@ def test_pull_retries_transient_then_succeeds(mock_target):
     sleep.assert_called_once()
 
 
+def test_push_retries_transient_then_succeeds(mock_target):
+    """A transient registry error on the SOCI push is retried, not fatal."""
+    from posit_bakery.retry import RetryPolicy
+
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+        retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+    )
+
+    attempts = {"push": 0}
+
+    def fake_run(cmd, capture_output):
+        # Second oras cp is the converted layout -> registry push; fail it transiently once.
+        if cmd[:2] == ["oras", "cp"] and "--from-oci-layout" in cmd:
+            attempts["push"] += 1
+            if attempts["push"] == 1:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"sha256:x: not found")
+        return _ok_proc(cmd)
+
+    with (
+        patch("subprocess.run", side_effect=fake_run),
+        patch("posit_bakery.retry.time.sleep") as sleep,
+        patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
+    ):
+        result = workflow.run()
+
+    assert result.success is True
+    assert attempts["push"] == 2
+    sleep.assert_called_once()
+
+
 def test_pull_retry_uses_runner_sleep_when_runner_provided(mock_target):
     workflow = SociConvertWorkflow(
         soci_bin="soci",

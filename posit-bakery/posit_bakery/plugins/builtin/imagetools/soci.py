@@ -221,14 +221,23 @@ class SociConvertWorkflow(BaseModel):
             ).run(dry_run=dry_run, runner=runner)
 
             # 3. push converted layout -> registry, referenced by digest since
-            #    the converted layout carries no tag.
+            #    the converted layout carries no tag. Retry transient registry
+            #    errors: pushing by digest can race the same eventual-consistency
+            #    window as the pull above (e.g. cross-repo blob mounts of
+            #    just-pushed source layers).
             digest = "sha256:<dry-run>" if dry_run else self._read_converted_digest(out_layout)
-            OrasCopy(
+            push = OrasCopy(
                 oras_bin=self.oras_bin,
                 source=f"{out_layout}@{digest}",
                 destination=self.destination_ref,
                 from_oci_layout=True,
-            ).run(dry_run=dry_run, runner=runner)
+            )
+            retry_on_transient(
+                lambda: push.run(dry_run=dry_run, runner=runner),
+                policy=self.retry_policy,
+                description=f"soci push for '{self.image_target.uid}'",
+                sleep=runner.sleep if runner is not None else None,
+            )
         except BakeryToolRuntimeError as e:
             return SociConvertWorkflowResult(
                 success=False,
