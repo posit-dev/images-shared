@@ -14,6 +14,11 @@ DOCKER_HUB_README_PASSWORD_ENV = "DOCKER_HUB_README_PASSWORD"
 # DockerhubClient.update_full_description). Exceeding it makes Docker Hub return a
 # raw HTTP 400; the checks below let callers fail with a clear message instead,
 # without needing Docker Hub credentials.
+#
+# Not documented by Docker; confirmed by community reports and by our own
+# incident (posit-dev/images-workbench#164, which failed at 25,069 bytes):
+# https://github.com/docker/hub-feedback/issues/2320
+# https://github.com/docker/roadmap/issues/475
 DOCKER_HUB_README_MAX_BYTES = 25_000
 
 
