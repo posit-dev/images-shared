@@ -115,6 +115,28 @@ class TestBuildLatestFlag:
         assert settings.latest is False
 
 
+class TestBuildJobsFlag:
+    def test_jobs_passed_to_build_targets(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        result = runner.invoke(
+            app,
+            ["build", "--jobs", "3", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert instance.build_targets.call_args.kwargs["jobs"] == 3
+
+    def test_jobs_defaults_to_none(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        result = runner.invoke(
+            app,
+            ["build", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert instance.build_targets.call_args.kwargs["jobs"] is None
+
+
 @then("the bake plan is valid", target_fixture="bake_plan_data")
 def check_bake_plan_json(bakery_command):
     try:
