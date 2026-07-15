@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import time
+from unittest.mock import patch
 
 import pytest
 from rich.console import Console
@@ -14,6 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
 from posit_bakery.parallel import (
     CommandRunner,
+    ExecutorInterrupted,
     JobResult,
     ParallelShellExecutor,
     ShellJob,
@@ -335,6 +337,43 @@ class TestJobResult:
         job = ShellJob(key="a", run=lambda runner: None)
         result = JobResult(job=job, value=None, exception=RuntimeError("boom"))
         assert result.ok is False
+
+
+class TestCommandRunnerSleep:
+    def _runner(self):
+        executor = ParallelShellExecutor(max_workers=1, console=Console(file=io.StringIO()), use_live=False)
+        return executor, CommandRunner(executor, "key", "label")
+
+    def test_sleeps_full_duration_in_slices_when_no_shutdown(self):
+        _executor, runner = self._runner()
+
+        with patch("posit_bakery.parallel.executor.time.sleep") as mock_sleep:
+            runner.sleep(1.2, slice_seconds=0.5)
+
+        assert mock_sleep.call_count == 3
+        assert sum(c.args[0] for c in mock_sleep.call_args_list) == pytest.approx(1.2)
+
+    def test_raises_executor_interrupted_when_shutdown_flips_mid_sleep(self):
+        executor, runner = self._runner()
+
+        def fake_sleep(seconds):
+            executor._shutdown = True
+
+        with patch("posit_bakery.parallel.executor.time.sleep", side_effect=fake_sleep) as mock_sleep:
+            with pytest.raises(ExecutorInterrupted):
+                runner.sleep(10.0, slice_seconds=0.5)
+
+        mock_sleep.assert_called_once()
+
+    def test_raises_immediately_when_shutdown_already_set(self):
+        executor, runner = self._runner()
+        executor._shutdown = True
+
+        with patch("posit_bakery.parallel.executor.time.sleep") as mock_sleep:
+            with pytest.raises(ExecutorInterrupted):
+                runner.sleep(5.0)
+
+        mock_sleep.assert_not_called()
 
 
 class TestParallelShellExecutorJobs:

@@ -209,6 +209,7 @@ class SociConvertWorkflow(BaseModel):
                 lambda: pull.run(dry_run=dry_run, runner=runner),
                 policy=self.retry_policy,
                 description=f"soci pull for '{self.image_target.uid}'",
+                sleep=runner.sleep if runner is not None else None,
             )
 
             # 2. convert local layout -> local layout (directory so we can read

@@ -190,6 +190,41 @@ def test_pull_retries_transient_then_succeeds(mock_target):
     sleep.assert_called_once()
 
 
+def test_pull_retry_uses_runner_sleep_when_runner_provided(mock_target):
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+    )
+    runner = MagicMock()
+
+    with patch("posit_bakery.plugins.builtin.imagetools.soci.retry_on_transient", return_value=None) as mock_retry:
+        with patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)):
+            with patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"):
+                workflow.run(runner=runner)
+
+    assert mock_retry.call_args.kwargs["sleep"] is runner.sleep
+
+
+def test_pull_retry_sleep_is_none_without_runner(mock_target):
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+    )
+
+    with patch("posit_bakery.plugins.builtin.imagetools.soci.retry_on_transient", return_value=None) as mock_retry:
+        with patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)):
+            with patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"):
+                workflow.run()
+
+    assert mock_retry.call_args.kwargs["sleep"] is None
+
+
 def test_read_converted_digest_reads_index_json(workflow, tmp_path):
     layout = tmp_path / "out"
     layout.mkdir()
