@@ -18,6 +18,7 @@ from posit_bakery.parallel import (
     ExecutorInterrupted,
     JobResult,
     ParallelShellExecutor,
+    PrefixedLogSink,
     ShellJob,
     ShellResult,
     ShellTask,
@@ -337,6 +338,42 @@ class TestJobResult:
         job = ShellJob(key="a", run=lambda runner: None)
         result = JobResult(job=job, value=None, exception=RuntimeError("boom"))
         assert result.ok is False
+
+
+class TestPrefixedLogSink:
+    def test_write_prefixes_line(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "Step 1/5 : FROM ubuntu")
+
+        output = buf.getvalue()
+        assert "target-a" in output
+        assert "Step 1/5 : FROM ubuntu" in output
+
+    def test_write_is_thread_safe_no_interleaving(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf, width=200))
+
+        def writer(key, marker, count):
+            for i in range(count):
+                sink.write(key, f"{marker}-{i}")
+
+        threads = [
+            threading.Thread(target=writer, args=("a", "AAAAAAAAAA", 100)),
+            threading.Thread(target=writer, args=("b", "BBBBBBBBBB", 100)),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        for line in buf.getvalue().splitlines():
+            if not line.strip():
+                continue
+            # A single line must never contain both markers -- proves writes
+            # from the two threads never interleaved mid-line.
+            assert ("AAAAAAAAAA" in line) != ("BBBBBBBBBB" in line)
 
 
 class TestCommandRunnerSleep:

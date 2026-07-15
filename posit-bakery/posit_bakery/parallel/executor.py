@@ -167,6 +167,24 @@ def resolve_max_workers(jobs: int | None, n_tasks: int) -> int:
     return min(workers, max(1, n_tasks))
 
 
+class PrefixedLogSink:
+    """Thread-safe console sink for interleaved concurrent output, prefixed per key.
+
+    Each `write()` call is expected to be one complete line (e.g. one line yielded by
+    `python_on_whales`'s ``stream_logs``), so a single lock around the print is enough to
+    keep concurrent writers from interleaving mid-line.
+    """
+
+    def __init__(self, console: Console = stderr_console) -> None:
+        self._console = console
+        self._lock = threading.Lock()
+
+    def write(self, key: str, line: str) -> None:
+        """Print `line` prefixed with `[key]`, guarded by a lock shared across all keys."""
+        with self._lock:
+            self._console.file.write(f"[{key}] {line}\n")
+
+
 class ParallelShellExecutor:
     """Run ShellTasks concurrently with bounded workers and an optional Rich live table.
 
