@@ -1,4 +1,9 @@
-"""Tests for the `bakery ci publish` orchestrator."""
+"""Tests for the `bakery ci publish` orchestrator.
+
+The orchestration logic lives in the ``imagetools`` plugin
+(``ImageToolsPlugin.publish``); ``bakery ci publish`` is a thin wrapper that
+delegates to it.
+"""
 
 from unittest.mock import MagicMock, patch
 
@@ -43,7 +48,10 @@ def _fake_target(uid: str, merge_sources: list[str] | None = None):
     return t
 
 
-def test_publish_invokes_soci_execute_without_mode(tmp_path):
+def test_publish_invokes_soci_convert_without_mode(tmp_path):
+    """`ci publish` should drive the plugin's SOCI conversion phase
+    (``ImageToolsPlugin.execute``) without threading any mode/standalone
+    selector through it."""
     captured = {}
 
     fake_config = MagicMock()
@@ -51,20 +59,20 @@ def test_publish_invokes_soci_execute_without_mode(tmp_path):
     fake_config.load_build_metadata_from_file.return_value = ["uid1"]
     fake_config.get_image_target_by_uid.return_value = _fake_target("uid1")
 
-    fake_soci = MagicMock()
-
-    def fake_execute(base_path, targets, *, source_refs=None, dry_run=False, **kwargs):
+    def fake_execute(self, base_path, targets, *, source_refs=None, dry_run=False, **kwargs):
         captured["called"] = True
         captured["kwargs"] = kwargs
         return []
 
-    fake_soci.execute.side_effect = fake_execute
-
     runner = CliRunner()
     with (
-        patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
-        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
-        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+        patch("posit_bakery.config.BakeryConfig.from_context", return_value=fake_config),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.imagetools.ImageToolsPlugin.execute",
+            autospec=True,
+            side_effect=fake_execute,
+        ),
     ):
         result = runner.invoke(
             app,
@@ -79,7 +87,12 @@ def test_publish_invokes_soci_execute_without_mode(tmp_path):
 
 
 def test_publish_waits_for_sources_then_proceeds(tmp_path):
-    """The pre-flight wait is invoked with the targets' merge-source digests."""
+    """The pre-flight wait is invoked with the targets' merge-source digests.
+
+    The orchestration now lives in ``ImageToolsPlugin.publish``; its SOCI
+    convert phase (``ImageToolsPlugin.execute``) is stubbed so we can exercise
+    the path from the wait through the ORAS phases.
+    """
     sources = [
         "ghcr.io/posit-dev/test/tmp@sha256:amd64",
         "ghcr.io/posit-dev/test/tmp@sha256:arm64",
@@ -101,9 +114,6 @@ def test_publish_waits_for_sources_then_proceeds(tmp_path):
         captured["wait_kwargs"] = kwargs
         return fake_wait_instance
 
-    fake_soci = MagicMock()
-    fake_soci.execute.return_value = []
-
     # Make the downstream phases succeed so we exercise the path past the wait.
     fake_create_result = MagicMock(success=True, temp_ref="ghcr.io/posit-dev/test/tmp:created")
     fake_copy_result = MagicMock(success=True, destinations=["ghcr.io/posit-dev/test:1.0.0"], error=None)
@@ -112,21 +122,25 @@ def test_publish_waits_for_sources_then_proceeds(tmp_path):
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
-        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
-        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", side_effect=fake_wait_ctor),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow", side_effect=fake_wait_ctor),
         patch(
-            "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
             return_value=MagicMock(run=MagicMock(return_value=fake_create_result)),
         ),
         patch(
-            "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow",
             return_value=MagicMock(run=MagicMock(return_value=fake_copy_result)),
         ),
         patch(
-            "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
             return_value=MagicMock(run=MagicMock(return_value=fake_verify_result)),
         ),
-        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.imagetools.ImageToolsPlugin.execute",
+            autospec=True,
+            return_value=[],
+        ),
     ):
         result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
 
@@ -151,20 +165,24 @@ def test_publish_aborts_when_sources_never_ready(tmp_path):
         success=False, ready=[], missing=sources, waited_seconds=600.0, error="still unreadable"
     )
 
-    fake_soci = MagicMock()
-
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
-        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
-        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", return_value=fake_wait_instance),
-        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+            return_value=fake_wait_instance,
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.imagetools.ImageToolsPlugin.execute",
+            autospec=True,
+        ) as mock_execute,
     ):
         result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
 
     assert result.exit_code == 1
     # Aborted before SOCI convert.
-    fake_soci.execute.assert_not_called()
+    mock_execute.assert_not_called()
 
 
 def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
@@ -190,18 +208,22 @@ def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
         stderr=b"unauthorized: authentication required",
     )
 
-    fake_soci = MagicMock()
-
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
-        patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"),
-        patch("posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow", return_value=fake_wait_instance),
-        patch("posit_bakery.plugins.registry.get_plugin", return_value=fake_soci),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+            return_value=fake_wait_instance,
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.imagetools.ImageToolsPlugin.execute",
+            autospec=True,
+        ) as mock_execute,
     ):
         result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
 
     # Clean exit, not an unhandled exception.
     assert result.exit_code == 1
     assert result.exception is None or isinstance(result.exception, SystemExit)
-    fake_soci.execute.assert_not_called()
+    mock_execute.assert_not_called()

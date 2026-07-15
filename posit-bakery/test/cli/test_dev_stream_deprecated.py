@@ -22,38 +22,34 @@ BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
 class TestCiMergeDevStreamDeprecation:
     @pytest.fixture
     def mock_merge(self, tmp_path):
+        # `ci merge` -> `ci publish` delegates the orchestration to the
+        # imagetools plugin; capture the dev_channel it forwards.
         metadata_file = tmp_path / "meta.json"
         metadata_file.write_text("{}")
-        with patch("posit_bakery.cli.ci.BakeryConfig") as mock_config:
-            instance = MagicMock()
-            instance.load_build_metadata_from_file.return_value = []
-            instance.targets = []
-            mock_config.from_context.return_value = instance
-            with patch("posit_bakery.plugins.registry.get_plugin") as mock_plugin:
-                mock_oras = MagicMock()
-                mock_oras.execute.return_value = []
-                mock_plugin.return_value = mock_oras
-                yield mock_config, str(metadata_file)
+        with patch("posit_bakery.plugins.registry.get_plugin") as mock_get_plugin:
+            plugin = MagicMock()
+            mock_get_plugin.return_value = plugin
+            yield plugin, str(metadata_file)
 
     def test_dev_stream_coalesces(self, mock_merge):
-        mock, meta = mock_merge
+        plugin, meta = mock_merge
         result = runner.invoke(
             app,
             ["ci", "merge", meta, "--context", BASIC_CONTEXT, "--dev-stream", "daily"],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert settings_from_call(mock).dev_channel == ReleaseChannelEnum.DAILY
+        assert plugin.publish.call_args.kwargs["dev_channel"] == ReleaseChannelEnum.DAILY
 
     def test_dev_channel_wins(self, mock_merge):
-        mock, meta = mock_merge
+        plugin, meta = mock_merge
         result = runner.invoke(
             app,
             ["ci", "merge", meta, "--context", BASIC_CONTEXT, "--dev-stream", "daily", "--dev-channel", "preview"],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert settings_from_call(mock).dev_channel == ReleaseChannelEnum.PREVIEW
+        assert plugin.publish.call_args.kwargs["dev_channel"] == ReleaseChannelEnum.PREVIEW
 
 
 class TestCiReadmeDevStreamDeprecation:
