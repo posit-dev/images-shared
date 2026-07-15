@@ -12,6 +12,8 @@ Which targets are converted is driven by configuration: each target is converted
 
 Temporary indexes are left in place and cleaned up out-of-band by the clean.yml workflow (bakery clean temp-registry) rather than deleted here.
 
+The orchestration itself lives in the `imagetools` plugin (:meth:`ImageToolsPlugin.publish`); this command is a thin wrapper.
+
 Replaces `bakery ci merge`; the latter is preserved as a thin alias.
 
     Usage: bakery ci publish [OPTIONS] METADATA_FILE...
@@ -28,6 +30,9 @@ Replaces `bakery ci merge`; the latter is preserved as a thin alias.
       Temporary indexes are left in place and cleaned up out-of-band by the
       clean.yml workflow (bakery clean temp-registry) rather than deleted here.
 
+      The orchestration itself lives in the ``imagetools`` plugin
+      (:meth:`ImageToolsPlugin.publish`); this command is a thin wrapper.
+
       Replaces `bakery ci merge`; the latter is preserved as a thin alias.
 
     Arguments:
@@ -40,6 +45,10 @@ Replaces `bakery ci merge`; the latter is preserved as a thin alias.
                                       (regex, e.g. '^workbench$').
       --temp-registry TEXT            Temporary registry to use for split/merge
                                       builds.
+      -j, --jobs INTEGER RANGE        Maximum number of targets to publish
+                                      concurrently. Defaults to the
+                                      BAKERY_MAX_CONCURRENCY env var or a built-in
+                                      default.  [x>=1]
       --dry-run / --no-dry-run        If set, no images will be pushed.  [default:
                                       no-dry-run]
       --dev-channel [release|preview|daily]
@@ -68,6 +77,9 @@ Filter publish to a specific image name (regex, e.g. `^workbench$`).
 
 `--temp-registry``:`` ``TEXT`  
 Temporary registry to use for split/merge builds.
+
+`-j, --jobs``:`` ``INTEGER RANGE`  
+Maximum number of targets to publish concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.
 
 `--dry-run, --no-dry-run`  
 If set, no images will be pushed.

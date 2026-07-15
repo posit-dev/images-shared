@@ -1963,7 +1963,7 @@ Note
 <section id="socioptions" class="level4">
 <h4 class="anchored" data-anchor-id="socioptions">SociOptions</h4>
 <p>A SociOption configures <a href="https://github.com/awslabs/soci-snapshotter">SOCI</a> (Seekable OCI) index generation for an image target. SOCI indexes let container runtimes lazily pull image layers, reducing startup latency for large images.</p>
-<p>SOCI options can be set in the <code>options</code> array of an <a href="#image">Image</a> or an <a href="#imagevariant">ImageVariant</a>. When both are present, the variant’s options are merged over the image’s options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step via <code>bakery soci convert</code> (standalone) or as part of <code>bakery ci publish</code> (config-driven), and only acts on targets where <code>enabled</code> is <code>true</code>.</p>
+<p>SOCI options can be set in the <code>options</code> array of an <a href="#image">Image</a> or an <a href="#imagevariant">ImageVariant</a>. When both are present, the variant’s options are merged over the image’s options, with any field not explicitly set on the variant inheriting the image-level value. SOCI conversion runs as a post-build step via <code>bakery imagetools soci-convert</code> (standalone) or as part of <code>bakery ci publish</code> (config-driven), and only acts on targets where <code>enabled</code> is <code>true</code>.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 15%">

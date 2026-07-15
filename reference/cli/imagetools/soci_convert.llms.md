@@ -1,16 +1,16 @@
-# bakery soci convert
+# bakery imagetools soci-convert
 
-# bakery soci convert
+# bakery imagetools soci-convert
 
 Convert images referenced by build-metadata JSON files into SOCI-enabled images.
 
 ``` bash
-bakery soci convert [OPTIONS] METADATA_FILE...
+bakery imagetools soci-convert [OPTIONS] METADATA_FILE...
 ```
 
 Conversion runs in standalone (no-containerd) mode via oras. Targets without `tool: soci, enabled: true` in bakery.yaml are skipped.
 
-    Usage: bakery soci convert [OPTIONS] METADATA_FILE...
+    Usage: bakery imagetools soci-convert [OPTIONS] METADATA_FILE...
 
       Convert images referenced by build-metadata JSON files into SOCI-enabled
       images.

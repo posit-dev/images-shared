@@ -19,20 +19,19 @@ bakery [OPTIONS] COMMAND [ARGS]...
       --help                Show this message and exit.
 
     Commands:
-      build     Build images using buildkit bake (aliases: b, bake)
-      version   Show the Posit Bakery version
-      run       Run extra tools/commands against images (aliases: r)
-      create    Create new projects, images, and versions (aliases: c, new)
-      update    Update managed files and configurations (aliases: u, up)
-      remove    Remove images and versions from the project (aliases: rm, r)
-      get       Get information about the bakery configuration
-      ci        Construct a CI matrix from the project.
-      clean     Cleaning utilities for remote build caches
-      dgoss     Run Goss tests against container images
-      hadolint  Lint Containerfiles using hadolint
-      oras      Merge multi-platform images using ORAS
-      soci      Convert images to SOCI-enabled images
-      wizcli    Scan container images for vulnerabilities with WizCLI
+      build       Build images using buildkit bake (aliases: b, bake)
+      version     Show the Posit Bakery version
+      run         Run extra tools/commands against images (aliases: r)
+      create      Create new projects, images, and versions (aliases: c, new)
+      update      Update managed files and configurations (aliases: u, up)
+      remove      Remove images and versions from the project (aliases: rm, r)
+      get         Get information about the bakery configuration
+      ci          Construct a CI matrix from the project.
+      clean       Cleaning utilities for remote build caches
+      dgoss       Run Goss tests against container images
+      hadolint    Lint Containerfiles using hadolint
+      imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)
+      wizcli      Scan container images for vulnerabilities with WizCLI
 
 ## Options
 
@@ -77,11 +76,8 @@ Show completion for the current shell, to copy it or customize the installation.
 `hadolint`  
 [Lint Containerfiles using hadolint](../../reference/cli/hadolint.llms.md)
 
-`oras`  
-[Merge multi-platform images using ORAS](../../reference/cli/oras.llms.md)
-
-`soci`  
-[Convert images to SOCI-enabled images](../../reference/cli/soci.llms.md)
+`imagetools`  
+[Merge and SOCI-convert multi-platform images (ORAS + SOCI)](../../reference/cli/imagetools.llms.md)
 
 `wizcli`  
 [Scan container images for vulnerabilities with WizCLI](../../reference/cli/wizcli.llms.md)

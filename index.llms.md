@@ -15,7 +15,7 @@ Bakery is a CLI tool that binds together various tools to manage a matrixed buil
 | [docker](https://github.com/docker/buildx#installing), [podman](https://podman-desktop.io/docs/installation), or [nerdctl](https://github.com/containerd/nerdctl#install) | `bakery build --strategy build` | Build containers in series |
 | [dgoss](https://github.com/goss-org/goss#installation) | `bakery dgoss run` | Test container images for expected content & behavior |
 | [hadolint](https://github.com/hadolint/hadolint#install) | `bakery hadolint run` | Lint Containerfiles for best practices |
-| [oras](https://oras.land/) | `bakery oras merge` | Merge multi-platform images into an OCI index |
+| [oras](https://oras.land/) | `bakery imagetools merge` | Merge multi-platform images into an OCI index |
 | [wizcli](https://www.wiz.io/) | `bakery wizcli scan` | Scan container images for vulnerabilities |
 
 > **NOTE:**

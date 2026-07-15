@@ -798,6 +798,7 @@ window.onload = function () {
 <div class="doc-text">
 <p>Which targets are converted is driven by configuration: each target is converted only when its resolved SOCI options have <code>enabled: true</code> (set via the <code>soci</code> tool options on an image or variant). Targets without SOCI enabled pass through the convert phase untouched. Conversion runs in standalone (no containerd) mode via oras.</p>
 <p>Temporary indexes are left in place and cleaned up out-of-band by the clean.yml workflow (bakery clean temp-registry) rather than deleted here.</p>
+<p>The orchestration itself lives in the <code>imagetools</code> plugin (:meth:<code>ImageToolsPlugin.publish</code>); this command is a thin wrapper.</p>
 <p>Replaces <code>bakery ci merge</code>; the latter is preserved as a thin alias.</p>
 </div>
 <div class="details" data-summary="Full --help output">
@@ -816,6 +817,9 @@ window.onload = function () {
   Temporary indexes are left in place and cleaned up out-of-band by the
   clean.yml workflow (bakery clean temp-registry) rather than deleted here.
 
+  The orchestration itself lives in the ``imagetools`` plugin
+  (:meth:`ImageToolsPlugin.publish`); this command is a thin wrapper.
+
   Replaces `bakery ci merge`; the latter is preserved as a thin alias.
 
 Arguments:
@@ -828,6 +832,10 @@ Options:
                                   (regex, e.g. '^workbench$').
   --temp-registry TEXT            Temporary registry to use for split/merge
                                   builds.
+  -j, --jobs INTEGER RANGE        Maximum number of targets to publish
+                                  concurrently. Defaults to the
+                                  BAKERY_MAX_CONCURRENCY env var or a built-in
+                                  default.  [x&gt;=1]
   --dry-run / --no-dry-run        If set, no images will be pushed.  [default:
                                   no-dry-run]
   --dev-channel [release|preview|daily]
@@ -868,6 +876,10 @@ Filter publish to a specific image name (regex, e.g.&nbsp;<code>^workbench$</cod
 <dt><code><span class="doc-parameter-name">--temp-registry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
 <dd>
 Temporary registry to use for split/merge builds.
+</dd>
+<dt><code><span class="doc-parameter-name">-j, --jobs</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">INTEGER RANGE</span></code></dt>
+<dd>
+Maximum number of targets to publish concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.
 </dd>
 <dt><code><span class="doc-parameter-name">--dry-run, --no-dry-run</span></code></dt>
 <dd>

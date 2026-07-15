@@ -1,16 +1,16 @@
-# bakery oras merge
+# bakery imagetools merge
 
-# bakery oras merge
+# bakery imagetools merge
 
 Merge multi-platform images from build metadata files using ORAS.
 
 ``` bash
-bakery oras merge [OPTIONS] METADATA_FILE...
+bakery imagetools merge [OPTIONS] METADATA_FILE...
 ```
 
 Takes one or more build metadata JSON files (produced by `bakery build --strategy build`) and merges platform-specific images into multi-platform manifest indexes.
 
-    Usage: bakery oras merge [OPTIONS] METADATA_FILE...
+    Usage: bakery imagetools merge [OPTIONS] METADATA_FILE...
 
       Merge multi-platform images from build metadata files using ORAS.
 
