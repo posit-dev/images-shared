@@ -202,6 +202,10 @@ jobs:
       contents: read
       packages: write
     needs: matrix
+    # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
+    # Guard here so an empty change-aware matrix (a push with nothing to build)
+    # produces 'skipped' instead of 'failure'.
+    if: ${{ needs.matrix.outputs.platform-matrix != '[]' }}
     strategy:
       fail-fast: false
       matrix:
@@ -377,6 +381,10 @@ jobs:
       contents: read
       packages: write
     needs: [matrix, build-test]
+    # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
+    # Guard here so an empty change-aware matrix (a push with nothing to build)
+    # produces 'skipped' instead of 'failure'.
+    if: ${{ needs.matrix.outputs.image-matrix != '[]' }}
     strategy:
       fail-fast: false
       matrix:

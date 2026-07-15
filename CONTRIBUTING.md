@@ -123,6 +123,11 @@ all-zero SHA GitHub sends as `github.event.before` on a branch's first-ever push
 `bakery ci matrix` logs a warning and falls back to a full build rather than failing
 the run.
 
+Conversely, a push whose change set resolves to nothing buildable (e.g. a docs-only
+merge to `main`) now builds and publishes nothing rather than building the full
+matrix — the build and merge jobs are skipped, mirroring how an empty change-aware
+PR matrix already behaves.
+
 ### Classification rules
 
 After ignoring Markdown (`*.md`) paths, changed files are classified as follows:

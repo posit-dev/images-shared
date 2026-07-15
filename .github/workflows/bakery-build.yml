@@ -186,6 +186,10 @@ jobs:
       contents: read
       packages: write
     needs: matrix
+    # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
+    # Guard here so an empty change-aware matrix (a push with nothing to build)
+    # produces 'skipped' instead of 'failure'.
+    if: ${{ needs.matrix.outputs.matrix != '[]' }}
     runs-on: ${{ inputs.runs-on }}
     strategy:
       fail-fast: false
