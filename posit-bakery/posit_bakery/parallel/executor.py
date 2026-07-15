@@ -359,20 +359,26 @@ class ParallelShellExecutor:
         tasks: list[ShellTask],
         *,
         on_result: Callable[[ShellResult], None] | None = None,
+        fail_fast: bool = False,
     ) -> list[ShellResult]:
         """Run all tasks, returning results in input order. ``on_result`` fires per task on the main thread.
 
         On KeyboardInterrupt (or any BaseException) the executor cancels queued tasks and
         terminates in-flight child processes before re-raising, so Ctrl-C is responsive and
         does not leave orphaned children.
+
+        :param fail_fast: If True, the first failing result cancels every not-yet-started
+            task; already-running ones finish normally. Tasks that never got a chance to run
+            are omitted from the returned list.
         """
-        return self._execute_pool(tasks, worker=self._run_one, on_result=on_result)
+        return self._execute_pool(tasks, worker=self._run_one, on_result=on_result, fail_fast=fail_fast)
 
     def run_jobs(
         self,
         jobs: list[ShellJob],
         *,
         on_result: Callable[[JobResult], None] | None = None,
+        fail_fast: bool = False,
     ) -> list[JobResult]:
         """Run all jobs (each an ordered command sequence) concurrently, returning results in input order.
 
@@ -380,8 +386,12 @@ class ParallelShellExecutor:
         commands it spawns are tracked exactly like task runs, so timeout enforcement,
         process-group termination, and interrupt-safety all apply. ``on_result`` fires per job
         on the main thread (so callers can mutate shared state without locks).
+
+        :param fail_fast: If True, the first failing result cancels every not-yet-started job;
+            already-running ones finish normally. Jobs that never got a chance to run are
+            omitted from the returned list.
         """
-        return self._execute_pool(jobs, worker=self._run_job, on_result=on_result)
+        return self._execute_pool(jobs, worker=self._run_job, on_result=on_result, fail_fast=fail_fast)
 
     @staticmethod
     def _run_with_slot(worker: Callable[[Any], Any], unit: Any, slot_queue: "queue.SimpleQueue[int]") -> Any:
@@ -402,6 +412,7 @@ class ParallelShellExecutor:
         *,
         worker: Callable[[Any], Any],
         on_result: Callable[[Any], None] | None,
+        fail_fast: bool = False,
     ) -> list:
         """Shared driver for :meth:`run` and :meth:`run_jobs`.
 
@@ -409,6 +420,12 @@ class ParallelShellExecutor:
         result, and the result must expose ``.ok`` (used to render live table's check/cross mark).
         Owns the thread pool, live-table lifecycle, interrupt handling, and input-order result
         assembly so both call paths share identical Ctrl-C and process-group-termination semantics.
+
+        When ``fail_fast`` is True, the first ``!ok`` result cancels every not-yet-started
+        future (a no-op for ones already running, which run to completion and are still
+        collected). Units whose future was cancelled before it could run are simply absent
+        from the returned list -- callers must not assume ``len(result) == len(units)`` when
+        ``fail_fast=True``.
         """
         if not units:
             return []
@@ -434,8 +451,13 @@ class ParallelShellExecutor:
             )
             self._progress = progress
 
+        cancelled_pending = False
+
         def consume(future_map: dict) -> None:
+            nonlocal cancelled_pending
             for future in as_completed(future_map):
+                if future.cancelled():
+                    continue
                 result = future.result()
                 results_by_key[future_map[future].key] = result
                 if progress is not None:
@@ -447,6 +469,10 @@ class ParallelShellExecutor:
                     )
                 if on_result is not None:
                     on_result(result)
+                if fail_fast and not result.ok and not cancelled_pending:
+                    cancelled_pending = True
+                    for pending in future_map:
+                        pending.cancel()
 
         slot_queue: queue.SimpleQueue[int] = queue.SimpleQueue()
         for slot in range(1, self.max_workers + 1):
@@ -480,7 +506,7 @@ class ParallelShellExecutor:
             self._progress = None
             self._progress_ids = {}
 
-        return [results_by_key[unit.key] for unit in units]
+        return [results_by_key[unit.key] for unit in units if unit.key in results_by_key]
 
 
 class CommandRunner:

@@ -456,6 +456,60 @@ class TestParallelShellExecutorJobs:
         assert by_key["good"].ok is True
         assert by_key["good"].value == 0
 
+    def test_fail_fast_cancels_unstarted_jobs(self):
+        order = []
+
+        def make(key, ok):
+            def run(runner):
+                order.append(key)
+                if not ok:
+                    raise RuntimeError(f"{key} failed")
+                return key
+
+            return run
+
+        jobs = [
+            ShellJob(key="a", run=make("a", False)),
+            ShellJob(key="b", run=make("b", True)),
+            ShellJob(key="c", run=make("c", True)),
+        ]
+        results = self._executor(1).run_jobs(jobs, fail_fast=True)
+
+        assert {r.job.key for r in results} == {"a"}
+        assert order == ["a"]
+
+    def test_fail_fast_does_not_cancel_already_running_job(self):
+        started = threading.Event()
+        finished = threading.Event()
+
+        def run_slow_success(runner):
+            started.set()
+            time.sleep(0.2)
+            finished.set()
+            return "slow-done"
+
+        def run_fail(runner):
+            started.wait(timeout=2)
+            raise RuntimeError("boom")
+
+        jobs = [ShellJob(key="slow", run=run_slow_success), ShellJob(key="fail", run=run_fail)]
+        results = self._executor(2).run_jobs(jobs, fail_fast=True)
+        by_key = {r.job.key: r for r in results}
+
+        assert finished.is_set()
+        assert by_key["slow"].ok is True
+        assert by_key["slow"].value == "slow-done"
+        assert by_key["fail"].ok is False
+
+    def test_fail_fast_false_runs_all_jobs(self):
+        # Default behavior (fail_fast=False, same as omitting it) is unaffected.
+        jobs = [
+            ShellJob(key="bad", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom"))),
+            ShellJob(key="good", run=lambda runner: "ok"),
+        ]
+        results = self._executor(1).run_jobs(jobs)
+        assert {r.job.key for r in results} == {"bad", "good"}
+
     def test_runner_run_returns_completed_process(self):
         captured = {}
 
