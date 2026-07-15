@@ -153,8 +153,29 @@ jobs:
           git add -A
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Release ${DISPLAY_VERSION}"
-          git push -u origin "$BRANCH" --force-with-lease
+
+          if git diff --cached --quiet; then
+            # Nothing changed vs. HEAD: this display version's content is
+            # already on main (e.g. re-dispatched after the release merged).
+            echo "No changes to release for ${DISPLAY_VERSION}; skipping."
+          else
+            NEW_TREE=$(git write-tree)
+            OLD_TREE=""
+            if git rev-parse -q --verify "refs/remotes/origin/$BRANCH" >/dev/null; then
+              OLD_TREE=$(git rev-parse "refs/remotes/origin/$BRANCH^{tree}")
+            fi
+
+            if [ -n "$OLD_TREE" ] && [ "$NEW_TREE" = "$OLD_TREE" ]; then
+              # Already fully reflected on the existing branch/PR (e.g.
+              # re-dispatched while it's still open or queued to merge).
+              # Force-pushing here would be a no-op at best and can collide
+              # with a branch locked by a merge queue at worst.
+              echo "No changes vs. existing $BRANCH; skipping push."
+            else
+              git commit -m "Release ${DISPLAY_VERSION}"
+              git push -u origin "$BRANCH" --force-with-lease
+            fi
+          fi
 
           BODY="Updates images to version \`${VERSION}\`."
           BODY+=$'\n\n'"**Images:** $(echo "$IMAGES" | tr ' ' ', ')"
