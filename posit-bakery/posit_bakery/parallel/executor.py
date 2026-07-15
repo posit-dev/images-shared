@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import queue
 import signal
 import subprocess
 import threading
@@ -25,6 +26,38 @@ TERMINATE_GRACE_SECONDS = 10.0
 # Slice width for CommandRunner.sleep()'s interruptible backoff wait. Short
 # enough that a shutdown request is noticed promptly without busy-waiting.
 RETRY_SLEEP_SLICE_SECONDS = 0.5
+
+log = logging.getLogger(__name__)
+
+# Holds the current worker slot number (1..max_workers) for whichever pool thread is
+# running a task/job, so log records emitted deep inside that call (e.g. from oras.py,
+# soci.py) can be traced back to the operation that produced them.
+_worker_slot = threading.local()
+
+
+class _WorkerTagFilter(logging.Filter):
+    """Prefixes log records with the emitting thread's worker slot, when it has one."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        slot = getattr(_worker_slot, "value", None)
+        if slot is not None:
+            # No square brackets: RichHandler is configured with markup=True, which parses
+            # "[...]" as style tags and silently swallows unrecognized ones.
+            record.msg = f"w{slot} | {record.msg}"
+        return True
+
+
+def _ensure_worker_tag_filter() -> None:
+    """Attach :class:`_WorkerTagFilter` to every root logging handler, once.
+
+    Record-emitting loggers (e.g. in ``oras.py``, ``soci.py``) only run *their own*
+    filters before propagating; a filter must sit on the handler itself to see records
+    from every logger. Deferred until a pool actually runs (rather than at import time)
+    so it always runs after :func:`posit_bakery.log.init_logging` has installed handlers.
+    """
+    for handler in logging.getLogger().handlers:
+        if not any(isinstance(f, _WorkerTagFilter) for f in handler.filters):
+            handler.addFilter(_WorkerTagFilter())
 
 
 class ExecutorInterrupted(Exception):
@@ -331,6 +364,19 @@ class ParallelShellExecutor:
         """
         return self._execute_pool(jobs, worker=self._run_job, on_result=on_result)
 
+    @staticmethod
+    def _run_with_slot(worker: Callable[[Any], Any], unit: Any, slot_queue: "queue.SimpleQueue[int]") -> Any:
+        """Run ``worker(unit)`` with a worker slot number bound to this thread for the
+        duration of the call, so nested log records get tagged by :class:`_WorkerTagFilter`.
+        """
+        slot = slot_queue.get()
+        _worker_slot.value = slot
+        try:
+            return worker(unit)
+        finally:
+            del _worker_slot.value
+            slot_queue.put(slot)
+
     def _execute_pool(
         self,
         units: list,
@@ -347,6 +393,9 @@ class ParallelShellExecutor:
         """
         if not units:
             return []
+
+        log.info(f"Using {self.max_workers} worker(s) for {len(units)} concurrent operation(s)")
+        _ensure_worker_tag_filter()
 
         self._shutdown = False
         self._progress = None
@@ -380,6 +429,10 @@ class ParallelShellExecutor:
                 if on_result is not None:
                     on_result(result)
 
+        slot_queue: queue.SimpleQueue[int] = queue.SimpleQueue()
+        for slot in range(1, self.max_workers + 1):
+            slot_queue.put(slot)
+
         pool = ThreadPoolExecutor(max_workers=self.max_workers)
         try:
             if progress is not None:
@@ -389,10 +442,10 @@ class ParallelShellExecutor:
                             f"[quiet]{'queued':<7} {unit.display_label}", total=1, start=False
                         )
                     self._progress_ids = progress_ids
-                    future_map = {pool.submit(worker, unit): unit for unit in units}
+                    future_map = {pool.submit(self._run_with_slot, worker, unit, slot_queue): unit for unit in units}
                     consume(future_map)
             else:
-                future_map = {pool.submit(worker, unit): unit for unit in units}
+                future_map = {pool.submit(self._run_with_slot, worker, unit, slot_queue): unit for unit in units}
                 consume(future_map)
         except BaseException:
             # Interrupted (e.g. Ctrl-C): stop accepting/continuing work, drop queued units,
