@@ -12,7 +12,15 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from posit_bakery.const import DEFAULT_MAX_CONCURRENCY
-from posit_bakery.parallel import ParallelShellExecutor, ShellResult, ShellTask, resolve_max_workers
+from posit_bakery.parallel import (
+    CommandRunner,
+    JobResult,
+    ParallelShellExecutor,
+    ShellJob,
+    ShellResult,
+    ShellTask,
+    resolve_max_workers,
+)
 
 PY = sys.executable
 
@@ -305,3 +313,135 @@ class TestParallelShellExecutorInterrupt:
         assert elapsed < 3  # stopped promptly, not waited out for 30s
         assert result.returncode != 0  # the child was signalled, not a clean exit
         assert ex._active == set()  # never registered (or already discarded)
+
+
+class TestShellJob:
+    def test_display_label_defaults_to_key(self):
+        job = ShellJob(key="abc", run=lambda runner: None)
+        assert job.display_label == "abc"
+
+    def test_display_label_uses_label_when_set(self):
+        job = ShellJob(key="abc", run=lambda runner: None, label="My Label")
+        assert job.display_label == "My Label"
+
+
+class TestJobResult:
+    def test_ok_true_on_no_exception(self):
+        job = ShellJob(key="a", run=lambda runner: None)
+        result = JobResult(job=job, value=42)
+        assert result.ok is True
+
+    def test_ok_false_on_exception(self):
+        job = ShellJob(key="a", run=lambda runner: None)
+        result = JobResult(job=job, value=None, exception=RuntimeError("boom"))
+        assert result.ok is False
+
+
+class TestParallelShellExecutorJobs:
+    def _executor(self, max_workers):
+        return ParallelShellExecutor(
+            max_workers=max_workers,
+            console=Console(file=io.StringIO()),
+            use_live=False,
+        )
+
+    def test_empty_jobs_returns_empty(self):
+        assert self._executor(2).run_jobs([]) == []
+
+    def test_job_value_is_callable_return(self):
+        job = ShellJob(key="a", run=lambda runner: runner.run([PY, "-c", "print('hi')"]).stdout.decode().strip())
+        results = self._executor(1).run_jobs([job])
+        assert results[0].ok is True
+        assert results[0].value == "hi"
+
+    def test_results_returned_in_input_order(self):
+        # Sleep durations are inverted vs. input order so completion order differs.
+        durations = {"a": 0.30, "b": 0.05, "c": 0.15}
+
+        def make_run(d):
+            return lambda runner: runner.run([PY, "-c", f"import time; time.sleep({d})"]).returncode
+
+        jobs = [ShellJob(key=k, run=make_run(d)) for k, d in durations.items()]
+        results = self._executor(3).run_jobs(jobs)
+        assert [r.job.key for r in results] == ["a", "b", "c"]
+
+    def test_job_exception_isolated_others_still_run(self):
+        def boom(runner):
+            raise RuntimeError("target blew up")
+
+        def ok(runner):
+            return runner.run([PY, "-c", "pass"]).returncode
+
+        jobs = [ShellJob(key="bad", run=boom), ShellJob(key="good", run=ok)]
+        results = self._executor(2).run_jobs(jobs)
+        by_key = {r.job.key: r for r in results}
+        assert by_key["bad"].ok is False
+        assert isinstance(by_key["bad"].exception, RuntimeError)
+        assert by_key["good"].ok is True
+        assert by_key["good"].value == 0
+
+    def test_runner_run_returns_completed_process(self):
+        captured = {}
+
+        def run(runner):
+            captured["result"] = runner.run([PY, "-c", "import sys; sys.stdout.write('out'); sys.exit(3)"])
+
+        self._executor(1).run_jobs([ShellJob(key="a", run=run)])
+        result = captured["result"]
+        assert result.returncode == 3
+        assert result.stdout == b"out"
+
+    def test_runner_run_spawn_failure_raises(self):
+        def run(runner):
+            runner.run(["definitely-not-a-real-binary-zzz"])
+
+        results = self._executor(1).run_jobs([ShellJob(key="a", run=run)])
+        assert results[0].ok is False
+        assert isinstance(results[0].exception, (FileNotFoundError, OSError))
+
+    def test_on_result_called_once_per_job_on_main_thread(self):
+        jobs = [ShellJob(key=str(i), run=lambda runner: runner.run([PY, "-c", "pass"]).returncode) for i in range(5)]
+        seen_keys = []
+        seen_threads = set()
+
+        def on_result(result):
+            seen_keys.append(result.job.key)
+            seen_threads.add(threading.get_ident())
+
+        self._executor(3).run_jobs(jobs, on_result=on_result)
+        assert sorted(seen_keys) == sorted(j.key for j in jobs)
+        assert seen_threads == {threading.main_thread().ident}
+
+    def test_sigint_terminates_in_flight_children(self, tmp_path):
+        # Mirrors TestParallelShellExecutor.test_sigint_cancels_queued_and_terminates_running
+        # for the ShellJob path, firing a real SIGINT so the full run_jobs() -> run() ->
+        # _execute_pool() interrupt-handling chain is exercised end to end, rather than
+        # calling _terminate_active() directly and skipping the KeyboardInterrupt path.
+        marker = tmp_path / "started"
+        ended = tmp_path / "ended"
+        script = (
+            f"import pathlib,time; pathlib.Path({str(marker)!r}).write_text('1'); "
+            f"time.sleep(5); pathlib.Path({str(ended)!r}).write_text('1')"
+        )
+
+        def run(runner):
+            runner.run([PY, "-c", script])
+
+        def fire():
+            while not marker.exists():
+                time.sleep(0.01)
+            os.kill(os.getpid(), signal.SIGINT)
+
+        threading.Thread(target=fire, daemon=True).start()
+        ex = self._executor(1)
+        start = time.monotonic()
+        interrupted = False
+        try:
+            ex.run_jobs([ShellJob(key="a", run=run)])
+        except KeyboardInterrupt:
+            interrupted = True
+        elapsed = time.monotonic() - start
+
+        assert interrupted is True
+        assert elapsed < 5  # terminated promptly, did not wait out the 5s sleep
+        assert not ended.exists()  # child was killed, not left to finish

@@ -37,3 +37,8 @@ OCI_LABEL_PREFIX = "org.opencontainers.image"
 JINJA2_TEMPLATE_EXTENSIONS = {".jinja2", ".j2", ".jinja"}
 
 DEFAULT_MAX_CONCURRENCY = 4
+
+# Bounds a single tracked command (e.g. an oras/soci invocation) so a hung registry
+# call can't block a publish run forever; 30 minutes comfortably covers slow pushes
+# of large image layers without masking a truly stuck process.
+DEFAULT_COMMAND_TIMEOUT_SECONDS = 1800.0

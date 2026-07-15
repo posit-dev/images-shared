@@ -3,7 +3,7 @@
 import os
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import Field
@@ -50,6 +50,25 @@ def test_dry_run_does_not_invoke_subprocess():
         result = cmd.run(dry_run=True)
     mock_run.assert_not_called()
     assert result.returncode == 0
+
+
+def test_run_uses_runner_when_provided():
+    cmd = _StubSociCommand(soci_bin="soci", arg="x")
+    fake_runner = MagicMock()
+    fake_runner.run.return_value = subprocess.CompletedProcess(args=cmd.command, returncode=0, stdout=b"ok", stderr=b"")
+
+    result = cmd.run(runner=fake_runner)
+
+    fake_runner.run.assert_called_once_with(cmd.command)
+    assert result.returncode == 0
+
+
+def test_run_falls_back_to_subprocess_when_runner_omitted():
+    cmd = _StubSociCommand(soci_bin="soci", arg="x")
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = subprocess.CompletedProcess(args=cmd.command, returncode=0, stdout=b"", stderr=b"")
+        cmd.run()
+    mock_run.assert_called_once_with(cmd.command, capture_output=True)
 
 
 def test_find_soci_bin_uses_env_var(tmp_path, monkeypatch):
