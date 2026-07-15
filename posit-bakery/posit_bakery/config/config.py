@@ -42,6 +42,7 @@ from posit_bakery.error import (
 from posit_bakery.image.bake.bake import BakePlan
 from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
+from posit_bakery.parallel import ParallelShellExecutor, PrefixedLogSink, ShellJob, resolve_max_workers
 from posit_bakery.registry_management import ghcr
 
 log = logging.getLogger(__name__)
@@ -1134,6 +1135,7 @@ class BakeryConfig:
         metadata_file: Path | None = None,
         fail_fast: bool = False,
         retry: int = 0,
+        jobs: int | None = None,
     ):
         """Build image targets using the specified strategy.
 
@@ -1145,8 +1147,12 @@ class BakeryConfig:
             platform.
         :param strategy: The strategy to use when building images.
         :param metadata_file: Optional path to a metadata file to write build metadata to.
-        :param fail_fast: If True, stop building targets on the first failure.
+        :param fail_fast: If True, stop building targets on the first failure. Only affects
+            targets whose build has not yet started; already-running builds finish.
         :param retry: Number of times to retry a failed build (default 0, no retries).
+        :param jobs: Maximum number of targets to build concurrently for `--strategy build`
+            (ignored for `--strategy bake`, which manages its own parallelism). Falls back to
+            `SETTINGS.max_concurrency` when not given.
         """
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
@@ -1169,27 +1175,35 @@ class BakeryConfig:
                 label="bake plan",
             )
         elif strategy == ImageBuildStrategy.BUILD:
-            errors: list[Exception] = []
-            for target in self.targets:
-                try:
-                    _retry_build(
-                        lambda t=target: t.build(
+            sink = PrefixedLogSink()
+            shell_jobs = [
+                ShellJob(
+                    key=target.uid,
+                    label=str(target),
+                    run=lambda runner, t=target: _retry_build(
+                        lambda: t.build(
                             load=load,
                             push=push,
                             pull=pull,
                             cache=cache,
                             platforms=platforms,
                             metadata_file=True if metadata_file else None,
+                            log_callback=lambda line, u=t.uid: sink.write(u, line),
                         ),
                         retry=retry,
-                        label=str(target),
-                    )
-                except (BakeryFileError, DockerException, BakeryToolRuntimeError) as e:
-                    log.error(f"Failed to build image target '{str(target)}'.")
-                    if fail_fast:
-                        log.info("--fail-fast is set, stopping builds...")
-                        raise e
-                    errors.append(e)
+                        label=str(t),
+                    ),
+                )
+                for target in self.targets
+            ]
+            executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(shell_jobs)), use_live=False)
+            job_results = executor.run_jobs(shell_jobs, fail_fast=fail_fast)
+
+            errors: list[Exception] = []
+            for jr in job_results:
+                if not jr.ok:
+                    log.error(f"Failed to build image target '{jr.job.display_label}'.")
+                    errors.append(jr.exception)
             if errors:
                 if len(errors) == 1:
                     raise errors[0]
