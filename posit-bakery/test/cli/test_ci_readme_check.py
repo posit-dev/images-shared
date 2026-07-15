@@ -59,7 +59,7 @@ class TestReadmeCheckFlag:
                 )
 
         assert result.exit_code == 1
-        assert violation in result.stderr
+        assert violation in " ".join(result.stderr.split())
         mock_push.assert_not_called()
 
     def test_reports_all_violations(self, mock_config):
@@ -74,8 +74,9 @@ class TestReadmeCheckFlag:
                 )
 
         assert result.exit_code == 1
-        assert "README A is oversized" in result.stderr
-        assert "README B is oversized" in result.stderr
+        normalized_stderr = " ".join(result.stderr.split())
+        assert "README A is oversized" in normalized_stderr
+        assert "README B is oversized" in normalized_stderr
 
     def test_without_check_does_not_call_find(self, mock_config):
         with patch("posit_bakery.cli.ci.find_oversized_readmes") as mock_find:
