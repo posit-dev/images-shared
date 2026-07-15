@@ -137,6 +137,32 @@ jobs:
           result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
+  readme-check:
+    name: README Length Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Install
+        uses: "posit-dev/images-shared/setup-bakery@main"
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Check README length
+        env:
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          BAKERY_CONTEXT: ${{ inputs.context }}
+        run: |
+          bakery ci readme --check \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$BAKERY_CONTEXT"
+
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
     needs:

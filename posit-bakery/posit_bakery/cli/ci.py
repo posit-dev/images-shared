@@ -17,7 +17,7 @@ from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
-from posit_bakery.registry_management.dockerhub.readme import push_readmes
+from posit_bakery.registry_management.dockerhub.readme import find_oversized_readmes, push_readmes
 from posit_bakery.util import auto_path
 
 app = typer.Typer(no_args_is_help=True)
@@ -519,6 +519,13 @@ def readme(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = MatrixVersionInclusionEnum.INCLUDE,
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Validate README length against Docker Hub's limit, without authenticating or pushing.",
+        ),
+    ] = False,
 ) -> None:
     """Push image READMEs to Docker Hub.
 
@@ -529,6 +536,10 @@ def readme(
     Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment
     variables to be set with a Personal Access Token (PAT). Organization Access Tokens
     cannot update repository descriptions.
+
+    With --check, only validates that eligible READMEs are within Docker Hub's
+    25,000-byte full_description limit. Requires no credentials and makes no network
+    calls, so it is safe to run in fork PR CI.
     """
     if dev_stream is not None:
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
@@ -540,6 +551,15 @@ def readme(
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
+
+    if check:
+        violations = find_oversized_readmes(config.targets)
+        if violations:
+            for violation in violations:
+                stderr_console.print(f"❌ {violation}", style="error")
+            raise typer.Exit(code=1)
+        stderr_console.print("✅ All READMEs are within Docker Hub's length limit", style="success")
+        return
 
     try:
         count = push_readmes(config.targets)
