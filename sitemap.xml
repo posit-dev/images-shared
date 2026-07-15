@@ -2,310 +2,310 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://posit-dev.github.io/images-shared/templating.html</loc>
-    <lastmod>2026-07-15T20:28:46.635Z</lastmod>
+    <lastmod>2026-07-15T20:31:40.462Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.clean_registry.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersionMetadata.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersion.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.push_readmes.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.DockerhubClient.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/plugins.BakeryToolPlugin.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/image.ImageTargetContext.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/image.ImageBuildStrategy.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryToolRuntimeErrorGroup.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryToolNotFoundError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryTemplateError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryRenderError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.TagPattern.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.Registry.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.ImageVersion.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.Image.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.BakeryConfigDocument.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/wizcli/scan.html</loc>
-    <lastmod>2026-07-15T20:37:29.846Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/version.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.381Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/update/files.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/run/dgoss.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.381Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/remove/version.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/remove.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/imagetools/soci_convert.html</loc>
-    <lastmod>2026-07-15T20:37:29.846Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/imagetools.html</loc>
-    <lastmod>2026-07-15T20:37:29.846Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/hadolint.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/get/tags.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/dgoss/run.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/create/version.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/create/matrix.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/create.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/clean/cache_registry.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/ci/readme.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/ci/merge.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/ci.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/index.html</loc>
-    <lastmod>2026-07-15T20:28:46.635Z</lastmod>
+    <lastmod>2026-07-15T20:31:40.462Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/architecture.html</loc>
-    <lastmod>2026-07-15T20:28:46.634Z</lastmod>
+    <lastmod>2026-07-15T20:31:40.461Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/configuration.html</loc>
-    <lastmod>2026-07-15T20:28:46.634Z</lastmod>
+    <lastmod>2026-07-15T20:31:40.461Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/build.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.381Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/ci/matrix.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/ci/publish.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/clean.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/clean/temp_registry.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/create/image.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/create/project.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/dgoss.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/get.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/get/version.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/hadolint/run.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/imagetools/merge.html</loc>
-    <lastmod>2026-07-15T20:37:29.846Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/index.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.381Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/remove/image.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/run.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.381Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/update.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/update/version.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.382Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/wizcli.html</loc>
-    <lastmod>2026-07-15T20:37:29.846Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.BakeryConfig.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.BaseRegistry.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.ImageVariant.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.ImageVersionOS.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.Repository.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryBuildErrorGroup.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryFileError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryRenderErrorGroup.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryToolError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.BakeryToolRuntimeError.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/image.BakePlan.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/image.ImageTarget.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/index.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.383Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/plugins.ToolCallResult.html</loc>
-    <lastmod>2026-07-15T20:37:29.844Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.clean_registry.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRClient.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersionContainerMetadata.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersions.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.clean_temporary_artifacts.html</loc>
-    <lastmod>2026-07-15T20:37:29.845Z</lastmod>
+    <lastmod>2026-07-15T20:41:03.384Z</lastmod>
   </url>
 </urlset>
