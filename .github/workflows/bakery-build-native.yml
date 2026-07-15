@@ -139,6 +139,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Resolve dev-spec
         id: resolve-dev-spec
@@ -208,6 +209,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Setup goss
         uses: "posit-dev/images-shared/setup-goss@main"
@@ -383,6 +385,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Set up Docker
         uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0
@@ -511,6 +514,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Push READMEs to Docker Hub
         env:

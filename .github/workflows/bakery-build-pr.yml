@@ -97,6 +97,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Images by Version/Platform
         id: images-by-platform
@@ -191,6 +192,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Setup goss
         uses: "posit-dev/images-shared/setup-goss@main"

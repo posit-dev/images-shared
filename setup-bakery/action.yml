@@ -10,6 +10,14 @@ inputs:
     description: "The version of Python to use"
     required: false
     default: "3.x"
+  cache-scope:
+    description: >-
+      Opaque string distinguishing concurrent invocations of a shared workflow
+      within one run (e.g. toJSON(inputs) of the calling reusable workflow).
+      Hashed into the dependency version cache key. Leave empty to share one
+      cache across the whole run.
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -28,3 +36,35 @@ runs:
       shell: bash
       run: |
         uv tool install "git+https://github.com/posit-dev/images-shared.git@${{ inputs.version }}#subdirectory=posit-bakery&egg=posit-bakery"
+
+    - name: Configure dependency version cache TTL
+      shell: bash
+      # Long enough that the restored cache below stays valid for the life of
+      # a workflow run; the run-scoped cache key (not this TTL) is what keeps
+      # results from leaking staleness into the next run.
+      run: echo "BAKERY_CACHE_EXPIRE_AFTER=86400" >> "$GITHUB_ENV"
+
+    - name: Compute cache key
+      id: cache-key
+      shell: bash
+      # A bare run_id is not enough: a single run can invoke a shared workflow
+      # more than once concurrently with different inputs (e.g. a PR workflow
+      # building production/development/content in parallel), and those
+      # invocations would otherwise race to populate the exact same cache
+      # entry. Folding a hash of cache-scope in gives each invocation its own
+      # entry without any cross-job plumbing, since every job within one
+      # invocation sees the same inputs context.
+      env:
+        CACHE_SCOPE: ${{ inputs.cache-scope }}
+      run: |
+        KEY="bakery-deps-${GITHUB_RUN_ID}"
+        if [[ -n "$CACHE_SCOPE" ]]; then
+          KEY="${KEY}-$(printf '%s' "$CACHE_SCOPE" | sha256sum | cut -c1-16)"
+        fi
+        echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+    - name: Cache dependency version lookups
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: /tmp/bakery_cache
+        key: ${{ steps.cache-key.outputs.key }}

@@ -70,10 +70,23 @@ def cached_session() -> CachedSession:
 
     Memoized so backend initialization and the accompanying log chatter only
     happen once per bakery invocation.
+
+    ``expire_after`` defaults to one hour, long enough to dedupe requests
+    within a single invocation but short enough for local iteration to pick
+    up new upstream releases. CI restores the underlying cache directory
+    across all jobs in a workflow run (see ``setup-bakery``) so that a
+    version resolved in an early job stays consistent through later jobs;
+    ``BAKERY_CACHE_EXPIRE_AFTER`` lets that restored cache outlive the
+    default TTL for the life of the run instead of going stale mid-workflow.
     """
+    try:
+        expire_after = int(os.environ.get("BAKERY_CACHE_EXPIRE_AFTER", 3600))
+    except ValueError:
+        expire_after = 3600
+
     return CachedSession(
         cache_name="bakery_cache",
-        expire_after=3600,
+        expire_after=expire_after,
         backend="filesystem",
         use_temp=True,
         allowable_methods=["GET"],
