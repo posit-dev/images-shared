@@ -1,11 +1,10 @@
-import contextlib
 import logging
 import os
 import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, TYPE_CHECKING
+from typing import Annotated, Callable, TYPE_CHECKING
 
 import python_on_whales
 from pydantic import BaseModel, computed_field, ConfigDict, Field, model_validator
@@ -645,8 +644,14 @@ class ImageTarget(BaseModel):
         cache: bool = True,
         platforms: list[str] | None = None,
         metadata_file: Path | bool | None = None,
+        log_callback: Callable[[str], None] | None = None,
     ) -> python_on_whales.Image | None:
-        """Build the image using the Containerfile and return the built image."""
+        """Build the image using the Containerfile and return the built image.
+
+        When `log_callback` is set, streams build output line-by-line into it and returns
+        `None` instead of a `python_on_whales.Image` (`python_on_whales` returns an iterator
+        of lines rather than an `Image` object when streaming).
+        """
         if not (self.context.base_path / self.containerfile).is_file():
             raise BakeryFileError(
                 f"Containerfile not found for '{str(self)}' at expected path: "
@@ -676,40 +681,49 @@ class ImageTarget(BaseModel):
                 output = {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}
                 push = False
 
-        # This context manager is **NOT** thread-safe. If we implement this as parallel in the future, the working
-        # directory change should be managed at a higher level.
-        with contextlib.chdir(self.context.base_path):
-            log.info(f"Building image '{str(self)}'")
-            try:
-                image = python_on_whales.docker.build(
-                    context_path=self.context.base_path,
-                    file=self.containerfile,
-                    build_args=self.build_args,
-                    tags=tags,
-                    labels=self.labels,
-                    load=load,
-                    push=push,
-                    pull=pull,
-                    output=output,
-                    cache=cache,
-                    cache_from=cache_from,
-                    cache_to=cache_to,
-                    metadata_file=metadata_file,
-                    platforms=platforms or self.image_os.platforms,
-                    target=self.build_target,
-                    secrets=[s.as_cli_option() for s in self.resolved_build_secrets],
-                    progress=False if SETTINGS.log_level >= logging.ERROR else "auto",
-                )
-            except python_on_whales.exceptions.DockerException as e:
-                raise BakeryToolRuntimeError(
-                    message=f"Failed to build image '{str(self)}'",
-                    tool_name="docker",  # FIXME: This should be dynamic based on the tool used. Not sure how to get.
-                    cmd=e.docker_command,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    exit_code=e.return_code,
-                    metadata={"image_target": str(self)},
-                )
+        stream_logs = log_callback is not None
+        # stream_logs requires "plain" progress; it is incompatible with False/"tty".
+        progress = "plain" if stream_logs else (False if SETTINGS.log_level >= logging.ERROR else "auto")
+
+        log.info(f"Building image '{str(self)}'")
+        try:
+            build_result = python_on_whales.docker.build(
+                context_path=self.context.base_path,
+                file=self.context.base_path / self.containerfile,
+                build_args=self.build_args,
+                tags=tags,
+                labels=self.labels,
+                load=load,
+                push=push,
+                pull=pull,
+                output=output,
+                cache=cache,
+                cache_from=cache_from,
+                cache_to=cache_to,
+                metadata_file=metadata_file,
+                platforms=platforms or self.image_os.platforms,
+                target=self.build_target,
+                secrets=[s.as_cli_option() for s in self.resolved_build_secrets],
+                progress=progress,
+                stream_logs=stream_logs,
+            )
+        except python_on_whales.exceptions.DockerException as e:
+            raise BakeryToolRuntimeError(
+                message=f"Failed to build image '{str(self)}'",
+                tool_name="docker",  # FIXME: This should be dynamic based on the tool used. Not sure how to get.
+                cmd=e.docker_command,
+                stdout=e.stdout,
+                stderr=e.stderr,
+                exit_code=e.return_code,
+                metadata={"image_target": str(self)},
+            )
+
+        image = None
+        if stream_logs:
+            for line in build_result:
+                log_callback(line)
+        else:
+            image = build_result
 
         log.info(f"Successfully built image '{str(self)}'")
 
