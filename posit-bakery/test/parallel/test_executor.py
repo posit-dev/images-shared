@@ -351,6 +351,15 @@ class TestPrefixedLogSink:
         assert "target-a" in output
         assert "Step 1/5 : FROM ubuntu" in output
 
+    def test_write_does_not_mangle_bracketed_docker_output(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "#5 [internal] load build definition from Dockerfile")
+
+        output = buf.getvalue()
+        assert "[internal] load build definition from Dockerfile" in output
+
     def test_write_is_thread_safe_no_interleaving(self):
         buf = io.StringIO()
         sink = PrefixedLogSink(console=Console(file=buf, width=200))

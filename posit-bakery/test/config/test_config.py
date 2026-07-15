@@ -2361,6 +2361,7 @@ class TestBuildTargetsBuildStrategy:
 
     def test_multiple_failures_raised_as_error_group(self, get_config_obj, mocker):
         config = get_config_obj("basic")
+        assert len(config.targets) >= 2
 
         def fake_build(self, **kwargs):
             raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
@@ -2399,6 +2400,24 @@ class TestBuildTargetsBuildStrategy:
         config.build_targets(strategy=ImageBuildStrategy.BUILD, metadata_file=metadata_path)
 
         assert metadata_path.is_file()
+
+    def test_real_build_streams_through_prefixed_log_sink(self, get_config_obj, mocker, capsys):
+        """Exercises the real BUILD-branch wiring end to end: ImageTarget.build() is NOT
+        mocked, only python_on_whales.docker.build() at the tool boundary, so the closure
+        `build_targets()` constructs (streaming build() output into a real PrefixedLogSink)
+        actually runs. Regression test for the Task 1 + Task 2 + Task 4 integration seam.
+        """
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+        fake_lines = ["Step 1/2 : FROM ubuntu", "Step 2/2 : RUN true"]
+        mocker.patch("python_on_whales.docker.build", side_effect=lambda **kwargs: iter(fake_lines))
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
+
+        output = capsys.readouterr().err
+        for target in config.targets:
+            assert target.uid in output
+        assert fake_lines[0] in output
 
 
 class TestApplyDevSpecReleaseBranch:

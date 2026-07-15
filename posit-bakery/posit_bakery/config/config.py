@@ -1204,6 +1204,8 @@ class BakeryConfig:
                 if not jr.ok:
                     log.error(f"Failed to build image target '{jr.job.display_label}'.")
                     errors.append(jr.exception)
+            if fail_fast and errors:
+                log.info("--fail-fast is set, stopping builds...")
             if errors:
                 if len(errors) == 1:
                     raise errors[0]
