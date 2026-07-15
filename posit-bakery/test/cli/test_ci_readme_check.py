@@ -46,8 +46,7 @@ class TestReadmeCheckFlag:
 
     def test_fails_with_violations(self, mock_config):
         violation = (
-            "/repo/workbench/README.md is 25,069 bytes, exceeding Docker Hub's "
-            "25,000-byte README limit by 69 bytes"
+            "/repo/workbench/README.md is 25,069 bytes, exceeding Docker Hub's 25,000-byte README limit by 69 bytes"
         )
         with patch("posit_bakery.cli.ci.find_oversized_readmes", return_value=[violation]):
             with patch("posit_bakery.cli.ci.push_readmes") as mock_push:
