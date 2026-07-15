@@ -641,12 +641,18 @@ class ImageToolsPlugin(BakeryToolPlugin):
         executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(shell_jobs)))
         job_results = executor.run_jobs(shell_jobs)
 
+        # (target, operation, error) for every failure across all stages, reprinted as a
+        # summary at the end so a failed run doesn't require scrolling back through
+        # possibly-interleaved concurrent log output to find what broke.
+        failures: list[tuple[str, str, str]] = []
+
         stage1_failed = False
         temp_refs: dict[str, str] = {}
         for jr in job_results:
             if not jr.ok:
                 stage1_failed = True
                 log.error(f"publish Stage 1 crashed for '{jr.job.display_label}': {jr.exception}")
+                failures.append((jr.job.display_label, "stage1-crash", str(jr.exception)))
                 continue
             stage1_result: _PublishStage1Result = jr.value
             if stage1_result.skipped:
@@ -657,6 +663,9 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 log.error(
                     f"publish Stage 1 failed for '{stage1_result.target}' "
                     f"at phase '{stage1_result.failed_phase}': {stage1_result.error}"
+                )
+                failures.append(
+                    (str(stage1_result.target), f"stage1:{stage1_result.failed_phase}", str(stage1_result.error))
                 )
                 continue
             temp_refs[stage1_result.target.uid] = stage1_result.temp_ref
@@ -675,6 +684,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
             ).run(source=temp_refs[t.uid], dry_run=dry_run)
             if not copy.success:
                 log.error(f"index-copy failed for '{t}': {copy.error}")
+                failures.append((str(t), "index-copy", str(copy.error)))
                 copy_failed = True
             else:
                 copied_targets.append(t)
@@ -690,6 +700,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 ).run(dry_run=dry_run)
                 if not verify.success:
                     log.error(f"verification failed for '{t}': {verify.error}")
+                    failures.append((str(t), "verify", str(verify.error)))
                     verify_failed = True
                 else:
                     log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
@@ -699,4 +710,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
         # temp-registry) rather than deleted here.
 
         if stage1_failed or copy_failed or verify_failed:
+            log.error(f"publish failed ({len(failures)} target/operation failure(s)):")
+            for target, operation, error in failures:
+                log.error(f"  - {target} [{operation}]: {error}")
             raise typer.Exit(code=1)
