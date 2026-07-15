@@ -81,9 +81,12 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available Positron versions.
 
+        Returns a shallow copy since ``_fetch_versions`` is memoized; callers
+        must not mutate the cached list shared across all instances.
+
         :return: A sorted list of available Positron versions.
         """
-        return self._fetch_versions(self.prerelease)
+        return list(self._fetch_versions(self.prerelease))
 
 
 class PositronDependencyVersions(DependencyVersions, PositronDependency):

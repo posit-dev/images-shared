@@ -66,9 +66,12 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         """Return a list of available Quarto version.
         Only the latest patch version for each minor version is included.
 
+        Returns a shallow copy since ``_fetch_versions`` is memoized; callers
+        must not mutate the cached list shared across all instances.
+
         :return: A sorted list of available Quarto versions.
         """
-        return self._fetch_versions(self.prerelease)
+        return list(self._fetch_versions(self.prerelease))
 
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):

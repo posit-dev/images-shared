@@ -42,9 +42,12 @@ class RDependency(BakeryYAMLModel, abc.ABC):
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available R versions.
 
+        Returns a shallow copy since ``_fetch_versions`` is memoized; callers
+        must not mutate the cached list shared across all instances.
+
         :return: A sorted list of available R versions.
         """
-        return self._fetch_versions()
+        return list(self._fetch_versions())
 
 
 class RDependencyVersions(DependencyVersions, RDependency):
