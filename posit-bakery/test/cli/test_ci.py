@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -179,6 +180,35 @@ def test_resolve_changed_files_warns_when_base_ref_also_given(tmp_path, caplog):
     assert result == ["app/template/Containerfile"]
     assert any("--base-ref" in record.message and "ignored" in record.message.lower() for record in caplog.records), (
         f"expected a warning that --base-ref is ignored, got: {[r.message for r in caplog.records]}"
+    )
+
+
+def test_resolve_changed_files_falls_back_to_full_build_on_git_diff_error(tmp_path, mocker, caplog):
+    """A git-diff failure (bad ref, unrelated histories, etc.) must fall back to a
+    full build instead of crashing bakery ci matrix.
+
+    This is what makes --base-ref safe to use on push events: on a branch's
+    first-ever push, github.event.before is the all-zero SHA, which does not diff
+    cleanly. classify_changes already fails safe to a full build for unrecognized
+    paths; this extends the same philosophy to a broken base-ref.
+    """
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    mocker.patch(
+        "posit_bakery.config.changeset.git_changed_files",
+        side_effect=subprocess.CalledProcessError(128, ["git", "diff", "--merge-base"]),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_changed_files(
+            base_ref="0000000000000000000000000000000000000000",
+            changed_files_from=None,
+            rebase_root=tmp_path,
+        )
+
+    assert result is None
+    assert any("falling back to a full build" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
     )
 
 

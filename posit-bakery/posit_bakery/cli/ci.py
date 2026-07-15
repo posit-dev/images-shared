@@ -44,7 +44,9 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
 
     - ``--base-ref`` runs ``git diff`` (paths relative to the repo root), then
       rebases them onto ``rebase_root`` (the bakery context) and drops paths outside
-      it.
+      it. If the diff against ``base_ref`` fails for any reason (unreachable ref,
+      all-zero SHA, unrelated histories), logs a warning and returns ``None``
+      (disabling filtering) rather than raising.
     - ``--changed-files-from`` paths are used verbatim and must already be relative
       to the bakery context root. They are not rebased, so do not pipe raw
       ``git diff --name-only`` output here unless the context is the repo root. Use
@@ -72,8 +74,22 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
         text=True,
     ).stdout.strip()
     repo_root = Path(toplevel)
+
+    try:
+        changed = git_changed_files(repo_root, base_ref)
+    except subprocess.CalledProcessError as e:
+        # base_ref may not diff cleanly (e.g. github.event.before is the all-zero SHA
+        # on a branch's first push, or an unreachable ref after a force-push). Fail
+        # safe to a full build rather than crashing the CI run.
+        log.warning(
+            "Could not diff against base-ref %r (%s); falling back to a full build.",
+            base_ref,
+            e,
+        )
+        return None
+
     rebased: list[str] = []
-    for rel in git_changed_files(repo_root, base_ref):
+    for rel in changed:
         abs_path = repo_root / rel
         try:
             rebased.append((abs_path.relative_to(rebase_root)).as_posix())
