@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from rich.console import Console
-from rich.markup import escape
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.text import Text
 
 from posit_bakery.const import DEFAULT_COMMAND_TIMEOUT_SECONDS
 from posit_bakery.log import stderr_console
@@ -183,7 +183,7 @@ class PrefixedLogSink:
     def write(self, key: str, line: str) -> None:
         """Print `line` prefixed with `[key]`, guarded by a lock shared across all keys."""
         with self._lock:
-            self._console.print(f"[quiet]\\[{escape(key)}][/quiet] {line}")
+            self._console.print(Text.assemble((f"[{key}]", "quiet"), f" {line}"))
 
 
 class ParallelShellExecutor:
