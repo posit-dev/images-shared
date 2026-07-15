@@ -1,4 +1,4 @@
-"""Tests for SociPlugin.execute()."""
+"""Tests for ImageToolsPlugin.execute() (SOCI conversion)."""
 
 import subprocess
 from unittest.mock import MagicMock, patch
@@ -7,9 +7,9 @@ import pytest
 
 import posit_bakery.util as util
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.soci import SociPlugin
-from posit_bakery.plugins.builtin.soci.options import SociOptions
-from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflow, SociConvertWorkflowResult
+from posit_bakery.plugins.builtin.imagetools import ImageToolsPlugin
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, SociConvertWorkflowResult
 
 pytestmark = [pytest.mark.unit]
 
@@ -28,7 +28,7 @@ def _make_target(uid: str, enabled: bool, image_name: str = "test-image") -> Ima
 
 
 def test_skips_targets_without_enabled_option(tmp_path):
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t_off = _make_target("a", enabled=False)
     t_on = _make_target("b", enabled=True)
 
@@ -37,19 +37,19 @@ def test_skips_targets_without_enabled_option(tmp_path):
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             side_effect=fake_options,
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_soci_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_soci_bin",
             return_value="soci",
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_oras_bin",
             return_value="oras",
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            "posit_bakery.plugins.builtin.imagetools.soci.SociConvertWorkflow._read_converted_digest",
             return_value="sha256:abc",
         ),
         patch("subprocess.run") as mock_run,
@@ -81,19 +81,19 @@ def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
     skipped, not reported as a conversion failure. Regression: such targets
     surfaced as "SOCI convert failed: no source ref provided" and flipped the
     whole `ci publish` run to a failure."""
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t_ref = _make_target("a", enabled=True)
     t_noref = _make_target("b", enabled=True)
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=True),
         ),
-        patch("posit_bakery.plugins.builtin.soci.find_soci_bin", return_value="soci"),
-        patch("posit_bakery.plugins.builtin.soci.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.imagetools.find_soci_bin", return_value="soci"),
+        patch("posit_bakery.plugins.builtin.imagetools.imagetools.find_oras_bin", return_value="oras"),
         patch(
-            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            "posit_bakery.plugins.builtin.imagetools.soci.SociConvertWorkflow._read_converted_digest",
             return_value="sha256:abc",
         ),
         patch("subprocess.run") as mock_run,
@@ -116,23 +116,23 @@ def test_enabled_target_without_source_ref_is_skipped_not_failed(tmp_path):
 
 
 def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t = _make_target("a", enabled=False)
 
     import logging
 
-    caplog.set_level(logging.INFO, logger="posit_bakery.plugins.builtin.soci")
+    caplog.set_level(logging.INFO, logger="posit_bakery.plugins.builtin.imagetools.imagetools")
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=False),
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_soci_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_soci_bin",
             return_value="soci",
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_oras_bin",
             return_value="oras",
         ),
     ):
@@ -150,19 +150,19 @@ def test_logs_summary_when_no_enabled_targets(tmp_path, caplog):
 def test_no_eligible_targets_does_not_invoke_binary_lookup(tmp_path):
     """When all targets are disabled, execute should not require soci/oras
     binaries to be installed — the lookups should be skipped."""
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t = _make_target("a", enabled=False)
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=False),
         ),
         patch(
-            "posit_bakery.plugins.builtin.soci.find_soci_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_soci_bin",
         ) as mock_find_soci,
         patch(
-            "posit_bakery.plugins.builtin.soci.find_oras_bin",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.find_oras_bin",
         ) as mock_find_oras,
     ):
         results = plugin.execute(
@@ -191,17 +191,17 @@ def test_dry_run_does_not_require_tools_installed(tmp_path, missing_tools):
     absent from the host. Regression: ``ci publish --dry-run`` raised
     BakeryToolNotFoundError because execute() resolved the binaries eagerly,
     before the dry-run-aware workflow ran."""
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t = _make_target("a", enabled=True)
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=True),
         ),
         patch("subprocess.run") as mock_run,
         patch(
-            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            "posit_bakery.plugins.builtin.imagetools.soci.SociConvertWorkflow._read_converted_digest",
             return_value="sha256:abc",
         ),
     ):
@@ -222,7 +222,7 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
     the logged commands remain accurate."""
     monkeypatch.setenv("SOCI_PATH", "/custom/soci")
     monkeypatch.setenv("ORAS_PATH", "/custom/oras")
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t = _make_target("a", enabled=True)
 
     captured = {}
@@ -234,10 +234,10 @@ def test_dry_run_uses_resolved_path_when_tool_present(tmp_path, monkeypatch):
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=True),
         ),
-        patch("posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow.run", fake_run),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.SociConvertWorkflow.run", fake_run),
     ):
         plugin.execute(
             base_path=tmp_path,
@@ -258,17 +258,17 @@ def test_run_does_not_require_ctr(tmp_path, monkeypatch):
     monkeypatch.setenv("ORAS_PATH", "/custom/oras")
     monkeypatch.delenv("CTR_PATH", raising=False)
     monkeypatch.setattr(util, "which", lambda name: None)
-    plugin = SociPlugin()
+    plugin = ImageToolsPlugin()
     t = _make_target("a", enabled=True)
 
     with (
         patch(
-            "posit_bakery.plugins.builtin.soci.get_soci_options_for_target",
+            "posit_bakery.plugins.builtin.imagetools.imagetools.get_soci_options_for_target",
             return_value=SociOptions(enabled=True),
         ),
         patch("subprocess.run") as mock_run,
         patch(
-            "posit_bakery.plugins.builtin.soci.soci.SociConvertWorkflow._read_converted_digest",
+            "posit_bakery.plugins.builtin.imagetools.soci.SociConvertWorkflow._read_converted_digest",
             return_value="sha256:abc",
         ),
     ):

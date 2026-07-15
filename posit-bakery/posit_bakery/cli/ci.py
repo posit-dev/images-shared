@@ -1,10 +1,8 @@
-import glob
 import json
 import logging
 import re
 import subprocess
 import sys
-import python_on_whales
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -399,6 +397,17 @@ def publish(
             help="Temporary registry to use for split/merge builds.", rich_help_panel="Build Configuration & Outputs"
         ),
     ] = None,
+    jobs: Annotated[
+        Optional[int],
+        typer.Option(
+            "--jobs",
+            "-j",
+            min=1,
+            show_default=False,
+            help="Maximum number of targets to publish concurrently. "
+            "Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.",
+        ),
+    ] = None,
     dry_run: Annotated[bool, typer.Option(help="If set, no images will be pushed.")] = False,
     dev_channel: Annotated[
         Optional[ReleaseChannelEnum],
@@ -440,180 +449,29 @@ def publish(
     Temporary indexes are left in place and cleaned up out-of-band by the
     clean.yml workflow (bakery clean temp-registry) rather than deleted here.
 
+    The orchestration itself lives in the ``imagetools`` plugin
+    (:meth:`ImageToolsPlugin.publish`); this command is a thin wrapper.
+
     Replaces `bakery ci merge`; the latter is preserved as a thin alias.
     """
-    # Imports kept local to mirror existing patterns and to avoid bloating
-    # module load time when this command isn't invoked.
-    from posit_bakery.error import BakeryToolRuntimeError
-    from posit_bakery.plugins.builtin.oras.oras import (
-        OrasIndexCopyWorkflow,
-        OrasIndexCreateWorkflow,
-        OrasIndexVerifyWorkflow,
-        OrasWaitForSourcesWorkflow,
-        find_oras_bin,
-    )
+    # Imported locally to avoid bloating module load time when this command
+    # isn't invoked.
     from posit_bakery.plugins.registry import get_plugin
 
     if dev_stream is not None:
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")
         if dev_channel is None:
             dev_channel = dev_stream
-    settings = BakerySettings(
-        filter=BakeryConfigFilter(image_name=image_name),
-        dev_versions=DevVersionInclusionEnum.INCLUDE,
-        dev_channel=dev_channel,
-        dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
-        matrix_versions=MatrixVersionInclusionEnum.INCLUDE,
-        clean_temporary=False,
+    get_plugin("imagetools").publish(
+        metadata_file=metadata_file,
+        context=context,
+        image_name=image_name,
         temp_registry=temp_registry,
-    )
-    config: BakeryConfig = BakeryConfig.from_context(context, settings)
-
-    resolved_files: list[Path] = []
-    for f in metadata_file:
-        s = str(f)
-        if "*" in s or "?" in s or "[" in s:
-            resolved_files.extend(sorted(Path(x).absolute() for x in glob.glob(s)))
-        else:
-            resolved_files.append(f.absolute())
-    metadata_file = resolved_files
-
-    log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
-
-    files_ok = True
-    loaded_targets: list[str] = []
-    for f in metadata_file:
-        try:
-            loaded_targets.extend(config.load_build_metadata_from_file(f))
-        except Exception as e:
-            log.error(f"Failed to load metadata from file '{f}': {e}")
-            files_ok = False
-    if not files_ok:
-        raise typer.Exit(code=1)
-
-    loaded_targets = list(set(loaded_targets))  # Deduplicate targets in case of overlap across files
-    log.info(f"Found {len(loaded_targets)} targets")
-    log.debug(", ".join(loaded_targets))
-
-    oras_bin = find_oras_bin(config.base_path)
-
-    # Act only on targets that were actually present in the provided metadata
-    # files, not every target defined in the config. Publishing a single set of
-    # files (e.g. one version / dev stream) otherwise drags in every other
-    # version and variant, which each phase then has to re-skip individually.
-    # The UIDs in loaded_targets all originate from config.targets, so the
-    # lookups always resolve.
-    targets = sorted(
-        (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
-        key=lambda t: t.push_sort_key,
-    )
-
-    # Pre-flight: wait for every per-platform source digest to be readable
-    # before we touch them. Those manifests are pushed by digest from separate
-    # build runners, and registries with read-after-write (eventual
-    # consistency) behaviour — notably GHCR — can briefly 404 them. Polling
-    # here turns propagation lag into condition-based waiting and logs exactly
-    # which digest lagged, rather than failing a downstream phase opaquely.
-    all_sources = sorted({s for t in targets for s in t.get_merge_sources()})
-    if all_sources:
-        log.info(f"Waiting for {len(all_sources)} source digest(s) to be readable before publishing.")
-        try:
-            wait = OrasWaitForSourcesWorkflow(
-                oras_bin=oras_bin,
-                sources=all_sources,
-            ).run(dry_run=dry_run)
-        except BakeryToolRuntimeError as e:
-            # A non-transient registry error (auth, bad reference, ...) while
-            # probing sources is fatal and won't self-heal — surface it cleanly
-            # rather than letting it escape as an unhandled traceback.
-            log.error(f"Failed while waiting for source digests: {e.dump_stderr() or e}")
-            raise typer.Exit(code=1)
-        if not wait.success:
-            log.error(f"Source digests not available: {wait.error}")
-            raise typer.Exit(code=1)
-        if wait.ready:
-            log.info(f"All {len(wait.ready)} source digest(s) readable after {wait.waited_seconds:.0f}s.")
-
-    # Phase 1: index create. Failures abort.
-    temp_refs: dict[str, str] = {}
-    for t in targets:
-        if not t.get_merge_sources():
-            log.debug(f"Skipping target '{t}' (no merge sources).")
-            continue
-        if not t.settings.temp_registry:
-            log.error(f"Cannot publish '{t}': temp_registry not configured.")
-            raise typer.Exit(code=1)
-        res = OrasIndexCreateWorkflow(
-            oras_bin=oras_bin,
-            image_target=t,
-            annotations=t.labels,
-        ).run(dry_run=dry_run)
-        if not res.success:
-            log.error(f"index-create failed for '{t}': {res.error}")
-            raise typer.Exit(code=1)
-        temp_refs[t.uid] = res.temp_ref
-
-    # Phase 2: SOCI convert. Driven by per-target config; targets whose
-    # resolved SOCI options have enabled=False are skipped by the plugin.
-    soci = get_plugin("soci")
-    soci_results = soci.execute(
-        config.base_path,
-        targets,
-        source_refs=temp_refs,
         dry_run=dry_run,
+        dev_channel=dev_channel,
+        dev_spec=dev_spec,
+        jobs=jobs,
     )
-    soci_failed = False
-    for r in soci_results:
-        artifacts = r.artifacts or {}
-        if artifacts.get("skipped"):
-            continue
-        wf = artifacts.get("workflow_result")
-        if r.exit_code != 0:
-            soci_failed = True
-            continue
-        if wf and getattr(wf, "destination_ref", None):
-            temp_refs[r.target.uid] = wf.destination_ref
-    if soci_failed:
-        soci.results(soci_results)  # raises typer.Exit(1)
-
-    # Phase 3: index copy.
-    copy_failed = False
-    copied_targets: list = []
-    for t in targets:
-        if t.uid not in temp_refs:
-            continue
-        copy = OrasIndexCopyWorkflow(
-            oras_bin=oras_bin,
-            image_target=t,
-        ).run(source=temp_refs[t.uid], dry_run=dry_run)
-        if not copy.success:
-            log.error(f"index-copy failed for '{t}': {copy.error}")
-            copy_failed = True
-        else:
-            copied_targets.append(t)
-
-    # Phase 4: verify each final destination tag resolves. This replaces the
-    # `docker buildx imagetools inspect` check the old `bakery ci merge` ran;
-    # ORAS is faster and more reliable for the existence check.
-    verify_failed = False
-    if not dry_run:
-        for t in copied_targets:
-            verify = OrasIndexVerifyWorkflow(
-                oras_bin=oras_bin,
-                image_target=t,
-            ).run(dry_run=dry_run)
-            if not verify.success:
-                log.error(f"verification failed for '{t}': {verify.error}")
-                verify_failed = True
-            else:
-                log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
-
-    # The temporary indexes (and any SOCI-converted variants) are intentionally
-    # left in place; they are cleaned up out-of-band by the clean.yml workflow
-    # (bakery clean temp-registry) rather than deleted here.
-
-    if copy_failed or verify_failed:
-        raise typer.Exit(code=1)
 
 
 @app.command()

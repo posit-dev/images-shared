@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.soci.options import SociOptions
-from posit_bakery.plugins.builtin.soci.soci import SociConvertWorkflow
+from posit_bakery.plugins.builtin.imagetools.options import SociOptions
+from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow
 
 pytestmark = [pytest.mark.unit]
 
@@ -125,7 +125,9 @@ def test_cleans_up_scratch_dir(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
-        patch("posit_bakery.plugins.builtin.soci.soci.tempfile.mkdtemp", return_value=str(scratch)) as mock_mkdtemp,
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.soci.tempfile.mkdtemp", return_value=str(scratch)
+        ) as mock_mkdtemp,
         patch("subprocess.run") as mock_run,
         patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"),
     ):
@@ -142,7 +144,7 @@ def test_cleans_up_scratch_dir_on_failure(workflow, tmp_path):
     scratch = tmp_path / "soci-scratch"
 
     with (
-        patch("posit_bakery.plugins.builtin.soci.soci.tempfile.mkdtemp", return_value=str(scratch)),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.tempfile.mkdtemp", return_value=str(scratch)),
         patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)),
         patch.object(SociConvertWorkflow, "_read_converted_digest", side_effect=RuntimeError("boom")),
     ):
@@ -188,8 +190,67 @@ def test_pull_retries_transient_then_succeeds(mock_target):
     sleep.assert_called_once()
 
 
+def test_pull_retry_uses_runner_sleep_when_runner_provided(mock_target):
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+    )
+    runner = MagicMock()
+
+    with patch("posit_bakery.plugins.builtin.imagetools.soci.retry_on_transient", return_value=None) as mock_retry:
+        with patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)):
+            with patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"):
+                workflow.run(runner=runner)
+
+    assert mock_retry.call_args.kwargs["sleep"] is runner.sleep
+
+
+def test_pull_retry_sleep_is_none_without_runner(mock_target):
+    workflow = SociConvertWorkflow(
+        soci_bin="soci",
+        oras_bin="oras",
+        image_target=mock_target,
+        options=SociOptions(enabled=True),
+        source_ref="ghcr.io/posit-dev/test-image/tmp:merged",
+    )
+
+    with patch("posit_bakery.plugins.builtin.imagetools.soci.retry_on_transient", return_value=None) as mock_retry:
+        with patch("subprocess.run", side_effect=lambda cmd, capture_output: _ok_proc(cmd)):
+            with patch.object(SociConvertWorkflow, "_read_converted_digest", return_value="sha256:abc123"):
+                workflow.run()
+
+    assert mock_retry.call_args.kwargs["sleep"] is None
+
+
 def test_read_converted_digest_reads_index_json(workflow, tmp_path):
     layout = tmp_path / "out"
     layout.mkdir()
     (layout / "index.json").write_text('{"schemaVersion":2,"manifests":[{"digest":"sha256:deadbeef","size":7849}]}')
     assert workflow._read_converted_digest(layout) == "sha256:deadbeef"
+
+
+def test_runner_passed_to_pull_convert_push(workflow, tmp_path):
+    fake_runner = MagicMock()
+    captured_runners = []
+
+    def fake_oras_copy_run(self, dry_run=False, runner=None):
+        captured_runners.append(runner)
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    def fake_soci_convert_run(self, dry_run=False, runner=None):
+        captured_runners.append(runner)
+        (tmp_path / "index.json").write_text('{"manifests": [{"digest": "sha256:abc"}]}')
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    with (
+        patch("posit_bakery.plugins.builtin.imagetools.soci.OrasCopy.run", fake_oras_copy_run),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.SociConvert.run", fake_soci_convert_run),
+        patch.object(workflow, "_read_converted_digest", return_value="sha256:abc"),
+    ):
+        result = workflow.run(runner=fake_runner)
+
+    assert result.success is True
+    assert captured_runners == [fake_runner, fake_runner, fake_runner]

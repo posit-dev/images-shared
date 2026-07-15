@@ -5,7 +5,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, Callable, Self
+from typing import TYPE_CHECKING, Annotated, Callable, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -13,6 +13,9 @@ from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import ImageTarget, Tag
 from posit_bakery.retry import RetryPolicy, is_transient_error, retry_on_transient
 from posit_bakery.util import find_bin
+
+if TYPE_CHECKING:
+    from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
 
@@ -49,10 +52,15 @@ class OrasCommand(BaseModel, ABC):
         """Return the full command to execute."""
         ...
 
-    def run(self, dry_run: bool = False) -> subprocess.CompletedProcess:
+    def run(self, dry_run: bool = False, runner: "CommandRunner | None" = None) -> subprocess.CompletedProcess:
         """Execute the oras command.
 
         :param dry_run: If True, log the command without executing it.
+        :param runner: When provided, spawn through this tracked :class:`CommandRunner`
+            instead of calling ``subprocess.run()`` directly. Used by the parallel publish
+            path so in-flight oras commands are Ctrl-C-safe and process-group-tracked like
+            every other command the parallel executor runs; standalone callers (``oras
+            merge``, ``soci convert``) omit it and keep today's direct-subprocess behavior.
         :return: The completed process result.
         :raises BakeryToolRuntimeError: If the command fails.
         """
@@ -63,11 +71,11 @@ class OrasCommand(BaseModel, ABC):
             log.info(f"[DRY RUN] Would execute: {' '.join(cmd)}")
             return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"", stderr=b"")
 
-        result = subprocess.run(cmd, capture_output=True)
+        result = runner.run(cmd) if runner is not None else subprocess.run(cmd, capture_output=True)
 
         if result.returncode != 0:
             raise BakeryToolRuntimeError(
-                message=f"oras command failed",
+                message="oras command failed",
                 tool_name="oras",
                 cmd=cmd,
                 stdout=result.stdout,
@@ -211,7 +219,7 @@ class OrasIndexCreateWorkflow(BaseModel):
             f"{self.image_target.temp_registry}/{self.image_target.image_name}/tmp:{self.image_target.uid}{source_hash}"
         )
 
-    def run(self, dry_run: bool = False) -> OrasIndexCreateResult:
+    def run(self, dry_run: bool = False, runner: "CommandRunner | None" = None) -> OrasIndexCreateResult:
         # Retry transient registry errors: the per-platform source manifests
         # are pushed by digest from separate runners and may not yet be
         # readable here due to registry eventual consistency.
@@ -224,9 +232,10 @@ class OrasIndexCreateWorkflow(BaseModel):
         )
         try:
             retry_on_transient(
-                lambda: cmd.run(dry_run=dry_run),
+                lambda: cmd.run(dry_run=dry_run, runner=runner),
                 policy=self.retry_policy,
                 description=f"index-create for '{self.image_target.uid}'",
+                sleep=runner.sleep if runner is not None else None,
             )
             return OrasIndexCreateResult(success=True, temp_ref=self.temp_index_tag)
         except BakeryToolRuntimeError as e:
@@ -304,17 +313,25 @@ class OrasIndexVerifyWorkflow(BaseModel):
     oras_bin: Annotated[str, Field(description="Path to the oras binary.")]
     image_target: Annotated[ImageTarget, Field(description="Target whose destination tags to verify.")]
     plain_http: Annotated[bool, Field(default=False)]
+    retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
     def run(self, dry_run: bool = False) -> OrasIndexVerifyResult:
         verified: list[str] = []
         try:
             for ref in self.image_target.tags.as_strings():
-                OrasManifestFetch(
+                fetch = OrasManifestFetch(
                     oras_bin=self.oras_bin,
                     reference=ref,
                     descriptor=True,
                     plain_http=self.plain_http,
-                ).run(dry_run=dry_run)
+                )
+                # Retry transient registry errors: the copy phase's write may
+                # still be propagating when this verify fetch first reads it.
+                retry_on_transient(
+                    lambda f=fetch: f.run(dry_run=dry_run),
+                    policy=self.retry_policy,
+                    description=f"index-verify for '{self.image_target.uid}' -> {ref}",
+                )
                 verified.append(ref)
             return OrasIndexVerifyResult(success=True, verified=verified)
         except BakeryToolRuntimeError as e:
@@ -357,14 +374,14 @@ class OrasWaitForSourcesWorkflow(BaseModel):
     poll_interval: Annotated[float, Field(default=5.0, description="Seconds between polling sweeps.")]
     plain_http: Annotated[bool, Field(default=False)]
 
-    def _is_available(self, ref: str) -> bool:
+    def _is_available(self, ref: str, runner: "CommandRunner | None" = None) -> bool:
         try:
             OrasManifestFetch(
                 oras_bin=self.oras_bin,
                 reference=ref,
                 descriptor=True,
                 plain_http=self.plain_http,
-            ).run(dry_run=False)
+            ).run(dry_run=False, runner=runner)
             return True
         except BakeryToolRuntimeError as e:
             if is_transient_error(e):
@@ -377,6 +394,7 @@ class OrasWaitForSourcesWorkflow(BaseModel):
         *,
         sleep: Callable[[float], None] = time.sleep,
         now: Callable[[], float] = time.monotonic,
+        runner: "CommandRunner | None" = None,
     ) -> OrasSourcesReadyResult:
         """Probe each source until all resolve or ``timeout`` elapses.
 
@@ -384,6 +402,7 @@ class OrasWaitForSourcesWorkflow(BaseModel):
             registry (nothing has been pushed to wait on).
         :param sleep: Sleep function, injectable for testing.
         :param now: Monotonic clock, injectable for testing.
+        :param runner: When provided, use this tracked CommandRunner for oras commands.
         """
         unique_sources = list(dict.fromkeys(self.sources))
         if dry_run or not unique_sources:
@@ -395,7 +414,7 @@ class OrasWaitForSourcesWorkflow(BaseModel):
         while True:
             still_pending: list[str] = []
             for ref in pending:
-                if self._is_available(ref):
+                if self._is_available(ref, runner=runner):
                     ready.append(ref)
                 else:
                     still_pending.append(ref)

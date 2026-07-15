@@ -288,7 +288,7 @@ flowchart TD
 
     sign["Sign Image(s)"]
     push_temp["Push to Temporary Registry"]
-    merge[["bakery oras merge"]]
+    merge[["bakery imagetools merge"]]
     push["Push Artifacts to Final Registry & Reporting Platform"]
     amd64_image -.-> push_temp
     arm64_image -.-> push_temp

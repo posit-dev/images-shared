@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings
-from posit_bakery.plugins.builtin.oras.oras import (
+from posit_bakery.plugins.builtin.imagetools.oras import (
     find_oras_bin,
     get_repository_from_ref,
     OrasCopy,
@@ -42,6 +42,38 @@ def test_get_repository_from_ref(ref, expected_repo):
     """Test extracting repository from image reference."""
     result = get_repository_from_ref(ref)
     assert result == expected_repo
+
+
+class TestOrasCommandRunner:
+    """Tests for OrasCommand.run()'s optional CommandRunner routing."""
+
+    def test_runner_used_when_provided(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=cmd.command, returncode=0, stdout=b"ok", stderr=b""
+        )
+
+        result = cmd.run(runner=fake_runner)
+
+        fake_runner.run.assert_called_once_with(cmd.command)
+        assert result.returncode == 0
+
+    def test_subprocess_run_used_when_runner_omitted(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(args=cmd.command, returncode=0, stdout=b"", stderr=b"")
+            cmd.run()
+        mock_run.assert_called_once_with(cmd.command, capture_output=True)
+
+    def test_runner_failure_raises_tool_error(self):
+        cmd = OrasManifestFetch(oras_bin="oras", reference="ghcr.io/x/y:latest")
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=cmd.command, returncode=1, stdout=b"", stderr=b"nope"
+        )
+        with pytest.raises(BakeryToolRuntimeError):
+            cmd.run(runner=fake_runner)
 
 
 class TestOrasManifestIndexCreate:
@@ -400,7 +432,7 @@ class TestOrasMergeWorkflowFromImageTarget:
 
     def test_from_image_target(self, mock_image_target):
         """Test creating workflow from ImageTarget."""
-        with patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"):
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"):
             workflow = OrasMergeWorkflow.from_image_target(mock_image_target)
 
         assert workflow.oras_bin == "oras"
@@ -573,6 +605,15 @@ class TestOrasIndexCreateWorkflow:
         cmd = mock_run.call_args.args[0]
         assert cmd[:4] == ["oras", "manifest", "index", "create"]
 
+    def test_index_create_passes_runner_through(self, workflow):
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(args=["oras"], returncode=0, stdout=b"", stderr=b"")
+
+        result = workflow.run(runner=fake_runner)
+
+        assert result.success is True
+        fake_runner.run.assert_called_once()
+
 
 class TestOrasIndexCopyWorkflow:
     """Tests for the standalone index-copy primitive."""
@@ -699,7 +740,9 @@ class TestOrasIndexVerifyWorkflow:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b""),
-                subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"not found"),
+                subprocess.CompletedProcess(
+                    args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+                ),
             ]
             result = workflow.run()
 
@@ -717,6 +760,54 @@ class TestOrasIndexVerifyWorkflow:
 
         mock_run.assert_not_called()
         assert result.success is True
+
+
+class TestOrasIndexVerifyWorkflowRetry:
+    """The index-verify primitive retries transient registry errors."""
+
+    def test_retries_transient_not_found_then_succeeds(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+        attempts = {"n": 0}
+
+        def side_effect(cmd, capture_output):
+            attempts["n"] += 1
+            if attempts["n"] < 2:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"manifest unknown")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"{}", stderr=b"")
+
+        with patch("subprocess.run", side_effect=side_effect), patch("posit_bakery.retry.time.sleep") as sleep:
+            result = workflow.run()
+
+        assert result.success is True
+        assert attempts["n"] == 2
+        sleep.assert_called_once()
+
+    def test_non_transient_error_fails_without_retry(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
+        )
+
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("posit_bakery.retry.time.sleep") as sleep,
+        ):
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
+            )
+            result = workflow.run()
+
+        assert result.success is False
+        assert mock_run.call_count == 1
+        sleep.assert_not_called()
 
 
 @pytest.mark.slow
@@ -786,7 +877,7 @@ class TestOrasMergeWorkflowIntegration:
             "localhost:5000/test/tmp@sha256:digest",
         ]
 
-        with patch("posit_bakery.plugins.builtin.oras.oras.find_oras_bin", return_value="oras"):
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"):
             workflow = OrasMergeWorkflow.from_image_target(mock_target, plain_http=True)
 
         assert workflow.plain_http is True
@@ -835,6 +926,25 @@ class TestOrasIndexCreateWorkflowRetry:
         assert result.success is False
         assert mock_run.call_count == 1
         sleep.assert_not_called()
+
+    def test_uses_runner_sleep_for_backoff_when_runner_provided(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCreateWorkflow(oras_bin="oras", image_target=target, annotations={"k": "v"})
+        runner = MagicMock()
+
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.retry_on_transient", return_value=None) as mock_retry:
+            workflow.run(runner=runner)
+
+        assert mock_retry.call_args.kwargs["sleep"] is runner.sleep
+
+    def test_sleep_is_none_without_runner(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCreateWorkflow(oras_bin="oras", image_target=target, annotations={"k": "v"})
+
+        with patch("posit_bakery.plugins.builtin.imagetools.oras.retry_on_transient", return_value=None) as mock_retry:
+            workflow.run()
+
+        assert mock_retry.call_args.kwargs["sleep"] is None
 
 
 class TestOrasIndexCopyWorkflowRetry:
@@ -986,5 +1096,15 @@ class TestOrasWaitForSourcesWorkflow:
         with patch("subprocess.run") as mock_run:
             result = wf.run()
         mock_run.assert_not_called()
+
+    def test_wait_for_sources_passes_runner_through(self):
+        wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=["ghcr.io/posit-dev/test/tmp@sha256:a"])
+        fake_runner = MagicMock()
+        fake_runner.run.return_value = subprocess.CompletedProcess(
+            args=["oras"], returncode=0, stdout=b"{}", stderr=b""
+        )
+
+        result = wf.run(sleep=MagicMock(), now=lambda: 0.0, runner=fake_runner)
+
         assert result.success is True
-        assert result.ready == []
+        fake_runner.run.assert_called_once()

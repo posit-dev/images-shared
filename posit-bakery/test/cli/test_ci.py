@@ -62,7 +62,7 @@ def patch_image_target_merge_method(mocker):
             self.annotations = annotations
             self.plain_http = plain_http
 
-        def run(self, dry_run=False):
+        def run(self, dry_run=False, runner=None):
             sources = self.image_target.get_merge_sources()
             calls.append((sources, dry_run))
             result = MagicMock()
@@ -106,23 +106,23 @@ def patch_image_target_merge_method(mocker):
 
     # Patch the imports inside the publish function
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasWaitForSourcesWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
         MockOrasWaitForSourcesWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCreateWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
         MockOrasIndexCreateWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexCopyWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow",
         MockOrasIndexCopyWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.OrasIndexVerifyWorkflow",
+        "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
         MockOrasIndexVerifyWorkflow,
     )
     mocker.patch(
-        "posit_bakery.plugins.builtin.oras.oras.find_oras_bin",
+        "posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin",
         return_value="/mock/oras",
     )
     return calls
