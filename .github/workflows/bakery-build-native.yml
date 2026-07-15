@@ -514,6 +514,10 @@ jobs:
     name: Push READMEs
     permissions:
       contents: read
+    # No explicit skip-if-merge-skipped check needed: a bare `if:` that doesn't
+    # call a status function implicitly gets success() prepended, and GitHub
+    # Actions treats a skipped `needs` job as failing success() — so this
+    # already skips when merge is skipped (e.g. an empty change-aware matrix).
     if: ${{ inputs.push }}
     needs:
       - merge
