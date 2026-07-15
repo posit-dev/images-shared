@@ -79,9 +79,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-c2b04ac753575a39acaa53a016e0db1c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-27aa839fe1d509286e02b83e7f71da62.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../../site_libs/bootstrap/bootstrap-6a67ae482af8ee09f5ccc67023d1a518.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-ed7b4bfb8f5ec33de581ec09afa6652b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-85b51c75b6deee3003a2b0e82d762f0c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-ed7b4bfb8f5ec33de581ec09afa6652b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": true,
@@ -797,6 +797,7 @@ window.onload = function () {
 <div class="doc-text">
 <p>Pushes the README.md from each image directory to the corresponding Docker Hub repository description. Only pushes for eligible images: latest versions, matrix versions, and non-development versions with Docker Hub registries configured.</p>
 <p>Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment variables to be set with a Personal Access Token (PAT). Organization Access Tokens cannot update repository descriptions.</p>
+<p>With <code>--check</code>, only validates that eligible READMEs are within Docker Hub’s 25,000-byte full_description limit. Requires no credentials and makes no network calls, so it is safe to run in fork PR CI.</p>
 </div>
 <div class="details" data-summary="Full --help output">
 <div class="cli-manpage">
@@ -813,6 +814,10 @@ window.onload = function () {
   environment variables to be set with a Personal Access Token (PAT).
   Organization Access Tokens cannot update repository descriptions.
 
+  With --check, only validates that eligible READMEs are within Docker Hub's
+  25,000-byte full_description limit. Requires no credentials and makes no
+  network calls, so it is safe to run in fork PR CI.
+
 Options:
   --context DIRECTORY             The root path to use. Defaults to the
                                   current working directory where invoked.
@@ -826,6 +831,8 @@ Options:
   --matrix-versions [include|exclude|only]
                                   Include or exclude versions defined in image
                                   matrix.  [default: include]
+  --check                         Validate README length against Docker Hub's
+                                  limit, without authenticating or pushing.
   -v, --verbose                   Enable debug logging
   -q, --quiet                     Supress all output except errors
   --help                          Show this message and exit.</code></pre>
@@ -850,6 +857,10 @@ Filter development versions to a specific release channel.
 <dt><code><span class="doc-parameter-name">--matrix-versions</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">MatrixVersionInclusionEnum.INCLUDE</span></code></dt>
 <dd>
 Include or exclude versions defined in image matrix.
+</dd>
+<dt><code><span class="doc-parameter-name">--check</span></code></dt>
+<dd>
+Validate README length against Docker Hub’s limit, without authenticating or pushing.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>

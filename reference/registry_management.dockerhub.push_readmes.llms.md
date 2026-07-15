@@ -6,7 +6,7 @@ Push READMEs to Docker Hub for eligible image targets.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/registry_management/dockerhub/readme.py#L22-L98)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/registry_management/dockerhub/readme.py#L113-L185)
 
 ``` python
 registry_management.dockerhub.push_readmes(targets)
@@ -33,6 +33,9 @@ List of image targets to evaluate.
 Number of READMEs pushed.
 
 ## Raises
+
+` ``ValueError`  
+If one or more eligible READMEs exceed Docker Hub’s length limit.
 
 ` ``RuntimeError`  
 If one or more README pushes fail.
