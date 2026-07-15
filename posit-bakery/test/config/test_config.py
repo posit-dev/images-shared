@@ -1950,7 +1950,7 @@ class TestBakeryConfig:
         assert not (version.path / "Containerfile.ubuntu2204.min").exists()
         assert not (version.path / "test").exists()
 
-    def test_target_generation_matrix(self, get_tmpcontext):
+    def test_target_generation_matrix(self, get_tmpcontext, patch_requests_get):
         config = BakeryConfig(
             get_tmpcontext("matrix") / "bakery.yaml",
             settings=BakerySettings(matrix_versions=MatrixVersionInclusionEnum.INCLUDE),

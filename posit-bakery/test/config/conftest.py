@@ -96,11 +96,13 @@ def patch_testdata_response(url: str):
     return mock_response
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def disable_requests_caching(mocker):
     # The session factory and fetch helpers are decorated with @functools.cache,
     # so values returned by an earlier test would otherwise survive into the
     # next one. Clear the per-process caches so each test's patches take effect.
+    # Autouse so a test that forgets to request patch_requests_get still gets
+    # isolated caches instead of silently inheriting a prior test's state.
     from posit_bakery.config.dependencies.positron import PositronDependency
     from posit_bakery.config.dependencies.python import PythonDependency
     from posit_bakery.config.dependencies.quarto import QuartoDependency
