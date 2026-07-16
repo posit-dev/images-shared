@@ -32,6 +32,22 @@ def git_changed_files(repo_root: Path, base_ref: str) -> list[str]:
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
+def git_show_file(repo_root: Path, ref: str, path: str) -> str:
+    """Return the text content of ``path`` (POSIX, relative to ``repo_root``) at ``ref``.
+
+    Raises ``subprocess.CalledProcessError`` if ``ref`` doesn't exist, ``path``
+    doesn't exist at ``ref``, or any other git failure — same failure shape as
+    :func:`git_changed_files`, left to the caller to handle.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "show", f"{ref}:{path}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout
+
+
 # Paths (relative to the bakery context root) that never trigger a build.
 _IGNORE_EXACT = {".gitignore", ".pre-commit-config.yaml"}
 _IGNORE_PREFIXES = (".idea/", ".claude/", ".github/")

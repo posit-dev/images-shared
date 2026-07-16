@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
-from posit_bakery.cli.ci import _resolve_changed_files
+from posit_bakery.cli.ci import _resolve_changed_files, _resolve_base_bakery_yaml
 from posit_bakery.config.config import version_matches
 from posit_bakery.config.image.version import ImageVersion
 
@@ -231,6 +231,45 @@ def test_resolve_changed_files_does_not_swallow_unrelated_errors(tmp_path, mocke
             changed_files_from=None,
             rebase_root=tmp_path,
         )
+
+
+def test_resolve_base_bakery_yaml_returns_none_without_base_ref(tmp_path):
+    result = _resolve_base_bakery_yaml(None, ["bakery.yaml"], tmp_path / "bakery.yaml")
+    assert result is None
+
+
+def test_resolve_base_bakery_yaml_returns_none_when_bakery_yaml_not_changed(tmp_path):
+    result = _resolve_base_bakery_yaml("HEAD~1", ["some/other/file.txt"], tmp_path / "bakery.yaml")
+    assert result is None
+
+
+def test_resolve_base_bakery_yaml_returns_content_on_success(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    subprocess.run(["git", "add", "bakery.yaml"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result == "images: []\n"
+
+
+def test_resolve_base_bakery_yaml_falls_back_to_none_on_git_error(tmp_path, caplog):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    # No commit exists, so "HEAD" doesn't resolve -> git show fails.
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result is None
+    assert any("bakery.yaml" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
+    )
 
 
 class TestChangeAwareFlagIntersection:

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes, git_changed_files, ImageChangeSet
+from posit_bakery.config.changeset import classify_changes, git_changed_files, git_show_file, ImageChangeSet
 from posit_bakery.cli.ci import _version_selected
 
 
@@ -172,3 +172,28 @@ class TestVersionSelected:
         ver = _fake_ver(name="1.0.0")
         cs = ImageChangeSet(include_all_release=True)
         assert _version_selected(ver, cs) is True
+
+
+def test_git_show_file_returns_content_at_ref(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "bakery.yaml").write_text("images: []\n")
+    subprocess.run(["git", "add", "bakery.yaml"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    content = git_show_file(tmp_path, "HEAD", "bakery.yaml")
+
+    assert content == "images: []\n"
+
+
+def test_git_show_file_raises_on_missing_path(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "placeholder.txt").write_text("x")
+    subprocess.run(["git", "add", "placeholder.txt"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        git_show_file(tmp_path, "HEAD", "bakery.yaml")

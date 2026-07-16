@@ -71,13 +71,7 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
     # isn't a git checkout at all, a more fundamental misconfiguration than a
     # base_ref that doesn't diff cleanly, and should surface loudly rather than
     # silently fall back to a full build.
-    toplevel = subprocess.run(
-        ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    repo_root = Path(toplevel)
+    repo_root = _git_repo_root(rebase_root)
 
     try:
         changed = git_changed_files(repo_root, base_ref)
@@ -101,6 +95,54 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
             # Changed file lives outside this bakery context (monorepo) -> not our concern.
             continue
     return rebased
+
+
+def _git_repo_root(rebase_root: Path) -> Path:
+    """Return the git repository root containing ``rebase_root``.
+
+    Failing here means ``rebase_root`` isn't a git checkout at all — a more
+    fundamental misconfiguration than anything downstream should silently
+    paper over, so this is not wrapped in a fail-safe.
+    """
+    toplevel = subprocess.run(
+        ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return Path(toplevel)
+
+
+def _resolve_base_bakery_yaml(
+    base_ref: str | None, changed_files: list[str] | None, config_file: Path
+) -> str | None:
+    """Return bakery.yaml's text content at ``base_ref``, or None to skip semantic diffing.
+
+    Returns None (no git call made) when there's no base_ref, no changed-files
+    list, or bakery.yaml isn't actually one of the changed files. Otherwise
+    attempts to read it at base_ref; any failure (unreachable ref, path didn't
+    exist at that ref, etc.) logs a warning and returns None rather than
+    raising — the caller treats None as "compare unavailable, fail safe to a
+    full build," the same shape as _resolve_changed_files' own fail-safe.
+    """
+    if base_ref is None or changed_files is None or config_file.name not in changed_files:
+        return None
+
+    # Local import: git I/O is only needed on this rarely-used code path.
+    from posit_bakery.config.changeset import git_show_file
+
+    repo_root = _git_repo_root(config_file.parent)
+    rel_path = config_file.relative_to(repo_root).as_posix()
+
+    try:
+        return git_show_file(repo_root, base_ref, rel_path)
+    except subprocess.CalledProcessError as e:
+        log.warning(
+            "Could not read bakery.yaml at base-ref %r (%s); disabling semantic bakery.yaml diffing for this run.",
+            base_ref,
+            e.stderr.strip() if e.stderr else e,
+        )
+        return None
 
 
 def _version_selected(ver: ImageVersion, cs: ImageChangeSet) -> bool:
