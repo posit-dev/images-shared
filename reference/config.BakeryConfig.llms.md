@@ -6,7 +6,7 @@ Manager for the bakery.yaml configuration file and operations against the config
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L456-L1254)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L476-L1274)
 
 ``` python
 config.BakeryConfig()
@@ -58,7 +58,7 @@ Initializes the BakeryConfig with the given config file path.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L466-L518)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L486-L538)
 
 ``` python
 __init__(config_file, settings=None)
@@ -83,7 +83,7 @@ Generates a bake plan JSON string for the image targets defined in the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1117-L1124)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1137-L1144)
 
 ``` python
 bake_plan_targets(push=False)
@@ -100,7 +100,7 @@ Build image targets using the specified strategy.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1126-L1200)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1146-L1220)
 
 ``` python
 build_targets(
@@ -151,7 +151,7 @@ Cleans up dangling caches in the specified registry for all generated image targ
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1202-L1227)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1222-L1247)
 
 ``` python
 clean_caches(remove_untagged=True, remove_older_than=None, dry_run=False)
@@ -174,7 +174,7 @@ Cleans up temporary images in the specified registry for all generated image tar
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1229-L1254)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1249-L1274)
 
 ``` python
 clean_temporary(remove_untagged=True, remove_older_than=None, dry_run=False)
@@ -197,7 +197,7 @@ Creates a new image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L590-L623)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L610-L643)
 
 ``` python
 create_image(
@@ -238,7 +238,7 @@ Creates a matrix definition for an image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L763-L840)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L783-L860)
 
 ``` python
 create_matrix(
@@ -283,7 +283,7 @@ Creates a new version for an image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L651-L727)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L671-L747)
 
 ``` python
 create_version(
@@ -319,7 +319,7 @@ Creates a BakeryConfig instance from a given context path.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L520-L544)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L540-L564)
 
 ``` python
 from_context(context, settings=None)
@@ -349,7 +349,7 @@ Generates image targets from the images defined in the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L928-L1076)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L948-L1096)
 
 ``` python
 generate_image_targets(settings=BakerySettings())
@@ -366,7 +366,7 @@ Returns an image target by its UID.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1078-L1086)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1098-L1106)
 
 ``` python
 get_image_target_by_uid(uid)
@@ -388,7 +388,7 @@ Loads build metadata from a given metadata file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1100-L1115)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1120-L1135)
 
 ``` python
 load_build_metadata_from_file(metadata_file)
@@ -410,7 +410,7 @@ Creates a new bakery.yaml file in the given base path.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L546-L557)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L566-L577)
 
 ``` python
 new(base_path)
@@ -427,7 +427,7 @@ Patches an existing image version with a new version and regenerates templates.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L729-L761)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L749-L781)
 
 ``` python
 patch_version(image_name, old_version, new_version, values=None, clean=True)
@@ -439,7 +439,7 @@ Removes an image from the config and deletes its directory.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L625-L649)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L645-L669)
 
 ``` python
 remove_image(image_name)
@@ -456,7 +456,7 @@ Removes an existing version from an image in the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L893-L926)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L913-L946)
 
 ``` python
 remove_version(image_name, version_name)
@@ -476,7 +476,7 @@ Regenerates version files from templates matching the given filters.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L842-L891)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L862-L911)
 
 ``` python
 rerender_files(_filter=None, regex_filters=None)
@@ -501,7 +501,7 @@ Write the bakery config to the config file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L559-L563)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L579-L583)
 
 ``` python
 write()
