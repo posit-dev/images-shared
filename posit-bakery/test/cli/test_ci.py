@@ -356,6 +356,81 @@ class TestChangeAwareFlagIntersection:
         assert matrix == [], f"expected an empty matrix under --dev-versions exclude, got: {matrix}"
 
 
+class TestBakeryYamlSemanticDiffEndToEnd:
+    """bakery ci matrix --base-ref, exercised against a real git repo, must
+    narrow a bakery.yaml-only version addition instead of building everything."""
+
+    def test_version_added_to_bakery_yaml_narrows_the_matrix(self, resource_path, tmp_path):
+        import shutil
+
+        context = tmp_path / "changeset"
+        shutil.copytree(resource_path / "changeset", context)
+
+        subprocess.run(["git", "init"], cwd=context, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"], cwd=context, check=True, capture_output=True
+        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "before"], cwd=context, check=True, capture_output=True)
+        before_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=context, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+        bakery_yaml = context / "bakery.yaml"
+        content = bakery_yaml.read_text()
+        content = content.replace(
+            """      - name: 2.0.0
+        subpath: "2.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+            """      - name: 3.0.0
+        subpath: "3.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+      - name: 2.0.0
+        subpath: "2.0.0"
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+        )
+        bakery_yaml.write_text(content)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "after"], cwd=context, check=True, capture_output=True)
+
+        from typer.testing import CliRunner
+        from posit_bakery.cli.main import app as bakery_app
+
+        runner = CliRunner()
+        result = runner.invoke(
+            bakery_app,
+            [
+                "ci",
+                "matrix",
+                "--quiet",
+                "--context",
+                str(context),
+                "--base-ref",
+                before_sha,
+                "--dev-versions",
+                "exclude",
+            ],
+            catch_exceptions=True,
+            env={"TERM": "dumb", "NO_COLOR": "true"},
+        )
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        matrix = json.loads(result.stdout.strip())
+        app_versions = {entry["version"] for entry in matrix if entry["image"] == "app"}
+
+        assert app_versions == {"3.0.0"}, (
+            f"expected only the added version, got {app_versions} -- full matrix: {matrix}"
+        )
+
+
 class TestVersionMatches:
     @pytest.mark.parametrize(
         "ver_name,filter_version",

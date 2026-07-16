@@ -5,7 +5,13 @@ from pathlib import Path
 import pytest
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_bakery_yaml_diff, classify_changes, git_changed_files, git_show_file, ImageChangeSet
+from posit_bakery.config.changeset import (
+    classify_bakery_yaml_diff,
+    classify_changes,
+    git_changed_files,
+    git_show_file,
+    ImageChangeSet,
+)
 from posit_bakery.cli.ci import _version_selected
 
 
@@ -590,5 +596,33 @@ images:
         - versions: ["3.12.1", "3.13.0"]
 """
         selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+
+class TestClassifyChangesBakeryYamlIntegration:
+    """classify_changes must merge an already-computed bakery_yaml_selection
+    when given one, and keep today's unconditional full-fail-safe when it
+    isn't given one."""
+
+    def test_bakery_yaml_change_without_selection_still_fails_safe(self, changeset_config):
+        selection = classify_changes(changeset_config, ["bakery.yaml"])
+        assert selection.full
+
+    def test_bakery_yaml_change_with_selection_merges_it_in(self, changeset_config):
+        current_text = changeset_config.config_file.read_text()
+        old_text = current_text  # identical -> diff finds no changed images.
+        bakery_yaml_selection = classify_bakery_yaml_diff(old_text, current_text)
+
+        selection = classify_changes(changeset_config, ["bakery.yaml"], bakery_yaml_selection=bakery_yaml_selection)
+
+        assert selection == bakery_yaml_selection
+
+    def test_workflows_change_still_always_fails_safe_even_with_a_selection(self, changeset_config):
+        bakery_yaml_selection = classify_bakery_yaml_diff("images: []\n", "images: []\n")
+
+        selection = classify_changes(
+            changeset_config, [".github/workflows/ci.yml"], bakery_yaml_selection=bakery_yaml_selection
+        )
 
         assert selection.full

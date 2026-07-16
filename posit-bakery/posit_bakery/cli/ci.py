@@ -11,7 +11,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes, ImageChangeSet, MatrixSelection
+from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml_diff, ImageChangeSet, MatrixSelection
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
@@ -113,9 +113,7 @@ def _git_repo_root(rebase_root: Path) -> Path:
     return Path(toplevel)
 
 
-def _resolve_base_bakery_yaml(
-    base_ref: str | None, changed_files: list[str] | None, config_file: Path
-) -> str | None:
+def _resolve_base_bakery_yaml(base_ref: str | None, changed_files: list[str] | None, config_file: Path) -> str | None:
     """Return bakery.yaml's text content at ``base_ref``, or None to skip semantic diffing.
 
     Returns None (no git call made) when there's no base_ref, no changed-files
@@ -290,7 +288,13 @@ def matrix(
         selection: MatrixSelection | None = None
         changed = _resolve_changed_files(base_ref, changed_files_from, c.base_path)
         if changed is not None:
-            selection = classify_changes(c, changed)
+            old_bakery_yaml = _resolve_base_bakery_yaml(base_ref, changed, c.config_file)
+            bakery_yaml_selection = (
+                classify_bakery_yaml_diff(old_bakery_yaml, c.config_file.read_text())
+                if old_bakery_yaml is not None
+                else None
+            )
+            selection = classify_changes(c, changed, bakery_yaml_selection=bakery_yaml_selection)
             if selection.full:
                 # Fail-safe / repo-wide change: behave exactly as a full matrix.
                 selection = None

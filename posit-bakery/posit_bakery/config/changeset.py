@@ -318,8 +318,21 @@ def _attribute(cs: ImageChangeSet, image: "Image", remainder: str) -> None:
     cs.include_all_release = True
 
 
-def classify_changes(config: "BakeryConfig", changed_files: Iterable[str]) -> MatrixSelection:
-    """Classify changed file paths (relative to the bakery context) into a build selection."""
+def classify_changes(
+    config: "BakeryConfig",
+    changed_files: Iterable[str],
+    bakery_yaml_selection: MatrixSelection | None = None,
+) -> MatrixSelection:
+    """Classify changed file paths (relative to the bakery context) into a build selection.
+
+    ``bakery_yaml_selection``, if given, is the result of the caller already
+    having diffed bakery.yaml's old and new text via
+    :func:`classify_bakery_yaml_diff` (which requires reading the current
+    bakery.yaml's text from disk -- I/O this function itself must not do, to
+    stay pure). When a changed path is bakery.yaml/bakery.yml and this is
+    provided, its signal is merged into the result instead of unconditionally
+    failing safe to a full matrix.
+    """
     selection = MatrixSelection()
     base = config.base_path
 
@@ -334,7 +347,21 @@ def classify_changes(config: "BakeryConfig", changed_files: Iterable[str]) -> Ma
 
         if path.lower().endswith(".md"):
             continue
-        if path in _FULL_EXACT or path.startswith(_FULL_PREFIXES):
+        if path in _FULL_EXACT:
+            if bakery_yaml_selection is not None:
+                if bakery_yaml_selection.full:
+                    selection.full = True
+                else:
+                    for name, cs in bakery_yaml_selection.images.items():
+                        target = selection.for_image(name)
+                        target.versions |= cs.versions
+                        target.include_all_release = target.include_all_release or cs.include_all_release
+                        target.include_dev = target.include_dev or cs.include_dev
+                        target.include_matrix_latest = target.include_matrix_latest or cs.include_matrix_latest
+            else:
+                selection.full = True
+            continue
+        if path.startswith(_FULL_PREFIXES):
             selection.full = True
             continue
         if path in _IGNORE_EXACT or path.startswith(_IGNORE_PREFIXES):
