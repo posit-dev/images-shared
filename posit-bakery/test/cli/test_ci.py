@@ -212,6 +212,27 @@ def test_resolve_changed_files_falls_back_to_full_build_on_git_diff_error(tmp_pa
     )
 
 
+def test_resolve_changed_files_does_not_swallow_unrelated_errors(tmp_path, mocker):
+    """Only subprocess.CalledProcessError is a recognized 'base_ref didn't diff
+    cleanly' failure. Any other exception must propagate uncaught, proving the
+    except clause above is exactly as narrow as intended and doesn't quietly
+    mask unrelated bugs.
+    """
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    mocker.patch(
+        "posit_bakery.config.changeset.git_changed_files",
+        side_effect=RuntimeError("unrelated bug, not a git-diff failure"),
+    )
+
+    with pytest.raises(RuntimeError, match="unrelated bug"):
+        _resolve_changed_files(
+            base_ref="some-ref",
+            changed_files_from=None,
+            rebase_root=tmp_path,
+        )
+
+
 class TestChangeAwareFlagIntersection:
     """Change-aware mode must still honor --dev-versions / --matrix-versions.
 

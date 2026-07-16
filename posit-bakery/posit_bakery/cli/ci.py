@@ -67,6 +67,10 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
     # Local import: git diff is only needed on this rarely-used code path.
     from posit_bakery.config.changeset import git_changed_files
 
+    # Not wrapped in the fail-safe below: failing here means rebase_root itself
+    # isn't a git checkout at all, a more fundamental misconfiguration than a
+    # base_ref that doesn't diff cleanly, and should surface loudly rather than
+    # silently fall back to a full build.
     toplevel = subprocess.run(
         ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
         check=True,
@@ -84,7 +88,7 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
         log.warning(
             "Could not diff against base-ref %r (%s); falling back to a full build.",
             base_ref,
-            e,
+            e.stderr.strip() if e.stderr else e,
         )
         return None
 

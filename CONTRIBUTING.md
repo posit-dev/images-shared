@@ -125,8 +125,8 @@ the run.
 
 Conversely, a push whose change set resolves to nothing buildable (e.g. a docs-only
 merge to `main`) now builds and publishes nothing rather than building the full
-matrix — the build and merge jobs are skipped, mirroring how an empty change-aware
-PR matrix already behaves.
+matrix — the downstream build/publish jobs are skipped, mirroring how an empty
+change-aware PR matrix already behaves.
 
 ### Classification rules
 
