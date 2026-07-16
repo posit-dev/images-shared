@@ -519,6 +519,40 @@ class TestParallelShellExecutorJobs:
         results = self._executor(1).run_jobs(jobs)
         assert {r.job.key for r in results} == {"bad", "good"}
 
+    def test_run_job_skips_without_calling_callable_when_fail_fast_already_triggered(self):
+        # Regression test for a real race: Future.cancel() alone cannot reliably stop a worker
+        # that, immediately after finishing a failed job, loops back and dequeues the very next
+        # queued job on the same thread before the main thread's as_completed() consumer gets a
+        # chance to act. _run_job must check the trigger itself, synchronously, before doing any
+        # real work -- this exercises that check directly and deterministically, with no
+        # reliance on thread-scheduling timing.
+        executor = self._executor(1)
+        executor._fail_fast_triggered.set()
+        called = []
+        job = ShellJob(key="b", run=lambda runner: called.append("ran"))
+
+        result = executor._run_job(job, fail_fast=True)
+
+        assert result is None
+        assert called == []
+
+    def test_run_job_sets_fail_fast_triggered_on_failure(self):
+        executor = self._executor(1)
+        job = ShellJob(key="a", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        assert not executor._fail_fast_triggered.is_set()
+        executor._run_job(job, fail_fast=True)
+
+        assert executor._fail_fast_triggered.is_set()
+
+    def test_run_job_does_not_set_fail_fast_triggered_when_fail_fast_false(self):
+        executor = self._executor(1)
+        job = ShellJob(key="a", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        executor._run_job(job, fail_fast=False)
+
+        assert not executor._fail_fast_triggered.is_set()
+
     def test_runner_run_returns_completed_process(self):
         captured = {}
 

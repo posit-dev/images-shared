@@ -686,6 +686,7 @@ class ImageTarget(BaseModel):
         progress = "plain" if stream_logs else (False if SETTINGS.log_level >= logging.ERROR else "auto")
 
         log.info(f"Building image '{str(self)}'")
+        image = None
         try:
             build_result = python_on_whales.docker.build(
                 context_path=self.context.base_path,
@@ -707,6 +708,14 @@ class ImageTarget(BaseModel):
                 progress=progress,
                 stream_logs=stream_logs,
             )
+            # With stream_logs=True, python_on_whales returns a lazy generator: the actual
+            # subprocess failure surfaces here, while iterating it, not from the call above --
+            # this must stay inside the same try so DockerException is wrapped either way.
+            if stream_logs:
+                for line in build_result:
+                    log_callback(line)
+            else:
+                image = build_result
         except python_on_whales.exceptions.DockerException as e:
             raise BakeryToolRuntimeError(
                 message=f"Failed to build image '{str(self)}'",
@@ -717,13 +726,6 @@ class ImageTarget(BaseModel):
                 exit_code=e.return_code,
                 metadata={"image_target": str(self)},
             )
-
-        image = None
-        if stream_logs:
-            for line in build_result:
-                log_callback(line)
-        else:
-            image = build_result
 
         log.info(f"Successfully built image '{str(self)}'")
 

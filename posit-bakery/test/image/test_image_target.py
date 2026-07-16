@@ -10,6 +10,7 @@ from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
@@ -1063,6 +1064,29 @@ class TestImageTarget:
         assert result is None
         assert mock_build.call_args.kwargs["stream_logs"] is True
         assert mock_build.call_args.kwargs["progress"] == "plain"
+
+    @pytest.mark.build
+    def test_build_wraps_docker_exception_raised_during_streaming(self, basic_standard_image_target):
+        """DockerException raised while iterating streamed lines must still be wrapped.
+
+        python_on_whales.docker.build(stream_logs=True) returns lazily: the actual subprocess
+        failure surfaces while iterating its result, not from the initial call -- the wrapping
+        try/except must cover that iteration too, not just the call.
+        """
+
+        def fake_stream():
+            yield "Step 1/2 : FROM ubuntu"
+            raise python_on_whales.exceptions.DockerException(
+                ["docker", "buildx", "build"], 1, stdout=b"", stderr=b"boom"
+            )
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            mock_build.return_value = fake_stream()
+            with pytest.raises(BakeryToolRuntimeError) as exc_info:
+                basic_standard_image_target.build(log_callback=lambda line: None)
+
+        assert exc_info.value.cmd == ["docker", "buildx", "build"]
+        assert exc_info.value.exit_code == 1
 
     @pytest.mark.build
     def test_build_file_path_is_absolute_regardless_of_cwd(self, basic_standard_image_target, monkeypatch, tmp_path):
