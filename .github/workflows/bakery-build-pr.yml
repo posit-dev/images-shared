@@ -147,6 +147,7 @@ jobs:
           name: ${{ steps.setup-bakery.outputs.cache-artifact-name }}
           path: /tmp/bakery_cache
           if-no-files-found: ignore
+          retention-days: 1
 
   readme-check:
     name: README Length Check

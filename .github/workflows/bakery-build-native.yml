@@ -198,6 +198,7 @@ jobs:
           name: ${{ steps.setup-bakery.outputs.cache-artifact-name }}
           path: /tmp/bakery_cache
           if-no-files-found: ignore
+          retention-days: 1
 
   build-test:
     name: "Build/Test ${{ matrix.img.image }}:${{ matrix.img.version }} (${{ matrix.img.platform }})"
@@ -520,6 +521,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
+      # Restores the shared cache like every other job but never saves it:
+      # bakery ci readme has no --image-name filter and always resolves
+      # every image in bakery.yaml, so its results aren't a subset of what
+      # matrix already covered. It's also last in the job DAG, so nothing
+      # would ever restore a save from here anyway.
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:

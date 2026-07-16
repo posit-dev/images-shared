@@ -78,7 +78,10 @@ runs:
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       # No artifact yet (first job to run this invocation) is expected, not
       # fatal: continue with an empty /tmp/bakery_cache and let it populate
-      # from upstream as normal.
+      # from upstream as normal. Tradeoff: this also swallows a real failure
+      # (bad name, permissions) identically to a cold cache, and the job
+      # that saves the cache will always show this step as failed-but
+      # -continued on its own restore attempt, since nothing exists yet.
       continue-on-error: true
       with:
         path: /tmp/bakery_cache
