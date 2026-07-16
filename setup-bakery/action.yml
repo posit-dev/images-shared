@@ -14,10 +14,22 @@ inputs:
     description: >-
       Opaque string distinguishing concurrent invocations of a shared workflow
       within one run (e.g. toJSON(inputs) of the calling reusable workflow).
-      Hashed into the dependency version cache key. Leave empty to share one
-      cache across the whole run.
+      Hashed into the dependency version cache artifact name. Leave empty to
+      share one cache across the whole run.
     required: false
     default: ""
+
+outputs:
+  cache-artifact-name:
+    description: >-
+      Base name for this invocation's dependency-version cache artifacts.
+      Upload to "<cache-artifact-name>-<unique-suffix>" (path
+      /tmp/bakery_cache) as the last step of each job so later jobs, and
+      other parallel instances of the same job, can restore it. The suffix
+      must be unique per job (e.g. a static string for a single-instance job,
+      or "${{ strategy.job-index }}" for a matrix job) since artifact names
+      must be unique within a run.
+    value: ${{ steps.artifact-name.outputs.name }}
 
 runs:
   using: "composite"
@@ -40,31 +52,36 @@ runs:
     - name: Configure dependency version cache TTL
       shell: bash
       # Long enough that the restored cache below stays valid for the life of
-      # a workflow run; the run-scoped cache key (not this TTL) is what keeps
-      # results from leaking staleness into the next run.
+      # a workflow run; the run-scoped artifact name (not this TTL) is what
+      # keeps results from leaking staleness into the next run.
       run: echo "BAKERY_CACHE_EXPIRE_AFTER=86400" >> "$GITHUB_ENV"
 
-    - name: Compute cache key
-      id: cache-key
+    - name: Compute cache artifact name
+      id: artifact-name
       shell: bash
       # A bare run_id is not enough: a single run can invoke a shared workflow
       # more than once concurrently with different inputs (e.g. a PR workflow
       # building production/development/content in parallel), and those
-      # invocations would otherwise race to populate the exact same cache
-      # entry. Folding a hash of cache-scope in gives each invocation its own
-      # entry without any cross-job plumbing, since every job within one
+      # invocations would otherwise race to share the exact same artifact
+      # name. Folding a hash of cache-scope in gives each invocation its own
+      # name without any cross-job plumbing, since every job within one
       # invocation sees the same inputs context.
       env:
         CACHE_SCOPE: ${{ inputs.cache-scope }}
       run: |
-        KEY="bakery-deps-${GITHUB_RUN_ID}"
+        NAME="bakery-deps-${GITHUB_RUN_ID}"
         if [[ -n "$CACHE_SCOPE" ]]; then
-          KEY="${KEY}-$(printf '%s' "$CACHE_SCOPE" | sha256sum | cut -c1-16)"
+          NAME="${NAME}-$(printf '%s' "$CACHE_SCOPE" | sha256sum | cut -c1-16)"
         fi
-        echo "key=$KEY" >> "$GITHUB_OUTPUT"
+        echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
-    - name: Cache dependency version lookups
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+    - name: Restore dependency version cache
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      # No artifact yet (first job to run this invocation) is expected, not
+      # fatal: continue with an empty /tmp/bakery_cache and let it populate
+      # from upstream as normal.
+      continue-on-error: true
       with:
         path: /tmp/bakery_cache
-        key: ${{ steps.cache-key.outputs.key }}
+        pattern: "${{ steps.artifact-name.outputs.name }}-*"
+        merge-multiple: true
