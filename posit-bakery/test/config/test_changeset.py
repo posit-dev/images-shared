@@ -533,3 +533,62 @@ images:
 
         assert not selection.full
         assert selection.images["connect-content"].include_matrix_latest
+
+    def test_malformed_image_entry_fails_safe_to_full(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - just-a-string-not-a-dict
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+    def test_version_entry_with_non_string_name_fails_safe_to_full(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: 4.0
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+    def test_matrix_dependency_entry_missing_dependency_key_fails_safe_to_full(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - versions: ["3.12.1", "3.13.0"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full

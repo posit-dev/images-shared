@@ -55,6 +55,36 @@ def _index_by_key(entries: object, key: str) -> dict[str, dict]:
     return {e[key]: e for e in entries if isinstance(e, dict) and isinstance(e.get(key), str)}
 
 
+def _images_confidently_shaped(images: list) -> bool:
+    """True if every images[] entry is a dict with a string name, every
+    non-matrix image's versions[] (if present) is a list of dicts each with
+    a string name, and every matrix image's matrix.dependencies (if present)
+    is a list of dicts each with a string dependency. False for anything
+    that doesn't confidently fit that shape -- the caller should fail safe
+    rather than silently ignore the entry, matching how _index_by_key would
+    otherwise drop it without a trace."""
+    for entry in images:
+        if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+            return False
+        versions = entry.get("versions")
+        if versions is not None:
+            if not isinstance(versions, list):
+                return False
+            for v in versions:
+                if not isinstance(v, dict) or not isinstance(v.get("name"), str):
+                    return False
+        matrix = entry.get("matrix")
+        if isinstance(matrix, dict):
+            deps = matrix.get("dependencies")
+            if deps is not None:
+                if not isinstance(deps, list):
+                    return False
+                for d in deps:
+                    if not isinstance(d, dict) or not isinstance(d.get("dependency"), str):
+                        return False
+    return True
+
+
 def _dependency_versions(entry: dict) -> list[str]:
     """A DependencyVersions entry serializes as either 'versions: [...]' or,
     for a single version, 'version: x' (see DependencyVersions.serialize_versions)."""
@@ -176,6 +206,13 @@ def classify_bakery_yaml_diff(old_text: str, new_text: str) -> MatrixSelection:
     old_images = old_yaml.get("images")
     new_images = new_yaml.get("images")
     if not isinstance(old_images, list) or not isinstance(new_images, list):
+        selection.full = True
+        return selection
+
+    if not _images_confidently_shaped(old_images) or not _images_confidently_shaped(new_images):
+        # A malformed entry (e.g. an unquoted numeric version name) would
+        # otherwise be silently dropped by _index_by_key downstream, hiding
+        # its changes from every tier below instead of failing safe.
         selection.full = True
         return selection
 
