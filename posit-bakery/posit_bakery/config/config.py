@@ -361,6 +361,23 @@ class BakerySettings(BaseModel):
         )
         return self.dev_channel
 
+    @property
+    def effective_dev_channel(self) -> ReleaseChannelEnum | None:
+        """Channel used to filter dev versions, honoring both --dev-channel and --dev-spec.
+
+        A --dev-spec carrying a channel implies dev versions should be filtered to
+        that channel. The shared CI workflow folds the dispatched channel into the
+        dev-spec and stops passing --dev-channel, so without this derivation the
+        other channels' dev versions leak through both the matrix output and the
+        build target list. --dev-channel wins when explicitly set; _apply_dev_spec
+        validates that the two never conflict.
+        """
+        if self.dev_channel is not None:
+            return self.dev_channel
+        if self.dev_spec is not None:
+            return self.dev_spec.channel
+        return None
+
     matrix_versions: Annotated[
         MatrixVersionInclusionEnum,
         Field(
@@ -418,7 +435,10 @@ def _apply_dev_spec(image: Image, settings: BakerySettings) -> None:
             f"Either omit 'channel' from --dev-spec or ensure they match."
         )
 
-    target_channel = settings.dev_spec.channel or settings.dev_channel
+    # The conflict check above guarantees dev_spec.channel and dev_channel agree
+    # when both are set, so effective_dev_channel (the value the matrix and build
+    # filters use) resolves to the same target channel here.
+    target_channel = settings.effective_dev_channel
     candidates = [
         dv
         for dv in image.devVersions
@@ -968,7 +988,7 @@ class BakeryConfig:
                 version_filter_matched = settings.filter.image_version is not None and version_matches(
                     version.name, settings.filter.image_version
                 )
-                included, reason = version.matches_dev_filter(settings.dev_versions, settings.dev_channel)
+                included, reason = version.matches_dev_filter(settings.dev_versions, settings.effective_dev_channel)
                 if not included:
                     if version_filter_matched:
                         log.warning(
