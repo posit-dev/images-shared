@@ -22,13 +22,12 @@ inputs:
 outputs:
   cache-artifact-name:
     description: >-
-      Base name for this invocation's dependency-version cache artifacts.
-      Upload to "<cache-artifact-name>-<unique-suffix>" (path
-      /tmp/bakery_cache) as the last step of each job so later jobs, and
-      other parallel instances of the same job, can restore it. The suffix
-      must be unique per job (e.g. a static string for a single-instance job,
-      or "${{ strategy.job-index }}" for a matrix job) since artifact names
-      must be unique within a run.
+      Name for this invocation's dependency-version cache artifact. Exactly
+      one job — whichever one first resolves the full set of dependency
+      versions needed for the run (typically the job calling `bakery ci
+      matrix`) — should upload /tmp/bakery_cache under this name as its last
+      step. Other jobs only need to restore it: they resolve a subset of the
+      same versions and gain nothing by re-uploading.
     value: ${{ steps.artifact-name.outputs.name }}
 
 runs:
@@ -83,5 +82,4 @@ runs:
       continue-on-error: true
       with:
         path: /tmp/bakery_cache
-        pattern: "${{ steps.artifact-name.outputs.name }}-*"
-        merge-multiple: true
+        name: ${{ steps.artifact-name.outputs.name }}

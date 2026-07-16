@@ -195,7 +195,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: "${{ steps.setup-bakery.outputs.cache-artifact-name }}-matrix"
+          name: ${{ steps.setup-bakery.outputs.cache-artifact-name }}
           path: /tmp/bakery_cache
           if-no-files-found: ignore
 
@@ -216,7 +216,6 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Setup bakery
-        id: setup-bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
@@ -376,15 +375,6 @@ jobs:
           path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-metadata.json"
           overwrite: 'true'
 
-      - name: Save dependency version cache
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: "${{ steps.setup-bakery.outputs.cache-artifact-name }}-build-test-${{ strategy.job-index }}"
-          path: /tmp/bakery_cache
-          if-no-files-found: ignore
-
   merge:
     name: "Merge/Push ${{ matrix.image }}"
     permissions:
@@ -402,7 +392,6 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Setup bakery
-        id: setup-bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
@@ -518,15 +507,6 @@ jobs:
             $PUSH_FLAG \
             ./*-metadata.json
 
-      - name: Save dependency version cache
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: "${{ steps.setup-bakery.outputs.cache-artifact-name }}-merge-${{ strategy.job-index }}"
-          path: /tmp/bakery_cache
-          if-no-files-found: ignore
-
   readme:
     name: Push READMEs
     permissions:
@@ -541,7 +521,6 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Setup bakery
-        id: setup-bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
@@ -559,12 +538,3 @@ jobs:
             --context "$CONTEXT" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS"
-
-      - name: Save dependency version cache
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: "${{ steps.setup-bakery.outputs.cache-artifact-name }}-readme"
-          path: /tmp/bakery_cache
-          if-no-files-found: ignore
