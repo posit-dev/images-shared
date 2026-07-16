@@ -11,6 +11,7 @@ from posit_bakery.config.changeset import (
     git_changed_files,
     git_show_file,
     ImageChangeSet,
+    MatrixSelection,
 )
 from posit_bakery.cli.ci import _version_selected
 
@@ -626,3 +627,17 @@ class TestClassifyChangesBakeryYamlIntegration:
         )
 
         assert selection.full
+
+    def test_bakery_yaml_selection_merges_with_other_changed_files_for_the_same_image(self, changeset_config):
+        """One version comes from a file-path change, the other from
+        bakery_yaml_selection -- both must survive the merge regardless of
+        which order the changed files are processed in."""
+        bakery_yaml_selection = MatrixSelection(images={"app": ImageChangeSet(versions={"1.0.0"})})
+
+        selection = classify_changes(
+            changeset_config,
+            ["app/2.0.0/Containerfile.ubuntu2204.std", "bakery.yaml"],
+            bakery_yaml_selection=bakery_yaml_selection,
+        )
+
+        assert selection.images["app"].versions == {"1.0.0", "2.0.0"}
