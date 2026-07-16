@@ -1,4 +1,5 @@
 import abc
+import copy
 from functools import cache
 from typing import Annotated, Literal, ClassVar
 
@@ -66,12 +67,13 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         """Return a list of available Quarto version.
         Only the latest patch version for each minor version is included.
 
-        Returns a shallow copy since ``_fetch_versions`` is memoized; callers
-        must not mutate the cached list shared across all instances.
+        Returns a deep copy since ``_fetch_versions`` is memoized; callers
+        can freely mutate the returned list or its elements without
+        corrupting the shared cache.
 
         :return: A sorted list of available Quarto versions.
         """
-        return list(self._fetch_versions(self.prerelease))
+        return copy.deepcopy(self._fetch_versions(self.prerelease))
 
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):

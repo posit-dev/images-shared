@@ -1,4 +1,5 @@
 import abc
+import copy
 from functools import cache
 from typing import Annotated, Literal, ClassVar
 
@@ -81,12 +82,13 @@ class PositronDependency(BakeryYAMLModel, abc.ABC):
     def available_versions(self) -> list[DependencyVersion]:
         """Return a list of available Positron versions.
 
-        Returns a shallow copy since ``_fetch_versions`` is memoized; callers
-        must not mutate the cached list shared across all instances.
+        Returns a deep copy since ``_fetch_versions`` is memoized; callers
+        can freely mutate the returned list or its elements without
+        corrupting the shared cache.
 
         :return: A sorted list of available Positron versions.
         """
-        return list(self._fetch_versions(self.prerelease))
+        return copy.deepcopy(self._fetch_versions(self.prerelease))
 
 
 class PositronDependencyVersions(DependencyVersions, PositronDependency):
