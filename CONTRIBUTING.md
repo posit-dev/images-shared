@@ -134,7 +134,8 @@ After ignoring Markdown (`*.md`) paths, changed files are classified as follows:
 
 | Changed path | What builds |
 |---|---|
-| `bakery.yaml` / `bakery.yml` or `.github/workflows/**` | Full matrix (fail-safe) |
+| `bakery.yaml` / `bakery.yml` | Semantically diffed vs the base ref — narrows to affected image(s)/version(s); full matrix if old content is unavailable, unparseable, malformed, or the change is outside `images[]` |
+| `.github/workflows/**` | Full matrix (fail-safe) |
 | `<image>/template/**` | That image's dev versions (if any are declared) |
 | `<image>/<version-subpath>/**` | That release version only |
 | An image-root file or unrecognized subdir under an image | That image's release versions (fail-safe) |

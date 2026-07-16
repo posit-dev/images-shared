@@ -1,7 +1,8 @@
 """Map a PR's changed files to the image/version build matrix it affects.
 
-The classifier (:func:`classify_changes`) is pure so it can be unit-tested with
-synthetic file lists; git I/O lives in :func:`git_changed_files`.
+The classifiers (:func:`classify_changes` and :func:`classify_bakery_yaml_diff`) are
+pure so they can be unit-tested with synthetic inputs; git I/O lives in
+:func:`git_changed_files` and :func:`git_show_file`.
 """
 
 from __future__ import annotations
@@ -249,7 +250,10 @@ def classify_bakery_yaml_diff(old_text: str, new_text: str) -> MatrixSelection:
 # Paths (relative to the bakery context root) that never trigger a build.
 _IGNORE_EXACT = {".gitignore", ".pre-commit-config.yaml"}
 _IGNORE_PREFIXES = (".idea/", ".claude/", ".github/")
-# Paths that conservatively trigger a full build (fail safe).
+# Paths triggering full build classification (fail-safe fallback).
+# _FULL_EXACT (bakery.yaml/bakery.yml): classified via semantic diff when available,
+# falls back to full build when no old content, unparseable, malformed, or outside images[].
+# _FULL_PREFIXES (.github/workflows/): unconditionally triggers full build (no semantic analysis).
 # NOTE: the _FULL check must run before the _IGNORE check below, because
 # ".github/workflows/" is a strict sub-prefix of the ignored ".github/".
 _FULL_EXACT = {"bakery.yaml", "bakery.yml"}
