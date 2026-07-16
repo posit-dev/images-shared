@@ -131,16 +131,21 @@ def _resolve_base_bakery_yaml(
     # Local import: git I/O is only needed on this rarely-used code path.
     from posit_bakery.config.changeset import git_show_file
 
-    repo_root = _git_repo_root(config_file.parent)
-    rel_path = config_file.relative_to(repo_root).as_posix()
-
     try:
+        repo_root = _git_repo_root(config_file.parent)
+        rel_path = config_file.relative_to(repo_root).as_posix()
         return git_show_file(repo_root, base_ref, rel_path)
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, ValueError) as e:
+        # CalledProcessError: config_file.parent isn't a git checkout, or
+        # git_show_file couldn't read it at base_ref. ValueError: config_file
+        # isn't actually under repo_root (relative_to failure). Either way,
+        # this is the same "compare unavailable" fail-safe as the rest of the
+        # module -- --changed-files-from callers in particular may point
+        # config_file at a directory with no git available at all.
         log.warning(
             "Could not read bakery.yaml at base-ref %r (%s); disabling semantic bakery.yaml diffing for this run.",
             base_ref,
-            e.stderr.strip() if e.stderr else e,
+            e.stderr.strip() if isinstance(e, subprocess.CalledProcessError) and e.stderr else e,
         )
         return None
 

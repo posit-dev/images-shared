@@ -272,6 +272,26 @@ def test_resolve_base_bakery_yaml_falls_back_to_none_on_git_error(tmp_path, capl
     )
 
 
+def test_resolve_base_bakery_yaml_falls_back_to_none_when_not_a_git_checkout(tmp_path, caplog):
+    """config_file's directory may not be a git checkout at all -- a plausible
+    future case for --changed-files-from callers, which exists precisely for
+    callers without git available. _git_repo_root then raises
+    CalledProcessError before git_show_file is ever called; that must be
+    caught here too, not just around git_show_file itself.
+    """
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    # No `git init` -> tmp_path is not a git checkout at all.
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result is None
+    assert any("bakery.yaml" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
+    )
+
+
 class TestChangeAwareFlagIntersection:
     """Change-aware mode must still honor --dev-versions / --matrix-versions.
 
