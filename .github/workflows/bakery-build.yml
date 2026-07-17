@@ -125,6 +125,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Install
         id: setup-bakery
@@ -162,10 +164,16 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
           CONTEXT: ${{ inputs.context }}
+          # Only set on push (github.event.before); empty on schedule/
+          # workflow_dispatch, which intentionally always build the full matrix.
+          # A bad or all-zero ref (e.g. a branch's first push) is caught by
+          # bakery's git-diff fail-safe, which falls back to a full build.
+          BASE_REF: ${{ github.event.before }}
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
+          [[ -n "$BASE_REF" ]] && ARGS+=(--base-ref "$BASE_REF")
           if [[ -n "$DEV_SPEC_RESOLVED" ]]; then
             ARGS+=(--dev-spec "$DEV_SPEC_RESOLVED")
           elif [[ -n "$DEV_CHANNEL" ]]; then
@@ -191,6 +199,10 @@ jobs:
       contents: read
       packages: write
     needs: matrix
+    # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
+    # Guard here so an empty change-aware matrix (a push with nothing to build)
+    # produces 'skipped' instead of 'failure'.
+    if: ${{ needs.matrix.outputs.matrix != '[]' }}
     runs-on: ${{ inputs.runs-on }}
     strategy:
       fail-fast: false
@@ -354,6 +366,10 @@ jobs:
     name: Push READMEs
     permissions:
       contents: read
+    # No explicit skip-if-build-skipped check needed: a bare `if:` that doesn't
+    # call a status function implicitly gets success() prepended, and GitHub
+    # Actions treats a skipped `needs` job as failing success() — so this
+    # already skips when build is skipped (e.g. an empty change-aware matrix).
     if: ${{ inputs.push }}
     needs:
       - build

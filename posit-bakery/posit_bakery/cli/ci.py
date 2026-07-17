@@ -11,7 +11,7 @@ import typer
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes, ImageChangeSet, MatrixSelection
+from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml_diff, ImageChangeSet, MatrixSelection
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
@@ -44,7 +44,9 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
 
     - ``--base-ref`` runs ``git diff`` (paths relative to the repo root), then
       rebases them onto ``rebase_root`` (the bakery context) and drops paths outside
-      it.
+      it. If the diff against ``base_ref`` fails for any reason (unreachable ref,
+      all-zero SHA, unrelated histories), logs a warning and returns ``None``
+      (disabling filtering) rather than raising.
     - ``--changed-files-from`` paths are used verbatim and must already be relative
       to the bakery context root. They are not rebased, so do not pipe raw
       ``git diff --name-only`` output here unless the context is the repo root. Use
@@ -65,15 +67,27 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
     # Local import: git diff is only needed on this rarely-used code path.
     from posit_bakery.config.changeset import git_changed_files
 
-    toplevel = subprocess.run(
-        ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    repo_root = Path(toplevel)
+    # Not wrapped in the fail-safe below: failing here means rebase_root itself
+    # isn't a git checkout at all, a more fundamental misconfiguration than a
+    # base_ref that doesn't diff cleanly, and should surface loudly rather than
+    # silently fall back to a full build.
+    repo_root = _git_repo_root(rebase_root)
+
+    try:
+        changed = git_changed_files(repo_root, base_ref)
+    except subprocess.CalledProcessError as e:
+        # base_ref may not diff cleanly (e.g. github.event.before is the all-zero SHA
+        # on a branch's first push, or an unreachable ref after a force-push). Fail
+        # safe to a full build rather than crashing the CI run.
+        log.warning(
+            "Could not diff against base-ref %r (%s); falling back to a full build.",
+            base_ref,
+            e.stderr.strip() if e.stderr else e,
+        )
+        return None
+
     rebased: list[str] = []
-    for rel in git_changed_files(repo_root, base_ref):
+    for rel in changed:
         abs_path = repo_root / rel
         try:
             rebased.append((abs_path.relative_to(rebase_root)).as_posix())
@@ -81,6 +95,57 @@ def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None,
             # Changed file lives outside this bakery context (monorepo) -> not our concern.
             continue
     return rebased
+
+
+def _git_repo_root(rebase_root: Path) -> Path:
+    """Return the git repository root containing ``rebase_root``.
+
+    Failing here means ``rebase_root`` isn't a git checkout at all — a more
+    fundamental misconfiguration than anything downstream should silently
+    paper over, so this is not wrapped in a fail-safe.
+    """
+    toplevel = subprocess.run(
+        ["git", "-C", str(rebase_root), "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return Path(toplevel)
+
+
+def _resolve_base_bakery_yaml(base_ref: str | None, changed_files: list[str] | None, config_file: Path) -> str | None:
+    """Return bakery.yaml's text content at ``base_ref``, or None to skip semantic diffing.
+
+    Returns None (no git call made) when there's no base_ref, no changed-files
+    list, or bakery.yaml isn't actually one of the changed files. Otherwise
+    attempts to read it at base_ref; any failure (unreachable ref, path didn't
+    exist at that ref, etc.) logs a warning and returns None rather than
+    raising — the caller treats None as "compare unavailable, fail safe to a
+    full build," the same shape as _resolve_changed_files' own fail-safe.
+    """
+    if base_ref is None or changed_files is None or config_file.name not in changed_files:
+        return None
+
+    # Local import: git I/O is only needed on this rarely-used code path.
+    from posit_bakery.config.changeset import git_show_file
+
+    try:
+        repo_root = _git_repo_root(config_file.parent)
+        rel_path = config_file.relative_to(repo_root).as_posix()
+        return git_show_file(repo_root, base_ref, rel_path)
+    except (subprocess.CalledProcessError, ValueError) as e:
+        # CalledProcessError: config_file.parent isn't a git checkout, or
+        # git_show_file couldn't read it at base_ref. ValueError: config_file
+        # isn't actually under repo_root (relative_to failure). Either way,
+        # this is the same "compare unavailable" fail-safe as the rest of the
+        # module -- --changed-files-from callers in particular may point
+        # config_file at a directory with no git available at all.
+        log.warning(
+            "Could not read bakery.yaml at base-ref %r (%s); disabling semantic bakery.yaml diffing for this run.",
+            base_ref,
+            e.stderr.strip() if isinstance(e, subprocess.CalledProcessError) and e.stderr else e,
+        )
+        return None
 
 
 def _version_selected(ver: ImageVersion, cs: ImageChangeSet) -> bool:
@@ -223,7 +288,18 @@ def matrix(
         selection: MatrixSelection | None = None
         changed = _resolve_changed_files(base_ref, changed_files_from, c.base_path)
         if changed is not None:
-            selection = classify_changes(c, changed)
+            # --changed-files-from overrides --base-ref entirely (see _resolve_changed_files),
+            # so the historical bakery.yaml lookup must not fall back to running git against
+            # base_ref either -- otherwise a caller with no reliable history for base_ref (the
+            # exact case --changed-files-from exists for) still gets a git call here.
+            yaml_base_ref = base_ref if changed_files_from is None else None
+            old_bakery_yaml = _resolve_base_bakery_yaml(yaml_base_ref, changed, c.config_file)
+            bakery_yaml_selection = (
+                classify_bakery_yaml_diff(old_bakery_yaml, c.config_file.read_text())
+                if old_bakery_yaml is not None
+                else None
+            )
+            selection = classify_changes(c, changed, bakery_yaml_selection=bakery_yaml_selection)
             if selection.full:
                 # Fail-safe / repo-wide change: behave exactly as a full matrix.
                 selection = None

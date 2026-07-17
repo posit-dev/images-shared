@@ -5,7 +5,14 @@ from pathlib import Path
 import pytest
 
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.changeset import classify_changes, git_changed_files, ImageChangeSet
+from posit_bakery.config.changeset import (
+    classify_bakery_yaml_diff,
+    classify_changes,
+    git_changed_files,
+    git_show_file,
+    ImageChangeSet,
+    MatrixSelection,
+)
 from posit_bakery.cli.ci import _version_selected
 
 
@@ -172,3 +179,465 @@ class TestVersionSelected:
         ver = _fake_ver(name="1.0.0")
         cs = ImageChangeSet(include_all_release=True)
         assert _version_selected(ver, cs) is True
+
+
+def test_git_show_file_returns_content_at_ref(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "bakery.yaml").write_text("images: []\n")
+    subprocess.run(["git", "add", "bakery.yaml"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    content = git_show_file(tmp_path, "HEAD", "bakery.yaml")
+
+    assert content == "images: []\n"
+
+
+def test_git_show_file_raises_on_missing_path(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "placeholder.txt").write_text("x")
+    subprocess.run(["git", "add", "placeholder.txt"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        git_show_file(tmp_path, "HEAD", "bakery.yaml")
+
+
+class TestClassifyBakeryYamlDiff:
+    """classify_bakery_yaml_diff: structural diff between two bakery.yaml texts."""
+
+    def test_version_added_narrows_to_that_version(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+      - name: "2026.07.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["workbench"].versions == {"2026.07.0"}
+        assert not selection.images["workbench"].include_all_release
+
+    def test_version_removed_produces_no_signal(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.05.0"
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert "workbench" not in selection.images
+
+    def test_latest_moving_narrows_only_to_the_gaining_version(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+      - name: "2026.07.0"
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+      - name: "2026.07.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["workbench"].versions == {"2026.07.0"}
+
+    def test_other_field_change_falls_back_to_include_all_release(self):
+        old = """
+images:
+  - name: workbench
+    variants: [std]
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    variants: [std, min]
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["workbench"].include_all_release
+
+    def test_mixed_version_and_other_field_change_falls_back_to_include_all_release(self):
+        old = """
+images:
+  - name: workbench
+    variants: [std]
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    variants: [std, min]
+    versions:
+      - name: "2026.06.0"
+      - name: "2026.07.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        cs = selection.images["workbench"]
+        assert cs.include_all_release
+        assert "2026.07.0" not in cs.versions
+
+    def test_image_added_produces_no_signal(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+  - name: workbench-session-init
+    versions:
+      - name: "2026.07.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images == {}
+
+    def test_image_removed_produces_no_signal(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+  - name: old-image
+    versions:
+      - name: "1.0.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images == {}
+
+    def test_top_level_key_change_fails_safe_to_full(self):
+        old = """
+registries:
+  - name: ghcr
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+registries:
+  - name: ghcr
+  - name: dockerhub
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+    def test_unparseable_old_content_fails_safe_to_full(self):
+        selection = classify_bakery_yaml_diff("images: [unterminated", "images: []\n")
+
+        assert selection.full
+
+    def test_old_content_not_shaped_as_expected_fails_safe_to_full(self):
+        selection = classify_bakery_yaml_diff("just a string, not a mapping\n", "images: []\n")
+
+        assert selection.full
+
+    def test_matrix_dependency_value_added_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1", "3.13.0"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1", "3.13.0", "3.14.0"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
+    def test_matrix_dependency_value_removed_only_produces_no_signal(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1", "3.13.0"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.13.0"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert "connect-content" not in selection.images
+
+    def test_matrix_whole_dependency_axis_added_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+        - dependency: r
+          versions: ["4.5.0"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
+    def test_matrix_whole_dependency_axis_removed_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+        - dependency: r
+          versions: ["4.5.0"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
+    def test_matrix_dependency_constraint_change_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencyConstraints:
+        - dependency: python
+          constraint: ">=3.12,<3.14"
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencyConstraints:
+        - dependency: python
+          constraint: ">=3.12,<3.15"
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
+    def test_matrix_other_field_change_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      namePattern: "R{r}-py{python}"
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      namePattern: "r{r}-python{python}"
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
+    def test_malformed_image_entry_fails_safe_to_full(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - just-a-string-not-a-dict
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+    def test_version_entry_with_non_string_name_fails_safe_to_full(self):
+        old = """
+images:
+  - name: workbench
+    versions:
+      - name: "2026.06.0"
+        latest: true
+"""
+        new = """
+images:
+  - name: workbench
+    versions:
+      - name: 4.0
+        latest: true
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+    def test_matrix_dependency_entry_missing_dependency_key_fails_safe_to_full(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - versions: ["3.12.1", "3.13.0"]
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert selection.full
+
+
+class TestClassifyChangesBakeryYamlIntegration:
+    """classify_changes must merge an already-computed bakery_yaml_selection
+    when given one, and keep today's unconditional full-fail-safe when it
+    isn't given one."""
+
+    def test_bakery_yaml_change_without_selection_still_fails_safe(self, changeset_config):
+        selection = classify_changes(changeset_config, ["bakery.yaml"])
+        assert selection.full
+
+    def test_bakery_yaml_change_with_selection_merges_it_in(self, changeset_config):
+        current_text = changeset_config.config_file.read_text()
+        old_text = current_text  # identical -> diff finds no changed images.
+        bakery_yaml_selection = classify_bakery_yaml_diff(old_text, current_text)
+
+        selection = classify_changes(changeset_config, ["bakery.yaml"], bakery_yaml_selection=bakery_yaml_selection)
+
+        assert selection == bakery_yaml_selection
+
+    def test_workflows_change_still_always_fails_safe_even_with_a_selection(self, changeset_config):
+        bakery_yaml_selection = classify_bakery_yaml_diff("images: []\n", "images: []\n")
+
+        selection = classify_changes(
+            changeset_config, [".github/workflows/ci.yml"], bakery_yaml_selection=bakery_yaml_selection
+        )
+
+        assert selection.full
+
+    def test_bakery_yaml_selection_merges_with_other_changed_files_for_the_same_image(self, changeset_config):
+        """One version comes from a file-path change, the other from
+        bakery_yaml_selection -- both must survive the merge regardless of
+        which order the changed files are processed in."""
+        bakery_yaml_selection = MatrixSelection(images={"app": ImageChangeSet(versions={"1.0.0"})})
+
+        selection = classify_changes(
+            changeset_config,
+            ["app/2.0.0/Containerfile.ubuntu2204.std", "bakery.yaml"],
+            bakery_yaml_selection=bakery_yaml_selection,
+        )
+
+        assert selection.images["app"].versions == {"1.0.0", "2.0.0"}

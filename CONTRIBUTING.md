@@ -99,15 +99,34 @@ Do not backport cosmetic changes, new feature additions, or non-security depende
 
 - **Version format mismatch.** Product repos dispatch with raw git-describe versions (e.g., `v2026.03.0-473-g072bb6fd1f`). Bakery normalizes these to semver-with-metadata (e.g., `2026.03.0-dev+473-g072bb6fd1f`). If `bakery ci matrix` produces an empty matrix after a dispatch, the formats did not align. The shared workflows strip a leading `v` automatically. Check the rest of the version string against bakery's normalization.
 
-## Change-aware PR builds
+## Change-aware builds
 
 `bakery ci matrix` supports `--base-ref <ref>` and `--changed-files-from <file|->` to emit
-only the matrix entries affected by a PR's changed files. This keeps PR CI fast: a template
+only the matrix entries affected by a set of changed files. This keeps builds fast: a template
 change builds only the images whose templates changed; a version-directory change builds only
 that version.
 
-**This filtering applies to PR builds only.** Push-to-main, scheduled, and release builds
-call `bakery ci matrix` without `--base-ref`, so they always build the full matrix.
+This applies to both PR builds and push-to-main builds:
+
+- **PR builds** diff against the PR's base commit (`github.event.pull_request.base.sha`).
+- **Push-to-main builds** diff against the commit before the push
+  (`github.event.before`), so a release merge only rebuilds the version(s) it touched
+  instead of the full matrix.
+
+**Scheduled and manually-dispatched builds always build the full matrix.** `schedule` and
+`workflow_dispatch` triggers have no `github.event.before` to diff against, so they
+intentionally skip change-aware filtering — this is how the weekly rebuild catches
+upstream base-image drift with no repository diff to detect it.
+
+If the diff against `--base-ref` fails for any reason (an unreachable ref, or the
+all-zero SHA GitHub sends as `github.event.before` on a branch's first-ever push),
+`bakery ci matrix` logs a warning and falls back to a full build rather than failing
+the run.
+
+Conversely, a push whose change set resolves to nothing buildable (e.g. a docs-only
+merge to `main`) now builds and publishes nothing rather than building the full
+matrix — the downstream build/publish jobs are skipped, mirroring how an empty
+change-aware PR matrix already behaves.
 
 ### Classification rules
 
@@ -115,7 +134,8 @@ After ignoring Markdown (`*.md`) paths, changed files are classified as follows:
 
 | Changed path | What builds |
 |---|---|
-| `bakery.yaml` / `bakery.yml` or `.github/workflows/**` | Full matrix (fail-safe) |
+| `bakery.yaml` / `bakery.yml` | Semantically diffed vs the base ref — narrows to affected image(s)/version(s); full matrix if old content is unavailable, unparseable, malformed, or the change is outside `images[]` |
+| `.github/workflows/**` | Full matrix (fail-safe) |
 | `<image>/template/**` | That image's dev versions (if any are declared) |
 | `<image>/<version-subpath>/**` | That release version only |
 | An image-root file or unrecognized subdir under an image | That image's release versions (fail-safe) |

@@ -1,13 +1,14 @@
 import json
 import logging
 import re
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_bdd import scenarios, then, parsers, given
 
-from posit_bakery.cli.ci import _resolve_changed_files
+from posit_bakery.cli.ci import _resolve_changed_files, _resolve_base_bakery_yaml
 from posit_bakery.config.config import version_matches
 from posit_bakery.config.image.version import ImageVersion
 
@@ -182,6 +183,115 @@ def test_resolve_changed_files_warns_when_base_ref_also_given(tmp_path, caplog):
     )
 
 
+def test_resolve_changed_files_falls_back_to_full_build_on_git_diff_error(tmp_path, mocker, caplog):
+    """A git-diff failure (bad ref, unrelated histories, etc.) must fall back to a
+    full build instead of crashing bakery ci matrix.
+
+    This is what makes --base-ref safe to use on push events: on a branch's
+    first-ever push, github.event.before is the all-zero SHA, which does not diff
+    cleanly. classify_changes already fails safe to a full build for unrecognized
+    paths; this extends the same philosophy to a broken base-ref.
+    """
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    mocker.patch(
+        "posit_bakery.config.changeset.git_changed_files",
+        side_effect=subprocess.CalledProcessError(128, ["git", "diff", "--merge-base"]),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_changed_files(
+            base_ref="0000000000000000000000000000000000000000",
+            changed_files_from=None,
+            rebase_root=tmp_path,
+        )
+
+    assert result is None
+    assert any("falling back to a full build" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
+    )
+
+
+def test_resolve_changed_files_does_not_swallow_unrelated_errors(tmp_path, mocker):
+    """Only subprocess.CalledProcessError is a recognized 'base_ref didn't diff
+    cleanly' failure. Any other exception must propagate uncaught, proving the
+    except clause above is exactly as narrow as intended and doesn't quietly
+    mask unrelated bugs.
+    """
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    mocker.patch(
+        "posit_bakery.config.changeset.git_changed_files",
+        side_effect=RuntimeError("unrelated bug, not a git-diff failure"),
+    )
+
+    with pytest.raises(RuntimeError, match="unrelated bug"):
+        _resolve_changed_files(
+            base_ref="some-ref",
+            changed_files_from=None,
+            rebase_root=tmp_path,
+        )
+
+
+def test_resolve_base_bakery_yaml_returns_none_without_base_ref(tmp_path):
+    result = _resolve_base_bakery_yaml(None, ["bakery.yaml"], tmp_path / "bakery.yaml")
+    assert result is None
+
+
+def test_resolve_base_bakery_yaml_returns_none_when_bakery_yaml_not_changed(tmp_path):
+    result = _resolve_base_bakery_yaml("HEAD~1", ["some/other/file.txt"], tmp_path / "bakery.yaml")
+    assert result is None
+
+
+def test_resolve_base_bakery_yaml_returns_content_on_success(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    subprocess.run(["git", "add", "bakery.yaml"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True, capture_output=True)
+
+    result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result == "images: []\n"
+
+
+def test_resolve_base_bakery_yaml_falls_back_to_none_on_git_error(tmp_path, caplog):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    # No commit exists, so "HEAD" doesn't resolve -> git show fails.
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result is None
+    assert any("bakery.yaml" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
+    )
+
+
+def test_resolve_base_bakery_yaml_falls_back_to_none_when_not_a_git_checkout(tmp_path, caplog):
+    """config_file's directory may not be a git checkout at all -- a plausible
+    future case for --changed-files-from callers, which exists precisely for
+    callers without git available. _git_repo_root then raises
+    CalledProcessError before git_show_file is ever called; that must be
+    caught here too, not just around git_show_file itself.
+    """
+    config_file = tmp_path / "bakery.yaml"
+    config_file.write_text("images: []\n")
+    # No `git init` -> tmp_path is not a git checkout at all.
+
+    with caplog.at_level(logging.WARNING, logger="posit_bakery.cli.ci"):
+        result = _resolve_base_bakery_yaml("HEAD", ["bakery.yaml"], config_file)
+
+    assert result is None
+    assert any("bakery.yaml" in record.message.lower() for record in caplog.records), (
+        f"expected a fallback warning, got: {[r.message for r in caplog.records]}"
+    )
+
+
 class TestChangeAwareFlagIntersection:
     """Change-aware mode must still honor --dev-versions / --matrix-versions.
 
@@ -244,6 +354,166 @@ class TestChangeAwareFlagIntersection:
         matrix = self._run(resource_path, changed, "--dev-versions", "exclude")
 
         assert matrix == [], f"expected an empty matrix under --dev-versions exclude, got: {matrix}"
+
+
+class TestBakeryYamlSemanticDiffEndToEnd:
+    """bakery ci matrix --base-ref, exercised against a real git repo, must
+    narrow a bakery.yaml-only version addition instead of building everything."""
+
+    def test_version_added_to_bakery_yaml_narrows_the_matrix(self, resource_path, tmp_path):
+        import shutil
+
+        context = tmp_path / "changeset"
+        shutil.copytree(resource_path / "changeset", context)
+
+        subprocess.run(["git", "init"], cwd=context, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"], cwd=context, check=True, capture_output=True
+        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "before"], cwd=context, check=True, capture_output=True)
+        before_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=context, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+        bakery_yaml = context / "bakery.yaml"
+        content = bakery_yaml.read_text()
+        content = content.replace(
+            """      - name: 2.0.0
+        subpath: "2.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+            """      - name: 3.0.0
+        subpath: "3.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+      - name: 2.0.0
+        subpath: "2.0.0"
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+        )
+        bakery_yaml.write_text(content)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "after"], cwd=context, check=True, capture_output=True)
+
+        from typer.testing import CliRunner
+        from posit_bakery.cli.main import app as bakery_app
+
+        runner = CliRunner()
+        result = runner.invoke(
+            bakery_app,
+            [
+                "ci",
+                "matrix",
+                "--quiet",
+                "--context",
+                str(context),
+                "--base-ref",
+                before_sha,
+                "--dev-versions",
+                "exclude",
+            ],
+            catch_exceptions=True,
+            env={"TERM": "dumb", "NO_COLOR": "true"},
+        )
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        matrix = json.loads(result.stdout.strip())
+        app_versions = {entry["version"] for entry in matrix if entry["image"] == "app"}
+
+        assert app_versions == {"3.0.0"}, (
+            f"expected only the added version, got {app_versions} -- full matrix: {matrix}"
+        )
+
+    def test_changed_files_from_overrides_base_ref_for_yaml_diff_too(self, resource_path, tmp_path):
+        """--changed-files-from must override --base-ref for the bakery.yaml semantic
+        diff, not just the changed-file list.
+
+        Same before/after repo as test_version_added_to_bakery_yaml_narrows_the_matrix,
+        where --base-ref alone narrows to the added version. Supplying
+        --changed-files-from alongside a valid --base-ref must still fall back to the
+        full matrix: using base_ref here despite the override would give a caller with
+        no reliable history for base_ref (the case --changed-files-from exists for) an
+        inconsistent result.
+        """
+        import shutil
+
+        context = tmp_path / "changeset"
+        shutil.copytree(resource_path / "changeset", context)
+
+        subprocess.run(["git", "init"], cwd=context, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"], cwd=context, check=True, capture_output=True
+        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "before"], cwd=context, check=True, capture_output=True)
+        before_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=context, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+        bakery_yaml = context / "bakery.yaml"
+        content = bakery_yaml.read_text()
+        content = content.replace(
+            """      - name: 2.0.0
+        subpath: "2.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+            """      - name: 3.0.0
+        subpath: "3.0.0"
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true
+      - name: 2.0.0
+        subpath: "2.0.0"
+        os:
+          - name: Ubuntu 22.04
+            primary: true""",
+        )
+        bakery_yaml.write_text(content)
+        subprocess.run(["git", "add", "-A"], cwd=context, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "after"], cwd=context, check=True, capture_output=True)
+
+        changed_files = tmp_path / "changed-files.txt"
+        changed_files.write_text("bakery.yaml\n")
+
+        from typer.testing import CliRunner
+        from posit_bakery.cli.main import app as bakery_app
+
+        runner = CliRunner()
+        result = runner.invoke(
+            bakery_app,
+            [
+                "ci",
+                "matrix",
+                "--quiet",
+                "--context",
+                str(context),
+                "--base-ref",
+                before_sha,
+                "--changed-files-from",
+                str(changed_files),
+                "--dev-versions",
+                "exclude",
+            ],
+            catch_exceptions=True,
+            env={"TERM": "dumb", "NO_COLOR": "true"},
+        )
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        matrix = json.loads(result.stdout.strip())
+        app_versions = {entry["version"] for entry in matrix if entry["image"] == "app"}
+
+        assert app_versions == {"1.0.0", "2.0.0", "3.0.0"}, (
+            f"expected the full matrix (base_ref must be ignored), got {app_versions} -- full matrix: {matrix}"
+        )
 
 
 class TestVersionMatches:
