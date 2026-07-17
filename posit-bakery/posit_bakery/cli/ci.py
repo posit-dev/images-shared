@@ -288,7 +288,12 @@ def matrix(
         selection: MatrixSelection | None = None
         changed = _resolve_changed_files(base_ref, changed_files_from, c.base_path)
         if changed is not None:
-            old_bakery_yaml = _resolve_base_bakery_yaml(base_ref, changed, c.config_file)
+            # --changed-files-from overrides --base-ref entirely (see _resolve_changed_files),
+            # so the historical bakery.yaml lookup must not fall back to running git against
+            # base_ref either -- otherwise a caller with no reliable history for base_ref (the
+            # exact case --changed-files-from exists for) still gets a git call here.
+            yaml_base_ref = base_ref if changed_files_from is None else None
+            old_bakery_yaml = _resolve_base_bakery_yaml(yaml_base_ref, changed, c.config_file)
             bakery_yaml_selection = (
                 classify_bakery_yaml_diff(old_bakery_yaml, c.config_file.read_text())
                 if old_bakery_yaml is not None
