@@ -8,7 +8,7 @@ import shutil
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Annotated, Self, Any
+from typing import Annotated, Callable, Self, Any
 
 import jinja2
 import pydantic
@@ -44,19 +44,26 @@ from posit_bakery.image.image_metadata import MetadataFile
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
 from posit_bakery.parallel import ParallelShellExecutor, PrefixedLogSink, ShellJob, resolve_max_workers
 from posit_bakery.registry_management import ghcr
+from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
 
 _RETRY_DELAY_SECONDS = 5
 
 
-def _retry_build(fn, retry: int, label: str) -> None:
+def _retry_build(fn, retry: int, label: str, sleep: Callable[[float], None] | None = None) -> None:
     """Attempt fn() up to (retry + 1) times, re-raising on final failure.
 
     :param fn: The function to call.
     :param retry: Number of retries (0 means no retries, just one attempt).
     :param label: A label for logging purposes.
+    :param sleep: Sleep function used between retry attempts. When omitted (``None``),
+        ``time.sleep`` is looked up fresh on each call rather than bound as a parameter
+        default, so tests that ``patch("posit_bakery.config.config.time.sleep")`` keep
+        working. Pass ``CommandRunner.sleep`` when retrying inside a parallel job so
+        backoff waits notice a shutdown request promptly instead of blocking process exit.
     """
+    effective_sleep = sleep if sleep is not None else time.sleep
     for attempt in range(retry + 1):
         try:
             fn()
@@ -69,7 +76,7 @@ def _retry_build(fn, retry: int, label: str) -> None:
                     f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "
                     f"Retrying in {_RETRY_DELAY_SECONDS}s..."
                 )
-                time.sleep(_RETRY_DELAY_SECONDS)
+                effective_sleep(_RETRY_DELAY_SECONDS)
             else:
                 raise
 
@@ -1176,6 +1183,9 @@ class BakeryConfig:
             )
         elif strategy == ImageBuildStrategy.BUILD:
             sink = PrefixedLogSink()
+            # Mirrors ImageTarget.build()'s own quiet check: streaming is pointless (and
+            # forces docker's "plain" progress mode) when -q means the lines are discarded.
+            quiet = SETTINGS.log_level >= logging.ERROR
             shell_jobs = [
                 ShellJob(
                     key=target.uid,
@@ -1188,10 +1198,15 @@ class BakeryConfig:
                             cache=cache,
                             platforms=platforms,
                             metadata_file=True if metadata_file else None,
-                            log_callback=lambda line, u=t.uid: sink.write(u, line),
+                            log_callback=None if quiet else (lambda line, u=t.uid: sink.write(u, line)),
                         ),
                         retry=retry,
                         label=str(t),
+                        # python_on_whales owns the build subprocess and doesn't expose its Popen
+                        # (utils.py), so a mid-build target can't be cancelled -- only the
+                        # inter-attempt backoff can. Routing it through runner.sleep lets
+                        # --fail-fast/shutdown interrupt a queued retry instead of blocking on it.
+                        sleep=runner.sleep,
                     ),
                 )
                 for target in self.targets

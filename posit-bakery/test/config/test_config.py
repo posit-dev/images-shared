@@ -28,6 +28,7 @@ from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEn
 from posit_bakery.error import BakeryError, BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
+from posit_bakery.settings import SETTINGS
 from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
     yaml_file_testcases,
@@ -2418,6 +2419,49 @@ class TestBuildTargetsBuildStrategy:
         for target in config.targets:
             assert target.uid in output
         assert fake_lines[0] in output
+
+    def test_quiet_mode_skips_log_streaming(self, get_config_obj, mocker):
+        """Under -q (SETTINGS.log_level == ERROR), log_callback must not be wired up --
+        otherwise ImageTarget.build() forces docker's "plain" progress and streams output
+        the user asked to suppress.
+        """
+        config = get_config_obj("basic")
+        original_log_level = SETTINGS.log_level
+        SETTINGS.log_level = logging.ERROR
+        try:
+            captured_kwargs = []
+            mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: captured_kwargs.append(kwargs))
+            config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
+        finally:
+            SETTINGS.log_level = original_log_level
+
+        assert captured_kwargs
+        assert all(kwargs["log_callback"] is None for kwargs in captured_kwargs)
+
+    def test_retry_backoff_uses_interruptible_runner_sleep(self, get_config_obj, mocker):
+        """_retry_build's backoff must go through CommandRunner.sleep (interruptible via
+        ExecutorInterrupted when the executor is shutting down), not a bare time.sleep --
+        otherwise a queued retry can't be woken by a shutdown request and blocks the full
+        delay.
+        """
+        config = get_config_obj("basic")
+        failing_uid = config.targets[0].uid
+        attempted = {"done": False}
+
+        def fake_build(self, **kwargs):
+            if self.uid == failing_uid and not attempted["done"]:
+                attempted["done"] = True
+                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+        mock_time_sleep = mocker.patch("posit_bakery.config.config.time.sleep")
+        spy_runner_sleep = mocker.patch("posit_bakery.parallel.executor.CommandRunner.sleep", autospec=True)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD, retry=1)  # must not raise
+
+        spy_runner_sleep.assert_called_once()
+        mock_time_sleep.assert_not_called()
 
 
 class TestApplyDevSpecReleaseBranch:
