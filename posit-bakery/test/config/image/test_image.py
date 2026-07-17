@@ -600,7 +600,7 @@ class TestImage:
         with pytest.raises(ValueError, match="Version '1.0.0' already exists in image 'test-image'."):
             i.patch_version("1.0.0", "1.0.0")
 
-    def test_create_matrix(self):
+    def test_create_matrix(self, patch_requests_get):
         """Test that create_version creates a new version and adds it to the image."""
         i = Image(name="my-image")
         matrix = i.create_matrix(
@@ -648,7 +648,7 @@ class TestImage:
                 ]
             )
 
-    def test_create_matrix_existing_matrix_update_existing(self):
+    def test_create_matrix_existing_matrix_update_existing(self, patch_requests_get):
         """Test that create_matrix updates a matrix the update_if_exists option."""
         i = Image(
             name="my-image",

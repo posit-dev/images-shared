@@ -64,3 +64,30 @@ def test_try_get_repo_url_no_remote(mocker):
     mock_repo = MagicMock(remotes=[])
     mocker.patch("posit_bakery.util.git.Repo", return_value=mock_repo)
     assert util.try_get_repo_url("/tmp") == "<REPLACE ME>"
+
+
+def test_cached_session_default_expire_after(mocker):
+    """Test that cached_session defaults to a one hour expiration"""
+    util.cached_session.cache_clear()
+    mocker.patch.dict("posit_bakery.util.os.environ", {}, clear=True)
+    mock_cached_session_cls = mocker.patch("posit_bakery.util.CachedSession")
+    util.cached_session()
+    assert mock_cached_session_cls.call_args.kwargs["expire_after"] == 3600
+
+
+def test_cached_session_respects_expire_after_env_var(mocker):
+    """Test that BAKERY_CACHE_EXPIRE_AFTER overrides the default expiration"""
+    util.cached_session.cache_clear()
+    mocker.patch.dict("posit_bakery.util.os.environ", {"BAKERY_CACHE_EXPIRE_AFTER": "86400"})
+    mock_cached_session_cls = mocker.patch("posit_bakery.util.CachedSession")
+    util.cached_session()
+    assert mock_cached_session_cls.call_args.kwargs["expire_after"] == 86400
+
+
+def test_cached_session_ignores_invalid_expire_after_env_var(mocker):
+    """Test that a non-integer BAKERY_CACHE_EXPIRE_AFTER falls back to the default"""
+    util.cached_session.cache_clear()
+    mocker.patch.dict("posit_bakery.util.os.environ", {"BAKERY_CACHE_EXPIRE_AFTER": "not-a-number"})
+    mock_cached_session_cls = mocker.patch("posit_bakery.util.CachedSession")
+    util.cached_session()
+    assert mock_cached_session_cls.call_args.kwargs["expire_after"] == 3600

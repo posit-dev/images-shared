@@ -94,9 +94,12 @@ jobs:
           fetch-depth: 0
 
       - name: Install
+        id: setup-bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
+          is-writer: "true"
 
       - name: Images by Version/Platform
         id: images-by-platform
@@ -136,6 +139,16 @@ jobs:
           fi
           result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
+
+      - name: Save dependency version cache
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: ${{ steps.setup-bakery.outputs.cache-artifact-name }}
+          path: /tmp/bakery_cache
+          if-no-files-found: ignore
+          retention-days: 1
 
   readme-check:
     name: README Length Check
@@ -191,6 +204,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          cache-scope: ${{ toJSON(inputs) }}
 
       - name: Setup goss
         uses: "posit-dev/images-shared/setup-goss@main"

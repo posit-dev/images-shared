@@ -1,4 +1,6 @@
 import abc
+import copy
+from functools import cache
 from typing import Annotated, Literal, ClassVar
 
 from pydantic import ConfigDict, Field, field_validator
@@ -28,11 +30,14 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         ),
     ]
 
-    def _fetch_versions(self) -> list[DependencyVersion]:
+    @staticmethod
+    @cache
+    def _fetch_versions(prerelease: bool = False) -> list[DependencyVersion]:
         """Fetch available Quarto versions.
         Only the latest patch version for each minor version is included.
 
-        This method uses caching to avoid repeated network requests.
+        Memoized so the fetch+parse runs once per bakery invocation per
+        ``prerelease`` value (at most two entries).
 
         :return: A sorted list of available Quarto versions.
         """
@@ -44,7 +49,7 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         response.raise_for_status()
         versions.append(DependencyVersion(response.json().get("version")))
 
-        if self.prerelease:
+        if prerelease:
             # Fetch prerelease version
             response = session.get(QUARTO_PRERELEASE_URL)
             response.raise_for_status()
@@ -62,9 +67,13 @@ class QuartoDependency(BakeryYAMLModel, abc.ABC):
         """Return a list of available Quarto version.
         Only the latest patch version for each minor version is included.
 
+        Returns a deep copy since ``_fetch_versions`` is memoized; callers
+        can freely mutate the returned list or its elements without
+        corrupting the shared cache.
+
         :return: A sorted list of available Quarto versions.
         """
-        return self._fetch_versions()
+        return copy.deepcopy(self._fetch_versions(self.prerelease))
 
 
 class QuartoDependencyVersions(DependencyVersions, QuartoDependency):
