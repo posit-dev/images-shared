@@ -18,6 +18,7 @@ from posit_bakery.parallel import (
     ExecutorInterrupted,
     JobResult,
     ParallelShellExecutor,
+    PrefixedLogSink,
     ShellJob,
     ShellResult,
     ShellTask,
@@ -339,6 +340,51 @@ class TestJobResult:
         assert result.ok is False
 
 
+class TestPrefixedLogSink:
+    def test_write_prefixes_line(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "Step 1/5 : FROM ubuntu")
+
+        output = buf.getvalue()
+        assert "target-a" in output
+        assert "Step 1/5 : FROM ubuntu" in output
+
+    def test_write_does_not_mangle_bracketed_docker_output(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "#5 [internal] load build definition from Dockerfile")
+
+        output = buf.getvalue()
+        assert "[internal] load build definition from Dockerfile" in output
+
+    def test_write_is_thread_safe_no_interleaving(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf, width=200))
+
+        def writer(key, marker, count):
+            for i in range(count):
+                sink.write(key, f"{marker}-{i}")
+
+        threads = [
+            threading.Thread(target=writer, args=("a", "AAAAAAAAAA", 100)),
+            threading.Thread(target=writer, args=("b", "BBBBBBBBBB", 100)),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        for line in buf.getvalue().splitlines():
+            if not line.strip():
+                continue
+            # A single line must never contain both markers -- proves writes
+            # from the two threads never interleaved mid-line.
+            assert ("AAAAAAAAAA" in line) != ("BBBBBBBBBB" in line)
+
+
 class TestCommandRunnerSleep:
     def _runner(self):
         executor = ParallelShellExecutor(max_workers=1, console=Console(file=io.StringIO()), use_live=False)
@@ -418,6 +464,94 @@ class TestParallelShellExecutorJobs:
         assert isinstance(by_key["bad"].exception, RuntimeError)
         assert by_key["good"].ok is True
         assert by_key["good"].value == 0
+
+    def test_fail_fast_cancels_unstarted_jobs(self):
+        order = []
+
+        def make(key, ok):
+            def run(runner):
+                order.append(key)
+                if not ok:
+                    raise RuntimeError(f"{key} failed")
+                return key
+
+            return run
+
+        jobs = [
+            ShellJob(key="a", run=make("a", False)),
+            ShellJob(key="b", run=make("b", True)),
+            ShellJob(key="c", run=make("c", True)),
+        ]
+        results = self._executor(1).run_jobs(jobs, fail_fast=True)
+
+        assert {r.job.key for r in results} == {"a"}
+        assert order == ["a"]
+
+    def test_fail_fast_does_not_cancel_already_running_job(self):
+        started = threading.Event()
+        finished = threading.Event()
+
+        def run_slow_success(runner):
+            started.set()
+            time.sleep(0.2)
+            finished.set()
+            return "slow-done"
+
+        def run_fail(runner):
+            started.wait(timeout=2)
+            raise RuntimeError("boom")
+
+        jobs = [ShellJob(key="slow", run=run_slow_success), ShellJob(key="fail", run=run_fail)]
+        results = self._executor(2).run_jobs(jobs, fail_fast=True)
+        by_key = {r.job.key: r for r in results}
+
+        assert finished.is_set()
+        assert by_key["slow"].ok is True
+        assert by_key["slow"].value == "slow-done"
+        assert by_key["fail"].ok is False
+
+    def test_fail_fast_false_runs_all_jobs(self):
+        # Default behavior (fail_fast=False, same as omitting it) is unaffected.
+        jobs = [
+            ShellJob(key="bad", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom"))),
+            ShellJob(key="good", run=lambda runner: "ok"),
+        ]
+        results = self._executor(1).run_jobs(jobs)
+        assert {r.job.key for r in results} == {"bad", "good"}
+
+    def test_run_job_skips_without_calling_callable_when_fail_fast_already_triggered(self):
+        # Regression test for a real race: Future.cancel() alone cannot reliably stop a worker
+        # that, immediately after finishing a failed job, loops back and dequeues the very next
+        # queued job on the same thread before the main thread's as_completed() consumer gets a
+        # chance to act. _run_job must check the trigger itself, synchronously, before doing any
+        # real work -- this exercises that check directly and deterministically, with no
+        # reliance on thread-scheduling timing.
+        executor = self._executor(1)
+        executor._fail_fast_triggered.set()
+        called = []
+        job = ShellJob(key="b", run=lambda runner: called.append("ran"))
+
+        result = executor._run_job(job, fail_fast=True)
+
+        assert result is None
+        assert called == []
+
+    def test_run_job_sets_fail_fast_triggered_on_failure(self):
+        executor = self._executor(1)
+        job = ShellJob(key="a", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        assert not executor._fail_fast_triggered.is_set()
+        executor._run_job(job, fail_fast=True)
+
+        assert executor._fail_fast_triggered.is_set()
+
+    def test_run_job_does_not_set_fail_fast_triggered_when_fail_fast_false(self):
+        executor = self._executor(1)
+        job = ShellJob(key="a", run=lambda runner: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        executor._run_job(job, fail_fast=False)
+
+        assert not executor._fail_fast_triggered.is_set()
 
     def test_runner_run_returns_completed_process(self):
         captured = {}

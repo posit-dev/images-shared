@@ -49,7 +49,7 @@ Feature: build
         Given I call bakery build
         * in a temp fail-fast context
         * with the arguments:
-            | --strategy | build | --fail-fast |
+            | --strategy | build | --fail-fast | --jobs | 1 |
         When I execute the command
         Then The command exits with code 1
         * the stderr output includes:

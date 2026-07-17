@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.text import Text
 
 from posit_bakery.const import DEFAULT_COMMAND_TIMEOUT_SECONDS
 from posit_bakery.log import stderr_console
@@ -167,6 +168,24 @@ def resolve_max_workers(jobs: int | None, n_tasks: int) -> int:
     return min(workers, max(1, n_tasks))
 
 
+class PrefixedLogSink:
+    """Thread-safe console sink for interleaved concurrent output, prefixed per key.
+
+    Each `write()` call is expected to be one complete line (e.g. one line yielded by
+    `python_on_whales`'s ``stream_logs``), so a single lock around the print is enough to
+    keep concurrent writers from interleaving mid-line.
+    """
+
+    def __init__(self, console: Console = stderr_console) -> None:
+        self._console = console
+        self._lock = threading.Lock()
+
+    def write(self, key: str, line: str) -> None:
+        """Print `line` prefixed with `[key]`, guarded by a lock shared across all keys."""
+        with self._lock:
+            self._console.print(Text.assemble((f"[{key}]", "quiet"), f" {line}"))
+
+
 class ParallelShellExecutor:
     """Run ShellTasks concurrently with bounded workers and an optional Rich live table.
 
@@ -188,6 +207,7 @@ class ParallelShellExecutor:
         self._active: set[subprocess.Popen] = set()
         self._lock = threading.Lock()
         self._shutdown = False
+        self._fail_fast_triggered = threading.Event()
         self._progress: Progress | None = None
         self._progress_ids: dict[str, Any] = {}
 
@@ -281,8 +301,19 @@ class ParallelShellExecutor:
 
         return proc.returncode, stdout or b"", stderr or b"", timed_out, exception
 
-    def _run_one(self, task: ShellTask) -> ShellResult:
-        """Run one task as a tracked child process, enforcing task.timeout if set."""
+    def _run_one(self, task: ShellTask, *, fail_fast: bool = False) -> ShellResult | None:
+        """Run one task as a tracked child process, enforcing task.timeout if set.
+
+        :param fail_fast: If True and a sibling unit already tripped :attr:`_fail_fast_triggered`,
+            skip this task entirely and return None instead of running it. Checked synchronously
+            on this thread before any real work starts: a worker that just failed a unit and
+            immediately dequeues the next one continues running with no yield point, so
+            ``Future.cancel()`` alone cannot reliably stop it -- by the time the main thread's
+            ``as_completed()`` consumer gets scheduled to cancel the next future, the same worker
+            may have already started it. This check closes that race deterministically.
+        """
+        if fail_fast and self._fail_fast_triggered.is_set():
+            return None
         start = time.monotonic()
         returncode, stdout, stderr, timed_out, exception = self._spawn_and_communicate(
             task.cmd,
@@ -291,7 +322,7 @@ class ParallelShellExecutor:
             timeout=task.timeout,
             on_started=lambda: self._mark_running(task),
         )
-        return ShellResult(
+        result = ShellResult(
             task=task,
             returncode=returncode,
             stdout=stdout,
@@ -300,14 +331,24 @@ class ParallelShellExecutor:
             exception=exception,
             timed_out=timed_out,
         )
+        if fail_fast and not result.ok:
+            self._fail_fast_triggered.set()
+        return result
 
-    def _run_job(self, job: ShellJob) -> JobResult:
-        """Run one job's callable, handing it a CommandRunner bound to the job."""
+    def _run_job(self, job: ShellJob, *, fail_fast: bool = False) -> JobResult | None:
+        """Run one job's callable, handing it a CommandRunner bound to the job.
+
+        :param fail_fast: See :meth:`_run_one`.
+        """
+        if fail_fast and self._fail_fast_triggered.is_set():
+            return None
         start = time.monotonic()
         runner = CommandRunner(self, job.key, job.display_label)
         try:
             value = job.run(runner)
         except Exception as exc:  # job callable raised; surface without crashing pool
+            if fail_fast:
+                self._fail_fast_triggered.set()
             return JobResult(job=job, value=None, exception=exc, duration=time.monotonic() - start)
         return JobResult(job=job, value=value, exception=None, duration=time.monotonic() - start)
 
@@ -340,20 +381,26 @@ class ParallelShellExecutor:
         tasks: list[ShellTask],
         *,
         on_result: Callable[[ShellResult], None] | None = None,
+        fail_fast: bool = False,
     ) -> list[ShellResult]:
         """Run all tasks, returning results in input order. ``on_result`` fires per task on the main thread.
 
         On KeyboardInterrupt (or any BaseException) the executor cancels queued tasks and
         terminates in-flight child processes before re-raising, so Ctrl-C is responsive and
         does not leave orphaned children.
+
+        :param fail_fast: If True, the first failing result cancels every not-yet-started
+            task; already-running ones finish normally. Tasks that never got a chance to run
+            are omitted from the returned list.
         """
-        return self._execute_pool(tasks, worker=self._run_one, on_result=on_result)
+        return self._execute_pool(tasks, worker=self._run_one, on_result=on_result, fail_fast=fail_fast)
 
     def run_jobs(
         self,
         jobs: list[ShellJob],
         *,
         on_result: Callable[[JobResult], None] | None = None,
+        fail_fast: bool = False,
     ) -> list[JobResult]:
         """Run all jobs (each an ordered command sequence) concurrently, returning results in input order.
 
@@ -361,18 +408,29 @@ class ParallelShellExecutor:
         commands it spawns are tracked exactly like task runs, so timeout enforcement,
         process-group termination, and interrupt-safety all apply. ``on_result`` fires per job
         on the main thread (so callers can mutate shared state without locks).
+
+        :param fail_fast: If True, the first failing result cancels every not-yet-started job;
+            already-running ones finish normally. Jobs that never got a chance to run are
+            omitted from the returned list.
         """
-        return self._execute_pool(jobs, worker=self._run_job, on_result=on_result)
+        return self._execute_pool(jobs, worker=self._run_job, on_result=on_result, fail_fast=fail_fast)
 
     @staticmethod
-    def _run_with_slot(worker: Callable[[Any], Any], unit: Any, slot_queue: "queue.SimpleQueue[int]") -> Any:
-        """Run ``worker(unit)`` with a worker slot number bound to this thread for the
-        duration of the call, so nested log records get tagged by :class:`_WorkerTagFilter`.
+    def _run_with_slot(
+        worker: Callable[[Any], Any],
+        unit: Any,
+        slot_queue: "queue.SimpleQueue[int]",
+        *,
+        fail_fast: bool = False,
+    ) -> Any:
+        """Run ``worker(unit, fail_fast=fail_fast)`` with a worker slot number bound to this
+        thread for the duration of the call, so nested log records get tagged by
+        :class:`_WorkerTagFilter`.
         """
         slot = slot_queue.get()
         _worker_slot.value = slot
         try:
-            return worker(unit)
+            return worker(unit, fail_fast=fail_fast)
         finally:
             del _worker_slot.value
             slot_queue.put(slot)
@@ -383,6 +441,7 @@ class ParallelShellExecutor:
         *,
         worker: Callable[[Any], Any],
         on_result: Callable[[Any], None] | None,
+        fail_fast: bool = False,
     ) -> list:
         """Shared driver for :meth:`run` and :meth:`run_jobs`.
 
@@ -390,6 +449,16 @@ class ParallelShellExecutor:
         result, and the result must expose ``.ok`` (used to render live table's check/cross mark).
         Owns the thread pool, live-table lifecycle, interrupt handling, and input-order result
         assembly so both call paths share identical Ctrl-C and process-group-termination semantics.
+
+        When ``fail_fast`` is True, the first ``!ok`` result cancels every not-yet-started
+        future (a no-op for ones already running, which run to completion and are still
+        collected) -- a cheap optimization for units no worker has looked at yet. ``worker``
+        (``_run_one``/``_run_job``) also checks :attr:`_fail_fast_triggered` itself, synchronously,
+        before doing any real work, and sets it immediately on failure: this is what actually
+        closes the race for a worker that finishes a failing unit and immediately dequeues the
+        next one, since that worker never yields to let ``Future.cancel()`` catch it in time.
+        Units skipped either way are simply absent from the returned list -- callers must not
+        assume ``len(result) == len(units)`` when ``fail_fast=True``.
         """
         if not units:
             return []
@@ -398,6 +467,7 @@ class ParallelShellExecutor:
         _ensure_worker_tag_filter()
 
         self._shutdown = False
+        self._fail_fast_triggered.clear()
         self._progress = None
         self._progress_ids = {}
         use_live = self._resolve_use_live(len(units))
@@ -415,9 +485,16 @@ class ParallelShellExecutor:
             )
             self._progress = progress
 
+        cancelled_pending = False
+
         def consume(future_map: dict) -> None:
+            nonlocal cancelled_pending
             for future in as_completed(future_map):
+                if future.cancelled():
+                    continue
                 result = future.result()
+                if result is None:
+                    continue  # skipped: fail-fast was already triggered by a sibling unit
                 results_by_key[future_map[future].key] = result
                 if progress is not None:
                     status = "[green3]✓" if result.ok else "[bright_red]✗"
@@ -428,6 +505,10 @@ class ParallelShellExecutor:
                     )
                 if on_result is not None:
                     on_result(result)
+                if fail_fast and not result.ok and not cancelled_pending:
+                    cancelled_pending = True
+                    for pending in future_map:
+                        pending.cancel()
 
         slot_queue: queue.SimpleQueue[int] = queue.SimpleQueue()
         for slot in range(1, self.max_workers + 1):
@@ -442,10 +523,16 @@ class ParallelShellExecutor:
                             f"[quiet]{'queued':<7} {unit.display_label}", total=1, start=False
                         )
                     self._progress_ids = progress_ids
-                    future_map = {pool.submit(self._run_with_slot, worker, unit, slot_queue): unit for unit in units}
+                    future_map = {
+                        pool.submit(self._run_with_slot, worker, unit, slot_queue, fail_fast=fail_fast): unit
+                        for unit in units
+                    }
                     consume(future_map)
             else:
-                future_map = {pool.submit(self._run_with_slot, worker, unit, slot_queue): unit for unit in units}
+                future_map = {
+                    pool.submit(self._run_with_slot, worker, unit, slot_queue, fail_fast=fail_fast): unit
+                    for unit in units
+                }
                 consume(future_map)
         except BaseException:
             # Interrupted (e.g. Ctrl-C): stop accepting/continuing work, drop queued units,
@@ -461,7 +548,7 @@ class ParallelShellExecutor:
             self._progress = None
             self._progress_ids = {}
 
-        return [results_by_key[unit.key] for unit in units]
+        return [results_by_key[unit.key] for unit in units if unit.key in results_by_key]
 
 
 class CommandRunner:

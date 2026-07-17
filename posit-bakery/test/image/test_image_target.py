@@ -10,6 +10,7 @@ from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.tag import default_tag_patterns, TagPatternFilter
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX
+from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
@@ -734,7 +735,7 @@ class TestImageTarget:
         """Test the build property of an ImageTarget."""
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -750,6 +751,7 @@ class TestImageTarget:
             "target": None,
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -768,7 +770,7 @@ class TestImageTarget:
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3"},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -784,6 +786,7 @@ class TestImageTarget:
             "target": None,
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -798,7 +801,7 @@ class TestImageTarget:
         cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -814,6 +817,7 @@ class TestImageTarget:
             "target": None,
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -828,7 +832,7 @@ class TestImageTarget:
         cache_name = basic_standard_image_target.cache_name(platform="linux/amd64")
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -844,6 +848,7 @@ class TestImageTarget:
             "target": None,
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -857,7 +862,7 @@ class TestImageTarget:
         basic_standard_image_target.settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": [basic_standard_image_target.temp_name],
             "labels": basic_standard_image_target.labels,
@@ -873,6 +878,7 @@ class TestImageTarget:
             "target": None,
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -887,7 +893,7 @@ class TestImageTarget:
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -903,6 +909,7 @@ class TestImageTarget:
             "target": "my-stage",
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -917,7 +924,7 @@ class TestImageTarget:
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -933,6 +940,7 @@ class TestImageTarget:
             "target": "image-stage",
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -948,7 +956,7 @@ class TestImageTarget:
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -964,6 +972,7 @@ class TestImageTarget:
             "target": "version-stage",
             "secrets": [],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
@@ -1017,7 +1026,7 @@ class TestImageTarget:
 
         expected_build_args = {
             "context_path": basic_standard_image_target.context.base_path,
-            "file": basic_standard_image_target.containerfile,
+            "file": basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile,
             "build_args": {},
             "tags": basic_standard_image_target.tags.as_strings(),
             "labels": basic_standard_image_target.labels,
@@ -1033,12 +1042,63 @@ class TestImageTarget:
             "target": None,
             "secrets": ["id=github_token,env=GITHUB_TOKEN"],
             "progress": "auto",
+            "stream_logs": False,
         }
 
         with patch("python_on_whales.docker.build") as mock_build:
             basic_standard_image_target.build()
 
         mock_build.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.build
+    def test_build_streams_lines_to_log_callback(self, basic_standard_image_target):
+        """When log_callback is set, docker.build streams lines into it and build() returns None."""
+        lines_yielded = ["Step 1/3 : FROM ubuntu", "Step 2/3 : RUN true", 'Step 3/3 : CMD ["bash"]']
+        received = []
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            mock_build.return_value = iter(lines_yielded)
+            result = basic_standard_image_target.build(log_callback=received.append)
+
+        assert received == lines_yielded
+        assert result is None
+        assert mock_build.call_args.kwargs["stream_logs"] is True
+        assert mock_build.call_args.kwargs["progress"] == "plain"
+
+    @pytest.mark.build
+    def test_build_wraps_docker_exception_raised_during_streaming(self, basic_standard_image_target):
+        """DockerException raised while iterating streamed lines must still be wrapped.
+
+        python_on_whales.docker.build(stream_logs=True) returns lazily: the actual subprocess
+        failure surfaces while iterating its result, not from the initial call -- the wrapping
+        try/except must cover that iteration too, not just the call.
+        """
+
+        def fake_stream():
+            yield "Step 1/2 : FROM ubuntu"
+            raise python_on_whales.exceptions.DockerException(
+                ["docker", "buildx", "build"], 1, stdout=b"", stderr=b"boom"
+            )
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            mock_build.return_value = fake_stream()
+            with pytest.raises(BakeryToolRuntimeError) as exc_info:
+                basic_standard_image_target.build(log_callback=lambda line: None)
+
+        assert exc_info.value.cmd == ["docker", "buildx", "build"]
+        assert exc_info.value.exit_code == 1
+
+    @pytest.mark.build
+    def test_build_file_path_is_absolute_regardless_of_cwd(self, basic_standard_image_target, monkeypatch, tmp_path):
+        """build() must not depend on the process cwd (prerequisite for concurrent builds)."""
+        monkeypatch.chdir(tmp_path)
+
+        with patch("python_on_whales.docker.build") as mock_build:
+            basic_standard_image_target.build()
+
+        called_file = mock_build.call_args.kwargs["file"]
+        assert called_file.is_absolute()
+        assert called_file == basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile
 
     @pytest.mark.build
     @pytest.mark.image_build

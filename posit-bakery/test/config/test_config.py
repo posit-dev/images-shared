@@ -3,6 +3,8 @@ import logging
 import os
 import shutil
 import textwrap
+import threading
+import time
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch, call
@@ -23,8 +25,10 @@ from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-from posit_bakery.error import BakeryError
+from posit_bakery.error import BakeryError, BakeryBuildErrorGroup, BakeryToolRuntimeError
 from posit_bakery.image.image_metadata import BuildMetadata
+from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
+from posit_bakery.settings import SETTINGS
 from test.config.conftest import CONFIG_TESTDATA_DIR
 from test.helpers import (
     yaml_file_testcases,
@@ -2391,6 +2395,156 @@ class TestBakeryConfig:
         mock_ghcr_client.assert_called_once()
         mock_ghcr_client_instance.get_package_versions.assert_called_once()
         mock_ghcr_client_instance.delete_package_version.assert_not_called()
+
+
+class TestBuildTargetsBuildStrategy:
+    """Tests for BakeryConfig.build_targets() with ImageBuildStrategy.BUILD."""
+
+    def test_all_targets_built_no_error(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
+
+    def test_runs_concurrently_bounded_by_jobs(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+        lock = threading.Lock()
+        active = 0
+        max_active = 0
+
+        def fake_build(self, **kwargs):
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.1)
+            with lock:
+                active -= 1
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD, jobs=2)
+
+        assert max_active >= 2
+
+    def test_single_failure_raised_directly(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        failing_uid = config.targets[0].uid
+
+        def fake_build(self, **kwargs):
+            if self.uid == failing_uid:
+                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+
+        with pytest.raises(BakeryToolRuntimeError):
+            config.build_targets(strategy=ImageBuildStrategy.BUILD)
+
+    def test_multiple_failures_raised_as_error_group(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+
+        def fake_build(self, **kwargs):
+            raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+
+        with pytest.raises(BakeryBuildErrorGroup):
+            config.build_targets(strategy=ImageBuildStrategy.BUILD)
+
+    def test_fail_fast_stops_unstarted_targets(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+        failing_uid = config.targets[0].uid
+        called_uids = []
+
+        def fake_build(self, **kwargs):
+            called_uids.append(self.uid)
+            if self.uid == failing_uid:
+                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+
+        # jobs=1 fully serializes the two targets, so the second must never start
+        # once the first (and only) job fails with fail_fast set.
+        with pytest.raises(BakeryToolRuntimeError):
+            config.build_targets(strategy=ImageBuildStrategy.BUILD, fail_fast=True, jobs=1)
+
+        assert called_uids == [failing_uid]
+
+    def test_metadata_file_written(self, get_config_obj, mocker, tmp_path):
+        config = get_config_obj("basic")
+        metadata_path = tmp_path / "metadata.json"
+        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD, metadata_file=metadata_path)
+
+        assert metadata_path.is_file()
+
+    def test_real_build_streams_through_prefixed_log_sink(self, get_config_obj, mocker, capsys):
+        """Exercises the real BUILD-branch wiring end to end: ImageTarget.build() is NOT
+        mocked, only python_on_whales.docker.build() at the tool boundary, so the closure
+        `build_targets()` constructs (streaming build() output into a real PrefixedLogSink)
+        actually runs. Regression test for the Task 1 + Task 2 + Task 4 integration seam.
+        """
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+        fake_lines = ["Step 1/2 : FROM ubuntu", "Step 2/2 : RUN true"]
+        mocker.patch("python_on_whales.docker.build", side_effect=lambda **kwargs: iter(fake_lines))
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
+
+        output = capsys.readouterr().err
+        for target in config.targets:
+            assert target.uid in output
+        assert fake_lines[0] in output
+
+    def test_quiet_mode_skips_log_streaming(self, get_config_obj, mocker):
+        """Under -q (SETTINGS.log_level == ERROR), log_callback must not be wired up --
+        otherwise ImageTarget.build() forces docker's "plain" progress and streams output
+        the user asked to suppress.
+        """
+        config = get_config_obj("basic")
+        original_log_level = SETTINGS.log_level
+        SETTINGS.log_level = logging.ERROR
+        try:
+            captured_kwargs = []
+            mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: captured_kwargs.append(kwargs))
+            config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
+        finally:
+            SETTINGS.log_level = original_log_level
+
+        assert captured_kwargs
+        assert all(kwargs["log_callback"] is None for kwargs in captured_kwargs)
+
+    def test_retry_backoff_uses_interruptible_runner_sleep(self, get_config_obj, mocker):
+        """_retry_build's backoff must go through CommandRunner.sleep (interruptible via
+        ExecutorInterrupted when the executor is shutting down), not a bare time.sleep --
+        otherwise a queued retry can't be woken by a shutdown request and blocks the full
+        delay.
+        """
+        config = get_config_obj("basic")
+        failing_uid = config.targets[0].uid
+        attempted = {"done": False}
+
+        def fake_build(self, **kwargs):
+            if self.uid == failing_uid and not attempted["done"]:
+                attempted["done"] = True
+                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+        mock_time_sleep = mocker.patch("posit_bakery.config.config.time.sleep")
+        spy_runner_sleep = mocker.patch("posit_bakery.parallel.executor.CommandRunner.sleep", autospec=True)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD, retry=1)  # must not raise
+
+        spy_runner_sleep.assert_called_once()
+        mock_time_sleep.assert_not_called()
 
 
 class TestApplyDevSpecReleaseBranch:

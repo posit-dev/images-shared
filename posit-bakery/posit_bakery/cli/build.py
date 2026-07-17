@@ -50,7 +50,7 @@ def build(
             case_sensitive=False,
             help="The strategy to use when building the image. 'bake' requires Docker Buildkit and builds "
             "images in parallel. 'build' can use generic container builders, such as Podman, and builds "
-            "images sequentially.",
+            "images concurrently, bounded by --jobs.",
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = ImageBuildStrategy.BAKE,
@@ -70,6 +70,19 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = 0,
+    jobs: Annotated[
+        Optional[int],
+        typer.Option(
+            "--jobs",
+            "-j",
+            min=1,
+            show_default=False,
+            help="Maximum number of targets to build concurrently for '--strategy build' "
+            "(ignored for '--strategy bake'). Defaults to the BAKERY_MAX_CONCURRENCY env var "
+            "or a built-in default.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = None,
     plan: Annotated[
         Optional[bool],
         typer.Option(
@@ -288,6 +301,7 @@ def build(
             fail_fast=fail_fast,
             retry=retry,
             metadata_file=metadata_file,
+            jobs=jobs,
         )
     except BakeryBuildErrorGroup as e:
         stderr_console.print(str(e))
