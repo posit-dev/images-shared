@@ -141,6 +141,7 @@ jobs:
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
+          is-writer: "true"
 
       - name: Resolve dev-spec
         id: resolve-dev-spec
