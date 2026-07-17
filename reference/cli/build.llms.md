@@ -20,10 +20,16 @@ bakery build [OPTIONS]
                                       'bake' requires Docker Buildkit and builds
                                       images in parallel. 'build' can use generic
                                       container builders, such as Podman, and
-                                      builds images sequentially.  [default: bake]
+                                      builds images concurrently, bounded by
+                                      --jobs.  [default: bake]
       --fail-fast                     Terminate builds on the first failure.
       --retry INTEGER RANGE           Number of times to retry a failed build.
                                       [default: 0; x>=0]
+      -j, --jobs INTEGER RANGE        Maximum number of targets to build
+                                      concurrently for '--strategy build' (ignored
+                                      for '--strategy bake'). Defaults to the
+                                      BAKERY_MAX_CONCURRENCY env var or a built-in
+                                      default.  [x>=1]
       --plan                          Print the bake plan and exit.
       --load / --no-load              Load the image to Docker after building.
                                       [default: load]
@@ -79,13 +85,16 @@ bakery build [OPTIONS]
 The root path to use. Defaults to the current working directory where invoked.
 
 `--strategy``:`` ``CHOICE`` ``=`` ``ImageBuildStrategy.BAKE`  
-The strategy to use when building the image. `bake` requires Docker Buildkit and builds images in parallel. `build` can use generic container builders, such as Podman, and builds images sequentially.
+The strategy to use when building the image. `bake` requires Docker Buildkit and builds images in parallel. `build` can use generic container builders, such as Podman, and builds images concurrently, bounded by `--jobs`.
 
 `--fail-fast`  
 Terminate builds on the first failure.
 
 `--retry``:`` ``INTEGER RANGE`` ``=`` ``0`  
 Number of times to retry a failed build.
+
+`-j, --jobs``:`` ``INTEGER RANGE`  
+Maximum number of targets to build concurrently for `--strategy build` (ignored for `--strategy bake`). Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.
 
 `--plan`  
 Print the bake plan and exit.

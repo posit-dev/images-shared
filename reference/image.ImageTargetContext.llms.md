@@ -6,7 +6,7 @@ Container for contextual path information related to an image target.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L200-L207)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L199-L206)
 
 ``` python
 image.ImageTargetContext()

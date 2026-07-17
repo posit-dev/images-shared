@@ -808,10 +808,16 @@ Options:
                                   'bake' requires Docker Buildkit and builds
                                   images in parallel. 'build' can use generic
                                   container builders, such as Podman, and
-                                  builds images sequentially.  [default: bake]
+                                  builds images concurrently, bounded by
+                                  --jobs.  [default: bake]
   --fail-fast                     Terminate builds on the first failure.
   --retry INTEGER RANGE           Number of times to retry a failed build.
                                   [default: 0; x&gt;=0]
+  -j, --jobs INTEGER RANGE        Maximum number of targets to build
+                                  concurrently for '--strategy build' (ignored
+                                  for '--strategy bake'). Defaults to the
+                                  BAKERY_MAX_CONCURRENCY env var or a built-in
+                                  default.  [x&gt;=1]
   --plan                          Print the bake plan and exit.
   --load / --no-load              Load the image to Docker after building.
                                   [default: load]
@@ -872,7 +878,7 @@ The root path to use. Defaults to the current working directory where invoked.
 </dd>
 <dt><code><span class="doc-parameter-name">--strategy</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">CHOICE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">ImageBuildStrategy.BAKE</span></code></dt>
 <dd>
-The strategy to use when building the image. <code>bake</code> requires Docker Buildkit and builds images in parallel. <code>build</code> can use generic container builders, such as Podman, and builds images sequentially.
+The strategy to use when building the image. <code>bake</code> requires Docker Buildkit and builds images in parallel. <code>build</code> can use generic container builders, such as Podman, and builds images concurrently, bounded by <code>--jobs</code>.
 </dd>
 <dt><code><span class="doc-parameter-name">--fail-fast</span></code></dt>
 <dd>
@@ -881,6 +887,10 @@ Terminate builds on the first failure.
 <dt><code><span class="doc-parameter-name">--retry</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">INTEGER RANGE</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">0</span></code></dt>
 <dd>
 Number of times to retry a failed build.
+</dd>
+<dt><code><span class="doc-parameter-name">-j, --jobs</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">INTEGER RANGE</span></code></dt>
+<dd>
+Maximum number of targets to build concurrently for <code>--strategy build</code> (ignored for <code>--strategy bake</code>). Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.
 </dd>
 <dt><code><span class="doc-parameter-name">--plan</span></code></dt>
 <dd>

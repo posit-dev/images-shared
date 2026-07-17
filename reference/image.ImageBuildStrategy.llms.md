@@ -6,7 +6,7 @@ Enumeration for image build strategies.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L193-L197)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L192-L196)
 
 ``` python
 image.ImageBuildStrategy()

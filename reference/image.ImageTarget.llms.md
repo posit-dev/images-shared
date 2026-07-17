@@ -6,7 +6,7 @@ Represents a combination of image variant, image version, and image version OS t
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L221-L742)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L758)
 
 ``` python
 image.ImageTarget()
@@ -188,7 +188,7 @@ Return a string representation of the image target.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L276-L284)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L275-L283)
 
 ``` python
 __str__()
@@ -200,7 +200,7 @@ Build the image using the Containerfile and return the built image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L640-L722)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L639-L738)
 
 ``` python
 build(
@@ -209,9 +209,12 @@ build(
     pull=False,
     cache=True,
     platforms=None,
-    metadata_file=None
+    metadata_file=None,
+    log_callback=None
 )
 ```
+
+When `log_callback` is set, streams build output line-by-line into it and returns `None` instead of a `python_on_whales.Image` (`python_on_whales` returns an iterator of lines rather than an `Image` object when streaming).
 
 ### cache_name()
 
@@ -219,7 +222,7 @@ Generate the image name and tag to use for a build cache.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L551-L571)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L550-L570)
 
 ``` python
 cache_name(platform=None)
@@ -236,7 +239,7 @@ Get the list of source image references to use for merging.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L724-L742)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L740-L758)
 
 ``` python
 get_merge_sources()
@@ -250,7 +253,7 @@ Load build metadata from a given file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L629-L638)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L628-L637)
 
 ``` python
 load_build_metadata_from_file(metadata_file)
@@ -262,7 +265,7 @@ Create a new ImageTarget instance from a repository, version, variant, and OS co
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L242-L274)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L241-L273)
 
 ``` python
 new_image_target(
@@ -302,7 +305,7 @@ Returns a reference to the image, preferring a build metadata digest if availabl
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L498-L513)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L497-L512)
 
 ``` python
 ref(platform=f'linux/{SETTINGS.architecture}')
@@ -324,7 +327,7 @@ Remove the image from the local image cache or registry.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L622-L627)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L621-L626)
 
 ``` python
 remove(prune=True, force=False)
