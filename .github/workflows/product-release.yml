@@ -216,7 +216,7 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Post or update release-diff comment
-        if: steps.release.outputs.latest_changed == 'true' && steps.plan.outputs.old_display_version != ''
+        if: success() && steps.release.outputs.latest_changed == 'true' && steps.plan.outputs.old_display_version != ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}

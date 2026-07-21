@@ -1,3 +1,5 @@
+import pytest
+
 from posit_bakery.config.dirdiff import FileDiff, diff_directories, read_directory_tree, render_markdown
 
 
@@ -24,6 +26,12 @@ class TestReadDirectoryTree:
 
     def test_empty_directory(self, tmp_path):
         assert read_directory_tree(tmp_path) == {}
+
+    def test_nonexistent_path_raises_file_not_found_error(self, tmp_path):
+        missing = tmp_path / "does-not-exist"
+
+        with pytest.raises(FileNotFoundError):
+            read_directory_tree(missing)
 
 
 class TestDiffDirectories:
@@ -120,3 +128,42 @@ class TestRenderMarkdown:
         assert "Diff too large to display in full" in markdown
         assert "`big.txt` (modified)" in markdown
         assert "```diff" not in markdown
+
+    def test_diff_text_with_backtick_fence_uses_wider_fence(self):
+        # The diffed file's own content happens to contain a fenced code block
+        # (e.g. a README with an embedded ```python example). A hardcoded
+        # triple-backtick wrapper would close early on that content and
+        # corrupt the rest of the rendered comment.
+        diff_text = (
+            "--- a/README.md\n+++ b/README.md\n@@ -1,2 +1,4 @@\n existing line\n+```python\n+print('hi')\n+```\n"
+        )
+        file_diffs = [FileDiff(path="README.md", status="modified", diff_text=diff_text)]
+
+        markdown = render_markdown("connect", file_diffs)
+
+        # The embedded ``` fence survives unbroken inside the wider wrapper.
+        assert diff_text in markdown
+        # The wrapping fence is longer (4 backticks) than the embedded run (3).
+        assert "````diff" in markdown
+        assert markdown.count("````") == 2  # opening + closing fence only
+
+    def test_multiple_files_render_as_separate_nested_sections(self):
+        file_diffs = [
+            FileDiff(
+                path="Containerfile",
+                status="modified",
+                diff_text="--- a/Containerfile\n+++ b/Containerfile\n@@ -1 +1 @@\n-old\n+new\n",
+            ),
+            FileDiff(
+                path="deps/packages.txt",
+                status="added",
+                diff_text="--- a/deps/packages.txt\n+++ b/deps/packages.txt\n@@ -0,0 +1 @@\n+new-package\n",
+            ),
+        ]
+
+        markdown = render_markdown("connect", file_diffs)
+
+        assert markdown.count("<details open>") == 3  # image-level + 2 file-level
+        assert "<summary><code>Containerfile</code></summary>" in markdown
+        assert "<summary><code>deps/packages.txt</code></summary>" in markdown
+        assert markdown.count("```diff") == 2

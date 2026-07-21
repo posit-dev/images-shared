@@ -128,3 +128,5 @@ Feature: create version
         * the stderr output includes:
             | Failed to create version |
             | 'test-image/1.1.0' |
+        * the log includes:
+            | Version '9.9.9' does not exist for image 'test-image'. |
