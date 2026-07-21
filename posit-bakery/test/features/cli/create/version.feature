@@ -98,3 +98,33 @@ Feature: create version
         * the stderr output includes:
             | Successfully created version |
             | 'test-image/1.0.0' |
+
+    Scenario: Creating a new version with a diff against a previous version
+        Given I call bakery create version
+        * in a temp basic context
+        * with the arguments:
+            | test-image |
+            | 1.1.0 |
+            | --diff-against |
+            | 1.0.0 |
+        When I execute the command
+        Then The command succeeds
+        * the image "test-image" exists
+        * the version "1.1.0" exists
+        * the stdout output includes:
+            | test-image |
+            | ARG IMAGE_VERSION |
+
+    Scenario: Diffing against a nonexistent version fails
+        Given I call bakery create version
+        * in a temp basic context
+        * with the arguments:
+            | test-image |
+            | 1.1.0 |
+            | --diff-against |
+            | 9.9.9 |
+        When I execute the command
+        Then The command exits with code 1
+        * the stderr output includes:
+            | Failed to create version |
+            | 'test-image/1.1.0' |
