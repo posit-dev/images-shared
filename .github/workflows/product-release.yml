@@ -11,6 +11,11 @@ on:
         description: "Space-separated list of versioned (non-matrix) image names"
         required: true
         type: string
+      positron-version:
+        description: "Positron version to write into READMEs (e.g. 2026.07.1-5). Optional; only Workbench sets this. When omitted, no Positron version is written."
+        required: false
+        type: string
+        default: ""
     secrets:
       APP_ID:
         description: "GitHub App ID for creating tokens"
@@ -137,6 +142,18 @@ jobs:
             find . -name 'README.md' -not -path './.git/*' \
               -exec sed -i "s/${OLD_EDITION}/${EDITION}/g" {} +
           fi
+
+      # The Positron version is independent of the product display version and
+      # cannot be derived from it. Set it explicitly from the caller-supplied
+      # value, overwriting whatever the display-version passes above produced.
+      - name: Update Positron version in READMEs
+        if: inputs.positron-version != '' && steps.release.outputs.latest_changed == 'true'
+        env:
+          POSITRON_VERSION: ${{ inputs.positron-version }}
+        run: |
+          # Replace only the version: line inside a positron: block.
+          find . -name 'README.md' -not -path './.git/*' \
+            -exec sed -i -E '/^[[:space:]]*positron:[[:space:]]*$/,/version:/ s/(version:[[:space:]]*")[^"]*(")/\1'"$POSITRON_VERSION"'\2/' {} +
 
       - name: Create pull request
         env:
