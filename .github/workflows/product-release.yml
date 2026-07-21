@@ -214,3 +214,48 @@ jobs:
             --head "$BRANCH" || echo "PR already exists"
 
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update release-diff comment
+        if: steps.release.outputs.latest_changed == 'true' && steps.plan.outputs.old_display_version != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGES: ${{ inputs.images }}
+          DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
+          OLD_DISPLAY: ${{ steps.plan.outputs.old_display_version }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          MARKER="<!-- bakery-release-diff -->"
+          BODY_FILE="$RUNNER_TEMP/release-diff-comment.md"
+
+          HAS_CONTENT=false
+          {
+            echo "$MARKER"
+            echo "## Diff vs previous edition (\`${OLD_DISPLAY}\` → \`${DISPLAY_VERSION}\`)"
+            echo
+            for IMAGE in $IMAGES; do
+              DIFF_FILE="$RUNNER_TEMP/diff-$IMAGE.md"
+              if [ -s "$DIFF_FILE" ]; then
+                cat "$DIFF_FILE"
+                echo
+                HAS_CONTENT=true
+              fi
+            done
+          } > "$BODY_FILE"
+
+          if [ "$HAS_CONTENT" = false ]; then
+            echo "No per-image diff content generated; skipping comment."
+            exit 0
+          fi
+
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number -q .number)
+
+          EXISTING_COMMENT_ID=$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id")
+
+          if [ -n "$EXISTING_COMMENT_ID" ] && [ "$EXISTING_COMMENT_ID" != "null" ]; then
+            gh api "repos/{owner}/{repo}/issues/comments/$EXISTING_COMMENT_ID" \
+              -X PATCH -F body=@"$BODY_FILE"
+          else
+            gh pr comment "$BRANCH" --body-file "$BODY_FILE"
+          fi
