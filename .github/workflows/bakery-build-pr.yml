@@ -108,9 +108,12 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
-          # PR-only: empty on merge_group/push/scheduled, which intentionally
-          # fall back to the full matrix. Do not wire in merge_group.base_sha.
-          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          # pull_request.base.sha for regular PR pushes; merge_group.base_sha
+          # for merge-queue runs. base_sha is the real, unmoved tip of the
+          # target branch -- head_sha is what carries any PRs stacked ahead
+          # of this one in the queue -- so this scopes merge-queue builds to
+          # changes the same way production push builds do via event.before.
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           BASE_FLAG=()
           if [ -n "$BASE_REF" ]; then
@@ -129,9 +132,9 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
-          # PR-only: empty on merge_group/push/scheduled, which intentionally
-          # fall back to the full matrix. Do not wire in merge_group.base_sha.
-          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          # See the "Images by Version/Platform" step above for why this
+          # falls back to merge_group.base_sha.
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           BASE_FLAG=()
           if [ -n "$BASE_REF" ]; then
