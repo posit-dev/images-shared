@@ -62,50 +62,89 @@ jobs:
             echo "edition=$EDITION"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create or update versions
-        id: release
+      - name: Determine release plan
+        id: plan
         env:
           IMAGES: ${{ inputs.images }}
-          VERSION: ${{ steps.parse.outputs.version }}
-          DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
           EDITION: ${{ steps.parse.outputs.edition }}
+          DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
         run: |
-          FIRST_IMAGE=$(echo "$IMAGES" | awk '{print $1}')
+          # Everything above the branch checkout reads bakery.yaml as it
+          # stands on main (this job's initial checkout), before switching to
+          # an in-flight release branch might replace it. That ordering is
+          # what keeps this correct across re-dispatches: once a prior
+          # dispatch has pushed a new edition, that edition is already marked
+          # latest on the release branch, and there's no longer any other
+          # version to find as "the previous edition" by looking at what's
+          # currently latest. Capturing it here, from main, keeps it correct
+          # no matter how many times this workflow re-runs for one release.
+          PLAN_FILE="$RUNNER_TEMP/release-plan.txt"
+          : > "$PLAN_FILE"
 
-          # Capture the current latest version before any modifications.
+          FIRST_IMAGE=$(echo "$IMAGES" | awk '{print $1}')
           OLD_LATEST=$(bakery get version "$FIRST_IMAGE" 2>/dev/null || true)
           OLD_DISPLAY_VERSION="${OLD_LATEST%%[+-]*}"
+          echo "old_display_version=$OLD_DISPLAY_VERSION" >> "$GITHUB_OUTPUT"
 
           for IMAGE in $IMAGES; do
             EXISTING=$(bakery get version "$IMAGE" --subpath "$EDITION" 2>/dev/null || true)
-
             if [ -n "$EXISTING" ]; then
-              echo "Patching $IMAGE: $EXISTING -> $VERSION"
-              bakery update version "$IMAGE" "$VERSION" --target-version "$EXISTING"
+              echo "$IMAGE patch $EXISTING" >> "$PLAN_FILE"
             else
-              # Determine whether this edition should become latest.
               CURRENT_LATEST=$(bakery get version "$IMAGE" 2>/dev/null || true)
-              if [ -z "$CURRENT_LATEST" ]; then
-                MARK_LATEST="--mark-latest"
-              else
-                CURRENT_DISPLAY="${CURRENT_LATEST%%[+-]*}"
-                CURRENT_EDITION="${CURRENT_DISPLAY%.*}"
-                if [[ "$EDITION" > "$CURRENT_EDITION" ]]; then
-                  MARK_LATEST="--mark-latest"
-                else
-                  MARK_LATEST="--no-mark-latest"
-                fi
-              fi
-
-              echo "Creating $IMAGE: $VERSION (subpath=$EDITION, $MARK_LATEST)"
-              bakery create version "$IMAGE" "$VERSION" --subpath "$EDITION" $MARK_LATEST
+              echo "$IMAGE create ${CURRENT_LATEST:-"-"}" >> "$PLAN_FILE"
             fi
           done
+
+          echo "Release plan:"
+          cat "$PLAN_FILE"
+
+          BRANCH="release/${DISPLAY_VERSION}"
+          if git fetch origin "$BRANCH" 2>/dev/null; then
+            echo "Existing release branch found; continuing from it."
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            echo "No existing release branch; branching from main."
+            git checkout -B "$BRANCH"
+          fi
+
+      - name: Create or update versions
+        id: release
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+          EDITION: ${{ steps.parse.outputs.edition }}
+          OLD_DISPLAY_VERSION: ${{ steps.plan.outputs.old_display_version }}
+        run: |
+          PLAN_FILE="$RUNNER_TEMP/release-plan.txt"
+
+          while read -r IMAGE ACTION TARGET; do
+            if [ "$ACTION" = "patch" ]; then
+              echo "Patching $IMAGE: $TARGET -> $VERSION"
+              bakery update version "$IMAGE" "$VERSION" --target-version "$TARGET"
+            elif [ "$TARGET" = "-" ]; then
+              echo "Creating $IMAGE: $VERSION (subpath=$EDITION, --mark-latest, no previous edition to diff against)"
+              bakery create version "$IMAGE" "$VERSION" --subpath "$EDITION" --force --mark-latest \
+                > "$RUNNER_TEMP/diff-$IMAGE.md"
+            else
+              TARGET_DISPLAY="${TARGET%%[+-]*}"
+              TARGET_EDITION="${TARGET_DISPLAY%.*}"
+              if [[ "$EDITION" > "$TARGET_EDITION" ]]; then
+                MARK_LATEST="--mark-latest"
+              else
+                MARK_LATEST="--no-mark-latest"
+              fi
+
+              echo "Creating $IMAGE: $VERSION (subpath=$EDITION, $MARK_LATEST, diff-against=$TARGET)"
+              bakery create version "$IMAGE" "$VERSION" --subpath "$EDITION" --force $MARK_LATEST --diff-against "$TARGET" \
+                > "$RUNNER_TEMP/diff-$IMAGE.md"
+            fi
+          done < "$PLAN_FILE"
 
           # Check if the latest version changed. This happens when:
           # - A new edition is created that becomes latest (2026.02.1 → 2026.03.0)
           # - The current latest edition is patched (2026.02.1 → 2026.02.2)
           # It does NOT happen when patching an older edition (2026.01.1 → 2026.01.3).
+          FIRST_IMAGE=$(head -n1 "$PLAN_FILE" | awk '{print $1}')
           NEW_LATEST=$(bakery get version "$FIRST_IMAGE" 2>/dev/null || true)
           NEW_DISPLAY_VERSION="${NEW_LATEST%%[+-]*}"
 
@@ -116,14 +155,13 @@ jobs:
           fi
 
           echo "latest_changed=$LATEST_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "old_display_version=$OLD_DISPLAY_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update READMEs
-        if: steps.release.outputs.latest_changed == 'true' && steps.release.outputs.old_display_version != ''
+        if: steps.release.outputs.latest_changed == 'true' && steps.plan.outputs.old_display_version != ''
         env:
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
           EDITION: ${{ steps.parse.outputs.edition }}
-          OLD_DISPLAY_VERSION: ${{ steps.release.outputs.old_display_version }}
+          OLD_DISPLAY_VERSION: ${{ steps.plan.outputs.old_display_version }}
         run: |
           OLD_EDITION="${OLD_DISPLAY_VERSION%.*}"
 
@@ -139,42 +177,28 @@ jobs:
           fi
 
       - name: Create pull request
+        id: pr
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           IMAGES: ${{ inputs.images }}
           VERSION: ${{ steps.parse.outputs.version }}
           DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
           LATEST_CHANGED: ${{ steps.release.outputs.latest_changed }}
-          OLD_DISPLAY: ${{ steps.release.outputs.old_display_version }}
+          OLD_DISPLAY: ${{ steps.plan.outputs.old_display_version }}
         run: |
           BRANCH="release/${DISPLAY_VERSION}"
-          git fetch origin "$BRANCH" 2>/dev/null || true
-          git checkout -B "$BRANCH"
           git add -A
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if git diff --cached --quiet; then
-            # Nothing changed vs. HEAD: this display version's content is
-            # already on main (e.g. re-dispatched after the release merged).
+            # Nothing changed vs. whatever's currently checked out (main, or
+            # the existing release branch's tip if "Determine release plan"
+            # found and checked one out). Re-rendering was a no-op.
             echo "No changes to release for ${DISPLAY_VERSION}; skipping."
           else
-            NEW_TREE=$(git write-tree)
-            OLD_TREE=""
-            if git rev-parse -q --verify "refs/remotes/origin/$BRANCH" >/dev/null; then
-              OLD_TREE=$(git rev-parse "refs/remotes/origin/$BRANCH^{tree}")
-            fi
-
-            if [ -n "$OLD_TREE" ] && [ "$NEW_TREE" = "$OLD_TREE" ]; then
-              # Already fully reflected on the existing branch/PR (e.g.
-              # re-dispatched while it's still open or queued to merge).
-              # Force-pushing here would be a no-op at best and can collide
-              # with a branch locked by a merge queue at worst.
-              echo "No changes vs. existing $BRANCH; skipping push."
-            else
-              git commit -m "Release ${DISPLAY_VERSION}"
-              git push -u origin "$BRANCH" --force-with-lease
-            fi
+            git commit -m "Release ${DISPLAY_VERSION}"
+            git push -u origin "$BRANCH" --force-with-lease
           fi
 
           BODY="Updates images to version \`${VERSION}\`."
@@ -188,3 +212,50 @@ jobs:
             --body "$BODY" \
             --base main \
             --head "$BRANCH" || echo "PR already exists"
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update release-diff comment
+        if: success() && steps.release.outputs.latest_changed == 'true' && steps.plan.outputs.old_display_version != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGES: ${{ inputs.images }}
+          DISPLAY_VERSION: ${{ steps.parse.outputs.display_version }}
+          OLD_DISPLAY: ${{ steps.plan.outputs.old_display_version }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          MARKER="<!-- bakery-release-diff -->"
+          BODY_FILE="$RUNNER_TEMP/release-diff-comment.md"
+
+          HAS_CONTENT=false
+          {
+            echo "$MARKER"
+            echo "## Diff vs previous edition (\`${OLD_DISPLAY}\` → \`${DISPLAY_VERSION}\`)"
+            echo
+            for IMAGE in $IMAGES; do
+              DIFF_FILE="$RUNNER_TEMP/diff-$IMAGE.md"
+              if [ -s "$DIFF_FILE" ]; then
+                cat "$DIFF_FILE"
+                echo
+                HAS_CONTENT=true
+              fi
+            done
+          } > "$BODY_FILE"
+
+          if [ "$HAS_CONTENT" = false ]; then
+            echo "No per-image diff content generated; skipping comment."
+            exit 0
+          fi
+
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number -q .number)
+
+          EXISTING_COMMENT_ID=$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id")
+
+          if [ -n "$EXISTING_COMMENT_ID" ] && [ "$EXISTING_COMMENT_ID" != "null" ]; then
+            gh api "repos/{owner}/{repo}/issues/comments/$EXISTING_COMMENT_ID" \
+              -X PATCH -F body=@"$BODY_FILE"
+          else
+            gh pr comment "$BRANCH" --body-file "$BODY_FILE"
+          fi

@@ -13,6 +13,7 @@ from posit_bakery.cli.common import (
     __parse_dependency_versions,
 )
 from posit_bakery.config import BakeryConfig
+from posit_bakery.config.dirdiff import diff_directories, read_directory_tree, render_markdown
 from posit_bakery.const import DEFAULT_BASE_IMAGE
 from posit_bakery.log import stderr_console
 from posit_bakery.util import auto_path
@@ -205,6 +206,16 @@ def version(
     force: Annotated[
         Optional[bool], typer.Option("--force", help="Force overwrite of existing version directory.")
     ] = False,
+    diff_against: Annotated[
+        Optional[str],
+        typer.Option(
+            "--diff-against",
+            show_default=False,
+            help="An existing version of this image to diff the newly created version's directory against. "
+            "Prints the comparison to stdout.",
+            rich_help_panel=RichHelpPanelEnum.VERSION_CONFIGURATION,
+        ),
+    ] = None,
 ) -> None:
     """Renders templates for an image to a versioned subdirectory of the image directory.
 
@@ -230,6 +241,16 @@ def version(
 
     try:
         c = BakeryConfig.from_context(context)
+
+        diff_against_version = None
+        if diff_against is not None:
+            image = c.model.get_image(image_name)
+            if image is None:
+                raise ValueError(f"Image '{image_name}' does not exist in the config.")
+            diff_against_version = image.get_version(diff_against)
+            if diff_against_version is None:
+                raise ValueError(f"Version '{diff_against}' does not exist for image '{image_name}'.")
+
         c.create_version(
             image_name=image_name,
             subpath=subpath,
@@ -244,6 +265,23 @@ def version(
         raise typer.Exit(code=1)
 
     stderr_console.print(f"✅ Successfully created version '{image_name}/{image_version}'", style="success")
+
+    if diff_against_version is not None:
+        try:
+            image = c.model.get_image(image_name)
+            new_version = image.get_version(image_version)
+            old_tree = read_directory_tree(diff_against_version.path)
+            new_tree = read_directory_tree(new_version.path)
+            file_diffs = diff_directories(old_tree, new_tree)
+            # Plain print, not stderr_console/stdout_console: this text is captured
+            # verbatim by the calling workflow, and Rich's console would reflow
+            # long diff lines to the terminal width, corrupting the output.
+            print(render_markdown(image_name, file_diffs))  # noqa: T201
+        except Exception:
+            log.exception(
+                f"Failed to generate --diff-against comparison for '{image_name}/{image_version}'; "
+                "the version was still created successfully."
+            )
 
 
 @app.command()
