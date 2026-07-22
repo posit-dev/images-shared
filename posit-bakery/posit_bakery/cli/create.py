@@ -276,7 +276,7 @@ def version(
             # Plain print, not stderr_console/stdout_console: this text is captured
             # verbatim by the calling workflow, and Rich's console would reflow
             # long diff lines to the terminal width, corrupting the output.
-            print(render_markdown(image_name, file_diffs))
+            print(render_markdown(image_name, file_diffs))  # noqa: T201
         except Exception:
             log.exception(
                 f"Failed to generate --diff-against comparison for '{image_name}/{image_version}'; "
