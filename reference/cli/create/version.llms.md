@@ -30,7 +30,7 @@ This tool expects an image directory to use the following structure as generated
 
 Arguments: IMAGE_NAME The image to which the version belongs. This must match an image name present in the bakery.yaml configuration. \[required\] IMAGE_VERSION The new version to render the templates to. \[required\]
 
-Options: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. \[default: (.)\] –subpath TEXT The subdirectory to use for the version. Defaults to the image version. –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –mark-latest / –no-mark-latest Skip marking the latest version of the image. \[default: mark-latest\] –force Force overwrite of existing version directory. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. \`\`\`
+Options: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. \[default: (.)\] –subpath TEXT The subdirectory to use for the version. Defaults to the image version. –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –mark-latest / –no-mark-latest Skip marking the latest version of the image. \[default: mark-latest\] –force Force overwrite of existing version directory. –diff-against TEXT An existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. \`\`\`
 
 ## Arguments
 
@@ -56,6 +56,9 @@ Skip marking the latest version of the image.
 
 `--force`  
 Force overwrite of existing version directory.
+
+`--diff-against``:`` ``TEXT`  
+An existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout.
 
 `-v, --verbose`  
 Enable debug logging

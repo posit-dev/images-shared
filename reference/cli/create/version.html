@@ -817,7 +817,7 @@ window.onload = function () {
 </code></pre>
 <p>. └── image_path/ └── template/ ├── optional_subdirectories/ │ └── <em>.jinja2 ├── </em>.jinja2 └── Containerfile*.jinja2 ```</p>
 <p>Arguments: IMAGE_NAME The image to which the version belongs. This must match an image name present in the bakery.yaml configuration. [required] IMAGE_VERSION The new version to render the templates to. [required]</p>
-<p>Options: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –subpath TEXT The subdirectory to use for the version. Defaults to the image version. –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –mark-latest / –no-mark-latest Skip marking the latest version of the image. [default: mark-latest] –force Force overwrite of existing version directory. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
+<p>Options: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –subpath TEXT The subdirectory to use for the version. Defaults to the image version. –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –mark-latest / –no-mark-latest Skip marking the latest version of the image. [default: mark-latest] –force Force overwrite of existing version directory. –diff-against TEXT An existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```</p>
 </div>
 </div>
 <section id="arguments" class="level2 doc-parameters">
@@ -858,6 +858,10 @@ Skip marking the latest version of the image.
 <dt><code><span class="doc-parameter-name">--force</span></code></dt>
 <dd>
 Force overwrite of existing version directory.
+</dd>
+<dt><code><span class="doc-parameter-name">--diff-against</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">TEXT</span></code></dt>
+<dd>
+An existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout.
 </dd>
 <dt><code><span class="doc-parameter-name">-v, --verbose</span></code></dt>
 <dd>
