@@ -26,23 +26,43 @@ runs:
           arch=$(uname -m)
         fi
 
-        # Map architecture names to goss naming conventions
+        # Map architecture names to goss's pre-v0.4.10 naming, then to its current naming
         if [ "$arch" = "x86_64" ]; then
             arch="amd64"
         elif [ "$arch" = "aarch64" ]; then
             arch="arm64"
         fi
 
-        release_url="https://github.com/goss-org/goss/releases/${{ inputs.version }}/download"
-        binary="goss-linux-${arch}"
+        case "$arch" in
+          amd64) goss_arch="x86_64" ;;
+          arm64) goss_arch="arm64" ;;
+          *)
+            echo "Unsupported architecture for goss: ${arch}" >&2
+            exit 1
+            ;;
+        esac
 
-        curl -fsSL "${release_url}/${binary}" -o "tools/${binary}"
+        # v0.4.10+ ships versioned tarballs with a consolidated SHA256SUMS file, so "latest"
+        # must be resolved to a concrete tag up front to build the asset filename.
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          tag=$(curl -fsSL "https://api.github.com/repos/goss-org/goss/releases/latest" | grep -m1 '"tag_name"' | cut -d '"' -f4)
+        else
+          tag="${{ inputs.version }}"
+        fi
+        version="${tag#v}"
 
-        curl -fsSL "${release_url}/${binary}.sha256" -o "tools/${binary}.sha256"
-        (cd tools && sha256sum -c "${binary}.sha256")
-        rm -f "tools/${binary}.sha256"
+        release_url="https://github.com/goss-org/goss/releases/download/${tag}"
+        asset="goss_${version}_linux_${goss_arch}.tar.gz"
+        checksums="goss_${version}_SHA256SUMS"
 
-        mv "tools/${binary}" tools/goss
+        curl -fsSL "${release_url}/${asset}" -o "tools/${asset}"
+
+        curl -fsSL "${release_url}/${checksums}" -o "tools/${checksums}"
+        (cd tools && sha256sum -c <(grep -F "${asset}" "${checksums}"))
+        rm -f "tools/${checksums}"
+
+        tar -xzf "tools/${asset}" -C tools goss
+        rm -f "tools/${asset}"
         chmod +rx tools/goss
     - name: Install dgoss
       shell: bash
