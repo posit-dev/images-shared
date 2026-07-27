@@ -193,7 +193,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@fix/goss-release-file-changes"
+        uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0

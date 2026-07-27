@@ -194,7 +194,7 @@ jobs:
           version: ${{ inputs.version }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@fix/goss-release-file-changes"
+        uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3  # v4.1.0
