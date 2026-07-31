@@ -226,6 +226,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -411,6 +412,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: [matrix, build-test]
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
