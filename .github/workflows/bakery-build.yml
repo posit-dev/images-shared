@@ -79,6 +79,11 @@ on:
         default: true
         required: false
         type: boolean
+      cache-registry:
+        description: "Registry to use for build layer caching [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
       runs-on:
         description: "The type of runner to use [default: ubuntu-latest]"
         default: "ubuntu-latest"
@@ -292,14 +297,14 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          CACHE_REGISTRY: ${{ inputs.cache-registry || format('ghcr.io/{0}', github.repository_owner) }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CACHE_FLAGS=()
           if [ "$CACHE" = "true" ]; then
-            CACHE_FLAGS=(--cache-registry "$REGISTRY")
+            CACHE_FLAGS=(--cache-registry "$CACHE_REGISTRY")
           fi
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")

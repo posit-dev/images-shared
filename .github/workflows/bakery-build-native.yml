@@ -77,6 +77,16 @@ on:
         default: true
         required: false
         type: boolean
+      cache-registry:
+        description: "Registry to use for build layer caching [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
+      temp-registry:
+        description: "Registry to use for temporary per-platform build artifacts before merge [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
       merge-builder:
         description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
         default: "ubuntu-latest-4x"
@@ -330,7 +340,8 @@ jobs:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          CACHE_REGISTRY: ${{ inputs.cache-registry || format('ghcr.io/{0}', github.repository_owner) }}
+          TEMP_REGISTRY: ${{ inputs.temp-registry || format('ghcr.io/{0}', github.repository_owner) }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
@@ -339,7 +350,7 @@ jobs:
         run: |
           CACHE_FLAGS=()
           if [ "$CACHE" = "true" ]; then
-            CACHE_FLAGS=(--cache-registry "$REGISTRY")
+            CACHE_FLAGS=(--cache-registry "$CACHE_REGISTRY")
           fi
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
@@ -353,7 +364,7 @@ jobs:
             --matrix-versions "$MATRIX_VERSIONS" \
             "${CACHE_FLAGS[@]}" \
             "${DEV_SPEC_FLAGS[@]}" \
-            --temp-registry "$REGISTRY" \
+            --temp-registry "$TEMP_REGISTRY" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT" \
             --push
@@ -509,7 +520,7 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
           CONTEXT: ${{ inputs.context }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          TEMP_REGISTRY: ${{ inputs.temp-registry || format('ghcr.io/{0}', github.repository_owner) }}
           PUSH: ${{ inputs.push }}
           IMAGE_NAME: ${{ matrix.image }}
           DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
@@ -520,7 +531,7 @@ jobs:
           bakery ci publish \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
-            --temp-registry "$REGISTRY" \
+            --temp-registry "$TEMP_REGISTRY" \
             "${DEV_SPEC_FLAGS[@]}" \
             $PUSH_FLAG \
             ./*-metadata.json

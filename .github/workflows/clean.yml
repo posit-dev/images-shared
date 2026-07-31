@@ -12,6 +12,16 @@ on:
         default: "."
         required: false
         type: string
+      cache-registry:
+        description: "Registry to clean build layer caches from [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
+      temp-registry:
+        description: "Registry to clean temporary build images from [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
       clean-caches:
         description: "Whether to clean caches [default: true]"
         default: true
@@ -100,7 +110,7 @@ jobs:
       - name: Clean caches
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          REGISTRY: ${{ inputs.cache-registry || format('ghcr.io/{0}', github.repository_owner) }}
           CONTEXT: ${{ inputs.context }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
@@ -145,7 +155,7 @@ jobs:
       - name: Clean temporary images
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          REGISTRY: ${{ inputs.temp-registry || format('ghcr.io/{0}', github.repository_owner) }}
           CONTEXT: ${{ inputs.context }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
