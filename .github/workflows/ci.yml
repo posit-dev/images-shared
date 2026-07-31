@@ -168,6 +168,7 @@ jobs:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
       dev-versions: include
+      temp-registry: '565037064999.dkr.ecr.us-east-2.amazonaws.com/images'
 
 
   bakery-pr:
