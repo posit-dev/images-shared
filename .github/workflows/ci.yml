@@ -164,6 +164,8 @@ jobs:
       packages: write
 
     uses: "./.github/workflows/bakery-build-native.yml"
+    secrets:
+      AWS_ROLE: ${{ secrets.AWS_ROLE }}
     with:
       version: ${{ github.head_ref || github.ref_name }}
       context: "./posit-bakery/test/resources/multiplatform/"
