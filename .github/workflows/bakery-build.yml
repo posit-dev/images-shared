@@ -169,11 +169,13 @@ jobs:
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
           DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
           CONTEXT: ${{ inputs.context }}
-          # Only set on push (github.event.before); empty on schedule/
+          # Only set on push events; empty on pull_request/schedule/
           # workflow_dispatch, which intentionally always build the full matrix.
+          # github.event.before is also populated on pull_request synchronize,
+          # so it must be gated on event_name rather than checked for presence alone.
           # A bad or all-zero ref (e.g. a branch's first push) is caught by
           # bakery's git-diff fail-safe, which falls back to a full build.
-          BASE_REF: ${{ github.event.before }}
+          BASE_REF: ${{ github.event_name == 'push' && github.event.before || '' }}
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
