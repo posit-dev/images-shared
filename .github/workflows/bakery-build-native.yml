@@ -301,7 +301,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
-          role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
@@ -479,7 +478,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
-          role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
