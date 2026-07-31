@@ -23,10 +23,13 @@ runs:
       run: mkdir -p "${{ inputs.base_path }}/tools"
     - name: Install hadolint
       shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ARCHITECTURE: ${{ inputs.architecture }}
+        BASE_PATH: ${{ inputs.base_path }}
       run: |
         # Determine architecture if not provided
-        arch="${{ inputs.architecture }}"
-        if [ -z "$arch" ]; then
+        if [ -z "$ARCHITECTURE" ]; then
           arch=$(uname -m)
         fi
 
@@ -37,13 +40,12 @@ runs:
             arch="arm64"
         fi
 
-        version="${{ inputs.version }}"
-        if [ "$version" = "latest" ]; then
+        if [ "$VERSION" = "latest" ]; then
             release_url="https://github.com/hadolint/hadolint/releases/latest/download"
         else
-            release_url="https://github.com/hadolint/hadolint/releases/download/${version}"
+            release_url="https://github.com/hadolint/hadolint/releases/download/${VERSION}"
         fi
-        dest="${{ inputs.base_path }}/tools"
+        dest="${BASE_PATH}/tools"
 
         # v2.13.0+ uses lowercase "linux"; older releases use "Linux"
         binary="hadolint-linux-${arch}"
