@@ -37,7 +37,12 @@ runs:
             arch="arm64"
         fi
 
-        release_url="https://github.com/hadolint/hadolint/releases/${{ inputs.version }}/download"
+        version="${{ inputs.version }}"
+        if [ "$version" = "latest" ]; then
+            release_url="https://github.com/hadolint/hadolint/releases/latest/download"
+        else
+            release_url="https://github.com/hadolint/hadolint/releases/download/${version}"
+        fi
         dest="${{ inputs.base_path }}/tools"
 
         # v2.13.0+ uses lowercase "linux"; older releases use "Linux"
@@ -47,9 +52,16 @@ runs:
             curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}"
         fi
 
-        curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256"
-        (cd "${dest}" && sha256sum -c "${binary}.sha256")
-        rm -f "${dest}/${binary}.sha256"
+        # v2.15.0+ ships one checksums.sha256 covering all binaries; older
+        # releases ship a per-binary "${binary}.sha256" file instead.
+        if curl -fsSL "${release_url}/checksums.sha256" -o "${dest}/checksums.sha256" 2>/dev/null; then
+            (cd "${dest}" && grep -F "${binary}" checksums.sha256 | sha256sum -c -)
+            rm -f "${dest}/checksums.sha256"
+        else
+            curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256"
+            (cd "${dest}" && sha256sum -c "${binary}.sha256")
+            rm -f "${dest}/${binary}.sha256"
+        fi
 
         mv "${dest}/${binary}" "${dest}/hadolint"
         chmod +rx "${dest}/hadolint"
