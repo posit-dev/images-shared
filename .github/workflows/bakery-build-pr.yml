@@ -45,6 +45,11 @@ on:
         default: true
         required: false
         type: boolean
+      cache-registry:
+        description: "Registry to use for build layer caching [default: ghcr.io/<repository_owner>]"
+        default: ""
+        required: false
+        type: string
       amd64-builder:
         description: "Runner label for amd64 builds"
         default: "ubuntu-latest-4x"
@@ -255,7 +260,7 @@ jobs:
           IMG_DEV: ${{ matrix.img.dev }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
           BAKERY_CONTEXT: ${{ inputs.context }}
-          REGISTRY_OWNER: ${{ github.repository_owner }}
+          CACHE_REGISTRY: ${{ inputs.cache-registry || format('ghcr.io/{0}', github.repository_owner) }}
           CACHE: ${{ inputs.cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -266,7 +271,7 @@ jobs:
           fi
           CACHE_FLAGS=()
           if [ "$IS_FORK" != "true" ] && [ "$CACHE" = "true" ]; then
-            CACHE_FLAGS=(--cache-registry "ghcr.io/${REGISTRY_OWNER}")
+            CACHE_FLAGS=(--cache-registry "$CACHE_REGISTRY")
           fi
           bakery build \
             --strategy build --pull --load \
