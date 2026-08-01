@@ -143,7 +143,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
 
@@ -239,7 +239,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -251,7 +251,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-goss@main"
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0
+        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1  # v5.4.0
         with:
           daemon-config: |
             {
@@ -260,10 +260,10 @@ jobs:
               }
             }
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
       - name: Setup ORAS CLI
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d  # v2.0.1
 
       # Since secrets cannot be referenced in an `if` condition directly,
       # this step sets an output that we can reference later.
@@ -277,7 +277,7 @@ jobs:
           echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4.5.1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -285,7 +285,7 @@ jobs:
 
       - name: Login to Docker Hub
         if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4.5.1
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -296,7 +296,7 @@ jobs:
       # temp-registry points at ECR, login must happen on every run.
       - name: Configure AWS Credentials
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b  # v6.2.0
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
@@ -424,7 +424,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup bakery
         uses: "posit-dev/images-shared/setup-bakery@main"
@@ -433,7 +433,7 @@ jobs:
           cache-scope: ${{ toJSON(inputs) }}
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23  # v5.2.0
+        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1  # v5.4.0
         with:
           daemon-config: |
             {
@@ -454,7 +454,7 @@ jobs:
           echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4.5.1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -462,7 +462,7 @@ jobs:
 
       - name: Login to Docker Hub
         if: ${{ inputs.push && steps.filter-steps.outputs.docker-hub == 'true' }}
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4.5.1
         with:
           username: "posit"
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -473,7 +473,7 @@ jobs:
       # temp-registry points at ECR, login must happen on every run.
       - name: Configure AWS Credentials
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
-        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b  # v6.2.0
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
@@ -484,10 +484,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64  # v2.1.6
 
       - name: Setup docker buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
       - name: Setup ORAS CLI
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3  # v2.0.0
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d  # v2.0.1
 
       - name: Setup SOCI
         uses: "posit-dev/images-shared/setup-soci@main"
@@ -561,7 +561,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Restores the shared cache like every other job but never saves it:
       # bakery ci readme has no --image-name filter and always resolves
