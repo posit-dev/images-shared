@@ -226,6 +226,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -300,7 +301,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
-          role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
@@ -411,6 +411,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     needs: [matrix, build-test]
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -477,7 +478,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ inputs.aws-region }}
-          role-session-name: gha-bakery-build
 
       - name: Login to Amazon ECR
         if: ${{ steps.filter-steps.outputs.ecr == 'true' }}
