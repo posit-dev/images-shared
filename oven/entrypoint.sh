@@ -3,6 +3,8 @@ set -euo pipefail
 
 : "${BAKERY_REPO_PATH:?BAKERY_REPO_PATH must be set to the images-shared checkout path}"
 
+git config --global --add safe.directory '*'
+
 uv sync --directory "${BAKERY_REPO_PATH}/posit-bakery"
 
 cat > /usr/local/bin/bakery <<EOF
