@@ -16,6 +16,7 @@ from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
     VersionSubstitutionError,
 )
+from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 
 scenarios(
     "cli/build.feature",
@@ -38,9 +39,24 @@ def mock_build_config():
         yield mock
 
 
-def _fake_target(platforms=("linux/amd64",), tags=("a", "b")):
+def _fake_target(
+    platforms=("linux/amd64",),
+    tags=("a", "b"),
+    uid="fake-image-1.0.0-standard-ubuntu-22.04",
+    image_name="fake-image",
+    version="1.0.0",
+    variant="Standard",
+    os="Ubuntu 22.04",
+):
     """A minimal stand-in for ImageTarget exposing only what BuildSummary reads."""
-    return SimpleNamespace(image_os=SimpleNamespace(platforms=list(platforms)), tags=list(tags))
+    return SimpleNamespace(
+        uid=uid,
+        image_name=image_name,
+        image_version=SimpleNamespace(name=version),
+        image_variant=SimpleNamespace(name=variant) if variant else None,
+        image_os=SimpleNamespace(platforms=list(platforms), name=os) if os else None,
+        tags=list(tags),
+    )
 
 
 class TestBuildErrorHandling:
