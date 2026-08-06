@@ -1,4 +1,36 @@
 # syntax=docker/dockerfile:1
+#
+# "The oven": bundles the tools needed to build, test, validate, and scan a
+# Posit product image locally via Docker-outside-of-Docker (DooD) — the
+# container never runs its own daemon, it talks to the host's via a mounted
+# /var/run/docker.sock.
+#
+# Runtime contract (enforced by the `oven`/`oven-build` just recipes, not by
+# this image — there is no USER instruction):
+#   --user "$(id -u):$(id -g)"                    match the host user, so the
+#                                                  container never writes
+#                                                  root-owned files into a
+#                                                  mounted checkout
+#   --group-add <docker.sock's group ID>          grants socket access
+#                                                  without needing to know the
+#                                                  host's docker GID at build
+#                                                  time
+#   -v /var/run/docker.sock:/var/run/docker.sock  DooD
+#   -v <dir>:<dir> (identical host/container path) required for any bind
+#                                                  mount: dgoss/bakery
+#                                                  generate mount arguments
+#                                                  the *host* daemon resolves
+#                                                  against its own filesystem
+#   -e BAKERY_REPO_PATH=<images-shared checkout>  entrypoint syncs
+#                                                  posit-bakery from here
+#   -v <persistent host dir>:/opt/oven/state      survives across --rm runs;
+#                                                  without it every
+#                                                  invocation re-downloads
+#                                                  Python, wheels, and the
+#                                                  trivy DB from scratch
+# Invoking this image any other way (e.g. `docker run bakery-oven` with none
+# of the above) runs as root and will write root-owned files into whatever
+# gets mounted.
 
 FROM ubuntu:24.04
 
@@ -10,14 +42,30 @@ ARG TRIVY_VERSION=0.73.0
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV HOME=/tmp
+# The container runs as an arbitrary host UID (see runtime contract above)
+# with no matching /etc/passwd entry, so tools that key off $HOME need an
+# explicit value. Pointing it at /opt/oven/state (persistent, see below)
+# rather than /tmp means uv's Python/package cache, trivy's vulnerability
+# DB, and wizcli's auth token all survive across separate `--rm` runs
+# instead of being re-fetched every time.
+ENV HOME=/opt/oven/state/home
+# The entrypoint writes a `bakery` wrapper here at container start
+# (BAKERY_REPO_PATH isn't known until then) — a non-root UID can't write to
+# /usr/local/bin, so this needs its own world-writable directory.
 ENV PATH="/opt/oven/bin:${PATH}"
-ENV UV_PROJECT_ENVIRONMENT=/opt/oven/venv
+# uv must never touch the mounted checkout's own posit-bakery/.venv — that
+# file is shared with the host's own direct `uv run` usage, and a
+# container-only interpreter path recorded there breaks it (see CLAUDE.md
+# for the host workflow). Point uv entirely at paths under /opt/oven/state
+# instead: the venv lives on the same filesystem as the cache (avoids uv's
+# cross-device "falling back to full copy" warning, lets hardlinks work),
+# and both persist across runs via the mount described above.
+ENV UV_PROJECT_ENVIRONMENT=/opt/oven/state/venv
 ENV UV_CACHE_DIR=/opt/oven/state/cache
 ENV UV_PYTHON_INSTALL_DIR=/opt/oven/state/python
 
-RUN mkdir -p /opt/oven/bin /opt/oven/venv /opt/oven/state \
-    && chmod 1777 /opt/oven/bin /opt/oven/venv /opt/oven/state
+RUN mkdir -p /opt/oven/bin /opt/oven/state \
+    && chmod 1777 /opt/oven/bin /opt/oven/state
 
 # Base utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -43,9 +91,12 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 # uv + uvx (Python itself is provisioned on demand by `uv sync`)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# goss + dgoss (github.com/goss-org/goss) — goss's current release format (versioned
-# tarball + combined SHA256SUMS) differs from setup-goss/action.yml's assumptions
-# (bare per-arch binary + per-file .sha256); dgoss is unaffected, still bare+per-file
+# goss + dgoss (github.com/goss-org/goss) — mirrors setup-goss/action.yml's
+# current logic: goss's v0.4.10+ releases ship a versioned tarball plus one
+# combined SHA256SUMS file, so a "latest" version has to be resolved to a
+# concrete tag up front to build the asset filename. dgoss's own release
+# filenames are unversioned and unaffected, so it keeps the older bare
+# binary + per-file .sha256 scheme.
 RUN set -eux; \
     dest="/tmp/goss"; mkdir -p "$dest"; cd "$dest"; \
     case "${TARGETARCH}" in \
@@ -73,8 +124,10 @@ RUN set -eux; \
     install -m 0755 dgoss /usr/local/bin/dgoss; \
     cd /; rm -rf "$dest"
 
-# hadolint (github.com/hadolint/hadolint) — checksum verification uses hadolint's current
-# combined checksums.sha256; setup-hadolint/action.yml still expects the old per-binary .sha256
+# hadolint (github.com/hadolint/hadolint) — mirrors setup-hadolint/action.yml's
+# current logic: v2.15.0+ ships one checksums.sha256 covering every binary;
+# older releases ship a per-binary "${binary}.sha256" file instead, so try
+# the combined file first and fall back to the per-binary one.
 RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) hadolint_arch="x86_64" ;; \
@@ -90,8 +143,12 @@ RUN set -eux; \
     binary="hadolint-linux-${hadolint_arch}"; \
     curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}" \
         || { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; }; \
-    curl -fsSL "${release_url}/checksums.sha256" -o checksums.sha256; \
-    sha256sum --ignore-missing -c checksums.sha256; \
+    if curl -fsSL --remove-on-error "${release_url}/checksums.sha256" -o checksums.sha256; then \
+        grep -F "${binary}" checksums.sha256 | sha256sum -c -; \
+    else \
+        curl -fsSL "${release_url}/${binary}.sha256" -o "${binary}.sha256"; \
+        sha256sum -c "${binary}.sha256"; \
+    fi; \
     install -m 0755 "${binary}" /usr/local/bin/hadolint; \
     cd /; rm -rf "$dest"
 

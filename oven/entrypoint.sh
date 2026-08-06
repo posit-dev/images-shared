@@ -5,7 +5,7 @@ set -euo pipefail
 
 uv sync --project "${BAKERY_REPO_PATH}/posit-bakery"
 
-cat > /opt/oven/bin/bakery <<EOF
+cat >/opt/oven/bin/bakery <<EOF
 #!/usr/bin/env bash
 exec uv run --project "${BAKERY_REPO_PATH}/posit-bakery" bakery "\$@"
 EOF
