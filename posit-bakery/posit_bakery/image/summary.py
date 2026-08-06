@@ -12,7 +12,7 @@ from rich.text import Text
 
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.parallel import CommandRunner, ParallelShellExecutor, ShellJob, resolve_max_workers
+from posit_bakery.parallel import CommandRunner, JobResult, ParallelShellExecutor, ShellJob, resolve_max_workers
 from posit_bakery.reporting import GroupColumn, ValueColumn, grouped_table
 
 log = logging.getLogger(__name__)
@@ -226,33 +226,45 @@ class BuildSummary(BaseModel):
 
         rows_by_uid = {row.uid: row for row in self.targets}
 
-        def _measure(runner: CommandRunner, target: ImageTarget) -> None:
-            row = rows_by_uid.get(target.uid)
-            if row is None:
-                return
+        def _measure(runner: CommandRunner, target: ImageTarget) -> tuple[int | None, int | None, int | None]:
+            """Runs on a worker thread. Returns (local_size, registry_size, layers) instead
+            of writing to `row` directly -- mutation happens in `_apply`, on the main thread,
+            via `on_result`, matching ParallelShellExecutor's own documented safe pattern."""
             ref = target.ref()
+            local_size = registry_size = layers = None
             try:
                 if load:
                     local_result = _inspect_local(runner, ref)
                     if local_result is not None:
-                        row.local_size = local_result.size
+                        local_size = local_result.size
                         if local_result.root_fs is not None and local_result.root_fs.layers is not None:
-                            row.layers = len(local_result.root_fs.layers)
+                            layers = len(local_result.root_fs.layers)
                 if push:
                     registry_result = _inspect_registry(runner, ref)
                     if registry_result is not None:
-                        row.registry_size, registry_layers = registry_result
-                        if row.layers is None:
-                            row.layers = registry_layers
+                        registry_size, registry_layers = registry_result
+                        if layers is None:
+                            layers = registry_layers
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
+            return local_size, registry_size, layers
+
+        def _apply(job_result: JobResult) -> None:
+            """Runs on the main thread: the only place that writes to a row."""
+            if job_result.value is None:
+                return
+            row = rows_by_uid.get(job_result.job.key)
+            if row is None:
+                return
+            row.local_size, row.registry_size, row.layers = job_result.value
 
         executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(targets)))
         executor.run_jobs(
             [
                 ShellJob(key=target.uid, label=str(target), run=lambda runner, t=target: _measure(runner, t))
                 for target in targets
-            ]
+            ],
+            on_result=_apply,
         )
 
     def table(self, *, sizes: bool) -> Table:
