@@ -3,6 +3,7 @@ import re
 import subprocess
 from pathlib import Path
 from shutil import which
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -23,6 +24,8 @@ scenarios(
 runner = CliRunner()
 
 BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
+# COLUMNS matters: Rich hard-wraps table/caption output, which would break substring assertions.
+_ENV = {"TERM": "dumb", "NO_COLOR": "true", "COLUMNS": "200"}
 
 
 @pytest.fixture
@@ -33,6 +36,11 @@ def mock_build_config():
         instance.build_targets.return_value = None
         mock.from_context.return_value = instance
         yield mock
+
+
+def _fake_target(platforms=("linux/amd64",), tags=("a", "b")):
+    """A minimal stand-in for ImageTarget exposing only what BuildSummary reads."""
+    return SimpleNamespace(image_os=SimpleNamespace(platforms=list(platforms)), tags=list(tags))
 
 
 class TestBuildErrorHandling:
@@ -137,6 +145,69 @@ class TestBuildJobsFlag:
         assert instance.build_targets.call_args.kwargs["jobs"] is None
 
 
+class TestBuildSummaryFlag:
+    """`--summary` reports build/tag counts without changing what the command does."""
+
+    def test_omitted_by_default(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        result = runner.invoke(app, ["build", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV)
+        assert result.exit_code == 0
+        assert "Build Summary" not in result.stderr
+
+    def test_prints_table_to_stderr_on_success(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        result = runner.invoke(
+            app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+        )
+        assert result.exit_code == 0
+        assert "Build Summary" in result.stderr
+        assert "Build Targets" in result.stderr
+        assert "Platform Builds" in result.stderr
+        assert "Registry Tags" in result.stderr
+        assert "Build Summary" not in result.stdout
+
+    def test_format_json_prints_to_stdout_on_success(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        result = runner.invoke(
+            app,
+            ["build", "--summary", "--summary-format", "json", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+            env=_ENV,
+        )
+        assert result.exit_code == 0
+        assert "Build Summary" not in result.stderr
+        data = json.loads(result.stdout)
+        assert [row["label"] for row in data["rows"]] == ["Build Targets", "Platform Builds", "Registry Tags"]
+
+    def test_plan_with_summary_prints_plan_json_and_table(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        instance.bake_plan_targets.return_value = "{}"
+        result = runner.invoke(
+            app, ["build", "--plan", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+        )
+        assert result.exit_code == 0
+        assert "Build Summary" in result.stderr
+        assert json.loads(result.stdout) == {}
+        instance.bake_plan_targets.assert_called_once()
+
+    def test_format_json_with_plan_is_a_hard_error(self, mock_build_config):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        result = runner.invoke(
+            app,
+            ["build", "--plan", "--summary", "--summary-format", "json", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+            env=_ENV,
+        )
+        assert result.exit_code == 1
+        assert "not supported with --plan" in result.stderr
+        instance.bake_plan_targets.assert_not_called()
+
+
 @then("the bake plan is valid", target_fixture="bake_plan_data")
 def check_bake_plan_json(bakery_command):
     try:
@@ -160,6 +231,11 @@ def check_bake_plan_json(bakery_command):
 @then(parsers.parse("the bake plan has {num_targets} targets"))
 def check_bake_plan_num_targets(num_targets, bake_plan_data):
     assert len(bake_plan_data["target"]) == int(num_targets)
+
+
+@then(parsers.parse("the build summary shows {count:d} build targets"))
+def check_build_summary_build_targets(bakery_command, count: int):
+    assert re.search(rf"Build Targets\s*\W\s*{count}\b", bakery_command.result.stderr) is not None
 
 
 @then("the targets include the commit hash")
