@@ -1,0 +1,62 @@
+from typing import Self
+
+from pydantic import BaseModel
+from rich.table import Table
+
+from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
+from posit_bakery.image.image_target import ImageTarget
+
+TAG_ALIAS_NOTE = (
+    "Registry Tags counts tag aliases (version, os, latest, etc.) across registries, not distinct stored images."
+)
+
+
+class BuildSummaryRow(BaseModel):
+    """A single labeled metric in a build summary report."""
+
+    label: str
+    value: int
+
+
+class BuildSummary(BaseModel):
+    """Counts (and, once a build has produced artifacts, sizes) for a set of image targets."""
+
+    rows: list[BuildSummaryRow]
+
+    @classmethod
+    def from_image_targets(cls, targets: list[ImageTarget]) -> Self:
+        """Compute build and artifact counts for the given image targets.
+
+        Performs no I/O: every count is derived from configuration already resolved onto
+        the targets, so this is safe to call for both `--plan` and real builds.
+
+        :param targets: The resolved image targets to summarize.
+        """
+        platform_builds = sum(
+            len(target.image_os.platforms) if target.image_os else len(DEFAULT_PLATFORMS) for target in targets
+        )
+        registry_tags = sum(len(target.tags) for target in targets)
+
+        return cls(
+            rows=[
+                BuildSummaryRow(label="Build Targets", value=len(targets)),
+                BuildSummaryRow(label="Platform Builds", value=platform_builds),
+                BuildSummaryRow(label="Registry Tags", value=registry_tags),
+            ]
+        )
+
+    def table(self, *, sizes: bool) -> Table:
+        """Render the summary as a Rich table.
+
+        :param sizes: Reserved for the registry/local size rows added once a build has
+            actually produced artifacts to measure. No size data source exists yet, so this
+            currently has no effect on the rendered table.
+        """
+        table = Table(title="Build Summary", caption=TAG_ALIAS_NOTE)
+        table.add_column("Metric", justify="left")
+        table.add_column("Count", justify="right")
+
+        for row in self.rows:
+            table.add_row(row.label, str(row.value))
+
+        return table
