@@ -26,3 +26,19 @@ _python-executable executable:
 _setup-pre-commit:
     pre-commit --version || just _python-executable pre-commit
     pre-commit install --install-hooks
+
+################
+# Oven commands (local build/test/validate/scan environment)
+
+# Build the bakery-oven image
+oven-build:
+    docker build -t bakery-oven -f {{ CWD }}/oven/Containerfile {{ CWD }}/oven
+
+# Build (if stale) and drop into the oven with sibling repos mounted
+oven *ARGS: oven-build
+    docker run --rm -it \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$(dirname {{ CWD }}):$(dirname {{ CWD }})" \
+        -e BAKERY_REPO_PATH={{ CWD }} \
+        -w {{ CWD }} \
+        bakery-oven {{ ARGS }}
