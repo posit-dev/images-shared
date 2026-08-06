@@ -1,0 +1,103 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:24.04
+
+ARG TARGETARCH
+ARG GOSS_VERSION=0.3.21
+ARG HADOLINT_VERSION=2.12.0
+ARG TRIVY_VERSION=0.73.0
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Base utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI + buildx plugin (CLI only — no daemon/engine package)
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && . /etc/os-release \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
+        > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        docker-ce-cli \
+        docker-buildx-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv + uvx (Python itself is provisioned on demand by `uv sync`)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# goss + dgoss (github.com/goss-org/goss) — same source/verification as setup-goss/action.yml
+RUN bash -euxo pipefail << 'GOSS_INSTALL'
+dest="/tmp/goss"; mkdir -p "$dest"; cd "$dest"
+
+tag="v${GOSS_VERSION}"
+
+case "${TARGETARCH}" in
+    amd64) goss_bin="goss-linux-amd64" ;;
+    arm64) goss_bin="goss-linux-arm64" ;;
+esac
+
+release_url="https://github.com/goss-org/goss/releases/download/${tag}"
+curl -fsSL "${release_url}/${goss_bin}" -o "${goss_bin}"
+curl -fsSL "${release_url}/${goss_bin}.sha256" -o "${goss_bin}.sha256"
+sha256sum -c "${goss_bin}.sha256"
+install -m 0755 "${goss_bin}" /usr/local/bin/goss
+
+curl -fsSL "${release_url}/dgoss" -o dgoss
+curl -fsSL "${release_url}/dgoss.sha256" -o dgoss.sha256
+sha256sum -c dgoss.sha256
+install -m 0755 dgoss /usr/local/bin/dgoss
+
+cd /; rm -rf "$dest"
+GOSS_INSTALL
+
+# hadolint (github.com/hadolint/hadolint) — same source/verification as setup-hadolint/action.yml
+RUN bash -euxo pipefail << 'HADOLINT_INSTALL'
+case "${TARGETARCH}" in
+    amd64) hadolint_arch="x86_64" ;;
+    arm64) hadolint_arch="arm64" ;;
+esac
+dest="/tmp/hadolint"; mkdir -p "$dest"; cd "$dest"
+release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}"
+binary="hadolint-linux-${hadolint_arch}"
+curl -fsSL "${release_url}/${binary}" -o "${binary}" || \
+    { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL "${release_url}/${binary}" -o "${binary}"; }
+install -m 0755 "${binary}" /usr/local/bin/hadolint
+cd /; rm -rf "$dest"
+HADOLINT_INSTALL
+
+# wizcli (downloads.wiz.io) — same as setup-wizcli/action.yml; no version pin or checksum available upstream
+RUN set -eux; \
+    dest="/tmp/wizcli"; mkdir -p "$dest"; cd "$dest"; \
+    curl -fsSL "https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${TARGETARCH}" -o wizcli; \
+    install -m 0755 wizcli /usr/local/bin/wizcli; \
+    cd /; rm -rf "$dest"
+
+# trivy (github.com/aquasecurity/trivy)
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) trivy_arch="64bit" ;; \
+        arm64) trivy_arch="ARM64" ;; \
+    esac; \
+    dest="/tmp/trivy"; mkdir -p "$dest"; cd "$dest"; \
+    asset="trivy_${TRIVY_VERSION}_Linux-${trivy_arch}.tar.gz"; \
+    base_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/trivy_${TRIVY_VERSION}_checksums.txt" -o checksums.txt; \
+    sha256sum --ignore-missing -c checksums.txt; \
+    tar -xzf "${asset}" trivy; \
+    install -m 0755 trivy /usr/local/bin/trivy; \
+    cd /; rm -rf "$dest"
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]
