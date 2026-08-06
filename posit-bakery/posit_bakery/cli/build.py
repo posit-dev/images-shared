@@ -316,6 +316,28 @@ def build(
             stderr_console.print(build_summary.table(sizes=False))
         raise typer.Exit(code=0)
 
+    def _emit_summary() -> None:
+        """Construct, measure, and print the --summary report in the requested format.
+
+        Called on both the success and failure paths: a partially failed build is exactly
+        when the report is most useful, and a target that never built simply measures to
+        `None` (rendered as a dash) rather than needing special-case handling here.
+        """
+        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        build_summary.measure_sizes(config.targets, push=push, load=load, jobs=jobs)
+        if summary_format == SummaryOutputFormat.JSON:
+            stdout_console.print_json(data=build_summary.as_dict())
+        else:
+            stderr_console.print(build_summary.table(sizes=True))
+
+    def _try_emit_summary() -> None:
+        """`_emit_summary()`, but on the failure paths: it must never itself prevent the
+        original build failure from being reported and exited on."""
+        try:
+            _emit_summary()
+        except Exception:
+            log.debug("Failed to emit --summary on the build-failure path", exc_info=True)
+
     try:
         config.build_targets(
             load=load,
@@ -331,17 +353,17 @@ def build(
         )
     except BakeryBuildErrorGroup as e:
         stderr_console.print(str(e))
+        if summary:
+            _try_emit_summary()
         stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
+        if summary:
+            _try_emit_summary()
         stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
     if summary:
-        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
-        if summary_format == SummaryOutputFormat.JSON:
-            stdout_console.print_json(data=build_summary.as_dict())
-        else:
-            stderr_console.print(build_summary.table(sizes=False))
+        _emit_summary()
 
     stderr_console.print("✅ Build completed", style="success")

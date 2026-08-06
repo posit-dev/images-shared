@@ -16,6 +16,7 @@ from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
     VersionSubstitutionError,
 )
+from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
 
 scenarios(
     "cli/build.feature",
@@ -38,9 +39,24 @@ def mock_build_config():
         yield mock
 
 
-def _fake_target(platforms=("linux/amd64",), tags=("a", "b")):
+def _fake_target(
+    platforms=("linux/amd64",),
+    tags=("a", "b"),
+    uid="fake-image-1.0.0-standard-ubuntu-22.04",
+    image_name="fake-image",
+    version="1.0.0",
+    variant="Standard",
+    os="Ubuntu 22.04",
+):
     """A minimal stand-in for ImageTarget exposing only what BuildSummary reads."""
-    return SimpleNamespace(image_os=SimpleNamespace(platforms=list(platforms)), tags=list(tags))
+    return SimpleNamespace(
+        uid=uid,
+        image_name=image_name,
+        image_version=SimpleNamespace(name=version),
+        image_variant=SimpleNamespace(name=variant) if variant else None,
+        image_os=SimpleNamespace(platforms=list(platforms), name=os) if os else None,
+        tags=list(tags),
+    )
 
 
 class TestBuildErrorHandling:
@@ -156,6 +172,8 @@ class TestBuildSummaryFlag:
         assert "Build Summary" not in result.stderr
 
     def test_prints_table_to_stderr_on_success(self, mock_build_config):
+        """After a real build, the table is the per-target sizes view (sizes=True), not
+        the aggregate 3-row view -- that one is --plan-only now."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
@@ -163,9 +181,9 @@ class TestBuildSummaryFlag:
         )
         assert result.exit_code == 0
         assert "Build Summary" in result.stderr
-        assert "Build Targets" in result.stderr
-        assert "Platform Builds" in result.stderr
-        assert "Registry Tags" in result.stderr
+        assert "fake-image" in result.stderr
+        assert "Registry Size" in result.stderr
+        assert "Local Size" in result.stderr
         assert "Build Summary" not in result.stdout
 
     def test_format_json_prints_to_stdout_on_success(self, mock_build_config):
@@ -180,7 +198,15 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" not in result.stderr
         data = json.loads(result.stdout)
-        assert data == {"build_targets": 1, "platform_builds": 1, "registry_tags": 2}
+        assert data["build_targets"] == 1
+        assert data["platform_builds"] == 1
+        assert data["registry_tags"] == 2
+        # measure_sizes() ran (real build path), but _fake_target() has no .ref() to inspect,
+        # so every measurement fails closed -- None, not a crash, not a stale zero.
+        assert data["registry_size_bytes"] is None
+        assert data["local_size_bytes"] is None
+        assert len(data["targets"]) == 1
+        assert data["targets"][0]["image_name"] == "fake-image"
 
     def test_platform_builds_sums_platforms_not_targets(self, mock_build_config):
         """A 2-platform target must count as 2 platform builds -- the whole point of this
@@ -249,6 +275,20 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 1
         assert "not supported with --plan" in result.stderr
         instance.bake_plan_targets.assert_not_called()
+
+    def test_prints_summary_before_failing_on_build_error(self, mock_build_config):
+        """A partially failed build is exactly when the report is most useful -- it must
+        still print before the command exits 1, not just on the success path."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        failure = BakeryToolRuntimeError(message="boom", tool_name="docker", cmd=["docker", "build"])
+        instance.build_targets.side_effect = BakeryBuildErrorGroup("build failed", [failure])
+        result = runner.invoke(
+            app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+        )
+        assert result.exit_code == 1
+        assert "Build Summary" in result.stderr
+        assert "❌ Build failed" in result.stderr
 
 
 @then("the bake plan is valid", target_fixture="bake_plan_data")
