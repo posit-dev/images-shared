@@ -12,8 +12,12 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HOME=/tmp
 ENV PATH="/opt/oven/bin:${PATH}"
+ENV UV_PROJECT_ENVIRONMENT=/opt/oven/venv
+ENV UV_CACHE_DIR=/opt/oven/state/cache
+ENV UV_PYTHON_INSTALL_DIR=/opt/oven/state/python
 
-RUN mkdir -p /opt/oven/bin && chmod 1777 /opt/oven/bin
+RUN mkdir -p /opt/oven/bin /opt/oven/venv /opt/oven/state \
+    && chmod 1777 /opt/oven/bin /opt/oven/venv /opt/oven/state
 
 # Base utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -53,7 +57,7 @@ RUN set -eux; \
         curl -fsSL https://api.github.com/repos/goss-org/goss/releases/latest > releases.json; \
         goss_tag=$(grep -m1 '"tag_name"' releases.json | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
     else \
-        goss_tag="v${GOSS_VERSION}"; \
+        goss_tag="v${GOSS_VERSION#v}"; \
     fi; \
     goss_num="${goss_tag#v}"; \
     release_url="https://github.com/goss-org/goss/releases/download/${goss_tag}"; \
@@ -81,11 +85,11 @@ RUN set -eux; \
     if [ "${HADOLINT_VERSION}" = "latest" ]; then \
         release_url="https://github.com/hadolint/hadolint/releases/latest/download"; \
     else \
-        release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}"; \
+        release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION#v}"; \
     fi; \
     binary="hadolint-linux-${hadolint_arch}"; \
-    curl -fsSL "${release_url}/${binary}" -o "${binary}" \
-        || { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL "${release_url}/${binary}" -o "${binary}"; }; \
+    curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}" \
+        || { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; }; \
     curl -fsSL "${release_url}/checksums.sha256" -o checksums.sha256; \
     sha256sum --ignore-missing -c checksums.sha256; \
     install -m 0755 "${binary}" /usr/local/bin/hadolint; \
@@ -106,17 +110,16 @@ RUN set -eux; \
         *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     dest="/tmp/trivy"; mkdir -p "$dest"; cd "$dest"; \
-    asset="trivy_${TRIVY_VERSION}_Linux-${trivy_arch}.tar.gz"; \
-    base_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"; \
+    asset="trivy_${TRIVY_VERSION#v}_Linux-${trivy_arch}.tar.gz"; \
+    base_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION#v}"; \
     curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
-    curl -fsSL "${base_url}/trivy_${TRIVY_VERSION}_checksums.txt" -o checksums.txt; \
+    curl -fsSL "${base_url}/trivy_${TRIVY_VERSION#v}_checksums.txt" -o checksums.txt; \
     sha256sum --ignore-missing -c checksums.txt; \
     tar -xzf "${asset}" trivy; \
     install -m 0755 trivy /usr/local/bin/trivy; \
     cd /; rm -rf "$dest"
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]

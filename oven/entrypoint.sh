@@ -11,4 +11,4 @@ exec uv run --directory "${BAKERY_REPO_PATH}/posit-bakery" bakery "\$@"
 EOF
 chmod +x /opt/oven/bin/bakery
 
-exec "$@"
+exec "${@:-bash}"

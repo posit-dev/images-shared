@@ -34,16 +34,22 @@ _setup-pre-commit:
 
 # Build the bakery-oven image
 oven-build:
-    docker build -t bakery-oven -f {{ CWD }}/oven/Containerfile {{ CWD }}/oven
+    docker build -t bakery-oven -f "{{ CWD }}/oven/Containerfile" "{{ CWD }}/oven"
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 oven *ARGS: oven-build
-    mount_root="$(dirname "$(dirname "$(git -C {{ CWD }} rev-parse --path-format=absolute --git-common-dir)")")"; \
-    docker run --rm -i $(test -t 1 && echo -t) \
+    git_common_dir="$(git -C "{{ CWD }}" rev-parse --path-format=absolute --git-common-dir)"; \
+    : "${git_common_dir:?failed to resolve this checkout's git-common-dir}"; \
+    mount_root="$(dirname "$(dirname "$git_common_dir")")"; \
+    docker_gid="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock)"; \
+    : "${docker_gid:?failed to read the group ID of /var/run/docker.sock}"; \
+    mkdir -p "$HOME/.cache/bakery-oven"; \
+    docker run --rm -i $(test -t 0 && echo -t) \
         --user "$(id -u):$(id -g)" \
-        --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+        --group-add "$docker_gid" \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$mount_root:$mount_root" \
-        -e BAKERY_REPO_PATH={{ CWD }} \
-        -w {{ CWD }} \
+        -v "$HOME/.cache/bakery-oven:/opt/oven/state" \
+        -e BAKERY_REPO_PATH="{{ CWD }}" \
+        -w "{{ CWD }}" \
         bakery-oven "$@"
