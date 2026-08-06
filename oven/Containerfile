@@ -125,9 +125,15 @@ RUN set -eux; \
     cd /; rm -rf "$dest"
 
 # hadolint (github.com/hadolint/hadolint) — mirrors setup-hadolint/action.yml's
-# current logic: v2.15.0+ ships one checksums.sha256 covering every binary;
-# older releases ship a per-binary "${binary}.sha256" file instead, so try
-# the combined file first and fall back to the per-binary one.
+# current logic (v2.15.0+ ships one checksums.sha256 covering every binary;
+# older releases ship a per-binary "${binary}.sha256" file instead), plus a
+# fix that action doesn't have: GitHub's release-download URLs resolve
+# asset names case-insensitively, so probing "hadolint-linux-${arch}" first
+# and falling back to "hadolint-Linux-${arch}" on failure never actually
+# falls back — the lowercase request succeeds anyway and downloads the
+# real (capitalized-named) asset under the wrong local filename. Instead,
+# extract the true filename from the checksum file's own content (which is
+# authoritative) and use that for both the download and the local name.
 RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) hadolint_arch="x86_64" ;; \
@@ -140,13 +146,16 @@ RUN set -eux; \
     else \
         release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION#v}"; \
     fi; \
-    binary="hadolint-linux-${hadolint_arch}"; \
-    curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}" \
-        || { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; }; \
     if curl -fsSL --remove-on-error "${release_url}/checksums.sha256" -o checksums.sha256; then \
+        binary=$(awk -v want="hadolint-linux-${hadolint_arch}" '{name=$2; sub(/^\*/,"",name); if (tolower(name)==tolower(want)) {print name; exit}}' checksums.sha256); \
+        [ -n "$binary" ] || { echo "no checksums.sha256 entry for hadolint-linux-${hadolint_arch}" >&2; exit 1; }; \
+        curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; \
         grep -F "${binary}" checksums.sha256 | sha256sum -c -; \
     else \
-        curl -fsSL "${release_url}/${binary}.sha256" -o "${binary}.sha256"; \
+        curl -fsSL --remove-on-error "${release_url}/hadolint-linux-${hadolint_arch}.sha256" -o guess.sha256; \
+        binary=$(awk '{name=$2; sub(/^\*/,"",name); print name}' guess.sha256); \
+        mv guess.sha256 "${binary}.sha256"; \
+        curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; \
         sha256sum -c "${binary}.sha256"; \
     fi; \
     install -m 0755 "${binary}" /usr/local/bin/hadolint; \
