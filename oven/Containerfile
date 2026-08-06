@@ -3,8 +3,8 @@
 FROM ubuntu:24.04
 
 ARG TARGETARCH
-ARG GOSS_VERSION=latest
-ARG HADOLINT_VERSION=latest
+ARG GOSS_VERSION=0.3.21
+ARG HADOLINT_VERSION=2.15.1
 ARG TRIVY_VERSION=0.73.0
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -33,41 +33,39 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 # uv + uvx (Python itself is provisioned on demand by `uv sync`)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# goss + dgoss (github.com/goss-org/goss) — same source/verification as setup-goss/action.yml
+# goss + dgoss (github.com/goss-org/goss) — using binary format for stability
 RUN set -eux; \
     dest="/tmp/goss"; mkdir -p "$dest"; cd "$dest"; \
     case "${TARGETARCH}" in \
-        amd64) goss_arch="x86_64" ;; \
-        arm64) goss_arch="arm64" ;; \
+        amd64) goss_bin="goss-linux-amd64" ;; \
+        arm64) goss_bin="goss-linux-arm64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    if [ "${GOSS_VERSION}" = "latest" ]; then \
-        goss_tag=$(curl -fsSL https://api.github.com/repos/goss-org/goss/releases/latest \
-            | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
-    else \
-        goss_tag="v${GOSS_VERSION}"; \
-    fi; \
-    goss_num="${goss_tag#v}"; \
-    release_url="https://github.com/goss-org/goss/releases/download/${goss_tag}"; \
-    asset="goss_${goss_num}_linux_${goss_arch}.tar.gz"; \
-    curl -fsSL "${release_url}/${asset}" -o "${asset}"; \
-    curl -fsSL "${release_url}/goss_${goss_num}_SHA256SUMS" -o SHA256SUMS; \
-    sha256sum --ignore-missing -c SHA256SUMS; \
-    tar -xzf "${asset}" goss; \
-    install -m 0755 goss /usr/local/bin/goss; \
+    release_url="https://github.com/goss-org/goss/releases/download/v${GOSS_VERSION}"; \
+    curl -fsSL "${release_url}/${goss_bin}" -o "${goss_bin}"; \
+    curl -fsSL "${release_url}/${goss_bin}.sha256" -o "${goss_bin}.sha256"; \
+    sha256sum -c "${goss_bin}.sha256"; \
+    install -m 0755 "${goss_bin}" /usr/local/bin/goss; \
     curl -fsSL "${release_url}/dgoss" -o dgoss; \
     curl -fsSL "${release_url}/dgoss.sha256" -o dgoss.sha256; \
     sha256sum -c dgoss.sha256; \
     install -m 0755 dgoss /usr/local/bin/dgoss; \
     cd /; rm -rf "$dest"
 
-# hadolint (github.com/hadolint/hadolint) — same source/verification as setup-hadolint/action.yml
+# hadolint (github.com/hadolint/hadolint) — checksum verification uses hadolint's current
+# combined checksums.sha256; setup-hadolint/action.yml still expects the old per-binary .sha256
 RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) hadolint_arch="x86_64" ;; \
         arm64) hadolint_arch="arm64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     dest="/tmp/hadolint"; mkdir -p "$dest"; cd "$dest"; \
-    release_url="https://github.com/hadolint/hadolint/releases/${HADOLINT_VERSION}/download"; \
+    if [ "${HADOLINT_VERSION}" = "latest" ]; then \
+        release_url="https://github.com/hadolint/hadolint/releases/latest/download"; \
+    else \
+        release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}"; \
+    fi; \
     binary="hadolint-linux-${hadolint_arch}"; \
     curl -fsSL "${release_url}/${binary}" -o "${binary}" \
         || { binary="hadolint-Linux-${hadolint_arch}"; curl -fsSL "${release_url}/${binary}" -o "${binary}"; }; \
@@ -88,6 +86,7 @@ RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) trivy_arch="64bit" ;; \
         arm64) trivy_arch="ARM64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     dest="/tmp/trivy"; mkdir -p "$dest"; cd "$dest"; \
     asset="trivy_${TRIVY_VERSION}_Linux-${trivy_arch}.tar.gz"; \
