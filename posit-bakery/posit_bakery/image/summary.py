@@ -46,7 +46,12 @@ def _inspect_local(runner: CommandRunner, ref: str) -> ImageInspectResult | None
 
 
 def _repository_of(ref: str) -> str:
-    """Strips a trailing `:tag` from `ref`, without misparsing a `host:port` registry."""
+    """Strips a trailing `:tag`, `@digest`, or `:tag@digest` from `ref`, without misparsing
+    a `host:port` registry. `ImageTarget.ref()` returns a `repo:tag@digest` reference
+    whenever build metadata is available, so the digest suffix has to go first -- otherwise
+    the split on the last `:` lands inside the digest's own hex, not at the tag separator.
+    """
+    ref = ref.split("@", 1)[0]
     name = ref.rsplit("/", 1)[-1]
     return ref.rsplit(":", 1)[0] if ":" in name else ref
 

@@ -322,6 +322,14 @@ def build(
             stderr_console.print(build_summary.table(sizes=False))
         raise typer.Exit(code=0)
 
+    def _try_emit_summary() -> None:
+        """`_emit_summary()`, but on the failure paths: it must never itself prevent the
+        original build failure from being reported and exited on."""
+        try:
+            _emit_summary()
+        except Exception:
+            log.debug("Failed to emit --summary on the build-failure path", exc_info=True)
+
     try:
         config.build_targets(
             load=load,

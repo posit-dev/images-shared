@@ -2,6 +2,7 @@ import json
 import subprocess
 from unittest.mock import patch
 
+from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.summary import (
     BuildSummary,
     BuildSummaryTarget,
@@ -11,6 +12,7 @@ from posit_bakery.image.summary import (
     _repository_of,
 )
 from posit_bakery.parallel import CommandRunner
+from posit_bakery.settings import SETTINGS
 
 
 def _completed(returncode=0, stdout=b"", stderr=b"") -> subprocess.CompletedProcess:
@@ -85,6 +87,17 @@ class TestRepositoryOf:
     def test_ref_with_no_tag_is_returned_unchanged(self):
         assert _repository_of("ghcr.io/posit-dev/connect") == "ghcr.io/posit-dev/connect"
 
+    def test_strips_a_digest_qualified_tag(self):
+        """ImageTarget.ref() returns `repo:tag@digest` whenever build metadata is present --
+        the digest suffix must go, not just the tag, and the split must not land inside the
+        digest's own hex."""
+        ref = "ghcr.io/posit-dev/connect:2026.01.1@sha256:" + "a" * 64
+        assert _repository_of(ref) == "ghcr.io/posit-dev/connect"
+
+    def test_strips_a_digest_only_ref_with_no_tag(self):
+        ref = "ghcr.io/posit-dev/connect@sha256:" + "a" * 64
+        assert _repository_of(ref) == "ghcr.io/posit-dev/connect"
+
 
 class TestInspectManifest:
     def test_parses_a_manifest(self):
@@ -139,6 +152,61 @@ class TestInspectRegistry:
         result = _inspect_registry(runner, "myimage:tag")
 
         assert result == (300, 2)
+
+
+class TestRefStaysIndexCompatibleForMultiPlatformBuilds:
+    """Regression coverage for a question raised in review: could ImageTarget.ref() ever
+    return a per-platform leaf digest for a target whose own build produced a multi-platform
+    index, silently making _inspect_registry's fan-out never trigger and undercounting
+    registry size?
+
+    Verified against a real captured buildx --metadata-file output
+    (test/config/testdata/build_metadata/expected.json): BuildMetadata.platform falls back
+    to the build *machine's* own arch (via buildx.build.provenance), not None, for an index
+    descriptor -- so ref()'s platform match does fire. But image_ref's digest is
+    independently always correct regardless: it's built from the top-level
+    containerimage.digest, which is the same digest as containerimage.descriptor.digest --
+    the index's own digest here, never some other platform's leaf digest."""
+
+    def test_ref_returns_the_index_digest_not_a_leaf(self, get_targets):
+        target = get_targets("basic")[0]
+        index_digest = "sha256:" + "a" * 64
+        target.build_metadata.append(
+            BuildMetadata.model_validate(
+                {
+                    "image.name": "ghcr.io/posit-dev/test-image:1.0.0",
+                    "containerimage.digest": index_digest,
+                    "containerimage.descriptor": {
+                        "mediaType": "application/vnd.oci.image.index.v1+json",
+                        "digest": index_digest,
+                        "size": 855,
+                    },
+                    "buildx.build.provenance": {
+                        "invocation": {"environment": {"platform": f"linux/{SETTINGS.architecture}"}}
+                    },
+                }
+            )
+        )
+
+        assert target.ref() == f"ghcr.io/posit-dev/test-image:1.0.0@{index_digest}"
+
+    def test_inspect_registry_fans_out_given_that_ref(self):
+        index_digest = "sha256:" + "a" * 64
+        ref = f"ghcr.io/posit-dev/test-image:1.0.0@{index_digest}"
+        runner = _FakeRunner(
+            {
+                ("registry", ref): _completed(stdout=INDEX_MANIFEST_JSON),
+                ("registry", "ghcr.io/posit-dev/test-image@sha256:child-amd64"): _completed(
+                    stdout=SINGLE_PLATFORM_MANIFEST_JSON
+                ),
+                ("registry", "ghcr.io/posit-dev/test-image@sha256:child-arm64"): _completed(
+                    stdout=SINGLE_PLATFORM_MANIFEST_JSON
+                ),
+            }
+        )
+        result = _inspect_registry(runner, ref)
+
+        assert result == (600, 2)
 
 
 class TestMeasureSizes:
