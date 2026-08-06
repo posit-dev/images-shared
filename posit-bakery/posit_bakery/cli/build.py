@@ -330,6 +330,14 @@ def build(
         else:
             stderr_console.print(build_summary.table(sizes=True))
 
+    def _try_emit_summary() -> None:
+        """`_emit_summary()`, but on the failure paths: it must never itself prevent the
+        original build failure from being reported and exited on."""
+        try:
+            _emit_summary()
+        except Exception:
+            log.debug("Failed to emit --summary on the build-failure path", exc_info=True)
+
     try:
         config.build_targets(
             load=load,
@@ -346,12 +354,12 @@ def build(
     except BakeryBuildErrorGroup as e:
         stderr_console.print(str(e))
         if summary:
-            _emit_summary()
+            _try_emit_summary()
         stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         if summary:
-            _emit_summary()
+            _try_emit_summary()
         stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
 
