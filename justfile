@@ -1,5 +1,7 @@
 #!/usr/bin/env just --justfile
 
+set positional-arguments := true
+
 ################
 # Variables
 CWD := justfile_directory()
@@ -44,4 +46,4 @@ oven *ARGS: oven-build
         -v "$mount_root:$mount_root" \
         -e BAKERY_REPO_PATH={{ CWD }} \
         -w {{ CWD }} \
-        bakery-oven {{ ARGS }}
+        bakery-oven "$@"
