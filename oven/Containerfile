@@ -10,6 +10,10 @@ ARG TRIVY_VERSION=0.73.0
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV HOME=/tmp
+ENV PATH="/opt/oven/bin:${PATH}"
+
+RUN mkdir -p /opt/oven/bin && chmod 1777 /opt/oven/bin
 
 # Base utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \

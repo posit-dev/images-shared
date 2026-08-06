@@ -38,6 +38,8 @@ oven-build:
 oven *ARGS: oven-build
     mount_root="$(dirname "$(dirname "$(git -C {{ CWD }} rev-parse --path-format=absolute --git-common-dir)")")"; \
     docker run --rm -i $(test -t 1 && echo -t) \
+        --user "$(id -u):$(id -g)" \
+        --group-add "$(stat -c '%g' /var/run/docker.sock)" \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$mount_root:$mount_root" \
         -e BAKERY_REPO_PATH={{ CWD }} \
