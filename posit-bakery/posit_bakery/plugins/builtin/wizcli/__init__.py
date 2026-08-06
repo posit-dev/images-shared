@@ -137,6 +137,24 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
             ] = None,
+            policies: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--policies",
+                    show_default=False,
+                    help="Comma-separated Wiz policy IDs to apply to the scan. Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            projects: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--projects",
+                    show_default=False,
+                    help="Comma-separated Wiz project IDs to scope the scan to. Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
             timeout: Annotated[
                 Optional[str],
                 typer.Option(
@@ -247,6 +265,8 @@ class WizCLIPlugin(BakeryToolPlugin):
                 c.targets,
                 disabled_scanners=disabled_scanners,
                 driver=driver,
+                policies=policies,
+                projects=projects,
                 client_id=client_id,
                 client_secret=client_secret,
                 use_device_code=use_device_code,
@@ -267,6 +287,8 @@ class WizCLIPlugin(BakeryToolPlugin):
         *,
         disabled_scanners: str | None = None,
         driver: str | None = None,
+        policies: str | None = None,
+        projects: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
         use_device_code: bool = False,
@@ -282,6 +304,8 @@ class WizCLIPlugin(BakeryToolPlugin):
             targets,
             disabled_scanners=disabled_scanners,
             driver=driver,
+            policies=policies,
+            projects=projects,
             client_id=client_id,
             client_secret=client_secret,
             use_device_code=use_device_code,
