@@ -36,7 +36,7 @@ oven-build:
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 oven *ARGS: oven-build
-    docker run --rm -it \
+    docker run --rm -i $(test -t 1 && echo -t) \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$(dirname {{ CWD }}):$(dirname {{ CWD }})" \
         -e BAKERY_REPO_PATH={{ CWD }} \
