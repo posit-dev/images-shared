@@ -61,6 +61,9 @@ def _fake_target(
         # swallowed as an unmeasurable target rather than surfacing as a test failure.
         temp_name=None,
         build_metadata=[],
+        # None of these CLI-level tests pass --cache-registry, so a real ImageTarget.cache_name()
+        # would always return None here too -- mirror that rather than faking a registry.
+        cache_name=lambda platform=None: None,
     )
 
 
@@ -213,6 +216,7 @@ class TestBuildSummaryFlag:
         assert data["registry_tags"] == 2
         assert data["registry_size_bytes"] is None
         assert data["local_size_bytes"] is None
+        assert data["cache_size_bytes"] is None
         assert len(data["targets"]) == 1
 
     def test_measurement_is_narrowed_to_the_targets_that_succeeded(self, mock_build_config):
