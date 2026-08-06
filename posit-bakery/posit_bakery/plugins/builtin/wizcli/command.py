@@ -24,6 +24,8 @@ class WizCLICommand(BaseModel):
     # CLI pass-through options
     disabled_scanners: Annotated[str | None, Field(default=None)]
     driver: Annotated[str | None, Field(default=None)]
+    policies: Annotated[str | None, Field(default=None)]
+    projects: Annotated[str | None, Field(default=None)]
     client_id: Annotated[str | None, Field(default=None)]
     client_secret: Annotated[str | None, Field(default=None)]
     use_device_code: Annotated[bool, Field(default=False)]
@@ -42,6 +44,8 @@ class WizCLICommand(BaseModel):
         tool_options: WizCLIOptions | None = None,
         disabled_scanners: str | None = None,
         driver: str | None = None,
+        policies: str | None = None,
+        projects: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
         use_device_code: bool = False,
@@ -64,6 +68,8 @@ class WizCLICommand(BaseModel):
             tool_options=tool_options,
             disabled_scanners=disabled_scanners,
             driver=driver,
+            policies=policies,
+            projects=projects,
             client_id=client_id,
             client_secret=client_secret,
             use_device_code=use_device_code,
@@ -100,12 +106,22 @@ class WizCLICommand(BaseModel):
         # Always set for machine-parseable output
         cmd.extend(["--no-color", "--no-style"])
 
-        # ToolOptions fields
+        # Policies/projects: an explicit CLI value always wins over bakery.yaml,
+        # since CI feeds these from secrets and bakery.yaml never should.
+        projects = self.projects or (
+            ",".join(self.tool_options.projects) if self.tool_options and self.tool_options.projects else None
+        )
+        if projects:
+            cmd.extend(["--projects", projects])
+
+        policies = self.policies or (
+            ",".join(self.tool_options.policies) if self.tool_options and self.tool_options.policies else None
+        )
+        if policies:
+            cmd.extend(["--policies", policies])
+
+        # Remaining ToolOptions fields
         if self.tool_options:
-            if self.tool_options.projects:
-                cmd.extend(["--projects", ",".join(self.tool_options.projects)])
-            if self.tool_options.policies:
-                cmd.extend(["--policies", ",".join(self.tool_options.policies)])
             if self.tool_options.tags:
                 for tag in self.tool_options.tags:
                     cmd.extend(["--tags", tag])

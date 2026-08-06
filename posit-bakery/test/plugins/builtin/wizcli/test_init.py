@@ -86,3 +86,38 @@ class TestWizcliScanLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
+
+
+class TestWizcliScanPoliciesProjectsFlags:
+    """The --policies/--projects flags are passed through to the plugin's execute()."""
+
+    def test_policies_passed_to_execute(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--policies", "pol-1,pol-2", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["policies"] == "pol-1,pol-2"
+
+    def test_projects_passed_to_execute(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--projects", "proj-1", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["projects"] == "proj-1"
+
+    def test_policies_projects_default_none(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["policies"] is None
+        assert mock_execute.call_args.kwargs["projects"] is None
