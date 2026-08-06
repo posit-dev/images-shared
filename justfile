@@ -36,9 +36,10 @@ oven-build:
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 oven *ARGS: oven-build
+    mount_root="$(dirname "$(dirname "$(git -C {{ CWD }} rev-parse --path-format=absolute --git-common-dir)")")"; \
     docker run --rm -i $(test -t 1 && echo -t) \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "$(dirname {{ CWD }}):$(dirname {{ CWD }})" \
+        -v "$mount_root:$mount_root" \
         -e BAKERY_REPO_PATH={{ CWD }} \
         -w {{ CWD }} \
         bakery-oven {{ ARGS }}
