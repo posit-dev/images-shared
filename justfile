@@ -51,5 +51,6 @@ oven *ARGS: oven-build
         -v "$mount_root:$mount_root" \
         -v "$HOME/.cache/bakery-oven:/opt/oven/state" \
         -e BAKERY_REPO_PATH="{{ CWD }}" \
+        -e DGOSS_TEMP_DIR="$mount_root" \
         -w "{{ CWD }}" \
         bakery-oven "$@"
