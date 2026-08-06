@@ -312,7 +312,8 @@ def build(
             raise typer.Exit(code=1)
         stdout_console.print_json(config.bake_plan_targets(push=push))
         if summary:
-            stderr_console.print(BuildSummary.from_image_targets(config.targets).table(sizes=False))
+            build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+            stderr_console.print(build_summary.table(sizes=False))
         raise typer.Exit(code=0)
 
     try:
@@ -337,9 +338,9 @@ def build(
         raise typer.Exit(code=1)
 
     if summary:
-        build_summary = BuildSummary.from_image_targets(config.targets)
+        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
         if summary_format == SummaryOutputFormat.JSON:
-            stdout_console.print_json(build_summary.model_dump_json())
+            stdout_console.print_json(data=build_summary.as_dict())
         else:
             stderr_console.print(build_summary.table(sizes=False))
 

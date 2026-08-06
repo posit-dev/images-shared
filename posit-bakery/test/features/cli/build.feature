@@ -180,6 +180,16 @@ Feature: build
         * the stderr output includes:
             | not supported with --plan |
 
+    Scenario: --image-platform narrows the platform build count, not just the target list
+        Given I call bakery build
+        * in a temp multiplatform context
+        * with the arguments:
+            | --plan | --image-platform | linux/arm64 | --summary |
+        When I execute the command
+        Then The command succeeds
+        * the build summary shows 2 build targets
+        * the build summary shows 2 platform builds
+
     @image_build
     Scenario: Building images from a project using bake with a matrix
         Given I call bakery build

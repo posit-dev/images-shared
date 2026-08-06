@@ -180,7 +180,50 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" not in result.stderr
         data = json.loads(result.stdout)
-        assert [row["label"] for row in data["rows"]] == ["Build Targets", "Platform Builds", "Registry Tags"]
+        assert data == {"build_targets": 1, "platform_builds": 1, "registry_tags": 2}
+
+    def test_platform_builds_sums_platforms_not_targets(self, mock_build_config):
+        """A 2-platform target must count as 2 platform builds -- the whole point of this
+        row is that it differs from the target count."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target(platforms=("linux/amd64", "linux/arm64"))]
+        result = runner.invoke(
+            app,
+            ["build", "--summary", "--summary-format", "json", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+            env=_ENV,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["build_targets"] == 1
+        assert data["platform_builds"] == 2
+
+    def test_image_platform_filter_narrows_platform_builds(self, mock_build_config):
+        """--image-platform must narrow the *count* of platform builds, not just which
+        targets survive -- a surviving multi-platform target keeps its full declared
+        platforms list (config.py's filter is any-match, not narrowing), so the count has
+        to apply the same override the real build uses instead of trusting the target."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target(platforms=("linux/amd64", "linux/arm64"))]
+        result = runner.invoke(
+            app,
+            [
+                "build",
+                "--summary",
+                "--summary-format",
+                "json",
+                "--image-platform",
+                "linux/arm64",
+                "--context",
+                BASIC_CONTEXT,
+            ],
+            catch_exceptions=False,
+            env=_ENV,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["build_targets"] == 1
+        assert data["platform_builds"] == 1
 
     def test_plan_with_summary_prints_plan_json_and_table(self, mock_build_config):
         instance = mock_build_config.from_context.return_value
@@ -233,9 +276,10 @@ def check_bake_plan_num_targets(num_targets, bake_plan_data):
     assert len(bake_plan_data["target"]) == int(num_targets)
 
 
-@then(parsers.parse("the build summary shows {count:d} build targets"))
-def check_build_summary_build_targets(bakery_command, count: int):
-    assert re.search(rf"Build Targets\s*\W\s*{count}\b", bakery_command.result.stderr) is not None
+@then(parsers.parse("the build summary shows {count:d} {metric}"))
+def check_build_summary_metric(bakery_command, count: int, metric: str):
+    label = metric.title()  # "platform builds" -> "Platform Builds", etc.
+    assert re.search(rf"{label}\s*\W\s*{count}\b", bakery_command.result.stderr) is not None
 
 
 @then("the targets include the commit hash")
