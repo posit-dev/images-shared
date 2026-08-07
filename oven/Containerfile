@@ -15,6 +15,16 @@
 #                                                  without needing to know the
 #                                                  host's docker GID at build
 #                                                  time
+#   --network host                                DooD shares only the daemon's
+#                                                  *socket*, not its network
+#                                                  namespace — without this,
+#                                                  "localhost" here and
+#                                                  "localhost" on the host-daemon
+#                                                  side are different network
+#                                                  stacks, so a container's
+#                                                  published port (e.g. a local
+#                                                  test registry) isn't reachable
+#                                                  via localhost from inside here
 #   -v /var/run/docker.sock:/var/run/docker.sock  DooD
 #   -v <dir>:<dir> (identical host/container path) required for any bind
 #                                                  mount: dgoss/bakery

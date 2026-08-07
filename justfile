@@ -63,6 +63,7 @@ oven *ARGS: oven-build
     docker run --rm -i $(test -t 0 && echo -t) \
         --user "$(id -u):$(id -g)" \
         --group-add "$docker_gid" \
+        --network host \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$mount_root:$mount_root" \
         -v "$HOME/.cache/bakery-oven:/opt/oven/state" \
