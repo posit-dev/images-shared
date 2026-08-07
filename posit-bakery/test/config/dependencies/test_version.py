@@ -1,3 +1,4 @@
+import copy
 import itertools
 
 import pytest
@@ -72,6 +73,17 @@ class TestDependencyVersion:
         assert ver.base_version == version
         assert (ver.minor is not None) == has_minor
         assert (ver.micro is not None) == has_micro
+
+    def test_deepcopy_preserves_dependency_version_metadata(self):
+        """Deep copies retain metadata added by DependencyVersion."""
+        original = DependencyVersion("2026.03.0-212")
+        copied = copy.deepcopy(original)
+
+        assert copied is not original
+        assert copied == original
+        assert str(copied) == str(original)
+        assert copied.minor == original.minor
+        assert copied.micro == original.micro
 
     def test_dependency_version_prefix(self):
         """Test that a version with a prefix is accepted."""
