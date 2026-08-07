@@ -38,5 +38,21 @@ runs:
             arch="arm64"
         fi
 
-        curl -fsSL "https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${arch}" -o "$BASE_PATH/tools/wizcli"
-        chmod +rx "$BASE_PATH/tools/wizcli"
+        release_url="https://downloads.wiz.io/v1/wizcli/latest"
+        asset="wizcli-linux-${arch}"
+        dest="$BASE_PATH/tools"
+
+        curl -fsSL "${release_url}/${asset}" -o "${dest}/wizcli"
+        curl -fsSL "${release_url}/${asset}-sha256" -o "${dest}/wizcli-sha256"
+        curl -fsSL "${release_url}/${asset}-sha256.sig" -o "${dest}/wizcli-sha256.sig"
+        curl -fsSL "https://downloads.wiz.io/wizcli/public_key.asc" -o "${dest}/wizcli-public-key.asc"
+
+        # Verify the checksum file's signature, then the binary's checksum,
+        # per Wiz's documented CLI installation guide. Key ID CE4AE4BAD12EE02C,
+        # fingerprint 61DF 4068 0AB1 A80E 5150 3B61 CE4A E4BA D12E E02C.
+        gpg --batch --import "${dest}/wizcli-public-key.asc"
+        gpg --batch --verify "${dest}/wizcli-sha256.sig" "${dest}/wizcli-sha256"
+        (cd "${dest}" && echo "$(cat wizcli-sha256)  wizcli" | sha256sum -c -)
+
+        rm -f "${dest}/wizcli-sha256" "${dest}/wizcli-sha256.sig" "${dest}/wizcli-public-key.asc"
+        chmod +rx "${dest}/wizcli"
