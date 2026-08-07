@@ -8,6 +8,12 @@ from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
 from posit_bakery.util import find_bin
 
 TRIVY_ALL_SCANNERS = ["vuln", "secret", "license", "misconfig"]
+# Trivy's own default for `trivy image` only runs vuln,secret -- license/misconfig
+# are off by default. The --disabled-scanners complement must be computed against
+# this default set, not TRIVY_ALL_SCANNERS, or disabling e.g. just "secret" would
+# silently turn ON license/misconfig scanning (which report real severities and
+# pollute the vulnerability count with unrelated findings).
+TRIVY_DEFAULT_SCANNERS = ["vuln", "secret"]
 
 
 def find_trivy_bin(context: ImageTargetContext) -> str | None:
@@ -98,7 +104,7 @@ class TrivyCommand(BaseModel):
         )
         if disabled_scanners:
             disabled_set = {s.strip() for s in disabled_scanners.split(",") if s.strip()}
-            enabled = [s for s in TRIVY_ALL_SCANNERS if s not in disabled_set]
+            enabled = [s for s in TRIVY_DEFAULT_SCANNERS if s not in disabled_set]
             cmd.extend(["--scanners", ",".join(enabled)])
 
         timeout = self.timeout or (self.tool_options.timeout if self.tool_options else None)

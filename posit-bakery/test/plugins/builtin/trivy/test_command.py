@@ -53,7 +53,7 @@ class TestTrivyCommand:
 
     def test_command_disabled_scanners_computes_complement(self, basic_standard_image_target):
         """--disabled-scanners is translated into the enabled complement passed as --scanners."""
-        from posit_bakery.plugins.builtin.trivy.command import TRIVY_ALL_SCANNERS
+        from posit_bakery.plugins.builtin.trivy.command import TRIVY_DEFAULT_SCANNERS
 
         results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
         cmd = TrivyCommand.from_image_target(
@@ -65,9 +65,20 @@ class TestTrivyCommand:
         enabled = cmd.command[idx + 1].split(",")
         assert "secret" not in enabled
         assert "license" not in enabled
-        for scanner in TRIVY_ALL_SCANNERS:
+        for scanner in TRIVY_DEFAULT_SCANNERS:
             if scanner not in ("secret", "license"):
                 assert scanner in enabled
+
+    def test_command_disabled_scanners_never_enables_non_default_scanners(self, basic_standard_image_target):
+        """Disabling a default-on scanner must never turn on license/misconfig (trivy defaults to vuln,secret only)."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            disabled_scanners="secret",
+        )
+        idx = cmd.command.index("--scanners")
+        assert cmd.command[idx + 1] == "vuln"
 
     def test_command_with_tool_options(self, basic_standard_image_target):
         """Test that ToolOptions fields are included in the command when no CLI value is given."""
@@ -102,7 +113,7 @@ class TestTrivyCommand:
     def test_command_with_tool_options_disabled_scanners(self, basic_standard_image_target):
         """Test that disabledScanners from ToolOptions are included in the command."""
         from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
-        from posit_bakery.plugins.builtin.trivy.command import TRIVY_ALL_SCANNERS
+        from posit_bakery.plugins.builtin.trivy.command import TRIVY_DEFAULT_SCANNERS
 
         results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
         cmd = TrivyCommand.from_image_target(
@@ -114,29 +125,30 @@ class TestTrivyCommand:
         enabled = cmd.command[idx + 1].split(",")
         assert "secret" not in enabled
         assert "license" not in enabled
-        for scanner in TRIVY_ALL_SCANNERS:
+        for scanner in TRIVY_DEFAULT_SCANNERS:
             if scanner not in ("secret", "license"):
                 assert scanner in enabled
 
     def test_cli_disabled_scanners_wins_over_tool_options(self, basic_standard_image_target):
         """CLI disabled_scanners takes precedence over tool_options value."""
         from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
-        from posit_bakery.plugins.builtin.trivy.command import TRIVY_ALL_SCANNERS
+        from posit_bakery.plugins.builtin.trivy.command import TRIVY_DEFAULT_SCANNERS
 
         results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
         cmd = TrivyCommand.from_image_target(
             image_target=basic_standard_image_target,
             results_dir=results_dir,
-            disabled_scanners="misconfig",
-            tool_options=TrivyOptions(disabledScanners=["secret", "license"]),
+            disabled_scanners="secret",
+            tool_options=TrivyOptions(disabledScanners=["vuln"]),
         )
         idx = cmd.command.index("--scanners")
         enabled = cmd.command[idx + 1].split(",")
-        assert "misconfig" not in enabled
-        assert "secret" in enabled
-        assert "license" in enabled
-        for scanner in TRIVY_ALL_SCANNERS:
-            if scanner != "misconfig":
+        assert "secret" not in enabled
+        # tool_options also asked to disable "vuln", but the CLI value fully
+        # replaces (not merges with) tool_options, so vuln must stay enabled.
+        assert "vuln" in enabled
+        for scanner in TRIVY_DEFAULT_SCANNERS:
+            if scanner != "secret":
                 assert scanner in enabled
 
     def test_command_with_native_config(self, basic_standard_image_target, tmp_path):
