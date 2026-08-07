@@ -333,7 +333,7 @@ class TrivyPlugin(BakeryToolPlugin):
         if has_severity_breach:
             stderr_console.print("-" * 80)
             stderr_console.print(
-                "Findings at or above the configured --fail-on-severity threshold were detected.",
+                "Findings matching one or more of the configured --fail-on-severity severities were detected.",
                 style="bright_red bold",
             )
 
