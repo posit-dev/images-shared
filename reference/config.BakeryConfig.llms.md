@@ -134,7 +134,7 @@ If True, use the build cache when building images.
 `platforms``:`` ``list[str] | None`` ``=`` ``None`  
 Optional list of platforms to build for. If None, builds for the configuration specified platform.
 
-`strategy``:`` ``ImageBuildStrategy`` ``=`` ``ImageBuildStrategy.BAKE`    
+`strategy``:`` ``ImageBuildStrategy`` ``=`` ``ImageBuildStrategy.BAKE`\  
 The strategy to use when building images.
 
 `metadata_file``:`` ``Path | None`` ``=`` ``None`  
@@ -361,7 +361,7 @@ generate_image_targets(settings=BakerySettings())
 
 #### Parameters
 
-`settings``:`` ``BakerySettings`` ``=`` ``BakerySettings()`    
+`settings``:`` ``BakerySettings`` ``=`` ``BakerySettings()`\  
 Optional settings to apply when generating image targets. If None, all images will be included.
 
 ### get_image_target_by_uid()

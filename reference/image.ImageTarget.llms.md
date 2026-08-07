@@ -313,7 +313,7 @@ ref(platform=f'linux/{SETTINGS.architecture}')
 
 #### Parameters
 
-`platform``:`` ``str`` ``=`` ``f``"linux/{SETTINGS.architecture}"`    
+`platform``:`` ``str`` ``=`` ``f``"linux/{SETTINGS.architecture}"`\  
 The platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.
 
 #### Returns
