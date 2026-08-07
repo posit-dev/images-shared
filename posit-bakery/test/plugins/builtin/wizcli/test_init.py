@@ -62,6 +62,31 @@ class TestWizcliScanZeroMatchGuard:
         mock_execute.assert_not_called()
 
 
+class TestWizcliScanPlatformNormalization:
+    """Regression coverage: `--image-platform linux/amd64` must not become
+    `linux/linux/amd64`."""
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("amd64", "linux/amd64"),
+            ("arm64", "linux/arm64"),
+            ("linux/amd64", "linux/amd64"),
+            ("linux/arm64", "linux/arm64"),
+        ],
+    )
+    def test_normalizes_platform(self, mocked_wizcli_scan, given, expected):
+        mock_config, _ = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT, "--image-platform", given],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_platform == [expected]
+
+
 class TestWizcliScanLatestFlag:
     """The --latest flag is passed through to settings and warns with dev inclusion."""
 
