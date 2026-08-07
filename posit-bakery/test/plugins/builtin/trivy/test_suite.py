@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -143,6 +144,7 @@ class TestTrivySuite:
         assert mock_run.call_count == len(basic_tmpconfig.targets)
 
     @pytest.mark.slow
+    @pytest.mark.skipif(shutil.which("trivy") is None, reason="trivy binary not installed")
     def test_run_integration(self, get_tmpconfig, monkeypatch):
         """Test running trivy against a real, small public image with the real trivy binary.
 
