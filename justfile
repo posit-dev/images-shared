@@ -43,13 +43,17 @@ _setup-pre-commit:
 oven-build:
     docker build -t bakery-oven -f "{{ CWD }}/oven/Containerfile" "{{ CWD }}/oven"
 
-# binfmt_misc is a single table global to the host kernel, not namespaced
-# per-container, so this only needs to run once per boot from anywhere
-# with docker socket access (including from inside the oven), and it
-# doesn't persist across a reboot.
-# Register QEMU emulation for cross-arch image builds (one-time per host boot)
-oven-setup-qemu:
-    docker run --privileged --rm tonistiigi/binfmt --install all
+# Building/testing linux/arm64 targets from an amd64 host (or vice versa)
+# needs QEMU emulation registered in the host kernel's binfmt_misc table.
+# binfmt_misc is global to the host kernel, not namespaced per-container,
+# so this is one-time host setup, outside this repo's control, and it
+# also covers builds run from inside the oven once installed. On Ubuntu:
+#
+#   sudo apt-get install qemu-user-binfmt
+#
+# qemu-user-binfmt recommends systemd and integrates with
+# systemd-binfmt.service, so registration survives a reboot without any
+# further setup.
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 #
