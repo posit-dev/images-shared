@@ -95,6 +95,37 @@ class TestTrivyScanLatestFlag:
         assert settings.latest is False
 
 
+class TestTrivyScanImagePlatformFlag:
+    """Regression coverage: `--image-platform linux/amd64` must not become
+    `linux/linux/amd64`.
+
+    The shared GitHub Actions workflows pass platform values straight through
+    from `bakery ci matrix` output (e.g. `linux/amd64`), and a double-prefixed
+    value would match zero image targets. Mirrors dgoss's equivalent guard
+    (test/plugins/builtin/dgoss/test_init.py::TestDgossRunPlatformNormalization).
+    """
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("amd64", "linux/amd64"),
+            ("arm64", "linux/arm64"),
+            ("linux/amd64", "linux/amd64"),
+            ("linux/arm64", "linux/arm64"),
+        ],
+    )
+    def test_normalizes_platform(self, mocked_trivy_scan, given, expected):
+        mock_config, _ = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--context", BASIC_CONTEXT, "--image-platform", given],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_platform == [expected]
+
+
 class TestTrivyScanDevSpecFlag:
     """The --dev-spec flag is parsed by parse_dev_spec and passed through to settings.
 

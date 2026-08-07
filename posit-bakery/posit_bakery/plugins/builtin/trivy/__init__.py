@@ -187,7 +187,8 @@ class TrivyPlugin(BakeryToolPlugin):
             set with the `TRIVY_PATH` environment variable if not present in the system PATH.
             """
             platform = image_platform or SETTINGS.architecture
-            platform = f"linux/{platform}"
+            if not platform.startswith("linux/"):
+                platform = f"linux/{platform}"
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
