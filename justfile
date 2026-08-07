@@ -43,17 +43,8 @@ _setup-pre-commit:
 oven-build:
     docker build -t bakery-oven -f "{{ CWD }}/oven/Containerfile" "{{ CWD }}/oven"
 
-# Building/testing linux/arm64 targets from an amd64 host (or vice versa)
-# needs QEMU emulation registered in the host kernel's binfmt_misc table.
-# binfmt_misc is global to the host kernel, not namespaced per-container,
-# so this is one-time host setup, outside this repo's control, and it
-# also covers builds run from inside the oven once installed. On Ubuntu:
-#
-#   sudo apt-get install qemu-user-binfmt
-#
-# qemu-user-binfmt recommends systemd and integrates with
-# systemd-binfmt.service, so registration survives a reboot without any
-# further setup.
+# Multi-arch (linux/arm64 from amd64, or vice versa) needs one-time host
+# QEMU setup — see CONTRIBUTING.md.
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 #
@@ -67,11 +58,11 @@ oven-build:
 # *host* daemon (on the other end of the socket) ever resolves.
 oven *ARGS: oven-build
     git_common_dir="$(git -C "{{ CWD }}" rev-parse --path-format=absolute --git-common-dir)"; \
-    : "${git_common_dir:?failed to resolve this checkout's git-common-dir}"; \
+    : "${git_common_dir:?failed to resolve git-common-dir for this checkout}"; \
     mount_root="$(dirname "$(dirname "$git_common_dir")")"; \
     docker_gid="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock)"; \
     : "${docker_gid:?failed to read the group ID of /var/run/docker.sock}"; \
-    mkdir -p "$HOME/.cache/bakery-oven/home"; \
+    mkdir -p "$HOME/.cache/bakery-oven/home" || exit 1; \
     docker run --rm -i $(test -t 0 && echo -t) \
         --user "$(id -u):$(id -g)" \
         --group-add "$docker_gid" \
