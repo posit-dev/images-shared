@@ -378,6 +378,17 @@ class TestPrefixedLogSink:
 
         assert buf.getvalue() == "[target-a] #1 DONE 0.0s\n"
 
+    @pytest.mark.parametrize("blank_line", ["\n", "\r\n", "", "   \n"])
+    def test_write_drops_blank_lines(self, blank_line):
+        """buildx's plain progress output uses bare blank lines as step separators;
+        these should be dropped rather than printed as a bare `[key]` with no content."""
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", blank_line)
+
+        assert buf.getvalue() == ""
+
     def test_write_is_thread_safe_no_interleaving(self):
         buf = io.StringIO()
         sink = PrefixedLogSink(console=Console(file=buf, width=200))
