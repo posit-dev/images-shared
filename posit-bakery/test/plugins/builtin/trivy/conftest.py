@@ -1,6 +1,16 @@
+from unittest.mock import patch
+
 import pytest
 
 from posit_bakery.image import ImageTarget
+
+
+@pytest.fixture(autouse=True)
+def mock_find_trivy_bin():
+    """Mock find_trivy_bin to return 'trivy' by default for test isolation."""
+    with patch("posit_bakery.plugins.builtin.trivy.command.find_trivy_bin") as mock:
+        mock.return_value = "trivy"
+        yield mock
 
 
 @pytest.fixture

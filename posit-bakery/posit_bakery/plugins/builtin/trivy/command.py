@@ -3,7 +3,6 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-from posit_bakery.error import BakeryToolNotFoundError
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
 from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
 from posit_bakery.util import find_bin
@@ -13,11 +12,7 @@ TRIVY_ALL_SCANNERS = ["vuln", "secret", "license", "misconfig"]
 
 def find_trivy_bin(context: ImageTargetContext) -> str | None:
     """Find the path to the trivy binary."""
-    try:
-        result = find_bin(context.base_path, "trivy", "TRIVY_PATH")
-    except BakeryToolNotFoundError:
-        result = None
-    return result or "trivy"
+    return find_bin(context.base_path, "trivy", "TRIVY_PATH") or "trivy"
 
 
 def discover_trivy_config(image_target: ImageTarget) -> Path | None:
