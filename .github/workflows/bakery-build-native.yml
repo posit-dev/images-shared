@@ -237,7 +237,6 @@ jobs:
       contents: read
       packages: write
       id-token: write
-      security-events: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -414,13 +413,6 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
-
-      - name: Upload Trivy SARIF
-        if: ${{ inputs.scan-image }}
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v4.37.6
-        with:
-          sarif_file: results/trivy
-          category: "trivy-${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}"
 
       - name: Test
         env:
