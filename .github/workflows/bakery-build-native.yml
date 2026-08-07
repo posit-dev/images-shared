@@ -399,15 +399,19 @@ jobs:
           IMAGE_VERSION: ${{ matrix.img.version }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
         run: |
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery trivy scan \
             --image-name "^${IMAGE_NAME}$" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$NORMALIZED_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
 
