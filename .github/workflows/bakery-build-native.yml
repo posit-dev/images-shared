@@ -87,6 +87,16 @@ on:
         default: ""
         required: false
         type: string
+      scan-image:
+        description: "Whether to run a Trivy vulnerability scan on built images [default: false]"
+        default: false
+        required: false
+        type: boolean
+      trivy-version:
+        description: "The Trivy release version to install [default: latest]"
+        default: "latest"
+        required: false
+        type: string
       merge-builder:
         description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
         default: "ubuntu-latest-4x"
@@ -374,6 +384,36 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT" \
             --push
+
+      - name: Setup trivy
+        if: ${{ inputs.scan-image }}
+        uses: "posit-dev/images-shared/setup-trivy@main"
+        with:
+          version: ${{ inputs.trivy-version }}
+
+      - name: Scan
+        if: ${{ inputs.scan-image }}
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
+          bakery trivy scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$NORMALIZED_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+
       - name: Test
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
