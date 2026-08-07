@@ -380,8 +380,9 @@ class TestPrefixedLogSink:
 
     @pytest.mark.parametrize("blank_line", ["\n", "\r\n", "", "   \n"])
     def test_write_drops_blank_lines(self, blank_line):
-        """buildx's plain progress output uses bare blank lines as step separators;
-        these should be dropped rather than printed as a bare `[key]` with no content."""
+        """Blank lines are dropped rather than printed as a bare `[key]` with no content --
+        buildx's plain progress emits these as step separators, but any blank line is
+        dropped, regardless of source."""
         buf = io.StringIO()
         sink = PrefixedLogSink(console=Console(file=buf))
 

@@ -186,8 +186,9 @@ class PrefixedLogSink:
         Strips a trailing line terminator first: sources like `python_on_whales`'s
         ``stream_logs`` yield lines via `readline()`, which keeps the `\\n` -- printing
         that verbatim would double up with the newline `Console.print` already appends.
-        Blank lines (buildx's own step separators) are dropped rather than printed as a
-        bare `[key]` with no content.
+        Also drops blank lines outright rather than printing a bare `[key]` with no
+        content -- buildx's plain progress emits these as step separators, but this
+        drops any blank line, regardless of source.
         """
         line = line.rstrip("\r\n")
         if not line.strip():
