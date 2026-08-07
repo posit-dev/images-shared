@@ -337,6 +337,44 @@ class TestMeasureSizesEndToEnd:
         assert all(row.local_size is None for row in summary.targets)
 
 
+class TestMeasureSizesSucceededUids:
+    """succeeded_uids narrows the registry lookup to targets that succeeded *this run*, so a
+    target that failed isn't measured off whatever image already happens to sit at its tag
+    from an earlier, unrelated push."""
+
+    def test_excluded_uid_is_not_measured_even_though_the_registry_has_something(self, get_targets):
+        targets = get_targets("multiplatform")
+        assert len(targets) >= 2
+        summary = BuildSummary.from_image_targets(targets)
+        excluded_uid = targets[0].uid
+
+        def _fake_run(runner_self, cmd, **kwargs):
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)
+
+        with patch.object(CommandRunner, "run", _fake_run):
+            summary.measure_sizes(
+                targets, push=True, load=False, succeeded_uids={t.uid for t in targets if t.uid != excluded_uid}
+            )
+
+        rows_by_uid = {row.uid: row for row in summary.targets}
+        assert rows_by_uid[excluded_uid].registry_size is None
+        for target in targets:
+            if target.uid != excluded_uid:
+                assert rows_by_uid[target.uid].registry_size == 300
+
+    def test_none_measures_every_target_matching_original_behavior(self, get_targets):
+        targets = get_targets("basic")
+        summary = BuildSummary.from_image_targets(targets)
+
+        def _fake_run(runner_self, cmd, **kwargs):
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)
+
+        with patch.object(CommandRunner, "run", _fake_run):
+            summary.measure_sizes(targets, push=True, load=False, succeeded_uids=None)
+
+        assert all(row.registry_size == 300 for row in summary.targets)
+
+
 class TestFromImageTargetsPerTargetRows:
     def test_builds_one_row_per_target_with_identity_and_counts(self, get_targets):
         targets = get_targets("basic")

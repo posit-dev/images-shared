@@ -216,7 +216,15 @@ class BuildSummary(BaseModel):
         result["targets"] = [target.model_dump() for target in self.targets]
         return result
 
-    def measure_sizes(self, targets: list[ImageTarget], *, push: bool, load: bool, jobs: int | None = None) -> None:
+    def measure_sizes(
+        self,
+        targets: list[ImageTarget],
+        *,
+        push: bool,
+        load: bool,
+        jobs: int | None = None,
+        succeeded_uids: set[str] | None = None,
+    ) -> None:
         """Populate registry size, local size, and layer count for each target via real I/O.
 
         Never raises: a failed measurement leaves that target's fields as `None` (rendered as
@@ -228,6 +236,12 @@ class BuildSummary(BaseModel):
         :param push: Whether this build pushed to a registry -- gates the registry size lookup.
         :param load: Whether this build loaded to the local daemon -- gates the local size lookup.
         :param jobs: Maximum concurrent inspects; defaults to `SETTINGS.max_concurrency`.
+        :param succeeded_uids: UIDs that succeeded in this build run, if known -- further
+            narrows the registry size lookup so a target that failed this run isn't measured
+            off whatever image happens to already be sitting at its tag from an earlier,
+            unrelated push. `None` (the default) skips this narrowing and measures every
+            target whenever `push` is true, matching the original behavior; `--strategy bake`
+            has no per-target result to give, so it always passes `None`.
         """
         if not push and not load:
             return
@@ -247,7 +261,7 @@ class BuildSummary(BaseModel):
                         local_size = local_result.size
                         if local_result.root_fs is not None and local_result.root_fs.layers is not None:
                             layers = len(local_result.root_fs.layers)
-                if push:
+                if push and (succeeded_uids is None or target.uid in succeeded_uids):
                     registry_result = _inspect_registry(runner, ref)
                     if registry_result is not None:
                         registry_size, registry_layers = registry_result
