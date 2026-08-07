@@ -99,6 +99,21 @@ Do not backport cosmetic changes, new feature additions, or non-security depende
 
 - **Version format mismatch.** Product repos dispatch with raw git-describe versions (e.g., `v2026.03.0-473-g072bb6fd1f`). Bakery normalizes these to semver-with-metadata (e.g., `2026.03.0-dev+473-g072bb6fd1f`). If `bakery ci matrix` produces an empty matrix after a dispatch, the formats did not align. The shared workflows strip a leading `v` automatically. Check the rest of the version string against bakery's normalization.
 
+- **Multi-arch builds inside the oven need host-level QEMU setup.** Building
+  or testing `linux/arm64` targets from an amd64 host (or vice versa) needs
+  QEMU emulation registered in the host kernel's `binfmt_misc` table. This is
+  outside the oven image's control — it only relays build instructions to the
+  host's own Docker daemon over the DooD socket. `binfmt_misc` is global to
+  the host kernel, not namespaced per-container, so installing it on the host
+  also covers builds run from inside the oven. On Ubuntu:
+
+    ```bash
+    sudo apt-get install qemu-user-binfmt
+    ```
+
+    `qemu-user-binfmt` integrates with `systemd-binfmt.service`, so
+    registration survives a reboot without further setup.
+
 ## Change-aware builds
 
 `bakery ci matrix` supports `--base-ref <ref>` and `--changed-files-from <file|->` to emit
