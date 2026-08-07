@@ -121,3 +121,38 @@ class TestWizcliScanPoliciesProjectsFlags:
         assert result.exit_code == 0, result.stdout
         assert mock_execute.call_args.kwargs["policies"] is None
         assert mock_execute.call_args.kwargs["projects"] is None
+
+
+class TestWizcliScanDevSpec:
+    """--dev-spec is accepted and parsed; this option previously did not exist."""
+
+    def test_dev_spec_accepted(self, mocked_wizcli_scan):
+        mock_config, _ = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--dev-spec", '{"version": "2026.05.0-dev+185-gSHA"}', "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.dev_spec is not None
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+
+    def test_dev_spec_invalid_json_rejected(self, mocked_wizcli_scan):
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--dev-spec", "not-json", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0
+
+    def test_dev_spec_default_none(self, mocked_wizcli_scan):
+        mock_config, _ = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.dev_spec is None

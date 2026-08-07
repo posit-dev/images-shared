@@ -415,6 +415,7 @@ jobs:
           [[ -n "$WIZ_POLICY_ID" ]] && POLICY_FLAGS=(--policies "$WIZ_POLICY_ID")
           PROJECT_FLAGS=()
           [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
+          WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli scan \
             --image-name "^${IMAGE_NAME}$" \
             --image-version "$IMAGE_VERSION" \
