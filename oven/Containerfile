@@ -1,0 +1,237 @@
+# syntax=docker/dockerfile:1
+#
+# "The oven": bundles the tools needed to build, test, validate, and scan a
+# Posit product image locally via Docker-outside-of-Docker (DooD) — the
+# container never runs its own daemon, it talks to the host's via a mounted
+# /var/run/docker.sock.
+#
+# Runtime contract (enforced by the `oven`/`oven-build` just recipes, not by
+# this image — there is no USER instruction):
+#   --user "$(id -u):$(id -g)"                    match the host user, so the
+#                                                  container never writes
+#                                                  root-owned files into a
+#                                                  mounted checkout
+#   --group-add <docker.sock's group ID>          grants socket access
+#                                                  without needing to know the
+#                                                  host's docker GID at build
+#                                                  time
+#   --network host                                DooD shares only the daemon's
+#                                                  *socket*, not its network
+#                                                  namespace — without this,
+#                                                  "localhost" here and
+#                                                  "localhost" on the host-daemon
+#                                                  side are different network
+#                                                  stacks, so a container's
+#                                                  published port (e.g. a local
+#                                                  test registry) isn't reachable
+#                                                  via localhost from inside here
+#   -v /var/run/docker.sock:/var/run/docker.sock  DooD
+#   -v <dir>:<dir> (identical host/container path) required for any bind
+#                                                  mount: dgoss/bakery
+#                                                  generate mount arguments
+#                                                  the *host* daemon resolves
+#                                                  against its own filesystem
+#   -e BAKERY_REPO_PATH=<images-shared checkout>  entrypoint syncs
+#                                                  posit-bakery from here
+#   -v <persistent host dir>:/opt/oven/state      survives across --rm runs;
+#                                                  without it every
+#                                                  invocation re-downloads
+#                                                  Python, wheels, and the
+#                                                  trivy DB from scratch
+# Invoking this image any other way (e.g. `docker run bakery-oven` with none
+# of the above) runs as root and will write root-owned files into whatever
+# gets mounted.
+
+FROM ubuntu:24.04
+
+ARG TARGETARCH
+ARG GOSS_VERSION=latest
+ARG HADOLINT_VERSION=latest
+ARG JUST_VERSION=1.58.0
+ARG ORAS_VERSION=1.3.3
+ARG TRIVY_VERSION=0.73.0
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+# The container runs as an arbitrary host UID (see runtime contract above)
+# with no matching /etc/passwd entry, so tools that key off $HOME need an
+# explicit value. Pointing it at /opt/oven/state (persistent, see below)
+# rather than /tmp means uv's Python/package cache, trivy's vulnerability
+# DB, and wizcli's auth token all survive across separate `--rm` runs
+# instead of being re-fetched every time.
+ENV HOME=/opt/oven/state/home
+# The entrypoint writes a `bakery` wrapper here at container start
+# (BAKERY_REPO_PATH isn't known until then) — a non-root UID can't write to
+# /usr/local/bin, so this needs its own world-writable directory.
+ENV PATH="/opt/oven/bin:${PATH}"
+# uv must never touch the mounted checkout's own posit-bakery/.venv — that
+# file is shared with the host's own direct `uv run` usage, and a
+# container-only interpreter path recorded there breaks it (see CLAUDE.md
+# for the host workflow). Point uv entirely at paths under /opt/oven/state
+# instead: the venv lives on the same filesystem as the cache (avoids uv's
+# cross-device "falling back to full copy" warning, lets hardlinks work),
+# and both persist across runs via the mount described above.
+ENV UV_PROJECT_ENVIRONMENT=/opt/oven/state/venv
+ENV UV_CACHE_DIR=/opt/oven/state/cache
+ENV UV_PYTHON_INSTALL_DIR=/opt/oven/state/python
+
+RUN mkdir -p /opt/oven/bin /opt/oven/state \
+    && chmod 1777 /opt/oven/bin /opt/oven/state
+
+# Base utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        git \
+        jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI + buildx plugin (CLI only — no daemon/engine package)
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && . /etc/os-release \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
+        > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        docker-ce-cli \
+        docker-buildx-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv + uvx (Python itself is provisioned on demand by `uv sync`)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# just (github.com/casey/just) — for parity with the host dev workflow
+# (CLAUDE.md's `just test`/`just test-all`/`just setup`), not only the
+# `bakery` CLI the entrypoint wraps directly.
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) just_arch="x86_64" ;; \
+        arm64) just_arch="aarch64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    dest="/tmp/just"; mkdir -p "$dest"; cd "$dest"; \
+    just_num="${JUST_VERSION#v}"; \
+    asset="just-${just_num}-${just_arch}-unknown-linux-musl.tar.gz"; \
+    base_url="https://github.com/casey/just/releases/download/${just_num}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/SHA256SUMS" -o SHA256SUMS; \
+    sha256sum --ignore-missing -c SHA256SUMS; \
+    tar -xzf "${asset}" just; \
+    install -m 0755 just /usr/local/bin/just; \
+    cd /; rm -rf "$dest"
+
+# goss + dgoss (github.com/goss-org/goss) — mirrors setup-goss/action.yml's
+# current logic: goss's v0.4.10+ releases ship a versioned tarball plus one
+# combined SHA256SUMS file, so a "latest" version has to be resolved to a
+# concrete tag up front to build the asset filename. dgoss's own release
+# filenames are unversioned and unaffected, so it keeps the older bare
+# binary + per-file .sha256 scheme.
+RUN set -eux; \
+    dest="/tmp/goss"; mkdir -p "$dest"; cd "$dest"; \
+    case "${TARGETARCH}" in \
+        amd64) goss_arch="x86_64" ;; \
+        arm64) goss_arch="arm64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    if [ "${GOSS_VERSION}" = "latest" ]; then \
+        goss_tag=$(curl -fsSL https://api.github.com/repos/goss-org/goss/releases/latest | jq '.tag_name' -r); \
+    else \
+        goss_tag="v${GOSS_VERSION#v}"; \
+    fi; \
+    goss_num="${goss_tag#v}"; \
+    release_url="https://github.com/goss-org/goss/releases/download/${goss_tag}"; \
+    asset="goss_${goss_num}_linux_${goss_arch}.tar.gz"; \
+    curl -fsSL "${release_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${release_url}/goss_${goss_num}_SHA256SUMS" -o SHA256SUMS; \
+    sha256sum --ignore-missing -c SHA256SUMS; \
+    tar -xzf "${asset}" goss; \
+    install -m 0755 goss /usr/local/bin/goss; \
+    curl -fsSL "${release_url}/dgoss" -o dgoss; \
+    curl -fsSL "${release_url}/dgoss.sha256" -o dgoss.sha256; \
+    sha256sum -c dgoss.sha256; \
+    install -m 0755 dgoss /usr/local/bin/dgoss; \
+    cd /; rm -rf "$dest"
+
+# hadolint (github.com/hadolint/hadolint) — mirrors setup-hadolint/action.yml's
+# current logic (v2.15.0+ ships one checksums.sha256 covering every binary;
+# older releases ship a per-binary "${binary}.sha256" file instead), plus a
+# fix that action doesn't have: GitHub's release-download URLs resolve
+# asset names case-insensitively, so probing "hadolint-linux-${arch}" first
+# and falling back to "hadolint-Linux-${arch}" on failure never actually
+# falls back — the lowercase request succeeds anyway and downloads the
+# real (capitalized-named) asset under the wrong local filename. Instead,
+# extract the true filename from the checksum file's own content (which is
+# authoritative) and use that for both the download and the local name.
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) hadolint_arch="x86_64" ;; \
+        arm64) hadolint_arch="arm64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    dest="/tmp/hadolint"; mkdir -p "$dest"; cd "$dest"; \
+    if [ "${HADOLINT_VERSION}" = "latest" ]; then \
+        release_url="https://github.com/hadolint/hadolint/releases/latest/download"; \
+    else \
+        release_url="https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION#v}"; \
+    fi; \
+    if curl -fsSL --remove-on-error "${release_url}/checksums.sha256" -o checksums.sha256; then \
+        binary=$(awk -v want="hadolint-linux-${hadolint_arch}" '{name=$2; sub(/^\*/,"",name); if (tolower(name)==tolower(want)) {print name; exit}}' checksums.sha256); \
+        [ -n "$binary" ] || { echo "no checksums.sha256 entry for hadolint-linux-${hadolint_arch}" >&2; exit 1; }; \
+        curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; \
+        grep -F "${binary}" checksums.sha256 | sha256sum -c -; \
+    else \
+        curl -fsSL --remove-on-error "${release_url}/hadolint-linux-${hadolint_arch}.sha256" -o guess.sha256; \
+        binary=$(awk '{name=$2; sub(/^\*/,"",name); print name}' guess.sha256); \
+        mv guess.sha256 "${binary}.sha256"; \
+        curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${binary}"; \
+        sha256sum -c "${binary}.sha256"; \
+    fi; \
+    install -m 0755 "${binary}" /usr/local/bin/hadolint; \
+    cd /; rm -rf "$dest"
+
+# wizcli (downloads.wiz.io) — same as setup-wizcli/action.yml; no version pin or checksum available upstream
+RUN set -eux; \
+    dest="/tmp/wizcli"; mkdir -p "$dest"; cd "$dest"; \
+    curl -fsSL "https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${TARGETARCH}" -o wizcli; \
+    install -m 0755 wizcli /usr/local/bin/wizcli; \
+    cd /; rm -rf "$dest"
+
+# trivy (github.com/aquasecurity/trivy)
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) trivy_arch="64bit" ;; \
+        arm64) trivy_arch="ARM64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    dest="/tmp/trivy"; mkdir -p "$dest"; cd "$dest"; \
+    asset="trivy_${TRIVY_VERSION#v}_Linux-${trivy_arch}.tar.gz"; \
+    base_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION#v}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/trivy_${TRIVY_VERSION#v}_checksums.txt" -o checksums.txt; \
+    sha256sum --ignore-missing -c checksums.txt; \
+    tar -xzf "${asset}" trivy; \
+    install -m 0755 trivy /usr/local/bin/trivy; \
+    cd /; rm -rf "$dest"
+
+# oras (github.com/oras-project/oras) — `bakery ci merge`'s imagetools
+# plugin shells out to it directly.
+RUN set -eux; \
+    dest="/tmp/oras"; mkdir -p "$dest"; cd "$dest"; \
+    oras_num="${ORAS_VERSION#v}"; \
+    asset="oras_${oras_num}_linux_${TARGETARCH}.tar.gz"; \
+    base_url="https://github.com/oras-project/oras/releases/download/v${oras_num}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/oras_${oras_num}_checksums.txt" -o checksums.txt; \
+    sha256sum --ignore-missing -c checksums.txt; \
+    tar -xzf "${asset}" oras; \
+    install -m 0755 oras /usr/local/bin/oras; \
+    cd /; rm -rf "$dest"
+
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]
