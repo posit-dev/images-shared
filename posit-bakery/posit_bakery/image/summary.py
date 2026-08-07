@@ -305,8 +305,10 @@ class BuildSummary(BaseModel):
             here (unlike the zero-I/O counts) because measurement keys off `ImageTarget.ref()`.
             A target under `--temp-registry` with no build metadata is skipped entirely -- see
             `_measurable_ref()` for why measuring it would be worse than not measuring it.
-        :param push: Whether this build pushed to a registry -- gates the registry size lookup
-            and the cache size lookup (`cache_to` is only ever written when pushing).
+        :param push: Whether this build pushed to a registry -- gates the registry size lookup.
+            Cache size is not gated on this: `cache_from` pulls whatever is at `cache_ref`
+            regardless of `push` (only `cache_to`, the write side, requires it), so the ref is
+            just as measurable on a pull-only build.
         :param load: Whether this build loaded to the local daemon -- gates the local size lookup.
         :param jobs: Maximum concurrent inspects; defaults to `SETTINGS.max_concurrency`.
         :param succeeded_uids: UIDs that succeeded in this build run, if known -- further
@@ -316,13 +318,14 @@ class BuildSummary(BaseModel):
             target whenever `push` is true, matching the original behavior; `--strategy bake`
             has no per-target result to give, so it always passes `None`.
         """
-        if not push and not load:
+        has_cache_ref = any(row.cache_ref is not None for row in self.targets)
+        if not push and not load and not has_cache_ref:
             return
 
         rows_by_uid = {row.uid: row for row in self.targets}
 
         manifest_client: GHCRManifestClient | None = None
-        if push and any(row.cache_ref is not None for row in self.targets):
+        if has_cache_ref:
             try:
                 manifest_client = GHCRManifestClient()
             except ValueError as e:
@@ -358,7 +361,7 @@ class BuildSummary(BaseModel):
                 # the column's meaning from flipping with `--load`/`--push`; the local count is
                 # only a fallback for builds that never touch a registry.
                 layers = registry_layers if registry_layers is not None else local_layers
-                if push and manifest_client is not None and row is not None and row.cache_ref is not None:
+                if manifest_client is not None and row is not None and row.cache_ref is not None:
                     cache_size = _cache_size(manifest_client, row.cache_ref)
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
