@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -99,6 +99,16 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
             matrix_versions: Annotated[
                 Optional[MatrixVersionInclusionEnum],
                 typer.Option(
@@ -134,6 +144,24 @@ class WizCLIPlugin(BakeryToolPlugin):
                 typer.Option(
                     show_default=False,
                     help="Driver used to scan image (extract, mount, mountWithLayers).",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            policies: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--policies",
+                    show_default=False,
+                    help="Comma-separated Wiz policy IDs to apply to the scan. Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            projects: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--projects",
+                    show_default=False,
+                    help="Comma-separated Wiz project IDs to scope the scan to. Overrides bakery.yaml if set.",
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
             ] = None,
@@ -221,7 +249,8 @@ class WizCLIPlugin(BakeryToolPlugin):
             the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
             """
             platform = image_platform or SETTINGS.architecture
-            platform = f"linux/{platform}"
+            if not platform.startswith("linux/"):
+                platform = f"linux/{platform}"
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
@@ -232,6 +261,7 @@ class WizCLIPlugin(BakeryToolPlugin):
                     image_platform=[platform],
                 ),
                 dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
                 matrix_versions=matrix_versions,
                 latest=latest,
             )
@@ -247,6 +277,8 @@ class WizCLIPlugin(BakeryToolPlugin):
                 c.targets,
                 disabled_scanners=disabled_scanners,
                 driver=driver,
+                policies=policies,
+                projects=projects,
                 client_id=client_id,
                 client_secret=client_secret,
                 use_device_code=use_device_code,
@@ -267,6 +299,8 @@ class WizCLIPlugin(BakeryToolPlugin):
         *,
         disabled_scanners: str | None = None,
         driver: str | None = None,
+        policies: str | None = None,
+        projects: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
         use_device_code: bool = False,
@@ -282,6 +316,8 @@ class WizCLIPlugin(BakeryToolPlugin):
             targets,
             disabled_scanners=disabled_scanners,
             driver=driver,
+            policies=policies,
+            projects=projects,
             client_id=client_id,
             client_secret=client_secret,
             use_device_code=use_device_code,

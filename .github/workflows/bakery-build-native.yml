@@ -120,6 +120,18 @@ on:
       AWS_ROLE:
         description: "AWS Role to assume [required if pushing to ECR]"
         required: false
+      WIZ_CLIENT_ID:
+        description: "Wiz service account client ID [required for security scanning]"
+        required: false
+      WIZ_CLIENT_SECRET:
+        description: "Wiz service account client secret [required for security scanning]"
+        required: false
+      WIZ_POLICY_ID:
+        description: "Wiz policy ID(s) to scope the security scan to, comma-separated [optional]"
+        required: false
+      WIZ_PROJECT_ID:
+        description: "Wiz project ID(s) to scope the security scan to, comma-separated [optional]"
+        required: false
 
 defaults:
   run:
@@ -273,9 +285,15 @@ jobs:
         env:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
+          HAS_WIZ_AUTH: ${{ secrets.WIZ_CLIENT_ID != '' }}
         run: |
           echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
           echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
+          echo "wiz-auth=$HAS_WIZ_AUTH" >> "$GITHUB_OUTPUT"
+
+      - name: Setup wizcli
+        if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        uses: "posit-dev/images-shared/setup-wizcli@main"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
@@ -374,6 +392,41 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT" \
             --push
+      - name: Scan
+        if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          IMAGE_PLATFORM: ${{ matrix.img.platform }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZ_POLICY_ID: ${{ secrets.WIZ_POLICY_ID }}
+          WIZ_PROJECT_ID: ${{ secrets.WIZ_PROJECT_ID }}
+        run: |
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
+          POLICY_FLAGS=()
+          [[ -n "$WIZ_POLICY_ID" ]] && POLICY_FLAGS=(--policies "$WIZ_POLICY_ID")
+          PROJECT_FLAGS=()
+          [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
+          WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
+          bakery wizcli scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$IMAGE_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
+            "${POLICY_FLAGS[@]}" \
+            "${PROJECT_FLAGS[@]}" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
       - name: Test
         env:
           IMAGE_NAME: ${{ matrix.img.image }}

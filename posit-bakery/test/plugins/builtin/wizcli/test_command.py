@@ -80,6 +80,38 @@ class TestWizCLICommand:
         assert "--scan-os-managed-libraries=true" in command_str
         assert "--scan-go-standard-library=false" in command_str
 
+    def test_command_cli_policies_projects_override_tool_options(self, basic_standard_image_target):
+        """Test that CLI policies/projects win over bakery.yaml tool_options."""
+        from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            tool_options=WizCLIOptions(projects=["yaml-proj"], policies=["yaml-pol"]),
+            policies="cli-pol-1,cli-pol-2",
+            projects="cli-proj",
+        )
+        command_str = " ".join(cmd.command)
+        assert "cli-pol-1,cli-pol-2" in command_str
+        assert "yaml-pol" not in command_str
+        assert "cli-proj" in command_str
+        assert "yaml-proj" not in command_str
+
+    def test_command_policies_projects_fall_back_to_tool_options(self, basic_standard_image_target):
+        """Test that policies/projects come from tool_options when no CLI value is given."""
+        from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            tool_options=WizCLIOptions(projects=["yaml-proj"], policies=["yaml-pol"]),
+        )
+        command_str = " ".join(cmd.command)
+        assert "yaml-pol" in command_str
+        assert "yaml-proj" in command_str
+
     def test_command_with_auth_options(self, basic_standard_image_target):
         """Test that auth CLI options are passed through."""
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
