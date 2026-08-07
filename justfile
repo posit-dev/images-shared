@@ -43,6 +43,14 @@ _setup-pre-commit:
 oven-build:
     docker build -t bakery-oven -f "{{ CWD }}/oven/Containerfile" "{{ CWD }}/oven"
 
+# binfmt_misc is a single table global to the host kernel, not namespaced
+# per-container, so this only needs to run once per boot from anywhere
+# with docker socket access (including from inside the oven), and it
+# doesn't persist across a reboot.
+# Register QEMU emulation for cross-arch image builds (one-time per host boot)
+oven-setup-qemu:
+    docker run --privileged --rm tonistiigi/binfmt --install all
+
 # Build (if stale) and drop into the oven with sibling repos mounted
 #
 # images-shared is worked on via git worktrees, so {{ CWD }} is never the
