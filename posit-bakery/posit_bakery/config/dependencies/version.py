@@ -84,6 +84,12 @@ class DependencyVersion(Version):
         self._has_minor = len(parts) > 1
         self._has_micro = len(parts) > 2
 
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        """Return a copy without depending on packaging's internal state."""
+        copied = type(self)(self._original)
+        memo[id(self)] = copied
+        return copied
+
     def __str__(self) -> str:
         """Return the original version string."""
         return self._original
