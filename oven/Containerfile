@@ -73,6 +73,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         gnupg \
         git \
+        jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Docker CLI + buildx plugin (CLI only — no daemon/engine package)
@@ -105,8 +106,7 @@ RUN set -eux; \
         *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     if [ "${GOSS_VERSION}" = "latest" ]; then \
-        curl -fsSL https://api.github.com/repos/goss-org/goss/releases/latest > releases.json; \
-        goss_tag=$(grep -m1 '"tag_name"' releases.json | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
+        goss_tag=$(curl -fsSL https://api.github.com/repos/goss-org/goss/releases/latest | jq '.tag_name' -r); \
     else \
         goss_tag="v${GOSS_VERSION#v}"; \
     fi; \
