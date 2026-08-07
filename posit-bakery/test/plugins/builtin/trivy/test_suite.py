@@ -1,8 +1,10 @@
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from posit_bakery.image import ImageTarget
 from posit_bakery.plugins.builtin.trivy.suite import TrivySuite
 
 pytestmark = [
@@ -139,3 +141,46 @@ class TestTrivySuite:
             suite.run()
 
         assert mock_run.call_count == len(basic_tmpconfig.targets)
+
+    @pytest.mark.slow
+    def test_run_integration(self, get_tmpconfig, monkeypatch):
+        """Test running trivy against a real, small public image with the real trivy binary.
+
+        Unlike hadolint (which only lints Containerfile text on disk), trivy needs a real,
+        pullable image reference. The "basic" fixture's targets are template-rendered
+        Containerfiles that are never built anywhere in the test suite, so `ImageTarget.ref()`
+        would resolve to a local tag that was never built and `trivy image` would always fail
+        to pull it. `ref()` is monkeypatched for a single target to point at a small,
+        always-available public image instead. Everything else -- TrivyCommand construction,
+        the real trivy subprocess invocation, and TrivyReport.load() SARIF parsing -- is
+        exercised unmodified, against real output from a real trivy binary.
+        """
+        basic_tmpconfig = get_tmpconfig("basic")
+        monkeypatch.setattr(ImageTarget, "ref", lambda self, *args, **kwargs: "alpine:3.19")
+
+        target = basic_tmpconfig.targets[0]
+        suite = TrivySuite(basic_tmpconfig.base_path, [target])
+        report_collection, errors = suite.run()
+
+        assert errors is None, f"real trivy scan failed: {errors}"
+        assert target.image_name in report_collection
+        assert target.uid in report_collection[target.image_name]
+        _, report = report_collection[target.image_name][target.uid]
+
+        results_file = suite.trivy_commands[0].results_file
+        assert results_file.exists()
+        raw = json.loads(results_file.read_text())
+        sarif_run = raw["runs"][0]
+        assert sarif_run["tool"]["driver"]["name"].lower() == "trivy"
+
+        # Cross-check the parsed report against the real SARIF trivy wrote: every
+        # counted severity bucket is non-negative, and they add up to exactly the
+        # number of results trivy actually reported. This fails if TrivyReport.load()
+        # mis-parses the real SARIF shape in a way the hand-written testdata fixture
+        # (used by the mocked-subprocess unit tests above) wouldn't catch.
+        assert report.critical_count >= 0
+        assert report.high_count >= 0
+        assert report.medium_count >= 0
+        assert report.low_count >= 0
+        assert report.unknown_count >= 0
+        assert report.total_count == len(sarif_run["results"])
