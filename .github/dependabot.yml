@@ -13,3 +13,23 @@ updates:
       actions:
         patterns:
           - "*"
+      actions-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+  - package-ecosystem: "uv"
+    directories:
+      - "/posit-bakery"
+      - "/.claude/skills/bakery/evals"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      python-deps:
+        patterns:
+          - "*"
+      python-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
