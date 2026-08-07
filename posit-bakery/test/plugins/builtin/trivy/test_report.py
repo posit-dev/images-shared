@@ -115,3 +115,26 @@ class TestTrivyReportCollection:
         assert table.title == "Trivy Scan Results"
         # Image, Version, Variant, OS, Critical, High, Medium, Low, Unknown
         assert len(table.columns) == 9
+
+    def test_aggregate_disambiguates_same_name_tuple_by_uid(self):
+        """Two targets sharing image/version/os/variant but different uids
+        (e.g. a dev vs. release channel build) must both appear, not collide."""
+        collection = TrivyReportCollection()
+        target_a = self._make_mock_target(
+            "connect", "connect-1.0.0-std-ubuntu2204-release", "1.0.0", "Standard", "Ubuntu 22.04"
+        )
+        target_b = self._make_mock_target(
+            "connect", "connect-1.0.0-std-ubuntu2204-dev", "1.0.0", "Standard", "Ubuntu 22.04"
+        )
+        report_a = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        report_b = TrivyReport(critical_count=0, high_count=0, medium_count=0, low_count=1, unknown_count=0)
+        collection.add_report(target_a, report_a)
+        collection.add_report(target_b, report_b)
+
+        agg = collection.aggregate()
+        leaf = agg["connect"]["1.0.0"]["Ubuntu 22.04"]["Standard"]
+        assert len(leaf) == 2
+        assert leaf["connect-1.0.0-std-ubuntu2204-release"]["critical"] == 1
+        assert leaf["connect-1.0.0-std-ubuntu2204-dev"]["low"] == 1
+        assert agg["total"]["critical"] == 1
+        assert agg["total"]["low"] == 1

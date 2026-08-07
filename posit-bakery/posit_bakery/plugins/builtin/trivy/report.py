@@ -106,7 +106,7 @@ class TrivyReportCollection(dict):
                 results.setdefault(image_name, {})
                 results[image_name].setdefault(version_name, {})
                 results[image_name][version_name].setdefault(os_name, {})
-                results[image_name][version_name][os_name][variant_name] = row
+                results[image_name][version_name][os_name].setdefault(variant_name, {})[uid] = row
 
                 for key in totals:
                     totals[key] += row[key]
@@ -134,27 +134,28 @@ class TrivyReportCollection(dict):
                 p_version = version
                 for os_name, variants in oses.items():
                     p_os = os_name
-                    for variant_name, row in variants.items():
-                        critical_style = "bright_red bold" if row["critical"] > 0 else "bright_black italic"
-                        high_style = "red bold" if row["high"] > 0 else "bright_black italic"
-                        medium_style = "yellow bold" if row["medium"] > 0 else "bright_black italic"
-                        low_style = "bright_blue bold" if row["low"] > 0 else "bright_black italic"
-                        unknown_style = "bright_black"
+                    for variant_name, entries in variants.items():
+                        for uid, row in entries.items():
+                            critical_style = "bright_red bold" if row["critical"] > 0 else "bright_black italic"
+                            high_style = "red bold" if row["high"] > 0 else "bright_black italic"
+                            medium_style = "yellow bold" if row["medium"] > 0 else "bright_black italic"
+                            low_style = "bright_blue bold" if row["low"] > 0 else "bright_black italic"
+                            unknown_style = "bright_black"
 
-                        table.add_row(
-                            p_image_name,
-                            p_version,
-                            variant_name,
-                            p_os,
-                            Text(str(row["critical"]), style=critical_style),
-                            Text(str(row["high"]), style=high_style),
-                            Text(str(row["medium"]), style=medium_style),
-                            Text(str(row["low"]), style=low_style),
-                            Text(str(row["unknown"]), style=unknown_style),
-                        )
-                        p_image_name = ""
-                        p_version = ""
-                        p_os = ""
+                            table.add_row(
+                                p_image_name,
+                                p_version,
+                                variant_name,
+                                p_os,
+                                Text(str(row["critical"]), style=critical_style),
+                                Text(str(row["high"]), style=high_style),
+                                Text(str(row["medium"]), style=medium_style),
+                                Text(str(row["low"]), style=low_style),
+                                Text(str(row["unknown"]), style=unknown_style),
+                            )
+                            p_image_name = ""
+                            p_version = ""
+                            p_os = ""
 
         table.add_section()
         table.add_row(
