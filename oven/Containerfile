@@ -37,6 +37,7 @@ FROM ubuntu:24.04
 ARG TARGETARCH
 ARG GOSS_VERSION=latest
 ARG HADOLINT_VERSION=latest
+ARG JUST_VERSION=1.58.0
 ARG TRIVY_VERSION=0.73.0
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -91,6 +92,26 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 
 # uv + uvx (Python itself is provisioned on demand by `uv sync`)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# just (github.com/casey/just) — for parity with the host dev workflow
+# (CLAUDE.md's `just test`/`just test-all`/`just setup`), not only the
+# `bakery` CLI the entrypoint wraps directly.
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) just_arch="x86_64" ;; \
+        arm64) just_arch="aarch64" ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    dest="/tmp/just"; mkdir -p "$dest"; cd "$dest"; \
+    just_num="${JUST_VERSION#v}"; \
+    asset="just-${just_num}-${just_arch}-unknown-linux-musl.tar.gz"; \
+    base_url="https://github.com/casey/just/releases/download/${just_num}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/SHA256SUMS" -o SHA256SUMS; \
+    sha256sum --ignore-missing -c SHA256SUMS; \
+    tar -xzf "${asset}" just; \
+    install -m 0755 just /usr/local/bin/just; \
+    cd /; rm -rf "$dest"
 
 # goss + dgoss (github.com/goss-org/goss) — mirrors setup-goss/action.yml's
 # current logic: goss's v0.4.10+ releases ship a versioned tarball plus one
