@@ -14,6 +14,8 @@ import typer
 from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
+from posit_bakery.config.image.dev_version.spec import DevBuildSpec
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.plugins.builtin.trivy import TrivyPlugin
 from posit_bakery.plugins.builtin.trivy.errors import BakeryTrivyError
 from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
@@ -91,6 +93,53 @@ class TestTrivyScanLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
+
+
+class TestTrivyScanDevSpecFlag:
+    """The --dev-spec flag is parsed by parse_dev_spec and passed through to settings.
+
+    Without this, a manually-dispatched dev build combining scan-image with dev-spec
+    dispatch inputs has no way to resolve the pinned dev-spec-only target, and
+    BakeryConfig's filter matches nothing -- see Task 7's CI wiring gap.
+    """
+
+    def test_dev_spec_passed_to_settings(self, mocked_trivy_scan):
+        mock_config, _ = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            [
+                "trivy",
+                "scan",
+                "--context",
+                BASIC_CONTEXT,
+                "--dev-spec",
+                '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}',
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert isinstance(settings.dev_spec, DevBuildSpec)
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+        assert settings.dev_spec.channel == ReleaseChannelEnum.DAILY
+
+    def test_dev_spec_default_none(self, mocked_trivy_scan):
+        mock_config, _ = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.dev_spec is None
+
+    def test_invalid_dev_spec_json_errors(self):
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--context", BASIC_CONTEXT, "--dev-spec", "not-json"],
+        )
+        assert result.exit_code != 0
 
 
 class TestTrivyScanFlagPassthrough:

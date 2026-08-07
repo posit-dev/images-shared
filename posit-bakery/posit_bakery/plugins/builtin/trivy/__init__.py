@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets, parse_dev_spec
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -97,6 +97,16 @@ class TrivyPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
             matrix_versions: Annotated[
                 Optional[MatrixVersionInclusionEnum],
                 typer.Option(
@@ -188,6 +198,7 @@ class TrivyPlugin(BakeryToolPlugin):
                     image_platform=[platform],
                 ),
                 dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
                 matrix_versions=matrix_versions,
                 latest=latest,
             )
