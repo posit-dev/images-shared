@@ -166,6 +166,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
 
     uses: "./.github/workflows/bakery-build-native.yml"
     secrets:
