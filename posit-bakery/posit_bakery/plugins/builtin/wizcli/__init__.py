@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -248,8 +248,7 @@ class WizCLIPlugin(BakeryToolPlugin):
             Authentication can be provided via `--client-id`/`--client-secret` options or
             the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
             """
-            platform = image_platform or SETTINGS.architecture
-            platform = f"linux/{platform}"
+            platform = normalize_platform(image_platform)
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
