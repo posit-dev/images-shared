@@ -43,6 +43,7 @@ jobs:
         uses: "posit-dev/images-shared/setup-bakery@main"
         with:
           version: ${{ inputs.version }}
+          restore-cache: "false"
 
       - name: Setup hadolint
         uses: "posit-dev/images-shared/setup-hadolint@main"
