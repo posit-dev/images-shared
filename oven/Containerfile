@@ -38,6 +38,7 @@ ARG TARGETARCH
 ARG GOSS_VERSION=latest
 ARG HADOLINT_VERSION=latest
 ARG JUST_VERSION=1.58.0
+ARG ORAS_VERSION=1.3.3
 ARG TRIVY_VERSION=0.73.0
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -204,6 +205,20 @@ RUN set -eux; \
     sha256sum --ignore-missing -c checksums.txt; \
     tar -xzf "${asset}" trivy; \
     install -m 0755 trivy /usr/local/bin/trivy; \
+    cd /; rm -rf "$dest"
+
+# oras (github.com/oras-project/oras) — `bakery ci merge`'s imagetools
+# plugin shells out to it directly.
+RUN set -eux; \
+    dest="/tmp/oras"; mkdir -p "$dest"; cd "$dest"; \
+    oras_num="${ORAS_VERSION#v}"; \
+    asset="oras_${oras_num}_linux_${TARGETARCH}.tar.gz"; \
+    base_url="https://github.com/oras-project/oras/releases/download/v${oras_num}"; \
+    curl -fsSL "${base_url}/${asset}" -o "${asset}"; \
+    curl -fsSL "${base_url}/oras_${oras_num}_checksums.txt" -o checksums.txt; \
+    sha256sum --ignore-missing -c checksums.txt; \
+    tar -xzf "${asset}" oras; \
+    install -m 0755 oras /usr/local/bin/oras; \
     cd /; rm -rf "$dest"
 
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/entrypoint.sh
