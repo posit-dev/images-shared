@@ -56,6 +56,9 @@ def _fake_target(
         image_variant=SimpleNamespace(name=variant) if variant else None,
         image_os=SimpleNamespace(platforms=list(platforms), name=os) if os else None,
         tags=list(tags),
+        # None of these CLI-level tests pass --cache-registry, so a real ImageTarget.cache_name()
+        # would always return None here too -- mirror that rather than faking a registry.
+        cache_name=lambda platform=None: None,
     )
 
 
