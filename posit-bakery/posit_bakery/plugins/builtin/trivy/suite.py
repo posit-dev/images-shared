@@ -76,12 +76,16 @@ class TrivySuite:
             exit_code = p.returncode
 
             report = None
-            if exit_code == 0 and trivy_command.results_file.exists():
-                try:
-                    report = TrivyReport.load(trivy_command.results_file)
-                    report_collection.add_report(trivy_command.image_target, report)
-                except Exception as e:
-                    log.error(f"Failed to parse trivy results for '{str(trivy_command.image_target)}': {e}")
+            if exit_code == 0:
+                if trivy_command.results_file.exists():
+                    try:
+                        report = TrivyReport.load(trivy_command.results_file)
+                        report_collection.add_report(trivy_command.image_target, report)
+                    except Exception as e:
+                        log.error(f"Failed to parse trivy results for '{str(trivy_command.image_target)}': {e}")
+                        exit_code = 1
+                else:
+                    log.error(f"trivy for '{str(trivy_command.image_target)}' exited 0 but produced no results file")
                     exit_code = 1
 
             # trivy's own --exit-code flag is never set (see TrivyCommand), so any

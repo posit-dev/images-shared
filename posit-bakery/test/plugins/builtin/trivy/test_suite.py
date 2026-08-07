@@ -111,6 +111,21 @@ class TestTrivySuite:
 
         assert errors is not None
 
+    def test_run_marks_error_on_missing_output_file(self, get_tmpconfig):
+        """A zero exit code with no results file written is still treated as an error, not a silent success."""
+        basic_tmpconfig = get_tmpconfig("basic")
+        suite = TrivySuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = b""
+        mock_result.stderr = b""
+
+        with patch("posit_bakery.plugins.builtin.trivy.suite.subprocess.run", return_value=mock_result):
+            report_collection, errors = suite.run()
+
+        assert errors is not None
+
     def test_run_never_passes_exit_code_flag(self, get_tmpconfig):
         """Guards the Global Constraint: trivy's own --exit-code flag must never be set."""
         basic_tmpconfig = get_tmpconfig("basic")
