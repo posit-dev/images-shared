@@ -248,18 +248,21 @@ class BuildSummary(BaseModel):
 
         :param targets: The same image targets `from_image_targets` was built from. Needed
             here (unlike the zero-I/O counts) because measurement keys off `ImageTarget.ref()`.
-        :param push: Whether this build pushed to a registry -- gates the registry size lookup
-            and the cache size lookup (`cache_to` is only ever written when pushing).
+        :param push: Whether this build pushed to a registry -- gates the registry size lookup.
+            Cache size is not gated on this: `cache_from` pulls whatever is at `cache_ref`
+            regardless of `push` (only `cache_to`, the write side, requires it), so the ref is
+            just as measurable on a pull-only build.
         :param load: Whether this build loaded to the local daemon -- gates the local size lookup.
         :param jobs: Maximum concurrent inspects; defaults to `SETTINGS.max_concurrency`.
         """
-        if not push and not load:
+        has_cache_ref = any(row.cache_ref is not None for row in self.targets)
+        if not push and not load and not has_cache_ref:
             return
 
         rows_by_uid = {row.uid: row for row in self.targets}
 
         manifest_client: GHCRManifestClient | None = None
-        if push and any(row.cache_ref is not None for row in self.targets):
+        if has_cache_ref:
             try:
                 manifest_client = GHCRManifestClient()
             except ValueError as e:
@@ -288,8 +291,8 @@ class BuildSummary(BaseModel):
                         registry_size, registry_layers = registry_result
                         if layers is None:
                             layers = registry_layers
-                    if manifest_client is not None and row is not None and row.cache_ref is not None:
-                        cache_size = _cache_size(manifest_client, row.cache_ref)
+                if manifest_client is not None and row is not None and row.cache_ref is not None:
+                    cache_size = _cache_size(manifest_client, row.cache_ref)
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
             return local_size, registry_size, layers, cache_size

@@ -293,14 +293,20 @@ class TestMeasureSizesCache:
             target.settings.cache_registry = "ghcr.io/posit-dev"
         return targets, BuildSummary.from_image_targets(targets)
 
-    def test_not_measured_when_push_is_false(self, get_targets):
+    def test_measured_when_push_is_false_but_cache_ref_present(self, get_targets):
+        """A pull-only build (`push=False`) still resolves `cache_from` against whatever is
+        currently at `cache_ref` -- the registry lookup needs a `cache_ref` to query, not
+        this build to have pushed anything, so it must not be gated on `push`."""
         targets, summary = self._summary_with_cache_ref(get_targets)
+        mock_client = MagicMock()
+        mock_client.get_manifest.return_value = Manifest(**json.loads(SINGLE_PLATFORM_MANIFEST_JSON))
 
-        with patch("posit_bakery.image.summary.GHCRManifestClient") as mock_client_cls:
-            summary.measure_sizes(targets, push=False, load=True)
+        with patch("posit_bakery.image.summary.GHCRManifestClient", return_value=mock_client):
+            with patch.object(CommandRunner, "run", _fake_run_registry_fails):
+                summary.measure_sizes(targets, push=False, load=False)
 
-        mock_client_cls.assert_not_called()
-        assert all(row.cache_size is None for row in summary.targets)
+        assert all(row.cache_size == 300 for row in summary.targets)
+        assert all(row.registry_size is None for row in summary.targets)
 
     def test_measured_when_push_is_true(self, get_targets):
         targets, summary = self._summary_with_cache_ref(get_targets)
