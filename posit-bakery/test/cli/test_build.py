@@ -146,7 +146,7 @@ class TestBuildJobsFlag:
 
 
 class TestBuildSummaryFlag:
-    """`--summary` reports build/tag counts without changing what the command does."""
+    """`--summary` is a dry-run flag: it prints aggregate counts and exits without building."""
 
     def test_omitted_by_default(self, mock_build_config):
         instance = mock_build_config.from_context.return_value
@@ -155,7 +155,8 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" not in result.stderr
 
-    def test_prints_table_to_stderr_on_success(self, mock_build_config):
+    def test_prints_table_to_stderr_exits_without_building(self, mock_build_config):
+        """--summary alone exits early with the 3-row aggregate count table; no build runs."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
@@ -164,11 +165,11 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" in result.stderr
         assert "Build Targets" in result.stderr
-        assert "Platform Builds" in result.stderr
-        assert "Registry Tags" in result.stderr
+        assert "Registry Size" not in result.stderr
         assert "Build Summary" not in result.stdout
+        instance.build_targets.assert_not_called()
 
-    def test_format_json_prints_to_stdout_on_success(self, mock_build_config):
+    def test_format_json_prints_to_stdout_exits_without_building(self, mock_build_config):
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
@@ -181,6 +182,7 @@ class TestBuildSummaryFlag:
         assert "Build Summary" not in result.stderr
         data = json.loads(result.stdout)
         assert data == {"build_targets": 1, "platform_builds": 1, "registry_tags": 2}
+        instance.build_targets.assert_not_called()
 
     def test_platform_builds_sums_platforms_not_targets(self, mock_build_config):
         """A 2-platform target must count as 2 platform builds -- the whole point of this
@@ -249,6 +251,17 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 1
         assert "not supported with --plan" in result.stderr
         instance.bake_plan_targets.assert_not_called()
+
+    def test_plan_with_summary_does_not_build(self, mock_build_config):
+        """--plan --summary shows bake JSON then the count table, with no build."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        instance.bake_plan_targets.return_value = "{}"
+        result = runner.invoke(
+            app, ["build", "--plan", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+        )
+        assert result.exit_code == 0
+        instance.build_targets.assert_not_called()
 
 
 @then("the bake plan is valid", target_fixture="bake_plan_data")

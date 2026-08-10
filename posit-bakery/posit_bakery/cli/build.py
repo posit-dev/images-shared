@@ -311,8 +311,14 @@ def build(
             )
             raise typer.Exit(code=1)
         stdout_console.print_json(config.bake_plan_targets(push=push))
-        if summary:
-            build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        if not summary:
+            raise typer.Exit(code=0)
+
+    if summary:
+        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        if summary_format == SummaryOutputFormat.JSON:
+            stdout_console.print_json(data=build_summary.as_dict())
+        else:
             stderr_console.print(build_summary.table(sizes=False))
         raise typer.Exit(code=0)
 
@@ -336,12 +342,5 @@ def build(
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print("❌ Build failed", style="error")
         raise typer.Exit(code=1)
-
-    if summary:
-        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
-        if summary_format == SummaryOutputFormat.JSON:
-            stdout_console.print_json(data=build_summary.as_dict())
-        else:
-            stderr_console.print(build_summary.table(sizes=False))
 
     stderr_console.print("✅ Build completed", style="success")
