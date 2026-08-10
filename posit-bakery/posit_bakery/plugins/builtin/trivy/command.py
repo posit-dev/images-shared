@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -5,6 +6,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator
 
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
 from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
+from posit_bakery.settings import SETTINGS
 from posit_bakery.util import find_bin
 
 TRIVY_ALL_SCANNERS = ["vuln", "secret", "license", "misconfig"]
@@ -61,7 +63,7 @@ class TrivyCommand(BaseModel):
             trivy_config = discover_trivy_config(image_target)
 
         image_subdir = results_dir / image_target.image_name
-        results_file = image_subdir / f"{image_target.uid}.sarif"
+        results_file = image_subdir / f"{cls._build_scan_category(image_target)}.sarif"
 
         return cls(
             image_target=image_target,
@@ -72,6 +74,29 @@ class TrivyCommand(BaseModel):
             timeout=timeout,
             trivy_config=trivy_config,
         )
+
+    @staticmethod
+    def _build_scan_category(image_target: ImageTarget) -> str:
+        """Version-stable category key for GitHub Code Scanning.
+
+        Omits the image version so the same category is reused across releases,
+        enabling PR-vs-baseline new-findings diffing. Uses tag display names
+        (Variant, OS) and the build architecture to match published image tags.
+        """
+        tv = image_target.tag_template_values
+        parts = [image_target.image_name]
+        if tv["Variant"]:
+            parts.append(tv["Variant"])
+        if tv["OS"]:
+            parts.append(tv["OS"])
+        parts.append(SETTINGS.architecture)
+        return re.sub(r"[ .+/]", "-", "-".join(parts)).lower()
+
+    @computed_field
+    @property
+    def scan_category(self) -> str:
+        """Version-stable category string for this target's SARIF upload."""
+        return self._build_scan_category(self.image_target)
 
     @model_validator(mode="after")
     def check_trivy_bin(self) -> Self:

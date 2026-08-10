@@ -188,6 +188,46 @@ class TestTrivyCommand:
 
         assert discover_trivy_config(basic_standard_image_target) is None
 
+    def test_scan_category_is_version_stable(self, basic_standard_image_target, get_config_obj):
+        """scan_category must not include the image version so it stays stable across releases."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert basic_standard_image_target.image_version.name not in cmd.scan_category
+
+    def test_scan_category_includes_variant_os_arch(self, basic_standard_image_target):
+        """scan_category includes variant tagDisplayName, OS tagDisplayName, and architecture."""
+        import re
+
+        from posit_bakery.settings import SETTINGS
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        tv = basic_standard_image_target.tag_template_values
+        # scan_category applies the same sanitization as _build_scan_category
+        sanitize = lambda s: re.sub(r"[ .+/]", "-", s).lower()
+        assert sanitize(basic_standard_image_target.image_name) in cmd.scan_category
+        if tv["Variant"]:
+            assert sanitize(tv["Variant"]) in cmd.scan_category
+        if tv["OS"]:
+            assert sanitize(tv["OS"]) in cmd.scan_category
+        assert SETTINGS.architecture in cmd.scan_category
+
+    def test_results_file_uses_scan_category(self, basic_standard_image_target):
+        """results_file stem must equal scan_category so basename gives the stable upload key."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.results_file.stem == cmd.scan_category
+        assert cmd.results_file.suffix == ".sarif"
+
     def test_validate_no_trivy_bin(self, basic_standard_image_target):
         """Test that validation fails if trivy binary cannot be found."""
         with patch("posit_bakery.plugins.builtin.trivy.command.find_trivy_bin") as mock:
