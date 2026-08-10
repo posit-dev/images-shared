@@ -87,16 +87,6 @@ on:
         default: ""
         required: false
         type: string
-      scan-image:
-        description: "Whether to run a Trivy vulnerability scan on built images [default: false]"
-        default: false
-        required: false
-        type: boolean
-      trivy-version:
-        description: "The Trivy release version to install [default: latest]"
-        default: "latest"
-        required: false
-        type: string
       merge-builder:
         description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
         default: "ubuntu-latest-4x"
@@ -237,6 +227,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -386,14 +377,14 @@ jobs:
             --push
 
       - name: Setup trivy
-        if: ${{ inputs.scan-image }}
+        if: ${{ inputs.push }}
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
-          version: ${{ inputs.trivy-version }}
           cache: true
 
       - name: Scan
-        if: ${{ inputs.scan-image }}
+        if: ${{ inputs.push }}
+        continue-on-error: true
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
@@ -414,6 +405,13 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      - name: Upload Trivy SARIF
+        if: ${{ inputs.push && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@404bd795832c959ffb8efae2b1b4cc1aafc82058  # v3.37.6
+        with:
+          sarif_file: results/trivy/
+          category: trivy-${{ matrix.img.image }}-${{ steps.normalize-platform.outputs.platform }}
 
       - name: Test
         env:

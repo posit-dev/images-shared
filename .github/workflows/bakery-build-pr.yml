@@ -50,16 +50,6 @@ on:
         default: ""
         required: false
         type: string
-      scan-image:
-        description: "Whether to run a Trivy vulnerability scan on built images [default: false]"
-        default: false
-        required: false
-        type: boolean
-      trivy-version:
-        description: "The Trivy release version to install [default: latest]"
-        default: "latest"
-        required: false
-        type: string
       amd64-builder:
         description: "Runner label for amd64 builds"
         default: "ubuntu-latest-4x"
@@ -208,6 +198,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -295,14 +286,12 @@ jobs:
             --context "$BAKERY_CONTEXT"
 
       - name: Setup trivy
-        if: ${{ inputs.scan-image }}
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
-          version: ${{ inputs.trivy-version }}
           cache: true
 
       - name: Scan
-        if: ${{ inputs.scan-image }}
+        continue-on-error: true
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
           IMAGE_VERSION: ${{ matrix.img.version }}
@@ -323,6 +312,13 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             --context "$BAKERY_CONTEXT"
+
+      - name: Upload Trivy SARIF
+        if: ${{ !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@404bd795832c959ffb8efae2b1b4cc1aafc82058  # v3.37.6
+        with:
+          sarif_file: results/trivy/
+          category: trivy-${{ matrix.img.image }}-${{ steps.normalize-platform.outputs.platform }}
 
       - name: Test
         env:
