@@ -370,7 +370,7 @@ window.onload = function () {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery</span></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery</span></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -759,11 +759,7 @@ window.onload = function () {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#bakery" id="toc-bakery" class="nav-link active" data-scroll-target="#bakery"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery</span></a>
-  <ul class="collapse">
-  <li><a href="#options" id="toc-options" class="nav-link" data-scroll-target="#options">Options</a></li>
-  <li><a href="#commands" id="toc-commands" class="nav-link" data-scroll-target="#commands">Commands</a></li>
-  </ul></li>
+  <li><a href="#bakery" id="toc-bakery" class="nav-link active" data-scroll-target="#bakery"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery</span></a></li>
   </ul>
 </nav>
     </div>
@@ -773,7 +769,7 @@ window.onload = function () {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery</span></h1>
+<h1 class="title"><span class="doc-object-name doc-function doc-label doc-label-cli">bakery</span></h1>
 </div>
 
 
@@ -791,12 +787,12 @@ window.onload = function () {
 
 
 <section id="bakery" class="level1">
-<h1><span class="doc-object-name doc-function doc-label doc-label-cli-group">bakery</span></h1>
+<h1><span class="doc-object-name doc-function doc-label doc-label-cli">bakery</span></h1>
 <div class="doc-subject">
 <p>A tool for building, testing, and managing container images</p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span> <span class="pp">[</span><span class="ss">OPTIONS</span><span class="pp">]</span> COMMAND <span class="pp">[</span><span class="ss">ARGS</span><span class="pp">]</span>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">bakery</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="details" data-summary="Full --help output">
 <div class="cli-manpage">
@@ -805,9 +801,11 @@ window.onload = function () {
   A tool for building, testing, and managing container images
 
 Options:
-  --install-completion  Install completion for the current shell.
+  --install-completion  Install completion for the current shell.  [default:
+                        &lt;object object at 0x7f3ab64d8c10&gt;]
   --show-completion     Show completion for the current shell, to copy it or
-                        customize the installation.
+                        customize the installation.  [default: &lt;object object
+                        at 0x7f3ab64d8c10&gt;]
   --help                Show this message and exit.
 
 Commands:
@@ -826,82 +824,8 @@ Commands:
   wizcli      Scan container images for vulnerabilities with WizCLI</code></pre>
 </div>
 </div>
-<section id="options" class="level2 doc-parameters">
-<h2 class="doc-parameters anchored" data-anchor-id="options">Options</h2>
-<div class="doc-definition-items">
-<dl>
-<dt><code><span class="doc-parameter-name">--install-completion</span></code></dt>
-<dd>
-Install completion for the current shell.
-</dd>
-<dt><code><span class="doc-parameter-name">--show-completion</span></code></dt>
-<dd>
-Show completion for the current shell, to copy it or customize the installation.
-</dd>
-</dl>
-</div>
-</section>
-<section id="commands" class="level2 doc-parameters">
-<h2 class="doc-parameters anchored" data-anchor-id="commands">Commands</h2>
-<div class="doc-definition-items">
-<dl>
-<dt><code><span class="doc-parameter-name">build</span></code></dt>
-<dd>
-<a href="../../reference/cli/build.html">Build images using buildkit bake (aliases: b, bake)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">version</span></code></dt>
-<dd>
-<a href="../../reference/cli/version.html">Show the Posit Bakery version</a>
-</dd>
-<dt><code><span class="doc-parameter-name">run</span></code></dt>
-<dd>
-<a href="../../reference/cli/run.html">Run extra tools/commands against images (aliases: r)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">create</span></code></dt>
-<dd>
-<a href="../../reference/cli/create.html">Create new projects, images, and versions (aliases: c, new)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">update</span></code></dt>
-<dd>
-<a href="../../reference/cli/update.html">Update managed files and configurations (aliases: u, up)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">remove</span></code></dt>
-<dd>
-<a href="../../reference/cli/remove.html">Remove images and versions from the project (aliases: rm, r)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">get</span></code></dt>
-<dd>
-<a href="../../reference/cli/get.html">Get information about the bakery configuration</a>
-</dd>
-<dt><code><span class="doc-parameter-name">ci</span></code></dt>
-<dd>
-<a href="../../reference/cli/ci.html">Construct a CI matrix from the project.</a>
-</dd>
-<dt><code><span class="doc-parameter-name">clean</span></code></dt>
-<dd>
-<a href="../../reference/cli/clean.html">Cleaning utilities for remote build caches</a>
-</dd>
-<dt><code><span class="doc-parameter-name">dgoss</span></code></dt>
-<dd>
-<a href="../../reference/cli/dgoss.html">Run Goss tests against container images</a>
-</dd>
-<dt><code><span class="doc-parameter-name">hadolint</span></code></dt>
-<dd>
-<a href="../../reference/cli/hadolint.html">Lint Containerfiles using hadolint</a>
-</dd>
-<dt><code><span class="doc-parameter-name">imagetools</span></code></dt>
-<dd>
-<a href="../../reference/cli/imagetools.html">Merge and SOCI-convert multi-platform images (ORAS + SOCI)</a>
-</dd>
-<dt><code><span class="doc-parameter-name">wizcli</span></code></dt>
-<dd>
-<a href="../../reference/cli/wizcli.html">Scan container images for vulnerabilities with WizCLI</a>
-</dd>
-</dl>
-</div>
 
 
-</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->

@@ -531,379 +531,11 @@
     ]
   },
   {
-    "objectID": "reference/cli/wizcli/scan.html",
-    "href": "reference/cli/wizcli/scan.html",
-    "title": "bakery wizcli scan",
+    "objectID": "reference/cli/index.html",
+    "href": "reference/cli/index.html",
+    "title": "bakery",
     "section": "",
-    "text": "Scan container images for vulnerabilities using WizCLI.\n\n\nbakery wizcli scan [OPTIONS]\n\n\nRuns wizcli scan container-image against each image target in the project. Results are written as JSON files to the results/wizcli/ directory.\nImages are expected to be available to the local Docker daemon. It is advised to run build before running wizcli scans.\nRequires wizcli to be installed on the system. The path to the binary can be set with the WIZCLI_PATH environment variable if not present in the system PATH. Authentication can be provided via --client-id/--client-secret options or the WIZ_CLIENT_ID/WIZ_CLIENT_SECRET environment variables.\n\n\n\nUsage: bakery wizcli scan [OPTIONS]\n\n  Scan container images for vulnerabilities using WizCLI.\n\n  Runs `wizcli scan container-image` against each image target in the project.\n  Results are written as JSON files to the `results/wizcli/` directory.\n\n  Images are expected to be available to the local Docker daemon. It is advised\n  to run `build` before running wizcli scans.\n\n  Requires wizcli to be installed on the system. The path to the binary can be\n  set with the `WIZCLI_PATH` environment variable if not present in the system PATH.\n  Authentication can be provided via `--client-id`/`--client-secret` options or\n  the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --image-name TEXT               The image name to isolate scanning to.\n  --image-version TEXT            The image version to isolate scanning to.\n  --image-variant TEXT            The image variant to isolate scanning to.\n  --image-os TEXT                 The image OS to isolate scanning to.\n  --image-platform TEXT           Filters which image build platform to scan.\n                                  [default: (amd64)]\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development versions\n                                  defined in config.  [default: exclude]\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: exclude]\n  --latest                        Scan only the latest version of each image.\n                                  Development versions are ignored by this\n                                  filter.\n  --metadata-file PATH            Path to a build metadata file. If given,\n                                  attempts to scan image artifacts in the\n                                  file.\n  --disabled-scanners TEXT        Comma-separated scanners to disable (e.g.\n                                  Vulnerability,Secret,Malware).\n  --driver TEXT                   Driver used to scan image (extract, mount,\n                                  mountWithLayers).\n  --timeout TEXT                  Timeout for the scan (e.g. 1h, 30m).\n  --no-publish                    Disable publishing scan results to the Wiz\n                                  portal.\n  --scan-context-id TEXT          Context identifier that defines scan\n                                  granularity.\n  --log TEXT                      File path for wizcli debug logs.\n  --client-id TEXT                Wiz service account client ID (overrides\n                                  WIZ_CLIENT_ID env var).\n  --client-secret TEXT            Wiz service account client secret (overrides\n                                  WIZ_CLIENT_SECRET env var).\n  --use-device-code               Use device code flow for authentication.\n  --no-browser                    Do not open browser for device code flow.\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate scanning to.\n\n--image-version: TEXT\n\nThe image version to isolate scanning to.\n\n--image-variant: TEXT\n\nThe image variant to isolate scanning to.\n\n--image-os: TEXT\n\nThe image OS to isolate scanning to.\n\n--image-platform: TEXT\n\nFilters which image build platform to scan.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nScan only the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to scan image artifacts in the file.\n\n--disabled-scanners: TEXT\n\nComma-separated scanners to disable (e.g. Vulnerability,Secret,Malware).\n\n--driver: TEXT\n\nDriver used to scan image (extract, mount, mountWithLayers).\n\n--timeout: TEXT\n\nTimeout for the scan (e.g. 1h, 30m).\n\n--no-publish\n\nDisable publishing scan results to the Wiz portal.\n\n--scan-context-id: TEXT\n\nContext identifier that defines scan granularity.\n\n--log: TEXT\n\nFile path for wizcli debug logs.\n\n--client-id: TEXT\n\nWiz service account client ID (overrides WIZ_CLIENT_ID env var).\n\n--client-secret: TEXT\n\nWiz service account client secret (overrides WIZ_CLIENT_SECRET env var).\n\n--use-device-code\n\nUse device code flow for authentication.\n\n--no-browser\n\nDo not open browser for device code flow.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/wizcli/scan.html#options",
-    "href": "reference/cli/wizcli/scan.html#options",
-    "title": "bakery wizcli scan",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate scanning to.\n\n--image-version: TEXT\n\nThe image version to isolate scanning to.\n\n--image-variant: TEXT\n\nThe image variant to isolate scanning to.\n\n--image-os: TEXT\n\nThe image OS to isolate scanning to.\n\n--image-platform: TEXT\n\nFilters which image build platform to scan.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nScan only the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to scan image artifacts in the file.\n\n--disabled-scanners: TEXT\n\nComma-separated scanners to disable (e.g. Vulnerability,Secret,Malware).\n\n--driver: TEXT\n\nDriver used to scan image (extract, mount, mountWithLayers).\n\n--timeout: TEXT\n\nTimeout for the scan (e.g. 1h, 30m).\n\n--no-publish\n\nDisable publishing scan results to the Wiz portal.\n\n--scan-context-id: TEXT\n\nContext identifier that defines scan granularity.\n\n--log: TEXT\n\nFile path for wizcli debug logs.\n\n--client-id: TEXT\n\nWiz service account client ID (overrides WIZ_CLIENT_ID env var).\n\n--client-secret: TEXT\n\nWiz service account client secret (overrides WIZ_CLIENT_SECRET env var).\n\n--use-device-code\n\nUse device code flow for authentication.\n\n--no-browser\n\nDo not open browser for device code flow.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/version.html",
-    "href": "reference/cli/version.html",
-    "title": "bakery version",
-    "section": "",
-    "text": "bakery version\n\nShow the Posit Bakery version\n\n\nbakery version\n\n\n\nUsage: bakery version [OPTIONS]\n\n  Show the Posit Bakery version\n\nOptions:\n  --help  Show this message and exit.\n\n\n\n\n\n\n Back to top"
-  },
-  {
-    "objectID": "reference/cli/update/files.html",
-    "href": "reference/cli/update/files.html",
-    "title": "bakery update files",
-    "section": "",
-    "text": "Renders templates to version files matching the given filters\n\n\nbakery update files [OPTIONS]\n\n\nThis command will rerender each matching image version’s files from the templates in the image’s template directory. Existing configuration details for the version such as dependencies, variants, and the latest flag are used and remain unmodified.\nExisting files will not be removed, but may be overwritten during template rendering.\n\n\n\nUsage: bakery update files [OPTIONS]\n\n  Renders templates to version files matching the given filters\n\n  This command will rerender each matching image version's files from the templates in the image's template\n  directory. Existing configuration details for the version such as dependencies, variants, and the latest flag\n  are used and remain unmodified.\n\n  Existing files will not be removed, but may be overwritten during template rendering.\n\nOptions:\n  --context DIRECTORY      The root path to use. Defaults to the current\n                           working directory where invoked.  [default: (.)]\n  --image-name TEXT        The image name to isolate file rendering to.\n  --image-version TEXT     The image version to isolate file rendering to.\n  --template-pattern TEXT  Regex pattern(s) to filter which templates to\n                           render.\n  -v, --verbose            Enable debug logging\n  -q, --quiet              Supress all output except errors\n  --help                   Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate file rendering to.\n\n--image-version: TEXT\n\nThe image version to isolate file rendering to.\n\n--template-pattern: TEXT\n\nRegex pattern(s) to filter which templates to render.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/update/files.html#options",
-    "href": "reference/cli/update/files.html#options",
-    "title": "bakery update files",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate file rendering to.\n\n--image-version: TEXT\n\nThe image version to isolate file rendering to.\n\n--template-pattern: TEXT\n\nRegex pattern(s) to filter which templates to render.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/run/dgoss.html",
-    "href": "reference/cli/run/dgoss.html",
-    "title": "bakery run dgoss",
-    "section": "",
-    "text": "Runs dgoss tests against images in the context path\n\n\nbakery run dgoss [OPTIONS]\n\n\nDEPRECATED: Use bakery dgoss run instead. This command will be removed in a future release.\nIf no options are provided, the command test all images in the project and write test results to the results/ directory in the context path.\nImages are expected to be available to the local Docker daemon. It is advised to run build before running dgoss tests.\nRequires goss and dgoss to be installed on the system. Paths to the binaries can be set with the GOSS_BIN and DGOSS_BIN environment variables if not present in the system PATH.\n\n\n\nUsage: bakery run dgoss [OPTIONS]\n\n  Runs dgoss tests against images in the context path\n\n  DEPRECATED: Use 'bakery dgoss run' instead. This command will be removed in a future release.\n\n  If no options are provided, the command test all images in the project and write test results to the `results/`\n  directory in the context path.\n\n  Images are expected to be available to the local Docker daemon. It is advised to run `build` before running\n  dgoss tests.\n\n  Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and\n  `DGOSS_BIN` environment variables if not present in the system PATH.\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --image-name TEXT               The image name to isolate goss testing to.\n  --image-version TEXT            The image version to isolate goss testing\n                                  to.\n  --image-variant TEXT            The image type to isolate goss testing to.\n  --image-os TEXT                 The image OS to isolate goss testing to.\n  --image-platform TEXT           Filters which image build platform to run\n                                  tests for, e.g. 'linux/amd64'. Image test\n                                  targets incompatible with the given\n                                  platform(s) will be skipped. Requires a\n                                  compatible goss binary.  [default: (amd64)]\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development versions\n                                  defined in config.  [default: exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:\n                                  '{\"version\": \"2026.05.0-dev+185-gSHA\",\n                                  \"channel\": \"daily\"}'  [env var:\n                                  BAKERY_DEV_SPEC]\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: exclude]\n  --latest                        Run tests only against the latest version of\n                                  each image. Development versions are ignored\n                                  by this filter.\n  --metadata-file PATH            Path to a build metadata file. If given,\n                                  attempts to run tests against image\n                                  artifacts in the file.\n  --clean / --no-clean            Clean up intermediary and temporary files\n                                  after building. Can be helpful for\n                                  debugging.  [default: clean]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate goss testing to.\n\n--image-version: TEXT\n\nThe image version to isolate goss testing to.\n\n--image-variant: TEXT\n\nThe image type to isolate goss testing to.\n\n--image-os: TEXT\n\nThe image OS to isolate goss testing to.\n\n--image-platform: TEXT\n\nFilters which image build platform to run tests for, e.g. linux/amd64. Image test targets incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nRun tests only against the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to run tests against image artifacts in the file.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Can be helpful for debugging.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/run/dgoss.html#options",
-    "href": "reference/cli/run/dgoss.html#options",
-    "title": "bakery run dgoss",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate goss testing to.\n\n--image-version: TEXT\n\nThe image version to isolate goss testing to.\n\n--image-variant: TEXT\n\nThe image type to isolate goss testing to.\n\n--image-os: TEXT\n\nThe image OS to isolate goss testing to.\n\n--image-platform: TEXT\n\nFilters which image build platform to run tests for, e.g. linux/amd64. Image test targets incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nRun tests only against the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to run tests against image artifacts in the file.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Can be helpful for debugging.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/remove/version.html",
-    "href": "reference/cli/remove/version.html",
-    "title": "bakery remove version",
-    "section": "",
-    "text": "Removes an existing version from an image in the bakery project\n\n\nbakery remove version [OPTIONS] IMAGE_NAME IMAGE_VERSION\n\n\nRemoves the version subpath and all its contents from the specified image in the bakery project and will remove its configuration from the parent image in the bakery.yaml file.\n\n\n\nUsage: bakery remove version [OPTIONS] IMAGE_NAME IMAGE_VERSION\n\n  Removes an existing version from an image in the bakery project\n\n  Removes the version subpath and all its contents from the specified image in\n  the bakery project and will remove its configuration from the parent image\n  in the bakery.yaml file.\n\nArguments:\n  IMAGE_NAME     The image to which the version to be removed belongs. This\n                 must match an image name present in the bakery.yaml\n                 configuration.  [required]\n  IMAGE_VERSION  The image version to remove.  [required]\n\nOptions:\n  --context DIRECTORY  The root path to use. Defaults to the current working\n                       directory where invoked.  [default: (.)]\n  -v, --verbose        Enable debug logging\n  -q, --quiet          Supress all output except errors\n  --help               Show this message and exit.\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\nIMAGE_VERSION: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/remove/version.html#arguments",
-    "href": "reference/cli/remove/version.html#arguments",
-    "title": "bakery remove version",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired.\n\nIMAGE_VERSION: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/remove/version.html#options",
-    "href": "reference/cli/remove/version.html#options",
-    "title": "bakery remove version",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/remove.html",
-    "href": "reference/cli/remove.html",
-    "title": "bakery remove",
-    "section": "",
-    "text": "Remove images and versions from the project (aliases: rm, r)\n\n\nbakery remove COMMAND [ARGS]...\n\n\n\nUsage: bakery remove [OPTIONS] COMMAND [ARGS]...\n\n  Remove images and versions from the project (aliases: rm, r)\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  image    Removes an existing image from the bakery project\n  version  Removes an existing version from an image in the bakery project\n\n\n\n\n\n\nimage\n\nRemoves an existing image from the bakery project\n\nversion\n\nRemoves an existing version from an image in the bakery project"
-  },
-  {
-    "objectID": "reference/cli/remove.html#commands",
-    "href": "reference/cli/remove.html#commands",
-    "title": "bakery remove",
-    "section": "",
-    "text": "image\n\nRemoves an existing image from the bakery project\n\nversion\n\nRemoves an existing version from an image in the bakery project"
-  },
-  {
-    "objectID": "reference/cli/imagetools/soci_convert.html",
-    "href": "reference/cli/imagetools/soci_convert.html",
-    "title": "bakery imagetools soci-convert",
-    "section": "",
-    "text": "Convert images referenced by build-metadata JSON files into SOCI-enabled images.\n\n\nbakery imagetools soci-convert [OPTIONS] METADATA_FILE...\n\n\nConversion runs in standalone (no-containerd) mode via oras. Targets without tool: soci, enabled: true in bakery.yaml are skipped.\n\n\n\nUsage: bakery imagetools soci-convert [OPTIONS] METADATA_FILE...\n\n  Convert images referenced by build-metadata JSON files into SOCI-enabled\n  images.\n\n  Conversion runs in standalone (no-containerd) mode via oras. Targets\n  without `tool: soci, enabled: true` in bakery.yaml are skipped.\n\nArguments:\n  METADATA_FILE...  Path to input build metadata JSON file(s).  [required]\n\nOptions:\n  --context PATH            The root path to use. Defaults to the current\n                            working directory.  [default: (.)]\n  --temp-registry TEXT      Temporary registry to use for split/merge builds.\n  --dry-run / --no-dry-run  Log commands without executing them.  [default:\n                            no-dry-run]\n  -v, --verbose             Enable debug logging\n  -q, --quiet               Supress all output except errors\n  --help                    Show this message and exit.\n\n\n\n\n\n\nMETADATA_FILE: PATH\n\nRequired.\n\n\n\n\n\n\n\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--temp-registry: TEXT\n\nTemporary registry to use for split/merge builds.\n\n--dry-run, --no-dry-run\n\nLog commands without executing them.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/imagetools/soci_convert.html#arguments",
-    "href": "reference/cli/imagetools/soci_convert.html#arguments",
-    "title": "bakery imagetools soci-convert",
-    "section": "",
-    "text": "METADATA_FILE: PATH\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/imagetools/soci_convert.html#options",
-    "href": "reference/cli/imagetools/soci_convert.html#options",
-    "title": "bakery imagetools soci-convert",
-    "section": "",
-    "text": "--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--temp-registry: TEXT\n\nTemporary registry to use for split/merge builds.\n\n--dry-run, --no-dry-run\n\nLog commands without executing them.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/imagetools.html",
-    "href": "reference/cli/imagetools.html",
-    "title": "bakery imagetools",
-    "section": "",
-    "text": "Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n\n\nbakery imagetools COMMAND [ARGS]...\n\n\n\nUsage: bakery imagetools [OPTIONS] COMMAND [ARGS]...\n\n  Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  merge         Merge multi-platform images from build metadata files...\n  soci-convert  Convert images referenced by build-metadata JSON files...\n\n\n\n\n\n\nmerge\n\nMerge multi-platform images from build metadata files using ORAS.\n\nsoci-convert\n\nConvert images referenced by build-metadata JSON files into SOCI-enabled images."
-  },
-  {
-    "objectID": "reference/cli/imagetools.html#commands",
-    "href": "reference/cli/imagetools.html#commands",
-    "title": "bakery imagetools",
-    "section": "",
-    "text": "merge\n\nMerge multi-platform images from build metadata files using ORAS.\n\nsoci-convert\n\nConvert images referenced by build-metadata JSON files into SOCI-enabled images."
-  },
-  {
-    "objectID": "reference/cli/hadolint.html",
-    "href": "reference/cli/hadolint.html",
-    "title": "bakery hadolint",
-    "section": "",
-    "text": "Lint Containerfiles using hadolint\n\n\nbakery hadolint COMMAND [ARGS]...\n\n\n\nUsage: bakery hadolint [OPTIONS] COMMAND [ARGS]...\n\n  Lint Containerfiles using hadolint\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  run  Runs hadolint against Containerfiles in the context path\n\n\n\n\n\n\nrun\n\nRuns hadolint against Containerfiles in the context path"
-  },
-  {
-    "objectID": "reference/cli/hadolint.html#commands",
-    "href": "reference/cli/hadolint.html#commands",
-    "title": "bakery hadolint",
-    "section": "",
-    "text": "run\n\nRuns hadolint against Containerfiles in the context path"
-  },
-  {
-    "objectID": "reference/cli/get/tags.html",
-    "href": "reference/cli/get/tags.html",
-    "title": "bakery get tags",
-    "section": "",
-    "text": "Get the list of tags that would be built for the given context and filters.\n\n\nbakery get tags [OPTIONS]\n\n\n\nUsage: bakery get tags [OPTIONS]\n\n  Get the list of tags that would be built for the given context and filters.\n\nOptions:\n  --image-name TEXT               The image name to isolate tags to.\n  --image-version TEXT            The image version to isolate tags to.\n  --image-variant TEXT            The image variant to isolate tags to.\n  --image-os TEXT                 The image OS to isolate tags to.\n  --dev-versions [include|exclude|only]\n                                  Include development versions defined in\n                                  config.  [default: exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --matrix-versions [include|exclude|only]\n                                  Include versions defined in image matrix.\n                                  [default: exclude]\n  --latest                        Show tags only for the latest version of\n                                  each image. Development versions are ignored\n                                  by this filter.\n  --output [component|uid]        Output format for tags.  [default:\n                                  component]\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--image-name: TEXT\n\nThe image name to isolate tags to.\n\n--image-version: TEXT\n\nThe image version to isolate tags to.\n\n--image-variant: TEXT\n\nThe image variant to isolate tags to.\n\n--image-os: TEXT\n\nThe image OS to isolate tags to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude versions defined in image matrix.\n\n--latest\n\nShow tags only for the latest version of each image. Development versions are ignored by this filter.\n\n--output: CHOICE = GetTagsOutputFormat.COMPONENT\n\nOutput format for tags.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/get/tags.html#options",
-    "href": "reference/cli/get/tags.html#options",
-    "title": "bakery get tags",
-    "section": "",
-    "text": "--image-name: TEXT\n\nThe image name to isolate tags to.\n\n--image-version: TEXT\n\nThe image version to isolate tags to.\n\n--image-variant: TEXT\n\nThe image variant to isolate tags to.\n\n--image-os: TEXT\n\nThe image OS to isolate tags to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude versions defined in image matrix.\n\n--latest\n\nShow tags only for the latest version of each image. Development versions are ignored by this filter.\n\n--output: CHOICE = GetTagsOutputFormat.COMPONENT\n\nOutput format for tags.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/dgoss/run.html",
-    "href": "reference/cli/dgoss/run.html",
-    "title": "bakery dgoss run",
-    "section": "",
-    "text": "Runs dgoss tests against images in the context path\n\n\nbakery dgoss run [OPTIONS]\n\n\nIf no options are provided, the command test all images in the project and write test results to the results/ directory in the context path.\nImages are expected to be available to the local Docker daemon. It is advised to run build before running dgoss tests.\nRequires goss and dgoss to be installed on the system. Paths to the binaries can be set with the GOSS_BIN and DGOSS_BIN environment variables if not present in the system PATH.\n\n\n\nUsage: bakery dgoss run [OPTIONS]\n\n  Runs dgoss tests against images in the context path\n\n  If no options are provided, the command test all images in the project and write test results to the `results/`\n  directory in the context path.\n\n  Images are expected to be available to the local Docker daemon. It is advised to run `build` before running\n  dgoss tests.\n\n  Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and\n  `DGOSS_BIN` environment variables if not present in the system PATH.\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --image-name TEXT               The image name to isolate goss testing to.\n  --image-version TEXT            The image version to isolate goss testing\n                                  to.\n  --image-variant TEXT            The image type to isolate goss testing to.\n  --image-os TEXT                 The image OS to isolate goss testing to.\n  --image-platform TEXT           Filters which image build platform to run\n                                  tests for, e.g. 'linux/amd64'. Image test\n                                  targets incompatible with the given\n                                  platform(s) will be skipped. Requires a\n                                  compatible goss binary.  [default: (amd64)]\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development versions\n                                  defined in config.  [default: exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:\n                                  '{\"version\": \"2026.05.0-dev+185-gSHA\",\n                                  \"channel\": \"daily\"}'  [env var:\n                                  BAKERY_DEV_SPEC]\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: exclude]\n  --latest                        Run tests only against the latest version of\n                                  each image. Development versions are ignored\n                                  by this filter.\n  --metadata-file PATH            Path to a build metadata file. If given,\n                                  attempts to run tests against image\n                                  artifacts in the file.\n  -j, --jobs INTEGER              Maximum number of dgoss commands to run\n                                  concurrently. Defaults to the\n                                  BAKERY_MAX_CONCURRENCY env var or a built-in\n                                  default.\n  --clean / --no-clean            Clean up intermediary and temporary files\n                                  after building. Can be helpful for\n                                  debugging.  [default: clean]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate goss testing to.\n\n--image-version: TEXT\n\nThe image version to isolate goss testing to.\n\n--image-variant: TEXT\n\nThe image type to isolate goss testing to.\n\n--image-os: TEXT\n\nThe image OS to isolate goss testing to.\n\n--image-platform: TEXT\n\nFilters which image build platform to run tests for, e.g. linux/amd64. Image test targets incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nRun tests only against the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to run tests against image artifacts in the file.\n\n-j, --jobs: INTEGER\n\nMaximum number of dgoss commands to run concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Can be helpful for debugging.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/dgoss/run.html#options",
-    "href": "reference/cli/dgoss/run.html#options",
-    "title": "bakery dgoss run",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nThe image name to isolate goss testing to.\n\n--image-version: TEXT\n\nThe image version to isolate goss testing to.\n\n--image-variant: TEXT\n\nThe image type to isolate goss testing to.\n\n--image-os: TEXT\n\nThe image OS to isolate goss testing to.\n\n--image-platform: TEXT\n\nFilters which image build platform to run tests for, e.g. linux/amd64. Image test targets incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nRun tests only against the latest version of each image. Development versions are ignored by this filter.\n\n--metadata-file: PATH\n\nPath to a build metadata file. If given, attempts to run tests against image artifacts in the file.\n\n-j, --jobs: INTEGER\n\nMaximum number of dgoss commands to run concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Can be helpful for debugging.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/version.html",
-    "href": "reference/cli/create/version.html",
-    "title": "bakery create version",
-    "section": "",
-    "text": "Renders templates for an image to a versioned subdirectory of the image directory.\n\n\nbakery create version [OPTIONS] IMAGE_NAME IMAGE_VERSION\n\n\nThis tool expects an image directory to use the following structure as generated by bakery create image:\n.\n└── image_path/\n    └── template/\n        ├── optional_subdirectories/\n        │   └── *.jinja2\n        ├── *.jinja2\n        └── Containerfile*.jinja2\n\n\n\nUsage: bakery create version [OPTIONS] IMAGE_NAME IMAGE_VERSION\n\n  Renders templates for an image to a versioned subdirectory of the image\n  directory.\n\n  This tool expects an image directory to use the following structure as\n  generated by `bakery create image`:\n\n. └── image_path/ └── template/ ├── optional_subdirectories/ │ └── .jinja2 ├── .jinja2 └── Containerfile*.jinja2 ```\nArguments: IMAGE_NAME The image to which the version belongs. This must match an image name present in the bakery.yaml configuration. [required] IMAGE_VERSION The new version to render the templates to. [required]\nOptions: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –subpath TEXT The subdirectory to use for the version. Defaults to the image version. –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –mark-latest / –no-mark-latest Skip marking the latest version of the image. [default: mark-latest] –force Force overwrite of existing version directory. –diff-against TEXT An existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\nIMAGE_VERSION: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--subpath: TEXT\n\nThe subdirectory to use for the version. Defaults to the image version.\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--mark-latest, --no-mark-latest\n\nSkip marking the latest version of the image.\n\n--force\n\nForce overwrite of existing version directory.\n\n--diff-against: TEXT\n\nAn existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/version.html#arguments",
-    "href": "reference/cli/create/version.html#arguments",
-    "title": "bakery create version",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired.\n\nIMAGE_VERSION: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/create/version.html#options",
-    "href": "reference/cli/create/version.html#options",
-    "title": "bakery create version",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--subpath: TEXT\n\nThe subdirectory to use for the version. Defaults to the image version.\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--mark-latest, --no-mark-latest\n\nSkip marking the latest version of the image.\n\n--force\n\nForce overwrite of existing version directory.\n\n--diff-against: TEXT\n\nAn existing version of this image to diff the newly created version’s directory against. Prints the comparison to stdout.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/matrix.html",
-    "href": "reference/cli/create/matrix.html",
-    "title": "bakery create matrix",
-    "section": "",
-    "text": "Renders templates for an image to a single subpath of the image directory using a version matrix.\n\n\nbakery create matrix [OPTIONS] IMAGE_NAME\n\n\nThis tool expects an image directory to use the following structure as generated by bakery create image:\n.\n└── image_path/\n    └── template/\n        ├── optional_subdirectories/\n        │   └── *.jinja2\n        ├── *.jinja2\n        └── Containerfile*.jinja2\n\n\n\nUsage: bakery create matrix [OPTIONS] IMAGE_NAME\n\n  Renders templates for an image to a single subpath of the image directory\n  using a version matrix.\n\n  This tool expects an image directory to use the following structure as\n  generated by `bakery create image`:\n\n. └── image_path/ └── template/ ├── optional_subdirectories/ │ └── .jinja2 ├── .jinja2 └── Containerfile*.jinja2 ```\nArguments: IMAGE_NAME The image to which the matrix belongs. This must match an image name present in the bakery.yaml configuration. The image cannot have any existing versions or development versions defined. [required]\nOptions: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –name-pattern TEXT The naming pattern to use for the generated versions. If unspecified, defaults to combining each dependency and value into a hyphen-separated string. The rendered pattern is utilized in the image tag. –subpath TEXT The subdirectory to use for the version. Defaults to ‘matrix’. –dependency-constraint TEXT A JSON object string representing a dependency version constraint used to dynamically generate dependency versions. Accepts one constraint per dependency (R, Python, or Quarto). Example: ‘{“dependency”: “R”, “latest”: true, “count”: 3}’ –dependency TEXT A JSON object string representing one or more versions to use for a dependency in the matrix. Accepts one set of versions per dependency (R, Python, or Quarto). Ex: ‘{“dependency”: “R”, “versions”: [“4.2.3”, “4.1.3”]}’ –value TEXT A ‘key=value’ pair to pass to the templates. Accepts multiple pairs. –force Force overwrite of existing version directory. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--name-pattern: TEXT\n\nThe naming pattern to use for the generated versions. If unspecified, defaults to combining each dependency and value into a hyphen-separated string. The rendered pattern is utilized in the image tag.\n\n--subpath: TEXT\n\nThe subdirectory to use for the version. Defaults to matrix.\n\n--dependency-constraint: TEXT\n\nA JSON object string representing a dependency version constraint used to dynamically generate dependency versions. Accepts one constraint per dependency (R, Python, or Quarto). Example: {\"dependency\": \"R\", \"latest\": true, \"count\": 3}\n\n--dependency: TEXT\n\nA JSON object string representing one or more versions to use for a dependency in the matrix. Accepts one set of versions per dependency (R, Python, or Quarto). Ex: {\"dependency\": \"R\", \"versions\": [\"4.2.3\", \"4.1.3\"]}\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--force\n\nForce overwrite of existing version directory.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/matrix.html#arguments",
-    "href": "reference/cli/create/matrix.html#arguments",
-    "title": "bakery create matrix",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/create/matrix.html#options",
-    "href": "reference/cli/create/matrix.html#options",
-    "title": "bakery create matrix",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--name-pattern: TEXT\n\nThe naming pattern to use for the generated versions. If unspecified, defaults to combining each dependency and value into a hyphen-separated string. The rendered pattern is utilized in the image tag.\n\n--subpath: TEXT\n\nThe subdirectory to use for the version. Defaults to matrix.\n\n--dependency-constraint: TEXT\n\nA JSON object string representing a dependency version constraint used to dynamically generate dependency versions. Accepts one constraint per dependency (R, Python, or Quarto). Example: {\"dependency\": \"R\", \"latest\": true, \"count\": 3}\n\n--dependency: TEXT\n\nA JSON object string representing one or more versions to use for a dependency in the matrix. Accepts one set of versions per dependency (R, Python, or Quarto). Ex: {\"dependency\": \"R\", \"versions\": [\"4.2.3\", \"4.1.3\"]}\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--force\n\nForce overwrite of existing version directory.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create.html",
-    "href": "reference/cli/create.html",
-    "title": "bakery create",
-    "section": "",
-    "text": "Create new projects, images, and versions (aliases: c, new)\n\n\nbakery create COMMAND [ARGS]...\n\n\n\nUsage: bakery create [OPTIONS] COMMAND [ARGS]...\n\n  Create new projects, images, and versions (aliases: c, new)\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  project  Creates a new project in the context path\n  image    Creates a quickstart skeleton for a new image in the context path\n  version  Renders templates for an image to a versioned subdirectory of...\n  matrix   Renders templates for an image to a single subpath of the...\n\n\n\n\n\n\nproject\n\nCreates a new project in the context path\n\nimage\n\nCreates a quickstart skeleton for a new image in the context path\n\nversion\n\nRenders templates for an image to a versioned subdirectory of the image directory.\n\nmatrix\n\nRenders templates for an image to a single subpath of the image directory using a version matrix."
-  },
-  {
-    "objectID": "reference/cli/create.html#commands",
-    "href": "reference/cli/create.html#commands",
-    "title": "bakery create",
-    "section": "",
-    "text": "project\n\nCreates a new project in the context path\n\nimage\n\nCreates a quickstart skeleton for a new image in the context path\n\nversion\n\nRenders templates for an image to a versioned subdirectory of the image directory.\n\nmatrix\n\nRenders templates for an image to a single subpath of the image directory using a version matrix."
-  },
-  {
-    "objectID": "reference/cli/clean/cache_registry.html",
-    "href": "reference/cli/clean/cache_registry.html",
-    "title": "bakery clean cache-registry",
-    "section": "",
-    "text": "Cleans up dangling caches in an external registry\n\n\nbakery clean cache-registry [OPTIONS] REGISTRY\n\n\n⚠️ This command currently only supports GHCR registries. ⚠️\nThis command is intended to be used as a cleanup utility for build caches created with the bakery build --cache-registry &lt;registry&gt; option. By default, it will remove all untagged/dangling caches. Additional filters can be applied to remove caches older than a specified number of days. Caches are assumed to be created by Bakery in the registry namespace &lt;registry&gt;/&lt;image-name&gt;/cache. If the --image-name filter is not provided, all image caches for the project will be cleaned.\n\n\n\nUsage: bakery clean cache-registry [OPTIONS] REGISTRY\n\n  Cleans up dangling caches in an external registry\n\n  ⚠️ **This command currently only supports GHCR registries.** ⚠️\n\n  This command is intended to be used as a cleanup utility for build caches\n  created with the `bakery build --cache-registry &lt;registry&gt;` option. By\n  default, it will remove all untagged/dangling caches. Additional filters can\n  be applied to remove caches older than a specified number of days. Caches\n  are assumed to be created by Bakery in the registry namespace\n  `&lt;registry&gt;/&lt;image-name&gt;/cache`. If the `--image-name` filter is not\n  provided, all image caches for the project will be cleaned.\n\nArguments:\n  REGISTRY  GHCR registry to clean caches in *(ex. ghcr.io/my-org)*.\n            [required]\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --untagged / --no-untagged      Prune dangling caches.  [default: untagged]\n  --older-than INTEGER            Prune caches older than specified days.\n  --image-name TEXT               The image name or a regex pattern to isolate\n                                  clean operations to.\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development version\n                                  caches.  [default: exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude matrix version caches.\n                                  [default: exclude]\n  --dry-run                       If set, print what would be deleted and\n                                  exit.\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\nREGISTRY: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--untagged, --no-untagged\n\nPrune dangling caches.\n\n--older-than: INTEGER\n\nPrune caches older than specified days.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate clean operations to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version caches.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude matrix version caches.\n\n--dry-run\n\nIf set, print what would be deleted and exit.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/clean/cache_registry.html#arguments",
-    "href": "reference/cli/clean/cache_registry.html#arguments",
-    "title": "bakery clean cache-registry",
-    "section": "",
-    "text": "REGISTRY: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/clean/cache_registry.html#options",
-    "href": "reference/cli/clean/cache_registry.html#options",
-    "title": "bakery clean cache-registry",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--untagged, --no-untagged\n\nPrune dangling caches.\n\n--older-than: INTEGER\n\nPrune caches older than specified days.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate clean operations to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version caches.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude matrix version caches.\n\n--dry-run\n\nIf set, print what would be deleted and exit.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/ci/readme.html",
-    "href": "reference/cli/ci/readme.html",
-    "title": "bakery ci readme",
-    "section": "",
-    "text": "Push image READMEs to Docker Hub.\n\n\nbakery ci readme [OPTIONS]\n\n\nPushes the README.md from each image directory to the corresponding Docker Hub repository description. Only pushes for eligible images: latest versions, matrix versions, and non-development versions with Docker Hub registries configured.\nRequires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment variables to be set with a Personal Access Token (PAT). Organization Access Tokens cannot update repository descriptions.\nWith --check, only validates that eligible READMEs are within Docker Hub’s 25,000-byte full_description limit. Requires no credentials and makes no network calls, so it is safe to run in fork PR CI.\n\n\n\nUsage: bakery ci readme [OPTIONS]\n\n  Push image READMEs to Docker Hub.\n\n  Pushes the README.md from each image directory to the corresponding Docker\n  Hub repository description. Only pushes for eligible images: latest\n  versions, matrix versions, and non-development versions with Docker Hub\n  registries configured.\n\n  Requires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD\n  environment variables to be set with a Personal Access Token (PAT).\n  Organization Access Tokens cannot update repository descriptions.\n\n  With --check, only validates that eligible READMEs are within Docker Hub's\n  25,000-byte full_description limit. Requires no credentials and makes no\n  network calls, so it is safe to run in fork PR CI.\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development versions\n                                  defined in config.  [default: include]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: include]\n  --check                         Validate README length against Docker Hub's\n                                  limit, without authenticating or pushing.\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.INCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.INCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--check\n\nValidate README length against Docker Hub’s limit, without authenticating or pushing.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/ci/readme.html#options",
-    "href": "reference/cli/ci/readme.html#options",
-    "title": "bakery ci readme",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.INCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.INCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--check\n\nValidate README length against Docker Hub’s limit, without authenticating or pushing.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/ci/merge.html",
-    "href": "reference/cli/ci/merge.html",
-    "title": "bakery ci merge",
-    "section": "",
-    "text": "Alias for bakery ci publish.\n\n\nbakery ci merge [OPTIONS] METADATA_FILE...\n\n\nPreserved for back-compat. New callers should prefer bakery ci publish. SOCI conversion is driven by per-image/variant soci options.\n\n\n\nUsage: bakery ci merge [OPTIONS] METADATA_FILE...\n\n  Alias for `bakery ci publish`.\n\n  Preserved for back-compat. New callers should prefer `bakery ci publish`.\n  SOCI conversion is driven by per-image/variant `soci` options.\n\nArguments:\n  METADATA_FILE...  Path to input build metadata JSON file(s) to merge.\n                    [required]\n\nOptions:\n  --context PATH                  The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --image-name TEXT               Filter merge to a specific image name\n                                  (regex, e.g. '^workbench$').\n  --temp-registry TEXT            Temporary registry to use for multiplatform\n                                  split/merge builds.\n  --dry-run / --no-dry-run        If set, the merged images will not be pushed\n                                  to the registry.  [default: no-dry-run]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:\n                                  '{\"version\": \"2026.05.0-dev+185-gSHA\",\n                                  \"channel\": \"daily\"}'  [env var:\n                                  BAKERY_DEV_SPEC]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\nMETADATA_FILE: PATH\n\nRequired.\n\n\n\n\n\n\n\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nFilter merge to a specific image name (regex, e.g. ^workbench$).\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--dry-run, --no-dry-run\n\nIf set, the merged images will not be pushed to the registry.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/ci/merge.html#arguments",
-    "href": "reference/cli/ci/merge.html#arguments",
-    "title": "bakery ci merge",
-    "section": "",
-    "text": "METADATA_FILE: PATH\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/ci/merge.html#options",
-    "href": "reference/cli/ci/merge.html#options",
-    "title": "bakery ci merge",
-    "section": "",
-    "text": "--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--image-name: TEXT\n\nFilter merge to a specific image name (regex, e.g. ^workbench$).\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--dry-run, --no-dry-run\n\nIf set, the merged images will not be pushed to the registry.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/ci.html",
-    "href": "reference/cli/ci.html",
-    "title": "bakery ci",
-    "section": "",
-    "text": "Construct a CI matrix from the project.\n\n\nbakery ci COMMAND [ARGS]...\n\n\n\nUsage: bakery ci [OPTIONS] COMMAND [ARGS]...\n\n  Construct a CI matrix from the project.\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  matrix   Generates a JSON matrix of image versions for CI workflows to...\n  merge    Alias for `bakery ci publish`.\n  publish  Publish multi-platform images by composing oras index-create →...\n  readme   Push image READMEs to Docker Hub.\n\n\n\n\n\n\nmatrix\n\nGenerates a JSON matrix of image versions for CI workflows to consume\n\nmerge\n\nAlias for bakery ci publish.\n\npublish\n\nPublish multi-platform images by composing oras index-create → soci-convert → oras index-copy.\n\nreadme\n\nPush image READMEs to Docker Hub."
-  },
-  {
-    "objectID": "reference/cli/ci.html#commands",
-    "href": "reference/cli/ci.html#commands",
-    "title": "bakery ci",
-    "section": "",
-    "text": "matrix\n\nGenerates a JSON matrix of image versions for CI workflows to consume\n\nmerge\n\nAlias for bakery ci publish.\n\npublish\n\nPublish multi-platform images by composing oras index-create → soci-convert → oras index-copy.\n\nreadme\n\nPush image READMEs to Docker Hub."
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Getting Started",
-    "section": "",
-    "text": "Bakery is a CLI tool that binds together various tools to manage a matrixed build of container images.",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "index.html#prerequisites",
-    "href": "index.html#prerequisites",
-    "title": "Getting Started",
-    "section": "Prerequisites",
-    "text": "Prerequisites\n\nuv (includes Python)\njust\n\n\n3rd Party Tools\n\n\n\nTool\nUsed By\nPurpose\n\n\n\n\ndocker buildx bake\nbakery build --strategy bake\nBuild containers in parallel\n\n\ndocker, podman, or nerdctl\nbakery build --strategy build\nBuild containers in series\n\n\ndgoss\nbakery dgoss run\nTest container images for expected content & behavior\n\n\nhadolint\nbakery hadolint run\nLint Containerfiles for best practices\n\n\noras\nbakery imagetools merge\nMerge multi-platform images into an OCI index\n\n\nwizcli\nbakery wizcli scan\nScan container images for vulnerabilities\n\n\n\n\n\n\n\n\n\nNote\n\n\n\nAdditional tool integrations (trivy, openscap) are planned. See the architecture diagrams for the full roadmap.",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "index.html#installation",
-    "href": "index.html#installation",
-    "title": "Getting Started",
-    "section": "Installation",
-    "text": "Installation\nInstall bakery from PyPI using uv tool:\nuv tool install posit-bakery\nTo install an unreleased development version directly from GitHub:\nuv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "index.html#examples",
-    "href": "index.html#examples",
-    "title": "Getting Started",
-    "section": "Examples",
-    "text": "Examples\nSee the Bakery Examples repository for step-by-step tutorials on creating and managing container image projects with Bakery.",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "index.html#usage",
-    "href": "index.html#usage",
-    "title": "Getting Started",
-    "section": "Usage",
-    "text": "Usage\n\n\n\n\n\n\nTip\n\n\n\nSee the architecture diagrams for detailed tool behavior.\n\n\nShow the commands available in bakery.\nbakery --help\n\n# or\n\nbakery help\n\nStep 1. Create a project\n\nCreate a new project\nbakery create project\nThis command will create a new project configuration file in the bakery context.\nMake changes to the bakery.yaml file\nUpdate the contents of the project configuration file. A new project configuration file includes a default set of values.\n\nDocument the source code Repository\nConfigure image Registry entries to tag and push images to specific registries\n\n\n\n\nStep 2. Create an image\n\nCreate a new image\nbakery create image fancy-image\nThis command:\n\nCreates a directory for the image (fancy-image in this example)\nCreates a template/ subdirectory\nWrites a default set of template files\nAdds the image to the images section of the bakery.yaml file\n\nMake changes to the bakery.yaml file\nUpdate the Image definition.\n\nDefine Image Variants\nSet Dependency Constraints\n\nMake changes to the default Jinja2 templates\nThe default set of templates provide only a basic skeleton of what is required to define and build an image; you will need to modify these generic templates.\nSee the available Jinja variables in the templating documentation.\nAdd additional templates that will be rendered for each image version\nYou can add additional template files that will be created for each new image version.\nTemplate files must end with the .jinja2 file extension.\n\n\n\nStep 3. Create an image version\n\nCreate a new version of the image\nbakery create version fancy-image 2025.01.0\nThis command\n\nCreates a subdirectory for the image version (fancy-image/2025.01.0 in this example)\nThe --subpath flag can be used to create the version directory in a different location\nUpdates the bakery.yaml file with the new image version\nSets the new image to latest\nThe --no-mark-latest flag skips marking the image as the latest\nRenders the templates created in Step 2, replacing the values\n\nMake changes to the bakery.yaml file\nUpdate the ImageVersion definition.\n\nSet Dependency Versions\n\n\n\n\nStep 4. Build the image(s)\n\nPreview the bake plan [OPTIONAL]\nbakery build --plan\nThe build --strategy bake command creates a temporary JSON file that is passed to docker buildx bake.\nBuild the container images\nbakery build\n\n\n\nStep 5. Run the tests\n\nRun the dgoss tests against all the images\nbakery dgoss run\nAdditional run options can be specified using Goss options in bakery.yaml on a per image or per variant basis",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "index.html#bakery-concepts",
-    "href": "index.html#bakery-concepts",
-    "title": "Getting Started",
-    "section": "Bakery Concepts",
-    "text": "Bakery Concepts\n\nProject Structure\nBakery establishes a directory structure, referred to as a project. The project configuration is stored in the bakery.yaml.\nBy default, bakery uses the invocation directory as the project context. You can use the --context flag to override the default behavior.\nbakery --context /path/to/directory\nA bakery project can include one or more images. Each image can optionally have one or more variants. By default, there are two variants: Standard and Minimal. Each image should have one or more versions. Each version can have one or more OSes.\n.\n├── bakery.yaml\n├── fancy-image/\n│   ├── 2024.11.0/\n│   ├── 2025.01.0/\n│   └── template/\n└── more-fancy-image/\n    ├── 2024.12.0/\n    ├── 2024.12.1/\n    ├── 2025.02.0/\n    └── template/\n\n\nImage Tags\nBakery adds the following default tags for all versions of the image:\n\n\n\n\n\n\n\n\nStandard Image\nMinimal Image\nStructure\n\n\n\n\n2025.01.0-ubuntu-22.04-std\n2025.01.0-ubuntu-22.04-min\n&lt;version&gt;-&lt;os&gt;-&lt;type&gt;\n\n\n2025.01.0-ubuntu-22.04\n❌\n&lt;version&gt;-&lt;os&gt;\n\n\nAdded if os == primary_os\n\n\n\n\n2025.01.0-std\n2025.01.0-min\n&lt;version&gt;-&lt;type&gt;\n\n\n2025.01.0\n❌\n&lt;version&gt;\n\n\n\nBakery also adds the following tags to the latest image version:\n\n\n\nStandard Image\nMinimal Image\nStructure\n\n\n\n\nubuntu-22.04-std\nubuntu-22.04-min\n&lt;os&gt;-&lt;type&gt;\n\n\nubuntu-22.04\n❌\n&lt;os&gt;\n\n\nAdded if os == primary_os\n\n\n\n\nstd\nmin\n&lt;type&gt;\n\n\nlatest\n❌\nlatest",
-    "crumbs": [
-      "Home",
-      "Getting Started"
-    ]
-  },
-  {
-    "objectID": "architecture.html",
-    "href": "architecture.html",
-    "title": "Architecture",
-    "section": "",
-    "text": "This page shows how Bakery’s commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.",
-    "crumbs": [
-      "Home",
-      "Architecture"
-    ]
-  },
-  {
-    "objectID": "architecture.html#process-diagrams",
-    "href": "architecture.html#process-diagrams",
-    "title": "Architecture",
-    "section": "Process Diagrams",
-    "text": "Process Diagrams\n\nLegend\n\n\n\n\n\nflowchart TB\n\n    subgraph Legend\n        input[/\"Input\"/]\n        output[/\"Output\"/]\n        implemented[\"Implemented\"]\n        inprogress[\"Work In Progress\"]\n        planned[\"Planned Work\"]\n        bakery[[\"bakery command\"]]\n        external[[\"3rd Party Tool\"]]\n        tool[\"Container Tooling\"]\n        reg[(\"Container Registry\")]\n\n        input -. \"input\" .-&gt; implemented -. \"output\" .-&gt; output\n        input -. \"input\" .-&gt; inprogress\n        input -. \"input\" .-&gt; planned\n        tool o-- \"uses\" --o output\n        output -. \"input\" .-&gt; bakery\n        bakery -- \"call\" --&gt; external -.-&gt; reg\n    end\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class bakery,tool,pti tooling\n    class external external\n    class inprogress progress\n    class planned todo\n\n\n Legend for Diagrams \n\n\n\n\n\nWorkflow\n\n\n\n\n\nflowchart TD\n\n    create[[\"bakery create\"]]\n    project[/Bakery Project/]\n    create -.-&gt; project\n\n    build[[\"bakery build\"]]\n    image[/Container Image/]\n    project -.-&gt; build -.-&gt; image\n\n    run[[\"bakery run\"]]\n    results[/\"Test & Scan Results\"/]\n    image -.-&gt; run -.-&gt; results\n\n    reg[(Image Registry)]\n    sec[(Reporting Platform)]\n\n    image -.-&gt; reg\n    results -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class create,build,run tooling\n    class push external\n    class inprogress progress\n    class planned todo\n\n\n Bakery Workflow Overview \n\n\n\n\n\nCreate\n\n\n\n\n\nflowchart TD\n\n    subgraph \"bakery\"\n        direction TB\n\n        templatesDefault[/Default Jinja2 Templates/]\n        createProject[[bakery create project]]\n        createImage[[bakery create image]]\n        createVersion[[bakery create version]]\n    end\n\n    subgraph \"GitHub Repository\"\n        direction TB\n        subgraph \"Project\"\n            config[/bakery.yaml/]\n\n            subgraph \"Image\"\n                templatesImage[/Image Jinja2 Templates/]\n\n                subgraph \"Image Version\"\n                    containerfile[/Containerfile/]\n\n                    deps[/dependencies/]\n                    tests[/goss.yaml/]\n                end\n                deps -.-&gt; containerfile\n            end\n        end\n\n        templatesDefault -.-&gt; createProject -.-&gt; config\n\n        config -.-&gt; createImage\n        createImage -.-&gt; config\n        templatesDefault -.-&gt; createImage -.-&gt; templatesImage\n\n        templatesImage -.-&gt; createVersion -.-&gt; tests & deps & containerfile\n        createVersion -.-&gt; config\n        config -.-&gt; createVersion\n    end\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class createProject,createImage,createVersion tooling\n\n\n Bakery Project Creation Workflow \n\n\n\n\n\nBuild\n\n\n\n\n\nflowchart TD\n\n    subgraph \"Project\"\n        direction LR\n\n        config[/\"bakery.yaml\"/]\n        containerfile[/\"Containerfile(s)\"/]\n    end\n\n    build[[bakery build]]\n    plan[/\".docker-bake.json&lt;br/&gt;(temporary file)\"/]\n    bake[[docker buildx bake]]\n    image[/\"Container Image(s)\"/]\n\n    config -.-&gt; build -.-&gt; plan\n    plan & containerfile -.-&gt; bake\n    build --&gt; bake -.-&gt; image\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class build tooling\n    class bake external\n\n\n Bakery Build Workflow \n\n\n\n\n\nRun Tests\n\n\n\n\n\nflowchart TD\n\n    subgraph \"Container Artifacts\"\n        direction LR\n        containerfile[/Containerfile/]\n        tests[/goss.yaml/]\n        image[/Container Image/]\n    end\n\n\n    results[/\"Test & Scan Results\"/]\n\n    lint[[hadolint]]\n    runLint[[bakery hadolint run]]\n    runLint --&gt; lint\n    containerfile -.-&gt; lint -.-&gt; results\n\n    dgoss[[dgoss]]\n    runDgoss[[bakery dgoss run]]\n    image & tests -.-&gt; dgoss\n    runDgoss --&gt; dgoss\n    dgoss -.-&gt; results\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class runLint,runDgoss tooling\n    class lint,dgoss external\n\n    %% Mark what we are working on and is in flight %%\n    class inprogress,snyk progress\n    class planned,openscap,results todo\n\n\n Bakery Testing Workflow \n\n\n\n\n\nRun Security Scans\n\n\n\n\n\nflowchart TD\n\n    image[/\"Container Image(s)\"/]\n    results[/\"Test & Scan results\"/]\n\n    trivy[[trivy]]\n    runTrivy[[bakery trivy run]]\n    runTrivy --&gt; trivy\n    image -.-&gt; trivy -.-&gt; results\n\n    wizcli[[wizcli]]\n    runWizcli[[bakery wizcli scan]]\n    runWizcli --&gt; wizcli\n    image -.-&gt; wizcli -.-&gt; results\n\n    openscap[[openscap]]\n    runOpenscap[[bakery openscap run]]\n    runOpenscap --&gt; openscap\n    image -.-&gt; openscap -.-&gt; results\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class runTrivy,runOpenscap,runWizcli tooling\n    class trivy,openscap,wizcli external\n\n    %% Mark what we are working on and is in flight %%\n    class inprogress,trivy todo\n    class openscap,results todo\n\n\n Bakery Scanning Workflow \n\n\n\n\n\nPublish\nImage signing and coordinated publishing to registries and reporting platforms are planned. Currently, images are pushed during bakery build --push or through CI workflows.\n\n\n\n\n\nflowchart TD\n\n    image[/\"Container Image(s)\"/]\n    results[/\"Test & Scan Results\"/]\n\n    sign[\"Sign Image(s)\"]\n    push[\"Push Image(s) & Results\"]\n    image -.-&gt; sign --&gt; push\n\n    reg[(\"Image Registries\")]\n    sec[(\"Reporting Platform(s)\")]\n    image -.-&gt; push -.-&gt; reg\n    results -.-&gt; push -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    %% Mark what we are working on and is in flight %%\n    class results,sign todo\n\n\n Bakery Publishing Workflow \n\n\n\nFor multiplatform builds, we prefer to build and test images on their native platforms rather than emulating all builds on a single platform. The resulting single platform images are pushed to a temporary registry, pulled in a dependent stage, and merged to an OCI index using ORAS before pushing to the final registry.\n\n\n\n\n\nflowchart TD\n\n    amd64_image[/\"Container Image (AMD64)\"/]\n    arm64_image[/\"Container Image (ARM64)\"/]\n    results[/\"Test & Scan Results\"/]\n\n    sign[\"Sign Image(s)\"]\n    push_temp[\"Push to Temporary Registry\"]\n    merge[[\"bakery imagetools merge\"]]\n    push[\"Push Artifacts to Final Registry & Reporting Platform\"]\n    amd64_image -.-&gt; push_temp\n    arm64_image -.-&gt; push_temp\n    push_temp -.-&gt; merge -.-&gt; sign --&gt; push\n\n    reg[(\"Image Registries\")]\n    sec[(\"Reporting Platform(s)\")]\n    push -.-&gt; reg\n    results -.-&gt; push -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class merge tooling\n\n    %% Mark what we are working on and is in flight %%\n    class results,sign todo\n\n\n Bakery Multiplatform Publishing Workflow",
-    "crumbs": [
-      "Home",
-      "Architecture"
-    ]
+    "text": "bakery\n\nA tool for building, testing, and managing container images\n\n\nbakery\n\n\n\nUsage: bakery [OPTIONS] COMMAND [ARGS]...\n\n  A tool for building, testing, and managing container images\n\nOptions:\n  --install-completion  Install completion for the current shell.  [default:\n                        &lt;object object at 0x7f3ab64d8c10&gt;]\n  --show-completion     Show completion for the current shell, to copy it or\n                        customize the installation.  [default: &lt;object object\n                        at 0x7f3ab64d8c10&gt;]\n  --help                Show this message and exit.\n\nCommands:\n  build       Build images using buildkit bake (aliases: b, bake)\n  version     Show the Posit Bakery version\n  run         Run extra tools/commands against images (aliases: r)\n  create      Create new projects, images, and versions (aliases: c, new)\n  update      Update managed files and configurations (aliases: u, up)\n  remove      Remove images and versions from the project (aliases: rm, r)\n  get         Get information about the bakery configuration\n  ci          Construct a CI matrix from the project.\n  clean       Cleaning utilities for remote build caches\n  dgoss       Run Goss tests against container images\n  hadolint    Lint Containerfiles using hadolint\n  imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n  wizcli      Scan container images for vulnerabilities with WizCLI\n\n\n\n\n\n\n Back to top"
   },
   {
     "objectID": "configuration.html",
@@ -972,333 +604,92 @@
     ]
   },
   {
-    "objectID": "reference/cli/build.html",
-    "href": "reference/cli/build.html",
-    "title": "bakery build",
+    "objectID": "architecture.html",
+    "href": "architecture.html",
+    "title": "Architecture",
     "section": "",
-    "text": "Build images using buildkit bake (aliases: b, bake)\n\n\nbakery build [OPTIONS]\n\n\n\nUsage: bakery build [OPTIONS]\n\n  Build images using buildkit bake (aliases: b, bake)\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --strategy [build|bake]         The strategy to use when building the image.\n                                  'bake' requires Docker Buildkit and builds\n                                  images in parallel. 'build' can use generic\n                                  container builders, such as Podman, and\n                                  builds images concurrently, bounded by\n                                  --jobs.  [default: bake]\n  --fail-fast                     Terminate builds on the first failure.\n  --retry INTEGER RANGE           Number of times to retry a failed build.\n                                  [default: 0; x&gt;=0]\n  -j, --jobs INTEGER RANGE        Maximum number of targets to build\n                                  concurrently for '--strategy build' (ignored\n                                  for '--strategy bake'). Defaults to the\n                                  BAKERY_MAX_CONCURRENCY env var or a built-in\n                                  default.  [x&gt;=1]\n  --plan                          Print the bake plan and exit.\n  --load / --no-load              Load the image to Docker after building.\n                                  [default: load]\n  --push / --no-push              Push the image to its registry tags after\n                                  building.  [default: no-push]\n  --clean / --no-clean            Clean up intermediary and temporary files\n                                  after building. Disable for debugging.\n                                  [default: clean]\n  --metadata-file PATH            The path to write JSON build metadata to\n                                  once builds are finished.\n  --pull / --no-pull              Always pull the latest version of base\n                                  images.  [default: no-pull]\n  --cache / --no-cache            Enable layer caching for image builds.\n                                  [default: cache]\n  --cache-registry TEXT           External registry to use for layer caching.\n  --temp-registry TEXT            Temporary registry to use for multiplatform\n                                  split/merge builds.\n  --image-name TEXT               The image name or a regex pattern to isolate\n                                  builds to.\n  --image-version TEXT            The image version or version prefix to\n                                  isolate builds to.\n  --image-variant TEXT            The image type to isolate builds to.\n  --image-os TEXT                 The image OS name or a regex pattern to\n                                  isolate builds to.\n  --image-platform TEXT           The image platform(s) to isolate builds to,\n                                  e.g. 'linux/amd64'. Image build targets\n                                  incompatible with the given platform(s) will\n                                  be skipped.\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development version\n                                  builds defined in config.  [default:\n                                  exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: exclude]\n  --latest                        Build only the latest version of each image.\n                                  Development versions are ignored by this\n                                  filter.\n  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:\n                                  '{\"version\": \"2026.05.0-dev+185-gSHA\",\n                                  \"channel\": \"daily\"}'  [env var:\n                                  BAKERY_DEV_SPEC]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--strategy: CHOICE = ImageBuildStrategy.BAKE\n\nThe strategy to use when building the image. bake requires Docker Buildkit and builds images in parallel. build can use generic container builders, such as Podman, and builds images concurrently, bounded by --jobs.\n\n--fail-fast\n\nTerminate builds on the first failure.\n\n--retry: INTEGER RANGE = 0\n\nNumber of times to retry a failed build.\n\n-j, --jobs: INTEGER RANGE\n\nMaximum number of targets to build concurrently for --strategy build (ignored for --strategy bake). Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--plan\n\nPrint the bake plan and exit.\n\n--load, --no-load\n\nLoad the image to Docker after building.\n\n--push, --no-push\n\nPush the image to its registry tags after building.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Disable for debugging.\n\n--metadata-file: PATH\n\nThe path to write JSON build metadata to once builds are finished.\n\n--pull, --no-pull\n\nAlways pull the latest version of base images.\n\n--cache, --no-cache\n\nEnable layer caching for image builds.\n\n--cache-registry: TEXT\n\nExternal registry to use for layer caching.\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate builds to.\n\n--image-version: TEXT\n\nThe image version or version prefix to isolate builds to.\n\n--image-variant: TEXT\n\nThe image type to isolate builds to.\n\n--image-os: TEXT\n\nThe image OS name or a regex pattern to isolate builds to.\n\n--image-platform: TEXT\n\nThe image platform(s) to isolate builds to, e.g. linux/amd64. Image build targets incompatible with the given platform(s) will be skipped.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version builds defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nBuild only the latest version of each image. Development versions are ignored by this filter.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
+    "text": "This page shows how Bakery’s commands, tools, and artifacts connect across the image lifecycle. Items with dashed outlines are planned but not yet implemented.",
+    "crumbs": [
+      "Home",
+      "Architecture"
+    ]
   },
   {
-    "objectID": "reference/cli/build.html#options",
-    "href": "reference/cli/build.html#options",
-    "title": "bakery build",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--strategy: CHOICE = ImageBuildStrategy.BAKE\n\nThe strategy to use when building the image. bake requires Docker Buildkit and builds images in parallel. build can use generic container builders, such as Podman, and builds images concurrently, bounded by --jobs.\n\n--fail-fast\n\nTerminate builds on the first failure.\n\n--retry: INTEGER RANGE = 0\n\nNumber of times to retry a failed build.\n\n-j, --jobs: INTEGER RANGE\n\nMaximum number of targets to build concurrently for --strategy build (ignored for --strategy bake). Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--plan\n\nPrint the bake plan and exit.\n\n--load, --no-load\n\nLoad the image to Docker after building.\n\n--push, --no-push\n\nPush the image to its registry tags after building.\n\n--clean, --no-clean\n\nClean up intermediary and temporary files after building. Disable for debugging.\n\n--metadata-file: PATH\n\nThe path to write JSON build metadata to once builds are finished.\n\n--pull, --no-pull\n\nAlways pull the latest version of base images.\n\n--cache, --no-cache\n\nEnable layer caching for image builds.\n\n--cache-registry: TEXT\n\nExternal registry to use for layer caching.\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate builds to.\n\n--image-version: TEXT\n\nThe image version or version prefix to isolate builds to.\n\n--image-variant: TEXT\n\nThe image type to isolate builds to.\n\n--image-os: TEXT\n\nThe image OS name or a regex pattern to isolate builds to.\n\n--image-platform: TEXT\n\nThe image platform(s) to isolate builds to, e.g. linux/amd64. Image build targets incompatible with the given platform(s) will be skipped.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version builds defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nBuild only the latest version of each image. Development versions are ignored by this filter.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
+    "objectID": "architecture.html#process-diagrams",
+    "href": "architecture.html#process-diagrams",
+    "title": "Architecture",
+    "section": "Process Diagrams",
+    "text": "Process Diagrams\n\nLegend\n\n\n\n\n\nflowchart TB\n\n    subgraph Legend\n        input[/\"Input\"/]\n        output[/\"Output\"/]\n        implemented[\"Implemented\"]\n        inprogress[\"Work In Progress\"]\n        planned[\"Planned Work\"]\n        bakery[[\"bakery command\"]]\n        external[[\"3rd Party Tool\"]]\n        tool[\"Container Tooling\"]\n        reg[(\"Container Registry\")]\n\n        input -. \"input\" .-&gt; implemented -. \"output\" .-&gt; output\n        input -. \"input\" .-&gt; inprogress\n        input -. \"input\" .-&gt; planned\n        tool o-- \"uses\" --o output\n        output -. \"input\" .-&gt; bakery\n        bakery -- \"call\" --&gt; external -.-&gt; reg\n    end\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class bakery,tool,pti tooling\n    class external external\n    class inprogress progress\n    class planned todo\n\n\n Legend for Diagrams \n\n\n\n\n\nWorkflow\n\n\n\n\n\nflowchart TD\n\n    create[[\"bakery create\"]]\n    project[/Bakery Project/]\n    create -.-&gt; project\n\n    build[[\"bakery build\"]]\n    image[/Container Image/]\n    project -.-&gt; build -.-&gt; image\n\n    run[[\"bakery run\"]]\n    results[/\"Test & Scan Results\"/]\n    image -.-&gt; run -.-&gt; results\n\n    reg[(Image Registry)]\n    sec[(Reporting Platform)]\n\n    image -.-&gt; reg\n    results -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class create,build,run tooling\n    class push external\n    class inprogress progress\n    class planned todo\n\n\n Bakery Workflow Overview \n\n\n\n\n\nCreate\n\n\n\n\n\nflowchart TD\n\n    subgraph \"bakery\"\n        direction TB\n\n        templatesDefault[/Default Jinja2 Templates/]\n        createProject[[bakery create project]]\n        createImage[[bakery create image]]\n        createVersion[[bakery create version]]\n    end\n\n    subgraph \"GitHub Repository\"\n        direction TB\n        subgraph \"Project\"\n            config[/bakery.yaml/]\n\n            subgraph \"Image\"\n                templatesImage[/Image Jinja2 Templates/]\n\n                subgraph \"Image Version\"\n                    containerfile[/Containerfile/]\n\n                    deps[/dependencies/]\n                    tests[/goss.yaml/]\n                end\n                deps -.-&gt; containerfile\n            end\n        end\n\n        templatesDefault -.-&gt; createProject -.-&gt; config\n\n        config -.-&gt; createImage\n        createImage -.-&gt; config\n        templatesDefault -.-&gt; createImage -.-&gt; templatesImage\n\n        templatesImage -.-&gt; createVersion -.-&gt; tests & deps & containerfile\n        createVersion -.-&gt; config\n        config -.-&gt; createVersion\n    end\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class createProject,createImage,createVersion tooling\n\n\n Bakery Project Creation Workflow \n\n\n\n\n\nBuild\n\n\n\n\n\nflowchart TD\n\n    subgraph \"Project\"\n        direction LR\n\n        config[/\"bakery.yaml\"/]\n        containerfile[/\"Containerfile(s)\"/]\n    end\n\n    build[[bakery build]]\n    plan[/\".docker-bake.json&lt;br/&gt;(temporary file)\"/]\n    bake[[docker buildx bake]]\n    image[/\"Container Image(s)\"/]\n\n    config -.-&gt; build -.-&gt; plan\n    plan & containerfile -.-&gt; bake\n    build --&gt; bake -.-&gt; image\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class build tooling\n    class bake external\n\n\n Bakery Build Workflow \n\n\n\n\n\nRun Tests\n\n\n\n\n\nflowchart TD\n\n    subgraph \"Container Artifacts\"\n        direction LR\n        containerfile[/Containerfile/]\n        tests[/goss.yaml/]\n        image[/Container Image/]\n    end\n\n\n    results[/\"Test & Scan Results\"/]\n\n    lint[[hadolint]]\n    runLint[[bakery hadolint run]]\n    runLint --&gt; lint\n    containerfile -.-&gt; lint -.-&gt; results\n\n    dgoss[[dgoss]]\n    runDgoss[[bakery dgoss run]]\n    image & tests -.-&gt; dgoss\n    runDgoss --&gt; dgoss\n    dgoss -.-&gt; results\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class runLint,runDgoss tooling\n    class lint,dgoss external\n\n    %% Mark what we are working on and is in flight %%\n    class inprogress,snyk progress\n    class planned,openscap,results todo\n\n\n Bakery Testing Workflow \n\n\n\n\n\nRun Security Scans\n\n\n\n\n\nflowchart TD\n\n    image[/\"Container Image(s)\"/]\n    results[/\"Test & Scan results\"/]\n\n    trivy[[trivy]]\n    runTrivy[[bakery trivy run]]\n    runTrivy --&gt; trivy\n    image -.-&gt; trivy -.-&gt; results\n\n    wizcli[[wizcli]]\n    runWizcli[[bakery wizcli scan]]\n    runWizcli --&gt; wizcli\n    image -.-&gt; wizcli -.-&gt; results\n\n    openscap[[openscap]]\n    runOpenscap[[bakery openscap run]]\n    runOpenscap --&gt; openscap\n    image -.-&gt; openscap -.-&gt; results\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class runTrivy,runOpenscap,runWizcli tooling\n    class trivy,openscap,wizcli external\n\n    %% Mark what we are working on and is in flight %%\n    class inprogress,trivy todo\n    class openscap,results todo\n\n\n Bakery Scanning Workflow \n\n\n\n\n\nPublish\nImage signing and coordinated publishing to registries and reporting platforms are planned. Currently, images are pushed during bakery build --push or through CI workflows.\n\n\n\n\n\nflowchart TD\n\n    image[/\"Container Image(s)\"/]\n    results[/\"Test & Scan Results\"/]\n\n    sign[\"Sign Image(s)\"]\n    push[\"Push Image(s) & Results\"]\n    image -.-&gt; sign --&gt; push\n\n    reg[(\"Image Registries\")]\n    sec[(\"Reporting Platform(s)\")]\n    image -.-&gt; push -.-&gt; reg\n    results -.-&gt; push -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    %% Mark what we are working on and is in flight %%\n    class results,sign todo\n\n\n Bakery Publishing Workflow \n\n\n\nFor multiplatform builds, we prefer to build and test images on their native platforms rather than emulating all builds on a single platform. The resulting single platform images are pushed to a temporary registry, pulled in a dependent stage, and merged to an OCI index using ORAS before pushing to the final registry.\n\n\n\n\n\nflowchart TD\n\n    amd64_image[/\"Container Image (AMD64)\"/]\n    arm64_image[/\"Container Image (ARM64)\"/]\n    results[/\"Test & Scan Results\"/]\n\n    sign[\"Sign Image(s)\"]\n    push_temp[\"Push to Temporary Registry\"]\n    merge[[\"bakery imagetools merge\"]]\n    push[\"Push Artifacts to Final Registry & Reporting Platform\"]\n    amd64_image -.-&gt; push_temp\n    arm64_image -.-&gt; push_temp\n    push_temp -.-&gt; merge -.-&gt; sign --&gt; push\n\n    reg[(\"Image Registries\")]\n    sec[(\"Reporting Platform(s)\")]\n    push -.-&gt; reg\n    results -.-&gt; push -.-&gt; sec\n\n    classDef tooling fill:#7494B1,color:#fff\n    classDef external fill:grey,color:#fff\n    classDef progress stroke-dasharray: 2 2\n    classDef todo stroke-dasharray: 3 8\n\n    class merge tooling\n\n    %% Mark what we are working on and is in flight %%\n    class results,sign todo\n\n\n Bakery Multiplatform Publishing Workflow",
+    "crumbs": [
+      "Home",
+      "Architecture"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/matrix.html",
-    "href": "reference/cli/ci/matrix.html",
-    "title": "bakery ci matrix",
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Getting Started",
     "section": "",
-    "text": "Generates a JSON matrix of image versions for CI workflows to consume\n\n\nbakery ci matrix [OPTIONS] [IMAGE_NAME]\n\n\nThe output is a JSON array of objects with the following structure:\n[\n  {\n    \"image\": \"image-name\",\n    \"version\": \"version-name\",\n    \"dev\": false,\n    \"platform\": \"linux/amd64\"\n  }\n]\n\n\n\nUsage: bakery ci matrix [OPTIONS] [IMAGE_NAME]\n\n  Generates a JSON matrix of image versions for CI workflows to consume\n\n  The output is a JSON array of objects with the following structure:\n\n  ```json\n  [\n    {\n      \"image\": \"image-name\",\n      \"version\": \"version-name\",\n      \"dev\": false,\n      \"platform\": \"linux/amd64\"\n    }\n  ]\nArguments: [IMAGE_NAME] The image name to isolate matrix to.\nOptions: –dev-versions [include|exclude|only] Include or exclude development versions defined in config. [default: exclude] –dev-channel [release|preview|daily] Filter development versions to a specific release channel. –matrix-versions [include|exclude|only] Include or exclude versions defined in image matrix. [default: exclude] –image-version TEXT The image version to filter to. –exclude [version|dev|platform] Fields to exclude splitting the matrix by. –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –dev-spec TEXT JSON spec for a dispatched dev build. Ex: ‘{“version”: “2026.05.0-dev+185-gSHA”, “channel”: “daily”}’ [env var: BAKERY_DEV_SPEC] –base-ref TEXT Git ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. [env var: BAKERY_BASE_REF] –changed-files-from TEXT Read changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides –base-ref. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nOptional.\n\n\n\n\n\n\n\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--image-version: TEXT\n\nThe image version to filter to.\n\n--exclude: CHOICE\n\nFields to exclude splitting the matrix by.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--base-ref: TEXT\n\nGit ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. Environment variable: BAKERY_BASE_REF.\n\n--changed-files-from: TEXT\n\nRead changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides --base-ref.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
+    "text": "Bakery is a CLI tool that binds together various tools to manage a matrixed build of container images.",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/matrix.html#arguments",
-    "href": "reference/cli/ci/matrix.html#arguments",
-    "title": "bakery ci matrix",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nOptional."
+    "objectID": "index.html#prerequisites",
+    "href": "index.html#prerequisites",
+    "title": "Getting Started",
+    "section": "Prerequisites",
+    "text": "Prerequisites\n\nuv (includes Python)\njust\n\n\n3rd Party Tools\n\n\n\nTool\nUsed By\nPurpose\n\n\n\n\ndocker buildx bake\nbakery build --strategy bake\nBuild containers in parallel\n\n\ndocker, podman, or nerdctl\nbakery build --strategy build\nBuild containers in series\n\n\ndgoss\nbakery dgoss run\nTest container images for expected content & behavior\n\n\nhadolint\nbakery hadolint run\nLint Containerfiles for best practices\n\n\noras\nbakery imagetools merge\nMerge multi-platform images into an OCI index\n\n\nwizcli\nbakery wizcli scan\nScan container images for vulnerabilities\n\n\n\n\n\n\n\n\n\nNote\n\n\n\nAdditional tool integrations (trivy, openscap) are planned. See the architecture diagrams for the full roadmap.",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/matrix.html#options",
-    "href": "reference/cli/ci/matrix.html#options",
-    "title": "bakery ci matrix",
-    "section": "",
-    "text": "--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--image-version: TEXT\n\nThe image version to filter to.\n\n--exclude: CHOICE\n\nFields to exclude splitting the matrix by.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n--base-ref: TEXT\n\nGit ref to diff against (merge-base) to build only changed images/versions. When unset, the full matrix is emitted. Environment variable: BAKERY_BASE_REF.\n\n--changed-files-from: TEXT\n\nRead changed file paths (one per line, ‘-’ for stdin), relative to the bakery context root, instead of running git diff. Overrides --base-ref.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "Getting Started",
+    "section": "Installation",
+    "text": "Installation\nInstall bakery from PyPI using uv tool:\nuv tool install posit-bakery\nTo install an unreleased development version directly from GitHub:\nuv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/publish.html",
-    "href": "reference/cli/ci/publish.html",
-    "title": "bakery ci publish",
-    "section": "",
-    "text": "Publish multi-platform images by composing oras index-create → soci-convert → oras index-copy.\n\n\nbakery ci publish [OPTIONS] METADATA_FILE...\n\n\nWhich targets are converted is driven by configuration: each target is converted only when its resolved SOCI options have enabled: true (set via the soci tool options on an image or variant). Targets without SOCI enabled pass through the convert phase untouched. Conversion runs in standalone (no containerd) mode via oras.\nTemporary indexes are left in place and cleaned up out-of-band by the clean.yml workflow (bakery clean temp-registry) rather than deleted here.\nThe orchestration itself lives in the imagetools plugin (:meth:ImageToolsPlugin.publish); this command is a thin wrapper.\nReplaces bakery ci merge; the latter is preserved as a thin alias.\n\n\n\nUsage: bakery ci publish [OPTIONS] METADATA_FILE...\n\n  Publish multi-platform images by composing oras index-create → soci-convert\n  → oras index-copy.\n\n  Which targets are converted is driven by configuration: each target is\n  converted only when its resolved SOCI options have ``enabled: true`` (set\n  via the ``soci`` tool options on an image or variant). Targets without SOCI\n  enabled pass through the convert phase untouched. Conversion runs in\n  standalone (no containerd) mode via oras.\n\n  Temporary indexes are left in place and cleaned up out-of-band by the\n  clean.yml workflow (bakery clean temp-registry) rather than deleted here.\n\n  The orchestration itself lives in the ``imagetools`` plugin\n  (:meth:`ImageToolsPlugin.publish`); this command is a thin wrapper.\n\n  Replaces `bakery ci merge`; the latter is preserved as a thin alias.\n\nArguments:\n  METADATA_FILE...  Path to input build metadata JSON file(s).  [required]\n\nOptions:\n  --context PATH                  The root path to use. Defaults to the\n                                  current working directory.  [default: (.)]\n  --image-name TEXT               Filter publish to a specific image name\n                                  (regex, e.g. '^workbench$').\n  --temp-registry TEXT            Temporary registry to use for split/merge\n                                  builds.\n  -j, --jobs INTEGER RANGE        Maximum number of targets to publish\n                                  concurrently. Defaults to the\n                                  BAKERY_MAX_CONCURRENCY env var or a built-in\n                                  default.  [x&gt;=1]\n  --dry-run / --no-dry-run        If set, no images will be pushed.  [default:\n                                  no-dry-run]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --dev-spec TEXT                 JSON spec for a dispatched dev build. Ex:\n                                  '{\"version\": \"2026.05.0-dev+185-gSHA\",\n                                  \"channel\": \"daily\"}'  [env var:\n                                  BAKERY_DEV_SPEC]\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\nMETADATA_FILE: PATH\n\nRequired.\n\n\n\n\n\n\n\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--image-name: TEXT\n\nFilter publish to a specific image name (regex, e.g. ^workbench$).\n\n--temp-registry: TEXT\n\nTemporary registry to use for split/merge builds.\n\n-j, --jobs: INTEGER RANGE\n\nMaximum number of targets to publish concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--dry-run, --no-dry-run\n\nIf set, no images will be pushed.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
+    "objectID": "index.html#examples",
+    "href": "index.html#examples",
+    "title": "Getting Started",
+    "section": "Examples",
+    "text": "Examples\nSee the Bakery Examples repository for step-by-step tutorials on creating and managing container image projects with Bakery.",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/publish.html#arguments",
-    "href": "reference/cli/ci/publish.html#arguments",
-    "title": "bakery ci publish",
-    "section": "",
-    "text": "METADATA_FILE: PATH\n\nRequired."
+    "objectID": "index.html#usage",
+    "href": "index.html#usage",
+    "title": "Getting Started",
+    "section": "Usage",
+    "text": "Usage\n\n\n\n\n\n\nTip\n\n\n\nSee the architecture diagrams for detailed tool behavior.\n\n\nShow the commands available in bakery.\nbakery --help\n\n# or\n\nbakery help\n\nStep 1. Create a project\n\nCreate a new project\nbakery create project\nThis command will create a new project configuration file in the bakery context.\nMake changes to the bakery.yaml file\nUpdate the contents of the project configuration file. A new project configuration file includes a default set of values.\n\nDocument the source code Repository\nConfigure image Registry entries to tag and push images to specific registries\n\n\n\n\nStep 2. Create an image\n\nCreate a new image\nbakery create image fancy-image\nThis command:\n\nCreates a directory for the image (fancy-image in this example)\nCreates a template/ subdirectory\nWrites a default set of template files\nAdds the image to the images section of the bakery.yaml file\n\nMake changes to the bakery.yaml file\nUpdate the Image definition.\n\nDefine Image Variants\nSet Dependency Constraints\n\nMake changes to the default Jinja2 templates\nThe default set of templates provide only a basic skeleton of what is required to define and build an image; you will need to modify these generic templates.\nSee the available Jinja variables in the templating documentation.\nAdd additional templates that will be rendered for each image version\nYou can add additional template files that will be created for each new image version.\nTemplate files must end with the .jinja2 file extension.\n\n\n\nStep 3. Create an image version\n\nCreate a new version of the image\nbakery create version fancy-image 2025.01.0\nThis command\n\nCreates a subdirectory for the image version (fancy-image/2025.01.0 in this example)\nThe --subpath flag can be used to create the version directory in a different location\nUpdates the bakery.yaml file with the new image version\nSets the new image to latest\nThe --no-mark-latest flag skips marking the image as the latest\nRenders the templates created in Step 2, replacing the values\n\nMake changes to the bakery.yaml file\nUpdate the ImageVersion definition.\n\nSet Dependency Versions\n\n\n\n\nStep 4. Build the image(s)\n\nPreview the bake plan [OPTIONAL]\nbakery build --plan\nThe build --strategy bake command creates a temporary JSON file that is passed to docker buildx bake.\nBuild the container images\nbakery build\n\n\n\nStep 5. Run the tests\n\nRun the dgoss tests against all the images\nbakery dgoss run\nAdditional run options can be specified using Goss options in bakery.yaml on a per image or per variant basis",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
-    "objectID": "reference/cli/ci/publish.html#options",
-    "href": "reference/cli/ci/publish.html#options",
-    "title": "bakery ci publish",
-    "section": "",
-    "text": "--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--image-name: TEXT\n\nFilter publish to a specific image name (regex, e.g. ^workbench$).\n\n--temp-registry: TEXT\n\nTemporary registry to use for split/merge builds.\n\n-j, --jobs: INTEGER RANGE\n\nMaximum number of targets to publish concurrently. Defaults to the BAKERY_MAX_CONCURRENCY env var or a built-in default.\n\n--dry-run, --no-dry-run\n\nIf set, no images will be pushed.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--dev-spec: TEXT\n\nJSON spec for a dispatched dev build. Ex: {\"version\": \"2026.05.0-dev+185-gSHA\", \"channel\": \"daily\"} Environment variable: BAKERY_DEV_SPEC.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/clean.html",
-    "href": "reference/cli/clean.html",
-    "title": "bakery clean",
-    "section": "",
-    "text": "Cleaning utilities for remote build caches\n\n\nbakery clean COMMAND [ARGS]...\n\n\n\nUsage: bakery clean [OPTIONS] COMMAND [ARGS]...\n\n  Cleaning utilities for remote build caches\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  cache-registry  Cleans up dangling caches in an external registry\n  temp-registry   Cleans up temporary images in an external registry\n\n\n\n\n\n\ncache-registry\n\nCleans up dangling caches in an external registry\n\ntemp-registry\n\nCleans up temporary images in an external registry"
-  },
-  {
-    "objectID": "reference/cli/clean.html#commands",
-    "href": "reference/cli/clean.html#commands",
-    "title": "bakery clean",
-    "section": "",
-    "text": "cache-registry\n\nCleans up dangling caches in an external registry\n\ntemp-registry\n\nCleans up temporary images in an external registry"
-  },
-  {
-    "objectID": "reference/cli/clean/temp_registry.html",
-    "href": "reference/cli/clean/temp_registry.html",
-    "title": "bakery clean temp-registry",
-    "section": "",
-    "text": "Cleans up temporary images in an external registry\n\n\nbakery clean temp-registry [OPTIONS] REGISTRY\n\n\n⚠️ This command currently only supports GHCR registries. ⚠️\nThis command is intended to be used as a cleanup utility for temporary images created with the bakery build --temp-registry &lt;registry&gt; option. By default, it will remove all images older than 3 days. Images are assumed to be created by Bakery in the registry namespace &lt;registry&gt;/&lt;image-name&gt;/tmp. If the --image-name filter is not provided, all images for the project will be cleaned.\n\n\n\nUsage: bakery clean temp-registry [OPTIONS] REGISTRY\n\n  Cleans up temporary images in an external registry\n\n  ⚠️ **This command currently only supports GHCR registries.** ⚠️\n\n  This command is intended to be used as a cleanup utility for temporary\n  images created with the `bakery build --temp-registry &lt;registry&gt;` option. By\n  default, it will remove all images older than 3 days. Images are assumed to\n  be created by Bakery in the registry namespace `&lt;registry&gt;/&lt;image-\n  name&gt;/tmp`. If the `--image-name` filter is not provided, all images for the\n  project will be cleaned.\n\nArguments:\n  REGISTRY  GHCR registry to clean temporary images in *(ex. ghcr.io/my-org)*.\n            [required]\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory where invoked.\n                                  [default: (.)]\n  --untagged / --no-untagged      Prune dangling images.  [default: no-\n                                  untagged]\n  --older-than INTEGER            Prune caches older than specified days.\n  --image-name TEXT               The image name or a regex pattern to isolate\n                                  clean operations to.\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development version\n                                  temporary images.  [default: exclude]\n  --dev-channel [release|preview|daily]\n                                  Filter development versions to a specific\n                                  release channel.\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude matrix version temporary\n                                  images.  [default: exclude]\n  --dry-run                       If set, print what would be deleted and\n                                  exit.\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\nREGISTRY: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--untagged, --no-untagged\n\nPrune dangling images.\n\n--older-than: INTEGER\n\nPrune caches older than specified days.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate clean operations to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version temporary images.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude matrix version temporary images.\n\n--dry-run\n\nIf set, print what would be deleted and exit.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/clean/temp_registry.html#arguments",
-    "href": "reference/cli/clean/temp_registry.html#arguments",
-    "title": "bakery clean temp-registry",
-    "section": "",
-    "text": "REGISTRY: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/clean/temp_registry.html#options",
-    "href": "reference/cli/clean/temp_registry.html#options",
-    "title": "bakery clean temp-registry",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--untagged, --no-untagged\n\nPrune dangling images.\n\n--older-than: INTEGER\n\nPrune caches older than specified days.\n\n--image-name: TEXT\n\nThe image name or a regex pattern to isolate clean operations to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development version temporary images.\n\n--dev-channel: CHOICE\n\nFilter development versions to a specific release channel.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude matrix version temporary images.\n\n--dry-run\n\nIf set, print what would be deleted and exit.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/image.html",
-    "href": "reference/cli/create/image.html",
-    "title": "bakery create image",
-    "section": "",
-    "text": "Creates a quickstart skeleton for a new image in the context path\n\n\nbakery create image [OPTIONS] IMAGE_NAME\n\n\nThis tool will create a new directory in the context path with the following structure:\n.\n└── image_name/\n    └── template/\n        ├── deps/\n        │   └── packages.txt.jinja2\n        ├── test/\n        │   └── goss.yaml.jinja2\n        └── Containerfile.jinja2\n\n\n\nUsage: bakery create image [OPTIONS] IMAGE_NAME\n\n  Creates a quickstart skeleton for a new image in the context path\n\n  This tool will create a new directory in the context path with the following\n  structure:\n\n. └── image_name/ └── template/ ├── deps/ │ └── packages.txt.jinja2 ├── test/ │ └── goss.yaml.jinja2 └── Containerfile.jinja2 ```\nArguments: IMAGE_NAME The image name to create a skeleton for. [required]\nOptions: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] –base-image TEXT The base to use for the new image. [default: docker.io/library/ubuntu:22.04] –subpath TEXT The directory name to use for the image. [default: (based on image_name)] –display-name TEXT The display name for the image. [default: (based on image_name)] –description TEXT The description for the image. Used in labels. –documentation-url TEXT The documentation URL for the image. -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--base-image: TEXT = docker.io/library/ubuntu:22.04\n\nThe base to use for the new image.\n\n--subpath: TEXT\n\nThe directory name to use for the image.\n\n--display-name: TEXT\n\nThe display name for the image.\n\n--description: TEXT\n\nThe description for the image. Used in labels.\n\n--documentation-url: TEXT\n\nThe documentation URL for the image.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/image.html#arguments",
-    "href": "reference/cli/create/image.html#arguments",
-    "title": "bakery create image",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/create/image.html#options",
-    "href": "reference/cli/create/image.html#options",
-    "title": "bakery create image",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--base-image: TEXT = docker.io/library/ubuntu:22.04\n\nThe base to use for the new image.\n\n--subpath: TEXT\n\nThe directory name to use for the image.\n\n--display-name: TEXT\n\nThe display name for the image.\n\n--description: TEXT\n\nThe description for the image. Used in labels.\n\n--documentation-url: TEXT\n\nThe documentation URL for the image.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/project.html",
-    "href": "reference/cli/create/project.html",
-    "title": "bakery create project",
-    "section": "",
-    "text": "Creates a new project in the context path\n\n\nbakery create project [OPTIONS]\n\n\nThis tool will create a new directory in the context path with the following structure:\n.\n└── context/\n    └── bakery.yaml.\n\n\n\nUsage: bakery create project [OPTIONS]\n\n  Creates a new project in the context path\n\n  This tool will create a new directory in the context path with the following\n  structure:\n\n. └── context/ └── bakery.yaml. ```\nOptions: –context DIRECTORY The root path to use. Defaults to the current working directory where invoked. [default: (.)] -v, –verbose Enable debug logging -q, –quiet Supress all output except errors –help Show this message and exit. ```\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/create/project.html#options",
-    "href": "reference/cli/create/project.html#options",
-    "title": "bakery create project",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/dgoss.html",
-    "href": "reference/cli/dgoss.html",
-    "title": "bakery dgoss",
-    "section": "",
-    "text": "Run Goss tests against container images\n\n\nbakery dgoss COMMAND [ARGS]...\n\n\n\nUsage: bakery dgoss [OPTIONS] COMMAND [ARGS]...\n\n  Run Goss tests against container images\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  run  Runs dgoss tests against images in the context path\n\n\n\n\n\n\nrun\n\nRuns dgoss tests against images in the context path"
-  },
-  {
-    "objectID": "reference/cli/dgoss.html#commands",
-    "href": "reference/cli/dgoss.html#commands",
-    "title": "bakery dgoss",
-    "section": "",
-    "text": "run\n\nRuns dgoss tests against images in the context path"
-  },
-  {
-    "objectID": "reference/cli/get.html",
-    "href": "reference/cli/get.html",
-    "title": "bakery get",
-    "section": "",
-    "text": "Get information about the bakery configuration\n\n\nbakery get COMMAND [ARGS]...\n\n\n\nUsage: bakery get [OPTIONS] COMMAND [ARGS]...\n\n  Get information about the bakery configuration\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  tags     Get the list of tags that would be built for the given context...\n  version  Get a version name from bakery.yaml.\n\n\n\n\n\n\ntags\n\nGet the list of tags that would be built for the given context and filters.\n\nversion\n\nGet a version name from bakery.yaml."
-  },
-  {
-    "objectID": "reference/cli/get.html#commands",
-    "href": "reference/cli/get.html#commands",
-    "title": "bakery get",
-    "section": "",
-    "text": "tags\n\nGet the list of tags that would be built for the given context and filters.\n\nversion\n\nGet a version name from bakery.yaml."
-  },
-  {
-    "objectID": "reference/cli/get/version.html",
-    "href": "reference/cli/get/version.html",
-    "title": "bakery get version",
-    "section": "",
-    "text": "Get a version name from bakery.yaml.\n\n\nbakery get version [OPTIONS] IMAGE_NAME\n\n\nReturns the latest version by default. Use --subpath to find a version by its configured subpath instead.\n\n\n\nUsage: bakery get version [OPTIONS] IMAGE_NAME\n\n  Get a version name from bakery.yaml.\n\n  Returns the latest version by default. Use --subpath to find a version by its\n  configured subpath instead.\n\n  Examples:\n    bakery get version connect                    Find the latest version\n    bakery get version connect --subpath 2026.03  Find version with subpath '2026.03'\n\nArguments:\n  IMAGE_NAME  The image name to query.  [required]\n\nOptions:\n  --subpath TEXT       Find the version with this subpath.\n  --context DIRECTORY  The root path to use. Defaults to the current working\n                       directory where invoked.  [default: (.)]\n  -v, --verbose        Enable debug logging\n  -q, --quiet          Supress all output except errors\n  --help               Show this message and exit.\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--subpath: TEXT\n\nFind the version with this subpath.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors\n\n\n\n\n\n\nbakery get version connect                    Find the latest version\nbakery get version connect --subpath 2026.03  Find version with subpath '2026.03'"
-  },
-  {
-    "objectID": "reference/cli/get/version.html#arguments",
-    "href": "reference/cli/get/version.html#arguments",
-    "title": "bakery get version",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/get/version.html#options",
-    "href": "reference/cli/get/version.html#options",
-    "title": "bakery get version",
-    "section": "",
-    "text": "--subpath: TEXT\n\nFind the version with this subpath.\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/get/version.html#examples",
-    "href": "reference/cli/get/version.html#examples",
-    "title": "bakery get version",
-    "section": "",
-    "text": "bakery get version connect                    Find the latest version\nbakery get version connect --subpath 2026.03  Find version with subpath '2026.03'"
-  },
-  {
-    "objectID": "reference/cli/hadolint/run.html",
-    "href": "reference/cli/hadolint/run.html",
-    "title": "bakery hadolint run",
-    "section": "",
-    "text": "Runs hadolint against Containerfiles in the context path\n\n\nbakery hadolint run [OPTIONS]\n\n\nIf no options are provided, the command lints all image Containerfiles in the project and writes results to the results/hadolint/ directory in the context path.\nRequires hadolint to be installed on the system. The path to the binary can be set with the HADOLINT_PATH environment variable if not present in the system PATH.\n\n\n\nUsage: bakery hadolint run [OPTIONS]\n\n  Runs hadolint against Containerfiles in the context path\n\n  If no options are provided, the command lints all image Containerfiles in the project and writes\n  results to the `results/hadolint/` directory in the context path.\n\n  Requires hadolint to be installed on the system. The path to the binary can be set with the\n  `HADOLINT_PATH` environment variable if not present in the system PATH.\n\nOptions:\n  --context DIRECTORY             The root path to use. Defaults to the\n                                  current working directory.  [default: (.)]\n  --image-name TEXT               The image name to isolate linting to.\n  --image-version TEXT            The image version to isolate linting to.\n  --image-variant TEXT            The image variant to isolate linting to.\n  --image-os TEXT                 The image OS to isolate linting to.\n  --dev-versions [include|exclude|only]\n                                  Include or exclude development versions\n                                  defined in config.  [default: exclude]\n  --matrix-versions [include|exclude|only]\n                                  Include or exclude versions defined in image\n                                  matrix.  [default: exclude]\n  --latest                        Lint only the latest version of each image.\n                                  Development versions are ignored by this\n                                  filter.\n  --failure-threshold TEXT        Exit with failure if any rule at or above\n                                  this severity is violated. One of: error,\n                                  warning, info, style, ignore, none.\n                                  [default: error]\n  --ignore TEXT                   Rule code to ignore (can be repeated).\n  --require-label TEXT            Label to require in format 'name:type' (can\n                                  be repeated).\n  --no-fail                       Always exit with status 0, even when rule\n                                  violations are found.\n  --error TEXT                    Rule code to treat as error (can be\n                                  repeated).\n  --warning TEXT                  Rule code to treat as warning (can be\n                                  repeated).\n  --info TEXT                     Rule code to treat as info (can be\n                                  repeated).\n  --style TEXT                    Rule code to treat as style (can be\n                                  repeated).\n  --strict-labels                 Require labels to match the label schema.\n  --disable-ignore-pragma         Disable inline hadolint ignore comments.\n  --trusted-registry TEXT         Trusted Docker registry (can be repeated).\n  -v, --verbose                   Enable debug logging\n  -q, --quiet                     Supress all output except errors\n  --help                          Show this message and exit.\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--image-name: TEXT\n\nThe image name to isolate linting to.\n\n--image-version: TEXT\n\nThe image version to isolate linting to.\n\n--image-variant: TEXT\n\nThe image variant to isolate linting to.\n\n--image-os: TEXT\n\nThe image OS to isolate linting to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nLint only the latest version of each image. Development versions are ignored by this filter.\n\n--failure-threshold: TEXT\n\nExit with failure if any rule at or above this severity is violated. One of: error, warning, info, style, ignore, none. [default: error]\n\n--ignore: TEXT\n\nRule code to ignore (can be repeated).\n\n--require-label: TEXT\n\nLabel to require in format name:type (can be repeated).\n\n--no-fail\n\nAlways exit with status 0, even when rule violations are found.\n\n--error: TEXT\n\nRule code to treat as error (can be repeated).\n\n--warning: TEXT\n\nRule code to treat as warning (can be repeated).\n\n--info: TEXT\n\nRule code to treat as info (can be repeated).\n\n--style: TEXT\n\nRule code to treat as style (can be repeated).\n\n--strict-labels\n\nRequire labels to match the label schema.\n\n--disable-ignore-pragma\n\nDisable inline hadolint ignore comments.\n\n--trusted-registry: TEXT\n\nTrusted Docker registry (can be repeated).\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/hadolint/run.html#options",
-    "href": "reference/cli/hadolint/run.html#options",
-    "title": "bakery hadolint run",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory.\n\n--image-name: TEXT\n\nThe image name to isolate linting to.\n\n--image-version: TEXT\n\nThe image version to isolate linting to.\n\n--image-variant: TEXT\n\nThe image variant to isolate linting to.\n\n--image-os: TEXT\n\nThe image OS to isolate linting to.\n\n--dev-versions: CHOICE = DevVersionInclusionEnum.EXCLUDE\n\nInclude or exclude development versions defined in config.\n\n--matrix-versions: CHOICE = MatrixVersionInclusionEnum.EXCLUDE\n\nInclude or exclude versions defined in image matrix.\n\n--latest\n\nLint only the latest version of each image. Development versions are ignored by this filter.\n\n--failure-threshold: TEXT\n\nExit with failure if any rule at or above this severity is violated. One of: error, warning, info, style, ignore, none. [default: error]\n\n--ignore: TEXT\n\nRule code to ignore (can be repeated).\n\n--require-label: TEXT\n\nLabel to require in format name:type (can be repeated).\n\n--no-fail\n\nAlways exit with status 0, even when rule violations are found.\n\n--error: TEXT\n\nRule code to treat as error (can be repeated).\n\n--warning: TEXT\n\nRule code to treat as warning (can be repeated).\n\n--info: TEXT\n\nRule code to treat as info (can be repeated).\n\n--style: TEXT\n\nRule code to treat as style (can be repeated).\n\n--strict-labels\n\nRequire labels to match the label schema.\n\n--disable-ignore-pragma\n\nDisable inline hadolint ignore comments.\n\n--trusted-registry: TEXT\n\nTrusted Docker registry (can be repeated).\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/imagetools/merge.html",
-    "href": "reference/cli/imagetools/merge.html",
-    "title": "bakery imagetools merge",
-    "section": "",
-    "text": "Merge multi-platform images from build metadata files using ORAS.\n\n\nbakery imagetools merge [OPTIONS] METADATA_FILE...\n\n\nTakes one or more build metadata JSON files (produced by bakery build --strategy build) and merges platform-specific images into multi-platform manifest indexes.\n\n\n\nUsage: bakery imagetools merge [OPTIONS] METADATA_FILE...\n\n  Merge multi-platform images from build metadata files using ORAS.\n\n  Takes one or more build metadata JSON files (produced by `bakery build --strategy build`)\n  and merges platform-specific images into multi-platform manifest indexes.\n\nArguments:\n  METADATA_FILE...  Path to input build metadata JSON file(s) to merge.\n                    [required]\n\nOptions:\n  --context PATH            The root path to use. Defaults to the current\n                            working directory where invoked.  [default: (.)]\n  --temp-registry TEXT      Temporary registry to use for multiplatform\n                            split/merge builds.\n  --dry-run / --no-dry-run  If set, the merged images will not be pushed to\n                            the registry.  [default: no-dry-run]\n  -v, --verbose             Enable debug logging\n  -q, --quiet               Supress all output except errors\n  --help                    Show this message and exit.\n\n\n\n\n\n\nMETADATA_FILE: PATH\n\nRequired.\n\n\n\n\n\n\n\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--dry-run, --no-dry-run\n\nIf set, the merged images will not be pushed to the registry.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/imagetools/merge.html#arguments",
-    "href": "reference/cli/imagetools/merge.html#arguments",
-    "title": "bakery imagetools merge",
-    "section": "",
-    "text": "METADATA_FILE: PATH\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/imagetools/merge.html#options",
-    "href": "reference/cli/imagetools/merge.html#options",
-    "title": "bakery imagetools merge",
-    "section": "",
-    "text": "--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--temp-registry: TEXT\n\nTemporary registry to use for multiplatform split/merge builds.\n\n--dry-run, --no-dry-run\n\nIf set, the merged images will not be pushed to the registry.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/index.html",
-    "href": "reference/cli/index.html",
-    "title": "bakery",
-    "section": "",
-    "text": "A tool for building, testing, and managing container images\n\n\nbakery [OPTIONS] COMMAND [ARGS]...\n\n\n\nUsage: bakery [OPTIONS] COMMAND [ARGS]...\n\n  A tool for building, testing, and managing container images\n\nOptions:\n  --install-completion  Install completion for the current shell.\n  --show-completion     Show completion for the current shell, to copy it or\n                        customize the installation.\n  --help                Show this message and exit.\n\nCommands:\n  build       Build images using buildkit bake (aliases: b, bake)\n  version     Show the Posit Bakery version\n  run         Run extra tools/commands against images (aliases: r)\n  create      Create new projects, images, and versions (aliases: c, new)\n  update      Update managed files and configurations (aliases: u, up)\n  remove      Remove images and versions from the project (aliases: rm, r)\n  get         Get information about the bakery configuration\n  ci          Construct a CI matrix from the project.\n  clean       Cleaning utilities for remote build caches\n  dgoss       Run Goss tests against container images\n  hadolint    Lint Containerfiles using hadolint\n  imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n  wizcli      Scan container images for vulnerabilities with WizCLI\n\n\n\n\n\n\n--install-completion\n\nInstall completion for the current shell.\n\n--show-completion\n\nShow completion for the current shell, to copy it or customize the installation.\n\n\n\n\n\n\n\n\nbuild\n\nBuild images using buildkit bake (aliases: b, bake)\n\nversion\n\nShow the Posit Bakery version\n\nrun\n\nRun extra tools/commands against images (aliases: r)\n\ncreate\n\nCreate new projects, images, and versions (aliases: c, new)\n\nupdate\n\nUpdate managed files and configurations (aliases: u, up)\n\nremove\n\nRemove images and versions from the project (aliases: rm, r)\n\nget\n\nGet information about the bakery configuration\n\nci\n\nConstruct a CI matrix from the project.\n\nclean\n\nCleaning utilities for remote build caches\n\ndgoss\n\nRun Goss tests against container images\n\nhadolint\n\nLint Containerfiles using hadolint\n\nimagetools\n\nMerge and SOCI-convert multi-platform images (ORAS + SOCI)\n\nwizcli\n\nScan container images for vulnerabilities with WizCLI"
-  },
-  {
-    "objectID": "reference/cli/index.html#options",
-    "href": "reference/cli/index.html#options",
-    "title": "bakery",
-    "section": "",
-    "text": "--install-completion\n\nInstall completion for the current shell.\n\n--show-completion\n\nShow completion for the current shell, to copy it or customize the installation."
-  },
-  {
-    "objectID": "reference/cli/index.html#commands",
-    "href": "reference/cli/index.html#commands",
-    "title": "bakery",
-    "section": "",
-    "text": "build\n\nBuild images using buildkit bake (aliases: b, bake)\n\nversion\n\nShow the Posit Bakery version\n\nrun\n\nRun extra tools/commands against images (aliases: r)\n\ncreate\n\nCreate new projects, images, and versions (aliases: c, new)\n\nupdate\n\nUpdate managed files and configurations (aliases: u, up)\n\nremove\n\nRemove images and versions from the project (aliases: rm, r)\n\nget\n\nGet information about the bakery configuration\n\nci\n\nConstruct a CI matrix from the project.\n\nclean\n\nCleaning utilities for remote build caches\n\ndgoss\n\nRun Goss tests against container images\n\nhadolint\n\nLint Containerfiles using hadolint\n\nimagetools\n\nMerge and SOCI-convert multi-platform images (ORAS + SOCI)\n\nwizcli\n\nScan container images for vulnerabilities with WizCLI"
-  },
-  {
-    "objectID": "reference/cli/remove/image.html",
-    "href": "reference/cli/remove/image.html",
-    "title": "bakery remove image",
-    "section": "",
-    "text": "Removes an existing image from the bakery project\n\n\nbakery remove image [OPTIONS] IMAGE_NAME\n\n\nRemoves the image directory and all its contents from the bakery project and will remove its configuration from the bakery.yaml file.\n\n\n\nUsage: bakery remove image [OPTIONS] IMAGE_NAME\n\n  Removes an existing image from the bakery project\n\n  Removes the image directory and all its contents from the bakery project and\n  will remove its configuration from the bakery.yaml file.\n\nArguments:\n  IMAGE_NAME  The image name to remove files and configurations for.\n              [required]\n\nOptions:\n  --context DIRECTORY  The root path to use. Defaults to the current working\n                       directory where invoked.  [default: (.)]\n  -v, --verbose        Enable debug logging\n  -q, --quiet          Supress all output except errors\n  --help               Show this message and exit.\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/remove/image.html#arguments",
-    "href": "reference/cli/remove/image.html#arguments",
-    "title": "bakery remove image",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/remove/image.html#options",
-    "href": "reference/cli/remove/image.html#options",
-    "title": "bakery remove image",
-    "section": "",
-    "text": "--context: DIRECTORY = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/run.html",
-    "href": "reference/cli/run.html",
-    "title": "bakery run",
-    "section": "",
-    "text": "Run extra tools/commands against images (aliases: r)\n\n\nbakery run COMMAND [ARGS]...\n\n\n\nUsage: bakery run [OPTIONS] COMMAND [ARGS]...\n\n  Run extra tools/commands against images (aliases: r)\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  dgoss  Runs dgoss tests against images in the context path\n\n\n\n\n\n\ndgoss\n\nRuns dgoss tests against images in the context path"
-  },
-  {
-    "objectID": "reference/cli/run.html#commands",
-    "href": "reference/cli/run.html#commands",
-    "title": "bakery run",
-    "section": "",
-    "text": "dgoss\n\nRuns dgoss tests against images in the context path"
-  },
-  {
-    "objectID": "reference/cli/update.html",
-    "href": "reference/cli/update.html",
-    "title": "bakery update",
-    "section": "",
-    "text": "Update managed files and configurations (aliases: u, up)\n\n\nbakery update COMMAND [ARGS]...\n\n\n\nUsage: bakery update [OPTIONS] COMMAND [ARGS]...\n\n  Update managed files and configurations (aliases: u, up)\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  files    Renders templates to version files matching the given filters\n  version  Update an existing image version with a new version number.\n\n\n\n\n\n\nfiles\n\nRenders templates to version files matching the given filters\n\nversion\n\nUpdate an existing image version with a new version number."
-  },
-  {
-    "objectID": "reference/cli/update.html#commands",
-    "href": "reference/cli/update.html#commands",
-    "title": "bakery update",
-    "section": "",
-    "text": "files\n\nRenders templates to version files matching the given filters\n\nversion\n\nUpdate an existing image version with a new version number."
-  },
-  {
-    "objectID": "reference/cli/update/version.html",
-    "href": "reference/cli/update/version.html",
-    "title": "bakery update version",
-    "section": "",
-    "text": "Update an existing image version with a new version number.\n\n\nbakery update version [OPTIONS] IMAGE_NAME NEW_VERSION\n\n\nPatches the target version with the new version name. If --target-version is not specified, the version marked as latest is used. All existing configuration (dependencies, OS, latest flag) is preserved.\n\n\n\nUsage: bakery update version [OPTIONS] IMAGE_NAME NEW_VERSION\n\n  Update an existing image version with a new version number.\n\n  Patches the target version with the new version name. If --target-version is not\n  specified, the version marked as latest is used. All existing configuration\n  (dependencies, OS, latest flag) is preserved.\n\n  Examples:\n    bakery update version connect 2026.03.1\n    # Patches the latest version to '2026.03.1'\n\n    bakery update version connect 2026.03.1 --target-version 2026.03.0   #\n    Explicitly patches '2026.03.0' to '2026.03.1'\n\nArguments:\n  IMAGE_NAME   The image name to update.  [required]\n  NEW_VERSION  The new image version name.  [required]\n\nOptions:\n  --target-version TEXT  The existing version name to patch. If not specified,\n                         the latest version is used.\n  --context PATH         The root path to use. Defaults to the current working\n                         directory where invoked.  [default: (.)]\n  --value TEXT           A 'key=value' pair to pass to the templates. Accepts\n                         multiple pairs.\n  --clean / --no-clean   Remove all existing version files before rendering\n                         from templates.  [default: clean]\n  -v, --verbose          Enable debug logging\n  -q, --quiet            Supress all output except errors\n  --help                 Show this message and exit.\n\n\n\n\n\n\nIMAGE_NAME: TEXT\n\nRequired.\n\nNEW_VERSION: TEXT\n\nRequired.\n\n\n\n\n\n\n\n\n--target-version: TEXT\n\nThe existing version name to patch. If not specified, the latest version is used.\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--clean, --no-clean\n\nRemove all existing version files before rendering from templates.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors\n\n\n\n\n\n\nbakery update version connect 2026.03.1\n# Patches the latest version to '2026.03.1'\n\nbakery update version connect 2026.03.1 --target-version 2026.03.0\n# Explicitly patches '2026.03.0' to '2026.03.1'"
-  },
-  {
-    "objectID": "reference/cli/update/version.html#arguments",
-    "href": "reference/cli/update/version.html#arguments",
-    "title": "bakery update version",
-    "section": "",
-    "text": "IMAGE_NAME: TEXT\n\nRequired.\n\nNEW_VERSION: TEXT\n\nRequired."
-  },
-  {
-    "objectID": "reference/cli/update/version.html#options",
-    "href": "reference/cli/update/version.html#options",
-    "title": "bakery update version",
-    "section": "",
-    "text": "--target-version: TEXT\n\nThe existing version name to patch. If not specified, the latest version is used.\n\n--context: PATH = /home/runner/work/images-shared/images-shared/posit-bakery/great-docs\n\nThe root path to use. Defaults to the current working directory where invoked.\n\n--value: TEXT\n\nA key=value pair to pass to the templates. Accepts multiple pairs.\n\n--clean, --no-clean\n\nRemove all existing version files before rendering from templates.\n\n-v, --verbose\n\nEnable debug logging\n\n-q, --quiet\n\nSupress all output except errors"
-  },
-  {
-    "objectID": "reference/cli/update/version.html#examples",
-    "href": "reference/cli/update/version.html#examples",
-    "title": "bakery update version",
-    "section": "",
-    "text": "bakery update version connect 2026.03.1\n# Patches the latest version to '2026.03.1'\n\nbakery update version connect 2026.03.1 --target-version 2026.03.0\n# Explicitly patches '2026.03.0' to '2026.03.1'"
-  },
-  {
-    "objectID": "reference/cli/wizcli.html",
-    "href": "reference/cli/wizcli.html",
-    "title": "bakery wizcli",
-    "section": "",
-    "text": "Scan container images for vulnerabilities with WizCLI\n\n\nbakery wizcli COMMAND [ARGS]...\n\n\n\nUsage: bakery wizcli [OPTIONS] COMMAND [ARGS]...\n\n  Scan container images for vulnerabilities with WizCLI\n\nOptions:\n  --help  Show this message and exit.\n\nCommands:\n  scan  Scan container images for vulnerabilities using WizCLI.\n\n\n\n\n\n\nscan\n\nScan container images for vulnerabilities using WizCLI."
-  },
-  {
-    "objectID": "reference/cli/wizcli.html#commands",
-    "href": "reference/cli/wizcli.html#commands",
-    "title": "bakery wizcli",
-    "section": "",
-    "text": "scan\n\nScan container images for vulnerabilities using WizCLI."
+    "objectID": "index.html#bakery-concepts",
+    "href": "index.html#bakery-concepts",
+    "title": "Getting Started",
+    "section": "Bakery Concepts",
+    "text": "Bakery Concepts\n\nProject Structure\nBakery establishes a directory structure, referred to as a project. The project configuration is stored in the bakery.yaml.\nBy default, bakery uses the invocation directory as the project context. You can use the --context flag to override the default behavior.\nbakery --context /path/to/directory\nA bakery project can include one or more images. Each image can optionally have one or more variants. By default, there are two variants: Standard and Minimal. Each image should have one or more versions. Each version can have one or more OSes.\n.\n├── bakery.yaml\n├── fancy-image/\n│   ├── 2024.11.0/\n│   ├── 2025.01.0/\n│   └── template/\n└── more-fancy-image/\n    ├── 2024.12.0/\n    ├── 2024.12.1/\n    ├── 2025.02.0/\n    └── template/\n\n\nImage Tags\nBakery adds the following default tags for all versions of the image:\n\n\n\n\n\n\n\n\nStandard Image\nMinimal Image\nStructure\n\n\n\n\n2025.01.0-ubuntu-22.04-std\n2025.01.0-ubuntu-22.04-min\n&lt;version&gt;-&lt;os&gt;-&lt;type&gt;\n\n\n2025.01.0-ubuntu-22.04\n❌\n&lt;version&gt;-&lt;os&gt;\n\n\nAdded if os == primary_os\n\n\n\n\n2025.01.0-std\n2025.01.0-min\n&lt;version&gt;-&lt;type&gt;\n\n\n2025.01.0\n❌\n&lt;version&gt;\n\n\n\nBakery also adds the following tags to the latest image version:\n\n\n\nStandard Image\nMinimal Image\nStructure\n\n\n\n\nubuntu-22.04-std\nubuntu-22.04-min\n&lt;os&gt;-&lt;type&gt;\n\n\nubuntu-22.04\n❌\n&lt;os&gt;\n\n\nAdded if os == primary_os\n\n\n\n\nstd\nmin\n&lt;type&gt;\n\n\nlatest\n❌\nlatest",
+    "crumbs": [
+      "Home",
+      "Getting Started"
+    ]
   },
   {
     "objectID": "reference/config.BakeryConfig.html",
