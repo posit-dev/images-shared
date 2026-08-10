@@ -138,6 +138,117 @@ class TestWizCLICommand:
         assert "--use-device-code" in cmd.command
         assert "--no-browser" in cmd.command
 
+    def test_scan_name_format(self, basic_standard_image_target):
+        """Test that scan_name follows the Version-OS-Variant-platform format."""
+        from unittest.mock import patch
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            tv = basic_standard_image_target.tag_template_values
+            expected_suffix = "-".join(part for part in [tv["Version"], tv["OS"], tv["Variant"]] if part)
+            assert cmd.scan_name == f"{basic_standard_image_target.image_name}:{expected_suffix}-amd64"
+            assert "--name" in cmd.command
+            assert cmd.scan_name in cmd.command
+
+    def test_scan_name_in_command(self, basic_standard_image_target):
+        """Test that --name flag uses scan_name."""
+        from unittest.mock import patch
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "arm64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            idx = cmd.command.index("--name")
+            assert cmd.command[idx + 1].endswith("-arm64")
+
+    def test_scan_tags_present(self, basic_standard_image_target):
+        """Test that auto-generated scan tags are emitted in the command."""
+        from unittest.mock import patch
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
+            tag_keys = [t.split("=")[0] for t in tags_in_command]
+            assert "product" in tag_keys
+            assert "version" in tag_keys
+            assert "channel" in tag_keys
+            assert "platform" in tag_keys
+
+    def test_scan_tags_user_tags_appended(self, basic_standard_image_target):
+        """Test that user-supplied tags are emitted after auto-generated ones."""
+        from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
+        from unittest.mock import patch
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+                tool_options=WizCLIOptions(tags=["team=platform"]),
+            )
+            tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
+            assert "team=platform" in tags_in_command
+            # Auto tags appear before user tags
+            auto_idx = next(i for i, t in enumerate(tags_in_command) if t.startswith("product="))
+            user_idx = tags_in_command.index("team=platform")
+            assert auto_idx < user_idx
+
+    def test_scan_context_id_defaults_to_monthly(self, basic_standard_image_target):
+        """Test that scan-context-id defaults to a month-stripped release context."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        idx = cmd.command.index("--scan-context-id")
+        assert cmd.command[idx + 1] == cmd.default_scan_context_id
+        # Should be image-name + stripped version, not the full uid
+        assert cmd.command[idx + 1].startswith(basic_standard_image_target.image_name + "-")
+
+    def test_scan_context_id_dev_uses_channel(self, basic_standard_image_target):
+        """Test that dev builds use per-channel context ID."""
+        from unittest.mock import PropertyMock, patch
+        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch.object(
+            type(basic_standard_image_target),
+            "release_channel",
+            new_callable=PropertyMock,
+            return_value=ReleaseChannelEnum.DAILY,
+        ):
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            idx = cmd.command.index("--scan-context-id")
+            assert cmd.command[idx + 1] == f"{basic_standard_image_target.image_name}-daily"
+
+    def test_scan_context_id_explicit_override(self, basic_standard_image_target):
+        """Test that an explicit scan_context_id overrides the uid default."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            scan_context_id="my-custom-context",
+        )
+        idx = cmd.command.index("--scan-context-id")
+        assert cmd.command[idx + 1] == "my-custom-context"
+
     def test_validate_no_wizcli_bin(self, basic_standard_image_target):
         """Test that validation fails if wizcli binary cannot be found."""
         with patch("posit_bakery.plugins.builtin.wizcli.command.find_wizcli_bin") as mock:

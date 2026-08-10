@@ -1,10 +1,14 @@
+import re
 from pathlib import Path
 from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
+from posit_bakery.config.dependencies.version import strip_patch
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
+from posit_bakery.settings import SETTINGS
 from posit_bakery.util import find_bin
 
 
@@ -80,6 +84,64 @@ class WizCLICommand(BaseModel):
             log_file=log_file,
         )
 
+    @computed_field
+    @property
+    def default_scan_context_id(self) -> str:
+        """Generate the default scan context ID for grouping related scans in Wiz.
+
+        Dev builds use a per-channel ID (e.g. ``connect-daily``) so each channel
+        always reflects the current state. Release and matrix builds use a
+        month/minor-stripped version (e.g. ``connect-2026-07``,
+        ``connect-content-r4-5-python3-14``) so patch bumps and build-number
+        increments update the context in-place rather than creating new ones.
+        Positron build-number suffixes (e.g. ``-2`` in ``2026.08.1-2``) are
+        stripped after strip_patch so the context stays at monthly granularity.
+        """
+        t = self.image_target
+        if t.release_channel != ReleaseChannelEnum.RELEASE:
+            raw = f"{t.image_name}-{t.release_channel.value}"
+        else:
+            stripped = re.sub(r"-\d+$", "", strip_patch(t.image_version.name))
+            raw = f"{t.image_name}-{stripped}"
+        return re.sub(r"[ .+/]", "-", raw).lower()
+
+    @computed_field
+    @property
+    def scan_name(self) -> str:
+        """Generate a human-readable scan name for the Wiz UI.
+
+        Follows the same Version-OS-Variant-platform format as bakery's per-platform
+        cache tags, so the name maps directly to a real build artifact.
+        """
+        t = self.image_target
+        tv = t.tag_template_values
+        suffix = "-".join(part for part in [tv["Version"], tv["OS"], tv["Variant"]] if part)
+        return f"{t.image_name}:{suffix}-{SETTINGS.architecture}"
+
+    @computed_field
+    @property
+    def scan_tags(self) -> list[str]:
+        """Generate tags for the Wiz scan from ImageTarget fields.
+
+        Covers every useful grouping axis in the Wiz UI: product, version, channel,
+        OS, variant, and platform. User-supplied tool_options.tags are emitted
+        separately and can override or extend these.
+        """
+        t = self.image_target
+        tv = t.tag_template_values
+        tags = [
+            f"product={t.image_name}",
+            f"version={t.image_version.name}",
+            f"channel={t.release_channel.value}",
+            f"platform={SETTINGS.architecture}",
+        ]
+        if tv["OS"]:
+            # "os" is a reserved tag key in Wiz; use "base-os" instead.
+            tags.append(f"base-os={tv['OS']}")
+        if tv["Variant"]:
+            tags.append(f"variant={tv['Variant']}")
+        return tags
+
     @model_validator(mode="after")
     def check_wizcli_bin(self) -> Self:
         if not self.wizcli_bin:
@@ -106,6 +168,14 @@ class WizCLICommand(BaseModel):
         # Always set for machine-parseable output
         cmd.extend(["--no-color", "--no-style"])
 
+        # Scan name: Version-OS-Variant-platform, matching the per-platform cache tag format.
+        cmd.extend(["--name", self.scan_name])
+
+        # Scan context ID: groups all platform scans of the same image together in Wiz
+        # and deduplicates shared findings. Defaults to the image uid (platform-agnostic)
+        # so amd64 and arm64 scans of the same image are automatically linked.
+        cmd.extend(["--scan-context-id", self.scan_context_id or self.default_scan_context_id])
+
         # Policies/projects: an explicit CLI value always wins over bakery.yaml,
         # since CI feeds these from secrets and bakery.yaml never should.
         projects = self.projects or (
@@ -119,6 +189,10 @@ class WizCLICommand(BaseModel):
         )
         if policies:
             cmd.extend(["--policies", policies])
+
+        # Auto-generated tags from ImageTarget, then user-supplied tool_options.tags.
+        for tag in self.scan_tags:
+            cmd.extend(["--tags", tag])
 
         # Remaining ToolOptions fields
         if self.tool_options:
@@ -147,8 +221,6 @@ class WizCLICommand(BaseModel):
             cmd.extend(["--timeout", self.timeout])
         if self.no_publish:
             cmd.append("--no-publish")
-        if self.scan_context_id:
-            cmd.extend(["--scan-context-id", self.scan_context_id])
         if self.log_file:
             cmd.extend(["--log", self.log_file])
 
