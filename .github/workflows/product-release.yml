@@ -46,6 +46,8 @@ jobs:
 
       - name: Install bakery
         uses: posit-dev/images-shared/setup-bakery@main
+        with:
+          restore-cache: "false"
 
       - name: Parse version
         id: parse
