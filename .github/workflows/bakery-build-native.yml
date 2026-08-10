@@ -377,13 +377,13 @@ jobs:
             --push
 
       - name: Setup trivy
-        if: ${{ inputs.push }}
+        if: ${{ inputs.push && matrix.img.latest }}
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
           cache: true
 
       - name: Scan
-        if: ${{ inputs.push }}
+        if: ${{ inputs.push && matrix.img.latest }}
         continue-on-error: true
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
@@ -407,7 +407,7 @@ jobs:
             --context "$CONTEXT"
 
       - name: Upload Trivy SARIF
-        if: ${{ inputs.push && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
+        if: ${{ inputs.push && matrix.img.latest && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
