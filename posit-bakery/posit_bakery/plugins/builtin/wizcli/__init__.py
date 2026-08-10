@@ -140,13 +140,12 @@ class WizCLIPlugin(BakeryToolPlugin):
                 ),
             ] = None,
             driver: Annotated[
-                Optional[str],
+                str,
                 typer.Option(
-                    show_default=False,
                     help="Driver used to scan image (extract, mount, mountWithLayers).",
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
-            ] = None,
+            ] = "extract",
             policies: Annotated[
                 Optional[str],
                 typer.Option(
@@ -296,7 +295,7 @@ class WizCLIPlugin(BakeryToolPlugin):
         targets: list[ImageTarget],
         *,
         disabled_scanners: str | None = None,
-        driver: str | None = None,
+        driver: str = "extract",
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,

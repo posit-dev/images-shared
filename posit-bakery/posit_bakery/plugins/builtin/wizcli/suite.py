@@ -26,7 +26,7 @@ class WizCLISuite:
         *,
         tool_options: WizCLIOptions | None = None,
         disabled_scanners: str | None = None,
-        driver: str | None = None,
+        driver: str = "extract",
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,

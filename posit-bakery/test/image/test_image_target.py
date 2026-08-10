@@ -702,6 +702,29 @@ class TestImageTarget:
 
         assert basic_standard_image_target.ref() == "test-image@sha256:newdigest"
 
+    def test_ref_digest_only(self, basic_standard_image_target):
+        """Test ref returns the tag-free digest_ref when digest_only is requested."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image:latest@sha256:1234567890abcdef"
+        mock_metadata.digest_ref = "test-image@sha256:1234567890abcdef"
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+
+        assert basic_standard_image_target.ref() == "test-image:latest@sha256:1234567890abcdef"
+        assert basic_standard_image_target.ref(digest_only=True) == "test-image@sha256:1234567890abcdef"
+
+    def test_ref_digest_only_falls_back_to_tag(self, basic_standard_image_target):
+        """Test ref falls back to the first tag when metadata cannot produce a digest-only ref."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image:latest@sha256:1234567890abcdef"
+        mock_metadata.digest_ref = None
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+
+        assert basic_standard_image_target.ref(digest_only=True).endswith("docker.io/posit/test-image:1.0.0")
+
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
         expected_labels = {

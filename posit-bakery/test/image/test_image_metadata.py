@@ -52,6 +52,31 @@ class TestBuildMetadata:
         expected_ref = "docker.io/posit/test-multi:1.0.0-min@sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
         assert metadata.image_ref == expected_ref
 
+    def test_digest_ref(self, image_testdata_path):
+        """Test digest_ref strips the tag from the primary tag, keeping only repo@digest."""
+        with open(image_testdata_path / "single-target.json") as f:
+            data = json.load(f)
+
+        metadata = BuildMetadata.model_validate(data)
+        expected_ref = (
+            "docker.io/posit/test-multi@sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
+        )
+        assert metadata.digest_ref == expected_ref
+
+    def test_digest_ref_untagged_name(self):
+        """Test digest_ref handles an untagged image name, as produced by push-by-digest builds."""
+        data = {
+            "image.name": "ghcr.io/posit-dev/test-multi/tmp",
+            "containerimage.digest": "sha256:abc123",
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.digest_ref == "ghcr.io/posit-dev/test-multi/tmp@sha256:abc123"
+
+    def test_digest_ref_requires_digest(self):
+        """Test digest_ref returns None when no digest is recorded."""
+        metadata = BuildMetadata.model_validate({"image.name": "test:latest"})
+        assert metadata.digest_ref is None
+
     def test_created_at_from_annotations(self, image_testdata_path):
         """Test created_at returns timestamp from container_image_descriptor.annotations."""
         with open(image_testdata_path / "multi-target.json") as f:

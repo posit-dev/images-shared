@@ -27,7 +27,7 @@ class WizCLICommand(BaseModel):
 
     # CLI pass-through options
     disabled_scanners: Annotated[str | None, Field(default=None)]
-    driver: Annotated[str | None, Field(default=None)]
+    driver: Annotated[str, Field(default="extract")]
     policies: Annotated[str | None, Field(default=None)]
     projects: Annotated[str | None, Field(default=None)]
     client_id: Annotated[str | None, Field(default=None)]
@@ -47,7 +47,7 @@ class WizCLICommand(BaseModel):
         *,
         tool_options: WizCLIOptions | None = None,
         disabled_scanners: str | None = None,
-        driver: str | None = None,
+        driver: str = "extract",
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,
@@ -156,8 +156,10 @@ class WizCLICommand(BaseModel):
     def command(self) -> list[str]:
         cmd = [self.wizcli_bin, "scan", "container-image"]
 
-        # Image reference
-        cmd.append(self.image_target.ref())
+        # Temp-registry images are pushed by digest and carry no tag in the registry, so the
+        # tag portion of a `repo:tag@sha256:DIGEST` reference resolves to nothing. Ask for the
+        # tag-free form to keep the reference unambiguous regardless of how wizcli parses it.
+        cmd.append(self.image_target.ref(digest_only=True))
 
         # Output file
         cmd.extend(["--json-output-file", str(self.results_file)])
@@ -207,8 +209,7 @@ class WizCLICommand(BaseModel):
         # CLI pass-through options
         if self.disabled_scanners:
             cmd.extend(["--disabled-scanners", self.disabled_scanners])
-        if self.driver:
-            cmd.extend(["--driver", self.driver])
+        cmd.extend(["--driver", self.driver])
         if self.client_id:
             cmd.extend(["--client-id", self.client_id])
         if self.client_secret:
