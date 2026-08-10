@@ -119,6 +119,10 @@ class WizCLISuite:
                     log.warning(f"[yellow bold]Security policy violation for '{str(wizcli_command.image_target)}'")
                 else:
                     log.error(f"wizcli for '{str(wizcli_command.image_target)}' exited with code {exit_code}")
+                if report is None:
+                    # No parseable report: record the target as failed so it still appears in
+                    # the results table instead of vanishing from it.
+                    report_collection.add_failure(wizcli_command.image_target)
                 errors.append(
                     BakeryWizCLIError(
                         f"wizcli scan failed for '{str(wizcli_command.image_target)}'",
