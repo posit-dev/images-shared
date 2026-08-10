@@ -394,6 +394,38 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT" \
             --push
+      - name: Test
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          IMAGE_PLATFORM: ${{ matrix.img.platform }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          bakery dgoss run \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$IMAGE_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+      # Runs after Test on purpose. Every target of an image builds to the same
+      # tagless temp name, so the `--load` of each build overwrites the previous
+      # one and only the last target stays addressable in the local daemon. The
+      # `docker run` in Test pulls each target by digest, which registers a
+      # name-free `repo@sha256:...` entry per target -- all of them coexist,
+      # unlike tags. wizcli's `extract` driver reads the local store, so it can
+      # only resolve every target once Test has warmed it.
       - name: Scan
         if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
         continue-on-error: true
@@ -427,31 +459,6 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             "${POLICY_FLAGS[@]}" \
             "${PROJECT_FLAGS[@]}" \
-            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
-            --context "$CONTEXT"
-      - name: Test
-        env:
-          IMAGE_NAME: ${{ matrix.img.image }}
-          IMAGE_VERSION: ${{ matrix.img.version }}
-          IMAGE_PLATFORM: ${{ matrix.img.platform }}
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
-          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
-          CONTEXT: ${{ inputs.context }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DEV_SPEC_FLAGS=()
-          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
-          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
-          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          bakery dgoss run \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
       - name: Upload Metadata
