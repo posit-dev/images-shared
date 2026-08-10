@@ -408,10 +408,19 @@ jobs:
 
       - name: Upload Trivy SARIF
         if: ${{ inputs.push && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@404bd795832c959ffb8efae2b1b4cc1aafc82058  # v3.37.6
-        with:
-          sarif_file: results/trivy/
-          category: trivy-${{ matrix.img.image }}-${{ steps.normalize-platform.outputs.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          while IFS= read -r -d '' sarif_file; do
+            uid=$(basename "$sarif_file" .sarif)
+            encoded=$(gzip -c "$sarif_file" | base64 -w 0)
+            gh api "repos/${GITHUB_REPOSITORY}/code-scanning/sarifs" \
+              --method POST \
+              -f sarif="$encoded" \
+              -f ref="$GITHUB_REF" \
+              -f commit_sha="$GITHUB_SHA" \
+              -f category="trivy-${uid}" || true
+          done < <(find results/trivy -name "*.sarif" -print0)
 
       - name: Test
         env:
