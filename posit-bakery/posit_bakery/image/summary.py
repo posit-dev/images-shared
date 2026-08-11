@@ -323,6 +323,9 @@ class BuildSummary(BaseModel):
             return
 
         rows_by_uid = {row.uid: row for row in self.targets}
+        # Read on the main thread and bound into each job below, so a worker never reaches
+        # into a row -- not even to read one. Rows are `_apply`'s alone.
+        cache_refs = {row.uid: row.cache_ref for row in self.targets}
 
         manifest_client: GHCRManifestClient | None = None
         if has_cache_ref:
@@ -332,13 +335,13 @@ class BuildSummary(BaseModel):
                 log.debug(f"Cache size measurement disabled: {e}")
 
         def _measure(
-            runner: CommandRunner, target: ImageTarget
+            runner: CommandRunner, target: ImageTarget, cache_ref: str | None
         ) -> tuple[int | None, int | None, int | None, int | None]:
             """Runs on a worker thread. Returns (local_size, registry_size, layers, cache_size)
             instead of writing to `row` directly -- mutation happens in `_apply`, on the main
             thread, via `on_result`, matching ParallelShellExecutor's own documented safe
-            pattern."""
-            row = rows_by_uid.get(target.uid)
+            pattern. `cache_ref` is passed in for the same reason, rather than looked up from
+            `rows_by_uid` here."""
             local_size = registry_size = layers = cache_size = None
             local_layers = registry_layers = None
             try:
@@ -361,8 +364,8 @@ class BuildSummary(BaseModel):
                 # the column's meaning from flipping with `--load`/`--push`; the local count is
                 # only a fallback for builds that never touch a registry.
                 layers = registry_layers if registry_layers is not None else local_layers
-                if manifest_client is not None and row is not None and row.cache_ref is not None:
-                    cache_size = _cache_size(manifest_client, row.cache_ref)
+                if manifest_client is not None and cache_ref is not None:
+                    cache_size = _cache_size(manifest_client, cache_ref)
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
             return local_size, registry_size, layers, cache_size
@@ -379,7 +382,11 @@ class BuildSummary(BaseModel):
         executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(targets)))
         executor.run_jobs(
             [
-                ShellJob(key=target.uid, label=str(target), run=lambda runner, t=target: _measure(runner, t))
+                ShellJob(
+                    key=target.uid,
+                    label=str(target),
+                    run=lambda runner, t=target, c=cache_refs.get(target.uid): _measure(runner, t, c),
+                )
                 for target in targets
             ],
             on_result=_apply,
