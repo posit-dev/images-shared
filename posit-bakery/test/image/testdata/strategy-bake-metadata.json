@@ -1,0 +1,452 @@
+{
+  "package-manager-2026-06-0-minimal-ubuntu-22-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@22.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "3b06811b2afd352be909dd088a004166d665dc76d38b13eada33522a9d915c6f"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2204.min"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 22.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.variant": "Minimal",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.734995",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/bq6nnvbsdghqiogcyp3jpqh3k",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:2bad1f63ff8314ecf942795f10f82baf8679b2830c61497d200dcbf6efa8547d",
+      "size": 1999,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:50:54Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:2bad1f63ff8314ecf942795f10f82baf8679b2830c61497d200dcbf6efa8547d",
+    "image.name": "docker.io/posit/package-manager:2026.06.0-ubuntu-22.04-min,docker.io/posit/package-manager:ubuntu-22.04-min,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-22.04-min,ghcr.io/posit-dev/package-manager:ubuntu-22.04-min"
+  },
+  "package-manager-2026-06-0-minimal-ubuntu-24-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@24.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2404.min"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 24.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.variant": "Minimal",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.746569",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/37sroy3mvn84qiuh37m3asepz",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:796252c4f045f13fc99f235a3e38216518fcbf54def130ab41689749a9cf3bfd",
+      "size": 1999,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:50:30Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:796252c4f045f13fc99f235a3e38216518fcbf54def130ab41689749a9cf3bfd",
+    "image.name": "docker.io/posit/package-manager:2026.06.0-min,docker.io/posit/package-manager:2026.06.0-ubuntu-24.04-min,docker.io/posit/package-manager:min,docker.io/posit/package-manager:ubuntu-24.04-min,ghcr.io/posit-dev/package-manager:2026.06.0-min,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-24.04-min,ghcr.io/posit-dev/package-manager:min,ghcr.io/posit-dev/package-manager:ubuntu-24.04-min"
+  },
+  "package-manager-2026-06-0-minimal-ubuntu-26-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@26.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "678c6550cc43645e08669028bc177f50be4e7c5b8cca677067b1914d4afc7a03"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2604.min"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 26.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.variant": "Minimal",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.748163",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/q8iekrb2nau3o0ln4a5agc2oi",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:643b4b1c3192acbe810ac31401c67536445d55731100c6e0e36c73ccec04d05c",
+      "size": 2189,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:50:33Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:643b4b1c3192acbe810ac31401c67536445d55731100c6e0e36c73ccec04d05c",
+    "image.name": "docker.io/posit/package-manager:2026.06.0-ubuntu-26.04-min,docker.io/posit/package-manager:ubuntu-26.04-min,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-26.04-min,ghcr.io/posit-dev/package-manager:ubuntu-26.04-min"
+  },
+  "package-manager-2026-06-0-standard-ubuntu-22-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@22.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "3b06811b2afd352be909dd088a004166d665dc76d38b13eada33522a9d915c6f"
+          }
+        },
+        {
+          "uri": "pkg:docker/ghcr.io/astral-sh/uv@debian-slim?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "c50603599cfe995c7c736211b163305d9ee4b4947f4fdcb53f0834a391e79da1"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2204.std"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 22.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.tools.R": "4.6.1",
+            "label:co.posit.image.tools.python": "3.14.6",
+            "label:co.posit.image.variant": "Standard",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.751025",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/46jdsck1tswxbyodw6507q90u",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:6f0e9ab5cc14b360e8ed5656425b6f8b01a22671cf2a0ca40aec134cb4aad3b8",
+      "size": 2766,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:51:21Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:6f0e9ab5cc14b360e8ed5656425b6f8b01a22671cf2a0ca40aec134cb4aad3b8",
+    "image.name": "docker.io/posit/package-manager:2026.06.0-ubuntu-22.04,docker.io/posit/package-manager:2026.06.0-ubuntu-22.04-std,docker.io/posit/package-manager:ubuntu-22.04,docker.io/posit/package-manager:ubuntu-22.04-std,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-22.04,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-22.04-std,ghcr.io/posit-dev/package-manager:ubuntu-22.04,ghcr.io/posit-dev/package-manager:ubuntu-22.04-std"
+  },
+  "package-manager-2026-06-0-standard-ubuntu-24-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@24.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea"
+          }
+        },
+        {
+          "uri": "pkg:docker/ghcr.io/astral-sh/uv@debian-slim?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "c50603599cfe995c7c736211b163305d9ee4b4947f4fdcb53f0834a391e79da1"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2404.std"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 24.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.tools.R": "4.6.1",
+            "label:co.posit.image.tools.python": "3.14.6",
+            "label:co.posit.image.variant": "Standard",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.756056",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/tchcfw3y5z0yu3uumeaqqicfr",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:4f4c79eddd2daffa415525cd3bbaaca876c55112be408b8f5c8cec93ea6b6314",
+      "size": 2766,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:50:15Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:4f4c79eddd2daffa415525cd3bbaaca876c55112be408b8f5c8cec93ea6b6314",
+    "image.name": "docker.io/posit/package-manager:2026.06.0,docker.io/posit/package-manager:2026.06.0-std,docker.io/posit/package-manager:2026.06.0-ubuntu-24.04,docker.io/posit/package-manager:2026.06.0-ubuntu-24.04-std,docker.io/posit/package-manager:latest,docker.io/posit/package-manager:std,docker.io/posit/package-manager:ubuntu-24.04,docker.io/posit/package-manager:ubuntu-24.04-std,ghcr.io/posit-dev/package-manager:2026.06.0,ghcr.io/posit-dev/package-manager:2026.06.0-std,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-24.04,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-24.04-std,ghcr.io/posit-dev/package-manager:latest,ghcr.io/posit-dev/package-manager:std,ghcr.io/posit-dev/package-manager:ubuntu-24.04,ghcr.io/posit-dev/package-manager:ubuntu-24.04-std"
+  },
+  "package-manager-2026-06-0-standard-ubuntu-26-04": {
+    "buildx.build.provenance": {
+      "builder": {
+        "id": ""
+      },
+      "buildType": "https://mobyproject.org/buildkit@v1",
+      "materials": [
+        {
+          "uri": "pkg:docker/ubuntu@26.04?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "678c6550cc43645e08669028bc177f50be4e7c5b8cca677067b1914d4afc7a03"
+          }
+        },
+        {
+          "uri": "pkg:docker/ghcr.io/astral-sh/uv@debian-slim?platform=linux%2Famd64",
+          "digest": {
+            "sha256": "c50603599cfe995c7c736211b163305d9ee4b4947f4fdcb53f0834a391e79da1"
+          }
+        }
+      ],
+      "invocation": {
+        "configSource": {
+          "entryPoint": "Containerfile.ubuntu2604.std"
+        },
+        "parameters": {
+          "frontend": "dockerfile.v0",
+          "args": {
+            "label:co.posit.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:co.posit.image.documentation": "https://docs.posit.co/rspm/",
+            "label:co.posit.image.maintainer": "Posit Docker Team \u003cdocker@posit.co\u003e",
+            "label:co.posit.image.name": "Posit Package Manager",
+            "label:co.posit.image.os": "Ubuntu 26.04",
+            "label:co.posit.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:co.posit.image.tools.R": "4.6.1",
+            "label:co.posit.image.tools.python": "3.14.6",
+            "label:co.posit.image.variant": "Standard",
+            "label:co.posit.image.version": "2026.06.0",
+            "label:org.opencontainers.image.authors": "Ben Schwedler \u003cben@posit.co\u003e, Ian H. Pittwood \u003cian.pittwood@posit.co\u003e",
+            "label:org.opencontainers.image.created": "2026-08-11T09:50:14.758825",
+            "label:org.opencontainers.image.description": "A containerized image of Posit Package Manager (PPM), which organizes and centralizes data science packages across your team, department, or the entire organization.",
+            "label:org.opencontainers.image.documentation": "https://docs.posit.co/rspm/",
+            "label:org.opencontainers.image.revision": "adec3d9184f76c6e7725da5f28bdb9410010833c",
+            "label:org.opencontainers.image.source": "https://github.com/posit-dev/images-package-manager",
+            "label:org.opencontainers.image.title": "Posit Package Manager",
+            "label:org.opencontainers.image.vendor": "Posit Software, PBC",
+            "label:org.opencontainers.image.version": "2026.06.0",
+            "local-sessionid:context": "903o5aehurpm6f343ej8u2y6n",
+            "local-sessionid:dockerfile": "903o5aehurpm6f343ej8u2y6n"
+          },
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ]
+        },
+        "environment": {
+          "platform": "linux/amd64"
+        }
+      }
+    },
+    "buildx.build.ref": "posit-builder/posit-builder0/wr41oe82z9t2r83ntypwj78qg",
+    "containerimage.descriptor": {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:9706af41ea062b31eb29b8f718d4368481e5edc9cd6cbbc7925a1e78bc0b2250",
+      "size": 2956,
+      "annotations": {
+        "org.opencontainers.image.created": "2026-08-11T15:50:15Z"
+      },
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "containerimage.digest": "sha256:9706af41ea062b31eb29b8f718d4368481e5edc9cd6cbbc7925a1e78bc0b2250",
+    "image.name": "docker.io/posit/package-manager:2026.06.0-ubuntu-26.04,docker.io/posit/package-manager:2026.06.0-ubuntu-26.04-std,docker.io/posit/package-manager:ubuntu-26.04,docker.io/posit/package-manager:ubuntu-26.04-std,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-26.04,ghcr.io/posit-dev/package-manager:2026.06.0-ubuntu-26.04-std,ghcr.io/posit-dev/package-manager:ubuntu-26.04,ghcr.io/posit-dev/package-manager:ubuntu-26.04-std"
+  }
+}
