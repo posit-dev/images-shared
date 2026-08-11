@@ -313,13 +313,16 @@ class TestBuildSummaryFlag:
         assert "not supported with --plan" in result.stderr
         instance.bake_plan_targets.assert_not_called()
 
-    def test_plan_with_summary_does_not_build(self, mock_build_config):
-        """--plan --summary shows bake JSON then the count table, with no build."""
+    @pytest.mark.parametrize("extra_args", [[], ["--summary"]], ids=["plan_alone", "plan_with_summary"])
+    def test_plan_never_builds(self, mock_build_config, extra_args):
+        """--plan is the dry-run flag and --summary must not change that. Both cases matter:
+        the exit that enforces this used to live in the --summary block, which --plan fell
+        through to, so it is easy to move in a way that quietly builds for one case only."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         instance.bake_plan_targets.return_value = "{}"
         result = runner.invoke(
-            app, ["build", "--plan", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+            app, ["build", "--plan", *extra_args, "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
         )
         assert result.exit_code == 0
         instance.build_targets.assert_not_called()
