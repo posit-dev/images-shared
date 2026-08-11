@@ -1,4 +1,5 @@
 import pytest
+from posit_bakery.plugins.builtin.dgoss import DGossPlugin
 from posit_bakery.plugins.protocol import BakeryToolPlugin
 from posit_bakery.plugins.registry import discover_plugins, get_plugin
 
@@ -40,9 +41,6 @@ class TestGetPlugin:
         """get_plugin should raise KeyError for unknown plugin names."""
         with pytest.raises(KeyError, match="no-such-plugin"):
             get_plugin("no-such-plugin")
-
-
-from posit_bakery.plugins.builtin.dgoss import DGossPlugin
 
 
 class TestDGossPlugin:

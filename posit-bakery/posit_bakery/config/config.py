@@ -68,7 +68,7 @@ def _retry_build(fn, retry: int, label: str, sleep: Callable[[float], None] | No
             return
         except BakeryFileError:
             raise  # Never retry file errors
-        except (DockerException, BakeryToolRuntimeError) as e:
+        except (DockerException, BakeryToolRuntimeError):
             if attempt < retry:
                 log.warning(
                     f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "

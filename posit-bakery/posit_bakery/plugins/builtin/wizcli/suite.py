@@ -99,14 +99,12 @@ class WizCLISuite:
 
             # Try to parse the results file written by wizcli
             report = None
-            parse_err = None
             if wizcli_command.results_file.exists():
                 try:
                     report = WizScanReport.load(wizcli_command.results_file)
                     report_collection.add_report(wizcli_command.image_target, report)
                 except Exception as e:
                     log.error(f"Failed to parse wizcli results for '{str(wizcli_command.image_target)}': {e}")
-                    parse_err = e
 
             # Unlike dgoss (where exit code 1 + valid JSON = test failures, not an error),
             # all non-zero wizcli exit codes are true failures that must be surfaced.

@@ -1096,6 +1096,7 @@ class TestOrasWaitForSourcesWorkflow:
         with patch("subprocess.run") as mock_run:
             result = wf.run()
         mock_run.assert_not_called()
+        assert result.success is True
 
     def test_wait_for_sources_passes_runner_through(self):
         wf = OrasWaitForSourcesWorkflow(oras_bin="oras", sources=["ghcr.io/posit-dev/test/tmp@sha256:a"])

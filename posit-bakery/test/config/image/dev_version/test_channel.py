@@ -98,9 +98,7 @@ class TestImageDevelopmentVersionFromProductChannel:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductChannel(
-                sourceType="stream", product="workbench", channel="daily", os=[]
-            )
+            ImageDevelopmentVersionFromProductChannel(sourceType="stream", product="workbench", channel="daily", os=[])
 
         assert "WARNING" in caplog.text
         assert (
@@ -156,7 +154,7 @@ class TestImageDevelopmentVersionFromProductChannel:
                 mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
-                i = ImageDevelopmentVersionFromProductChannel(
+                ImageDevelopmentVersionFromProductChannel(
                     sourceType="stream",
                     product="workbench",
                     channel="daily",
@@ -172,7 +170,7 @@ class TestImageDevelopmentVersionFromProductChannel:
             mock_get.return_value = ReleaseChannelResult(
                 version="1.0.0", download_url="https://example.com/image.tar.gz"
             )
-            i = ImageDevelopmentVersionFromProductChannel(
+            ImageDevelopmentVersionFromProductChannel(
                 sourceType="stream",
                 product="workbench",
                 channel="daily",
@@ -195,7 +193,7 @@ class TestImageDevelopmentVersionFromProductChannel:
                 mock_get.return_value = ReleaseChannelResult(
                     version="1.0.0", download_url="https://example.com/image.tar.gz"
                 )
-                i = ImageDevelopmentVersionFromProductChannel(
+                ImageDevelopmentVersionFromProductChannel(
                     sourceType="stream",
                     product="workbench",
                     channel="daily",

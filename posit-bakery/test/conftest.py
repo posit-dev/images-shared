@@ -15,7 +15,7 @@ from posit_bakery.plugins.registry import discover_plugins
 
 discover_plugins()
 
-from posit_bakery.config import BakeryConfig
+from posit_bakery.config import BakeryConfig  # noqa: E402  # must follow discover_plugins()
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 

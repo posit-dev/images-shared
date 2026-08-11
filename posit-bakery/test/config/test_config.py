@@ -1633,7 +1633,6 @@ class TestBakeryConfig:
         image = config.model.images[0]
         assert len(image.versions) == 1
         version = image.versions[0]
-        original_path = version.path
 
         old_path = version.path
         config.model.images[0].versions[0].subpath = "1.0"
@@ -2103,7 +2102,6 @@ class TestBakeryConfig:
         assert not version_path.is_dir()
 
         # Verify the config file has been updated
-        yaml_content = (context / "bakery.yaml").read_text()
         # The version name might still appear in the remaining version, so we check more specifically
         config_reloaded = BakeryConfig.from_context(context)
         reloaded_image = config_reloaded.model.get_image(image.name)
