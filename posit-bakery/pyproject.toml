@@ -60,6 +60,7 @@ dgoss = "posit_bakery.plugins.builtin.dgoss:DGossPlugin"
 imagetools = "posit_bakery.plugins.builtin.imagetools:ImageToolsPlugin"
 hadolint = "posit_bakery.plugins.builtin.hadolint:HadolintPlugin"
 wizcli = "posit_bakery.plugins.builtin.wizcli:WizCLIPlugin"
+trivy = "posit_bakery.plugins.builtin.trivy:TrivyPlugin"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
