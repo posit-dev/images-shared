@@ -375,37 +375,6 @@ jobs:
             --context "$CONTEXT" \
             --push
 
-      - name: Setup trivy
-        if: ${{ inputs.push && matrix.img.latest }}
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
-        with:
-          cache: true
-
-      # Scans published images only: `push` means these tags are going to a
-      # registry, and `latest` is the subset customers actually pull. No
-      # --dev-spec plumbing here -- dev versions are never marked latest, so
-      # this step cannot run for them, and --latest skips them regardless.
-      - name: Scan
-        if: ${{ inputs.push && matrix.img.latest }}
-        continue-on-error: true
-        env:
-          IMAGE_NAME: ${{ matrix.img.image }}
-          IMAGE_VERSION: ${{ matrix.img.version }}
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
-          CONTEXT: ${{ inputs.context }}
-        run: |
-          bakery trivy scan \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$NORMALIZED_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --latest \
-            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
-            --context "$CONTEXT"
-
       - name: Test
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
@@ -431,6 +400,49 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      - name: Setup trivy
+        if: ${{ inputs.push && matrix.img.latest }}
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
+        with:
+          cache: true
+
+      # Runs after Test for the same reason the Wiz scan does. Every target of
+      # an image builds to the same tagless temp name, so each build's `--load`
+      # overwrites the previous one and only the last target stays addressable
+      # by name. The `docker run` in Test registers a `repo@sha256:...` entry
+      # per target, and those coexist. Scanning before Test left trivy resolving
+      # refs that were no longer local, silently pulling and scanning the
+      # published image instead of the one this job just built.
+      #
+      # Ordering: Wiz scan first, then Trivy. When #715 lands, its step slots in
+      # between Test and Setup trivy.
+      #
+      # Scans published images only: `push` means these tags are going to a
+      # registry, and `latest` is the subset customers actually pull. No
+      # --dev-spec plumbing here -- dev versions are never marked latest, so
+      # this step cannot run for them, and --latest skips them regardless.
+      - name: Trivy Scan
+        if: ${{ inputs.push && matrix.img.latest }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          bakery trivy scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$NORMALIZED_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --latest \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
