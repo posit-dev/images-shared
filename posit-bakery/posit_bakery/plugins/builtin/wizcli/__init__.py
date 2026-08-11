@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -6,6 +7,7 @@ from typing import Annotated, Optional
 import typer
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
+from posit_bakery.util import find_bin
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -280,6 +282,141 @@ class WizCLIPlugin(BakeryToolPlugin):
                 log_file=log_file,
             )
             plugin.results(results)
+
+        @wizcli_app.command()
+        def tag(
+            image_name: Annotated[
+                str,
+                typer.Option(
+                    "--image-name",
+                    help="Filter to a specific image name. Supports regular expressions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            image_version: Annotated[
+                str,
+                typer.Option(
+                    "--image-version",
+                    help="Filter to a specific image version. A leading 'v' is stripped automatically.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            image_platform: Annotated[
+                str,
+                typer.Option(
+                    "--image-platform",
+                    help="Filter to a specific image platform (e.g. linux/amd64).",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            dev_versions: Annotated[
+                DevVersionInclusionEnum,
+                typer.Option(
+                    "--dev-versions",
+                    help="How to handle development versions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help="JSON spec for a dispatched dev build.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
+            matrix_versions: Annotated[
+                Optional[MatrixVersionInclusionEnum],
+                typer.Option(
+                    "--matrix-versions",
+                    help="How to handle matrix versions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            context: Annotated[
+                Path,
+                typer.Option(
+                    "--context",
+                    help="The Bakery context to use (directory).",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = Path("."),
+            client_id: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--client-id",
+                    envvar="WIZ_CLIENT_ID",
+                    help="Wiz service account client ID.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            client_secret: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--client-secret",
+                    envvar="WIZ_CLIENT_SECRET",
+                    help="Wiz service account client secret.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+        ):
+            """Tag published container images in Wiz for code-to-cloud correlation.
+
+            Calls `wizcli tag` for each matched image target's pinned
+            (Version-OS-Variant) registry tag, linking build-time scan results
+            to the published image in Wiz inventory.
+
+            Run after publishing (merge step), restricted to production builds.
+            Authentication can be provided via `--client-id`/`--client-secret`
+            or the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
+            """
+            platform = normalize_platform(image_platform) if image_platform else None
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=image_name,
+                    image_version=image_version,
+                    image_platform=[platform] if platform else [],
+                ),
+                dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]
+                matrix_versions=matrix_versions,
+            )
+            c = BakeryConfig.from_path(context, settings=settings)
+            exit_if_no_targets(c)
+
+            wizcli_bin = find_bin(c.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
+            tv_key = lambda t: "-".join(  # noqa: E731
+                p
+                for p in [
+                    t.tag_template_values["Version"],
+                    t.tag_template_values["OS"],
+                    t.tag_template_values["Variant"],
+                ]
+                if p
+            )
+            errors = []
+            for target in c.targets:
+                pinned_suffix = tv_key(target)
+                pinned_tags = [t for t in target.tags if t.suffix == pinned_suffix]
+                for ref in pinned_tags:
+                    cmd = [wizcli_bin, "tag", str(ref), "--no-color", "--no-style"]
+                    if client_id:
+                        cmd.extend(["--client-id", client_id])
+                    if client_secret:
+                        cmd.extend(["--client-secret", client_secret])
+                    result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
+                    if result.returncode != 0:
+                        log.error(
+                            f"wizcli tag failed for '{target}' ({ref}):\n"
+                            f"  exit {result.returncode}: {result.stdout.strip() or result.stderr.strip()}"
+                        )
+                        errors.append(ref)
+                    else:
+                        log.info(f"Tagged '{target}' → {ref}")
+            if errors:
+                raise typer.Exit(code=1)
 
         app.add_typer(wizcli_app, name="wizcli", help="Scan container images for vulnerabilities with WizCLI")
 

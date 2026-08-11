@@ -613,6 +613,28 @@ jobs:
             $PUSH_FLAG \
             ./*-metadata.json
 
+      - name: Tag
+        # Tag pinned (Version-OS-Variant) published image refs in Wiz for
+        # code-to-cloud correlation. Only on real production pushes to main;
+        # dev builds are excluded since their temp-registry digests don't map
+        # to stable published tags.
+        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZCLI_PATH: ${{ github.workspace }}/tools/wizcli
+        run: |
+          bakery wizcli tag \
+            --image-name "^${IMAGE_NAME}$" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$CONTEXT"
+
   readme:
     name: Push READMEs
     permissions:
