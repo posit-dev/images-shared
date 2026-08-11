@@ -2410,7 +2410,7 @@ class TestRMacros:
         expected = textwrap.dedent(
             """\
             RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-            find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+            find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete"""
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
@@ -2423,7 +2423,7 @@ class TestRMacros:
                 textwrap.dedent(
                     """\
                     RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete"""
+                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete"""
                 ),
                 id="single-version",
             ),
@@ -2432,9 +2432,9 @@ class TestRMacros:
                 textwrap.dedent(
                     """\
                     RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete
                     RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.3.3.*\.(deb|rpm)' -delete"""
+                        find . -type f -name '[rR]-4.3.3.*\\.(deb|rpm)' -delete"""
                 ),
                 id="multiple-versions",
             ),
@@ -2443,9 +2443,9 @@ class TestRMacros:
                 textwrap.dedent(
                     """\
                     RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\.(deb|rpm)' -delete
+                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete
                     RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.3.3.*\.(deb|rpm)' -delete"""
+                        find . -type f -name '[rR]-4.3.3.*\\.(deb|rpm)' -delete"""
                 ),
                 id="string-versions",
             ),
