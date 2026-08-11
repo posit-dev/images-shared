@@ -4,7 +4,6 @@ Tests cover the Goss report parsing and aggregation functionality.
 """
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest

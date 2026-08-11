@@ -3,7 +3,6 @@ import io
 import os
 import signal
 import sys
-import tempfile
 import threading
 import time
 from unittest.mock import patch

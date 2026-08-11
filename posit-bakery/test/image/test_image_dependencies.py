@@ -1,7 +1,5 @@
-from pydantic import BaseModel
 import pytest
 
-from posit_bakery.config.dependencies import DependencyVersion, DependencyConstraintField, DependencyVersionsField
 from posit_bakery.config.image import Image, ImageVersion
 
 

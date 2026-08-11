@@ -2,7 +2,6 @@ import json
 import logging
 import re
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +11,6 @@ from posit_bakery.cli.ci import _resolve_changed_files, _resolve_base_bakery_yam
 from posit_bakery.config.config import version_matches
 from posit_bakery.config.image.version import ImageVersion
 
-from posit_bakery.plugins.protocol import ToolCallResult
 
 scenarios(
     "cli/ci/matrix.feature",

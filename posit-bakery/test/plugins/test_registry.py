@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import patch, MagicMock
 from posit_bakery.plugins.protocol import BakeryToolPlugin
 from posit_bakery.plugins.registry import discover_plugins, get_plugin
 

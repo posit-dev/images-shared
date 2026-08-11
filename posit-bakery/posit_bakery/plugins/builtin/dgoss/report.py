@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
-import sys
 
 from pydantic import BaseModel, Field, computed_field
 from rich.table import Table

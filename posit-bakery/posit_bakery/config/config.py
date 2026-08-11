@@ -12,7 +12,6 @@ from typing import Annotated, Callable, Self, Any
 
 import jinja2
 import pydantic
-import python_on_whales
 from pydantic import Field, model_validator, field_validator, BaseModel
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
@@ -33,7 +32,6 @@ from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, Matr
 from posit_bakery.error import (
     BakeryError,
     BakeryToolRuntimeError,
-    BakeryToolRuntimeErrorGroup,
     BakeryFileError,
     BakeryBuildErrorGroup,
     BakeryRenderError,

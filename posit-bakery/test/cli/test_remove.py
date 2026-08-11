@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from pytest_bdd import scenarios, then, parsers
 
 from posit_bakery.config import BakeryConfig
