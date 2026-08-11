@@ -402,6 +402,7 @@ jobs:
             --image-platform "$NORMALIZED_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
+            --latest \
             "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
