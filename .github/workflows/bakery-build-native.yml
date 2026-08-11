@@ -614,10 +614,12 @@ jobs:
             ./*-metadata.json
 
       - name: Tag
-        # Tag pinned (Version-OS-Variant) published image refs in Wiz for
-        # code-to-cloud correlation. Only on real production pushes to main;
-        # dev builds are excluded since their temp-registry digests don't map
-        # to stable published tags.
+        # Tag each per-platform digest in Wiz using the final published registry
+        # repo (repo@sha256:PLATFORM_DIGEST). The digest is identical to the one
+        # scanned in the build-test job, so Wiz correlates scan findings to the
+        # published image. Per Wiz docs, multi-platform images must be tagged by
+        # child (per-platform) digest, not the manifest list digest.
+        # Only runs on real production pushes; dev builds are excluded.
         if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
         continue-on-error: true
         env:
@@ -633,7 +635,8 @@ jobs:
             --image-name "^${IMAGE_NAME}$" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$CONTEXT"
+            --context "$CONTEXT" \
+            ./*-metadata.json
 
   readme:
     name: Push READMEs

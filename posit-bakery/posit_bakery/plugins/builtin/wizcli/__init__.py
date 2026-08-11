@@ -343,6 +343,13 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = Path("."),
+            metadata_files: Annotated[
+                list[Path],
+                typer.Argument(
+                    help="Build metadata JSON files produced by the build step (one per platform).",
+                    metavar="METADATA_FILE",
+                ),
+            ] = [],  # noqa: B006
             client_id: Annotated[
                 Optional[str],
                 typer.Option(
@@ -364,14 +371,22 @@ class WizCLIPlugin(BakeryToolPlugin):
         ):
             """Tag published container images in Wiz for code-to-cloud correlation.
 
-            Calls `wizcli tag` for each matched image target's pinned
-            (Version-OS-Variant) registry tag, linking build-time scan results
-            to the published image in Wiz inventory.
+            Reads per-platform digests from build metadata files and calls
+            `wizcli tag {final-registry-repo}@{digest}` for each, using the same
+            digest that was scanned. Wiz matches scan results to inventory by
+            content digest, so this correctly links build findings to the
+            published image regardless of which registry holds it.
+
+            Per Wiz documentation, multi-platform images must be tagged per
+            child digest — not by the multi-arch manifest list digest.
 
             Run after publishing (merge step), restricted to production builds.
             Authentication can be provided via `--client-id`/`--client-secret`
             or the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
             """
+            # Local import: only needed here, avoids a top-level dep on image_metadata.
+            from posit_bakery.image.image_metadata import BuildMetadata
+
             platform = normalize_platform(image_platform) if image_platform else None
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
@@ -386,22 +401,42 @@ class WizCLIPlugin(BakeryToolPlugin):
             c = BakeryConfig.from_path(context, settings=settings)
             exit_if_no_targets(c)
 
-            wizcli_bin = find_bin(c.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
-            tv_key = lambda t: "-".join(  # noqa: E731
-                p
-                for p in [
-                    t.tag_template_values["Version"],
-                    t.tag_template_values["OS"],
-                    t.tag_template_values["Variant"],
-                ]
-                if p
-            )
-            errors = []
+            # Build a map of image_name → set of final registry repo destinations.
+            # Tag.destination gives "registry.host/namespace/image-name" without suffix.
+            repo_map: dict[str, set[str]] = {}
             for target in c.targets:
-                pinned_suffix = tv_key(target)
-                pinned_tags = [t for t in target.tags if t.suffix == pinned_suffix]
-                for ref in pinned_tags:
-                    cmd = [wizcli_bin, "tag", str(ref), "--no-color", "--no-style"]
+                repos = {t.destination for t in target.tags if t.destination}
+                repo_map.setdefault(target.image_name, set()).update(repos)
+
+            wizcli_bin = find_bin(c.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
+            errors: list[str] = []
+
+            for mf in metadata_files:
+                try:
+                    metadata = BuildMetadata.model_validate_json(mf.read_text())
+                except Exception as exc:
+                    log.warning(f"Skipping {mf}: could not parse metadata ({exc})")
+                    continue
+
+                digest = metadata.container_image_digest
+                if not digest:
+                    log.warning(f"Skipping {mf}: no containerimage.digest")
+                    continue
+
+                # Derive image name from the metadata's primary tag path.
+                # image.name is the temp registry ref; strip registry prefix to get
+                # the image name, then look up the published repos from the config.
+                meta_image_name = next(
+                    (name for name in repo_map if any(name in tag for tag in metadata.image_tags)),
+                    None,
+                )
+                if meta_image_name is None:
+                    log.warning(f"Skipping {mf}: image name not matched in config")
+                    continue
+
+                for repo in sorted(repo_map[meta_image_name]):
+                    ref = f"{repo}@{digest}"
+                    cmd = [wizcli_bin, "tag", ref, "--no-color", "--no-style"]
                     if client_id:
                         cmd.extend(["--client-id", client_id])
                     if client_secret:
@@ -409,12 +444,13 @@ class WizCLIPlugin(BakeryToolPlugin):
                     result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
                     if result.returncode != 0:
                         log.error(
-                            f"wizcli tag failed for '{target}' ({ref}):\n"
+                            f"wizcli tag failed for {ref}:\n"
                             f"  exit {result.returncode}: {result.stdout.strip() or result.stderr.strip()}"
                         )
                         errors.append(ref)
                     else:
-                        log.info(f"Tagged '{target}' → {ref}")
+                        log.info(f"Tagged {ref}")
+
             if errors:
                 raise typer.Exit(code=1)
 
