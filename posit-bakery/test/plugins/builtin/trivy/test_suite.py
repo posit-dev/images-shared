@@ -190,6 +190,11 @@ class TestTrivySuite:
         sarif_run = raw["runs"][0]
         assert sarif_run["tool"]["driver"]["name"].lower() == "trivy"
 
+        # The category must survive into real trivy output, not just the hand-written
+        # fixture: upload-sarif reads it from here to give each file in a directory
+        # upload its own code-scanning category.
+        assert sarif_run["automationDetails"]["id"] == f"{suite.trivy_commands[0].scan_category}/"
+
         # Cross-check the parsed report against the real SARIF trivy wrote: every
         # counted severity bucket is non-negative, and they add up to exactly the
         # number of results trivy actually reported. This fails if TrivyReport.load()

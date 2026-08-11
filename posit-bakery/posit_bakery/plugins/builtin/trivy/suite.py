@@ -20,6 +20,7 @@ class TrivySuite:
         context: Path,
         image_targets: list[ImageTarget],
         *,
+        scan_platform: str | None = None,
         severity: str | None = None,
         disabled_scanners: str | None = None,
         timeout: str | None = None,
@@ -32,6 +33,7 @@ class TrivySuite:
             TrivyCommand.from_image_target(
                 target,
                 results_dir=self.results_dir,
+                scan_platform=scan_platform,
                 severity=severity,
                 disabled_scanners=disabled_scanners,
                 timeout=timeout,
@@ -79,7 +81,7 @@ class TrivySuite:
             if exit_code == 0:
                 if trivy_command.results_file.exists():
                     try:
-                        report = TrivyReport.load(trivy_command.results_file)
+                        report = TrivyReport.load(trivy_command.results_file, scan_category=trivy_command.scan_category)
                         report_collection.add_report(trivy_command.image_target, report)
                     except Exception as e:
                         log.error(f"Failed to parse trivy results for '{str(trivy_command.image_target)}': {e}")
