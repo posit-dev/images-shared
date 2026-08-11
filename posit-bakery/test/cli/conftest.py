@@ -72,14 +72,6 @@ def tmp_directory(bakery_command, tmpdir):
     bakery_command.context = Path(tmpdir)
 
 
-@given("with the context as the working directory")
-def cli_tmpcontext(bakery_command):
-    original_wd = os.getcwd()
-    os.chdir(bakery_command.context)
-    yield
-    os.chdir(original_wd)
-
-
 @given(parsers.parse("with the '{target_path}' path removed"))
 def remove_path(bakery_command, target_path, cli_test_tmpcontext):
     target_path = (cli_test_tmpcontext / target_path).resolve()
