@@ -245,6 +245,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -527,6 +528,18 @@ jobs:
             --matrix-versions "$MATRIX_VERSIONS" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      # No `category:` input on purpose. Each SARIF file already carries its own
+      # version-stable category in runs[].automationDetails.id, written by
+      # `bakery trivy scan`. upload-sarif only fills automationDetails in when it
+      # is absent, so those survive; a `category:` input here would instead give
+      # every run in the directory the same category, which code scanning rejects
+      # (https://github.blog/changelog/2025-07-21-code-scanning-will-stop-combining-multiple-sarif-runs-uploaded-in-the-same-sarif-file/).
+      - name: Upload Trivy SARIF
+        if: ${{ inputs.push && matrix.img.latest && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v4.37.6
+        with:
+          sarif_file: results/trivy
 
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
