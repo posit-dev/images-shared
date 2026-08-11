@@ -129,9 +129,9 @@ class TestTrivyScanImagePlatformFlag:
 class TestTrivyScanDevSpecFlag:
     """The --dev-spec flag is parsed by parse_dev_spec and passed through to settings.
 
-    Without this, a manually-dispatched dev build combining scan-image with dev-spec
-    dispatch inputs has no way to resolve the pinned dev-spec-only target, and
-    BakeryConfig's filter matches nothing -- see Task 7's CI wiring gap.
+    Kept for parity with `build` and `dgoss run`, so a dev-spec-pinned target can be
+    resolved when scanning by hand. No shared workflow passes it: the native Scan step
+    only runs for `latest` versions, which dev versions never are.
     """
 
     def test_dev_spec_passed_to_settings(self, mocked_trivy_scan):

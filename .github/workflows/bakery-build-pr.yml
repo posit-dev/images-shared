@@ -284,34 +284,6 @@ jobs:
             "${CACHE_FLAGS[@]}" \
             --context "$BAKERY_CONTEXT"
 
-      - name: Setup trivy
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
-        with:
-          cache: true
-
-      - name: Scan
-        continue-on-error: true
-        env:
-          IMAGE_NAME: ${{ matrix.img.image }}
-          IMAGE_VERSION: ${{ matrix.img.version }}
-          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
-          IMG_DEV: ${{ matrix.img.dev }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          BAKERY_CONTEXT: ${{ inputs.context }}
-        run: |
-          if [ "$IMG_DEV" = "true" ]; then
-            DEV_VERSIONS=only
-          else
-            DEV_VERSIONS=exclude
-          fi
-          bakery trivy scan \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$NORMALIZED_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$BAKERY_CONTEXT"
-
       - name: Test
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
