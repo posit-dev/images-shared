@@ -42,14 +42,25 @@ class TrivyReport(BaseModel):
         return any(counts.get(sev.strip().upper(), 0) > 0 for sev in severities)
 
     @classmethod
-    def load(cls, filepath: Path) -> "TrivyReport":
+    def load(cls, filepath: Path, *, scan_category: str | None = None) -> "TrivyReport":
         """Load a TrivyReport from a Trivy SARIF output file.
 
         Re-writes the file with indentation for human readability, since Trivy
         outputs minified JSON by default.
+
+        When ``scan_category`` is given, stamps it into each run's
+        ``automationDetails.id`` as ``"<category>/"``. Everything before the last
+        slash is the code-scanning category, and the trailing slash leaves the run
+        ID empty. github/codeql-action/upload-sarif only fills automationDetails in
+        when it is absent, so stamping here lets one directory upload carry a
+        distinct category per file -- which a single ``category:`` input cannot do.
         """
         raw = filepath.read_text()
         data = json.loads(raw)
+
+        if scan_category:
+            for run in data.get("runs", []) or []:
+                run["automationDetails"] = {"id": f"{scan_category}/"}
 
         formatted = json.dumps(data, indent=2) + "\n"
         if formatted != raw:

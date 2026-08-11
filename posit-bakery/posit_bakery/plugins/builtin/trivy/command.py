@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -5,6 +6,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator
 
 from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
 from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
+from posit_bakery.settings import SETTINGS
 from posit_bakery.util import find_bin
 
 TRIVY_ALL_SCANNERS = ["vuln", "secret", "license", "misconfig"]
@@ -35,6 +37,11 @@ class TrivyCommand(BaseModel):
     # ToolOptions fields
     tool_options: Annotated[TrivyOptions | None, Field(default=None)]
 
+    # Platform actually being scanned, as resolved by the CLI. Not derivable from
+    # image_target: a target is not platform-scoped (image_os.platforms is a list),
+    # so the host architecture is only correct when the scan happens to be native.
+    scan_platform: Annotated[str, Field(default_factory=lambda: f"linux/{SETTINGS.architecture}")]
+
     # CLI pass-through options
     severity: Annotated[str | None, Field(default=None)]
     disabled_scanners: Annotated[str | None, Field(default=None)]
@@ -48,6 +55,7 @@ class TrivyCommand(BaseModel):
         results_dir: Path,
         *,
         tool_options: TrivyOptions | None = None,
+        scan_platform: str | None = None,
         severity: str | None = None,
         disabled_scanners: str | None = None,
         timeout: str | None = None,
@@ -67,11 +75,35 @@ class TrivyCommand(BaseModel):
             image_target=image_target,
             results_file=results_file,
             tool_options=tool_options,
+            **({"scan_platform": scan_platform} if scan_platform else {}),
             severity=severity,
             disabled_scanners=disabled_scanners,
             timeout=timeout,
             trivy_config=trivy_config,
         )
+
+    @computed_field
+    @property
+    def scan_category(self) -> str:
+        """Version-stable category key for GitHub Code Scanning.
+
+        Omits the image version so the same category is reused across releases,
+        which is what lets code scanning diff a PR against its baseline instead
+        of reporting every finding as new. Uses tag display names (Variant, OS)
+        and the scanned platform's architecture to match published image tags.
+
+        Deliberately *not* used as the results filename: two versions of the same
+        image share a category by design, so filenames stay uid-keyed and the
+        category travels in the SARIF's automationDetails.id instead.
+        """
+        tv = self.image_target.tag_template_values
+        parts = [self.image_target.image_name]
+        if tv["Variant"]:
+            parts.append(tv["Variant"])
+        if tv["OS"]:
+            parts.append(tv["OS"])
+        parts.append(self.scan_platform.removeprefix("linux/"))
+        return re.sub(r"[ .+/]", "-", "-".join(parts)).lower()
 
     @model_validator(mode="after")
     def check_trivy_bin(self) -> Self:
