@@ -53,6 +53,45 @@ class TestTrivyReport:
         report = TrivyReport.load(result_file)
         assert report.unknown_count == 1
 
+    def test_load_stamps_automation_details_id(self, tmp_path):
+        """scan_category is written to every run's automationDetails.id with a trailing slash.
+
+        Code scanning reads everything before the last slash as the category; the
+        trailing slash leaves the run ID empty. This is how a single directory-wide
+        upload-sarif invocation gives each file its own category.
+        """
+        result_file = tmp_path / "stamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        TrivyReport.load(result_file, scan_category="connect-min-ubuntu-22-04-amd64")
+
+        data = json.loads(result_file.read_text())
+        assert data["runs"]
+        for run in data["runs"]:
+            assert run["automationDetails"]["id"] == "connect-min-ubuntu-22-04-amd64/"
+
+    def test_load_without_category_leaves_automation_details_absent(self, tmp_path):
+        """No scan_category means no automationDetails, so upload-sarif can fill it in."""
+        result_file = tmp_path / "unstamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        TrivyReport.load(result_file)
+
+        data = json.loads(result_file.read_text())
+        assert all("automationDetails" not in run for run in data["runs"])
+
+    def test_load_stamping_preserves_counts(self, tmp_path):
+        """Stamping must not disturb the parsed severity counts."""
+        result_file = tmp_path / "stamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        report = TrivyReport.load(result_file, scan_category="some-category")
+
+        assert report.critical_count == 1
+        assert report.high_count == 2
+        assert report.medium_count == 1
+        assert report.total_count == 4
+
     @pytest.mark.parametrize(
         "severities,expected",
         [

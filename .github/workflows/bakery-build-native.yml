@@ -227,6 +227,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -430,6 +431,14 @@ jobs:
             --latest \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      # No `category:` on purpose: each file carries its own in
+      # automationDetails.id, and one category across all of them is rejected.
+      - name: Upload Trivy SARIF
+        if: ${{ inputs.push && matrix.img.latest && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v4.37.6
+        with:
+          sarif_file: results/trivy
 
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

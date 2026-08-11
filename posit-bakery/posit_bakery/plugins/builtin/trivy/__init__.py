@@ -213,6 +213,7 @@ class TrivyPlugin(BakeryToolPlugin):
             results = plugin.execute(
                 c.base_path,
                 c.targets,
+                scan_platform=platform,
                 severity=severity,
                 fail_on_severity=fail_on_severity,
                 disabled_scanners=disabled_scanners,
@@ -228,6 +229,7 @@ class TrivyPlugin(BakeryToolPlugin):
         base_path: Path,
         targets: list[ImageTarget],
         *,
+        scan_platform: str | None = None,
         severity: str | None = None,
         fail_on_severity: str | None = None,
         disabled_scanners: str | None = None,
@@ -238,6 +240,7 @@ class TrivyPlugin(BakeryToolPlugin):
         suite = TrivySuite(
             base_path,
             targets,
+            scan_platform=scan_platform,
             severity=severity,
             disabled_scanners=disabled_scanners,
             timeout=timeout,

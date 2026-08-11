@@ -1,9 +1,11 @@
+import re
 from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
 from posit_bakery.plugins.builtin.trivy.command import TrivyCommand
+from posit_bakery.settings import SETTINGS
 
 pytestmark = [
     pytest.mark.unit,
@@ -198,20 +200,72 @@ class TestTrivyCommand:
         assert cmd.results_file.stem == basic_standard_image_target.uid
         assert cmd.results_file.suffix == ".sarif"
 
-    def test_results_files_are_unique_per_target(self, get_config_obj):
-        """Every target in a multi-version project must get its own SARIF file.
+    def test_scan_category_is_version_stable(self, basic_standard_image_target):
+        """scan_category must omit the image version so it stays stable across releases."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert basic_standard_image_target.image_version.name not in cmd.scan_category
 
-        The uid is the only per-target identifier that includes the version, so a
-        results_file keyed on anything coarser (image/variant/OS/arch) silently
-        overwrites earlier versions' output within a single scan run.
+    def test_scan_category_includes_image_variant_os(self, basic_standard_image_target):
+        """scan_category includes image name plus the Variant and OS tag display names."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        tv = basic_standard_image_target.tag_template_values
+        sanitized = lambda s: re.sub(r"[ .+/]", "-", s).lower()  # noqa: E731
+        assert sanitized(basic_standard_image_target.image_name) in cmd.scan_category
+        if tv["Variant"]:
+            assert sanitized(tv["Variant"]) in cmd.scan_category
+        if tv["OS"]:
+            assert sanitized(tv["OS"]) in cmd.scan_category
+
+    def test_scan_category_uses_scanned_platform_not_host_arch(self, basic_standard_image_target):
+        """The category's arch must come from the scanned platform, not the host.
+
+        A cross-arch scan (e.g. --image-platform linux/arm64 on an amd64 host) would
+        otherwise label arm64 results 'amd64' and collide both arches into one
+        code-scanning category, silently overwriting each other.
         """
-        config_obj = get_config_obj("basic")
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            scan_platform="linux/arm64",
+        )
+        assert cmd.scan_category.endswith("-arm64")
+        assert "amd64" not in cmd.scan_category
+
+    def test_scan_category_defaults_to_host_arch(self, basic_standard_image_target):
+        """With no explicit platform, the category falls back to the host architecture."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.scan_category.endswith(f"-{SETTINGS.architecture}")
+
+    def test_category_is_shared_across_versions_but_files_are_not(self, get_config_obj):
+        """The 'changeset' fixture holds two versions of one image/variant/OS.
+
+        Those two targets must share a single code-scanning category (that shared
+        key is what makes PR-vs-baseline diffing work) while still writing to
+        separate SARIF files. Deriving the filename from the category collapses
+        them onto one path, so the later scan silently overwrites the earlier.
+        """
+        config_obj = get_config_obj("changeset")
         results_dir = config_obj.base_path / "results" / "trivy"
-        files = [
-            TrivyCommand.from_image_target(image_target=target, results_dir=results_dir).results_file
+        cmds = [
+            TrivyCommand.from_image_target(image_target=target, results_dir=results_dir)
             for target in config_obj.targets
         ]
-        assert len(set(files)) == len(config_obj.targets)
+        assert len(cmds) > 1
+        assert len(set(c.scan_category for c in cmds)) == 1
+        assert len(set(c.results_file for c in cmds)) == len(cmds)
 
     def test_validate_no_trivy_bin(self, basic_standard_image_target):
         """Test that validation fails if trivy binary cannot be found."""
