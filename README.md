@@ -35,7 +35,7 @@ See [CI Workflows](./CI.md) for shared GitHub Actions workflows used by product 
 
 Bakery uses [goss](https://github.com/goss-org/goss) and [dgoss](https://github.com/goss-org/goss/tree/master/extras/dgoss) to define and execute tests that ensure that the container image was built properly.
 
-You can include the [setup-goss](./setup-goss) action in a [GitHub Actions Workflow](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) to automatically install the latest versions of `goss` and `dgoss` in the `tools` directory at the top level of the repository.
+You can include the [setup-goss](./setup-goss) action in a [GitHub Actions Workflow](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) to automatically install `goss` and `dgoss` in the `tools` directory at the top level of the repository. The binaries are cached by version and architecture, so subsequent workflow runs do not need to download them from GitHub. Renovate maintains the action's pinned default Goss release.
 
 ## Share your Feedback
 
