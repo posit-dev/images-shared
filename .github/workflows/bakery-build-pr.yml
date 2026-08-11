@@ -299,6 +299,31 @@ jobs:
             "${CACHE_FLAGS[@]}" \
             --context "$BAKERY_CONTEXT"
 
+      - name: Test
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          IMAGE_PLATFORM: ${{ matrix.img.platform }}
+          IMG_DEV: ${{ matrix.img.dev }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          BAKERY_CONTEXT: ${{ inputs.context }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$IMG_DEV" = "true" ]; then
+            DEV_VERSIONS=only
+          else
+            DEV_VERSIONS=exclude
+          fi
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          bakery dgoss run \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$IMAGE_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$BAKERY_CONTEXT"
+
       - name: Setup trivy
         if: ${{ inputs.scan-image }}
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
@@ -306,10 +331,10 @@ jobs:
           version: ${{ inputs.trivy-version }}
           cache: true
 
-      # Opt-in per caller. This runs on every PR build for a repo that enables
-      # it, and a scan costs roughly as long again as the build it follows, so
-      # the default stays off until a caller decides the signal is worth it.
-      - name: Scan
+      # After Test: only Test's `docker run` makes every target addressable
+      # locally. Scanning earlier resolves stale tags and silently scans the
+      # published image instead of the one just built.
+      - name: Trivy Scan
         if: ${{ inputs.scan-image }}
         continue-on-error: true
         env:
@@ -335,31 +360,6 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             "${FAIL_FLAGS[@]}" \
-            --context "$BAKERY_CONTEXT"
-
-      - name: Test
-        env:
-          IMAGE_NAME: ${{ matrix.img.image }}
-          IMAGE_VERSION: ${{ matrix.img.version }}
-          IMAGE_PLATFORM: ${{ matrix.img.platform }}
-          IMG_DEV: ${{ matrix.img.dev }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          BAKERY_CONTEXT: ${{ inputs.context }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "$IMG_DEV" = "true" ]; then
-            DEV_VERSIONS=only
-          else
-            DEV_VERSIONS=exclude
-          fi
-          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
-          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
-          bakery dgoss run \
-            --image-name "^${IMAGE_NAME}$" \
-            --image-version "$IMAGE_VERSION" \
-            --image-platform "$IMAGE_PLATFORM" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
             --context "$BAKERY_CONTEXT"
 
   build-test-result:
