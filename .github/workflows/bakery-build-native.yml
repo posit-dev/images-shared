@@ -407,21 +407,9 @@ jobs:
         with:
           cache: true
 
-      # Runs after Test for the same reason the Wiz scan does. Every target of
-      # an image builds to the same tagless temp name, so each build's `--load`
-      # overwrites the previous one and only the last target stays addressable
-      # by name. The `docker run` in Test registers a `repo@sha256:...` entry
-      # per target, and those coexist. Scanning before Test left trivy resolving
-      # refs that were no longer local, silently pulling and scanning the
-      # published image instead of the one this job just built.
-      #
-      # Ordering: Wiz scan first, then Trivy. When #715 lands, its step slots in
-      # between Test and Setup trivy.
-      #
-      # Scans published images only: `push` means these tags are going to a
-      # registry, and `latest` is the subset customers actually pull. No
-      # --dev-spec plumbing here -- dev versions are never marked latest, so
-      # this step cannot run for them, and --latest skips them regardless.
+      # After Test for the same reason the Wiz scan is: only Test's `docker run`
+      # makes every target addressable locally. Scanning earlier silently pulled
+      # and scanned the published image instead of the one just built.
       - name: Trivy Scan
         if: ${{ inputs.push && matrix.img.latest }}
         continue-on-error: true
