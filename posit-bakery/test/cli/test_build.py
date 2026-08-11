@@ -210,6 +210,22 @@ class TestBuildSummaryFlag:
         assert data["local_size_bytes"] is None
         assert len(data["targets"]) == 1
 
+    def test_measurement_is_narrowed_to_the_targets_that_succeeded(self, mock_build_config):
+        """build.py has to forward config.last_build_succeeded_uids into the measurement, or
+        a target that failed this run gets measured off whatever image happens to already sit
+        at its tag from an earlier push. measure_sizes()'s own filtering is covered in
+        test_summary.py; this pins the wiring between the two, which is the part that was
+        missing -- last_build_succeeded_uids had no production consumer at all."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        instance.last_build_succeeded_uids = {"fake-image-1.0.0-standard-ubuntu-22.04"}
+        with patch("posit_bakery.image.summary.BuildSummary.measure_sizes") as measure_sizes:
+            result = runner.invoke(
+                app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+            )
+        assert result.exit_code == 0
+        assert measure_sizes.call_args.kwargs["succeeded_uids"] == {"fake-image-1.0.0-standard-ubuntu-22.04"}
+
     def test_summary_is_still_emitted_when_the_build_fails(self, mock_build_config):
         """A partially failed build is exactly when the report is most useful, so the
         summary must survive the failure path -- without swallowing the failure itself."""

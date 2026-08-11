@@ -305,7 +305,13 @@ def build(
         """
         build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
         if sizes:
-            build_summary.measure_sizes(config.targets, push=push, load=load, jobs=jobs)
+            build_summary.measure_sizes(
+                config.targets,
+                push=push,
+                load=load,
+                jobs=jobs,
+                succeeded_uids=config.last_build_succeeded_uids,
+            )
         if summary_format == SummaryOutputFormat.JSON:
             stdout_console.print_json(data=build_summary.as_dict())
         else:
