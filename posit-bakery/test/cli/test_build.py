@@ -182,9 +182,10 @@ class TestBuildSummaryFlag:
         )
         assert result.exit_code == 0
         instance.build_targets.assert_called_once()
-        assert "Build Summary" in result.stderr
-        assert "Registry Size" in result.stderr
-        assert "Local Size" in result.stderr
+        # Assert on the title, not a column header: the sizes view is nine columns wide and
+        # Rich wraps or truncates its headers at whatever width the terminal reports, which
+        # differs between a local run and CI. Only the sizes view counts targets in its title.
+        assert "Build Summary (1 targets)" in result.stderr
         assert "Build Summary" not in result.stdout
 
     def test_format_json_builds_then_prints_to_stdout(self, mock_build_config):
@@ -223,7 +224,7 @@ class TestBuildSummaryFlag:
         )
         assert result.exit_code == 1
         assert "Build failed" in result.stderr
-        assert "Registry Size" in result.stderr
+        assert "Build Summary (1 targets)" in result.stderr
 
     def test_a_broken_summary_does_not_mask_the_build_failure(self, mock_build_config):
         """If the reporting path itself raises, the original build failure must still be the
