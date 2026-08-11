@@ -61,8 +61,10 @@ runs:
 
     - name: Install Bakery
       shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
       run: |
-        uv tool install "git+https://github.com/posit-dev/images-shared.git@${{ inputs.version }}#subdirectory=posit-bakery&egg=posit-bakery"
+        uv tool install "git+https://github.com/posit-dev/images-shared.git@${VERSION}#subdirectory=posit-bakery&egg=posit-bakery"
 
     - name: Configure dependency version cache TTL
       shell: bash

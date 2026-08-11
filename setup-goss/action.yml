@@ -21,9 +21,12 @@ runs:
       run: mkdir -p tools
     - name: Install goss
       shell: bash
+      env:
+        ARCHITECTURE: ${{ inputs.architecture }}
+        VERSION: ${{ inputs.version }}
       run: |
         # Determine architecture if not provided
-        arch="${{ inputs.architecture }}"
+        arch="${ARCHITECTURE}"
         if [ -z "$arch" ]; then
           arch=$(uname -m)
         fi
@@ -46,10 +49,10 @@ runs:
 
         # v0.4.10+ ships versioned tarballs with a consolidated SHA256SUMS file, so "latest"
         # must be resolved to a concrete tag up front to build the asset filename.
-        if [ "${{ inputs.version }}" = "latest" ]; then
+        if [ "${VERSION}" = "latest" ]; then
           tag=$(curl -fsSL "https://api.github.com/repos/goss-org/goss/releases/latest" | jq '.tag_name' -r)
         else
-          tag="${{ inputs.version }}"
+          tag="${VERSION}"
         fi
         version="${tag#v}"
 
@@ -68,8 +71,10 @@ runs:
         chmod +rx tools/goss
     - name: Install dgoss
       shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
       run: |
-        release_url="https://github.com/goss-org/goss/releases/${{ inputs.version }}/download"
+        release_url="https://github.com/goss-org/goss/releases/${VERSION}/download"
 
         curl -fsSL "${release_url}/dgoss" -o tools/dgoss
 
