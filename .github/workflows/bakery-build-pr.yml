@@ -198,7 +198,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -312,22 +311,6 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             --context "$BAKERY_CONTEXT"
-
-      - name: Upload Trivy SARIF
-        if: ${{ !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          while IFS= read -r -d '' sarif_file; do
-            uid=$(basename "$sarif_file" .sarif)
-            encoded=$(gzip -c "$sarif_file" | base64 -w 0)
-            gh api "repos/${GITHUB_REPOSITORY}/code-scanning/sarifs" \
-              --method POST \
-              -f sarif="$encoded" \
-              -f ref="$GITHUB_REF" \
-              -f commit_sha="$GITHUB_SHA" \
-              -f category="trivy-${uid}" || true
-          done < <(find results/trivy -name "*.sarif" -print0)
 
       - name: Test
         env:

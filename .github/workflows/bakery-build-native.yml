@@ -227,7 +227,6 @@ jobs:
       contents: read
       packages: write
       id-token: write
-      security-events: write
     needs: matrix
     # GitHub Actions fails (not skips) a matrix job when the matrix evaluates to [].
     # Guard here so an empty change-aware matrix (a push with nothing to build)
@@ -406,22 +405,6 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
-
-      - name: Upload Trivy SARIF
-        if: ${{ inputs.push && matrix.img.latest && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          while IFS= read -r -d '' sarif_file; do
-            uid=$(basename "$sarif_file" .sarif)
-            encoded=$(gzip -c "$sarif_file" | base64 -w 0)
-            gh api "repos/${GITHUB_REPOSITORY}/code-scanning/sarifs" \
-              --method POST \
-              -f sarif="$encoded" \
-              -f ref="$GITHUB_REF" \
-              -f commit_sha="$GITHUB_SHA" \
-              -f category="trivy-${uid}" || true
-          done < <(find results/trivy -name "*.sarif" -print0)
 
       - name: Test
         env:
