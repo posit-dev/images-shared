@@ -74,8 +74,10 @@ def _inspect_registry(runner: CommandRunner, ref: str) -> tuple[int, int] | None
 
     A multi-platform index costs 1+N round trips: `imagetools inspect` on an index returns
     child descriptors (`Manifest.manifests[]`), not layers, so each child digest needs its own
-    inspect to reach real layer sizes. Byte totals sum across every child -- that is the real
-    transfer/storage cost. Layer *count* uses only the first child inspected, since summing
+    inspect to reach real layer sizes. Byte totals sum across every image child -- that is the
+    real transfer/storage cost -- while buildx's attestation manifests, which ride along in the
+    same index but aren't part of the image, are skipped. Layer *count* uses only the first
+    image child inspected, since summing
     layer counts across platforms doesn't make "how many layers" more meaningful the way
     summing bytes makes "how much storage" more meaningful.
     """
@@ -95,6 +97,12 @@ def _inspect_registry(runner: CommandRunner, ref: str) -> tuple[int, int] | None
     layer_count: int | None = None
     for child in manifest.manifests:
         if child.digest is None:
+            continue
+        if child.platform is not None and child.platform.architecture == "unknown":
+            # buildx attaches provenance/SBOM attestations to the index as extra manifests
+            # under an unknown/unknown platform. Their blobs aren't part of the image, so
+            # they inflate the byte total -- and, if one is inspected first, hand back the
+            # attestation's layer count as the image's.
             continue
         child_manifest = _inspect_manifest(runner, f"{repository}@{child.digest}")
         if child_manifest is None or child_manifest.layers is None:

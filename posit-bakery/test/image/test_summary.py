@@ -57,6 +57,33 @@ INDEX_MANIFEST_JSON = json.dumps(
     }
 ).encode()
 
+_IMAGE_CHILD = {"digest": "sha256:child-amd64", "size": 500, "platform": {"architecture": "amd64", "os": "linux"}}
+_ATTESTATION_CHILD = {
+    "digest": "sha256:attestation",
+    "size": 900,
+    "platform": {"architecture": "unknown", "os": "unknown"},
+    "annotations": {"vnd.docker.reference.type": "attestation-manifest"},
+}
+
+
+def _index_json(*children: dict) -> bytes:
+    return json.dumps(
+        {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "schemaVersion": 2,
+            "manifests": list(children),
+        }
+    ).encode()
+
+
+ATTESTATION_MANIFEST_JSON = json.dumps(
+    {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "schemaVersion": 2,
+        "layers": [{"digest": "sha256:in-toto", "size": 10_000}],
+    }
+).encode()
+
 
 class TestInspectLocal:
     def test_parses_size_and_returns_result(self):
@@ -139,6 +166,36 @@ class TestInspectRegistry:
     def test_returns_none_when_all_children_fail(self):
         runner = _FakeRunner({("registry", "myimage:tag"): _completed(stdout=INDEX_MANIFEST_JSON)})
         assert _inspect_registry(runner, "myimage:tag") is None
+
+    def test_attestation_children_are_excluded_from_the_byte_total(self):
+        """buildx attaches provenance/SBOM manifests to the index under an unknown/unknown
+        platform. Their blobs are not part of the image, so counting them inflates the
+        reported Registry Size -- here by 10 KB against a 300-byte image."""
+        runner = _FakeRunner(
+            {
+                ("registry", "myimage:tag"): _completed(stdout=_index_json(_IMAGE_CHILD, _ATTESTATION_CHILD)),
+                ("registry", "myimage@sha256:child-amd64"): _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON),
+                ("registry", "myimage@sha256:attestation"): _completed(stdout=ATTESTATION_MANIFEST_JSON),
+            }
+        )
+        result = _inspect_registry(runner, "myimage:tag")
+
+        assert result == (300, 2)
+
+    def test_an_attestation_listed_first_does_not_become_the_layer_count(self):
+        """Layer count takes the first child inspected. buildx happens to append
+        attestations after image manifests today, but nothing in the OCI index spec
+        guarantees that order -- so the filter, not the ordering, has to be what protects it."""
+        runner = _FakeRunner(
+            {
+                ("registry", "myimage:tag"): _completed(stdout=_index_json(_ATTESTATION_CHILD, _IMAGE_CHILD)),
+                ("registry", "myimage@sha256:child-amd64"): _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON),
+                ("registry", "myimage@sha256:attestation"): _completed(stdout=ATTESTATION_MANIFEST_JSON),
+            }
+        )
+        result = _inspect_registry(runner, "myimage:tag")
+
+        assert result == (300, 2)
 
     def test_partial_child_failure_still_reports_the_successes(self):
         """One platform's inspect hiccupping must not blank out the whole target."""
