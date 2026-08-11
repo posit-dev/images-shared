@@ -264,8 +264,14 @@ class BakePlan(BaseModel):
         platforms: list[str] | None = None,
         set_opts: dict[str, Any] | None = None,
         clean_bakefile: bool = True,
+        metadata_file: Path | None = None,
     ):
-        """Run the bake plan to build all targets."""
+        """Run the bake plan to build all targets.
+
+        :param metadata_file: Optional path to write JSON build metadata to. Passed through to
+            `docker buildx bake --metadata-file`, which writes one entry per bake target, keyed
+            by the same target name used in the bake plan (i.e. the image target UID).
+        """
         original_cwd = os.getcwd()
         os.chdir(self.context)
 
@@ -289,6 +295,7 @@ class BakePlan(BaseModel):
             pull=pull,
             cache=cache,
             set=_set,
+            metadata_file=metadata_file,
             progress=False if SETTINGS.log_level >= logging.ERROR else "auto",
         )
         if clean_bakefile:

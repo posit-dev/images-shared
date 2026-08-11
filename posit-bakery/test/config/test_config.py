@@ -2547,6 +2547,51 @@ class TestBuildTargetsBuildStrategy:
         mock_time_sleep.assert_not_called()
 
 
+class TestBuildTargetsBakeStrategy:
+    """Tests for BakeryConfig.build_targets() with ImageBuildStrategy.BAKE."""
+
+    def test_metadata_file_forwarded_to_bake_plan(self, get_config_obj, mocker):
+        """metadata_file must be forwarded to BakePlan.build() so it reaches
+        `docker buildx bake --metadata-file`."""
+        config = get_config_obj("basic")
+        metadata_path = Path("/tmp/does-not-matter.json")
+        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
+        mocker.patch.object(BakeryConfig, "load_build_metadata_from_file")
+
+        config.build_targets(strategy=ImageBuildStrategy.BAKE, metadata_file=metadata_path)
+
+        mock_build.assert_called_once()
+        assert mock_build.call_args.kwargs["metadata_file"] == metadata_path
+
+    def test_no_metadata_file_by_default(self, get_config_obj, mocker):
+        """When metadata_file is not given, None must be forwarded and no metadata load attempted."""
+        config = get_config_obj("basic")
+        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
+        mock_load = mocker.patch.object(BakeryConfig, "load_build_metadata_from_file")
+
+        config.build_targets(strategy=ImageBuildStrategy.BAKE)
+
+        assert mock_build.call_args.kwargs["metadata_file"] is None
+        mock_load.assert_not_called()
+
+    def test_metadata_loaded_back_into_targets(self, get_config_obj, mocker, tmp_path):
+        """After a successful bake with a metadata_file, the resulting file (written by
+        `docker buildx bake --metadata-file`, keyed by bake target/UID) must be loaded back
+        into each target's build_metadata, mirroring the BUILD strategy's behavior."""
+        config = get_config_obj("basic")
+        metadata_path = tmp_path / "metadata.json"
+
+        expected_metadata_path = CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json"
+        shutil.copyfile(expected_metadata_path, metadata_path)
+
+        mocker.patch("posit_bakery.image.bake.BakePlan.build")
+
+        config.build_targets(strategy=ImageBuildStrategy.BAKE, metadata_file=metadata_path)
+
+        for target in config.targets:
+            assert len(target.build_metadata) == 1
+
+
 class TestApplyDevSpecReleaseBranch:
     """release_branch is set from YYYY.MM when version is set, or directly from spec."""
 
