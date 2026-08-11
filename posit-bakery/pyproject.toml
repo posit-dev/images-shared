@@ -84,7 +84,16 @@ fix = true
 target-version = "py311"
 
 [tool.ruff.lint]
+# `select` replaces ruff's defaults rather than adding to them, so listing only
+# T201 here silently disabled all of pyflakes -- including undefined-name, which
+# is why a call to a function that did not exist reached CI. The set is spelled
+# out explicitly rather than switched to `extend-select`: inheriting ruff's
+# default would let a ruff upgrade change what CI enforces without a commit.
 select = [
+    "E4",  # pycodestyle: import formatting
+    "E7",  # pycodestyle: statement errors
+    "E9",  # pycodestyle: syntax/IO errors
+    "F",  # pyflakes: undefined names, unused imports, redefinitions
     "T201",  # https://docs.astral.sh/ruff/rules/print/
 ]
 unfixable = [
