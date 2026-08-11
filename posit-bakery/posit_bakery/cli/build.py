@@ -95,7 +95,8 @@ def build(
         Optional[bool],
         typer.Option(
             "--summary",
-            help="Print a summary of build/tag counts for the selected targets.",
+            help="After building, report per-target sizes and layer counts alongside "
+            "build/tag counts. With --plan, prints counts only and builds nothing.",
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
@@ -294,6 +295,30 @@ def build(
 
     exit_if_no_targets(config, settings)
 
+    def _emit_summary(*, sizes: bool) -> None:
+        """Render `--summary` for the current target set.
+
+        :param sizes: `False` is the pre-build view -- counts only, used under `--plan`,
+            which builds nothing, so every size column would be a dash. `True` measures the
+            artifacts the build just produced (or failed to) and renders the per-target
+            breakdown.
+        """
+        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        if sizes:
+            build_summary.measure_sizes(config.targets, push=push, load=load, jobs=jobs)
+        if summary_format == SummaryOutputFormat.JSON:
+            stdout_console.print_json(data=build_summary.as_dict())
+        else:
+            stderr_console.print(build_summary.table(sizes=sizes))
+
+    def _try_emit_summary() -> None:
+        """`_emit_summary()`, but on the failure paths: it must never itself prevent the
+        original build failure from being reported and exited on."""
+        try:
+            _emit_summary(sizes=True)
+        except Exception:
+            log.debug("Failed to emit --summary on the build-failure path", exc_info=True)
+
     if plan:
         if strategy == ImageBuildStrategy.BUILD:
             # TODO: This should turn into dry-run behavior eventually.
@@ -311,24 +336,10 @@ def build(
             )
             raise typer.Exit(code=1)
         stdout_console.print_json(config.bake_plan_targets(push=push))
-        if not summary:
-            raise typer.Exit(code=0)
-
-    if summary:
-        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
-        if summary_format == SummaryOutputFormat.JSON:
-            stdout_console.print_json(data=build_summary.as_dict())
-        else:
-            stderr_console.print(build_summary.table(sizes=False))
+        if summary:
+            _emit_summary(sizes=False)
+        # --plan is the dry-run flag, with or without --summary: never fall through to a build.
         raise typer.Exit(code=0)
-
-    def _try_emit_summary() -> None:
-        """`_emit_summary()`, but on the failure paths: it must never itself prevent the
-        original build failure from being reported and exited on."""
-        try:
-            _emit_summary()
-        except Exception:
-            log.debug("Failed to emit --summary on the build-failure path", exc_info=True)
 
     try:
         config.build_targets(
@@ -346,9 +357,15 @@ def build(
     except BakeryBuildErrorGroup as e:
         stderr_console.print(str(e))
         stderr_console.print("❌ Build failed", style="error")
+        if summary:
+            _try_emit_summary()
         raise typer.Exit(code=1)
     except (python_on_whales.DockerException, BakeryToolRuntimeError):
         stderr_console.print("❌ Build failed", style="error")
+        if summary:
+            _try_emit_summary()
         raise typer.Exit(code=1)
 
     stderr_console.print("✅ Build completed", style="success")
+    if summary:
+        _emit_summary(sizes=True)

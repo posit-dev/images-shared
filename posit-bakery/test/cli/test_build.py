@@ -162,7 +162,8 @@ class TestBuildJobsFlag:
 
 
 class TestBuildSummaryFlag:
-    """`--summary` is a dry-run flag: it prints aggregate counts and exits without building."""
+    """`--summary` runs the build, then reports it. `--plan` is what makes it a dry run:
+    `--plan --summary` prints counts without building, since nothing exists to measure."""
 
     def test_omitted_by_default(self, mock_build_config):
         instance = mock_build_config.from_context.return_value
@@ -171,21 +172,24 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" not in result.stderr
 
-    def test_prints_table_to_stderr_exits_without_building(self, mock_build_config):
-        """--summary alone exits early with the 3-row aggregate count table; no build runs."""
+    def test_builds_then_prints_the_sizes_table(self, mock_build_config):
+        """--summary builds first, then reports per-target sizes -- the size columns are the
+        reason it has to build, and they only exist in the post-build view."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
             app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
         )
         assert result.exit_code == 0
+        instance.build_targets.assert_called_once()
         assert "Build Summary" in result.stderr
-        assert "Build Targets" in result.stderr
-        assert "Registry Size" not in result.stderr
+        assert "Registry Size" in result.stderr
+        assert "Local Size" in result.stderr
         assert "Build Summary" not in result.stdout
-        instance.build_targets.assert_not_called()
 
-    def test_format_json_prints_to_stdout_exits_without_building(self, mock_build_config):
+    def test_format_json_builds_then_prints_to_stdout(self, mock_build_config):
+        """Sizes are null here because the fake targets expose no ref() to measure -- the
+        keys must still be present and null rather than absent or zero."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
@@ -195,10 +199,47 @@ class TestBuildSummaryFlag:
             env=_ENV,
         )
         assert result.exit_code == 0
+        instance.build_targets.assert_called_once()
         assert "Build Summary" not in result.stderr
         data = json.loads(result.stdout)
-        assert data == {"build_targets": 1, "platform_builds": 1, "registry_tags": 2}
-        instance.build_targets.assert_not_called()
+        assert data["build_targets"] == 1
+        assert data["platform_builds"] == 1
+        assert data["registry_tags"] == 2
+        assert data["registry_size_bytes"] is None
+        assert data["local_size_bytes"] is None
+        assert len(data["targets"]) == 1
+
+    def test_summary_is_still_emitted_when_the_build_fails(self, mock_build_config):
+        """A partially failed build is exactly when the report is most useful, so the
+        summary must survive the failure path -- without swallowing the failure itself."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        instance.build_targets.side_effect = BakeryBuildErrorGroup(
+            "build failed",
+            [BakeryToolRuntimeError("target failed", tool_name="docker", cmd=["docker", "build"])],
+        )
+        result = runner.invoke(
+            app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+        )
+        assert result.exit_code == 1
+        assert "Build failed" in result.stderr
+        assert "Registry Size" in result.stderr
+
+    def test_a_broken_summary_does_not_mask_the_build_failure(self, mock_build_config):
+        """If the reporting path itself raises, the original build failure must still be the
+        thing reported and exited on -- a bug in a report must never eat a build error."""
+        instance = mock_build_config.from_context.return_value
+        instance.targets = [_fake_target()]
+        instance.build_targets.side_effect = BakeryToolRuntimeError("docker exploded")
+        with patch(
+            "posit_bakery.image.summary.BuildSummary.measure_sizes",
+            side_effect=RuntimeError("summary is broken"),
+        ):
+            result = runner.invoke(
+                app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+            )
+        assert result.exit_code == 1
+        assert "Build failed" in result.stderr
 
     def test_platform_builds_sums_platforms_not_targets(self, mock_build_config):
         """A 2-platform target must count as 2 platform builds -- the whole point of this
@@ -243,7 +284,9 @@ class TestBuildSummaryFlag:
         assert data["build_targets"] == 1
         assert data["platform_builds"] == 1
 
-    def test_plan_with_summary_prints_plan_json_and_table(self, mock_build_config):
+    def test_plan_with_summary_prints_plan_json_and_the_counts_table(self, mock_build_config):
+        """--plan builds nothing, so there is nothing to measure: the counts view, not the
+        sizes view, or every size column would be a dash."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         instance.bake_plan_targets.return_value = "{}"
@@ -252,6 +295,8 @@ class TestBuildSummaryFlag:
         )
         assert result.exit_code == 0
         assert "Build Summary" in result.stderr
+        assert "Build Targets" in result.stderr
+        assert "Registry Size" not in result.stderr
         assert json.loads(result.stdout) == {}
         instance.bake_plan_targets.assert_called_once()
 
