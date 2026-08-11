@@ -1708,7 +1708,7 @@ class TestBakeryConfig:
         assert image.name == "test-matrix"
         assert image.matrix is not None
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 dependencyConstraints:
                   - constraint:
@@ -1788,7 +1788,7 @@ class TestBakeryConfig:
         assert image.name == "test-matrix"
         assert image.matrix is not None
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 dependencyConstraints:
                   - dependency: R
@@ -1836,7 +1836,7 @@ class TestBakeryConfig:
         assert image.matrix is not None
         assert image.matrix.subpath == "matrix-override"
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 subpath: matrix-override
                 dependencyConstraints:
@@ -1854,7 +1854,7 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / image.name / image.matrix.subpath).is_dir()
-        assert (context / image.name / image.matrix.subpath / f"Containerfile.ubuntu2404").is_file()
+        assert (context / image.name / image.matrix.subpath / "Containerfile.ubuntu2404").is_file()
         assert (context / image.name / image.matrix.subpath / "deps").is_dir()
         assert (context / image.name / image.matrix.subpath / "deps" / "ubuntu-24.04_packages.txt").is_file()
         assert (context / image.name / image.matrix.subpath / "test").is_dir()

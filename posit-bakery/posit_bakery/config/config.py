@@ -199,7 +199,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
         # Create a new Containerfile template if it doesn't exist
         containerfile_name = "Containerfile.jinja2"
-        containerfile_glob = image_template_path.glob(f"Containerfile*.jinja2")
+        containerfile_glob = image_template_path.glob("Containerfile*.jinja2")
         if not any(containerfile_path.is_file() for containerfile_path in containerfile_glob):
             containerfile_path = image_template_path / containerfile_name
             log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")

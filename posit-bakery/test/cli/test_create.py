@@ -65,7 +65,7 @@ def check_default_templates(cli_test_tmpcontext, cli_test_image_name, subpath=No
     template_dir = image_dir / "template"
     assert template_dir.is_dir()
 
-    containerfile = template_dir.glob(f"Containerfile*jinja2")
+    containerfile = template_dir.glob("Containerfile*jinja2")
     assert len(list(containerfile)) == 1
 
     test = template_dir / "test"
@@ -74,7 +74,7 @@ def check_default_templates(cli_test_tmpcontext, cli_test_image_name, subpath=No
 
     deps = template_dir / "deps"
     assert deps.is_dir()
-    assert (deps / f"packages.txt.jinja2").is_file()
+    assert (deps / "packages.txt.jinja2").is_file()
 
 
 @then(parsers.parse('the default base image is "{base_image}"'))
@@ -131,11 +131,11 @@ def check_matrix_rendered_templates(
     containerfile = version_dir / f"Containerfile.{_os}"
     assert containerfile.is_file()
     containerfile_contents = containerfile.read_text()
-    assert f'ARG PYTHON_VERSION"' in containerfile_contents
+    assert 'ARG PYTHON_VERSION"' in containerfile_contents
 
     deps = version_dir / "deps"
     assert deps.is_dir()
-    assert (deps / f"ubuntu-24.04_packages.txt").is_file()
+    assert (deps / "ubuntu-24.04_packages.txt").is_file()
 
     test = version_dir / "test"
     assert test.is_dir()

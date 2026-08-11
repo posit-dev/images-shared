@@ -263,7 +263,7 @@ class TestImageTarget:
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
-            / f"Containerfile"
+            / "Containerfile"
         ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
