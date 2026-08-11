@@ -529,12 +529,8 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
 
-      # No `category:` input on purpose. Each SARIF file already carries its own
-      # version-stable category in runs[].automationDetails.id, written by
-      # `bakery trivy scan`. upload-sarif only fills automationDetails in when it
-      # is absent, so those survive; a `category:` input here would instead give
-      # every run in the directory the same category, which code scanning rejects
-      # (https://github.blog/changelog/2025-07-21-code-scanning-will-stop-combining-multiple-sarif-runs-uploaded-in-the-same-sarif-file/).
+      # No `category:` on purpose: each file carries its own in
+      # automationDetails.id, and one category across all of them is rejected.
       - name: Upload Trivy SARIF
         if: ${{ inputs.push && matrix.img.latest && !cancelled() && hashFiles('results/trivy/**/*.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v4.37.6
