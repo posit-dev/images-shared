@@ -19,7 +19,7 @@ from ruamel.yaml import YAML
 
 from posit_bakery import util
 from posit_bakery.config.dependencies import DependencyConstraint, DependencyVersions
-from posit_bakery.config.image import Image
+from posit_bakery.config.image import Image, ImageVersion
 from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
@@ -761,7 +761,7 @@ class BakeryConfig:
         new_version: str,
         values: dict[str, str] | None = None,
         clean: bool = True,
-    ) -> "ImageVersion":
+    ) -> ImageVersion:
         """Patches an existing image version with a new version and regenerates templates."""
         image = self.model.get_image(image_name)
 
