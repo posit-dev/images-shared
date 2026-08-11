@@ -35,6 +35,21 @@ on:
         default: "exclude"
         required: false
         type: string
+      scan-image:
+        description: "Scan built images with Trivy [default: false]"
+        default: false
+        required: false
+        type: boolean
+      scan-fail-on-severity:
+        description: "Comma-separated severities that fail the scan if found (e.g. CRITICAL). Empty means findings never fail."
+        default: ""
+        required: false
+        type: string
+      trivy-version:
+        description: "Trivy release to install (e.g. v0.73.0). 'latest' disables binary caching in setup-trivy."
+        default: "v0.73.0"
+        required: false
+        type: string
       retry:
         description: "Number of times to retry a failed build"
         default: 1
@@ -282,6 +297,44 @@ jobs:
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
             "${CACHE_FLAGS[@]}" \
+            --context "$BAKERY_CONTEXT"
+
+      - name: Setup trivy
+        if: ${{ inputs.scan-image }}
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
+        with:
+          version: ${{ inputs.trivy-version }}
+          cache: true
+
+      # Opt-in per caller. This runs on every PR build for a repo that enables
+      # it, and a scan costs roughly as long again as the build it follows, so
+      # the default stays off until a caller decides the signal is worth it.
+      - name: Scan
+        if: ${{ inputs.scan-image }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          IMG_DEV: ${{ matrix.img.dev }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          BAKERY_CONTEXT: ${{ inputs.context }}
+          FAIL_ON_SEVERITY: ${{ inputs.scan-fail-on-severity }}
+        run: |
+          if [ "$IMG_DEV" = "true" ]; then
+            DEV_VERSIONS=only
+          else
+            DEV_VERSIONS=exclude
+          fi
+          FAIL_FLAGS=()
+          [[ -n "$FAIL_ON_SEVERITY" ]] && FAIL_FLAGS=(--fail-on-severity "$FAIL_ON_SEVERITY")
+          bakery trivy scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$NORMALIZED_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            "${FAIL_FLAGS[@]}" \
             --context "$BAKERY_CONTEXT"
 
       - name: Test
