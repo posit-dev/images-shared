@@ -21,6 +21,12 @@ TAG_ALIAS_NOTE = (
     "Registry Tags counts tag aliases (version, os, latest, etc.) across registries, not distinct stored images."
 )
 
+LAYER_COUNT_NOTE = (
+    "Layers is one platform's manifest layer count; Registry Size sums every platform in a multi-platform index."
+)
+
+SIZES_CAPTION = f"{TAG_ALIAS_NOTE}\n{LAYER_COUNT_NOTE}"
+
 DASH = "—"
 
 
@@ -272,6 +278,7 @@ class BuildSummary(BaseModel):
             of writing to `row` directly -- mutation happens in `_apply`, on the main thread,
             via `on_result`, matching ParallelShellExecutor's own documented safe pattern."""
             local_size = registry_size = layers = None
+            local_layers = registry_layers = None
             try:
                 ref = _measurable_ref(target)
                 if ref is None:
@@ -281,13 +288,17 @@ class BuildSummary(BaseModel):
                     if local_result is not None:
                         local_size = local_result.size
                         if local_result.root_fs is not None and local_result.root_fs.layers is not None:
-                            layers = len(local_result.root_fs.layers)
+                            local_layers = len(local_result.root_fs.layers)
                 if push and (succeeded_uids is None or target.uid in succeeded_uids):
                     registry_result = _inspect_registry(runner, ref)
                     if registry_result is not None:
                         registry_size, registry_layers = registry_result
-                        if layers is None:
-                            layers = registry_layers
+                # The manifest's blob count wins over the local rootfs diff-ID count: the two
+                # measure different things (a metadata-only layer has a blob but no diff ID),
+                # and the manifest describes what actually ships. Fixing the precedence keeps
+                # the column's meaning from flipping with `--load`/`--push`; the local count is
+                # only a fallback for builds that never touch a registry.
+                layers = registry_layers if registry_layers is not None else local_layers
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
             return local_size, registry_size, layers
@@ -333,7 +344,7 @@ class BuildSummary(BaseModel):
         return grouped_table(
             sorted_targets,
             title=f"Build Summary ({len(sorted_targets)} targets)",
-            caption=TAG_ALIAS_NOTE,
+            caption=SIZES_CAPTION,
             group_columns=[
                 GroupColumn("Image", lambda t: t.image_name),
                 GroupColumn("Version", lambda t: t.version),

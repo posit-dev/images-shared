@@ -455,6 +455,37 @@ class TestMeasureSizesTempRegistryGuard:
         assert all(row.registry_size == 300 for row in summary.targets)
 
 
+class TestLayerCountSource:
+    """`Layers` has to mean one thing regardless of flags: the local rootfs diff-ID count and
+    the registry manifest's blob count measure different things (a metadata-only layer has a
+    blob but no diff ID), so precedence can't be 'whichever ran first'."""
+
+    def test_registry_manifest_count_wins_over_the_local_diff_id_count(self, get_targets):
+        targets = get_targets("basic")
+        summary = BuildSummary.from_image_targets(targets)
+
+        def _fake_run(runner_self, cmd, **kwargs):
+            if "buildx" in cmd:
+                return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)  # 2 layers
+            return _completed(stdout=LOCAL_INSPECT_JSON)  # 3 rootfs diff IDs
+
+        with patch.object(CommandRunner, "run", _fake_run):
+            summary.measure_sizes(targets, push=True, load=True)
+
+        assert all(row.local_size == 12_345 for row in summary.targets)
+        assert all(row.registry_size == 300 for row in summary.targets)
+        assert all(row.layers == 2 for row in summary.targets)
+
+    def test_falls_back_to_the_local_count_when_the_registry_is_unavailable(self, get_targets):
+        targets = get_targets("basic")
+        summary = BuildSummary.from_image_targets(targets)
+
+        with patch.object(CommandRunner, "run", _fake_run_local_only):
+            summary.measure_sizes(targets, push=False, load=True)
+
+        assert all(row.layers == 3 for row in summary.targets)
+
+
 class TestFromImageTargetsPerTargetRows:
     def test_builds_one_row_per_target_with_identity_and_counts(self, get_targets):
         targets = get_targets("basic")
