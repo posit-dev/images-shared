@@ -56,6 +56,11 @@ def _fake_target(
         image_variant=SimpleNamespace(name=variant) if variant else None,
         image_os=SimpleNamespace(platforms=list(platforms), name=os) if os else None,
         tags=list(tags),
+        # Mirrors a real ImageTarget with no --temp-registry: measure_sizes() reads both to
+        # decide whether ref() can be trusted, and a missing attribute here would be
+        # swallowed as an unmeasurable target rather than surfacing as a test failure.
+        temp_name=None,
+        build_metadata=[],
     )
 
 

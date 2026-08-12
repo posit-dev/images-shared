@@ -375,6 +375,86 @@ class TestMeasureSizesSucceededUids:
         assert all(row.registry_size == 300 for row in summary.targets)
 
 
+def _attach_metadata(target, digest: str) -> None:
+    """Give `target` the build metadata that `--metadata-file` would have produced, so
+    `ref()` resolves to the digest actually pushed instead of falling back to `tags[0]`."""
+    target.build_metadata.append(
+        BuildMetadata.model_validate(
+            {
+                "image.name": "ghcr.io/posit-dev/test-image/tmp",
+                "containerimage.digest": digest,
+                "containerimage.descriptor": {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": digest,
+                    "size": 855,
+                },
+                "buildx.build.provenance": {
+                    "invocation": {"environment": {"platform": f"linux/{SETTINGS.architecture}"}}
+                },
+            }
+        )
+    )
+
+
+class TestMeasureSizesTempRegistryGuard:
+    """Under `--temp-registry`, `ImageTarget.build()` swaps the tag list for `temp_name` and
+    pushes by digest, so the public tags are never written by this build. `ref()`'s `tags[0]`
+    fallback therefore points at whatever the *previous* release left at that tag -- measuring
+    it would report an unrelated image's size as this build's."""
+
+    def _targets_with_temp_registry(self, get_targets):
+        targets = get_targets("basic")
+        for target in targets:
+            target.settings.temp_registry = "ghcr.io/posit-dev"
+        return targets
+
+    def test_temp_registry_without_build_metadata_is_not_measured(self, get_targets):
+        targets = self._targets_with_temp_registry(get_targets)
+        summary = BuildSummary.from_image_targets(targets)
+        calls: list[list[str]] = []
+
+        def _record(runner_self, cmd, **kwargs):
+            calls.append(cmd)
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)
+
+        with patch.object(CommandRunner, "run", _record):
+            summary.measure_sizes(targets, push=True, load=True)
+
+        assert calls == []  # not "measured something wrong" -- measured nothing at all
+        assert all(row.registry_size is None for row in summary.targets)
+        assert all(row.local_size is None for row in summary.targets)
+
+    def test_temp_registry_with_build_metadata_measures_the_pushed_digest(self, get_targets):
+        digest = "sha256:" + "b" * 64
+        targets = self._targets_with_temp_registry(get_targets)
+        for target in targets:
+            _attach_metadata(target, digest)
+        summary = BuildSummary.from_image_targets(targets)
+        refs: list[str] = []
+
+        def _record(runner_self, cmd, **kwargs):
+            refs.append(cmd[-1])
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)
+
+        with patch.object(CommandRunner, "run", _record):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert refs and all(digest in ref for ref in refs)
+        assert all(row.registry_size == 300 for row in summary.targets)
+
+    def test_public_tag_is_measured_when_no_temp_registry_is_configured(self, get_targets):
+        targets = get_targets("basic")  # temp_registry unset -> temp_name is None
+        summary = BuildSummary.from_image_targets(targets)
+
+        def _fake_run(runner_self, cmd, **kwargs):
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)
+
+        with patch.object(CommandRunner, "run", _fake_run):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert all(row.registry_size == 300 for row in summary.targets)
+
+
 class TestFromImageTargetsPerTargetRows:
     def test_builds_one_row_per_target_with_identity_and_counts(self, get_targets):
         targets = get_targets("basic")

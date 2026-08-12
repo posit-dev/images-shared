@@ -116,6 +116,23 @@ def _inspect_registry(runner: CommandRunner, ref: str) -> tuple[int, int] | None
     return total_size, layer_count
 
 
+def _measurable_ref(target: ImageTarget) -> str | None:
+    """The reference to measure `target` against, or `None` when there isn't a trustworthy one.
+
+    `ImageTarget.ref()` falls back to `tags[0]` -- the final, public tag -- whenever no build
+    metadata is available. That fallback is wrong under `--temp-registry`: `ImageTarget.build()`
+    replaces the tag list with `temp_name` and pushes by digest, so this build never writes
+    those public tags. Measuring them anyway reports whatever the *previous* release left
+    sitting there as if it were this build's output -- a plausible-looking number measured off
+    an unrelated image, which is worse than no number at all. `--metadata-file` populates
+    `build_metadata` and makes `ref()` resolve to the digest actually pushed; without it,
+    under a temp registry, measure nothing.
+    """
+    if target.temp_name is not None and not target.build_metadata:
+        return None
+    return target.ref()
+
+
 def _sum_or_none(values: list[int | None]) -> int | None:
     """Sums whichever of `values` are known; `None` (not `0`) when none are, since "0" would
     misreport "we measured nothing" as "we measured empty"."""
@@ -233,6 +250,8 @@ class BuildSummary(BaseModel):
 
         :param targets: The same image targets `from_image_targets` was built from. Needed
             here (unlike the zero-I/O counts) because measurement keys off `ImageTarget.ref()`.
+            A target under `--temp-registry` with no build metadata is skipped entirely -- see
+            `_measurable_ref()` for why measuring it would be worse than not measuring it.
         :param push: Whether this build pushed to a registry -- gates the registry size lookup.
         :param load: Whether this build loaded to the local daemon -- gates the local size lookup.
         :param jobs: Maximum concurrent inspects; defaults to `SETTINGS.max_concurrency`.
@@ -252,9 +271,11 @@ class BuildSummary(BaseModel):
             """Runs on a worker thread. Returns (local_size, registry_size, layers) instead
             of writing to `row` directly -- mutation happens in `_apply`, on the main thread,
             via `on_result`, matching ParallelShellExecutor's own documented safe pattern."""
-            ref = target.ref()
             local_size = registry_size = layers = None
             try:
+                ref = _measurable_ref(target)
+                if ref is None:
+                    return local_size, registry_size, layers
                 if load:
                     local_result = _inspect_local(runner, ref)
                     if local_result is not None:
