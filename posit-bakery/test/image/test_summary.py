@@ -1,6 +1,6 @@
 import json
 import subprocess
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import python_on_whales
 from python_on_whales.components.buildx.imagetools.models import Manifest
@@ -44,6 +44,15 @@ class _FakeRunner:
         kind = "local" if "buildx" not in cmd else "registry"
         return self._responses.get((kind, ref), _completed(returncode=1, stderr=b"not found: " + ref.encode()))
 
+
+CACHE_MANIFEST_JSON = json.dumps(
+    {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "schemaVersion": 2,
+        "config": {"mediaType": "application/vnd.buildkit.cacheconfig.v0", "digest": "sha256:cfg", "size": 2920},
+        "layers": [{"digest": "sha256:a", "size": 100}, {"digest": "sha256:b", "size": 200}],
+    }
+).encode()
 
 SINGLE_PLATFORM_MANIFEST_JSON = json.dumps(
     {
@@ -378,15 +387,24 @@ class TestMeasureSizesSucceededUids:
 
         assert all(row.registry_size == 300 for row in summary.targets)
 
+
 def _fake_run_registry_fails(runner_self, cmd, **kwargs):
     return _completed(returncode=1, stderr=b"not found")
 
 
+def _fake_run_cache_only(runner_self, cmd, **kwargs):
+    """Resolves only cache refs; every image inspect fails, so a measured `cache_size` can
+    only have come from the cache lookup."""
+    if "/cache:" in cmd[-1]:
+        return _completed(stdout=CACHE_MANIFEST_JSON)
+    return _completed(returncode=1, stderr=b"not found")
+
+
 class TestMeasureSizesCache:
-    def _summary_with_cache_ref(self, get_targets, suite="basic"):
+    def _summary_with_cache_ref(self, get_targets, suite="basic", registry="ghcr.io/posit-dev"):
         targets = get_targets(suite)
         for target in targets:
-            target.settings.cache_registry = "ghcr.io/posit-dev"
+            target.settings.cache_registry = registry
         return targets, BuildSummary.from_image_targets(targets)
 
     def test_measured_when_push_is_false_but_cache_ref_present(self, get_targets):
@@ -394,58 +412,52 @@ class TestMeasureSizesCache:
         currently at `cache_ref` -- the registry lookup needs a `cache_ref` to query, not
         this build to have pushed anything, so it must not be gated on `push`."""
         targets, summary = self._summary_with_cache_ref(get_targets)
-        mock_client = MagicMock()
-        mock_client.get_manifest.return_value = Manifest(**json.loads(SINGLE_PLATFORM_MANIFEST_JSON))
 
-        with patch("posit_bakery.image.summary.GHCRManifestClient", return_value=mock_client):
-            with patch.object(CommandRunner, "run", _fake_run_registry_fails):
-                summary.measure_sizes(targets, push=False, load=False)
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=False, load=False)
 
         assert all(row.cache_size == 300 for row in summary.targets)
         assert all(row.registry_size is None for row in summary.targets)
 
     def test_measured_when_push_is_true(self, get_targets):
         targets, summary = self._summary_with_cache_ref(get_targets)
-        mock_client = MagicMock()
-        mock_client.get_manifest.return_value = Manifest(**json.loads(SINGLE_PLATFORM_MANIFEST_JSON))
 
-        with patch("posit_bakery.image.summary.GHCRManifestClient", return_value=mock_client):
-            with patch.object(CommandRunner, "run", _fake_run_registry_fails):
-                summary.measure_sizes(targets, push=True, load=False)
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=True, load=False)
 
+        assert all(row.cache_size == 300 for row in summary.targets)
+
+    def test_measured_for_a_non_ghcr_cache_registry(self, get_targets):
+        """`--cache-registry` accepts any registry, so measurement goes through the same
+        `imagetools inspect` path as image sizes rather than a registry-specific API client."""
+        targets, summary = self._summary_with_cache_ref(get_targets, registry="123456.dkr.ecr.us-east-1.amazonaws.com")
+
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert all(row.cache_ref is not None and "amazonaws.com" in row.cache_ref for row in summary.targets)
         assert all(row.cache_size == 300 for row in summary.targets)
 
     def test_stays_none_without_a_cache_ref(self, get_targets):
         targets = get_targets("basic")  # no cache_registry set -> cache_ref is None
         summary = BuildSummary.from_image_targets(targets)
+        runner_calls: list[list[str]] = []
 
-        with patch("posit_bakery.image.summary.GHCRManifestClient") as mock_client_cls:
-            with patch.object(CommandRunner, "run", _fake_run_registry_fails):
-                summary.measure_sizes(targets, push=True, load=False)
+        def _record(runner_self, cmd, **kwargs):
+            runner_calls.append(cmd)
+            return _completed(returncode=1, stderr=b"not found")
 
-        mock_client_cls.assert_not_called()
+        with patch.object(CommandRunner, "run", _record):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert not any("/cache:" in cmd[-1] for cmd in runner_calls)
         assert all(row.cache_size is None for row in summary.targets)
-
-    def test_missing_token_disables_cache_measurement_without_raising(self, get_targets):
-        targets, summary = self._summary_with_cache_ref(get_targets)
-
-        with (
-            patch("posit_bakery.image.summary.GHCRManifestClient", side_effect=ValueError("no token")),
-            patch("python_on_whales.docker.image.inspect", return_value=_fake_image(12_345, 3)),
-        ):
-            summary.measure_sizes(targets, push=True, load=True)  # must not raise
-
-        assert all(row.cache_size is None for row in summary.targets)
-        assert all(row.local_size == 12_345 for row in summary.targets)  # local measurement unaffected
 
     def test_manifest_fetch_failure_leaves_dash_and_does_not_raise(self, get_targets):
         targets, summary = self._summary_with_cache_ref(get_targets)
-        mock_client = MagicMock()
-        mock_client.get_manifest.return_value = None
 
-        with patch("posit_bakery.image.summary.GHCRManifestClient", return_value=mock_client):
-            with patch.object(CommandRunner, "run", _fake_run_registry_fails):
-                summary.measure_sizes(targets, push=True, load=False)  # must not raise
+        with patch.object(CommandRunner, "run", _fake_run_registry_fails):
+            summary.measure_sizes(targets, push=True, load=False)  # must not raise
 
         assert all(row.cache_size is None for row in summary.targets)
 

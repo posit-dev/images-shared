@@ -13,7 +13,6 @@ from rich.text import Text
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.parallel import CommandRunner, JobResult, ParallelShellExecutor, ShellJob, resolve_max_workers
-from posit_bakery.registry_management.ghcr.manifest import GHCRManifestClient
 from posit_bakery.reporting import GroupColumn, ValueColumn, grouped_table
 
 log = logging.getLogger(__name__)
@@ -156,14 +155,18 @@ def _measurable_ref(target: ImageTarget) -> str | None:
     return target.ref()
 
 
-def _cache_size(client: GHCRManifestClient, ref: str) -> int | None:
-    """Sums layer sizes from the GHCR v2 manifest for a build cache ref; `None` when the
-    manifest can't be fetched (private repo without access, or a target whose build never
-    pushed cache) -- unlike `_inspect_registry`, a cache tag is never a multi-platform index
-    (verified live: cache tags are always per-platform single manifests), so there is no
-    child fan-out to do here.
+def _cache_size(runner: CommandRunner, ref: str) -> int | None:
+    """Sums layer sizes from the manifest at a build cache ref; `None` when the manifest
+    can't be fetched (no registry credentials, or a target whose build never pushed cache).
+
+    Uses the same `imagetools inspect` path as `_inspect_registry` rather than a registry
+    HTTP client, so this works for any cache registry (`--cache-registry` is not required to
+    be GHCR) and reuses whatever credentials the builder already has. Unlike an image, a
+    cache tag is never a multi-platform index (verified live: BuildKit's registry cache
+    exporter writes one image manifest whose config is `vnd.buildkit.cacheconfig.v0`), so
+    there is no child fan-out to do here.
     """
-    manifest = client.get_manifest(ref)
+    manifest = _inspect_manifest(runner, ref)
     if manifest is None or manifest.layers is None:
         return None
     return sum(layer.size for layer in manifest.layers if layer.size is not None)
@@ -327,13 +330,6 @@ class BuildSummary(BaseModel):
         # into a row -- not even to read one. Rows are `_apply`'s alone.
         cache_refs = {row.uid: row.cache_ref for row in self.targets}
 
-        manifest_client: GHCRManifestClient | None = None
-        if has_cache_ref:
-            try:
-                manifest_client = GHCRManifestClient()
-            except ValueError as e:
-                log.debug(f"Cache size measurement disabled: {e}")
-
         def _measure(
             runner: CommandRunner, target: ImageTarget, cache_ref: str | None
         ) -> tuple[int | None, int | None, int | None, int | None]:
@@ -364,8 +360,8 @@ class BuildSummary(BaseModel):
                 # the column's meaning from flipping with `--load`/`--push`; the local count is
                 # only a fallback for builds that never touch a registry.
                 layers = registry_layers if registry_layers is not None else local_layers
-                if manifest_client is not None and cache_ref is not None:
-                    cache_size = _cache_size(manifest_client, cache_ref)
+                if cache_ref is not None:
+                    cache_size = _cache_size(runner, cache_ref)
             except Exception as e:
                 log.debug(f"Could not measure size for '{target}': {e}")
             return local_size, registry_size, layers, cache_size
