@@ -64,7 +64,7 @@ class TestWizcliScanZeroMatchGuard:
 
 class TestWizcliScanPlatformNormalization:
     """Regression coverage: `--image-platform linux/amd64` must not become
-    `linux/linux/amd64`."""
+    `linux/linux/amd64`, and the resolved platform must reach the scan itself."""
 
     @pytest.mark.parametrize(
         "given,expected",
@@ -76,7 +76,7 @@ class TestWizcliScanPlatformNormalization:
         ],
     )
     def test_normalizes_platform(self, mocked_wizcli_scan, given, expected):
-        mock_config, _ = mocked_wizcli_scan
+        mock_config, mock_execute = mocked_wizcli_scan
         result = runner.invoke(
             app,
             ["wizcli", "scan", "--context", BASIC_CONTEXT, "--image-platform", given],
@@ -85,6 +85,9 @@ class TestWizcliScanPlatformNormalization:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.filter.image_platform == [expected]
+        # Filtering targets is not enough: the platform also selects which digest is
+        # scanned and how the scan is labelled in Wiz.
+        assert mock_execute.call_args.kwargs["platform"] == expected
 
 
 class TestWizcliScanLatestFlag:

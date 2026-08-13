@@ -88,7 +88,8 @@ class WizCLIPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(
                     show_default=SETTINGS.get_host_architecture(),
-                    help="Filters which image build platform to scan.",
+                    help="Which image build platform to scan, e.g. 'linux/amd64'. Filters the image targets and "
+                    "selects which per-platform build digest is handed to wizcli.",
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = None,
@@ -272,6 +273,7 @@ class WizCLIPlugin(BakeryToolPlugin):
             results = plugin.execute(
                 c.base_path,
                 c.targets,
+                platform=platform,
                 disabled_scanners=disabled_scanners,
                 driver=driver,
                 policies=policies,
@@ -294,6 +296,7 @@ class WizCLIPlugin(BakeryToolPlugin):
         base_path: Path,
         targets: list[ImageTarget],
         *,
+        platform: str | None = None,
         disabled_scanners: str | None = None,
         driver: str = "extract",
         policies: str | None = None,
@@ -311,6 +314,7 @@ class WizCLIPlugin(BakeryToolPlugin):
         suite = WizCLISuite(
             base_path,
             targets,
+            platform=platform,
             disabled_scanners=disabled_scanners,
             driver=driver,
             policies=policies,

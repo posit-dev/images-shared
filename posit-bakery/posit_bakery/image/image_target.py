@@ -518,7 +518,9 @@ class ImageTarget(BaseModel):
                     f"Build metadata for '{self.uid}' matched platform '{platform}' but produced no "
                     f"{'digest-only ' if digest_only else ''}reference; trying older metadata."
                 )
-            log.debug(
+            # Visible by default: substituting a mutable tag for an exact digest changes
+            # which artifact downstream consumers act on (e.g. a security scan).
+            log.warning(
                 f"No usable build metadata reference for '{self.uid}' on platform '{platform}'; "
                 f"falling back to tag '{self.tags[0]}'."
             )

@@ -714,6 +714,30 @@ class TestImageTarget:
         assert basic_standard_image_target.ref() == "test-image:latest@sha256:1234567890abcdef"
         assert basic_standard_image_target.ref(digest_only=True) == "test-image@sha256:1234567890abcdef"
 
+    def test_ref_digest_only_explicit_platform(self, basic_standard_image_target):
+        """Test digest-only ref honors an explicit platform, including a non-host one.
+
+        Every other ref() test pins metadata to the host arch, so a caller that
+        omitted `platform` while scanning another platform's artifact looked correct.
+        One of these two assertions is always the cross-platform case.
+        """
+        metadata = {}
+        for arch in ("amd64", "arm64"):
+            mock_metadata = MagicMock(spec=BuildMetadata)
+            mock_metadata.platform = f"linux/{arch}"
+            mock_metadata.image_ref = f"test-image:latest@sha256:{arch}digest"
+            mock_metadata.digest_ref = f"test-image@sha256:{arch}digest"
+            mock_metadata.created_at = datetime.datetime.now()
+            metadata[arch] = mock_metadata
+
+        basic_standard_image_target.build_metadata = list(metadata.values())
+
+        for arch in ("amd64", "arm64"):
+            assert (
+                basic_standard_image_target.ref(platform=f"linux/{arch}", digest_only=True)
+                == f"test-image@sha256:{arch}digest"
+            )
+
     def test_ref_digest_only_falls_back_to_tag(self, basic_standard_image_target):
         """Test ref falls back to the first tag when metadata cannot produce a digest-only ref."""
         mock_metadata = MagicMock(spec=BuildMetadata)

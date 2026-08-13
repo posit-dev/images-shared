@@ -17,10 +17,27 @@ def find_wizcli_bin(context: ImageTargetContext) -> str | None:
     return find_bin(context.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
 
 
+def default_scan_platform() -> str:
+    """Platform to scan when the caller does not specify one: the host platform.
+
+    Mirrors ``ImageTarget.ref()``'s own default so an unqualified scan still resolves
+    to the artifact built locally.
+    """
+    return f"linux/{SETTINGS.architecture}"
+
+
 class WizCLICommand(BaseModel):
     image_target: ImageTarget
     wizcli_bin: Annotated[str, Field(default_factory=lambda data: find_wizcli_bin(data["image_target"].context))]
     results_file: Path
+    platform: Annotated[
+        str,
+        Field(
+            default_factory=default_scan_platform,
+            description="Build platform to scan, e.g. 'linux/arm64'. Selects which build metadata digest is scanned "
+            "and which architecture labels the scan in Wiz.",
+        ),
+    ]
 
     # ToolOptions fields
     tool_options: Annotated[WizCLIOptions | None, Field(default=None)]
@@ -46,6 +63,7 @@ class WizCLICommand(BaseModel):
         results_dir: Path,
         *,
         tool_options: WizCLIOptions | None = None,
+        platform: str | None = None,
         disabled_scanners: str | None = None,
         driver: str = "extract",
         policies: str | None = None,
@@ -69,6 +87,7 @@ class WizCLICommand(BaseModel):
         return cls(
             image_target=image_target,
             results_file=results_file,
+            platform=platform or default_scan_platform(),
             tool_options=tool_options,
             disabled_scanners=disabled_scanners,
             driver=driver,
@@ -105,6 +124,11 @@ class WizCLICommand(BaseModel):
             raw = f"{t.image_name}-{stripped}"
         return re.sub(r"[ .+/]", "-", raw).lower()
 
+    @property
+    def platform_arch(self) -> str:
+        """Architecture portion of :attr:`platform`, e.g. ``arm64`` for ``linux/arm64``."""
+        return self.platform.removeprefix("linux/")
+
     @computed_field
     @property
     def scan_name(self) -> str:
@@ -116,7 +140,7 @@ class WizCLICommand(BaseModel):
         t = self.image_target
         tv = t.tag_template_values
         suffix = "-".join(part for part in [tv["Version"], tv["OS"], tv["Variant"]] if part)
-        return f"{t.image_name}:{suffix}-{SETTINGS.architecture}"
+        return f"{t.image_name}:{suffix}-{self.platform_arch}"
 
     @computed_field
     @property
@@ -133,7 +157,7 @@ class WizCLICommand(BaseModel):
             f"product={t.image_name}",
             f"version={t.image_version.name}",
             f"channel={t.release_channel.value}",
-            f"platform={SETTINGS.architecture}",
+            f"platform={self.platform_arch}",
         ]
         if tv["OS"]:
             # "os" is a reserved tag key in Wiz; use "base-os" instead.
@@ -156,10 +180,13 @@ class WizCLICommand(BaseModel):
     def command(self) -> list[str]:
         cmd = [self.wizcli_bin, "scan", "container-image"]
 
+        # Scan the digest built for the requested platform, not the host's: on a
+        # cross-platform scan the host digest is absent and ref() would degrade to a
+        # mutable registry tag, pointing wizcli at an artifact we did not just build.
         # Temp-registry images are pushed by digest and carry no tag in the registry, so the
         # tag portion of a `repo:tag@sha256:DIGEST` reference resolves to nothing. Ask for the
         # tag-free form to keep the reference unambiguous regardless of how wizcli parses it.
-        cmd.append(self.image_target.ref(digest_only=True))
+        cmd.append(self.image_target.ref(platform=self.platform, digest_only=True))
 
         # Output file
         cmd.extend(["--json-output-file", str(self.results_file)])

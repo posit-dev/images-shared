@@ -1,8 +1,10 @@
-from unittest.mock import patch
+import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
+from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
 
 pytestmark = [
@@ -139,9 +141,11 @@ class TestWizCLICommand:
         assert "--no-browser" in cmd.command
 
     def test_scan_name_format(self, basic_standard_image_target):
-        """Test that scan_name follows the Version-OS-Variant-platform format."""
-        from unittest.mock import patch
+        """Test that scan_name follows the Version-OS-Variant-platform format.
 
+        With no explicit platform the scan targets the host platform, mirroring
+        ``ImageTarget.ref()``'s own default.
+        """
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
         with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
             mock_settings.architecture = "amd64"
@@ -149,6 +153,7 @@ class TestWizCLICommand:
                 image_target=basic_standard_image_target,
                 results_dir=results_dir,
             )
+            assert cmd.platform == "linux/amd64"
             tv = basic_standard_image_target.tag_template_values
             expected_suffix = "-".join(part for part in [tv["Version"], tv["OS"], tv["Variant"]] if part)
             assert cmd.scan_name == f"{basic_standard_image_target.image_name}:{expected_suffix}-amd64"
@@ -156,18 +161,63 @@ class TestWizCLICommand:
             assert cmd.scan_name in cmd.command
 
     def test_scan_name_in_command(self, basic_standard_image_target):
-        """Test that --name flag uses scan_name."""
-        from unittest.mock import patch
-
+        """Test that --name flag uses scan_name, labelled with the requested platform."""
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
         with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
-            mock_settings.architecture = "arm64"
+            mock_settings.architecture = "amd64"
             cmd = WizCLICommand.from_image_target(
                 image_target=basic_standard_image_target,
                 results_dir=results_dir,
+                platform="linux/arm64",
             )
             idx = cmd.command.index("--name")
             assert cmd.command[idx + 1].endswith("-arm64")
+
+    @pytest.mark.parametrize(
+        "requested_arch,host_arch",
+        [
+            ("arm64", "amd64"),
+            ("amd64", "arm64"),
+        ],
+    )
+    def test_scan_targets_requested_platform_not_host(self, basic_standard_image_target, requested_arch, host_arch):
+        """Regression: the requested platform, not the host arch, drives the scan.
+
+        ``--image-platform`` must select which build metadata digest is scanned and
+        which arch labels the scan in Wiz. A host-arch fallback finds no matching
+        metadata and silently degrades to a mutable registry tag, so the scanner
+        reports on the wrong artifact under the wrong labels.
+        """
+        build_metadata = []
+        for arch in ("amd64", "arm64"):
+            metadata = MagicMock(spec=BuildMetadata)
+            metadata.platform = f"linux/{arch}"
+            metadata.image_ref = f"docker.io/posit/test-image:1.0.0@sha256:{arch}digest"
+            metadata.digest_ref = f"docker.io/posit/test-image@sha256:{arch}digest"
+            metadata.created_at = datetime.datetime.now()
+            build_metadata.append(metadata)
+        basic_standard_image_target.build_metadata = build_metadata
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = host_arch
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+                platform=f"linux/{requested_arch}",
+            )
+            command = cmd.command
+
+        # The exact digest built for the requested platform, never the host's and never a tag.
+        assert f"docker.io/posit/test-image@sha256:{requested_arch}digest" in command
+        assert f"docker.io/posit/test-image@sha256:{host_arch}digest" not in command
+        assert not [arg for arg in command if arg.startswith("docker.io/posit/test-image:")]
+
+        assert command[command.index("--name") + 1].endswith(f"-{requested_arch}")
+
+        tags = [command[i + 1] for i, arg in enumerate(command) if arg == "--tags"]
+        assert f"platform={requested_arch}" in tags
+        assert f"platform={host_arch}" not in tags
 
     def test_scan_tags_present(self, basic_standard_image_target):
         """Test that auto-generated scan tags are emitted in the command."""
