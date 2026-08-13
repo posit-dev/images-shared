@@ -9,6 +9,7 @@ from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
 from posit_bakery.plugins.builtin.wizcli.errors import (
     BakeryWizCLIError,
+    WIZCLI_EXIT_CODE_GENERAL_ERROR,
     WIZCLI_EXIT_CODE_POLICY_VIOLATION,
 )
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
@@ -109,10 +110,24 @@ class WizCLISuite:
             if wizcli_command.results_file.exists():
                 try:
                     report = WizScanReport.load(wizcli_command.results_file)
-                    report_collection.add_report(wizcli_command.image_target, report)
                 except Exception as e:
                     log.error(f"Failed to parse wizcli results for '{str(wizcli_command.image_target)}': {e}")
                     parse_err = e
+
+            # Record every target exactly once, independent of the exit code. A target that
+            # reaches neither add_report nor add_failure vanishes from the results table,
+            # which would look complete while covering only the targets that happened to scan.
+            if report is not None:
+                report_collection.add_report(wizcli_command.image_target, report)
+            else:
+                # Exit 0 without a report is not a pass, so give it its own verdict: wizcli
+                # claimed success but left nothing to substantiate it.
+                verdict = "NO REPORT" if exit_code == 0 else "SCAN FAILED"
+                report_collection.add_failure(wizcli_command.image_target, verdict=verdict)
+
+            # A parse failure is the most useful detail for diagnosing a missing report, so
+            # carry it into the error output rather than leaving it only in the log.
+            error_metadata = {"parse_error": str(parse_err)} if parse_err is not None else None
 
             # Unlike dgoss (where exit code 1 + valid JSON = test failures, not an error),
             # all non-zero wizcli exit codes are true failures that must be surfaced.
@@ -121,10 +136,6 @@ class WizCLISuite:
                     log.warning(f"[yellow bold]Security policy violation for '{str(wizcli_command.image_target)}'")
                 else:
                     log.error(f"wizcli for '{str(wizcli_command.image_target)}' exited with code {exit_code}")
-                if report is None:
-                    # No parseable report: record the target as failed so it still appears in
-                    # the results table instead of vanishing from it.
-                    report_collection.add_failure(wizcli_command.image_target)
                 errors.append(
                     BakeryWizCLIError(
                         f"wizcli scan failed for '{str(wizcli_command.image_target)}'",
@@ -133,6 +144,26 @@ class WizCLISuite:
                         stdout=p.stdout,
                         stderr=p.stderr if verbose else None,
                         exit_code=exit_code,
+                        metadata=error_metadata,
+                    )
+                )
+            elif report is None:
+                # Never assert a pass without a report: wizcli is installed unpinned, so a
+                # missing or unreadable results file can also mean its output schema changed.
+                reason = "results could not be parsed" if parse_err is not None else "no results file was written"
+                log.error(f"wizcli for '{str(wizcli_command.image_target)}' exited with code {exit_code} but {reason}")
+                errors.append(
+                    BakeryWizCLIError(
+                        f"wizcli scan produced no report for '{str(wizcli_command.image_target)}': {reason}",
+                        "wizcli",
+                        cmd=wizcli_command.command,
+                        stdout=p.stdout,
+                        stderr=p.stderr if verbose else None,
+                        # The scan itself failed even though wizcli reported success; keep the
+                        # error's exit code non-zero so callers keyed on it see a failure, and
+                        # record what wizcli actually returned in the metadata.
+                        exit_code=WIZCLI_EXIT_CODE_GENERAL_ERROR,
+                        metadata={"wizcli_exit_code": exit_code, **(error_metadata or {})},
                     )
                 )
             else:
