@@ -154,9 +154,10 @@ class TestWizCLICommand:
                 results_dir=results_dir,
             )
             assert cmd.platform == "linux/amd64"
-            tv = basic_standard_image_target.tag_template_values
-            expected_suffix = "-".join(part for part in [tv["Version"], tv["OS"], tv["Variant"]] if part)
-            assert cmd.scan_name == f"{basic_standard_image_target.image_name}:{expected_suffix}-amd64"
+            # Literal rather than re-derived from tag_template_values: computing the
+            # expectation with the same expression as scan_name would agree with the
+            # implementation even if both were wrong.
+            assert cmd.scan_name == "test-image:1.0.0-ubuntu-22.04-std-amd64"
             assert "--name" in cmd.command
             assert cmd.scan_name in cmd.command
 
@@ -220,8 +221,37 @@ class TestWizCLICommand:
         assert f"platform={host_arch}" not in tags
 
     def test_scan_tags_present(self, basic_standard_image_target):
-        """Test that auto-generated scan tags are emitted in the command."""
-        from unittest.mock import patch
+        """Test the exact set of auto-generated scan tags emitted in the command.
+
+        Asserting values rather than keys: a wrong platform or OS value is the
+        failure mode that actually corrupts grouping in the Wiz UI, and a
+        key-presence check cannot see it.
+        """
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
+        assert tags_in_command == [
+            "product=test-image",
+            "version=1.0.0",
+            "channel=release",
+            "platform=amd64",
+            "base-os=ubuntu-22.04",
+            "variant=std",
+        ]
+
+    def test_scan_tags_omit_absent_os_and_variant(self, basic_standard_image_target):
+        """Test that the optional base-os/variant tags are skipped, not emitted empty.
+
+        Wiz rejects tag keys shorter than three characters and an empty value would
+        create a junk grouping bucket, so these two must drop out entirely.
+        """
+        basic_standard_image_target.image_os = None
+        basic_standard_image_target.image_variant = None
 
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
         with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
@@ -231,11 +261,12 @@ class TestWizCLICommand:
                 results_dir=results_dir,
             )
             tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
-            tag_keys = [t.split("=")[0] for t in tags_in_command]
-            assert "product" in tag_keys
-            assert "version" in tag_keys
-            assert "channel" in tag_keys
-            assert "platform" in tag_keys
+        assert tags_in_command == [
+            "product=test-image",
+            "version=1.0.0",
+            "channel=release",
+            "platform=amd64",
+        ]
 
     def test_scan_tags_user_tags_appended(self, basic_standard_image_target):
         """Test that user-supplied tags are emitted after auto-generated ones."""
@@ -257,17 +288,33 @@ class TestWizCLICommand:
             user_idx = tags_in_command.index("team=platform")
             assert auto_idx < user_idx
 
-    def test_scan_context_id_defaults_to_monthly(self, basic_standard_image_target):
-        """Test that scan-context-id defaults to a month-stripped release context."""
+    @pytest.mark.parametrize(
+        "version,expected",
+        [
+            ("2026.07.0", "test-image-2026-07"),
+            ("2026.07.12", "test-image-2026-07"),
+            ("2026.08.1-2", "test-image-2026-08"),
+            ("2026.07.0+build.5", "test-image-2026-07"),
+            ("R4.5-python3.14", "test-image-r4-5-python3-14"),
+        ],
+        ids=["patch", "two-digit-patch", "positron-build-number", "build-metadata", "matrix"],
+    )
+    def test_release_context_id_collapses_to_one_per_release(self, basic_standard_image_target, version, expected):
+        """Test that patch bumps, build numbers, and build metadata share one context.
+
+        The context must update in place across a release rather than splintering,
+        so every one of these versions has to resolve to the same ID. Matrix
+        versions carry no product version, so their R/Python name is the identity.
+        """
+        basic_standard_image_target.image_version.name = version
+
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
         cmd = WizCLICommand.from_image_target(
             image_target=basic_standard_image_target,
             results_dir=results_dir,
         )
-        idx = cmd.command.index("--scan-context-id")
-        assert cmd.command[idx + 1] == cmd.default_scan_context_id
-        # Should be image-name + stripped version, not the full uid
-        assert cmd.command[idx + 1].startswith(basic_standard_image_target.image_name + "-")
+        assert cmd.default_scan_context_id == expected
+        assert cmd.command[cmd.command.index("--scan-context-id") + 1] == expected
 
     def test_scan_context_id_dev_uses_channel(self, basic_standard_image_target):
         """Test that dev builds use per-channel context ID."""
