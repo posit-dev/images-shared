@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -26,6 +27,14 @@ def default_scan_platform() -> str:
     return f"linux/{SETTINGS.architecture}"
 
 
+class WizCLIDriverEnum(str, Enum):
+    """Valid values for wizcli's ``--driver`` flag."""
+
+    EXTRACT = "extract"
+    MOUNT = "mount"
+    MOUNT_WITH_LAYERS = "mountWithLayers"
+
+
 class WizCLICommand(BaseModel):
     image_target: ImageTarget
     wizcli_bin: Annotated[str, Field(default_factory=lambda data: find_wizcli_bin(data["image_target"].context))]
@@ -44,7 +53,7 @@ class WizCLICommand(BaseModel):
 
     # CLI pass-through options
     disabled_scanners: Annotated[str | None, Field(default=None)]
-    driver: Annotated[str, Field(default="extract")]
+    driver: Annotated[WizCLIDriverEnum, Field(default=WizCLIDriverEnum.EXTRACT)]
     policies: Annotated[str | None, Field(default=None)]
     projects: Annotated[str | None, Field(default=None)]
     client_id: Annotated[str | None, Field(default=None)]
@@ -65,7 +74,7 @@ class WizCLICommand(BaseModel):
         tool_options: WizCLIOptions | None = None,
         platform: str | None = None,
         disabled_scanners: str | None = None,
-        driver: str = "extract",
+        driver: WizCLIDriverEnum = WizCLIDriverEnum.EXTRACT,
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,

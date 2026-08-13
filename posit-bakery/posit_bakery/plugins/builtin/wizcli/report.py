@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
@@ -77,6 +78,18 @@ class WizScanReport(BaseModel):
         )
 
 
+@dataclass(frozen=True)
+class WizScanFailure:
+    """Recorded in place of a WizScanReport when a scan produced nothing to parse.
+
+    A dedicated type -- rather than a bare ``str`` verdict living in the same slot as a
+    ``WizScanReport`` -- keeps "did this scan fail" a matter of type, not of
+    ``isinstance(report, str)`` happening to be true.
+    """
+
+    verdict: str
+
+
 class WizScanReportCollection(dict):
     """Collection of WizScanReports keyed by image_name -> {uid: (target, report)}."""
 
@@ -90,7 +103,10 @@ class WizScanReportCollection(dict):
         Omitting them would render a table that looks complete while silently covering
         only the targets that happened to scan successfully.
         """
-        self.setdefault(image_target.image_name, dict())[image_target.uid] = (image_target, verdict)
+        self.setdefault(image_target.image_name, dict())[image_target.uid] = (
+            image_target,
+            WizScanFailure(verdict=verdict),
+        )
 
     def aggregate(self) -> dict:
         totals = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -102,7 +118,7 @@ class WizScanReportCollection(dict):
                 os_name = target.image_os.name if target.image_os else ""
                 version_name = target.image_version.name
 
-                if isinstance(report, str):
+                if isinstance(report, WizScanFailure):
                     # Failed scan: severity counts are unknown, not zero, so they are rendered
                     # as None and excluded from the totals rather than understating them.
                     row = {
@@ -111,7 +127,7 @@ class WizScanReportCollection(dict):
                         "medium": None,
                         "low": None,
                         "info": None,
-                        "verdict": report,
+                        "verdict": report.verdict,
                         "report_url": None,
                     }
                 else:
@@ -162,9 +178,12 @@ class WizScanReportCollection(dict):
                     for variant_name, row in variants.items():
                         failed = row["critical"] is None
 
-                        def count(key: str, style: str) -> Text:
+                        def count(key: str, style: str, row: dict = row) -> Text:
                             # Unknown counts render as "-" so a failed scan is never mistaken
-                            # for a clean one.
+                            # for a clean one. `row` is bound as a default argument, not
+                            # captured by reference, so each call reads the row from its own
+                            # loop iteration rather than whatever `row` is bound to when the
+                            # closure is finally invoked (B023).
                             if row[key] is None:
                                 return Text("-", style="bright_black italic")
                             return Text(str(row[key]), style=style)

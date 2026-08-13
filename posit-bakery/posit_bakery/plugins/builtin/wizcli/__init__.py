@@ -11,6 +11,7 @@ from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEn
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.log import stderr_console
+from posit_bakery.plugins.builtin.wizcli.command import WizCLIDriverEnum
 from posit_bakery.plugins.builtin.wizcli.errors import WIZCLI_EXIT_CODE_POLICY_VIOLATION
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
 from posit_bakery.plugins.builtin.wizcli.report import WizScanReportCollection
@@ -141,12 +142,12 @@ class WizCLIPlugin(BakeryToolPlugin):
                 ),
             ] = None,
             driver: Annotated[
-                str,
+                WizCLIDriverEnum,
                 typer.Option(
-                    help="Driver used to scan image (extract, mount, mountWithLayers).",
+                    help="Driver used to scan image.",
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
-            ] = "extract",
+            ] = WizCLIDriverEnum.EXTRACT,
             policies: Annotated[
                 Optional[str],
                 typer.Option(
@@ -298,7 +299,7 @@ class WizCLIPlugin(BakeryToolPlugin):
         *,
         platform: str | None = None,
         disabled_scanners: str | None = None,
-        driver: str = "extract",
+        driver: WizCLIDriverEnum = WizCLIDriverEnum.EXTRACT,
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,

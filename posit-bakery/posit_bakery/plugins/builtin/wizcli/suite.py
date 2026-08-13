@@ -6,7 +6,7 @@ from pathlib import Path
 
 from posit_bakery.error import BakeryToolRuntimeError, BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand
+from posit_bakery.plugins.builtin.wizcli.command import WizCLICommand, WizCLIDriverEnum
 from posit_bakery.plugins.builtin.wizcli.errors import (
     BakeryWizCLIError,
     WIZCLI_EXIT_CODE_GENERAL_ERROR,
@@ -28,7 +28,7 @@ class WizCLISuite:
         tool_options: WizCLIOptions | None = None,
         platform: str | None = None,
         disabled_scanners: str | None = None,
-        driver: str = "extract",
+        driver: WizCLIDriverEnum = WizCLIDriverEnum.EXTRACT,
         policies: str | None = None,
         projects: str | None = None,
         client_id: str | None = None,

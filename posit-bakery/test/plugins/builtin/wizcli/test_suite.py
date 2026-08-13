@@ -6,7 +6,7 @@ import pytest
 
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.plugins.builtin.wizcli.errors import WIZCLI_EXIT_CODE_POLICY_VIOLATION
-from posit_bakery.plugins.builtin.wizcli.report import WizScanReport, WizScanReportCollection
+from posit_bakery.plugins.builtin.wizcli.report import WizScanFailure, WizScanReport, WizScanReportCollection
 from posit_bakery.plugins.builtin.wizcli.suite import WizCLISuite
 
 pytestmark = [
@@ -95,7 +95,7 @@ class TestWizCLISuiteRun:
         assert set(recorded) == {target.uid for target in tmpconfig.targets}
         # "NO REPORT" distinguishes a claimed-successful scan with nothing to show for it
         # from a scan that failed outright.
-        assert set(recorded.values()) == {"NO REPORT"}
+        assert set(recorded.values()) == {WizScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         # One row per target plus the Total row: the targets stay visible in the table.
@@ -123,7 +123,7 @@ class TestWizCLISuiteRun:
 
         recorded = entries(collection)
         assert set(recorded) == {target.uid for target in tmpconfig.targets}
-        assert set(recorded.values()) == {"NO REPORT"}
+        assert set(recorded.values()) == {WizScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         errs = error_list(errors)
@@ -153,7 +153,7 @@ class TestWizCLISuiteRun:
 
         recorded = entries(collection)
         assert set(recorded) == {target.uid for target in tmpconfig.targets}
-        assert set(recorded.values()) == {"SCAN FAILED"}
+        assert set(recorded.values()) == {WizScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
         assert len(errs) == len(tmpconfig.targets)
@@ -166,7 +166,7 @@ class TestWizCLISuiteRun:
 
         recorded = entries(collection)
         assert set(recorded) == {target.uid for target in tmpconfig.targets}
-        assert set(recorded.values()) == {"SCAN FAILED"}
+        assert set(recorded.values()) == {WizScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
         assert len(errs) == len(tmpconfig.targets)
