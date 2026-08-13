@@ -207,6 +207,24 @@ class BuildMetadata(BaseModel):
         log.debug("Creation timestamp not found in metadata, defaulting to current time.")
         return datetime.datetime.now()
 
+    def base_image_digest(self, os_name: str) -> str | None:
+        """Returns the digest of the base OS image material matching ``os_name``, if present.
+
+        Multi-stage builds (e.g. the UV Python builder stage) record every stage's base image
+        as a separate material, so the base OS image is not reliably the first or last entry.
+        Matching by name picks out the actual OS layer rather than a builder stage.
+
+        :param os_name: The base OS family name to match, e.g. ``ubuntu`` (``BuildOS.name``).
+        """
+        if not self.build_provenance:
+            return None
+        prefix = f"pkg:docker/{os_name.lower()}@"
+        for material in self.build_provenance.materials:
+            if material.uri and material.uri.lower().startswith(prefix) and material.digest:
+                alg, digest = next(iter(material.digest.items()))
+                return f"{alg}:{digest}"
+        return None
+
     @property
     def platform(self) -> str | None:
         """Returns the platform of the built image if available."""

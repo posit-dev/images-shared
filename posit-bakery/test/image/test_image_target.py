@@ -749,6 +749,42 @@ class TestImageTarget:
 
         assert basic_standard_image_target.ref(digest_only=True).endswith("docker.io/posit/test-image:1.0.0")
 
+    def test_build_metadata_for_platform_returns_matching_metadata(self, basic_standard_image_target):
+        """Test build_metadata_for_platform returns the metadata matching the requested platform."""
+        mock_metadata_amd64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_amd64.platform = "linux/amd64"
+        mock_metadata_amd64.created_at = datetime.datetime.now()
+
+        mock_metadata_arm64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_arm64.platform = "linux/arm64"
+        mock_metadata_arm64.created_at = datetime.datetime.now()
+
+        basic_standard_image_target.build_metadata = [mock_metadata_amd64, mock_metadata_arm64]
+
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is mock_metadata_amd64
+        assert basic_standard_image_target.build_metadata_for_platform("linux/arm64") is mock_metadata_arm64
+
+    def test_build_metadata_for_platform_prefers_most_recent(self, basic_standard_image_target):
+        """Test build_metadata_for_platform picks the newest metadata for the platform."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        mock_metadata_old = MagicMock(spec=BuildMetadata)
+        mock_metadata_old.platform = "linux/amd64"
+        mock_metadata_old.created_at = older_time
+
+        mock_metadata_new = MagicMock(spec=BuildMetadata)
+        mock_metadata_new.platform = "linux/amd64"
+        mock_metadata_new.created_at = newer_time
+
+        basic_standard_image_target.build_metadata = [mock_metadata_old, mock_metadata_new]
+
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is mock_metadata_new
+
+    def test_build_metadata_for_platform_returns_none_when_no_match(self, basic_standard_image_target):
+        """Test build_metadata_for_platform returns None when no metadata matches."""
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is None
+
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
         expected_labels = {

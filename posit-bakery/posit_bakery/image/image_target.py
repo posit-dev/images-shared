@@ -527,6 +527,19 @@ class ImageTarget(BaseModel):
 
         return str(self.tags[0])
 
+    def build_metadata_for_platform(self, platform: str) -> BuildMetadata | None:
+        """Returns the most recent build metadata matching ``platform``, if any.
+
+        Shares ``ref()``'s newest-first, platform-filtered selection so callers that need the
+        underlying :class:`BuildMetadata` (e.g. for provenance fields) see the same artifact
+        ``ref()`` would resolve to.
+        """
+        sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
+        for metadata in sorted_metadata:
+            if metadata.platform == platform:
+                return metadata
+        return None
+
     @computed_field
     @property
     def labels(self) -> dict[str, str]:

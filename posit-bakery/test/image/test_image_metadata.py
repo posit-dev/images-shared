@@ -167,6 +167,48 @@ class TestBuildMetadata:
         metadata = BuildMetadata.model_validate(data)
         assert metadata.platform is None
 
+    def test_base_image_digest_matches_named_material(self, image_testdata_path):
+        """Test base_image_digest matches the material for the requested OS name."""
+        with open(image_testdata_path / "multi-target.json") as f:
+            data = json.load(f)
+
+        metadata = BuildMetadata.model_validate(data["test-multi-1-0-0-minimal-ubuntu-22-04"])
+        assert (
+            metadata.base_image_digest("ubuntu")
+            == "sha256:104ae83764a5119017b8e8d6218fa0832b09df65aae7d5a6de29a85d813da2fb"
+        )
+
+    def test_base_image_digest_ignores_other_stage_materials(self):
+        """Test base_image_digest picks the OS material out of a multi-stage build's materials.
+
+        Multi-stage builds (e.g. the UV Python builder stage) record every stage's base image as
+        a separate material, so the OS image is not reliably the first or last entry.
+        """
+        data = {
+            "image.name": "test:latest",
+            "containerimage.digest": "sha256:abc123",
+            "buildx.build.provenance": {
+                "builder": {"id": ""},
+                "buildType": "https://mobyproject.org/buildkit@v1",
+                "materials": [
+                    {"uri": "pkg:docker/astral-sh/uv@debian-slim", "digest": {"sha256": "uvbuilderdigest"}},
+                    {"uri": "pkg:docker/ubuntu@22.04?platform=linux%2Famd64", "digest": {"sha256": "osdigest"}},
+                ],
+                "invocation": None,
+            },
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.base_image_digest("ubuntu") == "sha256:osdigest"
+
+    def test_base_image_digest_returns_none_when_no_match(self):
+        """Test base_image_digest returns None when no material matches the OS name."""
+        data = {
+            "image.name": "test:latest",
+            "containerimage.digest": "sha256:abc123",
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.base_image_digest("ubuntu") is None
+
 
 class TestMetadataFile:
     def test_metadata_file_load(self, image_testdata_path):

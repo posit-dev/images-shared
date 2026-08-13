@@ -117,34 +117,39 @@ class WizCLICommand(BaseModel):
     def default_scan_context_id(self) -> str:
         """Generate the default scan context ID for grouping related scans in Wiz.
 
-        The ID is currently one per release, covering every OS, variant, and
-        platform built from it: all 12 targets of ``connect`` 2026.07 share
-        ``connect-2026-07``. Wiz documents this flag as a baseline selector, so
-        that collapse means sibling artifacts baseline against each other. Whether
-        it should instead be one ID per artifact is under discussion in
-        https://github.com/posit-dev/images-shared/pull/715 -- do not add axes here
-        without reading that first.
-
-        Dev builds use a per-channel ID (e.g. ``connect-daily``) so each channel
-        always reflects the current state. Release and matrix builds use a
-        month/minor-stripped version (e.g. ``connect-2026-07``,
-        ``connect-content-r4-5-python3-14``) so patch bumps and build-number
-        increments update the context in-place rather than creating new ones.
-        Build metadata (``+build.5``) is dropped and Positron build-number
-        suffixes (e.g. ``-2`` in ``2026.08.1-2``) are stripped after strip_patch,
-        both so the context stays at monthly granularity.
+        Context IDs identify one comparable artifact: image, release month (or dev
+        channel), OS, variant, and platform. Wiz uses this ID to select a baseline,
+        so different artifacts must not share one. Release and matrix versions use a
+        month/minor-stripped version (e.g. ``connect-2026-07-ubuntu-22-04-std-amd64``,
+        ``connect-content-r4-5-python3-14-amd64``) so patch bumps and build-number
+        increments update the matching artifact in place. Dev builds use their
+        channel in place of the release version. Build metadata (``+build.5``) is
+        dropped and Positron build-number suffixes (e.g. ``-2`` in ``2026.08.1-2``)
+        are stripped after strip_patch, both so the context stays at monthly
+        granularity.
         """
         t = self.image_target
         if t.release_channel != ReleaseChannelEnum.RELEASE:
-            raw = f"{t.image_name}-{t.release_channel.value}"
+            version_or_channel = t.release_channel.value
         else:
             # Drop build metadata first: `+` survives both strip_patch and the
             # trailing-digit strip, so `2026.07.0+build.5` would otherwise reach the
             # final substitution and land as `-2026-07-build-5`, giving every build of
             # a `+meta` release its own context instead of updating one in place.
             version = t.image_version.name.split("+", 1)[0]
-            stripped = re.sub(r"-\d+$", "", strip_patch(version))
-            raw = f"{t.image_name}-{stripped}"
+            version_or_channel = re.sub(r"-\d+$", "", strip_patch(version))
+        tv = t.tag_template_values
+        raw = "-".join(
+            part
+            for part in [
+                t.image_name,
+                version_or_channel,
+                tv["OS"],
+                tv["Variant"],
+                self.platform_arch,
+            ]
+            if part
+        )
         return re.sub(r"[ .+/]", "-", raw).lower()
 
     @property
@@ -170,9 +175,15 @@ class WizCLICommand(BaseModel):
     def scan_tags(self) -> list[str]:
         """Generate tags for the Wiz scan from ImageTarget fields.
 
-        Covers every useful grouping axis in the Wiz UI: product, version, channel,
-        OS, variant, and platform. User-supplied tool_options.tags are emitted
-        separately and can override or extend these.
+        Covers every useful grouping axis in the Wiz UI: product, version, channel, OS,
+        variant, and platform. Also adds ``base-digest`` from build metadata, when available,
+        since neither `version` nor a coarse scan-context-id changes between rebuilds of the
+        same release, so nothing else here distinguishes which base-image rebuild produced a
+        given scan. (A commit-revision tag was considered too but dropped: Wiz's Commit
+        Properties panel and Image Labels panel already surface the source commit
+        independently, from CI context and the image's own OCI labels, so a tag would only
+        duplicate it.) User-supplied tool_options.tags are emitted separately and can override
+        or extend these.
         """
         t = self.image_target
         tv = t.tag_template_values
@@ -188,6 +199,11 @@ class WizCLICommand(BaseModel):
             tags.append(f"base-os={tv['OS']}")
         if tv["Variant"]:
             tags.append(f"variant={tv['Variant']}")
+
+        metadata = t.build_metadata_for_platform(self.platform)
+        if metadata and t.image_os and (base_digest := metadata.base_image_digest(t.image_os.buildOS.name)):
+            tags.append(f"base-digest={base_digest}")
+
         return tags
 
     @model_validator(mode="after")
@@ -225,9 +241,8 @@ class WizCLICommand(BaseModel):
         cmd.extend(["--name", self.scan_name])
 
         # Scan context ID: selects which prior scan Wiz uses as this scan's baseline,
-        # keyed on repository + branch + this ID. Defaults to one ID per release (or per
-        # dev channel), spanning its OSes, variants, and platforms -- granularity is an
-        # open question, see default_scan_context_id.
+        # keyed on repository + branch + this ID. Defaults to one ID per comparable
+        # artifact; see default_scan_context_id.
         cmd.extend(["--scan-context-id", self.scan_context_id or self.default_scan_context_id])
 
         # Policies/projects: an explicit CLI value always wins over bakery.yaml,

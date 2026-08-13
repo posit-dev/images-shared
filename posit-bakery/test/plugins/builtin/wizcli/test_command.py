@@ -288,23 +288,66 @@ class TestWizCLICommand:
             user_idx = tags_in_command.index("team=platform")
             assert auto_idx < user_idx
 
+    def test_scan_tags_include_base_digest_from_build_metadata(self, basic_standard_image_target):
+        """Test that a base-digest tag is added when build metadata is available.
+
+        Neither `version` nor a coarse scan-context-id changes between rebuilds of the same
+        release, so this is the only tag that can answer which base image produced a given scan.
+        """
+        metadata = MagicMock(spec=BuildMetadata)
+        metadata.platform = "linux/amd64"
+        metadata.created_at = datetime.datetime.now()
+        metadata.base_image_digest.return_value = (
+            "sha256:104ae83764a5119017b8e8d6218fa0832b09df65aae7d5a6de29a85d813da2f"
+        )
+        basic_standard_image_target.build_metadata = [metadata]
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            # `command` is a computed_field property that recomputes from scratch on every
+            # access rather than caching, so read it once rather than inline in a comprehension.
+            command = cmd.command
+            tags_in_command = [command[i + 1] for i, arg in enumerate(command) if arg == "--tags"]
+
+        assert "base-digest=sha256:104ae83764a5119017b8e8d6218fa0832b09df65aae7d5a6de29a85d813da2f" in tags_in_command
+        metadata.base_image_digest.assert_called_once_with(basic_standard_image_target.image_os.buildOS.name)
+
+    def test_scan_tags_omit_base_digest_without_build_metadata(self, basic_standard_image_target):
+        """Test that base-digest is absent, not empty, without build metadata."""
+        assert basic_standard_image_target.build_metadata == []
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        with patch("posit_bakery.plugins.builtin.wizcli.command.SETTINGS") as mock_settings:
+            mock_settings.architecture = "amd64"
+            cmd = WizCLICommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+            )
+            tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
+
+        assert not any(tag.startswith("base-digest=") for tag in tags_in_command)
+
     @pytest.mark.parametrize(
         "version,expected",
         [
-            ("2026.07.0", "test-image-2026-07"),
-            ("2026.07.12", "test-image-2026-07"),
-            ("2026.08.1-2", "test-image-2026-08"),
-            ("2026.07.0+build.5", "test-image-2026-07"),
-            ("R4.5-python3.14", "test-image-r4-5-python3-14"),
+            ("2026.07.0", "test-image-2026-07-ubuntu-22-04-std-amd64"),
+            ("2026.07.12", "test-image-2026-07-ubuntu-22-04-std-amd64"),
+            ("2026.08.1-2", "test-image-2026-08-ubuntu-22-04-std-amd64"),
+            ("2026.07.0+build.5", "test-image-2026-07-ubuntu-22-04-std-amd64"),
+            ("R4.5-python3.14", "test-image-r4-5-python3-14-ubuntu-22-04-std-amd64"),
         ],
         ids=["patch", "two-digit-patch", "positron-build-number", "build-metadata", "matrix"],
     )
-    def test_release_context_id_collapses_to_one_per_release(self, basic_standard_image_target, version, expected):
-        """Test that patch bumps, build numbers, and build metadata share one context.
+    def test_release_context_id_stays_stable_per_artifact(self, basic_standard_image_target, version, expected):
+        """Test that patch bumps, build numbers, and build metadata share an artifact context.
 
-        The context must update in place across a release rather than splintering,
-        so every one of these versions has to resolve to the same ID. Matrix
-        versions carry no product version, so their R/Python name is the identity.
+        The context must update in place across a release without allowing different
+        OSes, variants, or platforms to select each other as a baseline.
         """
         basic_standard_image_target.image_version.name = version
 
@@ -317,7 +360,7 @@ class TestWizCLICommand:
         assert cmd.command[cmd.command.index("--scan-context-id") + 1] == expected
 
     def test_scan_context_id_dev_uses_channel(self, basic_standard_image_target):
-        """Test that dev builds use per-channel context ID."""
+        """Test that dev builds use a per-channel, per-artifact context ID."""
         from unittest.mock import PropertyMock, patch
         from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 
@@ -333,7 +376,19 @@ class TestWizCLICommand:
                 results_dir=results_dir,
             )
             idx = cmd.command.index("--scan-context-id")
-            assert cmd.command[idx + 1] == f"{basic_standard_image_target.image_name}-daily"
+            assert cmd.command[idx + 1] == f"{basic_standard_image_target.image_name}-daily-ubuntu-22-04-std-amd64"
+
+    def test_scan_context_id_omits_absent_dimensions(self, basic_standard_image_target):
+        """Test that targets without OS or variant axes have no empty ID components."""
+        basic_standard_image_target.image_os = None
+        basic_standard_image_target.image_variant = None
+
+        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.default_scan_context_id == "test-image-1-0-amd64"
 
     def test_scan_context_id_explicit_override(self, basic_standard_image_target):
         """Test that an explicit scan_context_id overrides the uid default."""
