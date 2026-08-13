@@ -398,7 +398,7 @@ class WizCLIPlugin(BakeryToolPlugin):
                 dev_spec=dev_spec,  # type: ignore[arg-type]
                 matrix_versions=matrix_versions,
             )
-            c = BakeryConfig.from_path(context, settings=settings)
+            c = BakeryConfig.from_context(context, settings)
             exit_if_no_targets(c)
 
             # Build a map of image_name → set of final registry repo destinations.
