@@ -291,8 +291,10 @@ class TestWizCLICommand:
     def test_scan_tags_include_base_digest_from_build_metadata(self, basic_standard_image_target):
         """Test that a base-digest tag is added when build metadata is available.
 
-        Neither `version` nor a coarse scan-context-id changes between rebuilds of the same
-        release, so this is the only tag that can answer which base image produced a given scan.
+        Neither `version` nor a coarse scan-context-id (not currently set; see
+        https://github.com/posit-dev/images-shared/issues/751) changes between rebuilds of the
+        same release, so this is the only tag that can answer which base image produced a given
+        scan.
         """
         metadata = MagicMock(spec=BuildMetadata)
         metadata.platform = "linux/amd64"
@@ -331,75 +333,6 @@ class TestWizCLICommand:
             tags_in_command = [cmd.command[i + 1] for i, arg in enumerate(cmd.command) if arg == "--tags"]
 
         assert not any(tag.startswith("base-digest=") for tag in tags_in_command)
-
-    @pytest.mark.parametrize(
-        "version,expected",
-        [
-            ("2026.07.0", "test-image-2026-07-ubuntu-22-04-std-amd64"),
-            ("2026.07.12", "test-image-2026-07-ubuntu-22-04-std-amd64"),
-            ("2026.08.1-2", "test-image-2026-08-ubuntu-22-04-std-amd64"),
-            ("2026.07.0+build.5", "test-image-2026-07-ubuntu-22-04-std-amd64"),
-            ("R4.5-python3.14", "test-image-r4-5-python3-14-ubuntu-22-04-std-amd64"),
-        ],
-        ids=["patch", "two-digit-patch", "positron-build-number", "build-metadata", "matrix"],
-    )
-    def test_release_context_id_stays_stable_per_artifact(self, basic_standard_image_target, version, expected):
-        """Test that patch bumps, build numbers, and build metadata share an artifact context.
-
-        The context must update in place across a release without allowing different
-        OSes, variants, or platforms to select each other as a baseline.
-        """
-        basic_standard_image_target.image_version.name = version
-
-        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
-        cmd = WizCLICommand.from_image_target(
-            image_target=basic_standard_image_target,
-            results_dir=results_dir,
-        )
-        assert cmd.default_scan_context_id == expected
-        assert cmd.command[cmd.command.index("--scan-context-id") + 1] == expected
-
-    def test_scan_context_id_dev_uses_channel(self, basic_standard_image_target):
-        """Test that dev builds use a per-channel, per-artifact context ID."""
-        from unittest.mock import PropertyMock, patch
-        from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
-
-        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
-        with patch.object(
-            type(basic_standard_image_target),
-            "release_channel",
-            new_callable=PropertyMock,
-            return_value=ReleaseChannelEnum.DAILY,
-        ):
-            cmd = WizCLICommand.from_image_target(
-                image_target=basic_standard_image_target,
-                results_dir=results_dir,
-            )
-            idx = cmd.command.index("--scan-context-id")
-            assert cmd.command[idx + 1] == f"{basic_standard_image_target.image_name}-daily-ubuntu-22-04-std-amd64"
-
-    def test_scan_context_id_omits_absent_dimensions(self, basic_standard_image_target):
-        """Test that targets without OS or variant axes have no empty ID components."""
-        basic_standard_image_target.image_os = None
-        basic_standard_image_target.image_variant = None
-
-        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
-        cmd = WizCLICommand.from_image_target(
-            image_target=basic_standard_image_target,
-            results_dir=results_dir,
-        )
-        assert cmd.default_scan_context_id == "test-image-1-0-amd64"
-
-    def test_scan_context_id_explicit_override(self, basic_standard_image_target):
-        """Test that an explicit scan_context_id overrides the uid default."""
-        results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"
-        cmd = WizCLICommand.from_image_target(
-            image_target=basic_standard_image_target,
-            results_dir=results_dir,
-            scan_context_id="my-custom-context",
-        )
-        idx = cmd.command.index("--scan-context-id")
-        assert cmd.command[idx + 1] == "my-custom-context"
 
     def test_validate_no_wizcli_bin(self, basic_standard_image_target):
         """Test that validation fails if wizcli binary cannot be found."""

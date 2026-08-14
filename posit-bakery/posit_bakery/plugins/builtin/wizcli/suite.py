@@ -37,7 +37,6 @@ class WizCLISuite:
         no_browser: bool = False,
         timeout: str | None = None,
         no_publish: bool = False,
-        scan_context_id: str | None = None,
         log_file: str | None = None,
     ) -> None:
         self.context = context
@@ -59,7 +58,6 @@ class WizCLISuite:
                 no_browser=no_browser,
                 timeout=timeout,
                 no_publish=no_publish,
-                scan_context_id=scan_context_id,
                 log_file=log_file,
             )
             for target in image_targets

@@ -182,14 +182,6 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
             ] = False,
-            scan_context_id: Annotated[
-                Optional[str],
-                typer.Option(
-                    show_default=False,
-                    help="Context identifier that defines scan granularity.",
-                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
-                ),
-            ] = None,
             log_file: Annotated[
                 Optional[str],
                 typer.Option(
@@ -285,7 +277,6 @@ class WizCLIPlugin(BakeryToolPlugin):
                 no_browser=no_browser,
                 timeout=timeout,
                 no_publish=no_publish,
-                scan_context_id=scan_context_id,
                 log_file=log_file,
             )
             plugin.results(results)
@@ -308,7 +299,6 @@ class WizCLIPlugin(BakeryToolPlugin):
         no_browser: bool = False,
         timeout: str | None = None,
         no_publish: bool = False,
-        scan_context_id: str | None = None,
         log_file: str | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:
@@ -326,7 +316,6 @@ class WizCLIPlugin(BakeryToolPlugin):
             no_browser=no_browser,
             timeout=timeout,
             no_publish=no_publish,
-            scan_context_id=scan_context_id,
             log_file=log_file,
         )
         report_collection, errors = suite.run()
