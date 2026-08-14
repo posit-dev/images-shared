@@ -52,6 +52,31 @@ class TestBuildMetadata:
         expected_ref = "docker.io/posit/test-multi:1.0.0-min@sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
         assert metadata.image_ref == expected_ref
 
+    def test_digest_ref(self, image_testdata_path):
+        """Test digest_ref strips the tag from the primary tag, keeping only repo@digest."""
+        with open(image_testdata_path / "single-target.json") as f:
+            data = json.load(f)
+
+        metadata = BuildMetadata.model_validate(data)
+        expected_ref = (
+            "docker.io/posit/test-multi@sha256:bcaa64b18c7dbaede0840f90ba072b85a6ca2776e27d705102c5d59e176fe647"
+        )
+        assert metadata.digest_ref == expected_ref
+
+    def test_digest_ref_untagged_name(self):
+        """Test digest_ref handles an untagged image name, as produced by push-by-digest builds."""
+        data = {
+            "image.name": "ghcr.io/posit-dev/test-multi/tmp",
+            "containerimage.digest": "sha256:abc123",
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.digest_ref == "ghcr.io/posit-dev/test-multi/tmp@sha256:abc123"
+
+    def test_digest_ref_requires_digest(self):
+        """Test digest_ref returns None when no digest is recorded."""
+        metadata = BuildMetadata.model_validate({"image.name": "test:latest"})
+        assert metadata.digest_ref is None
+
     def test_created_at_from_annotations(self, image_testdata_path):
         """Test created_at returns timestamp from container_image_descriptor.annotations."""
         with open(image_testdata_path / "multi-target.json") as f:
@@ -141,6 +166,48 @@ class TestBuildMetadata:
         }
         metadata = BuildMetadata.model_validate(data)
         assert metadata.platform is None
+
+    def test_base_image_digest_matches_named_material(self, image_testdata_path):
+        """Test base_image_digest matches the material for the requested OS name."""
+        with open(image_testdata_path / "multi-target.json") as f:
+            data = json.load(f)
+
+        metadata = BuildMetadata.model_validate(data["test-multi-1-0-0-minimal-ubuntu-22-04"])
+        assert (
+            metadata.base_image_digest("ubuntu")
+            == "sha256:104ae83764a5119017b8e8d6218fa0832b09df65aae7d5a6de29a85d813da2fb"
+        )
+
+    def test_base_image_digest_ignores_other_stage_materials(self):
+        """Test base_image_digest picks the OS material out of a multi-stage build's materials.
+
+        Multi-stage builds (e.g. the UV Python builder stage) record every stage's base image as
+        a separate material, so the OS image is not reliably the first or last entry.
+        """
+        data = {
+            "image.name": "test:latest",
+            "containerimage.digest": "sha256:abc123",
+            "buildx.build.provenance": {
+                "builder": {"id": ""},
+                "buildType": "https://mobyproject.org/buildkit@v1",
+                "materials": [
+                    {"uri": "pkg:docker/astral-sh/uv@debian-slim", "digest": {"sha256": "uvbuilderdigest"}},
+                    {"uri": "pkg:docker/ubuntu@22.04?platform=linux%2Famd64", "digest": {"sha256": "osdigest"}},
+                ],
+                "invocation": None,
+            },
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.base_image_digest("ubuntu") == "sha256:osdigest"
+
+    def test_base_image_digest_returns_none_when_no_match(self):
+        """Test base_image_digest returns None when no material matches the OS name."""
+        data = {
+            "image.name": "test:latest",
+            "containerimage.digest": "sha256:abc123",
+        }
+        metadata = BuildMetadata.model_validate(data)
+        assert metadata.base_image_digest("ubuntu") is None
 
 
 class TestMetadataFile:

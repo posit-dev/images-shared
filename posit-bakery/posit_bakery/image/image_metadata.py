@@ -166,6 +166,23 @@ class BuildMetadata(BaseModel):
         return None
 
     @property
+    def digest_ref(self) -> str | None:
+        """Returns a tag-free digest-only reference (registry/repo@sha256:DIGEST).
+
+        Temp-registry builds push by digest, so no tag is ever created in the registry even
+        though buildx still reports ``image.name`` with a normalized ``:latest``. The default
+        ``image_ref`` therefore yields ``repo:latest@sha256:DIGEST``, whose tag portion resolves
+        to nothing. Clients that ignore the tag when a digest is present (Docker) are unaffected;
+        this property exists for those that do not.
+        """
+        if not self.image_tags or not self.container_image_digest:
+            return None
+        primary_tag = self.image_tags[0]
+        # Strip the :tag portion, keeping only the registry/repo path.
+        repo = primary_tag.rsplit(":", 1)[0] if ":" in primary_tag else primary_tag
+        return f"{repo}@{self.container_image_digest}"
+
+    @property
     def created_at(self) -> datetime.datetime:
         """Returns the creation timestamp of the built image if available."""
         if self.container_image_descriptor and self.container_image_descriptor.annotations:
@@ -189,6 +206,24 @@ class BuildMetadata(BaseModel):
                         pass
         log.debug("Creation timestamp not found in metadata, defaulting to current time.")
         return datetime.datetime.now()
+
+    def base_image_digest(self, os_name: str) -> str | None:
+        """Returns the digest of the base OS image material matching ``os_name``, if present.
+
+        Multi-stage builds (e.g. the UV Python builder stage) record every stage's base image
+        as a separate material, so the base OS image is not reliably the first or last entry.
+        Matching by name picks out the actual OS layer rather than a builder stage.
+
+        :param os_name: The base OS family name to match, e.g. ``ubuntu`` (``BuildOS.name``).
+        """
+        if not self.build_provenance:
+            return None
+        prefix = f"pkg:docker/{os_name.lower()}@"
+        for material in self.build_provenance.materials:
+            if material.uri and material.uri.lower().startswith(prefix) and material.digest:
+                alg, digest = next(iter(material.digest.items()))
+                return f"{alg}:{digest}"
+        return None
 
     @property
     def platform(self) -> str | None:

@@ -93,6 +93,42 @@ class TestWizScanReportCollection:
         assert agg["total"]["low"] == 39
         assert agg["total"]["info"] == 0
 
+    def test_add_failure_appears_in_aggregate(self):
+        """Failed scans keep a row with unknown counts so the table shows real coverage."""
+        collection = WizScanReportCollection()
+        target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")
+        collection.add_failure(target)
+
+        agg = collection.aggregate()
+        row = agg["connect"]["1.0.0"]["Ubuntu 22.04"]["Standard"]
+        assert row["verdict"] == "SCAN FAILED"
+        assert row["critical"] is None
+        assert row["report_url"] is None
+
+    def test_add_failure_excluded_from_totals(self):
+        """A failed scan must not contribute zeros that understate the totals."""
+        collection = WizScanReportCollection()
+        ok_target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")
+        failed_target = self._make_mock_target("connect", "connect-1.0.0-min", "1.0.0", "Minimal", "Ubuntu 22.04")
+        collection.add_report(ok_target, WizScanReport.load(WIZCLI_TESTDATA_DIR / "scan_result.json"))
+        collection.add_failure(failed_target)
+
+        agg = collection.aggregate()
+        assert agg["total"]["critical"] == 4
+        assert agg["total"]["high"] == 210
+
+    def test_table_renders_failed_rows(self):
+        """The results table includes failed targets rather than silently dropping them."""
+        collection = WizScanReportCollection()
+        ok_target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")
+        failed_target = self._make_mock_target("connect", "connect-1.0.0-min", "1.0.0", "Minimal", "Ubuntu 22.04")
+        collection.add_report(ok_target, WizScanReport.load(WIZCLI_TESTDATA_DIR / "scan_result.json"))
+        collection.add_failure(failed_target)
+
+        table = collection.table()
+        # Two target rows plus the Total row.
+        assert table.row_count == 3
+
     def test_table_returns_rich_table(self):
         collection = WizScanReportCollection()
         target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")

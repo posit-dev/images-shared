@@ -6,6 +6,7 @@ from posit_bakery.cli.common import (
     __make_value_map as make_value_map,
     __parse_dependency_constraint as parse_dependency_constraint,
     __parse_dependency_versions as parse_dependency_versions,
+    normalize_platform,
 )
 from posit_bakery.config.dependencies import (
     PythonDependencyConstraint,
@@ -468,3 +469,35 @@ class TestParseDependencyVersions:
         input_str = '{"dependency": "python", "versions": ["3.12.2", "3.10.12", "3.11.8"]}'
         result = parse_dependency_versions(input_str)
         assert result.versions == ["3.12.2", "3.10.12", "3.11.8"]
+
+
+class TestNormalizePlatform:
+    """Tests for the normalize_platform function.
+
+    Regression coverage for the double `linux/` prefix bug that hit `dgoss
+    run` and `wizcli scan` independently: an already-qualified value like
+    `linux/arm64` must not become `linux/linux/arm64`.
+    """
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("amd64", "linux/amd64"),
+            ("arm64", "linux/arm64"),
+            ("linux/amd64", "linux/amd64"),
+            ("linux/arm64", "linux/arm64"),
+        ],
+    )
+    def test_normalizes_given_value(self, given, expected):
+        """A bare arch is prefixed once; an already-qualified value is left untouched."""
+        assert normalize_platform(given) == expected
+
+    def test_defaults_to_host_architecture_when_none(self, monkeypatch):
+        """A missing value falls back to SETTINGS.architecture."""
+        monkeypatch.setattr("posit_bakery.cli.common.SETTINGS.architecture", "arm64")
+        assert normalize_platform(None) == "linux/arm64"
+
+    def test_defaults_to_host_architecture_when_empty_string(self, monkeypatch):
+        """An empty string is falsy, so it also falls back to the host architecture."""
+        monkeypatch.setattr("posit_bakery.cli.common.SETTINGS.architecture", "amd64")
+        assert normalize_platform("") == "linux/amd64"
