@@ -76,6 +76,22 @@ def parse_dev_spec(ctx: typer.Context, param: typer.CallbackParam, value: str | 
         raise typer.BadParameter(str(e), ctx=ctx, param=param) from e
 
 
+def normalize_platform(image_platform: str | None) -> str:
+    """Resolve a raw ``--image-platform`` value to a fully-qualified ``os/arch`` string.
+
+    Defaults to the host architecture when unset, and only prepends the
+    ``linux/`` prefix if the value doesn't already carry one. `dgoss run` and
+    `wizcli scan` each independently prepended unconditionally, so an
+    already-qualified value like ``linux/arm64`` (e.g. from
+    bakery-build-native.yml's ``$IMAGE_PLATFORM``) became ``linux/linux/arm64``
+    and silently matched zero targets.
+    """
+    platform = image_platform or SETTINGS.architecture
+    if not platform.startswith("linux/"):
+        platform = f"linux/{platform}"
+    return platform
+
+
 def with_verbosity_flags(fn):
     @functools.wraps(fn)
     def wrapper(

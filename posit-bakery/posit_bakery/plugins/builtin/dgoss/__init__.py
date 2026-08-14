@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
@@ -184,10 +184,7 @@ class DGossPlugin(BakeryToolPlugin):
             Requires goss and dgoss to be installed on the system. Paths to the binaries can be set with the `GOSS_BIN` and
             `DGOSS_BIN` environment variables if not present in the system PATH.
             """
-            # Autoselect host architecture platform if not specified.
-            platform = image_platform or SETTINGS.architecture
-            if not platform.startswith("linux/"):
-                platform = f"linux/{platform}"
+            platform = normalize_platform(image_platform)
 
             if dev_stream is not None:
                 log.warning("--dev-stream is deprecated, use --dev-channel instead.")

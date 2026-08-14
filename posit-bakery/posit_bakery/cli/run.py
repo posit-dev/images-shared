@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -171,10 +171,7 @@ def dgoss(
         "Use 'bakery dgoss run' instead.[/yellow]"
     )
 
-    # Autoselect host architecture platform if not specified.
-    image_platform = image_platform or SETTINGS.architecture
-    if not image_platform.startswith("linux/"):
-        image_platform = f"linux/{image_platform}"
+    image_platform = normalize_platform(image_platform)
 
     if dev_stream is not None:
         log.warning("--dev-stream is deprecated, use --dev-channel instead.")

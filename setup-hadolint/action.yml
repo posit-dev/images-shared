@@ -47,20 +47,28 @@ runs:
         fi
         dest="${BASE_PATH}/tools"
 
-        # v2.13.0+ uses lowercase "linux"; older releases use "Linux"
-        binary="hadolint-linux-${arch}"
-        if ! curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}" 2>/dev/null; then
-            binary="hadolint-Linux-${arch}"
-            curl -fsSL "${release_url}/${binary}" -o "${dest}/${binary}"
-        fi
-
+        # GitHub's release-download URLs resolve asset names case-insensitively,
+        # so probing "hadolint-linux-${arch}" and falling back to
+        # "hadolint-Linux-${arch}" on failure never actually falls back: the
+        # lowercase request succeeds anyway and downloads the real
+        # (possibly differently-cased) asset under the wrong local filename.
+        # Extract the true filename from the checksum file's own content
+        # instead (which is authoritative), and use that for both the
+        # download and the local name.
+        #
         # v2.15.0+ ships one checksums.sha256 covering all binaries; older
         # releases ship a per-binary "${binary}.sha256" file instead.
-        if curl -fsSL "${release_url}/checksums.sha256" -o "${dest}/checksums.sha256" 2>/dev/null; then
+        if curl -fsSL --remove-on-error "${release_url}/checksums.sha256" -o "${dest}/checksums.sha256" 2>/dev/null; then
+            binary=$(awk -v want="hadolint-linux-${arch}" '{name=$2; sub(/^\*/,"",name); if (tolower(name)==tolower(want)) {print name; exit}}' "${dest}/checksums.sha256")
+            [ -n "$binary" ] || { echo "no checksums.sha256 entry for hadolint-linux-${arch}" >&2; exit 1; }
+            curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${dest}/${binary}"
             (cd "${dest}" && grep -F "${binary}" checksums.sha256 | sha256sum -c -)
             rm -f "${dest}/checksums.sha256"
         else
-            curl -fsSL "${release_url}/${binary}.sha256" -o "${dest}/${binary}.sha256"
+            curl -fsSL --remove-on-error "${release_url}/hadolint-linux-${arch}.sha256" -o "${dest}/guess.sha256"
+            binary=$(awk '{name=$2; sub(/^\*/,"",name); print name}' "${dest}/guess.sha256")
+            mv "${dest}/guess.sha256" "${dest}/${binary}.sha256"
+            curl -fsSL --remove-on-error "${release_url}/${binary}" -o "${dest}/${binary}"
             (cd "${dest}" && sha256sum -c "${binary}.sha256")
             rm -f "${dest}/${binary}.sha256"
         fi

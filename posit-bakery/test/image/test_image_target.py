@@ -702,6 +702,89 @@ class TestImageTarget:
 
         assert basic_standard_image_target.ref() == "test-image@sha256:newdigest"
 
+    def test_ref_digest_only(self, basic_standard_image_target):
+        """Test ref returns the tag-free digest_ref when digest_only is requested."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image:latest@sha256:1234567890abcdef"
+        mock_metadata.digest_ref = "test-image@sha256:1234567890abcdef"
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+
+        assert basic_standard_image_target.ref() == "test-image:latest@sha256:1234567890abcdef"
+        assert basic_standard_image_target.ref(digest_only=True) == "test-image@sha256:1234567890abcdef"
+
+    def test_ref_digest_only_explicit_platform(self, basic_standard_image_target):
+        """Test digest-only ref honors an explicit platform, including a non-host one.
+
+        Every other ref() test pins metadata to the host arch, so a caller that
+        omitted `platform` while scanning another platform's artifact looked correct.
+        One of these two assertions is always the cross-platform case.
+        """
+        metadata = {}
+        for arch in ("amd64", "arm64"):
+            mock_metadata = MagicMock(spec=BuildMetadata)
+            mock_metadata.platform = f"linux/{arch}"
+            mock_metadata.image_ref = f"test-image:latest@sha256:{arch}digest"
+            mock_metadata.digest_ref = f"test-image@sha256:{arch}digest"
+            mock_metadata.created_at = datetime.datetime.now()
+            metadata[arch] = mock_metadata
+
+        basic_standard_image_target.build_metadata = list(metadata.values())
+
+        for arch in ("amd64", "arm64"):
+            assert (
+                basic_standard_image_target.ref(platform=f"linux/{arch}", digest_only=True)
+                == f"test-image@sha256:{arch}digest"
+            )
+
+    def test_ref_digest_only_falls_back_to_tag(self, basic_standard_image_target):
+        """Test ref falls back to the first tag when metadata cannot produce a digest-only ref."""
+        mock_metadata = MagicMock(spec=BuildMetadata)
+        mock_metadata.platform = f"linux/{SETTINGS.architecture}"
+        mock_metadata.image_ref = "test-image:latest@sha256:1234567890abcdef"
+        mock_metadata.digest_ref = None
+        mock_metadata.created_at = datetime.datetime.now()
+        basic_standard_image_target.build_metadata = [mock_metadata]
+
+        assert basic_standard_image_target.ref(digest_only=True).endswith("docker.io/posit/test-image:1.0.0")
+
+    def test_build_metadata_for_platform_returns_matching_metadata(self, basic_standard_image_target):
+        """Test build_metadata_for_platform returns the metadata matching the requested platform."""
+        mock_metadata_amd64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_amd64.platform = "linux/amd64"
+        mock_metadata_amd64.created_at = datetime.datetime.now()
+
+        mock_metadata_arm64 = MagicMock(spec=BuildMetadata)
+        mock_metadata_arm64.platform = "linux/arm64"
+        mock_metadata_arm64.created_at = datetime.datetime.now()
+
+        basic_standard_image_target.build_metadata = [mock_metadata_amd64, mock_metadata_arm64]
+
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is mock_metadata_amd64
+        assert basic_standard_image_target.build_metadata_for_platform("linux/arm64") is mock_metadata_arm64
+
+    def test_build_metadata_for_platform_prefers_most_recent(self, basic_standard_image_target):
+        """Test build_metadata_for_platform picks the newest metadata for the platform."""
+        older_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
+        newer_time = datetime.datetime(2024, 1, 2, 12, 0, 0)
+
+        mock_metadata_old = MagicMock(spec=BuildMetadata)
+        mock_metadata_old.platform = "linux/amd64"
+        mock_metadata_old.created_at = older_time
+
+        mock_metadata_new = MagicMock(spec=BuildMetadata)
+        mock_metadata_new.platform = "linux/amd64"
+        mock_metadata_new.created_at = newer_time
+
+        basic_standard_image_target.build_metadata = [mock_metadata_old, mock_metadata_new]
+
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is mock_metadata_new
+
+    def test_build_metadata_for_platform_returns_none_when_no_match(self, basic_standard_image_target):
+        """Test build_metadata_for_platform returns None when no metadata matches."""
+        assert basic_standard_image_target.build_metadata_for_platform("linux/amd64") is None
+
     def test_labels(self, datetime_now_value, basic_standard_image_target):
         """Test the labels property of an ImageTarget."""
         expected_labels = {
