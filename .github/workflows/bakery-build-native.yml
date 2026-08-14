@@ -287,9 +287,11 @@ jobs:
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
           HAS_WIZ_AUTH: ${{ secrets.WIZ_CLIENT_ID != '' }}
         run: |
-          echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
-          echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
-          echo "wiz-auth=$HAS_WIZ_AUTH" >> "$GITHUB_OUTPUT"
+          {
+            echo "docker-hub=$HAS_DOCKER_HUB"
+            echo "ecr=$HAS_AWS_ROLE"
+            echo "wiz-auth=$HAS_WIZ_AUTH"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Setup wizcli
         if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
