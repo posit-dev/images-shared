@@ -42,12 +42,18 @@ def _inspect_local(ref: str) -> python_on_whales.Image | None:
     """Inspects `ref` against the local daemon via python-on-whales; `None` on any failure
     (image absent, daemon unreachable, malformed output, etc.).
 
-    Goes through `python_on_whales.docker.image.inspect()` rather than `CommandRunner`,
-    unlike `_inspect_manifest`/`_inspect_registry`: `docker image inspect` is a single quick
-    metadata read with no meaningful duration to bound, so `CommandRunner`'s tracked-spawn
-    machinery (timeout enforcement, Ctrl-C process-group teardown) buys nothing here, and
-    python-on-whales already does the same JSON parse/validate this function used to do by
-    hand.
+    Goes through `python_on_whales.docker.image.inspect()` rather than `CommandRunner`: a
+    local daemon read is a single quick metadata call with no meaningful duration to bound,
+    so `CommandRunner`'s tracked-spawn machinery (timeout enforcement, Ctrl-C process-group
+    teardown) buys nothing here, and python-on-whales already does the same JSON
+    parse/validate this function used to do by hand.
+
+    `_inspect_manifest`/`_inspect_registry` still shell out through `CommandRunner` despite
+    `python_on_whales.docker.buildx.imagetools.inspect()` wrapping the identical command --
+    their call is a registry round trip, not a local read, and can hang (a stalled
+    connection, a slow registry); `CommandRunner`'s timeout enforcement and Ctrl-C
+    process-group teardown are what actually bound that, and python-on-whales's own `run()`
+    has neither.
     """
     try:
         return python_on_whales.docker.image.inspect(ref)
@@ -68,7 +74,12 @@ def _repository_of(ref: str) -> str:
 
 
 def _inspect_manifest(runner: CommandRunner, ref: str) -> Manifest | None:
-    """Runs `docker buildx imagetools inspect --raw <ref>`; `None` on any failure."""
+    """Runs `docker buildx imagetools inspect --raw <ref>`; `None` on any failure.
+
+    Deliberately via `CommandRunner`, not `python_on_whales.docker.buildx.imagetools.inspect()`
+    -- see `_inspect_local`'s docstring for why a registry round trip keeps `CommandRunner`'s
+    timeout/interrupt handling while a local daemon read doesn't need it.
+    """
     result = runner.run([*_docker_cmd(), "buildx", "imagetools", "inspect", "--raw", ref])
     if result.returncode != 0:
         log.debug(f"Could not inspect registry manifest '{ref}': {result.stderr.decode(errors='replace').strip()}")
