@@ -489,6 +489,11 @@ class BakeryConfig:
     :var base_path: The base path where the bakery.yaml file is located.
     :var model: The BakeryConfigDocument model representation of the bakery.yaml file.
     :var targets: List of ImageTarget objects representing the image build targets defined in the config.
+    :var last_build_succeeded_uids: UIDs that succeeded in the most recent `build_targets()`
+        call with `strategy=ImageBuildStrategy.BUILD`; `None` after a `BAKE`-strategy call,
+        which has no per-target result to report. Consumed by `--summary` to avoid measuring
+        a size for a target that failed this run off whatever it happens to find already
+        sitting at that target's tag.
     """
 
     def __init__(self, config_file: str | Path | os.PathLike, settings: BakerySettings | None = None):
@@ -544,6 +549,7 @@ class BakeryConfig:
 
         self.targets = []
         self.generate_image_targets(self.settings)
+        self.last_build_succeeded_uids: set[str] | None = None
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
@@ -1180,7 +1186,12 @@ class BakeryConfig:
         :param jobs: Maximum number of targets to build concurrently for `--strategy build`
             (ignored for `--strategy bake`, which manages its own parallelism). Falls back to
             `SETTINGS.max_concurrency` when not given.
+
+        Sets `self.last_build_succeeded_uids` as a side effect: the UIDs that succeeded, for
+        `strategy=BUILD` (even when this call goes on to raise for the ones that didn't); reset
+        to `None` for `strategy=BAKE`, which has no per-target result to give.
         """
+        self.last_build_succeeded_uids = None
         if strategy == ImageBuildStrategy.BAKE:
             bake_plan = BakePlan.from_image_targets(
                 context=self.base_path, image_targets=self.targets, platforms=platforms, push=push
@@ -1233,6 +1244,7 @@ class BakeryConfig:
             ]
             executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(shell_jobs)), use_live=False)
             job_results = executor.run_jobs(shell_jobs, fail_fast=fail_fast)
+            self.last_build_succeeded_uids = {jr.job.key for jr in job_results if jr.ok}
 
             errors: list[Exception] = []
             for jr in job_results:

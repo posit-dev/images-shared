@@ -5,7 +5,6 @@ import pytest
 from pytest_mock import MockFixture
 
 from posit_bakery.image import ImageTarget
-from posit_bakery.image.image_metadata import ImageToolsInspectionMetadata
 from test.helpers import RegistryContainer
 
 
@@ -115,39 +114,6 @@ def patch_registry_container(mocker: MockFixture):
         return_value=mock_context_manager,
     )
     yield mock_registry_container
-
-
-@pytest.fixture
-def patch_util_inspect_image(mocker: MockFixture):
-    """Patch the inspect_image function to return predefined metadata."""
-
-    inspection_metadata = ImageToolsInspectionMetadata.model_validate(
-        {
-            "schemaVersion": 2,
-            "mediaType": "application/vnd.oci.image.index.v1+json",
-            "digest": "sha256:b49a0ec1a3a9a1c4fa65e6dd3004c981e0f1f1a495132da2e7a92fed8a3e5f4f",
-            "size": 647,
-            "manifests": [
-                {
-                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:fc264c81b11b3310b4231b552d6b38239569b559a983cb2886623b83f5252261",
-                    "size": 2765,
-                    "platform": {"architecture": "amd64", "os": "linux"},
-                },
-                {
-                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:0253116f6e3c69e371d32fb857e4f03f2537b28f276847115cce97be744f351d",
-                    "size": 2765,
-                    "platform": {"architecture": "arm64", "os": "linux"},
-                },
-            ],
-        }
-    )
-    mock_inspect = mocker.patch(
-        "posit_bakery.image.image_target.inspect_image",
-        return_value=inspection_metadata,
-    )
-    yield mock_inspect
 
 
 @pytest.fixture

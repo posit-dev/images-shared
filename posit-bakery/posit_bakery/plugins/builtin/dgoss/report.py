@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.text import Text
 
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.reporting import GroupColumn, ValueColumn, grouped_table
 
 
 class GossMatcherResult(BaseModel):
@@ -206,58 +207,66 @@ class GossJsonReportCollection(dict):
                 results["total"]["duration"] += report.summary.total_duration
         return results
 
+    @staticmethod
+    def _flatten(aggregated_results: dict) -> list[dict]:
+        """Flattens `aggregate()`'s nested image/version/os/variant dict into an ordered
+        list of leaf rows, each carrying its own identity alongside its metrics."""
+        rows = []
+        for image_name, versions in aggregated_results.items():
+            for version, oses in versions.items():
+                for os_name, variants in oses.items():
+                    for variant_name, result in variants.items():
+                        rows.append(
+                            {"image_name": image_name, "version": version, "os": os_name, "variant": variant_name}
+                            | result
+                        )
+        return rows
+
     def table(self) -> Table:
         """Generates a rich table of the test results."""
         aggregated_results = self.aggregate()
         total_row = aggregated_results.pop("total")
+        rows = self._flatten(aggregated_results)
 
-        table = Table(title="Goss Test Results")
-        table.add_column("Image Name", justify="left")
-        table.add_column("Version", justify="left")
-        table.add_column("OS", justify="left")
-        table.add_column("Variant", justify="left")
-        table.add_column("Success", justify="right", header_style="green3")
-        table.add_column("Failed", justify="right", header_style="bright_red")
-        table.add_column("Skipped", justify="right", header_style="yellow")
-        table.add_column("Total Tests", justify="right")
-        table.add_column("Duration", justify="right")
-
-        for image_name, versions in aggregated_results.items():
-            p_image_name = image_name
-            for version, oses in versions.items():
-                p_version = version
-                for os_name, variants in oses.items():
-                    p_os = os_name
-                    for variant_name, result in variants.items():
-                        success_style = "green3 bold" if result["failed"] == 0 else ""
-                        failed_style = "bright_red bold" if result["failed"] > 0 else "bright_black italic"
-                        skipped_style = "yellow bold" if result["skipped"] > 0 else "bright_black italic"
-                        table.add_row(
-                            p_image_name,
-                            p_version,
-                            p_os,
-                            variant_name,
-                            Text(str(result["success"]), style=success_style),
-                            Text(str(result["failed"]), style=failed_style),
-                            Text(str(result["skipped"]), style=skipped_style),
-                            str(result["total_tests"]),
-                            f"{result['duration'] / 1_000_000_000:.2f}s",
-                        )
-                        p_image_name = ""
-                        p_version = ""
-                        p_os = ""
-
-        table.add_section()
-        table.add_row(
-            "Total",
-            "",
-            "",
-            "",
-            str(total_row["success"]),
-            str(total_row["failed"]),
-            str(total_row["skipped"]),
-            str(total_row["total_tests"]),
-            f"{total_row['duration'] / 1_000_000_000:.2f}s",
+        return grouped_table(
+            rows,
+            title="Goss Test Results",
+            group_columns=[
+                GroupColumn("Image Name", lambda r: r["image_name"]),
+                GroupColumn("Version", lambda r: r["version"]),
+                GroupColumn("OS", lambda r: r["os"]),
+                GroupColumn("Variant", lambda r: r["variant"]),
+            ],
+            value_columns=[
+                ValueColumn(
+                    "Success",
+                    lambda r: Text(str(r["success"]), style="green3 bold" if r["failed"] == 0 else ""),
+                    header_style="green3",
+                    total=lambda _: str(total_row["success"]),
+                ),
+                ValueColumn(
+                    "Failed",
+                    lambda r: Text(
+                        str(r["failed"]), style="bright_red bold" if r["failed"] > 0 else "bright_black italic"
+                    ),
+                    header_style="bright_red",
+                    total=lambda _: str(total_row["failed"]),
+                ),
+                ValueColumn(
+                    "Skipped",
+                    lambda r: Text(
+                        str(r["skipped"]), style="yellow bold" if r["skipped"] > 0 else "bright_black italic"
+                    ),
+                    header_style="yellow",
+                    total=lambda _: str(total_row["skipped"]),
+                ),
+                ValueColumn(
+                    "Total Tests", lambda r: str(r["total_tests"]), total=lambda _: str(total_row["total_tests"])
+                ),
+                ValueColumn(
+                    "Duration",
+                    lambda r: f"{r['duration'] / 1_000_000_000:.2f}s",
+                    total=lambda _: f"{total_row['duration'] / 1_000_000_000:.2f}s",
+                ),
+            ],
         )
-
-        return table
