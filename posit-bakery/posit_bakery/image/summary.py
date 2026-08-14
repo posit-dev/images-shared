@@ -38,16 +38,21 @@ def _docker_cmd() -> list[str]:
     return [str(part) for part in python_on_whales.docker.docker_cmd]
 
 
-def _inspect_local(runner: CommandRunner, ref: str) -> ImageInspectResult | None:
-    """Runs `docker image inspect <ref>` against the local daemon; `None` on any failure."""
-    result = runner.run([*_docker_cmd(), "image", "inspect", ref])
-    if result.returncode != 0:
-        log.debug(f"Could not inspect local image '{ref}': {result.stderr.decode(errors='replace').strip()}")
-        return None
+def _inspect_local(ref: str) -> python_on_whales.Image | None:
+    """Inspects `ref` against the local daemon via python-on-whales; `None` on any failure
+    (image absent, daemon unreachable, malformed output, etc.).
+
+    Goes through `python_on_whales.docker.image.inspect()` rather than `CommandRunner`,
+    unlike `_inspect_manifest`/`_inspect_registry`: `docker image inspect` is a single quick
+    metadata read with no meaningful duration to bound, so `CommandRunner`'s tracked-spawn
+    machinery (timeout enforcement, Ctrl-C process-group teardown) buys nothing here, and
+    python-on-whales already does the same JSON parse/validate this function used to do by
+    hand.
+    """
     try:
-        return ImageInspectResult(**json.loads(result.stdout)[0])
-    except (json.JSONDecodeError, IndexError, ValidationError) as e:
-        log.debug(f"Could not parse local image inspect for '{ref}': {e}")
+        return python_on_whales.docker.image.inspect(ref)
+    except python_on_whales.exceptions.DockerException as e:
+        log.debug(f"Could not inspect local image '{ref}': {e}")
         return None
 
 
@@ -284,7 +289,7 @@ class BuildSummary(BaseModel):
                 if ref is None:
                     return local_size, registry_size, layers
                 if load:
-                    local_result = _inspect_local(runner, ref)
+                    local_result = _inspect_local(ref)
                     if local_result is not None:
                         local_size = local_result.size
                         if local_result.root_fs is not None and local_result.root_fs.layers is not None:

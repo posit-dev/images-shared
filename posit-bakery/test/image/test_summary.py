@@ -1,6 +1,8 @@
 import json
 import subprocess
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import python_on_whales
 
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.summary import (
@@ -19,6 +21,14 @@ def _completed(returncode=0, stdout=b"", stderr=b"") -> subprocess.CompletedProc
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
 
 
+def _fake_image(size: int, layer_count: int) -> Mock:
+    """Stand-in for python_on_whales.Image exposing just the .size/.root_fs.layers surface
+    _inspect_local relies on."""
+    image = Mock(size=size)
+    image.root_fs.layers = [f"sha256:{i}" for i in range(layer_count)]
+    return image
+
+
 class _FakeRunner:
     """Duck-types CommandRunner.run() for tests, keyed by (kind, ref) so a test can control
     exactly what each inspect call returns without touching a real subprocess."""
@@ -33,10 +43,6 @@ class _FakeRunner:
         kind = "local" if "buildx" not in cmd else "registry"
         return self._responses.get((kind, ref), _completed(returncode=1, stderr=b"not found: " + ref.encode()))
 
-
-LOCAL_INSPECT_JSON = json.dumps(
-    [{"Size": 12_345, "RootFS": {"Type": "layers", "Layers": ["sha256:a", "sha256:b", "sha256:c"]}}]
-).encode()
 
 SINGLE_PLATFORM_MANIFEST_JSON = json.dumps(
     {
@@ -87,19 +93,18 @@ ATTESTATION_MANIFEST_JSON = json.dumps(
 
 class TestInspectLocal:
     def test_parses_size_and_returns_result(self):
-        runner = _FakeRunner({("local", "myimage:tag"): _completed(stdout=LOCAL_INSPECT_JSON)})
-        result = _inspect_local(runner, "myimage:tag")
+        with patch("python_on_whales.docker.image.inspect") as inspect_mock:
+            inspect_mock.return_value.size = 12_345
+            result = _inspect_local("myimage:tag")
 
         assert result is not None
         assert result.size == 12_345
+        inspect_mock.assert_called_once_with("myimage:tag")
 
-    def test_returns_none_on_nonzero_exit(self):
-        runner = _FakeRunner({("local", "myimage:tag"): _completed(returncode=1, stderr=b"no such image")})
-        assert _inspect_local(runner, "myimage:tag") is None
-
-    def test_returns_none_on_unparseable_output(self):
-        runner = _FakeRunner({("local", "myimage:tag"): _completed(stdout=b"not json")})
-        assert _inspect_local(runner, "myimage:tag") is None
+    def test_returns_none_on_docker_exception(self):
+        with patch("python_on_whales.docker.image.inspect") as inspect_mock:
+            inspect_mock.side_effect = python_on_whales.exceptions.NoSuchImage([], 1, b"", b"no such image")
+            assert _inspect_local("myimage:tag") is None
 
 
 class TestRepositoryOf:
@@ -280,21 +285,16 @@ class TestMeasureSizes:
         mock_executor_cls.assert_not_called()
 
 
-def _fake_run_local_only(runner_self, cmd, **kwargs):
-    if "buildx" in cmd:
-        return _completed(returncode=1, stderr=b"push=False, registry inspect should not be reachable")
-    return _completed(stdout=LOCAL_INSPECT_JSON)
-
-
 class TestMeasureSizesEndToEnd:
     """Exercises the real ParallelShellExecutor/ShellJob/CommandRunner wiring; only the
-    actual subprocess spawn (CommandRunner.run) is replaced."""
+    actual subprocess spawn (CommandRunner.run, python_on_whales.docker.image.inspect) is
+    replaced."""
 
     def test_populates_local_size_and_layers_for_real_targets(self, get_targets):
         targets = get_targets("basic")
         summary = BuildSummary.from_image_targets(targets)
 
-        with patch.object(CommandRunner, "run", _fake_run_local_only):
+        with patch("python_on_whales.docker.image.inspect", return_value=_fake_image(12_345, 3)):
             summary.measure_sizes(targets, push=False, load=True)
 
         assert len(summary.targets) == len(targets)
@@ -310,13 +310,10 @@ class TestMeasureSizesEndToEnd:
         summary = BuildSummary.from_image_targets(targets)
         sizes_by_ref = {target.ref(): 1000 * (i + 1) for i, target in enumerate(targets)}
 
-        def _fake_run(runner_self, cmd, **kwargs):
-            if "buildx" in cmd:
-                return _completed(returncode=1)
-            size = sizes_by_ref[cmd[-1]]
-            return _completed(stdout=json.dumps([{"Size": size, "RootFS": {"Layers": []}}]).encode())
+        def _fake_inspect(ref):
+            return _fake_image(sizes_by_ref[ref], 0)
 
-        with patch.object(CommandRunner, "run", _fake_run):
+        with patch("python_on_whales.docker.image.inspect", side_effect=_fake_inspect):
             summary.measure_sizes(targets, push=False, load=True)
 
         rows_by_uid = {row.uid: row for row in summary.targets}
@@ -330,7 +327,13 @@ class TestMeasureSizesEndToEnd:
         def _fake_run(runner_self, cmd, **kwargs):
             return _completed(returncode=1, stderr=b"connection reset")
 
-        with patch.object(CommandRunner, "run", _fake_run):
+        with (
+            patch.object(CommandRunner, "run", _fake_run),
+            patch(
+                "python_on_whales.docker.image.inspect",
+                side_effect=python_on_whales.exceptions.DockerException([], 1, b"", b"connection reset"),
+            ),
+        ):
             summary.measure_sizes(targets, push=True, load=True)  # must not raise
 
         assert all(row.registry_size is None for row in summary.targets)
@@ -465,11 +468,12 @@ class TestLayerCountSource:
         summary = BuildSummary.from_image_targets(targets)
 
         def _fake_run(runner_self, cmd, **kwargs):
-            if "buildx" in cmd:
-                return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)  # 2 layers
-            return _completed(stdout=LOCAL_INSPECT_JSON)  # 3 rootfs diff IDs
+            return _completed(stdout=SINGLE_PLATFORM_MANIFEST_JSON)  # 2 layers
 
-        with patch.object(CommandRunner, "run", _fake_run):
+        with (
+            patch.object(CommandRunner, "run", _fake_run),
+            patch("python_on_whales.docker.image.inspect", return_value=_fake_image(12_345, 3)),  # 3 rootfs diff IDs
+        ):
             summary.measure_sizes(targets, push=True, load=True)
 
         assert all(row.local_size == 12_345 for row in summary.targets)
@@ -480,7 +484,7 @@ class TestLayerCountSource:
         targets = get_targets("basic")
         summary = BuildSummary.from_image_targets(targets)
 
-        with patch.object(CommandRunner, "run", _fake_run_local_only):
+        with patch("python_on_whales.docker.image.inspect", return_value=_fake_image(12_345, 3)):
             summary.measure_sizes(targets, push=False, load=True)
 
         assert all(row.layers == 3 for row in summary.targets)
