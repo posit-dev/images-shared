@@ -47,6 +47,15 @@ Represents a combination of image variant, image version, and image version OS t
 [image.ImageTargetContext](../reference/image.ImageTargetContext.llms.md#posit_bakery.image.ImageTargetContext)  
 Container for contextual path information related to an image target.
 
+[image.BuildSummary](../reference/image.BuildSummary.llms.md#posit_bakery.image.BuildSummary)  
+Counts (and, once a build has produced artifacts, sizes) for a set of image targets.
+
+[image.BuildSummaryRow](../reference/image.BuildSummaryRow.llms.md#posit_bakery.image.BuildSummaryRow)  
+A single labeled metric in a build summary report.
+
+[image.BuildSummaryTarget](../reference/image.BuildSummaryTarget.llms.md#posit_bakery.image.BuildSummaryTarget)  
+Per-target row for the sizes view of a build summary.
+
 [image.ImageBuildStrategy](../reference/image.ImageBuildStrategy.llms.md#posit_bakery.image.ImageBuildStrategy)  
 Enumeration for image build strategies.
 

@@ -14,10 +14,10 @@ bakery
 
     Options:
       --install-completion  Install completion for the current shell.  [default:
-                            <object object at 0x7fdd9fb78c10>]
+                            <object object at 0x7f007d6fcc10>]
       --show-completion     Show completion for the current shell, to copy it or
                             customize the installation.  [default: <object object
-                            at 0x7fdd9fb78c10>]
+                            at 0x7f007d6fcc10>]
       --help                Show this message and exit.
 
     Commands:
