@@ -14,9 +14,9 @@ from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
     VersionSubstitutionError,
 )
-from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
-from posit_bakery.image import ImageBuildStrategy
+from posit_bakery.image import BuildSummary, ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
 
@@ -91,6 +91,22 @@ def build(
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
+    summary: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--summary",
+            help="Print a summary of build/tag counts for the selected targets.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = False,
+    summary_format: Annotated[
+        Optional[SummaryOutputFormat],
+        typer.Option(
+            "--summary-format",
+            help="Output format for --summary. 'table' prints to stderr; 'json' prints to stdout.",
+            rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
+        ),
+    ] = SummaryOutputFormat.TABLE,
     load: Annotated[
         Optional[bool],
         typer.Option(
@@ -287,7 +303,23 @@ def build(
                 style="error",
             )
             raise typer.Exit(code=1)
+        if summary and summary_format == SummaryOutputFormat.JSON:
+            stderr_console.print(
+                "❌ --summary-format json is not supported with --plan, which already writes "
+                "the bake plan as JSON to stdout. Use --summary-format table, or drop --plan.",
+                style="error",
+            )
+            raise typer.Exit(code=1)
         stdout_console.print_json(config.bake_plan_targets(push=push))
+        if not summary:
+            raise typer.Exit(code=0)
+
+    if summary:
+        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        if summary_format == SummaryOutputFormat.JSON:
+            stdout_console.print_json(data=build_summary.as_dict())
+        else:
+            stderr_console.print(build_summary.table(sizes=False))
         raise typer.Exit(code=0)
 
     try:

@@ -157,6 +157,39 @@ Feature: build
         * the bake plan is valid
         * the bake plan has 4 targets
 
+    Scenario: Generating a buildkit bake plan with a summary
+        Given I call bakery build
+        * in a temp matrix context
+        * with the arguments:
+            | --plan | --matrix-versions | include | --summary |
+        When I execute the command
+        Then The command succeeds
+        * the bake plan is valid
+        * the bake plan has 4 targets
+        * the stderr output includes:
+            | Build Summary |
+        * the build summary shows 4 build targets
+
+    Scenario: Combining --summary-format json with --plan is a hard error
+        Given I call bakery build
+        * in a temp matrix context
+        * with the arguments:
+            | --plan | --matrix-versions | include | --summary | --summary-format | json |
+        When I execute the command
+        Then The command exits with code 1
+        * the stderr output includes:
+            | not supported with --plan |
+
+    Scenario: --image-platform narrows the platform build count, not just the target list
+        Given I call bakery build
+        * in a temp multiplatform context
+        * with the arguments:
+            | --plan | --image-platform | linux/arm64 | --summary |
+        When I execute the command
+        Then The command succeeds
+        * the build summary shows 2 build targets
+        * the build summary shows 2 platform builds
+
     @image_build
     Scenario: Building images from a project using bake with a matrix
         Given I call bakery build
