@@ -6,7 +6,7 @@ Represents a combination of image variant, image version, and image version OS t
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L758)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L787)
 
 ``` python
 image.ImageTarget()
@@ -175,6 +175,7 @@ The channel is appended for development versions so a dev build and a release bu
 |----|----|
 | [\_\_str\_\_()](#__str__) | Return a string representation of the image target. |
 | [build()](#build) | Build the image using the Containerfile and return the built image. |
+| [build_metadata_for_platform()](#build_metadata_for_platform) | Returns the most recent build metadata matching `platform`, if any. |
 | [cache_name()](#cache_name) | Generate the image name and tag to use for a build cache. |
 | [get_merge_sources()](#get_merge_sources) | Get the list of source image references to use for merging. |
 | [load_build_metadata_from_file()](#load_build_metadata_from_file) | Load build metadata from a given file. |
@@ -200,7 +201,7 @@ Build the image using the Containerfile and return the built image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L639-L738)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L668-L767)
 
 ``` python
 build(
@@ -216,13 +217,27 @@ build(
 
 When `log_callback` is set, streams build output line-by-line into it and returns `None` instead of a `python_on_whales.Image` (`python_on_whales` returns an iterator of lines rather than an `Image` object when streaming).
 
+### build_metadata_for_platform()
+
+Returns the most recent build metadata matching `platform`, if any.
+
+Usage
+
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L530-L541)
+
+``` python
+build_metadata_for_platform(platform)
+```
+
+Shares `ref()`’s newest-first, platform-filtered selection so callers that need the underlying `BuildMetadata` (e.g. for provenance fields) see the same artifact `ref()` would resolve to.
+
 ### cache_name()
 
 Generate the image name and tag to use for a build cache.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L550-L570)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L579-L599)
 
 ``` python
 cache_name(platform=None)
@@ -239,7 +254,7 @@ Get the list of source image references to use for merging.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L740-L758)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L769-L787)
 
 ``` python
 get_merge_sources()
@@ -253,7 +268,7 @@ Load build metadata from a given file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L628-L637)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L657-L666)
 
 ``` python
 load_build_metadata_from_file(metadata_file)
@@ -305,16 +320,19 @@ Returns a reference to the image, preferring a build metadata digest if availabl
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L497-L512)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L497-L528)
 
 ``` python
-ref(platform=f'linux/{SETTINGS.architecture}')
+ref(platform=f'linux/{SETTINGS.architecture}', *, digest_only=False)
 ```
 
 #### Parameters
 
 `platform``:`` ``str`` ``=`` ``f``"linux/{SETTINGS.architecture}"`\  
 The platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.
+
+`digest_only``:`` ``bool`` ``=`` ``False`  
+Return a tag-free `repo@sha256:DIGEST` reference instead of the default `repo:tag@sha256:DIGEST`. Temp-registry images are pushed by digest and therefore carry no tag in the registry, so consumers that resolve the tag portion rather than ignoring it need the tag-free form.
 
 #### Returns
 
@@ -327,7 +345,7 @@ Remove the image from the local image cache or registry.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L621-L626)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L650-L655)
 
 ``` python
 remove(prune=True, force=False)
