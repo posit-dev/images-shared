@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^setup-goss\\/action\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\s+default: \\\"(?<currentValue>[^\\\"]+)\\\""
+      ]
+    }
+  ],
+  "dependencyDashboard": false,
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "onboarding": false
+}
