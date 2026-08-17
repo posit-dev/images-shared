@@ -360,6 +360,36 @@ class TestPrefixedLogSink:
         output = buf.getvalue()
         assert "[internal] load build definition from Dockerfile" in output
 
+    def test_write_strips_trailing_newline_from_streamed_line(self):
+        """`python_on_whales`'s stream_logs yields lines via `readline()`, which keeps the
+        trailing `\\n` -- write() must not double it up with its own newline."""
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "#1 DONE 0.0s\n")
+
+        assert buf.getvalue() == "[target-a] #1 DONE 0.0s\n"
+
+    def test_write_strips_trailing_crlf_from_streamed_line(self):
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", "#1 DONE 0.0s\r\n")
+
+        assert buf.getvalue() == "[target-a] #1 DONE 0.0s\n"
+
+    @pytest.mark.parametrize("blank_line", ["\n", "\r\n", "", "   \n"])
+    def test_write_drops_blank_lines(self, blank_line):
+        """Blank lines are dropped rather than printed as a bare `[key]` with no content --
+        buildx's plain progress emits these as step separators, but any blank line is
+        dropped, regardless of source."""
+        buf = io.StringIO()
+        sink = PrefixedLogSink(console=Console(file=buf))
+
+        sink.write("target-a", blank_line)
+
+        assert buf.getvalue() == ""
+
     def test_write_is_thread_safe_no_interleaving(self):
         buf = io.StringIO()
         sink = PrefixedLogSink(console=Console(file=buf, width=200))
