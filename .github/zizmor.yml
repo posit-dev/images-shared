@@ -9,23 +9,12 @@ rules:
         "*": hash-pin
   artipacked:
     ignore:
-      # Existing checkouts precede artifact uploads. Keep the exemptions scoped
-      # to these exact locations so new instances still require review.
-      - bakery-build-native.yml:145
-      - bakery-build-native.yml:242
-      - bakery-build-native.yml:427
-      - bakery-build-native.yml:563
-      - bakery-build-pr.yml:96
-      - bakery-build-pr.yml:208
-      - bakery-build.yml:131
-      - bakery-build.yml:220
-      - bakery-build.yml:386
-      - ci.yml:69
-      - ci.yml:248
-      - clean.yml:95
-      - clean.yml:141
+      # Only these two checkouts persist credentials on purpose, and both need
+      # to: product-release pushes commits/PRs with its App token, and docs
+      # publishes to gh-pages. Neither job uploads .git as an artifact, so
+      # there is no leak path. Every other checkout sets
+      # persist-credentials: false inline instead of being exempted here.
       - docs.yml:17
-      - hadolint.yml:39
       - product-release.yml:45
   superfluous-actions:
     ignore:
