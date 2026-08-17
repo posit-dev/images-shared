@@ -181,7 +181,18 @@ class PrefixedLogSink:
         self._lock = threading.Lock()
 
     def write(self, key: str, line: str) -> None:
-        """Print `line` prefixed with `[key]`, guarded by a lock shared across all keys."""
+        """Print `line` prefixed with `[key]`, guarded by a lock shared across all keys.
+
+        Strips a trailing line terminator first: sources like `python_on_whales`'s
+        ``stream_logs`` yield lines via `readline()`, which keeps the `\\n` -- printing
+        that verbatim would double up with the newline `Console.print` already appends.
+        Also drops blank lines outright rather than printing a bare `[key]` with no
+        content -- buildx's plain progress emits these as step separators, but this
+        drops any blank line, regardless of source.
+        """
+        line = line.rstrip("\r\n")
+        if not line.strip():
+            return
         with self._lock:
             self._console.print(Text.assemble((f"[{key}]", "quiet"), f" {line}"))
 

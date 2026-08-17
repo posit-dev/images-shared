@@ -5,7 +5,8 @@ inputs:
   version:
     description: "The goss release version to install"
     required: false
-    default: "latest"
+    # renovate: datasource=github-releases depName=goss-org/goss
+    default: "v0.4.10"
   architecture:
     description: "The system architecture (e.g., amd64, arm64). If not set, it will be detected automatically."
     required: false
@@ -14,56 +15,54 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install jq
-      uses: dcarbone/install-jq-action@4fcb5062d7ce9bc4382d1a352d19ba3ba2c317c1  # v4.0.1
     - name: Make tools directory
       shell: bash
       run: mkdir -p tools
-    - name: Install goss
-      id: install-goss
+    - name: Resolve goss architecture
+      id: goss
       shell: bash
       env:
         ARCHITECTURE: ${{ inputs.architecture }}
-        VERSION: ${{ inputs.version }}
       run: |
-        # Determine architecture if not provided
-        arch="${ARCHITECTURE}"
+        arch="$ARCHITECTURE"
         if [ -z "$arch" ]; then
           arch=$(uname -m)
         fi
 
-        # Map architecture names to goss's pre-v0.4.10 naming, then to its current naming
-        if [ "$arch" = "x86_64" ]; then
-            arch="amd64"
-        elif [ "$arch" = "aarch64" ]; then
-            arch="arm64"
-        fi
-
         case "$arch" in
-          amd64) goss_arch="x86_64" ;;
-          arm64) goss_arch="arm64" ;;
+          x86_64 | amd64) goss_arch="x86_64" ;;
+          aarch64 | arm64) goss_arch="arm64" ;;
           *)
             echo "Unsupported architecture for goss: ${arch}" >&2
             exit 1
             ;;
         esac
 
-        # v0.4.10+ ships versioned tarballs with a consolidated SHA256SUMS file, so "latest"
-        # must be resolved to a concrete tag up front to build the asset filename.
-        if [ "${VERSION}" = "latest" ]; then
-          tag=$(curl -fsSL "https://api.github.com/repos/goss-org/goss/releases/latest" | jq '.tag_name' -r)
-        else
-          tag="${VERSION}"
-        fi
+        echo "architecture=${goss_arch}" >> "$GITHUB_OUTPUT"
+    - name: Restore goss cache
+      id: goss-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: |
+          tools/goss
+          tools/dgoss
+        key: setup-goss-${{ runner.os }}-${{ steps.goss.outputs.architecture }}-${{ inputs.version }}
+    - name: Install goss and dgoss
+      if: steps.goss-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        GOSS_ARCH: ${{ steps.goss.outputs.architecture }}
+        GOSS_VERSION: ${{ inputs.version }}
+      run: |
+        tag="$GOSS_VERSION"
         version="${tag#v}"
         echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
         release_url="https://github.com/goss-org/goss/releases/download/${tag}"
-        asset="goss_${version}_linux_${goss_arch}.tar.gz"
+        asset="goss_${version}_linux_${GOSS_ARCH}.tar.gz"
         checksums="goss_${version}_SHA256SUMS"
 
         curl -fsSL "${release_url}/${asset}" -o "tools/${asset}"
-
         curl -fsSL "${release_url}/${checksums}" -o "tools/${checksums}"
         (cd tools && sha256sum -c <(grep -F "${asset}" "${checksums}"))
         rm -f "tools/${checksums}"
@@ -71,17 +70,9 @@ runs:
         tar -xzf "tools/${asset}" -C tools goss
         rm -f "tools/${asset}"
         chmod +rx tools/goss
-    - name: Install dgoss
-      shell: bash
-      env:
-        TAG: ${{ steps.install-goss.outputs.tag }}
-      run: |
-        release_url="https://github.com/goss-org/goss/releases/download/${TAG}"
 
         curl -fsSL "${release_url}/dgoss" -o tools/dgoss
-
         curl -fsSL "${release_url}/dgoss.sha256" -o tools/dgoss.sha256
         (cd tools && sha256sum -c dgoss.sha256)
         rm -f tools/dgoss.sha256
-
         chmod +rx tools/dgoss
