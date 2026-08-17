@@ -20,7 +20,9 @@ runs:
   steps:
     - name: Make tools directory
       shell: bash
-      run: mkdir -p "${{ inputs.base_path }}/tools"
+      env:
+        BASE_PATH: ${{ inputs.base_path }}
+      run: mkdir -p "${BASE_PATH}/tools"
     - name: Install hadolint
       shell: bash
       env:

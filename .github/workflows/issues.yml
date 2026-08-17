@@ -20,6 +20,8 @@ jobs:
         with:
           client-id: ${{ secrets.POSIT_PLATFORM_CLIENT_ID }}
           private-key: ${{ secrets.POSIT_PLATFORM_PEM }}
+          permission-issues: write
+          permission-organization-projects: write
 
       - name: Add to Platform Carbon Project
         uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0

@@ -7,3 +7,17 @@ rules:
         # defeat the purpose of reusable shared actions.
         "posit-dev/images-shared/*": ref-pin
         "*": hash-pin
+  artipacked:
+    ignore:
+      # Only these two checkouts persist credentials on purpose, and both need
+      # to: product-release pushes commits/PRs with its App token, and docs
+      # publishes to gh-pages. Neither job uploads .git as an artifact, so
+      # there is no leak path. Every other checkout sets
+      # persist-credentials: false inline instead of being exempted here.
+      - docs.yml:17
+      - product-release.yml:45
+  superfluous-actions:
+    ignore:
+      # Replacing this established third-party action is outside this hook's
+      # scope; keep the exemption limited to the existing step.
+      - issues.yml:33
