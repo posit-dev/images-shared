@@ -20,6 +20,7 @@ runs:
       shell: bash
       run: mkdir -p tools
     - name: Install goss
+      id: install-goss
       shell: bash
       env:
         ARCHITECTURE: ${{ inputs.architecture }}
@@ -55,6 +56,7 @@ runs:
           tag="${VERSION}"
         fi
         version="${tag#v}"
+        echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
         release_url="https://github.com/goss-org/goss/releases/download/${tag}"
         asset="goss_${version}_linux_${goss_arch}.tar.gz"
@@ -72,9 +74,9 @@ runs:
     - name: Install dgoss
       shell: bash
       env:
-        VERSION: ${{ inputs.version }}
+        TAG: ${{ steps.install-goss.outputs.tag }}
       run: |
-        release_url="https://github.com/goss-org/goss/releases/${VERSION}/download"
+        release_url="https://github.com/goss-org/goss/releases/download/${TAG}"
 
         curl -fsSL "${release_url}/dgoss" -o tools/dgoss
 

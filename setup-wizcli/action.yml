@@ -24,6 +24,14 @@ runs:
       env:
         INPUT_ARCH: ${{ inputs.architecture }}
         BASE_PATH: ${{ inputs.base_path }}
+        # Wiz CLI (wiz.io) <wizcli@wiz.io>, RSA-4096, valid 2023-04-23 .. 2027-04-22.
+        # Wiz publishes this fingerprint with its CLI install instructions and serves
+        # the key from both downloads.wiz.io and keyserver.ubuntu.com; the documented
+        # fingerprint -- not either transport -- is the trust anchor. Pin the full
+        # 160-bit fingerprint, never the 64-bit key ID (CE4AE4BAD12EE02C), which is
+        # forgeable. On key rotation this check fails closed; re-verify the new
+        # fingerprint against Wiz's docs and update it here rather than removing it.
+        WIZ_KEY_FPR: 61DF40680AB1A80E51503B61CE4AE4BAD12EE02C
       run: |
         # Determine architecture if not provided
         arch="$INPUT_ARCH"
@@ -38,5 +46,34 @@ runs:
             arch="arm64"
         fi
 
-        curl -fsSL "https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-${arch}" -o "$BASE_PATH/tools/wizcli"
-        chmod +rx "$BASE_PATH/tools/wizcli"
+        release_url="https://downloads.wiz.io/v1/wizcli/latest"
+        asset="wizcli-linux-${arch}"
+        dest="$BASE_PATH/tools"
+
+        curl -fsSL "${release_url}/${asset}" -o "${dest}/wizcli"
+        curl -fsSL "${release_url}/${asset}-sha256" -o "${dest}/wizcli-sha256"
+        curl -fsSL "${release_url}/${asset}-sha256.sig" -o "${dest}/wizcli-sha256.sig"
+        curl -fsSL "https://downloads.wiz.io/wizcli/public_key.asc" -o "${dest}/wizcli-public-key.asc"
+
+        # Verify the checksum file's signature, then the binary's checksum, per Wiz's
+        # documented CLI installation guide. Import into a throwaway keyring so the
+        # runner's own keyring is left untouched, and require the signature to chain to
+        # the pinned key: the key travels over the same channel as the binary, so an
+        # unpinned import would only prove the four downloads agree with each other.
+        # VALIDSIG's trailing field is the primary key fingerprint, so this holds
+        # whether Wiz signs with the primary key or a subkey.
+        GNUPGHOME="$(mktemp -d)"
+        export GNUPGHOME
+        trap 'rm -rf "$GNUPGHOME"' EXIT
+
+        gpg --batch --quiet --import "${dest}/wizcli-public-key.asc"
+        gpg --batch --status-fd=1 --verify "${dest}/wizcli-sha256.sig" "${dest}/wizcli-sha256" \
+          | grep -q "^\[GNUPG:\] VALIDSIG .* ${WIZ_KEY_FPR}\$" \
+          || {
+            echo "::error::wizcli checksum signature did not chain to the pinned Wiz signing key ($WIZ_KEY_FPR)"
+            exit 1
+          }
+        (cd "${dest}" && echo "$(cat wizcli-sha256)  wizcli" | sha256sum -c -)
+
+        rm -f "${dest}/wizcli-sha256" "${dest}/wizcli-sha256.sig" "${dest}/wizcli-public-key.asc"
+        chmod +rx "${dest}/wizcli"

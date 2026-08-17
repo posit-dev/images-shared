@@ -2546,6 +2546,32 @@ class TestBuildTargetsBuildStrategy:
         spy_runner_sleep.assert_called_once()
         mock_time_sleep.assert_not_called()
 
+    def test_last_build_succeeded_uids_set_on_full_success(self, get_config_obj, mocker):
+        config = get_config_obj("basic")
+        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
+
+        config.build_targets(strategy=ImageBuildStrategy.BUILD)
+
+        assert config.last_build_succeeded_uids == {t.uid for t in config.targets}
+
+    def test_last_build_succeeded_uids_excludes_the_target_that_failed(self, get_config_obj, mocker):
+        """Set before the raise, not after -- --summary needs it even on a failed build."""
+        config = get_config_obj("basic")
+        assert len(config.targets) >= 2
+        failing_uid = config.targets[0].uid
+
+        def fake_build(self, **kwargs):
+            if self.uid == failing_uid:
+                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
+            return None
+
+        mocker.patch.object(ImageTarget, "build", fake_build)
+
+        with pytest.raises(BakeryToolRuntimeError):
+            config.build_targets(strategy=ImageBuildStrategy.BUILD)
+
+        assert config.last_build_succeeded_uids == {t.uid for t in config.targets if t.uid != failing_uid}
+
 
 class TestApplyDevSpecReleaseBranch:
     """release_branch is set from YYYY.MM when version is set, or directly from spec."""

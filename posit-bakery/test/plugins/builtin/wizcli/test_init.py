@@ -62,6 +62,34 @@ class TestWizcliScanZeroMatchGuard:
         mock_execute.assert_not_called()
 
 
+class TestWizcliScanPlatformNormalization:
+    """Regression coverage: `--image-platform linux/amd64` must not become
+    `linux/linux/amd64`, and the resolved platform must reach the scan itself."""
+
+    @pytest.mark.parametrize(
+        "given,expected",
+        [
+            ("amd64", "linux/amd64"),
+            ("arm64", "linux/arm64"),
+            ("linux/amd64", "linux/amd64"),
+            ("linux/arm64", "linux/arm64"),
+        ],
+    )
+    def test_normalizes_platform(self, mocked_wizcli_scan, given, expected):
+        mock_config, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT, "--image-platform", given],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.filter.image_platform == [expected]
+        # Filtering targets is not enough: the platform also selects which digest is
+        # scanned and how the scan is labelled in Wiz.
+        assert mock_execute.call_args.kwargs["platform"] == expected
+
+
 class TestWizcliScanLatestFlag:
     """The --latest flag is passed through to settings and warns with dev inclusion."""
 
@@ -86,3 +114,73 @@ class TestWizcliScanLatestFlag:
         assert result.exit_code == 0, result.stdout
         settings = mock_config.from_context.call_args[0][1]
         assert settings.latest is False
+
+
+class TestWizcliScanPoliciesProjectsFlags:
+    """The --policies/--projects flags are passed through to the plugin's execute()."""
+
+    def test_policies_passed_to_execute(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--policies", "pol-1,pol-2", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["policies"] == "pol-1,pol-2"
+
+    def test_projects_passed_to_execute(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--projects", "proj-1", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["projects"] == "proj-1"
+
+    def test_policies_projects_default_none(self, mocked_wizcli_scan):
+        _, mock_execute = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["policies"] is None
+        assert mock_execute.call_args.kwargs["projects"] is None
+
+
+class TestWizcliScanDevSpec:
+    """--dev-spec is accepted and parsed; this option previously did not exist."""
+
+    def test_dev_spec_accepted(self, mocked_wizcli_scan):
+        mock_config, _ = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--dev-spec", '{"version": "2026.05.0-dev+185-gSHA"}', "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.dev_spec is not None
+        assert settings.dev_spec.version == "2026.05.0-dev+185-gSHA"
+
+    def test_dev_spec_invalid_json_rejected(self, mocked_wizcli_scan):
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--dev-spec", "not-json", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0
+
+    def test_dev_spec_default_none(self, mocked_wizcli_scan):
+        mock_config, _ = mocked_wizcli_scan
+        result = runner.invoke(
+            app,
+            ["wizcli", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        settings = mock_config.from_context.call_args[0][1]
+        assert settings.dev_spec is None

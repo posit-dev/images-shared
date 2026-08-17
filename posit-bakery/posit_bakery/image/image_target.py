@@ -494,11 +494,14 @@ class ImageTarget(BaseModel):
                 build_args[key.upper()] = value
         return build_args
 
-    def ref(self, platform: str = f"linux/{SETTINGS.architecture}") -> str:
+    def ref(self, platform: str = f"linux/{SETTINGS.architecture}", *, digest_only: bool = False) -> str:
         """Returns a reference to the image, preferring a build metadata digest if available.
 
         :param platform: The platform to reference, used for selecting the appropriate build metadata in multi-platform
             builds. Defaults to the host architecture.
+        :param digest_only: Return a tag-free ``repo@sha256:DIGEST`` reference instead of the default
+            ``repo:tag@sha256:DIGEST``. Temp-registry images are pushed by digest and therefore carry no tag in the
+            registry, so consumers that resolve the tag portion rather than ignoring it need the tag-free form.
 
         :return: A string reference to the image, using the build metadata digest if available, otherwise falling back
             to the first tag.
@@ -506,10 +509,36 @@ class ImageTarget(BaseModel):
         if self.build_metadata:
             sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
             for metadata in sorted_metadata:
-                if metadata.platform == platform:
-                    return metadata.image_ref
+                if metadata.platform != platform:
+                    continue
+                ref = metadata.digest_ref if digest_only else metadata.image_ref
+                if ref:
+                    return ref
+                log.debug(
+                    f"Build metadata for '{self.uid}' matched platform '{platform}' but produced no "
+                    f"{'digest-only ' if digest_only else ''}reference; trying older metadata."
+                )
+            # Visible by default: substituting a mutable tag for an exact digest changes
+            # which artifact downstream consumers act on (e.g. a security scan).
+            log.warning(
+                f"No usable build metadata reference for '{self.uid}' on platform '{platform}'; "
+                f"falling back to tag '{self.tags[0]}'."
+            )
 
         return str(self.tags[0])
+
+    def build_metadata_for_platform(self, platform: str) -> BuildMetadata | None:
+        """Returns the most recent build metadata matching ``platform``, if any.
+
+        Shares ``ref()``'s newest-first, platform-filtered selection so callers that need the
+        underlying :class:`BuildMetadata` (e.g. for provenance fields) see the same artifact
+        ``ref()`` would resolve to.
+        """
+        sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
+        for metadata in sorted_metadata:
+            if metadata.platform == platform:
+                return metadata
+        return None
 
     @computed_field
     @property

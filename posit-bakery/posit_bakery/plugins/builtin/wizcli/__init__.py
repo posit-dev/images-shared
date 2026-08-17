@@ -5,12 +5,13 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.log import stderr_console
+from posit_bakery.plugins.builtin.wizcli.command import WizCLIDriverEnum
 from posit_bakery.plugins.builtin.wizcli.errors import WIZCLI_EXIT_CODE_POLICY_VIOLATION
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
 from posit_bakery.plugins.builtin.wizcli.report import WizScanReportCollection
@@ -88,7 +89,8 @@ class WizCLIPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(
                     show_default=SETTINGS.get_host_architecture(),
-                    help="Filters which image build platform to scan.",
+                    help="Which image build platform to scan, e.g. 'linux/amd64'. Filters the image targets and "
+                    "selects which per-platform build digest is handed to wizcli.",
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = None,
@@ -99,6 +101,16 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),
             ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help='JSON spec for a dispatched dev build. Ex: \'{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}\'',
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
             matrix_versions: Annotated[
                 Optional[MatrixVersionInclusionEnum],
                 typer.Option(
@@ -130,10 +142,27 @@ class WizCLIPlugin(BakeryToolPlugin):
                 ),
             ] = None,
             driver: Annotated[
+                WizCLIDriverEnum,
+                typer.Option(
+                    help="Driver used to scan image.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = WizCLIDriverEnum.EXTRACT,
+            policies: Annotated[
                 Optional[str],
                 typer.Option(
+                    "--policies",
                     show_default=False,
-                    help="Driver used to scan image (extract, mount, mountWithLayers).",
+                    help="Comma-separated Wiz policy IDs to apply to the scan. Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            projects: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--projects",
+                    show_default=False,
+                    help="Comma-separated Wiz project IDs to scope the scan to. Overrides bakery.yaml if set.",
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
             ] = None,
@@ -153,14 +182,6 @@ class WizCLIPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.WIZCLI,
                 ),
             ] = False,
-            scan_context_id: Annotated[
-                Optional[str],
-                typer.Option(
-                    show_default=False,
-                    help="Context identifier that defines scan granularity.",
-                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
-                ),
-            ] = None,
             log_file: Annotated[
                 Optional[str],
                 typer.Option(
@@ -220,8 +241,7 @@ class WizCLIPlugin(BakeryToolPlugin):
             Authentication can be provided via `--client-id`/`--client-secret` options or
             the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
             """
-            platform = image_platform or SETTINGS.architecture
-            platform = f"linux/{platform}"
+            platform = normalize_platform(image_platform)
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
@@ -232,6 +252,7 @@ class WizCLIPlugin(BakeryToolPlugin):
                     image_platform=[platform],
                 ),
                 dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
                 matrix_versions=matrix_versions,
                 latest=latest,
             )
@@ -245,15 +266,17 @@ class WizCLIPlugin(BakeryToolPlugin):
             results = plugin.execute(
                 c.base_path,
                 c.targets,
+                platform=platform,
                 disabled_scanners=disabled_scanners,
                 driver=driver,
+                policies=policies,
+                projects=projects,
                 client_id=client_id,
                 client_secret=client_secret,
                 use_device_code=use_device_code,
                 no_browser=no_browser,
                 timeout=timeout,
                 no_publish=no_publish,
-                scan_context_id=scan_context_id,
                 log_file=log_file,
             )
             plugin.results(results)
@@ -265,30 +288,34 @@ class WizCLIPlugin(BakeryToolPlugin):
         base_path: Path,
         targets: list[ImageTarget],
         *,
+        platform: str | None = None,
         disabled_scanners: str | None = None,
-        driver: str | None = None,
+        driver: WizCLIDriverEnum = WizCLIDriverEnum.EXTRACT,
+        policies: str | None = None,
+        projects: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
         use_device_code: bool = False,
         no_browser: bool = False,
         timeout: str | None = None,
         no_publish: bool = False,
-        scan_context_id: str | None = None,
         log_file: str | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:
         suite = WizCLISuite(
             base_path,
             targets,
+            platform=platform,
             disabled_scanners=disabled_scanners,
             driver=driver,
+            policies=policies,
+            projects=projects,
             client_id=client_id,
             client_secret=client_secret,
             use_device_code=use_device_code,
             no_browser=no_browser,
             timeout=timeout,
             no_publish=no_publish,
-            scan_context_id=scan_context_id,
             log_file=log_file,
         )
         report_collection, errors = suite.run()

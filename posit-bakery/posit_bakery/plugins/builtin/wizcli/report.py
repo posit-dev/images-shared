@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
@@ -77,11 +78,35 @@ class WizScanReport(BaseModel):
         )
 
 
+@dataclass(frozen=True)
+class WizScanFailure:
+    """Recorded in place of a WizScanReport when a scan produced nothing to parse.
+
+    A dedicated type -- rather than a bare ``str`` verdict living in the same slot as a
+    ``WizScanReport`` -- keeps "did this scan fail" a matter of type, not of
+    ``isinstance(report, str)`` happening to be true.
+    """
+
+    verdict: str
+
+
 class WizScanReportCollection(dict):
     """Collection of WizScanReports keyed by image_name -> {uid: (target, report)}."""
 
     def add_report(self, image_target: ImageTarget, report: WizScanReport):
         self.setdefault(image_target.image_name, dict())[image_target.uid] = (image_target, report)
+
+    def add_failure(self, image_target: ImageTarget, verdict: str = "SCAN FAILED"):
+        """Record a target whose scan produced no parseable report.
+
+        Failed targets are kept in the collection so they appear in the results table.
+        Omitting them would render a table that looks complete while silently covering
+        only the targets that happened to scan successfully.
+        """
+        self.setdefault(image_target.image_name, dict())[image_target.uid] = (
+            image_target,
+            WizScanFailure(verdict=verdict),
+        )
 
     def aggregate(self) -> dict:
         totals = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -93,15 +118,28 @@ class WizScanReportCollection(dict):
                 os_name = target.image_os.name if target.image_os else ""
                 version_name = target.image_version.name
 
-                row = {
-                    "critical": report.critical_count,
-                    "high": report.high_count,
-                    "medium": report.medium_count,
-                    "low": report.low_count,
-                    "info": report.info_count,
-                    "verdict": report.status_verdict,
-                    "report_url": report.report_url,
-                }
+                if isinstance(report, WizScanFailure):
+                    # Failed scan: severity counts are unknown, not zero, so they are rendered
+                    # as None and excluded from the totals rather than understating them.
+                    row = {
+                        "critical": None,
+                        "high": None,
+                        "medium": None,
+                        "low": None,
+                        "info": None,
+                        "verdict": report.verdict,
+                        "report_url": None,
+                    }
+                else:
+                    row = {
+                        "critical": report.critical_count,
+                        "high": report.high_count,
+                        "medium": report.medium_count,
+                        "low": report.low_count,
+                        "info": report.info_count,
+                        "verdict": report.status_verdict,
+                        "report_url": report.report_url,
+                    }
 
                 results.setdefault(image_name, {})
                 results[image_name].setdefault(version_name, {})
@@ -109,7 +147,8 @@ class WizScanReportCollection(dict):
                 results[image_name][version_name][os_name][variant_name] = row
 
                 for key in totals:
-                    totals[key] += row[key]
+                    if row[key] is not None:
+                        totals[key] += row[key]
 
         return results
 
@@ -137,10 +176,24 @@ class WizScanReportCollection(dict):
                 for os_name, variants in oses.items():
                     p_os = os_name
                     for variant_name, row in variants.items():
-                        critical_style = "bright_red bold" if row["critical"] > 0 else "bright_black italic"
-                        high_style = "red bold" if row["high"] > 0 else "bright_black italic"
-                        medium_style = "yellow bold" if row["medium"] > 0 else "bright_black italic"
-                        low_style = "bright_blue bold" if row["low"] > 0 else "bright_black italic"
+                        failed = row["critical"] is None
+
+                        def count(key: str, style: str, row: dict = row) -> Text:
+                            # Unknown counts render as "-" so a failed scan is never mistaken
+                            # for a clean one. `row` is bound as a default argument, not
+                            # captured by reference, so each call reads the row from its own
+                            # loop iteration rather than whatever `row` is bound to when the
+                            # closure is finally invoked (B023).
+                            if row[key] is None:
+                                return Text("-", style="bright_black italic")
+                            return Text(str(row[key]), style=style)
+
+                        critical_style = (
+                            "bright_red bold" if not failed and row["critical"] > 0 else "bright_black italic"
+                        )
+                        high_style = "red bold" if not failed and row["high"] > 0 else "bright_black italic"
+                        medium_style = "yellow bold" if not failed and row["medium"] > 0 else "bright_black italic"
+                        low_style = "bright_blue bold" if not failed and row["low"] > 0 else "bright_black italic"
                         info_style = "bright_black"
 
                         table.add_row(
@@ -148,12 +201,12 @@ class WizScanReportCollection(dict):
                             p_version,
                             variant_name,
                             p_os,
-                            row["verdict"],
-                            Text(str(row["critical"]), style=critical_style),
-                            Text(str(row["high"]), style=high_style),
-                            Text(str(row["medium"]), style=medium_style),
-                            Text(str(row["low"]), style=low_style),
-                            Text(str(row["info"]), style=info_style),
+                            Text(row["verdict"], style="red bold") if failed else row["verdict"],
+                            count("critical", critical_style),
+                            count("high", high_style),
+                            count("medium", medium_style),
+                            count("low", low_style),
+                            count("info", info_style),
                             row.get("report_url") or "",
                         )
                         p_image_name = ""
