@@ -370,7 +370,7 @@ def matrix(
 
     except typer.Exit:
         raise
-    except:
+    except Exception:
         log.exception("Failed to load bakery config")
         raise typer.Exit(code=1)
 

@@ -145,7 +145,7 @@ def tags(
 
         stdout_console.print(json.dumps(data, indent=2))
 
-    except:
+    except Exception:
         log.exception("Failed to load bakery config")
         raise typer.Exit(code=1)
 

@@ -921,7 +921,6 @@ class TestDispatchOverride:
 
     def test_version_substitution_error_when_version_not_in_url(self, mocker):
         """VersionSubstitutionError raised when the manifest URL contains no substitutable token."""
-        from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         mock_response = mocker.MagicMock()

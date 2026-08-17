@@ -1,8 +1,6 @@
 """Tests for the SociCommand base class and find_soci_bin."""
 
-import os
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

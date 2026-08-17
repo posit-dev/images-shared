@@ -100,7 +100,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
         # Check that name is defined since it will already propagate a validation error if not.
         if not os:
             log.warning(
-                f"No OSes defined for image development version. At least one OS should be "
+                "No OSes defined for image development version. At least one OS should be "
                 "defined for complete tagging and labeling of images."
             )
         return os
@@ -160,7 +160,7 @@ class BaseImageDevelopmentVersion(BakeryYAMLModel, abc.ABC):
             )
         elif primary_os_count == 0:
             log.warning(
-                f"No OS marked as primary for image development version. "
+                "No OS marked as primary for image development version. "
                 "At least one OS should be marked as primary for complete tagging and labeling of images."
             )
 

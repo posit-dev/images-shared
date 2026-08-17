@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from posit_bakery.error import BakeryToolRuntimeError
-from posit_bakery.plugins.builtin.imagetools.imagetools import _PublishStage1Result, _run_publish_stage1
+from posit_bakery.plugins.builtin.imagetools.imagetools import _run_publish_stage1
 
 pytestmark = [pytest.mark.unit]
 

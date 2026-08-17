@@ -146,7 +146,7 @@ def image(
             description=description,
             documentation_url=documentation_url,
         )
-    except:
+    except Exception:
         log.exception("Error creating image")
         stderr_console.print(f"❌ Failed to create image '{image_name}'", style="error")
         raise typer.Exit(code=1)
@@ -259,7 +259,7 @@ def version(
             latest=mark_latest,
             force=force,
         )
-    except:
+    except Exception:
         log.exception("Error creating version")
         stderr_console.print(f"❌ Failed to create version '{image_name}/{image_version}'", style="error")
         raise typer.Exit(code=1)
@@ -418,7 +418,7 @@ def matrix(
             values=value_map,
             force=force,
         )
-    except:
+    except Exception:
         log.exception("Error creating matrix")
         stderr_console.print(f"❌ Failed to create matrix for image '{image_name}'", style="error")
         raise typer.Exit(code=1)

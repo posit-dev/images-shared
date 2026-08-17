@@ -1,11 +1,9 @@
 import json
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from posit_bakery.plugins.builtin.hadolint.suite import HadolintSuite
-from posit_bakery.plugins.builtin.hadolint.options import HadolintOptions
 
 pytestmark = [
     pytest.mark.unit,

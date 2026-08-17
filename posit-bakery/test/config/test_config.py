@@ -1633,7 +1633,6 @@ class TestBakeryConfig:
         image = config.model.images[0]
         assert len(image.versions) == 1
         version = image.versions[0]
-        original_path = version.path
 
         old_path = version.path
         config.model.images[0].versions[0].subpath = "1.0"
@@ -1708,7 +1707,7 @@ class TestBakeryConfig:
         assert image.name == "test-matrix"
         assert image.matrix is not None
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 dependencyConstraints:
                   - constraint:
@@ -1788,7 +1787,7 @@ class TestBakeryConfig:
         assert image.name == "test-matrix"
         assert image.matrix is not None
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 dependencyConstraints:
                   - dependency: R
@@ -1836,7 +1835,7 @@ class TestBakeryConfig:
         assert image.matrix is not None
         assert image.matrix.subpath == "matrix-override"
         expected_yaml = textwrap.indent(
-            textwrap.dedent(f"""\
+            textwrap.dedent("""\
               matrix:
                 subpath: matrix-override
                 dependencyConstraints:
@@ -1854,7 +1853,7 @@ class TestBakeryConfig:
         )
         assert expected_yaml in (context / "bakery.yaml").read_text()
         assert (context / image.name / image.matrix.subpath).is_dir()
-        assert (context / image.name / image.matrix.subpath / f"Containerfile.ubuntu2404").is_file()
+        assert (context / image.name / image.matrix.subpath / "Containerfile.ubuntu2404").is_file()
         assert (context / image.name / image.matrix.subpath / "deps").is_dir()
         assert (context / image.name / image.matrix.subpath / "deps" / "ubuntu-24.04_packages.txt").is_file()
         assert (context / image.name / image.matrix.subpath / "test").is_dir()
@@ -2103,7 +2102,6 @@ class TestBakeryConfig:
         assert not version_path.is_dir()
 
         # Verify the config file has been updated
-        yaml_content = (context / "bakery.yaml").read_text()
         # The version name might still appear in the remaining version, so we check more specifically
         config_reloaded = BakeryConfig.from_context(context)
         reloaded_image = config_reloaded.model.get_image(image.name)

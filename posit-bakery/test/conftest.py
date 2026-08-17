@@ -15,7 +15,7 @@ from posit_bakery.plugins.registry import discover_plugins
 
 discover_plugins()
 
-from posit_bakery.config import BakeryConfig
+from posit_bakery.config import BakeryConfig  # noqa: E402  # must follow discover_plugins()
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -32,7 +32,9 @@ def datetime_now_value():
 def patch_datetime_now(request, mocker: MockFixture, datetime_now_value):
     """Mock datetime.now() to return a fixed datetime for testing."""
     if "disable_patch_datetime_now" not in request.keywords:
-        import posit_bakery.image.image_target
+        # Imported for its side effect, not its name: the patch targets below are resolved
+        # from strings, so the module has to be loaded before mocker.patch looks them up.
+        import posit_bakery.image.image_target  # noqa: F401
 
         for patch_path in [
             "posit_bakery.image.image_target.datetime",
