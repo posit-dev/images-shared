@@ -1208,10 +1208,13 @@ class BakeryConfig:
                     clean_bakefile=self.settings.clean_temporary,
                     platforms=platforms,
                     set_opts=set_opts,
+                    metadata_file=metadata_file,
                 ),
                 retry=retry,
                 label="bake plan",
             )
+            if metadata_file is not None:
+                self.load_build_metadata_from_file(metadata_file)
         elif strategy == ImageBuildStrategy.BUILD:
             sink = PrefixedLogSink()
             # Mirrors ImageTarget.build()'s own quiet check: streaming is pointless (and

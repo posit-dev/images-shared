@@ -329,12 +329,34 @@ class TestBakePlan:
             "pull": False,
             "cache": True,
             "set": {},
+            "metadata_file": None,
             "progress": "auto",
         }
 
         with patch("python_on_whales.docker.buildx.bake") as mock_bake:
             plan.build()
             mock_bake.assert_called_once_with(**expected_build_args)
+
+    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
+    def test_build_args_metadata_file(
+        self,
+        patch_os_getcwd,
+        patch_os_chdir,
+        patch_bakeplan_write,
+        patch_bakeplan_remove,
+        suite,
+        get_config_obj,
+        tmp_path,
+    ):
+        """Test that a given metadata_file is forwarded to `docker buildx bake --metadata-file`."""
+        config_obj = get_config_obj(suite)
+
+        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        metadata_file = tmp_path / "metadata.json"
+
+        with patch("python_on_whales.docker.buildx.bake") as mock_bake:
+            plan.build(metadata_file=metadata_file)
+            assert mock_bake.call_args.kwargs["metadata_file"] == metadata_file
 
         patch_os_getcwd.assert_called_once()
         patch_os_chdir.assert_has_calls([call(plan.context), call("/cwd")])
