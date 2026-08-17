@@ -6,7 +6,7 @@ Represents a JSON bake plan for building Docker images using Docker Bake.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/bake/bake.py#L159-L297)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/bake/bake.py#L159-L304)
 
 ``` python
 image.BakePlan()
@@ -40,7 +40,7 @@ Run the bake plan to build all targets.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/bake/bake.py#L256-L297)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/bake/bake.py#L256-L304)
 
 ``` python
 build(
@@ -52,9 +52,15 @@ build(
     cache_to=None,
     platforms=None,
     set_opts=None,
-    clean_bakefile=True
+    clean_bakefile=True,
+    metadata_file=None
 )
 ```
+
+#### Parameters
+
+`metadata_file``:`` ``Path | None`` ``=`` ``None`  
+Optional path to write JSON build metadata to. Passed through to `docker buildx bake --metadata-file`, which writes one entry per bake target, keyed by the same target name used in the bake plan (i.e. the image target UID).
 
 ### from_image_targets()
 
