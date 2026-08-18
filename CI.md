@@ -92,6 +92,7 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `push` | No | `false` | Push merged manifests to Docker Hub, GHCR, and Amazon Elastic Container Registry (ECR). |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
+| `max-parallel` | No | `0` | Cap on simultaneous build/test and merge matrix jobs. `0` means unlimited. |
 | `merge-builder` | No | `ubuntu-latest-4x` | Runner label for the merge job. |
 | `amd64-builder` | No | `ubuntu-latest-4x` | Runner label for amd64 build jobs. |
 | `arm64-builder` | No | `ubuntu-24.04-arm64-4-core` | Runner label for arm64 build jobs. |
