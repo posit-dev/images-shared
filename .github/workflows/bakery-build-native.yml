@@ -473,6 +473,11 @@ jobs:
           [[ -n "$WIZ_POLICY_ID" ]] && POLICY_FLAGS=(--policies "$WIZ_POLICY_ID")
           PROJECT_FLAGS=()
           [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
+          # Production builds (dev-versions != only) scan only the --latest
+          # version of each image now that the backlog has been scanned once.
+          # Development builds keep scanning every push.
+          LATEST_FLAGS=()
+          [[ "$DEV_VERSIONS" != "only" ]] && LATEST_FLAGS=(--latest)
           WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli scan \
             --image-name "^${IMAGE_NAME}$" \
@@ -483,6 +488,7 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             "${POLICY_FLAGS[@]}" \
             "${PROJECT_FLAGS[@]}" \
+            "${LATEST_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
       - name: Upload Metadata
