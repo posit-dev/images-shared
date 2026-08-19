@@ -828,3 +828,124 @@ class TestAsDict:
         data = summary.as_dict()
 
         assert data["cache_size_bytes"] == 300  # not 600
+
+
+class TestFromJsonFile:
+    def test_reconstructs_targets_and_recomputes_rows(self, tmp_path):
+        path = tmp_path / "a-summary.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "build_targets": 1,
+                    "platform_builds": 1,
+                    "registry_tags": 8,
+                    "registry_size_bytes": 100,
+                    "local_size_bytes": 200,
+                    "cache_size_bytes": None,
+                    "targets": [
+                        {
+                            "uid": "a",
+                            "image_name": "connect",
+                            "version": "2026.01.1",
+                            "os": "Ubuntu 24.04",
+                            "variant": "Standard",
+                            "platforms": 1,
+                            "tags": 8,
+                            "layers": 10,
+                            "registry_size": 100,
+                            "local_size": 200,
+                            "cache_ref": None,
+                            "cache_size": None,
+                        }
+                    ],
+                }
+            )
+        )
+
+        summary = BuildSummary.from_json_file(path)
+
+        assert [t.uid for t in summary.targets] == ["a"]
+        assert {row.key: row.value for row in summary.rows} == {
+            "build_targets": 1,
+            "platform_builds": 1,
+            "registry_tags": 8,
+        }
+
+
+class TestMerge:
+    def _target(self, **overrides):
+        defaults = dict(
+            uid="a",
+            image_name="connect",
+            version="2026.01.1",
+            os="Ubuntu 24.04",
+            variant="Standard",
+            platforms=1,
+            tags=8,
+        )
+        defaults.update(overrides)
+        return BuildSummaryTarget(**defaults)
+
+    def test_single_summary_round_trips_unchanged(self):
+        summary = BuildSummary(rows=[], targets=[self._target()])
+
+        merged = BuildSummary.merge([summary])
+
+        assert len(merged.targets) == 1
+        assert merged.targets[0].uid == "a"
+
+    def test_platform_slices_of_the_same_uid_sum_not_double_count(self):
+        """Two per-platform files for the same multi-platform target must not double
+        `build_targets`/`registry_tags` -- only `platforms`/`registry_size` sum."""
+        amd64 = BuildSummary(
+            rows=[],
+            targets=[self._target(platforms=1, tags=8, registry_size=100, local_size=200)],
+        )
+        arm64 = BuildSummary(
+            rows=[],
+            targets=[self._target(platforms=1, tags=8, registry_size=150, local_size=250)],
+        )
+
+        merged = BuildSummary.merge([amd64, arm64])
+
+        assert len(merged.targets) == 1
+        row = merged.targets[0]
+        assert row.platforms == 2
+        assert row.registry_size == 250
+        assert row.local_size == 450
+        assert row.tags == 8  # identity field: not summed
+        aggregate = {row.key: row.value for row in merged.rows}
+        assert aggregate["build_targets"] == 1  # one distinct uid, not two
+        assert aggregate["platform_builds"] == 2
+        assert aggregate["registry_tags"] == 8  # not 16
+
+    def test_distinct_uids_across_files_both_survive(self):
+        first = BuildSummary(rows=[], targets=[self._target(uid="a")])
+        second = BuildSummary(rows=[], targets=[self._target(uid="b", variant="Minimal")])
+
+        merged = BuildSummary.merge([first, second])
+
+        assert {t.uid for t in merged.targets} == {"a", "b"}
+        aggregate = {row.key: row.value for row in merged.rows}
+        assert aggregate["build_targets"] == 2
+
+    def test_layers_take_first_non_none_slice(self):
+        no_layers = BuildSummary(rows=[], targets=[self._target(layers=None)])
+        with_layers = BuildSummary(rows=[], targets=[self._target(layers=12)])
+
+        merged = BuildSummary.merge([no_layers, with_layers])
+
+        assert merged.targets[0].layers == 12
+
+    def test_cache_size_deduped_by_shared_cache_ref_after_merge(self):
+        """Two platform slices of the same uid can carry the same unsuffixed cache_ref
+        (`ImageTarget.cache_name()` for a true multi-platform target) -- merging must not
+        sum the same cache blob twice."""
+        shared_ref = "ghcr.io/posit-dev/connect/cache:shared"
+        amd64 = BuildSummary(rows=[], targets=[self._target(cache_ref=shared_ref, cache_size=300_000_000)])
+        arm64 = BuildSummary(rows=[], targets=[self._target(cache_ref=shared_ref, cache_size=300_000_000)])
+
+        merged = BuildSummary.merge([amd64, arm64])
+
+        assert merged.targets[0].cache_ref == shared_ref
+        assert merged.targets[0].cache_size == 300_000_000  # first slice's value, not summed
