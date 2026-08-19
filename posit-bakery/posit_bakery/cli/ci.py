@@ -16,6 +16,7 @@ from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, versi
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.image import BuildSummary
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import find_oversized_readmes, push_readmes
 from posit_bakery.util import auto_path
@@ -641,3 +642,32 @@ def readme(
         stderr_console.print(f"✅ Pushed {count} README(s) to Docker Hub", style="success")
     else:
         stderr_console.print("No READMEs pushed", style="dim")
+
+
+@app.command()
+@with_verbosity_flags
+def summary(
+    summary_file: Annotated[
+        list[Path],
+        typer.Argument(
+            help="Path to one or more `--summary-format json` files from `bakery build --summary` or `bakery ci publish --summary`."
+        ),
+    ],
+    output: Annotated[Path, typer.Option("--output", help="Path to write the combined Markdown report to.")],
+    disclaimer: Annotated[
+        Optional[str],
+        typer.Option(
+            "--disclaimer",
+            help="If set, prepended to the report as a warning banner (e.g. when an upstream job failed).",
+        ),
+    ] = None,
+) -> None:
+    """Merge one or more `--summary-format json` files into a single GitHub-Flavored
+    Markdown report, suitable for `$GITHUB_STEP_SUMMARY`.
+
+    Multiple files describing the same target (e.g. one file per platform for a
+    multi-platform target) are combined, not concatenated -- see `BuildSummary.merge()`.
+    """
+    summaries = [BuildSummary.from_json_file(f) for f in summary_file]
+    combined = BuildSummary.merge(summaries)
+    output.write_text(combined.to_markdown(disclaimer=disclaimer))
