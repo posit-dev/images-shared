@@ -3,6 +3,7 @@ import subprocess
 from unittest.mock import Mock, patch
 
 import python_on_whales
+from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.summary import (
@@ -43,6 +44,15 @@ class _FakeRunner:
         kind = "local" if "buildx" not in cmd else "registry"
         return self._responses.get((kind, ref), _completed(returncode=1, stderr=b"not found: " + ref.encode()))
 
+
+CACHE_MANIFEST_JSON = json.dumps(
+    {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "schemaVersion": 2,
+        "config": {"mediaType": "application/vnd.buildkit.cacheconfig.v0", "digest": "sha256:cfg", "size": 2920},
+        "layers": [{"digest": "sha256:a", "size": 100}, {"digest": "sha256:b", "size": 200}],
+    }
+).encode()
 
 SINGLE_PLATFORM_MANIFEST_JSON = json.dumps(
     {
@@ -378,6 +388,80 @@ class TestMeasureSizesSucceededUids:
         assert all(row.registry_size == 300 for row in summary.targets)
 
 
+def _fake_run_registry_fails(runner_self, cmd, **kwargs):
+    return _completed(returncode=1, stderr=b"not found")
+
+
+def _fake_run_cache_only(runner_self, cmd, **kwargs):
+    """Resolves only cache refs; every image inspect fails, so a measured `cache_size` can
+    only have come from the cache lookup."""
+    if "/cache:" in cmd[-1]:
+        return _completed(stdout=CACHE_MANIFEST_JSON)
+    return _completed(returncode=1, stderr=b"not found")
+
+
+class TestMeasureSizesCache:
+    def _summary_with_cache_ref(self, get_targets, suite="basic", registry="ghcr.io/posit-dev"):
+        targets = get_targets(suite)
+        for target in targets:
+            target.settings.cache_registry = registry
+        return targets, BuildSummary.from_image_targets(targets)
+
+    def test_measured_when_push_is_false_but_cache_ref_present(self, get_targets):
+        """A pull-only build (`push=False`) still resolves `cache_from` against whatever is
+        currently at `cache_ref` -- the registry lookup needs a `cache_ref` to query, not
+        this build to have pushed anything, so it must not be gated on `push`."""
+        targets, summary = self._summary_with_cache_ref(get_targets)
+
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=False, load=False)
+
+        assert all(row.cache_size == 300 for row in summary.targets)
+        assert all(row.registry_size is None for row in summary.targets)
+
+    def test_measured_when_push_is_true(self, get_targets):
+        targets, summary = self._summary_with_cache_ref(get_targets)
+
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert all(row.cache_size == 300 for row in summary.targets)
+
+    def test_measured_for_a_non_ghcr_cache_registry(self, get_targets):
+        """`--cache-registry` accepts any registry, so measurement goes through the same
+        `imagetools inspect` path as image sizes rather than a registry-specific API client."""
+        targets, summary = self._summary_with_cache_ref(get_targets, registry="123456.dkr.ecr.us-east-1.amazonaws.com")
+
+        with patch.object(CommandRunner, "run", _fake_run_cache_only):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert all(row.cache_ref is not None and "amazonaws.com" in row.cache_ref for row in summary.targets)
+        assert all(row.cache_size == 300 for row in summary.targets)
+
+    def test_stays_none_without_a_cache_ref(self, get_targets):
+        targets = get_targets("basic")  # no cache_registry set -> cache_ref is None
+        summary = BuildSummary.from_image_targets(targets)
+        runner_calls: list[list[str]] = []
+
+        def _record(runner_self, cmd, **kwargs):
+            runner_calls.append(cmd)
+            return _completed(returncode=1, stderr=b"not found")
+
+        with patch.object(CommandRunner, "run", _record):
+            summary.measure_sizes(targets, push=True, load=False)
+
+        assert not any("/cache:" in cmd[-1] for cmd in runner_calls)
+        assert all(row.cache_size is None for row in summary.targets)
+
+    def test_manifest_fetch_failure_leaves_dash_and_does_not_raise(self, get_targets):
+        targets, summary = self._summary_with_cache_ref(get_targets)
+
+        with patch.object(CommandRunner, "run", _fake_run_registry_fails):
+            summary.measure_sizes(targets, push=True, load=False)  # must not raise
+
+        assert all(row.cache_size is None for row in summary.targets)
+
+
 def _attach_metadata(target, digest: str) -> None:
     """Give `target` the build metadata that `--metadata-file` would have produced, so
     `ref()` resolves to the digest actually pushed instead of falling back to `tags[0]`."""
@@ -513,6 +597,59 @@ class TestFromImageTargetsPerTargetRows:
         assert all(row.platforms == 1 for row in summary.targets)
 
 
+class TestFromImageTargetsCacheRef:
+    def test_cache_ref_is_none_without_cache_registry(self, get_targets):
+        targets = get_targets("basic")
+        summary = BuildSummary.from_image_targets(targets)
+
+        assert all(row.cache_ref is None for row in summary.targets)
+
+    def test_cache_ref_matches_cache_name_for_the_targets_own_platform(self, get_targets):
+        """No --image-platform override: a single-platform target's cache tag is suffixed
+        with its one platform, mirroring ImageTarget.build()'s own cache_platform selection."""
+        targets = get_targets("basic")
+        for target in targets:
+            target.settings.cache_registry = "ghcr.io/posit-dev"
+
+        summary = BuildSummary.from_image_targets(targets)
+
+        for row, target in zip(summary.targets, targets):
+            platforms = target.image_os.platforms
+            expected_platform = platforms[0] if len(platforms) == 1 else None
+            assert row.cache_ref == target.cache_name(platform=expected_platform)
+            assert row.cache_ref is not None
+
+    def test_cache_ref_is_unsuffixed_for_a_true_multiplatform_target(self, get_targets):
+        targets = get_targets("multiplatform")
+        for target in targets:
+            target.settings.cache_registry = "ghcr.io/posit-dev"
+
+        summary = BuildSummary.from_image_targets(targets)
+
+        multi = [t for t in targets if len(t.image_os.platforms) > 1]
+        single = [t for t in targets if len(t.image_os.platforms) == 1]
+        assert multi and single  # sanity: the fixture must actually exercise both shapes
+
+        rows_by_uid = {row.uid: row for row in summary.targets}
+        for target in multi:
+            assert rows_by_uid[target.uid].cache_ref == target.cache_name(platform=None)
+        for target in single:
+            assert rows_by_uid[target.uid].cache_ref == target.cache_name(platform=target.image_os.platforms[0])
+
+    def test_cache_ref_honors_the_image_platform_override(self, get_targets):
+        """--image-platform is an any-match filter, not a narrowing one (config/config.py),
+        so a target's own declared platform list is untouched; the override still forces
+        every target's *cache* platform uniformly, exactly like a real build call does."""
+        targets = get_targets("multiplatform")
+        for target in targets:
+            target.settings.cache_registry = "ghcr.io/posit-dev"
+
+        summary = BuildSummary.from_image_targets(targets, platforms=["linux/arm64"])
+
+        for row, target in zip(summary.targets, targets):
+            assert row.cache_ref == target.cache_name(platform="linux/arm64")
+
+
 class TestTableSizesView:
     def _row(self, **overrides):
         defaults = dict(
@@ -538,13 +675,30 @@ class TestTableSizesView:
         assert self._cell(table, 0, "Registry Size") == "—"
         assert self._cell(table, 0, "Local Size") == "—"
         assert self._cell(table, 0, "Layers") == "—"
+        assert self._cell(table, 0, "Cache Size") == "—"
 
     def test_real_sizes_are_formatted_and_total_row_sums_them(self):
         summary = BuildSummary(
             rows=[],
             targets=[
-                self._row(uid="a", variant="Standard", registry_size=1_100_000_000, local_size=2_900_000_000, layers=8),
-                self._row(uid="b", variant="Minimal", registry_size=400_000_000, local_size=1_000_000_000, layers=6),
+                self._row(
+                    uid="a",
+                    variant="Standard",
+                    registry_size=1_100_000_000,
+                    local_size=2_900_000_000,
+                    layers=8,
+                    cache_ref="ghcr.io/posit-dev/connect/cache:std",
+                    cache_size=300_000_000,
+                ),
+                self._row(
+                    uid="b",
+                    variant="Minimal",
+                    registry_size=400_000_000,
+                    local_size=1_000_000_000,
+                    layers=6,
+                    cache_ref="ghcr.io/posit-dev/connect/cache:min",
+                    cache_size=200_000_000,
+                ),
             ],
         )
         table = summary.table(sizes=True)
@@ -556,6 +710,27 @@ class TestTableSizesView:
         assert self._cell(table, 2, "Registry Size") == "1.5 GB"  # Total row
         assert self._cell(table, 2, "Local Size") == "3.9 GB"
         assert self._cell(table, 2, "Layers") == ""  # summing layer counts isn't meaningful
+        assert self._cell(table, 0, "Cache Size") == "200.0 MB"  # Minimal
+        assert self._cell(table, 1, "Cache Size") == "300.0 MB"  # Standard
+        assert self._cell(table, 2, "Cache Size") == "500.0 MB"  # Total row
+
+    def test_total_row_dedupes_a_cache_ref_shared_by_two_targets(self):
+        """A true multi-platform target's un-suffixed cache tag can be shared by more than
+        one row (e.g. two dev builds whose version differs only in build metadata that
+        `cache_name()` strips) -- the Total row must count it once, not once per row."""
+        shared_ref = "ghcr.io/posit-dev/connect/cache:shared"
+        summary = BuildSummary(
+            rows=[],
+            targets=[
+                self._row(uid="a", variant="Standard", cache_ref=shared_ref, cache_size=300_000_000),
+                self._row(uid="b", variant="Minimal", cache_ref=shared_ref, cache_size=300_000_000),
+            ],
+        )
+        table = summary.table(sizes=True)
+
+        assert self._cell(table, 0, "Cache Size") == "300.0 MB"  # Minimal
+        assert self._cell(table, 1, "Cache Size") == "300.0 MB"  # Standard
+        assert self._cell(table, 2, "Cache Size") == "300.0 MB"  # Total row: not 600.0 MB
 
     def test_total_row_is_dash_when_nothing_was_measured(self):
         summary = BuildSummary(rows=[], targets=[self._row(uid="a"), self._row(uid="b", variant="Minimal")])
@@ -563,6 +738,7 @@ class TestTableSizesView:
 
         assert self._cell(table, 2, "Registry Size") == "—"
         assert self._cell(table, 2, "Local Size") == "—"
+        assert self._cell(table, 2, "Cache Size") == "—"
 
     def test_partial_measurement_does_not_poison_the_total(self):
         """One target failing to measure must not blank the whole Total row -- the
@@ -594,6 +770,8 @@ class TestAsDict:
                     tags=8,
                     registry_size=100,
                     local_size=200,
+                    cache_ref="ghcr.io/posit-dev/connect/cache:std",
+                    cache_size=300,
                 )
             ],
         )
@@ -601,7 +779,9 @@ class TestAsDict:
 
         assert data["registry_size_bytes"] == 100
         assert data["local_size_bytes"] == 200
+        assert data["cache_size_bytes"] == 300
         assert data["targets"][0]["uid"] == "a"
+        assert data["targets"][0]["cache_ref"] == "ghcr.io/posit-dev/connect/cache:std"
 
     def test_size_totals_are_null_not_zero_when_nothing_measured(self):
         summary = BuildSummary(
@@ -614,3 +794,37 @@ class TestAsDict:
 
         assert data["registry_size_bytes"] is None
         assert data["local_size_bytes"] is None
+        assert data["cache_size_bytes"] is None
+
+    def test_cache_size_bytes_dedupes_a_shared_cache_ref(self):
+        shared_ref = "ghcr.io/posit-dev/connect/cache:shared"
+        summary = BuildSummary(
+            rows=[],
+            targets=[
+                BuildSummaryTarget(
+                    uid="a",
+                    image_name="c",
+                    version="1.0",
+                    os="",
+                    variant="Standard",
+                    platforms=1,
+                    tags=1,
+                    cache_ref=shared_ref,
+                    cache_size=300,
+                ),
+                BuildSummaryTarget(
+                    uid="b",
+                    image_name="c",
+                    version="1.0",
+                    os="",
+                    variant="Minimal",
+                    platforms=1,
+                    tags=1,
+                    cache_ref=shared_ref,
+                    cache_size=300,
+                ),
+            ],
+        )
+        data = summary.as_dict()
+
+        assert data["cache_size_bytes"] == 300  # not 600
