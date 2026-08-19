@@ -6,7 +6,7 @@ Counts (and, once a build has produced artifacts, sizes) for a set of image targ
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L193-L387)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L227-L443)
 
 ``` python
 image.BuildSummary()
@@ -18,7 +18,7 @@ image.BuildSummary()
 |----|----|
 | [as_dict()](#as_dict) | Flatten to a CI-friendly dict for `--summary-format json`. |
 | [from_image_targets()](#from_image_targets) | Compute build and artifact counts for the given image targets. |
-| [measure_sizes()](#measure_sizes) | Populate registry size, local size, and layer count for each target via real I/O. |
+| [measure_sizes()](#measure_sizes) | Populate registry size, local size, layer count, and cache size for each target via real I/O. |
 | [table()](#table) | Render the summary as a Rich table. |
 
 ### as_dict()
@@ -27,7 +27,7 @@ Flatten to a CI-friendly dict for `--summary-format json`.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L244-L256)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L277-L290)
 
 ``` python
 as_dict()
@@ -41,7 +41,7 @@ Compute build and artifact counts for the given image targets.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L199-L242)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L233-L275)
 
 ``` python
 from_image_targets(targets, *, platforms=None)
@@ -59,11 +59,11 @@ The `--image-platform` CLI override, if any. A target that survives that filter 
 
 ### measure_sizes()
 
-Populate registry size, local size, and layer count for each target via real I/O.
+Populate registry size, local size, layer count, and cache size for each target via real I/O.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L258-L338)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L292-L389)
 
 ``` python
 measure_sizes(targets, *, push, load, jobs=None, succeeded_uids=None)
@@ -77,7 +77,7 @@ Never raises: a failed measurement leaves that target’s fields as `None` (rend
 The same image targets `from_image_targets` was built from. Needed here (unlike the zero-I/O counts) because measurement keys off `ImageTarget.ref()`. A target under `--temp-registry` with no build metadata is skipped entirely – see `_measurable_ref()` for why measuring it would be worse than not measuring it.
 
 `push``:`` ``bool`  
-Whether this build pushed to a registry – gates the registry size lookup.
+Whether this build pushed to a registry – gates the registry size lookup. Cache size is not gated on this: `cache_from` pulls whatever is at `cache_ref` regardless of `push` (only `cache_to`, the write side, requires it), so the ref is just as measurable on a pull-only build.
 
 `load``:`` ``bool`  
 Whether this build loaded to the local daemon – gates the local size lookup.
@@ -94,7 +94,7 @@ Render the summary as a Rich table.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L340-L387)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L391-L443)
 
 ``` python
 table(*, sizes)

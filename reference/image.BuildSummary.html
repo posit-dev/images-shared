@@ -820,7 +820,7 @@ window.onload = function () {
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L193-L387" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L227-L443" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.CLASS">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>image.BuildSummary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -860,7 +860,7 @@ Compute build and artifact counts for the given image targets.
 <a href="#measure_sizes" class="doc-function doc-label doc-label-method">measure_sizes()</a>
 </td>
 <td>
-Populate registry size, local size, and layer count for each target via real I/O.
+Populate registry size, local size, layer count, and cache size for each target via real I/O.
 </td>
 </tr>
 <tr>
@@ -880,7 +880,7 @@ Render the summary as a Rich table.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L244-L256" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L277-L290" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>as_dict()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -896,7 +896,7 @@ Render the summary as a Rich table.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L199-L242" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L233-L275" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>from_image_targets(targets, <span class="op">*</span>, platforms<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -923,11 +923,11 @@ The <code>--image-platform</code> CLI override, if any. A target that survives t
 <section id="measure_sizes" class="level3">
 <h3 class="anchored" data-anchor-id="measure_sizes"><span class="doc-object-name doc-function doc-label doc-label-method">measure_sizes()</span></h3>
 <div class="doc-subject">
-<p>Populate registry size, local size, and layer count for each target via real I/O.</p>
+<p>Populate registry size, local size, layer count, and cache size for each target via real I/O.</p>
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L258-L338" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L292-L389" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>measure_sizes(targets, <span class="op">*</span>, push, load, jobs<span class="op">=</span><span class="va">None</span>, succeeded_uids<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -945,7 +945,7 @@ The <code>--image-platform</code> CLI override, if any. A target that survives t
 </dd>
 <dt><code><span class="doc-parameter-name">push</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span></code></dt>
 <dd>
-<p>Whether this build pushed to a registry – gates the registry size lookup.</p>
+<p>Whether this build pushed to a registry – gates the registry size lookup. Cache size is not gated on this: <code>cache_from</code> pulls whatever is at <code>cache_ref</code> regardless of <code>push</code> (only <code>cache_to</code>, the write side, requires it), so the ref is just as measurable on a pull-only build.</p>
 </dd>
 <dt><code><span class="doc-parameter-name">load</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span></code></dt>
 <dd>
@@ -970,7 +970,7 @@ UIDs that succeeded in this build run, if known – further narrows the registry
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L340-L387" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L391-L443" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>table(<span class="op">*</span>, sizes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
