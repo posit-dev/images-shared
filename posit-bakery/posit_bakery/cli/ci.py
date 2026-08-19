@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+from pydantic import ValidationError
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
@@ -15,7 +16,8 @@ from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
-from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
+from posit_bakery.image import BuildSummary
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import find_oversized_readmes, push_readmes
 from posit_bakery.util import auto_path
@@ -506,6 +508,22 @@ def publish(
             callback=parse_dev_spec,
         ),
     ] = None,
+    summary: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--summary",
+            help="After publishing, report per-target sizes and layer counts alongside build/tag counts.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
+    summary_format: Annotated[
+        Optional[SummaryOutputFormat],
+        typer.Option(
+            "--summary-format",
+            help="Output format for --summary. 'table' prints to stderr; 'json' prints to stdout.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = SummaryOutputFormat.TABLE,
 ) -> None:
     """Publish multi-platform images by composing oras index-create →
     soci-convert → oras index-copy.
@@ -541,6 +559,8 @@ def publish(
         dev_channel=dev_channel,
         dev_spec=dev_spec,
         jobs=jobs,
+        summary=summary,
+        summary_format=summary_format,
     )
 
 
@@ -641,3 +661,42 @@ def readme(
         stderr_console.print(f"✅ Pushed {count} README(s) to Docker Hub", style="success")
     else:
         stderr_console.print("No READMEs pushed", style="dim")
+
+
+@app.command()
+@with_verbosity_flags
+def summary(
+    summary_file: Annotated[
+        list[Path],
+        typer.Argument(
+            help="Path to one or more `--summary-format json` files from `bakery build --summary` or `bakery ci publish --summary`."
+        ),
+    ],
+    output: Annotated[Path, typer.Option("--output", help="Path to write the combined Markdown report to.")],
+    disclaimer: Annotated[
+        Optional[str],
+        typer.Option(
+            "--disclaimer",
+            help="If set, prepended to the report as a warning banner (e.g. when an upstream job failed).",
+        ),
+    ] = None,
+) -> None:
+    """Merge one or more `--summary-format json` files into a single GitHub-Flavored
+    Markdown report, suitable for `$GITHUB_STEP_SUMMARY`.
+
+    Multiple files describing the same target (e.g. one file per platform for a
+    multi-platform target) are combined, not concatenated -- see `BuildSummary.merge()`.
+
+    A file that can't be read or parsed is skipped with a warning rather than raising --
+    this command is a best-effort report on top of an otherwise-passing build, run under
+    GitHub Actions' default `bash -eo pipefail` shell with no `continue-on-error`, so an
+    uncaught exception here would fail the whole job over a report, not a build.
+    """
+    summaries = []
+    for f in summary_file:
+        try:
+            summaries.append(BuildSummary.from_json_file(f))
+        except (OSError, json.JSONDecodeError, ValidationError) as e:
+            stderr_console.print(f"⚠️  Skipping unreadable summary file '{f}': {e}")
+    combined = BuildSummary.merge(summaries)
+    output.write_text(combined.to_markdown(disclaimer=disclaimer))

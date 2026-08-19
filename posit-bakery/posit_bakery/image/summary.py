@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 from typing import Any, Self
 
 import python_on_whales
@@ -179,6 +180,32 @@ def _sum_or_none(values: list[int | None]) -> int | None:
     return sum(known) if known else None
 
 
+def _combine_optional(a: int | None, b: int | None) -> int | None:
+    """Sums two optional platform-scoped values: `None` only when both are `None` --
+    matches `_sum_or_none`'s "unmeasured, not zero" rule for a two-value merge."""
+    if a is None and b is None:
+        return None
+    return (a or 0) + (b or 0)
+
+
+def _first_non_none(a: Any, b: Any) -> Any:
+    """The first non-`None` of two identity-field values -- used for fields that must
+    never be summed across platform slices of the same target (tags, layers, cache_ref,
+    cache_size), since they describe the whole manifest, not one platform's share of it."""
+    return a if a is not None else b
+
+
+def _md_row(cells: list[str]) -> str:
+    """One Markdown table row from a list of cell strings.
+
+    The single place that joins cells with pipes for `to_markdown()` -- shared by the
+    header, every per-target row, and the total row, so a column added to one can't
+    silently drift out of alignment with the others the way three independently
+    hand-built pipe strings could.
+    """
+    return "| " + " | ".join(cells) + " |"
+
+
 def _total_bytes(values: list[int | None]) -> str:
     total = _sum_or_none(values)
     return format_size(total) if total is not None else DASH
@@ -266,13 +293,71 @@ class BuildSummary(BaseModel):
         ]
 
         return cls(
-            rows=[
-                BuildSummaryRow(key="build_targets", label="Build Targets", value=len(targets)),
-                BuildSummaryRow(key="platform_builds", label="Platform Builds", value=sum(platform_counts)),
-                BuildSummaryRow(key="registry_tags", label="Registry Tags", value=registry_tags),
-            ],
+            rows=cls._aggregate_rows(target_rows),
             targets=target_rows,
         )
+
+    @staticmethod
+    def _aggregate_rows(targets: list[BuildSummaryTarget]) -> list[BuildSummaryRow]:
+        """The three aggregate rows, derived from a target list -- the single source of
+        truth `from_image_targets`, `from_json_file`, and `merge` all share."""
+        return [
+            BuildSummaryRow(key="build_targets", label="Build Targets", value=len(targets)),
+            BuildSummaryRow(key="platform_builds", label="Platform Builds", value=sum(t.platforms for t in targets)),
+            BuildSummaryRow(key="registry_tags", label="Registry Tags", value=sum(t.tags for t in targets)),
+        ]
+
+    @classmethod
+    def from_json_file(cls, path: Path) -> Self:
+        """Reconstructs a `BuildSummary` from a file written by `--summary-format json`
+        (either `bakery build` or `bakery ci publish`).
+
+        Rebuilds `targets` from the dumped `targets` list and recomputes the three
+        aggregate rows from that list, rather than trusting the file's own top-level
+        counts -- keeps a single source of truth for how aggregates are derived, shared
+        with `merge()` below.
+        """
+        data = json.loads(path.read_text())
+        targets = [BuildSummaryTarget(**t) for t in data.get("targets", [])]
+        return cls(rows=cls._aggregate_rows(targets), targets=targets)
+
+    @classmethod
+    def merge(cls, summaries: list[Self]) -> Self:
+        """Combines multiple summaries into one, deduped by `BuildSummaryTarget.uid`.
+
+        `uid` has no platform component, so the same uid can appear in more than one
+        input summary -- e.g. one JSON file per platform for a multi-platform target, or
+        a build-time file and a separate publish-time file for the same target. Slices
+        sharing a uid are folded into a single row:
+
+        - `platforms`, `registry_size`, `local_size` are summed: each slice reports only
+          what it measured (its own platform's share), so summing reconstructs the true
+          total, the same way a single combined multi-platform registry inspect already
+          sums across manifest children internally.
+        - `tags`, `layers`, `cache_ref`, `cache_size` take the first non-`None` value
+          across a uid's slices -- they describe the whole manifest, not one platform's
+          share, so summing them would be wrong (and, for `cache_size`, would double-count
+          a cache tag shared by more than one platform slice).
+
+        Aggregate rows are recomputed from the merged, deduped-by-uid target list --
+        never by summing each input's own aggregate rows, which would double-count any
+        uid appearing in more than one input.
+        """
+        merged: dict[str, BuildSummaryTarget] = {}
+        for summary in summaries:
+            for target in summary.targets:
+                if target.uid not in merged:
+                    merged[target.uid] = target.model_copy(deep=True)
+                    continue
+                base = merged[target.uid]
+                base.platforms += target.platforms
+                base.registry_size = _combine_optional(base.registry_size, target.registry_size)
+                base.local_size = _combine_optional(base.local_size, target.local_size)
+                base.layers = _first_non_none(base.layers, target.layers)
+                base.cache_ref = _first_non_none(base.cache_ref, target.cache_ref)
+                base.cache_size = _first_non_none(base.cache_size, target.cache_size)
+        merged_targets = list(merged.values())
+        return cls(rows=cls._aggregate_rows(merged_targets), targets=merged_targets)
 
     def as_dict(self) -> dict[str, Any]:
         """Flatten to a CI-friendly dict for `--summary-format json`.
@@ -441,3 +526,70 @@ class BuildSummary(BaseModel):
                 ),
             ],
         )
+
+    def to_markdown(self, *, disclaimer: str | None = None) -> str:
+        """Renders this summary as a GitHub-Flavored Markdown report, for a GitHub job or
+        run summary. Always renders the full per-target breakdown -- a summary page reader
+        wants the detail, not just the three aggregate counts a terminal caller sees by
+        default without `--summary-format table`'s sizes view.
+
+        :param disclaimer: If given, prepended as a warning-styled blockquote ahead of the
+            table -- e.g. "this run had failures, so these totals are incomplete."
+        """
+        lines: list[str] = []
+        if disclaimer:
+            lines.append(f"> ⚠️ **{disclaimer}**")
+            lines.append("")
+        lines.append("### Build Summary")
+        lines.append("")
+        header = [
+            "Image",
+            "Version",
+            "OS",
+            "Variant",
+            "Platforms",
+            "Tags",
+            "Layers",
+            "Registry Size",
+            "Local Size",
+            "Cache Size",
+        ]
+        lines.append(_md_row(header))
+        lines.append("|" + "|".join(["---"] * len(header)) + "|")
+
+        sorted_targets = sorted(self.targets, key=lambda t: (t.image_name, t.version, t.os, t.variant))
+        lines += [
+            _md_row(
+                [
+                    t.image_name,
+                    t.version,
+                    t.os,
+                    t.variant,
+                    str(t.platforms),
+                    str(t.tags),
+                    str(t.layers) if t.layers is not None else DASH,
+                    format_size(t.registry_size) if t.registry_size is not None else DASH,
+                    format_size(t.local_size) if t.local_size is not None else DASH,
+                    format_size(t.cache_size) if t.cache_size is not None else DASH,
+                ]
+            )
+            for t in sorted_targets
+        ]
+
+        lines.append(
+            _md_row(
+                [
+                    f"**Total ({len(sorted_targets)} targets)**",
+                    "",
+                    "",
+                    "",
+                    f"**{sum(t.platforms for t in sorted_targets)}**",
+                    f"**{sum(t.tags for t in sorted_targets)}**",
+                    "",
+                    f"**{_total_bytes([t.registry_size for t in sorted_targets])}**",
+                    f"**{_total_bytes([t.local_size for t in sorted_targets])}**",
+                    f"**{_total_bytes(_deduped_cache_sizes(sorted_targets))}**",
+                ]
+            )
+        )
+        return "\n".join(lines) + "\n"

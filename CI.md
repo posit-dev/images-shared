@@ -76,7 +76,7 @@ Order (applied identically to the weekly Sunday window and the daily window): `i
 
 ## `bakery-build-native.yml`
 
-Builds, tests, and pushes images on native hardware. Each `{image, version, platform}` combination builds on its own runner and pushes to a temporary GHCR registry. A `merge` job then combines them into multi-platform manifests using `bakery ci merge`, and a `readme` job pushes Docker Hub READMEs after a successful push.
+Builds, tests, and pushes images on native hardware. Each `{image, version, platform}` combination builds on its own runner and pushes to a temporary GHCR registry. A `merge` job then combines them into multi-platform manifests using `bakery ci publish` (the `bakery ci merge` alias still works), and a `readme` job pushes Docker Hub READMEs after a successful push. A `summary` job always runs last -- even if a build or the merge failed -- and merges every job's `--summary` artifact into one report on the run's Summary page.
 
 ### Inputs
 
@@ -145,27 +145,37 @@ flowchart TD
     end
     subgraph build_amd64[Build/Test amd64]
         a_setup[Checkout + bakery + goss + docker + buildx + oras] --> a_login[Login GHCR/DH/ECR]
-        a_login --> a_build["bakery build --strategy build<br/>--push to temp registry"]
-        a_build --> a_test["bakery dgoss run"]
+        a_login --> a_build["bakery build --strategy build<br/>--push to temp registry --summary"]
+        a_build --> a_sum[Upload build summary artifact]
+        a_sum --> a_test["bakery dgoss run"]
         a_test --> a_meta[Upload metadata artifact]
     end
     subgraph build_arm64[Build/Test arm64]
         r_setup[Checkout + bakery + goss + docker + buildx + oras] --> r_login[Login GHCR/DH/ECR]
-        r_login --> r_build["bakery build --strategy build<br/>--push to temp registry"]
-        r_build --> r_test["bakery dgoss run"]
+        r_login --> r_build["bakery build --strategy build<br/>--push to temp registry --summary"]
+        r_build --> r_sum[Upload build summary artifact]
+        r_sum --> r_test["bakery dgoss run"]
         r_test --> r_meta[Upload metadata artifact]
     end
     subgraph merge[Merge / Push]
-        m_dl[Download metadata] --> m_merge["bakery ci merge<br/>(--dry-run unless push=true)"]
+        m_dl[Download metadata] --> m_merge["bakery ci publish --summary<br/>(--dry-run unless push=true)"]
+        m_merge --> m_pubsum[Upload publish summary artifact]
     end
     subgraph readme[Push READMEs]
         r_run["bakery ci readme<br/>(only when push=true)"]
+    end
+    subgraph summary[Build Summary]
+        s_dl[Download every summary artifact] --> s_render["bakery ci summary<br/>(disclaimer if a job failed)"]
+        s_render --> s_post[Append to GITHUB_STEP_SUMMARY]
     end
     m_matrix -.->|"per platform"| build_amd64
     m_matrix -.->|"per platform"| build_arm64
     a_meta --> m_dl
     r_meta --> m_dl
     m_merge --> r_run
+    a_sum -.-> s_dl
+    r_sum -.-> s_dl
+    m_pubsum -.-> s_dl
 ```
 
 ## `bakery-build.yml`
@@ -203,22 +213,29 @@ flowchart TD
     end
     subgraph build[Build / Test / Push]
         b_setup[Checkout + bakery + goss + QEMU + buildx] --> b_login[Login GHCR/DH/ECR]
-        b_login --> b_build["bakery build --load --pull"]
+        b_login --> b_build["bakery build --load --pull --summary"]
         b_build --> b_test["bakery dgoss run"]
         b_test --> b_push{"push=true?"}
-        b_push -- yes --> b_pushrun["bakery build --push"]
+        b_push -- yes --> b_pushrun["bakery build --push --summary"]
         b_push -- no --> b_skip[skip]
+        b_pushrun --> b_sum[Upload build summary artifact]
+        b_skip --> b_sum
     end
     subgraph readme[Push READMEs]
         r_run["bakery ci readme<br/>(only when push=true)"]
     end
+    subgraph summary[Build Summary]
+        s_dl[Download every summary artifact] --> s_render["bakery ci summary<br/>(disclaimer if a job failed)"]
+        s_render --> s_post[Append to GITHUB_STEP_SUMMARY]
+    end
     m_matrix -.->|"per image version"| build
     b_pushrun --> r_run
+    b_sum -.-> s_dl
 ```
 
 ## `bakery-build-pr.yml`
 
-Fork-safe variant for pull requests. Inherits only `GITHUB_TOKEN`, never pushes, and skips arm64 jobs on fork PRs (paid arm64 runners might not be available). Runs the same build + dgoss test on each `{image, version, platform}` combination.
+Fork-safe variant for pull requests. Inherits only `GITHUB_TOKEN`, never pushes, and skips arm64 jobs on fork PRs (paid arm64 runners might not be available). Runs the same build + dgoss test on each `{image, version, platform}` combination. This workflow never pushes to a final registry, so its `summary` job never has a registry size to report -- only build counts, layers, local size, and cache size.
 
 ### Inputs
 

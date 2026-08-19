@@ -5,7 +5,7 @@ The orchestration logic lives in the ``imagetools`` plugin
 delegates to it.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -37,6 +37,39 @@ def test_publish_command_flags_present():
     # SOCI is config-driven and standalone-only; there is no CLI flag for it.
     assert "--soci-mode" not in result.stdout
     assert "--enable-soci" not in result.stdout
+
+
+def test_publish_command_summary_flags_present():
+    runner = CliRunner()
+    result = runner.invoke(app, ["ci", "publish", "--help"], env=_WIDE_TERM_ENV)
+    assert result.exit_code == 0
+    assert "--summary" in result.stdout
+    assert "--summary-format" in result.stdout
+
+
+def test_publish_with_summary_json_calls_plugin_with_summary_flags(tmp_path):
+    metadata_file = tmp_path / "a-metadata.json"
+    metadata_file.write_text("{}")
+    runner = CliRunner()
+
+    with patch("posit_bakery.plugins.registry.get_plugin") as get_plugin:
+        result = runner.invoke(
+            app,
+            [
+                "ci",
+                "publish",
+                "--summary",
+                "--summary-format",
+                "json",
+                str(metadata_file),
+            ],
+        )
+
+    assert result.exit_code == 0, result.stdout
+    plugin = get_plugin.return_value
+    _, kwargs = plugin.publish.call_args
+    assert kwargs["summary"] is True
+    assert kwargs["summary_format"].value == "json"
 
 
 def _fake_target(uid: str, merge_sources: list[str] | None = None):
@@ -282,3 +315,84 @@ def test_publish_jobs_flag_passed_through(tmp_path):
 
     assert result.exit_code == 0, result.stdout
     assert captured["jobs"] == 4
+
+
+def test_publish_summary_skips_registry_measurement_on_dry_run(tmp_path):
+    """--dry-run must never measure a target's registry ref -- there is nothing new
+    published to measure, and the tag may already hold a previous, unrelated release."""
+    from posit_bakery.plugins.builtin.imagetools.imagetools import ImageToolsPlugin
+
+    target = _fake_target("uid-a")
+    target.image_name = "connect"
+    target.image_version.name = "2026.01.1"
+    # `from_image_targets` runs for real (only `measure_sizes` is mocked below), so every
+    # attribute it actually reads must be a real value, not an unconfigured MagicMock:
+    # `image_os=None` takes the falsy branch (skips needing a real `.platforms` list),
+    # `tags` must be a real list (`len()` is called on it), and `cache_name(...)` must
+    # return `None`/`str`, not a MagicMock, since it becomes `BuildSummaryTarget.cache_ref`.
+    target.image_os = None
+    target.image_variant = None
+    target.tags = ["ghcr.io/posit-dev/connect:2026.01.1"]
+    target.cache_name.return_value = None
+
+    with (
+        patch("posit_bakery.config.BakeryConfig.from_context") as from_context,
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
+        _bypass_pydantic_init(OrasIndexCreateWorkflow),
+        _bypass_pydantic_init(OrasIndexCopyWorkflow),
+        patch.object(OrasIndexCopyWorkflow, "run") as copy_run,
+        patch("posit_bakery.image.BuildSummary.measure_sizes") as measure_sizes,
+    ):
+        config = from_context.return_value
+        config.load_build_metadata_from_file.return_value = ["uid-a"]
+        config.get_image_target_by_uid.return_value = target
+        copy_run.return_value = Mock(success=True)
+
+        ImageToolsPlugin().publish(
+            metadata_file=[tmp_path / "a-metadata.json"],
+            context=tmp_path,
+            dry_run=True,
+            summary=True,
+        )
+
+    _, kwargs = measure_sizes.call_args
+    assert kwargs["push"] is False
+
+
+def test_publish_summary_measures_registry_on_a_real_push(tmp_path):
+    """Companion to the dry-run test above: a real (non-dry-run) publish must measure the
+    registry ref, or a hardcoded `push=False` regression would go undetected."""
+    from posit_bakery.plugins.builtin.imagetools.imagetools import ImageToolsPlugin
+
+    target = _fake_target("uid-a")
+    target.image_name = "connect"
+    target.image_version.name = "2026.01.1"
+    target.image_os = None
+    target.image_variant = None
+    target.tags = ["ghcr.io/posit-dev/connect:2026.01.1"]
+    target.cache_name.return_value = None
+
+    with (
+        patch("posit_bakery.config.BakeryConfig.from_context") as from_context,
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
+        _bypass_pydantic_init(OrasIndexCreateWorkflow),
+        _bypass_pydantic_init(OrasIndexCopyWorkflow),
+        patch.object(OrasIndexCopyWorkflow, "run") as copy_run,
+        patch("posit_bakery.image.BuildSummary.measure_sizes") as measure_sizes,
+    ):
+        config = from_context.return_value
+        config.load_build_metadata_from_file.return_value = ["uid-a"]
+        config.get_image_target_by_uid.return_value = target
+        copy_run.return_value = Mock(success=True)
+
+        ImageToolsPlugin().publish(
+            metadata_file=[tmp_path / "a-metadata.json"],
+            context=tmp_path,
+            dry_run=False,
+            summary=True,
+        )
+
+    _, kwargs = measure_sizes.call_args
+    assert kwargs["push"] is True
