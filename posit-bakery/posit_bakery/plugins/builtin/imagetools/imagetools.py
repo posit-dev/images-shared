@@ -30,6 +30,7 @@ from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, fi
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
 
 if TYPE_CHECKING:
+    from posit_bakery.const import SummaryOutputFormat
     from posit_bakery.parallel import CommandRunner
 
 log = logging.getLogger(__name__)
@@ -539,7 +540,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
         dev_spec: Any = None,
         jobs: int | None = None,
         summary: bool = False,
-        summary_format: Any = None,
+        summary_format: "SummaryOutputFormat | None" = None,
     ) -> None:
         """Publish multi-platform images by composing wait -> index-create -> soci-convert ->
         index-copy -> verify.

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+from pydantic import ValidationError
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
@@ -685,7 +686,17 @@ def summary(
 
     Multiple files describing the same target (e.g. one file per platform for a
     multi-platform target) are combined, not concatenated -- see `BuildSummary.merge()`.
+
+    A file that can't be read or parsed is skipped with a warning rather than raising --
+    this command is a best-effort report on top of an otherwise-passing build, run under
+    GitHub Actions' default `bash -eo pipefail` shell with no `continue-on-error`, so an
+    uncaught exception here would fail the whole job over a report, not a build.
     """
-    summaries = [BuildSummary.from_json_file(f) for f in summary_file]
+    summaries = []
+    for f in summary_file:
+        try:
+            summaries.append(BuildSummary.from_json_file(f))
+        except (OSError, json.JSONDecodeError, ValidationError) as e:
+            stderr_console.print(f"⚠️  Skipping unreadable summary file '{f}': {e}")
     combined = BuildSummary.merge(summaries)
     output.write_text(combined.to_markdown(disclaimer=disclaimer))

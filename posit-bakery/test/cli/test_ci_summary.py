@@ -72,6 +72,36 @@ def test_merges_two_files_for_the_same_uid_without_double_counting(tmp_path):
     assert "**Total (1 targets)**" in markdown  # one uid, not two
 
 
+def test_skips_a_malformed_file_and_still_renders_the_rest(tmp_path):
+    good = tmp_path / "good.json"
+    bad = tmp_path / "bad.json"
+    _write_summary_json(good, uid="a", registry_size=100)
+    bad.write_text("{not valid json")
+    output = tmp_path / "out.md"
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["ci", "summary", str(good), str(bad), "--output", str(output)])
+
+    assert result.exit_code == 0, result.stdout
+    assert "Skipping unreadable summary file" in result.stderr
+    markdown = output.read_text()
+    assert "connect" in markdown
+    assert "**Total (1 targets)**" in markdown
+
+
+def test_renders_an_empty_report_when_every_file_is_malformed(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not valid json")
+    output = tmp_path / "out.md"
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["ci", "summary", str(bad), "--output", str(output)])
+
+    assert result.exit_code == 0, result.stdout
+    assert "Skipping unreadable summary file" in result.stderr
+    assert "**Total (0 targets)**" in output.read_text()
+
+
 def test_disclaimer_is_written_into_the_output(tmp_path):
     summary_file = tmp_path / "a.json"
     _write_summary_json(summary_file, uid="a")

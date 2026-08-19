@@ -358,3 +358,41 @@ def test_publish_summary_skips_registry_measurement_on_dry_run(tmp_path):
 
     _, kwargs = measure_sizes.call_args
     assert kwargs["push"] is False
+
+
+def test_publish_summary_measures_registry_on_a_real_push(tmp_path):
+    """Companion to the dry-run test above: a real (non-dry-run) publish must measure the
+    registry ref, or a hardcoded `push=False` regression would go undetected."""
+    from posit_bakery.plugins.builtin.imagetools.imagetools import ImageToolsPlugin
+
+    target = _fake_target("uid-a")
+    target.image_name = "connect"
+    target.image_version.name = "2026.01.1"
+    target.image_os = None
+    target.image_variant = None
+    target.tags = ["ghcr.io/posit-dev/connect:2026.01.1"]
+    target.cache_name.return_value = None
+
+    with (
+        patch("posit_bakery.config.BakeryConfig.from_context") as from_context,
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
+        _bypass_pydantic_init(OrasIndexCreateWorkflow),
+        _bypass_pydantic_init(OrasIndexCopyWorkflow),
+        patch.object(OrasIndexCopyWorkflow, "run") as copy_run,
+        patch("posit_bakery.image.BuildSummary.measure_sizes") as measure_sizes,
+    ):
+        config = from_context.return_value
+        config.load_build_metadata_from_file.return_value = ["uid-a"]
+        config.get_image_target_by_uid.return_value = target
+        copy_run.return_value = Mock(success=True)
+
+        ImageToolsPlugin().publish(
+            metadata_file=[tmp_path / "a-metadata.json"],
+            context=tmp_path,
+            dry_run=False,
+            summary=True,
+        )
+
+    _, kwargs = measure_sizes.call_args
+    assert kwargs["push"] is True
