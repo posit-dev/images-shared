@@ -399,10 +399,22 @@ jobs:
             --push \
             --summary --summary-format json \
             > "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-summary.json"
+      # Distinguishes this call's artifacts from a sibling call's when a caller invokes
+      # this workflow more than once in the same run (e.g. separate production/development
+      # calls with different `with:` values) -- artifacts are scoped to the run, not to
+      # the invocation, so without this the summary job of each call would download the
+      # other's artifacts too. Same technique `cache-scope: ${{ toJSON(inputs) }}` already
+      # uses elsewhere in this file, just hashed into a name-safe token.
+      - name: Compute artifact scope
+        id: artifact-scope
+        env:
+          INPUTS_JSON: ${{ toJSON(inputs) }}
+        run: |
+          echo "hash=$(printf '%s' "$INPUTS_JSON" | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
       - name: Upload Build Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: "${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-summary"
+          name: "${{ steps.artifact-scope.outputs.hash }}-${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-summary"
           path: "./${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-summary.json"
           retention-days: 3
           overwrite: 'true'
@@ -623,10 +635,16 @@ jobs:
             --summary --summary-format json \
             ./*-metadata.json \
             > "./${IMAGE_NAME}-publish-summary.json"
+      - name: Compute artifact scope
+        id: artifact-scope
+        env:
+          INPUTS_JSON: ${{ toJSON(inputs) }}
+        run: |
+          echo "hash=$(printf '%s' "$INPUTS_JSON" | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
       - name: Upload Publish Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: "${{ matrix.image }}-publish-summary"
+          name: "${{ steps.artifact-scope.outputs.hash }}-${{ matrix.image }}-publish-summary"
           path: "./${{ matrix.image }}-publish-summary.json"
           retention-days: 3
           overwrite: 'true'
@@ -650,10 +668,17 @@ jobs:
         with:
           version: ${{ inputs.version }}
 
+      - name: Compute artifact scope
+        id: artifact-scope
+        env:
+          INPUTS_JSON: ${{ toJSON(inputs) }}
+        run: |
+          echo "hash=$(printf '%s' "$INPUTS_JSON" | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
       - name: Download Build Summaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
-          pattern: "*-summary"
+          pattern: "${{ steps.artifact-scope.outputs.hash }}-*-summary"
           merge-multiple: true
 
       - name: Render Combined Summary
