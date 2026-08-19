@@ -538,6 +538,8 @@ class ImageToolsPlugin(BakeryToolPlugin):
         dev_channel: Any = None,
         dev_spec: Any = None,
         jobs: int | None = None,
+        summary: bool = False,
+        summary_format: Any = None,
     ) -> None:
         """Publish multi-platform images by composing wait -> index-create -> soci-convert ->
         index-copy -> verify.
@@ -709,8 +711,38 @@ class ImageToolsPlugin(BakeryToolPlugin):
         # place; they are cleaned up out-of-band by the clean.yml workflow (bakery clean
         # temp-registry) rather than deleted here.
 
+        def _emit_publish_summary() -> None:
+            # Imported locally: this whole block only runs when --summary is set, and
+            # BuildSummary/SummaryOutputFormat/console imports are otherwise unused by
+            # publish()'s normal path.
+            from posit_bakery.const import SummaryOutputFormat
+            from posit_bakery.image import BuildSummary
+            from posit_bakery.log import stderr_console, stdout_console
+
+            build_summary = BuildSummary.from_image_targets(targets)
+            build_summary.measure_sizes(
+                targets,
+                push=not dry_run,
+                load=False,
+                jobs=jobs,
+                succeeded_uids={t.uid for t in copied_targets},
+            )
+            fmt = summary_format or SummaryOutputFormat.TABLE
+            if fmt == SummaryOutputFormat.JSON:
+                stdout_console.print_json(data=build_summary.as_dict())
+            else:
+                stderr_console.print(build_summary.table(sizes=True))
+
         if stage1_failed or copy_failed or verify_failed:
             log.error(f"publish failed ({len(failures)} target/operation failure(s)):")
             for target, operation, error in failures:
                 log.error(f"  - {target} [{operation}]: {error}")
+            if summary:
+                try:
+                    _emit_publish_summary()
+                except Exception:
+                    log.debug("Failed to emit --summary on the publish-failure path", exc_info=True)
             raise typer.Exit(code=1)
+
+        if summary:
+            _emit_publish_summary()

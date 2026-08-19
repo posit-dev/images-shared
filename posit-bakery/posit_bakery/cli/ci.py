@@ -15,7 +15,7 @@ from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml
 from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
-from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
 from posit_bakery.image import BuildSummary
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.registry_management.dockerhub.readme import find_oversized_readmes, push_readmes
@@ -507,6 +507,22 @@ def publish(
             callback=parse_dev_spec,
         ),
     ] = None,
+    summary: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--summary",
+            help="After publishing, report per-target sizes and layer counts alongside build/tag counts.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
+    summary_format: Annotated[
+        Optional[SummaryOutputFormat],
+        typer.Option(
+            "--summary-format",
+            help="Output format for --summary. 'table' prints to stderr; 'json' prints to stdout.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = SummaryOutputFormat.TABLE,
 ) -> None:
     """Publish multi-platform images by composing oras index-create →
     soci-convert → oras index-copy.
@@ -542,6 +558,8 @@ def publish(
         dev_channel=dev_channel,
         dev_spec=dev_spec,
         jobs=jobs,
+        summary=summary,
+        summary_format=summary_format,
     )
 
 
