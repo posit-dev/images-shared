@@ -949,3 +949,58 @@ class TestMerge:
 
         assert merged.targets[0].cache_ref == shared_ref
         assert merged.targets[0].cache_size == 300_000_000  # first slice's value, not summed
+
+
+class TestToMarkdown:
+    def _target(self, **overrides):
+        defaults = dict(
+            uid="a",
+            image_name="connect",
+            version="2026.01.1",
+            os="Ubuntu 24.04",
+            variant="Standard",
+            platforms=1,
+            tags=8,
+        )
+        defaults.update(overrides)
+        return BuildSummaryTarget(**defaults)
+
+    def test_renders_a_row_per_target_and_a_total_row(self):
+        summary = BuildSummary(
+            rows=[],
+            targets=[
+                self._target(uid="a", variant="Standard", registry_size=1_000_000_000, layers=8),
+                self._target(uid="b", variant="Minimal", registry_size=500_000_000, layers=6),
+            ],
+        )
+
+        markdown = summary.to_markdown()
+
+        assert "connect" in markdown
+        assert "Standard" in markdown
+        assert "Minimal" in markdown
+        assert "1.0 GB" in markdown
+        assert "**Total" in markdown
+        assert "1.5 GB" in markdown  # summed registry size
+
+    def test_unmeasured_size_renders_as_dash_not_zero(self):
+        summary = BuildSummary(rows=[], targets=[self._target()])
+
+        markdown = summary.to_markdown()
+
+        assert "—" in markdown
+
+    def test_no_disclaimer_by_default(self):
+        summary = BuildSummary(rows=[], targets=[self._target()])
+
+        markdown = summary.to_markdown()
+
+        assert "⚠️" not in markdown
+
+    def test_disclaimer_is_prepended_as_a_banner(self):
+        summary = BuildSummary(rows=[], targets=[self._target()])
+
+        markdown = summary.to_markdown(disclaimer="This summary is incomplete.")
+
+        assert markdown.index("⚠️") < markdown.index("| Image |")
+        assert "This summary is incomplete." in markdown

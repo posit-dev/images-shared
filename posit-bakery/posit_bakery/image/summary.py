@@ -515,3 +515,65 @@ class BuildSummary(BaseModel):
                 ),
             ],
         )
+
+    def to_markdown(self, *, disclaimer: str | None = None) -> str:
+        """Renders this summary as a GitHub-Flavored Markdown report, for a GitHub job or
+        run summary. Always renders the full per-target breakdown -- a summary page reader
+        wants the detail, not just the three aggregate counts a terminal caller sees by
+        default without `--summary-format table`'s sizes view.
+
+        :param disclaimer: If given, prepended as a warning-styled blockquote ahead of the
+            table -- e.g. "this run had failures, so these totals are incomplete."
+        """
+        lines: list[str] = []
+        if disclaimer:
+            lines.append(f"> ⚠️ **{disclaimer}**")
+            lines.append("")
+        lines.append("### Build Summary")
+        lines.append("")
+        header = [
+            "Image",
+            "Version",
+            "OS",
+            "Variant",
+            "Platforms",
+            "Tags",
+            "Layers",
+            "Registry Size",
+            "Local Size",
+            "Cache Size",
+        ]
+        lines.append("| " + " | ".join(header) + " |")
+        lines.append("|" + "|".join(["---"] * len(header)) + "|")
+
+        sorted_targets = sorted(self.targets, key=lambda t: (t.image_name, t.version, t.os, t.variant))
+        for t in sorted_targets:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        t.image_name,
+                        t.version,
+                        t.os,
+                        t.variant,
+                        str(t.platforms),
+                        str(t.tags),
+                        str(t.layers) if t.layers is not None else DASH,
+                        format_size(t.registry_size) if t.registry_size is not None else DASH,
+                        format_size(t.local_size) if t.local_size is not None else DASH,
+                        format_size(t.cache_size) if t.cache_size is not None else DASH,
+                    ]
+                )
+                + " |"
+            )
+
+        total_platforms = sum(t.platforms for t in sorted_targets)
+        total_tags = sum(t.tags for t in sorted_targets)
+        lines.append(
+            f"| **Total ({len(sorted_targets)} targets)** | | | | "
+            f"**{total_platforms}** | **{total_tags}** | | "
+            f"**{_total_bytes([t.registry_size for t in sorted_targets])}** | "
+            f"**{_total_bytes([t.local_size for t in sorted_targets])}** | "
+            f"**{_total_bytes(_deduped_cache_sizes(sorted_targets))}** |"
+        )
+        return "\n".join(lines) + "\n"
