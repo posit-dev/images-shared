@@ -399,15 +399,6 @@ jobs:
             --push \
             --summary --summary-format json \
             > "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-summary.json"
-      - name: Render Build Summary
-        env:
-          IMAGE_NAME: ${{ matrix.img.image }}
-          IMAGE_VERSION: ${{ matrix.img.version }}
-          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
-        run: |
-          bakery ci summary "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-summary.json" \
-            --output job-summary.md
-          cat job-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload Build Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -632,12 +623,6 @@ jobs:
             --summary --summary-format json \
             ./*-metadata.json \
             > "./${IMAGE_NAME}-publish-summary.json"
-      - name: Render Publish Summary
-        env:
-          IMAGE_NAME: ${{ matrix.image }}
-        run: |
-          bakery ci summary "./${IMAGE_NAME}-publish-summary.json" --output job-summary.md
-          cat job-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload Publish Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
