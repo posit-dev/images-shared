@@ -1,0 +1,28 @@
+repository:
+  url: "github.com/posit-dev/images-shared"
+  vendor: "Posit Software, PBC"
+  maintainer:
+    name: "Posit Docker Team"
+    email: "docker@posit.co"
+
+registries:
+  - host: "ghcr.io"
+    namespace: "posit-dev"
+
+images:
+  - name: "no-variant-image"
+    options:
+      - tool: "goss"
+        wait: 20
+        command: "entrypoint-jupyter-server"
+      - tool: "hadolint"
+        failureThreshold: "warning"
+      - tool: "wizcli"
+        projects:
+          - "test-project"
+    versions:
+      - name: 1.0.0
+        latest: true
+        os:
+          - name: Ubuntu 22.04
+            primary: true

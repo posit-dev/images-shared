@@ -30,6 +30,16 @@ class TestDGossCommand:
         cmd = DGossCommand.from_image_target(basic_standard_image_target)
         assert cmd.timeout == 900
 
+    def test_from_image_target_uses_parent_image_options_when_variant_less(self, no_variant_image_target):
+        """Image-level goss options must apply to images with no `variants:` entry.
+
+        Regression test for posit-dev/images-shared#756.
+        """
+        assert no_variant_image_target.image_variant is None
+        dgoss_command = DGossCommand.from_image_target(image_target=no_variant_image_target)
+        assert dgoss_command.image_command == "entrypoint-jupyter-server"
+        assert dgoss_command.wait == 20
+
     def test_dgoss_environment(self, basic_standard_image_target):
         """Test that DGossCommand dgoss_environment returns the expected environment variables."""
         dgoss_command = DGossCommand.from_image_target(image_target=basic_standard_image_target)

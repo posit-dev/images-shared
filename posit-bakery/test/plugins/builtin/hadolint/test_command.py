@@ -21,6 +21,17 @@ class TestHadolintCommand:
             basic_standard_image_target.context.base_path / basic_standard_image_target.containerfile
         )
 
+    def test_from_image_target_uses_parent_image_options_when_variant_less(self, no_variant_image_target):
+        """Image-level hadolint options must apply to images with no `variants:` entry.
+
+        Regression test for posit-dev/images-shared#756.
+        """
+        assert no_variant_image_target.image_variant is None
+        cmd = HadolintCommand.from_image_target(no_variant_image_target)
+        assert "--failure-threshold" in cmd.command
+        idx = cmd.command.index("--failure-threshold")
+        assert cmd.command[idx + 1] == "warning"
+
     def test_command_includes_format_json(self, basic_standard_image_target):
         """Test that the command always includes --format json."""
         cmd = HadolintCommand.from_image_target(basic_standard_image_target)

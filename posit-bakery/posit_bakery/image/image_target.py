@@ -17,6 +17,7 @@ from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.registry import Registry, BaseRegistry
 from posit_bakery.config.repository import Repository
 from posit_bakery.config.tag import TagPattern, TagPatternFilter
+from posit_bakery.config.tools import ToolOptions
 from posit_bakery.const import OCI_LABEL_PREFIX, POSIT_LABEL_PREFIX, REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryError, BakeryToolRuntimeError, BakeryFileError
 from posit_bakery.image.image_metadata import MetadataFile, BuildMetadata
@@ -646,6 +647,28 @@ class ImageTarget(BaseModel):
     def temp_registry(self) -> str | None:
         """Get the temporary registry from settings."""
         return self.settings.temp_registry
+
+    def get_tool_option(self, tool: str) -> ToolOptions | None:
+        """Returns tool options for this image target, falling back from variant to parent image.
+
+        When the target has a variant, this delegates to ``ImageVariant.get_tool_option``, which
+        already merges the variant's options with its parent ``Image``'s options. When the target
+        has no variant, this falls back directly to the parent ``Image``'s own ``get_tool_option``
+        so variant-less images can still configure tool options via ``Image.options`` in
+        bakery.yaml, instead of that configuration being silently ignored.
+
+        :param tool: The name of the tool to get options for.
+
+        :return: The ToolOptions object for the specified tool, or None if not found.
+        """
+        if self.image_variant is not None:
+            return self.image_variant.get_tool_option(tool)
+
+        image = self.image_version.parent
+        if image is not None:
+            return image.get_tool_option(tool)
+
+        return None
 
     def remove(self, prune: bool = True, force: bool = False):
         """Remove the image from the local image cache or registry."""

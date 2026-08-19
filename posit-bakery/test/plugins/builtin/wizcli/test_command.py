@@ -27,6 +27,23 @@ class TestWizCLICommand:
         assert "--no-style" in cmd.command
         assert "--json-output-file" in " ".join(cmd.command)
 
+    def test_from_image_target_uses_parent_image_options_when_variant_less(self, no_variant_image_target):
+        """Image-level wizcli options must apply to images with no `variants:` entry.
+
+        Regression test for posit-dev/images-shared#756.
+        """
+        assert no_variant_image_target.image_variant is None
+        results_dir = no_variant_image_target.context.base_path / "results" / "wizcli"
+        cmd = WizCLICommand.from_image_target(
+            image_target=no_variant_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.tool_options is not None
+        assert cmd.tool_options.projects == ["test-project"]
+        assert "--projects" in cmd.command
+        idx = cmd.command.index("--projects")
+        assert cmd.command[idx + 1] == "test-project"
+
     def test_command_includes_dockerfile(self, basic_standard_image_target):
         """Test that --dockerfile is set to the target's containerfile."""
         results_dir = basic_standard_image_target.context.base_path / "results" / "wizcli"

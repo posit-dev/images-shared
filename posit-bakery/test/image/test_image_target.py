@@ -1294,6 +1294,60 @@ class TestImageTarget:
         assert sources == ["image@sha256:digest"]
 
 
+class TestGetToolOption:
+    """Tests for ImageTarget.get_tool_option — see posit-dev/images-shared#756."""
+
+    def test_delegates_to_variant_when_present(self, basic_standard_image_target):
+        """When a variant is set, resolution delegates to ImageVariant.get_tool_option (which
+        already merges with the parent Image's options)."""
+        assert basic_standard_image_target.image_variant is not None
+        expected = basic_standard_image_target.image_variant.get_tool_option("goss")
+        assert basic_standard_image_target.get_tool_option("goss") == expected
+
+    def test_falls_back_to_parent_image_when_variant_less(self, get_config_obj):
+        """When no variant is set, image-level Image.options must not be silently ignored."""
+        config_obj = get_config_obj("variant-less-options")
+        image = config_obj.model.get_image("no-variant-image")
+        version = image.get_version("1.0.0")
+        os = version.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=config_obj.model.repository,
+            image_version=version,
+            image_variant=None,
+            image_os=os,
+        )
+
+        goss_options = target.get_tool_option("goss")
+        assert goss_options is not None
+        assert goss_options.command == "entrypoint-jupyter-server"
+        assert goss_options.wait == 20
+
+        hadolint_options = target.get_tool_option("hadolint")
+        assert hadolint_options is not None
+        assert hadolint_options.failureThreshold == "warning"
+
+        wizcli_options = target.get_tool_option("wizcli")
+        assert wizcli_options is not None
+        assert wizcli_options.projects == ["test-project"]
+
+    def test_returns_none_when_no_options_configured(self, get_config_obj):
+        """A variant-less image with no matching tool option returns None, not a default."""
+        config_obj = get_config_obj("barebones")
+        image = config_obj.model.get_image("scratch")
+        version = image.get_version("1.0.0")
+        os = version.os[0]
+
+        target = ImageTarget.new_image_target(
+            repository=config_obj.model.repository,
+            image_version=version,
+            image_variant=None,
+            image_os=os,
+        )
+
+        assert target.get_tool_option("goss") is None
+
+
 class TestPushSortKey:
     """Tests for ImageTarget.push_sort_key — see ordered-push design spec."""
 
