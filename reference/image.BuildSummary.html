@@ -783,8 +783,11 @@ window.onload = function () {
   <ul class="collapse">
   <li><a href="#as_dict" id="toc-as_dict" class="nav-link" data-scroll-target="#as_dict"><span class="doc-object-name doc-function doc-label doc-label-method">as_dict()</span></a></li>
   <li><a href="#from_image_targets" id="toc-from_image_targets" class="nav-link" data-scroll-target="#from_image_targets"><span class="doc-object-name doc-function doc-label doc-label-method">from_image_targets()</span></a></li>
+  <li><a href="#from_json_file" id="toc-from_json_file" class="nav-link" data-scroll-target="#from_json_file"><span class="doc-object-name doc-function doc-label doc-label-method">from_json_file()</span></a></li>
   <li><a href="#measure_sizes" id="toc-measure_sizes" class="nav-link" data-scroll-target="#measure_sizes"><span class="doc-object-name doc-function doc-label doc-label-method">measure_sizes()</span></a></li>
+  <li><a href="#merge" id="toc-merge" class="nav-link" data-scroll-target="#merge"><span class="doc-object-name doc-function doc-label doc-label-method">merge()</span></a></li>
   <li><a href="#table" id="toc-table" class="nav-link" data-scroll-target="#table"><span class="doc-object-name doc-function doc-label doc-label-method">table()</span></a></li>
+  <li><a href="#to_markdown" id="toc-to_markdown" class="nav-link" data-scroll-target="#to_markdown"><span class="doc-object-name doc-function doc-label doc-label-method">to_markdown()</span></a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -820,7 +823,7 @@ window.onload = function () {
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L227-L443" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L254-L595" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.CLASS">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>image.BuildSummary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -857,6 +860,14 @@ Compute build and artifact counts for the given image targets.
 </tr>
 <tr>
 <td>
+<a href="#from_json_file" class="doc-function doc-label doc-label-method">from_json_file()</a>
+</td>
+<td>
+Reconstructs a <code>BuildSummary</code> from a file written by <code>--summary-format json</code>
+</td>
+</tr>
+<tr>
+<td>
 <a href="#measure_sizes" class="doc-function doc-label doc-label-method">measure_sizes()</a>
 </td>
 <td>
@@ -865,10 +876,26 @@ Populate registry size, local size, layer count, and cache size for each target 
 </tr>
 <tr>
 <td>
+<a href="#merge" class="doc-function doc-label doc-label-method">merge()</a>
+</td>
+<td>
+Combines multiple summaries into one, deduped by <code>BuildSummaryTarget.uid</code>.
+</td>
+</tr>
+<tr>
+<td>
 <a href="#table" class="doc-function doc-label doc-label-method">table()</a>
 </td>
 <td>
 Render the summary as a Rich table.
+</td>
+</tr>
+<tr>
+<td>
+<a href="#to_markdown" class="doc-function doc-label doc-label-method">to_markdown()</a>
+</td>
+<td>
+Renders this summary as a GitHub-Flavored Markdown report, for a GitHub job or
 </td>
 </tr>
 </tbody>
@@ -880,7 +907,7 @@ Render the summary as a Rich table.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L277-L290" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L362-L375" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>as_dict()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -896,7 +923,7 @@ Render the summary as a Rich table.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L233-L275" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L260-L298" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>from_image_targets(targets, <span class="op">*</span>, platforms<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -920,6 +947,23 @@ The <code>--image-platform</code> CLI override, if any. A target that survives t
 </div>
 </section>
 </section>
+<section id="from_json_file" class="level3">
+<h3 class="anchored" data-anchor-id="from_json_file"><span class="doc-object-name doc-function doc-label doc-label-method">from_json_file()</span></h3>
+<div class="doc-subject">
+<p>Reconstructs a <code>BuildSummary</code> from a file written by <code>--summary-format json</code></p>
+</div>
+<div class="doc-usage-source">
+<p>Usage</p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L310-L322" target="_blank" rel="noopener">Source</a></p>
+</div>
+<div class="doc-signature doc-Kind.FUNCTION">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>from_json_file(path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="doc-text">
+<p>(either <code>bakery build</code> or <code>bakery ci publish</code>).</p>
+<p>Rebuilds <code>targets</code> from the dumped <code>targets</code> list and recomputes the three aggregate rows from that list, rather than trusting the file’s own top-level counts – keeps a single source of truth for how aggregates are derived, shared with <code>merge()</code> below.</p>
+</div>
+</section>
 <section id="measure_sizes" class="level3">
 <h3 class="anchored" data-anchor-id="measure_sizes"><span class="doc-object-name doc-function doc-label doc-label-method">measure_sizes()</span></h3>
 <div class="doc-subject">
@@ -927,10 +971,10 @@ The <code>--image-platform</code> CLI override, if any. A target that survives t
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L292-L389" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L377-L474" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>measure_sizes(targets, <span class="op">*</span>, push, load, jobs<span class="op">=</span><span class="va">None</span>, succeeded_uids<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>measure_sizes(targets, <span class="op">*</span>, push, load, jobs<span class="op">=</span><span class="va">None</span>, succeeded_uids<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="doc-text">
 <p>Never raises: a failed measurement leaves that target’s fields as <code>None</code> (rendered as a dash), logged at debug – a registry hiccup or a target that never built must never fail the build itself.</p>
@@ -963,6 +1007,27 @@ UIDs that succeeded in this build run, if known – further narrows the registry
 </div>
 </section>
 </section>
+<section id="merge" class="level3">
+<h3 class="anchored" data-anchor-id="merge"><span class="doc-object-name doc-function doc-label doc-label-method">merge()</span></h3>
+<div class="doc-subject">
+<p>Combines multiple summaries into one, deduped by <code>BuildSummaryTarget.uid</code>.</p>
+</div>
+<div class="doc-usage-source">
+<p>Usage</p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L324-L360" target="_blank" rel="noopener">Source</a></p>
+</div>
+<div class="doc-signature doc-Kind.FUNCTION">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>merge(summaries)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="doc-text">
+<p><code>uid</code> has no platform component, so the same uid can appear in more than one input summary – e.g.&nbsp;one JSON file per platform for a multi-platform target, or a build-time file and a separate publish-time file for the same target. Slices sharing a uid are folded into a single row:</p>
+<ul>
+<li><code>platforms</code>, <code>registry_size</code>, <code>local_size</code> are summed: each slice reports only what it measured (its own platform’s share), so summing reconstructs the true total, the same way a single combined multi-platform registry inspect already sums across manifest children internally.</li>
+<li><code>tags</code>, <code>layers</code>, <code>cache_ref</code>, <code>cache_size</code> take the first non-<code>None</code> value across a uid’s slices – they describe the whole manifest, not one platform’s share, so summing them would be wrong (and, for <code>cache_size</code>, would double-count a cache tag shared by more than one platform slice).</li>
+</ul>
+<p>Aggregate rows are recomputed from the merged, deduped-by-uid target list – never by summing each input’s own aggregate rows, which would double-count any uid appearing in more than one input.</p>
+</div>
+</section>
 <section id="table" class="level3">
 <h3 class="anchored" data-anchor-id="table"><span class="doc-object-name doc-function doc-label doc-label-method">table()</span></h3>
 <div class="doc-subject">
@@ -970,10 +1035,10 @@ UIDs that succeeded in this build run, if known – further narrows the registry
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L391-L443" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L476-L528" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>table(<span class="op">*</span>, sizes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>table(<span class="op">*</span>, sizes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <section id="parameters-2" class="level4 doc-parameters">
 <h4 class="doc-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
@@ -982,6 +1047,33 @@ UIDs that succeeded in this build run, if known – further narrows the registry
 <dt><code><span class="doc-parameter-name">sizes</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span></code></dt>
 <dd>
 <code>False</code> renders the three aggregate count rows only (unchanged since Phase 1). <code>True</code> renders a per-target breakdown – one row per image target, grouped/nested by image, version, OS, and variant with repeated identity values blanked (mirroring the Goss test report’s table), plus a closing <code>Total</code> row. A target whose size wasn’t measured (build failure, or <code>measure_sizes()</code> never called) shows a dash rather than a misleading zero.
+</dd>
+</dl>
+</div>
+</section>
+</section>
+<section id="to_markdown" class="level3">
+<h3 class="anchored" data-anchor-id="to_markdown"><span class="doc-object-name doc-function doc-label doc-label-method">to_markdown()</span></h3>
+<div class="doc-subject">
+<p>Renders this summary as a GitHub-Flavored Markdown report, for a GitHub job or</p>
+</div>
+<div class="doc-usage-source">
+<p>Usage</p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L530-L595" target="_blank" rel="noopener">Source</a></p>
+</div>
+<div class="doc-signature doc-Kind.FUNCTION">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>to_markdown(<span class="op">*</span>, disclaimer<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="doc-text">
+<p>run summary. Always renders the full per-target breakdown – a summary page reader wants the detail, not just the three aggregate counts a terminal caller sees by default without <code>--summary-format table</code>’s sizes view.</p>
+</div>
+<section id="parameters-3" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">disclaimer</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">str | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
+<dd>
+If given, prepended as a warning-styled blockquote ahead of the table – e.g.&nbsp;“this run had failures, so these totals are incomplete.”
 </dd>
 </dl>
 </div>
