@@ -61,6 +61,15 @@ def files(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    all_images: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Render every image and version in the project. Required when no --image-name or "
+            "--image-version filter is given.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = False,
 ) -> None:
     """Renders templates to version files matching the given filters
 
@@ -71,7 +80,19 @@ def files(
 
     \b
     Existing files will not be removed, but may be overwritten during template rendering.
+
+    \b
+    At least one of --image-name or --image-version is required to scope the render. Pass --all to
+    explicitly render every image and version in the project.
     """
+    if image_name is None and image_version is None and not all_images:
+        stderr_console.print(
+            "❌ No scope specified. Pass --image-name and/or --image-version to scope the render, "
+            "or --all to intentionally render every image and version.",
+            style="error",
+        )
+        raise typer.Exit(code=1)
+
     _filter = BakeryConfigFilter(
         image_name=image_name,
         image_version=image_version,
