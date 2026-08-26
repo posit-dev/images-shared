@@ -88,7 +88,8 @@ def build(
         Optional[bool],
         typer.Option(
             "--plan",
-            help="Print the bake plan and exit.",
+            help="Print the bake plan and exit. Only supported with '--strategy bake'; "
+            "errors out under '--strategy build'.",
             rich_help_panel=RichHelpPanelEnum.BUILD_CONFIGURATION_AND_OUTPUTS,
         ),
     ] = False,
@@ -136,10 +137,11 @@ def build(
             writable=True,
             resolve_path=True,
             help="The path to write JSON build metadata to once builds are finished. Each entry is "
-            "keyed by image-target UID. A target built for more than one platform in a single "
-            "invocation yields an index descriptor with no platform, which downstream 'dgoss run' "
-            "and 'ci publish' cannot resolve, so this requires --image-platform to select a single "
-            "platform when any target supports more than one.",
+            "keyed by image-target UID. With '--strategy build' the file is written only after all "
+            "targets succeed; with '--strategy bake' buildx owns the file. A target built for more "
+            "than one platform in a single invocation yields an index descriptor with no platform, "
+            "which downstream 'dgoss run' and 'ci publish' cannot resolve, so this requires "
+            "--image-platform to select a single platform when any target supports more than one.",
             rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
