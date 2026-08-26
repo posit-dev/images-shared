@@ -354,6 +354,52 @@ class TestBuildSummaryFlag:
         instance.build_targets.assert_not_called()
 
 
+class TestMetadataFileSinglePlatformGuard:
+    """--metadata-file must refuse multi-platform builds: a target built for >1 platform in one
+    invocation yields an index descriptor with no platform, which dgoss/ci publish cannot resolve."""
+
+    def _run(self, mock_build_config, targets, extra_args, tmp_path):
+        instance = mock_build_config.from_context.return_value
+        instance.targets = targets
+        return runner.invoke(
+            app,
+            ["build", "--metadata-file", str(tmp_path / "meta.json"), *extra_args, "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+            env=_ENV,
+        )
+
+    def test_multi_platform_target_without_image_platform_errors(self, mock_build_config, tmp_path):
+        result = self._run(mock_build_config, [_fake_target(platforms=("linux/amd64", "linux/arm64"))], [], tmp_path)
+        assert result.exit_code == 1
+        assert "--metadata-file requires a single platform" in result.stderr
+        mock_build_config.from_context.return_value.build_targets.assert_not_called()
+
+    def test_multi_platform_target_with_single_image_platform_builds(self, mock_build_config, tmp_path):
+        result = self._run(
+            mock_build_config,
+            [_fake_target(platforms=("linux/amd64", "linux/arm64"))],
+            ["--image-platform", "linux/arm64"],
+            tmp_path,
+        )
+        assert result.exit_code == 0
+        mock_build_config.from_context.return_value.build_targets.assert_called_once()
+
+    def test_multiple_image_platform_flags_error(self, mock_build_config, tmp_path):
+        result = self._run(
+            mock_build_config,
+            [_fake_target(platforms=("linux/amd64",))],
+            ["--image-platform", "linux/amd64", "--image-platform", "linux/arm64"],
+            tmp_path,
+        )
+        assert result.exit_code == 1
+        assert "--metadata-file requires a single platform" in result.stderr
+
+    def test_single_platform_target_builds(self, mock_build_config, tmp_path):
+        result = self._run(mock_build_config, [_fake_target(platforms=("linux/amd64",))], [], tmp_path)
+        assert result.exit_code == 0
+        mock_build_config.from_context.return_value.build_targets.assert_called_once()
+
+
 @then("the bake plan is valid", target_fixture="bake_plan_data")
 def check_bake_plan_json(bakery_command):
     try:
