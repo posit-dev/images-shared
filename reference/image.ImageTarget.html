@@ -793,6 +793,7 @@ window.onload = function () {
   <li><a href="#labels" id="toc-labels" class="nav-link" data-scroll-target="#labels"><span class="doc-object-name doc-attribute doc-label doc-label-property">labels</span></a></li>
   <li><a href="#push_sort_key" id="toc-push_sort_key" class="nav-link" data-scroll-target="#push_sort_key"><span class="doc-object-name doc-attribute doc-label doc-label-property">push_sort_key</span></a></li>
   <li><a href="#release_channel" id="toc-release_channel" class="nav-link" data-scroll-target="#release_channel"><span class="doc-object-name doc-attribute doc-label doc-label-property">release_channel</span></a></li>
+  <li><a href="#release_channels" id="toc-release_channels" class="nav-link" data-scroll-target="#release_channels"><span class="doc-object-name doc-attribute doc-label doc-label-property">release_channels</span></a></li>
   <li><a href="#resolved_build_secrets" id="toc-resolved_build_secrets" class="nav-link" data-scroll-target="#resolved_build_secrets"><span class="doc-object-name doc-attribute doc-label doc-label-property">resolved_build_secrets</span></a></li>
   <li><a href="#tag_patterns" id="toc-tag_patterns" class="nav-link" data-scroll-target="#tag_patterns"><span class="doc-object-name doc-attribute doc-label doc-label-property">tag_patterns</span></a></li>
   <li><a href="#tag_suffixes" id="toc-tag_suffixes" class="nav-link" data-scroll-target="#tag_suffixes"><span class="doc-object-name doc-attribute doc-label doc-label-property">tag_suffixes</span></a></li>
@@ -848,7 +849,7 @@ window.onload = function () {
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L787" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L812" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.CLASS">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>image.ImageTarget()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -964,6 +965,14 @@ Deterministic ordering for push to ordered-display registries (e.g.&nbsp;Docker 
 </td>
 <td>
 The release channel for this target, defaulting to <code>release</code> when unset.
+</td>
+</tr>
+<tr>
+<td>
+<a href="#release_channels" class="doc-attribute doc-label doc-label-property">release_channels</a>
+</td>
+<td>
+Every release channel whose floating tag this build carries.
 </td>
 </tr>
 <tr>
@@ -1149,6 +1158,18 @@ Generate a unique identifier for the target.
 <p><code><span class="doc-parameter-name">release_channel</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">ReleaseChannelEnum</span></code></p>
 </div>
 </section>
+<section id="release_channels" class="level3">
+<h3 class="anchored" data-anchor-id="release_channels"><span class="doc-object-name doc-attribute doc-label doc-label-property">release_channels</span></h3>
+<div class="doc-subject">
+<p>Every release channel whose floating tag this build carries.</p>
+</div>
+<div class="doc-signature doc-attribute">
+<p><code><span class="doc-parameter-name">release_channels</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[ReleaseChannelEnum]</span></code></p>
+</div>
+<div class="doc-text">
+<p>Normally one, but when multiple dev channels collapse to the same version (e.g.&nbsp;daily and preview both at the current head between branch cut and release, #632) the single build floats every collapsed channel’s tag.</p>
+</div>
+</section>
 <section id="resolved_build_secrets" class="level3">
 <h3 class="anchored" data-anchor-id="resolved_build_secrets"><span class="doc-object-name doc-attribute doc-label doc-label-property">resolved_build_secrets</span></h3>
 <div class="doc-subject">
@@ -1177,6 +1198,9 @@ Generate a unique identifier for the target.
 </div>
 <div class="doc-signature doc-attribute">
 <p><code><span class="doc-parameter-name">tag_suffixes</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[str]</span></code></p>
+</div>
+<div class="doc-text">
+<p>Channel-bearing patterns render once per collapsed release channel so a single build can float every channel’s tag (#632); all others render once.</p>
 </div>
 </section>
 <section id="tag_template_values" class="level3">
@@ -1336,7 +1360,7 @@ Remove the image from the local image cache or registry.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L668-L767" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L693-L792" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>build(</span>
@@ -1360,7 +1384,7 @@ Remove the image from the local image cache or registry.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L530-L541" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L555-L566" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>build_metadata_for_platform(platform)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1376,7 +1400,7 @@ Remove the image from the local image cache or registry.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L579-L599" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L604-L624" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>cache_name(platform<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1400,7 +1424,7 @@ Optional platform string (e.g., “linux/amd64”) to include in the cache tag f
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L769-L787" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L794-L812" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>get_merge_sources()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1416,7 +1440,7 @@ Optional platform string (e.g., “linux/amd64”) to include in the cache tag f
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L657-L666" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L682-L691" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>load_build_metadata_from_file(metadata_file)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1486,7 +1510,7 @@ A new ImageTarget representing the given combination of configurations.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L497-L528" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L522-L553" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ref(platform<span class="op">=</span><span class="ss">f'linux/</span><span class="sc">{</span>SETTINGS<span class="sc">.</span>architecture<span class="sc">}</span><span class="ss">'</span>, <span class="op">*</span>, digest_only<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1525,7 +1549,7 @@ A string reference to the image, using the build metadata digest if available, o
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L650-L655" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L675-L680" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>remove(prune<span class="op">=</span><span class="va">True</span>, force<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>

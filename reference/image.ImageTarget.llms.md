@@ -6,7 +6,7 @@ Represents a combination of image variant, image version, and image version OS t
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L787)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L812)
 
 ``` python
 image.ImageTarget()
@@ -30,6 +30,7 @@ Image targets represent a unique image specified by configuration elements. Imag
 | [labels](#labels) | Generate labels for the image based on its properties. |
 | [push_sort_key](#push_sort_key) | Deterministic ordering for push to ordered-display registries (e.g. Docker Hub). |
 | [release_channel](#release_channel) | The release channel for this target, defaulting to `release` when unset. |
+| [release_channels](#release_channels) | Every release channel whose floating tag this build carries. |
 | [resolved_build_secrets](#resolved_build_secrets) | Return the parent Image’s BuildSecrets whose envVar is set in the environment. |
 | [tag_patterns](#tag_patterns) | Ensure tag patterns are unique. |
 | [tag_suffixes](#tag_suffixes) | Generate tag suffixes from set patterns. |
@@ -117,6 +118,14 @@ The release channel for this target, defaulting to `release` when unset.
 
 `release_channel``:`` ``ReleaseChannelEnum`
 
+### release_channels
+
+Every release channel whose floating tag this build carries.
+
+`release_channels``:`` ``list[ReleaseChannelEnum]`
+
+Normally one, but when multiple dev channels collapse to the same version (e.g. daily and preview both at the current head between branch cut and release, \#632) the single build floats every collapsed channel’s tag.
+
 ### resolved_build_secrets
 
 Return the parent Image’s BuildSecrets whose envVar is set in the environment.
@@ -136,6 +145,8 @@ Ensure tag patterns are unique.
 Generate tag suffixes from set patterns.
 
 `tag_suffixes``:`` ``list[str]`
+
+Channel-bearing patterns render once per collapsed release channel so a single build can float every channel’s tag (#632); all others render once.
 
 ### tag_template_values
 
@@ -201,7 +212,7 @@ Build the image using the Containerfile and return the built image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L668-L767)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L693-L792)
 
 ``` python
 build(
@@ -223,7 +234,7 @@ Returns the most recent build metadata matching `platform`, if any.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L530-L541)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L555-L566)
 
 ``` python
 build_metadata_for_platform(platform)
@@ -237,7 +248,7 @@ Generate the image name and tag to use for a build cache.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L579-L599)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L604-L624)
 
 ``` python
 cache_name(platform=None)
@@ -254,7 +265,7 @@ Get the list of source image references to use for merging.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L769-L787)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L794-L812)
 
 ``` python
 get_merge_sources()
@@ -268,7 +279,7 @@ Load build metadata from a given file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L657-L666)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L682-L691)
 
 ``` python
 load_build_metadata_from_file(metadata_file)
@@ -320,7 +331,7 @@ Returns a reference to the image, preferring a build metadata digest if availabl
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L497-L528)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L522-L553)
 
 ``` python
 ref(platform=f'linux/{SETTINGS.architecture}', *, digest_only=False)
@@ -345,7 +356,7 @@ Remove the image from the local image cache or registry.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L650-L655)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L675-L680)
 
 ``` python
 remove(prune=True, force=False)

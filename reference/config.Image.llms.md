@@ -6,7 +6,7 @@ Model representing an image in the bakery configuration.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L26-L614)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L68-L672)
 
 ``` python
 config.Image()
@@ -70,7 +70,7 @@ Checks if dependencyConstraints and matrix are both defined.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L270-L282)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L312-L324)
 
 ``` python
 check_dependency_constraints_with_matrix()
@@ -84,7 +84,7 @@ Ensures that there are no duplicate dependencies in the image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L169-L194)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L211-L236)
 
 ``` python
 check_duplicate_dependency_constraints(dependency_constraints, info)
@@ -114,7 +114,7 @@ Ensures one version or matrix is defined.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L257-L268)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L299-L310)
 
 ``` python
 check_not_empty()
@@ -131,7 +131,7 @@ Ensures that there are no duplicate variant names in the image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L220-L242)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L262-L284)
 
 ``` python
 check_variant_duplicates(variants, info)
@@ -161,7 +161,7 @@ Ensures that there are no duplicate version names in the image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L196-L218)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L238-L260)
 
 ``` python
 check_version_duplicates(versions, info)
@@ -191,7 +191,7 @@ Creates a new image version and adds it to the image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L461-L523)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L503-L565)
 
 ``` python
 create_matrix(
@@ -235,7 +235,7 @@ Creates a new image version and adds it to the image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L380-L459)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L422-L501)
 
 ``` python
 create_version(
@@ -275,7 +275,7 @@ Ensures that the registries list is unique and warns on duplicates.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L137-L155)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L179-L197)
 
 ``` python
 deduplicate_registries(registries, info)
@@ -300,7 +300,7 @@ Prepend ‘https://’ to the URL if it does not already start with it.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L125-L135)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L167-L177)
 
 ``` python
 default_https_url_scheme(value)
@@ -317,7 +317,7 @@ Ensures that only one of extraRegistries or overrideRegistries is defined.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L157-L167)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L199-L209)
 
 ``` python
 extra_registries_or_override_registries()
@@ -334,7 +334,7 @@ Returns the Goss options for this image variant.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L328-L339)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L370-L381)
 
 ``` python
 get_tool_option(tool)
@@ -356,7 +356,7 @@ Returns an image variant by name, or None if not found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L341-L352)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L383-L394)
 
 ``` python
 get_variant(name)
@@ -378,7 +378,7 @@ Returns an image version by name, or None if not found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L354-L365)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L396-L407)
 
 ``` python
 get_version(name)
@@ -400,7 +400,7 @@ Returns an image version by subpath, or None if not found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L367-L378)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L409-L420)
 
 ``` python
 get_version_by_subpath(subpath)
@@ -422,11 +422,13 @@ Load the development versions for this image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L587-L600)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L629-L658)
 
 ``` python
 load_dev_versions()
 ```
+
+When multiple dev channels resolve to the same version (e.g. daily and preview both at the current head between branch cut and release), collapse them into a single ImageVersion carrying every channel’s floating tag instead of building byte-identical images once per channel (#632).
 
 ### patch_version()
 
@@ -434,7 +436,7 @@ Patches an existing image version with a new version name.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L525-L585)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L567-L627)
 
 ``` python
 patch_version(old_version_name, new_version_name, values=None, clean=True)
@@ -465,7 +467,7 @@ Remove the files for all ephemeral image versions.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L609-L614)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L667-L672)
 
 ``` python
 remove_ephemeral_version_files()
@@ -477,7 +479,7 @@ Create the files for all ephemeral image versions.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L602-L607)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L660-L665)
 
 ``` python
 render_ephemeral_version_files()
@@ -489,7 +491,7 @@ Resolves the dependency versions for this image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L321-L326)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L363-L368)
 
 ``` python
 resolve_dependency_versions()
@@ -506,7 +508,7 @@ Sets the parent for all variants and versions in this image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L244-L255)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L286-L297)
 
 ``` python
 resolve_parentage()
@@ -518,7 +520,7 @@ Serializes the documentation URL to a string.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L284-L289)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/image.py#L326-L331)
 
 ``` python
 serialize_documentation_url(value)
