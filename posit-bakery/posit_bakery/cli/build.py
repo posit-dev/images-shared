@@ -16,6 +16,7 @@ from posit_bakery.config.image.posit_product.errors import (
 )
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
+from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.image import BuildSummary, ImageBuildStrategy
 from posit_bakery.log import stderr_console, stdout_console
 from posit_bakery.util import auto_path
@@ -134,7 +135,11 @@ def build(
         typer.Option(
             writable=True,
             resolve_path=True,
-            help="The path to write JSON build metadata to once builds are finished.",
+            help="The path to write JSON build metadata to once builds are finished. Each entry is "
+            "keyed by image-target UID. A target built for more than one platform in a single "
+            "invocation yields an index descriptor with no platform, which downstream 'dgoss run' "
+            "and 'ci publish' cannot resolve, so this requires --image-platform to select a single "
+            "platform when any target supports more than one.",
             rich_help_panel="Build Configuration & Outputs",
         ),
     ] = None,
@@ -346,6 +351,22 @@ def build(
             _emit_summary(sizes=False)
         # --plan is the dry-run flag, with or without --summary: never fall through to a build.
         raise typer.Exit(code=0)
+
+    if metadata_file is not None:
+        multi = [
+            t
+            for t in config.targets
+            if len(image_platform or (t.image_os.platforms if t.image_os else DEFAULT_PLATFORMS)) > 1
+        ]
+        if multi:
+            stderr_console.print(
+                "❌ --metadata-file requires a single platform: the following target(s) build for "
+                "multiple platforms, which produces an index descriptor with no platform that "
+                "'dgoss run' / 'ci publish' cannot resolve. Pass a single --image-platform (e.g. "
+                f"'linux/amd64'):\n  - " + "\n  - ".join(sorted(t.uid for t in multi)),
+                style="error",
+            )
+            raise typer.Exit(code=1)
 
     try:
         config.build_targets(
