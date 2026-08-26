@@ -136,7 +136,7 @@ class BakeTarget(BaseModel):
                 ]
 
         if image_target.temp_name is not None:
-            kwargs["tags"] = [image_target.temp_name.rsplit(":", 1)[0]]
+            kwargs["tags"] = [image_target.temp_name]
 
         secrets = [s.as_bake_json() for s in image_target.resolved_build_secrets]
         if secrets:
