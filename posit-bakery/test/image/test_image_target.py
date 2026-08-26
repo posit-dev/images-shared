@@ -353,6 +353,29 @@ class TestImageTarget:
         del target.image_version.metadata["release_channel"]
         del target.image_version.metadata["channel_latest"]
 
+    def test_collapsed_channels_float_every_channel_tag(self, basic_standard_image_target):
+        """A build collapsed across channels (#632) floats each channel's tag once."""
+        target = basic_standard_image_target
+        # Canonical identity (UID) is the highest-precedence channel; both float.
+        target.image_version.metadata["release_channel"] = "preview"
+        target.image_version.metadata["release_channels"] = ["preview", "daily"]
+        target.image_version.metadata["channel_latest"] = True
+
+        assert [c.value for c in target.release_channels] == ["preview", "daily"]
+        assert target.uid.endswith("-preview")
+
+        suffixes = target.tag_suffixes
+        assert "preview" in suffixes
+        assert "daily" in suffixes
+        assert "preview-ubuntu-22.04-std" in suffixes
+        assert "daily-ubuntu-22.04-std" in suffixes
+        # Version-pinned tags still emit exactly once.
+        assert sum(1 for s in suffixes if s == "1.0.0") == 1
+
+        del target.image_version.metadata["release_channel"]
+        del target.image_version.metadata["release_channels"]
+        del target.image_version.metadata["channel_latest"]
+
     def test_tag_patterns_deduplication(self, get_config_obj):
         """Test the deduplicate_tag_patterns method of an ImageTarget."""
         basic_config_obj = get_config_obj("basic")

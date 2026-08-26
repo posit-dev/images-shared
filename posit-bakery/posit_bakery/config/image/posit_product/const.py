@@ -49,6 +49,15 @@ class ReleaseChannelEnum(str, Enum):
 ReleaseStreamEnum = ReleaseChannelEnum  # deprecated alias, remove in Phase 0.5c
 
 
+# Precedence, highest first. When multiple dev channels collapse to one build
+# (#632), the highest-precedence channel wins the canonical identity (UID).
+RELEASE_CHANNEL_PRECEDENCE = [
+    ReleaseChannelEnum.RELEASE,
+    ReleaseChannelEnum.PREVIEW,
+    ReleaseChannelEnum.DAILY,
+]
+
+
 PRODUCT_RELEASE_CHANNEL_SUPPORT_MAP = {
     ProductEnum.CONNECT: [ReleaseChannelEnum.RELEASE, ReleaseChannelEnum.DAILY],
     ProductEnum.PACKAGE_MANAGER: [ReleaseChannelEnum.RELEASE, ReleaseChannelEnum.PREVIEW, ReleaseChannelEnum.DAILY],

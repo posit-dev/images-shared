@@ -314,6 +314,19 @@ class ImageTarget(BaseModel):
             ) from e
 
     @property
+    def release_channels(self) -> list[ReleaseChannelEnum]:
+        """Every release channel whose floating tag this build carries.
+
+        Normally one, but when multiple dev channels collapse to the same version
+        (e.g. daily and preview both at the current head between branch cut and
+        release, #632) the single build floats every collapsed channel's tag.
+        """
+        channels = self.image_version.metadata.get("release_channels")
+        if channels:
+            return [c if isinstance(c, ReleaseChannelEnum) else ReleaseChannelEnum(c) for c in channels]
+        return [self.release_channel]
+
+    @property
     def image_name(self) -> str:
         """Return the name of the image."""
         return self.image_version.parent.name
@@ -447,11 +460,23 @@ class ImageTarget(BaseModel):
 
     @property
     def tag_suffixes(self) -> list[str]:
-        """Generate tag suffixes from set patterns."""
+        """Generate tag suffixes from set patterns.
+
+        Channel-bearing patterns render once per collapsed release channel so a
+        single build can float every channel's tag (#632); all others render once.
+        """
+        values = self.tag_template_values
+        # Default to the single templated Channel ("" for release targets, which makes
+        # render() skip channel patterns). Only collapsed builds fan out per channel.
+        collapsed = self.image_version.metadata.get("release_channels")
+        channel_values = [c.value for c in self.release_channels] if collapsed else [values["Channel"]]
         tags = []
         for pattern in self.tag_patterns:
-            rendered_tags = pattern.render(**self.tag_template_values)
-            tags.extend(rendered_tags)
+            if any("{{ Channel }}" in p for p in pattern.patterns):
+                for channel in channel_values:
+                    tags.extend(pattern.render(**{**values, "Channel": channel}))
+            else:
+                tags.extend(pattern.render(**values))
 
         # Ensure tags are unique and sorted
         tags = sorted(list(set(tags)))
