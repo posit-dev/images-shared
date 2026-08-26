@@ -23,6 +23,48 @@ from .version import ImageVersion
 log = logging.getLogger(__name__)
 
 
+def _collapse_dev_channel(existing: ImageVersion, incoming: ImageVersion) -> None:
+    """Merge a duplicate dev-channel resolution into an already-loaded build (#632).
+
+    The two builds are byte-identical (same version, subpath, Containerfile) and
+    differ only by channel. Combines the channel set, picks the highest-precedence
+    channel as the canonical identity (UID), and floats a {{ Channel }} tag only for
+    channels whose head is at this version, so ``channel_latest`` is the union of the
+    merged channels' heads.
+    """
+    from posit_bakery.config.image.posit_product.const import RELEASE_CHANNEL_PRECEDENCE
+
+    rank = {c.value: i for i, c in enumerate(RELEASE_CHANNEL_PRECEDENCE)}
+
+    def _channel_value(channel) -> str:
+        return str(getattr(channel, "value", channel))
+
+    def _head_channels(md: dict) -> set[str]:
+        # Channels whose head genuinely points at this version (floating-tag eligible).
+        channels = md.get("release_channels")
+        if channels is not None:
+            return {_channel_value(c) for c in channels}
+        channel = md.get("release_channel")
+        if channel is not None and md.get("channel_latest", True):
+            return {_channel_value(channel)}
+        return set()
+
+    def _all_channels(md: dict) -> set[str]:
+        channels = md.get("release_channels")
+        if channels:
+            return {_channel_value(c) for c in channels}
+        channel = md.get("release_channel")
+        return {_channel_value(channel)} if channel is not None else set()
+
+    heads = _head_channels(existing.metadata) | _head_channels(incoming.metadata)
+    all_channels = _all_channels(existing.metadata) | _all_channels(incoming.metadata)
+    canonical = min(all_channels, key=lambda c: rank.get(c, len(rank)))
+
+    existing.metadata["release_channel"] = canonical
+    existing.metadata["release_channels"] = sorted(heads, key=lambda c: rank.get(c, len(rank)))
+    existing.metadata["channel_latest"] = bool(heads)
+
+
 class Image(BakeryPathMixin, BakeryYAMLModel):
     """Model representing an image in the bakery configuration."""
 
@@ -585,19 +627,35 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
         return patched_image_version
 
     def load_dev_versions(self):
-        """Load the development versions for this image."""
+        """Load the development versions for this image.
+
+        When multiple dev channels resolve to the same version (e.g. daily and
+        preview both at the current head between branch cut and release), collapse
+        them into a single ImageVersion carrying every channel's floating tag
+        instead of building byte-identical images once per channel (#632).
+        """
+        resolved: dict[str, ImageVersion] = {}
         for dev_version in self.devVersions:
             try:
                 image_version = dev_version.as_image_version()
             except (RuntimeError, ValueError, pydantic.ValidationError, requests.RequestException) as e:
                 log.warning(f"Skipping {self.name} {repr(dev_version)}: {e}")
                 continue
+            existing = resolved.get(image_version.name)
+            if existing is not None:
+                _collapse_dev_channel(existing, image_version)
+                log.info(
+                    f"Collapsed {self.name} {repr(dev_version)} into existing {image_version.name} build "
+                    f"(channels: {', '.join(existing.metadata.get('release_channels', []))})."
+                )
+                continue
             log_message = f"Loaded {self.name} development version from {repr(dev_version)}:\n"
             log_message += f"  - Version: {image_version.name}\n"
             for dep in image_version.dependencies:
                 log_message += f"  - Dependency: {dep.dependency} {', '.join(dep.versions)}\n"
             log.info(log_message.strip())
-            self.versions.append(image_version)
+            resolved[image_version.name] = image_version
+        self.versions.extend(resolved.values())
 
     def render_ephemeral_version_files(self):
         """Create the files for all ephemeral image versions."""

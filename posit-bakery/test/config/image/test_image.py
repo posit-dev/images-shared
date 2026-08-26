@@ -705,6 +705,45 @@ class TestImage:
         assert i.get_version(channel_version).os[0].name == "Ubuntu 22.04"
         assert str(i.get_version(channel_version).os[0].artifactDownloadURL) == channel_url
 
+    def test_load_dev_versions_collapses_duplicate_channels(self):
+        """Two dev channels resolving to the same version collapse into one build (#632)."""
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        shared_version = "1.1.0"
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version=shared_version, download_url="https://example.com/image.tar.gz"
+            )
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "channel": "daily",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "channel": "preview",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                ],
+            )
+            i.load_dev_versions()
+
+        # One build, not two.
+        assert len(i.versions) == 1
+        version = i.get_version(shared_version)
+        # Canonical identity is the highest-precedence channel (preview beats daily).
+        assert version.metadata["release_channel"] == "preview"
+        assert sorted(version.metadata["release_channels"]) == ["daily", "preview"]
+        assert version.metadata["channel_latest"] is True
+
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
         context = get_tmpcontext("basic")
