@@ -204,8 +204,8 @@ class ImageToolsPlugin(BakeryToolPlugin):
             """Merge multi-platform images from build metadata files using ORAS.
 
             \b
-            Takes one or more build metadata JSON files (produced by `bakery build --strategy build`)
-            and merges platform-specific images into multi-platform manifest indexes.
+            Takes one or more build metadata JSON files (produced by `bakery build --metadata-file`,
+            either build strategy) and merges platform-specific images into multi-platform manifest indexes.
             """
             settings = BakerySettings(
                 dev_versions=DevVersionInclusionEnum.INCLUDE,

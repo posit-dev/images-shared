@@ -217,3 +217,43 @@ Bakery also adds the following tags to the latest image version:
 | *Added if `os == primary_os`* | | |
 | `std` | `min` | `<type>` |
 | `latest` | ❌ | `latest` |
+
+### Build Strategies
+
+`bakery build` supports two strategies, selected with `--strategy`. Both emit the
+same `--metadata-file` contract, so either can feed `bakery dgoss run` and
+`bakery imagetools merge`.
+
+| Aspect | `--strategy bake` (default) | `--strategy build` |
+|:---|:---|:---|
+| Builder | `docker buildx bake` (requires Docker Buildkit) | Docker, Podman, or nerdctl |
+| Parallelism | Builds all targets in parallel | Concurrent, bounded by `--jobs` |
+| `--plan` | Supported (prints the bake plan) | Not supported; errors out |
+| `--fail-fast` | Buildx stops the whole bake on first failure | Stops scheduling new targets after the first failure |
+| `--metadata-file` write | Buildx owns the file | Written only after **all** targets succeed |
+
+#### Metadata file semantics
+
+The `--metadata-file` JSON is keyed by image-target UID, one entry per target.
+Because `--strategy build` writes the file only after every target succeeds, a
+failed target leaves the file **absent** entirely; under `--strategy bake` a
+failed bake means buildx leaves a **missing** file. Either way, downstream
+`dgoss run` / `ci publish` see no file rather than a partial one.
+
+#### One platform per invocation
+
+A target built for more than one platform in a single invocation produces one
+metadata entry describing an index/manifest-list descriptor with **no**
+`platform` field. This has two concrete consequences for consumers:
+
+* `bakery dgoss run --metadata-file` can no longer match the exact built digest
+  and falls back to a tag-based reference, so it stops testing the digest that
+  was actually built.
+* `bakery imagetools merge` loses its per-platform merge inputs, collapsing them
+  to a single unkeyed source.
+
+For this reason `bakery build` **requires `--image-platform` to select a single
+platform** whenever `--metadata-file` is set and any target supports more than
+one platform. Build **one platform per invocation** when the metadata file is
+consumed downstream — this is what `bakery-build-native.yml` already does (one
+image/version/platform per runner).
