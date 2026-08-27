@@ -225,6 +225,33 @@ class TestMetadataFile:
         assert len(metadata_file.metadata_map.root.keys()) == 4
         assert metadata_file.filepath is None
 
+    @pytest.mark.parametrize("unexpected_value", [[], {"details": "unexpected metadata"}])
+    @pytest.mark.parametrize(
+        "load_metadata",
+        [
+            pytest.param(MetadataFile.load, id="load"),
+            pytest.param(lambda filepath: MetadataFile.loads(filepath.read_text()), id="loads"),
+        ],
+    )
+    def test_metadata_file_loading_ignores_non_target_entries(self, tmp_path, unexpected_value, load_metadata, caplog):
+        """Buildx global metadata must not be mistaken for a target's metadata."""
+        metadata_filepath = tmp_path / "metadata.json"
+        metadata_filepath.write_text(
+            json.dumps(
+                {
+                    "example-1-0-0": {"image.name": "example:1.0.0"},
+                    "buildx.build.warnings": unexpected_value,
+                }
+            )
+        )
+        caplog.set_level("DEBUG", logger="posit_bakery.image.image_metadata")
+
+        metadata_file = load_metadata(metadata_filepath)
+
+        assert list(metadata_file.metadata_map.root) == ["example-1-0-0"]
+        assert metadata_file.get_target_metadata_by_uid("example-1-0-0").image_name == "example:1.0.0"
+        assert "Ignoring non-target build metadata entries: buildx.build.warnings" in caplog.text
+
     def test_metadata_file_no_filepath_or_metadata_value_error(self):
         with pytest.raises(ValueError):
             MetadataFile()

@@ -1,10 +1,11 @@
 import datetime
 import json
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import ConfigDict, BaseModel, Field, RootModel
+from pydantic import ConfigDict, BaseModel, Field, RootModel, model_validator
 
 log = logging.getLogger(__name__)
 
@@ -246,6 +247,32 @@ class BuildMetadata(BaseModel):
 
 class BuildMetadataMap(RootModel[dict[str, BuildMetadata]]):
     """Representation of a mapping from target UIDs to build metadata."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_non_target_entries(cls, value):
+        """Remove buildx metadata entries that are not associated with a target UID."""
+        if not isinstance(value, Mapping):
+            return value
+
+        metadata_by_target = {}
+        discarded_keys = []
+        for key, metadata in value.items():
+            # ImageTarget.uid() replaces dots, plus signs, slashes, and spaces with hyphens.
+            # Buildx uses dotted keys for global metadata such as buildx.build.warnings.
+            if (
+                not isinstance(key, str)
+                or any(character in key for character in ".+/ ")
+                or not isinstance(metadata, (Mapping, BuildMetadata))
+            ):
+                discarded_keys.append(str(key))
+                continue
+            metadata_by_target[key] = metadata
+
+        if discarded_keys:
+            log.debug("Ignoring non-target build metadata entries: %s", ", ".join(discarded_keys))
+
+        return metadata_by_target
 
 
 class MetadataFile(BaseModel):
