@@ -43,27 +43,43 @@ def exit_if_no_targets(config: "BakeryConfig", settings: "BakerySettings") -> No
     detail = f" matching {active}" if active else ""
     stderr_console.print(
         f"❌ No image targets{detail}. Check the --image-name, --image-version, "
-        "--image-variant, --image-os, and --image-platform filters along with the "
-        "--dev-versions/--matrix-versions selection.",
+        "--image-variant, --image-os, --image-platform, and --latest filters along "
+        "with the --dev-versions/--matrix-versions selection.",
         style="error",
     )
     raise typer.Exit(code=1)
 
 
 def _describe_active_filters(settings: "BakerySettings") -> str:
-    """Render the set filters as a human-readable ``--flag value`` list."""
+    """Render the active filters as a human-readable ``--flag value`` list.
+
+    Only lists filters the caller actually set. ``--latest`` is included
+    because it is the one narrowing policy filter whose default (``False``)
+    does not narrow, so seeing it here always means the caller asked for it --
+    and it is frequently the filter that emptied the selection while every
+    selector matched, which a selector-only message hid entirely.
+    ``--dev-versions``/``--matrix-versions`` stay out: they default to
+    ``exclude``, so echoing them would report flags the caller never passed.
+    """
     f = settings.filter
-    parts = [
-        f"--{name} {value!r}"
-        for name, value in (
-            ("image-name", f.image_name),
-            ("image-version", f.image_version),
-            ("image-variant", f.image_variant),
-            ("image-os", f.image_os),
-            ("image-platform", f.image_platform),
-        )
-        if value
-    ]
+    parts = []
+    for name, value in (
+        ("image-name", f.image_name),
+        ("image-version", f.image_version),
+        ("image-variant", f.image_variant),
+        ("image-os", f.image_os),
+        ("image-platform", f.image_platform),
+    ):
+        if not value:
+            continue
+        if isinstance(value, (list, tuple)):
+            # Render as the flag would be typed rather than as a Python list
+            # repr, which surfaced as "--image-platform ['linux/arm64']".
+            parts.extend(f"--{name} {v!r}" for v in value)
+        else:
+            parts.append(f"--{name} {value!r}")
+    if settings.latest:
+        parts.append("--latest")
     return ", ".join(parts)
 
 
