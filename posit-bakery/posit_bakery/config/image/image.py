@@ -32,7 +32,7 @@ def _collapse_dev_channel(existing: ImageVersion, incoming: ImageVersion) -> Non
     channels whose head is at this version, so ``channel_latest`` is the union of the
     merged channels' heads.
     """
-    from posit_bakery.config.image.posit_product.const import RELEASE_CHANNEL_PRECEDENCE
+    from posit_bakery.config.image.posit_product.const import RELEASE_CHANNEL_PRECEDENCE, ReleaseChannelEnum
 
     rank = {c.value: i for i, c in enumerate(RELEASE_CHANNEL_PRECEDENCE)}
 
@@ -60,8 +60,10 @@ def _collapse_dev_channel(existing: ImageVersion, incoming: ImageVersion) -> Non
     all_channels = _all_channels(existing.metadata) | _all_channels(incoming.metadata)
     canonical = min(all_channels, key=lambda c: rank.get(c, len(rank)))
 
-    existing.metadata["release_channel"] = canonical
-    existing.metadata["release_channels"] = sorted(heads, key=lambda c: rank.get(c, len(rank)))
+    existing.metadata["release_channel"] = ReleaseChannelEnum(canonical)
+    existing.metadata["release_channels"] = [
+        ReleaseChannelEnum(c) for c in sorted(heads, key=lambda c: rank.get(c, len(rank)))
+    ]
     existing.metadata["channel_latest"] = bool(heads)
 
 

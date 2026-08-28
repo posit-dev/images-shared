@@ -9,8 +9,10 @@ from posit_bakery.config import Image, BakeryConfigDocument, BaseRegistry, Regis
 from posit_bakery.config.dependencies.python import PythonDependencyVersions
 from posit_bakery.config.dependencies.quarto import QuartoDependencyVersions
 from posit_bakery.config.dependencies.r import RDependencyVersions
+from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.main import ReleaseChannelResult
 from posit_bakery.config.tag import default_matrix_tag_patterns, default_tag_patterns
+from posit_bakery.const import DevVersionInclusionEnum
 
 pytestmark = [
     pytest.mark.unit,
@@ -739,10 +741,62 @@ class TestImage:
         # One build, not two.
         assert len(i.versions) == 1
         version = i.get_version(shared_version)
-        # Canonical identity is the highest-precedence channel (preview beats daily).
-        assert version.metadata["release_channel"] == "preview"
-        assert sorted(version.metadata["release_channels"]) == ["daily", "preview"]
+        # Canonical identity is the highest-precedence channel (preview beats daily),
+        # stored as ReleaseChannelEnum (not a plain string).
+        assert version.metadata["release_channel"] is ReleaseChannelEnum.PREVIEW
+        assert version.metadata["release_channels"] == [
+            ReleaseChannelEnum.PREVIEW,
+            ReleaseChannelEnum.DAILY,
+        ]
         assert version.metadata["channel_latest"] is True
+
+    def test_load_dev_versions_collapsed_passes_dev_channel_filter(self):
+        """A collapsed build must pass matches_dev_filter for any of its channels.
+
+        Regression test for the crash introduced in #632: _collapse_dev_channel() was
+        storing plain strings in metadata["release_channel"], and matches_dev_filter()
+        called .value on the stored value, raising AttributeError. Additionally the
+        filter was only checking the canonical channel (preview), so --dev-channel daily
+        would incorrectly drop the build even though daily is one of its channels.
+        """
+        context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"
+        mock_parent = MagicMock(spec=BakeryConfigDocument)
+        mock_parent.path = context
+
+        shared_version = "1.1.0"
+        with patch("posit_bakery.config.image.dev_version.channel.get_product_artifact_by_channel") as mock_get:
+            mock_get.return_value = ReleaseChannelResult(
+                version=shared_version, download_url="https://example.com/image.tar.gz"
+            )
+            i = Image(
+                name="my-image",
+                parent=mock_parent,
+                devVersions=[
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "channel": "daily",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                    {
+                        "sourceType": "stream",
+                        "product": "workbench",
+                        "channel": "preview",
+                        "os": [{"name": "Ubuntu 22.04", "primary": True}],
+                    },
+                ],
+            )
+            i.load_dev_versions()
+
+        version = i.get_version(shared_version)
+        # Both channels pass the filter — neither should be dropped.
+        for channel in (ReleaseChannelEnum.DAILY, ReleaseChannelEnum.PREVIEW):
+            included, reason = version.matches_dev_filter(DevVersionInclusionEnum.ONLY, channel)
+            assert included, f"--dev-channel {channel.value} incorrectly excluded collapsed build: {reason}"
+        # An unrelated channel is still excluded.
+        included, reason = version.matches_dev_filter(DevVersionInclusionEnum.ONLY, ReleaseChannelEnum.RELEASE)
+        assert not included
+        assert "does not match" in reason
 
     def test_render_ephemeral_version_files(self, get_tmpcontext, common_image_variants_objects):
         """Test that render_ephemeral_version_files creates the correct directory structure for an ephemeral version."""
