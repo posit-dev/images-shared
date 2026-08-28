@@ -456,7 +456,7 @@ jobs:
       # name-free `repo@sha256:...` entry per target -- all of them coexist,
       # unlike tags. wizcli's `extract` driver reads the local store, so it can
       # only resolve every target once Test has warmed it.
-      - name: Scan
+      - name: Wiz Scan
         if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
         continue-on-error: true
         env:
@@ -497,6 +497,34 @@ jobs:
             "${LATEST_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      - name: Setup trivy
+        if: ${{ inputs.push && matrix.img.latest }}
+        uses: "posit-dev/images-shared/setup-trivy@main"
+
+      # After Test for the same reason the Wiz scan is: only Test's `docker run`
+      # makes every target addressable locally. Scanning earlier silently pulled
+      # and scanned the published image instead of the one just built.
+      - name: Trivy Scan
+        if: ${{ inputs.push && matrix.img.latest }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          bakery trivy scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$NORMALIZED_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
