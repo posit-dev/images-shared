@@ -35,6 +35,7 @@ class RichHelpPanelEnum(str, Enum):
 class BakeryCIMatrixFieldEnum(str, Enum):
     VERSION = "version"
     DEV = "dev"
+    LATEST = "latest"
     PLATFORM = "platform"
 
 
@@ -265,6 +266,7 @@ def matrix(
         "image": "image-name",
         "version": "version-name",
         "dev": false,
+        "latest": true,
         "platform": "linux/amd64"
       }
     ]
@@ -357,6 +359,10 @@ def matrix(
                     entry["version"] = ver.name
                 if BakeryCIMatrixFieldEnum.DEV not in exclude:
                     entry["dev"] = ver.isDevelopmentVersion
+                if BakeryCIMatrixFieldEnum.LATEST not in exclude:
+                    # Same predicate the --latest filter uses, so a workflow gating on
+                    # this field selects exactly what `--latest` would have.
+                    entry["latest"] = ver.is_latest_release
                 if BakeryCIMatrixFieldEnum.PLATFORM not in exclude:
                     for platform in ver.supported_platforms:
                         entry["platform"] = platform

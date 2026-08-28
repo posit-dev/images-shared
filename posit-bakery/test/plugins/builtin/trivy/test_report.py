@@ -1,0 +1,179 @@
+import json
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+
+from posit_bakery.plugins.builtin.trivy.report import TrivyReport, TrivyReportCollection
+
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.trivy,
+]
+
+TRIVY_TESTDATA_DIR = (Path(__file__).parent / "testdata").absolute()
+
+
+class TestTrivyReport:
+    def test_load_from_file(self):
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        assert report.critical_count == 1
+        assert report.high_count == 2
+        assert report.medium_count == 1
+        assert report.low_count == 0
+        assert report.unknown_count == 0
+
+    def test_total_vulnerability_count(self):
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        assert report.total_count == 4
+
+    def test_empty_results(self, tmp_path):
+        """A SARIF file with no results should have zero counts."""
+        data = json.loads((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+        data["runs"][0]["results"] = []
+        result_file = tmp_path / "empty.sarif"
+        result_file.write_text(json.dumps(data))
+        report = TrivyReport.load(result_file)
+        assert report.total_count == 0
+
+    def test_unknown_rule_id_counts_as_unknown(self, tmp_path):
+        """A result referencing a ruleId with no matching rule counts as UNKNOWN."""
+        data = json.loads((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+        data["runs"][0]["results"].append(
+            {
+                "ruleId": "CVE-NOT-IN-RULES",
+                "ruleIndex": 99,
+                "level": "note",
+                "message": {"text": "orphaned result"},
+                "locations": [],
+            }
+        )
+        result_file = tmp_path / "orphan.sarif"
+        result_file.write_text(json.dumps(data))
+        report = TrivyReport.load(result_file)
+        assert report.unknown_count == 1
+
+    def test_load_stamps_automation_details_id(self, tmp_path):
+        """scan_category is written to every run's automationDetails.id with a trailing slash.
+
+        Code scanning reads everything before the last slash as the category; the
+        trailing slash leaves the run ID empty. This is how a single directory-wide
+        upload-sarif invocation gives each file its own category.
+        """
+        result_file = tmp_path / "stamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        TrivyReport.load(result_file, scan_category="connect-min-ubuntu-22-04-amd64")
+
+        data = json.loads(result_file.read_text())
+        assert data["runs"]
+        for run in data["runs"]:
+            assert run["automationDetails"]["id"] == "connect-min-ubuntu-22-04-amd64/"
+
+    def test_load_without_category_leaves_automation_details_absent(self, tmp_path):
+        """No scan_category means no automationDetails, so upload-sarif can fill it in."""
+        result_file = tmp_path / "unstamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        TrivyReport.load(result_file)
+
+        data = json.loads(result_file.read_text())
+        assert all("automationDetails" not in run for run in data["runs"])
+
+    def test_load_stamping_preserves_counts(self, tmp_path):
+        """Stamping must not disturb the parsed severity counts."""
+        result_file = tmp_path / "stamped.sarif"
+        result_file.write_text((TRIVY_TESTDATA_DIR / "scan_result.sarif").read_text())
+
+        report = TrivyReport.load(result_file, scan_category="some-category")
+
+        assert report.critical_count == 1
+        assert report.high_count == 2
+        assert report.medium_count == 1
+        assert report.total_count == 4
+
+    @pytest.mark.parametrize(
+        "severities,expected",
+        [
+            (["CRITICAL"], True),
+            (["LOW"], False),
+            (["LOW", "MEDIUM"], True),
+            (["critical"], True),  # case-insensitive
+        ],
+    )
+    def test_breaches(self, severities, expected):
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        assert report.breaches(severities) is expected
+
+
+class TestTrivyReportCollection:
+    def _make_mock_target(self, image_name, uid, version="1.0.0", variant=None, os_name=None):
+        target = MagicMock()
+        target.image_name = image_name
+        target.uid = uid
+        target.image_version.name = version
+        target.image_variant = None
+        target.image_os = None
+        if variant:
+            target.image_variant = MagicMock()
+            target.image_variant.name = variant
+        if os_name:
+            target.image_os = MagicMock()
+            target.image_os.name = os_name
+        return target
+
+    def test_add_report(self):
+        collection = TrivyReportCollection()
+        target = self._make_mock_target("connect", "connect-1.0.0-std-ubuntu2204")
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        collection.add_report(target, report)
+
+        assert "connect" in collection
+        assert "connect-1.0.0-std-ubuntu2204" in collection["connect"]
+
+    def test_aggregate(self):
+        collection = TrivyReportCollection()
+        target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        collection.add_report(target, report)
+
+        agg = collection.aggregate()
+        assert agg["total"]["critical"] == 1
+        assert agg["total"]["high"] == 2
+        assert agg["total"]["medium"] == 1
+        assert agg["total"]["low"] == 0
+        assert agg["total"]["unknown"] == 0
+
+    def test_table_returns_rich_table(self):
+        collection = TrivyReportCollection()
+        target = self._make_mock_target("connect", "connect-1.0.0", "1.0.0", "Standard", "Ubuntu 22.04")
+        report = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        collection.add_report(target, report)
+
+        table = collection.table()
+        assert table.title == "Trivy Scan Results"
+        # Image, Version, Variant, OS, Critical, High, Medium, Low, Unknown
+        assert len(table.columns) == 9
+
+    def test_aggregate_disambiguates_same_name_tuple_by_uid(self):
+        """Two targets sharing image/version/os/variant but different uids
+        (e.g. a dev vs. release channel build) must both appear, not collide."""
+        collection = TrivyReportCollection()
+        target_a = self._make_mock_target(
+            "connect", "connect-1.0.0-std-ubuntu2204-release", "1.0.0", "Standard", "Ubuntu 22.04"
+        )
+        target_b = self._make_mock_target(
+            "connect", "connect-1.0.0-std-ubuntu2204-dev", "1.0.0", "Standard", "Ubuntu 22.04"
+        )
+        report_a = TrivyReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
+        report_b = TrivyReport(critical_count=0, high_count=0, medium_count=0, low_count=1, unknown_count=0)
+        collection.add_report(target_a, report_a)
+        collection.add_report(target_b, report_b)
+
+        agg = collection.aggregate()
+        leaf = agg["connect"]["1.0.0"]["Ubuntu 22.04"]["Standard"]
+        assert len(leaf) == 2
+        assert leaf["connect-1.0.0-std-ubuntu2204-release"]["critical"] == 1
+        assert leaf["connect-1.0.0-std-ubuntu2204-dev"]["low"] == 1
+        assert agg["total"]["critical"] == 1
+        assert agg["total"]["low"] == 1
