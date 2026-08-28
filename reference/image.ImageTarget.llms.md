@@ -6,7 +6,7 @@ Represents a combination of image variant, image version, and image version OS t
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L220-L812)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L221-L835)
 
 ``` python
 image.ImageTarget()
@@ -189,6 +189,7 @@ The channel is appended for development versions so a dev build and a release bu
 | [build_metadata_for_platform()](#build_metadata_for_platform) | Returns the most recent build metadata matching `platform`, if any. |
 | [cache_name()](#cache_name) | Generate the image name and tag to use for a build cache. |
 | [get_merge_sources()](#get_merge_sources) | Get the list of source image references to use for merging. |
+| [get_tool_option()](#get_tool_option) | Returns tool options for this image target, falling back from variant to parent image. |
 | [load_build_metadata_from_file()](#load_build_metadata_from_file) | Load build metadata from a given file. |
 | [new_image_target()](#new_image_target) | Create a new ImageTarget instance from a repository, version, variant, and OS combination. |
 | [ref()](#ref) | Returns a reference to the image, preferring a build metadata digest if available. |
@@ -200,7 +201,7 @@ Return a string representation of the image target.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L275-L283)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L276-L284)
 
 ``` python
 __str__()
@@ -212,7 +213,7 @@ Build the image using the Containerfile and return the built image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L693-L792)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L716-L815)
 
 ``` python
 build(
@@ -234,7 +235,7 @@ Returns the most recent build metadata matching `platform`, if any.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L555-L566)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L556-L567)
 
 ``` python
 build_metadata_for_platform(platform)
@@ -248,7 +249,7 @@ Generate the image name and tag to use for a build cache.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L604-L624)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L605-L625)
 
 ``` python
 cache_name(platform=None)
@@ -265,7 +266,7 @@ Get the list of source image references to use for merging.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L794-L812)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L817-L835)
 
 ``` python
 get_merge_sources()
@@ -273,13 +274,37 @@ get_merge_sources()
 
 Sources collected will be the most recent artifact for each platform represented in the build metadata.
 
+### get_tool_option()
+
+Returns tool options for this image target, falling back from variant to parent image.
+
+Usage
+
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L676-L696)
+
+``` python
+get_tool_option(tool)
+```
+
+When the target has a variant, this delegates to `ImageVariant.get_tool_option`, which already merges the variant’s options with its parent `Image`’s options. When the target has no variant, this falls back directly to the parent `Image`’s own `get_tool_option` so variant-less images can still configure tool options via `Image.options` in bakery.yaml, instead of that configuration being silently ignored.
+
+#### Parameters
+
+`tool``:`` ``str`  
+The name of the tool to get options for.
+
+#### Returns
+
+` ``ToolOptions | None`  
+The ToolOptions object for the specified tool, or None if not found.
+
 ### load_build_metadata_from_file()
 
 Load build metadata from a given file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L682-L691)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L705-L714)
 
 ``` python
 load_build_metadata_from_file(metadata_file)
@@ -291,7 +316,7 @@ Create a new ImageTarget instance from a repository, version, variant, and OS co
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L241-L273)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L242-L274)
 
 ``` python
 new_image_target(
@@ -331,7 +356,7 @@ Returns a reference to the image, preferring a build metadata digest if availabl
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L522-L553)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L523-L554)
 
 ``` python
 ref(platform=f'linux/{SETTINGS.architecture}', *, digest_only=False)
@@ -356,7 +381,7 @@ Remove the image from the local image cache or registry.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L675-L680)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/image_target.py#L698-L703)
 
 ``` python
 remove(prune=True, force=False)
