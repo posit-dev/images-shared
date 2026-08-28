@@ -6,7 +6,7 @@ Model representing a version of an image.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L30-L559)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L30-L584)
 
 ``` python
 config.ImageVersion()
@@ -74,7 +74,7 @@ Ensures that the dependencies list is unique and errors on duplicates.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L258-L282)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L283-L307)
 
 ``` python
 check_duplicate_dependencies(dependencies, info)
@@ -104,7 +104,7 @@ Ensures that the os list is not empty.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L177-L193)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L202-L218)
 
 ``` python
 check_os_not_empty(os, info)
@@ -129,7 +129,7 @@ Ensures that the os list is unique and warns on duplicates.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L195-L210)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L220-L235)
 
 ``` python
 deduplicate_os(os, info)
@@ -154,7 +154,7 @@ Ensures that the registries list is unique and warns on duplicates.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L156-L175)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L181-L200)
 
 ``` python
 deduplicate_registries(registries, info)
@@ -179,7 +179,7 @@ Ensures that only one of extraRegistries or overrideRegistries is defined.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L284-L294)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L309-L319)
 
 ``` python
 extra_registries_or_override_registries()
@@ -196,7 +196,7 @@ Generates the template values for rendering.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L361-L403)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L386-L428)
 
 ``` python
 generate_template_values(variant=None, version_os=None)
@@ -221,7 +221,7 @@ Ensures that at most one OS is marked as primary.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L212-L231)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L237-L256)
 
 ``` python
 make_single_os_primary(os, info)
@@ -246,7 +246,7 @@ Check whether this version should be included given dev version filters.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L134-L154)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L134-L179)
 
 ``` python
 matches_dev_filter(dev_versions, dev_channel=None)
@@ -271,7 +271,7 @@ Ensures that at most one OS is marked as primary.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L233-L256)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L258-L281)
 
 ``` python
 max_one_primary_os(os, info)
@@ -301,7 +301,7 @@ Render a new image version from the template.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L405-L559)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L430-L584)
 
 ``` python
 render_files(variants=None, regex_filters=None)
@@ -332,7 +332,7 @@ Sets the parent for all OSes in this image version.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L296-L301)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L321-L326)
 
 ``` python
 resolve_parentage()
