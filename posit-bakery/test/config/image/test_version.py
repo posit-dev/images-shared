@@ -607,7 +607,8 @@ class TestImageVersion:
                 None,
                 id="collapsed-channel-in-set",
             ),
-            # Collapsed build: release_channels present, queried channel not in the set → excluded
+            # Collapsed build: release_channels present, queried channel not in the set → excluded,
+            # error message reports all channels (not just the canonical one)
             pytest.param(
                 True,
                 DevVersionInclusionEnum.ONLY,
@@ -617,8 +618,19 @@ class TestImageVersion:
                     "release_channels": [ReleaseChannelEnum.PREVIEW, ReleaseChannelEnum.DAILY],
                 },
                 False,
-                "does not match",
+                "[daily, preview]",
                 id="collapsed-channel-not-in-set",
+            ),
+            # Collapsed build: release_channels is an empty list (guarded, falls through
+            # to single release_channel lookup) → channel match on release_channel
+            pytest.param(
+                True,
+                DevVersionInclusionEnum.ONLY,
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": ReleaseChannelEnum.DAILY, "release_channels": []},
+                True,
+                None,
+                id="collapsed-empty-release-channels-falls-back",
             ),
             # Collapsed build with plain-string metadata (defensive): queried channel matches → included
             pytest.param(

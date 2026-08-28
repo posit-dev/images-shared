@@ -150,12 +150,14 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
             # For collapsed builds (two channels at the same version), release_channels
             # holds every channel; fall back to the single release_channel otherwise.
             all_channels_raw = self.metadata.get("release_channels")
-            if all_channels_raw is not None:
+            if all_channels_raw:
                 # Normalize to ReleaseChannelEnum — collapsed metadata may store plain strings.
-                try:
-                    channel_set = {ReleaseChannelEnum(c) for c in all_channels_raw}
-                except ValueError:
-                    channel_set = set()
+                channel_set: set[ReleaseChannelEnum] = set()
+                for c in all_channels_raw:
+                    try:
+                        channel_set.add(ReleaseChannelEnum(c))
+                    except ValueError:
+                        log.warning(f"Unknown release channel in metadata: {c!r}, skipping")
             else:
                 version_channel = self.metadata.get("release_channel")
                 # Normalize to ReleaseChannelEnum — defensive against plain strings.
@@ -163,11 +165,16 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                     try:
                         version_channel = ReleaseChannelEnum(version_channel)
                     except ValueError:
+                        log.warning(f"Unknown release channel in metadata: {version_channel!r}")
                         version_channel = None
                 channel_set = {version_channel} if version_channel is not None else set()
             if dev_channel not in channel_set:
-                canonical = self.metadata.get("release_channel")
-                vc_str = getattr(canonical, "value", canonical)
+                if len(channel_set) > 1:
+                    vc_str = ", ".join(sorted(c.value for c in channel_set))
+                    vc_str = f"[{vc_str}]"
+                else:
+                    canonical = self.metadata.get("release_channel")
+                    vc_str = getattr(canonical, "value", str(canonical))
                 return False, f"dev channel '{vc_str}' does not match --dev-channel '{dev_channel.value}'"
         return True, None
 
