@@ -6,8 +6,10 @@ from posit_bakery.cli.common import (
     __make_value_map as make_value_map,
     __parse_dependency_constraint as parse_dependency_constraint,
     __parse_dependency_versions as parse_dependency_versions,
+    _describe_active_filters,
     normalize_platform,
 )
+from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
 from posit_bakery.config.dependencies import (
     PythonDependencyConstraint,
     RDependencyConstraint,
@@ -501,3 +503,39 @@ class TestNormalizePlatform:
         """An empty string is falsy, so it also falls back to the host architecture."""
         monkeypatch.setattr("posit_bakery.cli.common.SETTINGS.architecture", "amd64")
         assert normalize_platform("") == "linux/amd64"
+
+
+class TestDescribeActiveFilters:
+    """The no-targets message must name the filter that actually emptied the selection."""
+
+    def test_reports_latest(self):
+        """--latest was omitted entirely because False is falsy, so the one filter
+        responsible for an empty selection was the one filter never shown."""
+        described = _describe_active_filters(
+            BakerySettings(filter=BakeryConfigFilter(image_version="2026.05.0"), latest=True)
+        )
+        assert described == "--image-version '2026.05.0', --latest"
+
+    def test_omits_latest_when_not_set(self):
+        described = _describe_active_filters(BakerySettings(filter=BakeryConfigFilter(image_version="2026.05.0")))
+        assert described == "--image-version '2026.05.0'"
+
+    def test_renders_platform_list_as_typed(self):
+        """image_platform is a list; a bare repr leaked "['linux/arm64']" into the message."""
+        described = _describe_active_filters(BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/arm64"])))
+        assert described == "--image-platform 'linux/arm64'"
+
+    def test_renders_each_platform_separately(self):
+        described = _describe_active_filters(
+            BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/amd64", "linux/arm64"]))
+        )
+        assert described == "--image-platform 'linux/amd64', --image-platform 'linux/arm64'"
+
+    def test_omits_default_inclusion_policies(self):
+        """--dev-versions/--matrix-versions default to 'exclude', so echoing them would
+        report flags the caller never passed."""
+        described = _describe_active_filters(BakerySettings(filter=BakeryConfigFilter(image_name="^app$")))
+        assert described == "--image-name '^app$'"
+
+    def test_empty_when_no_filters_set(self):
+        assert _describe_active_filters(BakerySettings()) == ""
