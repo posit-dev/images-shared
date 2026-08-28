@@ -81,9 +81,10 @@ class WizCLICommand(BaseModel):
         no_publish: bool = False,
         log_file: str | None = None,
     ) -> "WizCLICommand":
-        # Resolve tool options from variant config if not explicitly provided
-        if tool_options is None and image_target.image_variant:
-            tool_options = image_target.image_variant.get_tool_option("wizcli")
+        # Resolve tool options from variant (or, for variant-less images, the parent Image)
+        # config if not explicitly provided
+        if tool_options is None:
+            tool_options = image_target.get_tool_option("wizcli")
 
         image_subdir = results_dir / image_target.image_name
         results_file = image_subdir / f"{image_target.uid}.json"

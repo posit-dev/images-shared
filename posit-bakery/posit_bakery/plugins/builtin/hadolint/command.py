@@ -30,17 +30,16 @@ class HadolintCommand(BaseModel):
         hadolint_bin = find_hadolint_bin(image_target.context.base_path)
         containerfile_path = image_target.context.base_path / image_target.containerfile
 
-        # Load options from variant, then merge with override
-        variant_options = None
-        if image_target.image_variant:
-            variant_options = image_target.image_variant.get_tool_option("hadolint")
+        # Load options from the variant or, for variant-less images, the parent Image, then
+        # merge with override
+        resolved_options = image_target.get_tool_option("hadolint")
 
-        if options_override and variant_options:
-            options = options_override.update(variant_options)
+        if options_override and resolved_options:
+            options = options_override.update(resolved_options)
         elif options_override:
             options = options_override
-        elif variant_options:
-            options = variant_options
+        elif resolved_options:
+            options = resolved_options
         else:
             options = HadolintOptions()
 
