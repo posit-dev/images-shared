@@ -1020,12 +1020,8 @@ class BakeryConfig:
                         f"due to not matching version filter '{settings.filter.image_version}'"
                     )
                     continue
-                if settings.latest and (not version.latest or version.isDevelopmentVersion):
-                    reason = (
-                        "development version ignored by --latest"
-                        if version.isDevelopmentVersion
-                        else "not the latest version (excluded by --latest)"
-                    )
+                included, reason = version.matches_latest_filter(settings.latest)
+                if not included:
                     if version_filter_matched:
                         log.warning(
                             f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
