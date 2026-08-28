@@ -152,10 +152,21 @@ class OrasCopy(OrasCommand):
 
     @property
     def command(self) -> list[str]:
-        """Build the oras cp command."""
+        """Build the oras cp command.
+
+        ``oras cp`` has two endpoints, so unlike every other oras subcommand it
+        takes ``--from-plain-http`` and ``--to-plain-http`` rather than a single
+        ``--plain-http`` -- passing the latter exits with ``unknown flag``.
+
+        Each flag is only emitted when that end is actually a registry: an OCI
+        layout is a filesystem path, and a plain-HTTP flag aimed at it is at best
+        meaningless.
+        """
         cmd = [self.oras_bin, "cp"]
-        if self.plain_http:
-            cmd.append("--plain-http")
+        if self.plain_http and not self.from_oci_layout:
+            cmd.append("--from-plain-http")
+        if self.plain_http and not self.to_oci_layout:
+            cmd.append("--to-plain-http")
         if self.from_oci_layout:
             cmd.append("--from-oci-layout")
         if self.to_oci_layout:

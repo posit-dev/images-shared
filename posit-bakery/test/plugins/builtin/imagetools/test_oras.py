@@ -548,7 +548,12 @@ class TestOrasCommandsPlainHttp:
         assert cmd.command == expected
 
     def test_copy_with_plain_http(self):
-        """Test that --plain-http flag is included when plain_http=True."""
+        """`oras cp` takes per-endpoint plain-HTTP flags, not a single --plain-http.
+
+        Unlike every other oras subcommand, `cp` has two endpoints. Passing a bare
+        `--plain-http` exits with `unknown flag`, so registry-to-registry copies
+        must emit both `--from-plain-http` and `--to-plain-http`.
+        """
         cmd = OrasCopy(
             oras_bin="oras",
             source="localhost:5000/test:source",
@@ -556,8 +561,71 @@ class TestOrasCommandsPlainHttp:
             plain_http=True,
         )
 
-        expected = ["oras", "cp", "--plain-http", "localhost:5000/test:source", "localhost:5000/test:dest"]
+        expected = [
+            "oras",
+            "cp",
+            "--from-plain-http",
+            "--to-plain-http",
+            "localhost:5000/test:source",
+            "localhost:5000/test:dest",
+        ]
         assert cmd.command == expected
+
+    def test_copy_never_emits_bare_plain_http(self):
+        """Regression guard: `--plain-http` is not a valid flag for `oras cp`.
+
+        Asserted across every layout combination so no future branch can
+        reintroduce it.
+        """
+        for from_layout, to_layout in ((False, False), (True, False), (False, True)):
+            cmd = OrasCopy(
+                oras_bin="oras",
+                source="localhost:5000/test:source",
+                destination="localhost:5000/test:dest",
+                plain_http=True,
+                from_oci_layout=from_layout,
+                to_oci_layout=to_layout,
+            )
+            assert "--plain-http" not in cmd.command
+
+    def test_copy_plain_http_skipped_for_layout_endpoints(self):
+        """A plain-HTTP flag is only meaningful for an endpoint that is a registry.
+
+        An OCI layout is a filesystem path, so the flag aimed at it is dropped.
+        """
+        # Layout source, registry destination -> only --to-plain-http.
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="/tmp/out@sha256:abc",
+            destination="localhost:5000/test:dest",
+            plain_http=True,
+            from_oci_layout=True,
+        )
+        assert cmd.command == [
+            "oras",
+            "cp",
+            "--to-plain-http",
+            "--from-oci-layout",
+            "/tmp/out@sha256:abc",
+            "localhost:5000/test:dest",
+        ]
+
+        # Registry source, layout destination -> only --from-plain-http.
+        cmd = OrasCopy(
+            oras_bin="oras",
+            source="localhost:5000/test:source",
+            destination="/tmp/src:image",
+            plain_http=True,
+            to_oci_layout=True,
+        )
+        assert cmd.command == [
+            "oras",
+            "cp",
+            "--from-plain-http",
+            "--to-oci-layout",
+            "localhost:5000/test:source",
+            "/tmp/src:image",
+        ]
 
 
 @pytest.fixture
