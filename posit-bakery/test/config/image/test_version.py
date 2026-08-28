@@ -773,3 +773,62 @@ class TestImageVersion:
         assert v.parsed_version is None
         warnings = [r for r in caplog.records if "Unparseable version string" in r.message]
         assert len(warnings) == 1
+
+
+class TestIsLatestRelease:
+    """The predicate shared by the --latest filter and `bakery ci matrix`'s latest field.
+
+    Uses real ImageVersion objects rather than mocks: the whole point of sharing the
+    predicate is that nobody restates it, and a mocked property would restate it.
+    """
+
+    @pytest.mark.parametrize(
+        "latest, is_dev, expected",
+        [
+            (True, False, True),
+            (False, False, False),
+            # A dev version is never the latest release, even carrying the flag.
+            (True, True, False),
+            (False, True, False),
+        ],
+    )
+    def test_predicate(self, latest, is_dev, expected):
+        v = ImageVersion(name="1.0.0", latest=latest, isDevelopmentVersion=is_dev)
+        assert v.is_latest_release is expected
+
+    def test_not_serialized_into_bakery_yaml(self):
+        """A plain property, not a computed_field: model_dump round-trips back into
+        bakery.yaml, and a derived key must not leak into the user's config."""
+        v = ImageVersion(name="1.0.0", latest=True)
+        assert "is_latest_release" not in v.model_dump()
+
+
+class TestMatchesLatestFilter:
+    def test_inactive_filter_includes_everything(self):
+        """--latest unset is a no-op, including for versions that are not latest."""
+        v = ImageVersion(name="1.0.0", latest=False)
+        assert v.matches_latest_filter(False) == (True, None)
+
+    def test_includes_latest_release(self):
+        v = ImageVersion(name="1.0.0", latest=True)
+        assert v.matches_latest_filter(True) == (True, None)
+
+    def test_excludes_non_latest_with_reason(self):
+        v = ImageVersion(name="1.0.0", latest=False)
+        included, reason = v.matches_latest_filter(True)
+        assert included is False
+        assert reason == "not the latest version (excluded by --latest)"
+
+    def test_excludes_dev_version_with_distinct_reason(self):
+        """Dev exclusion is reported separately so the log says which rule applied."""
+        v = ImageVersion(name="1.0.0-dev+1", latest=True, isDevelopmentVersion=True)
+        included, reason = v.matches_latest_filter(True)
+        assert included is False
+        assert reason == "development version ignored by --latest"
+
+    def test_agrees_with_is_latest_release(self):
+        """The method and the property must never disagree."""
+        for latest in (True, False):
+            for is_dev in (True, False):
+                v = ImageVersion(name="1.0.0", latest=latest, isDevelopmentVersion=is_dev)
+                assert v.matches_latest_filter(True)[0] is v.is_latest_release
