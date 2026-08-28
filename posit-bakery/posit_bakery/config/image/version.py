@@ -147,9 +147,27 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
         if not self.isDevelopmentVersion and dev_versions == DevVersionInclusionEnum.ONLY:
             return False, "not a development version (excluded by --dev-versions only)"
         if dev_channel is not None and self.isDevelopmentVersion:
-            version_channel = self.metadata.get("release_channel")
-            vc_str = version_channel.value if version_channel is not None else None
-            if version_channel != dev_channel:
+            # For collapsed builds (two channels at the same version), release_channels
+            # holds every channel; fall back to the single release_channel otherwise.
+            all_channels_raw = self.metadata.get("release_channels")
+            if all_channels_raw is not None:
+                # Normalize to ReleaseChannelEnum — collapsed metadata may store plain strings.
+                try:
+                    channel_set = {ReleaseChannelEnum(c) for c in all_channels_raw}
+                except ValueError:
+                    channel_set = set()
+            else:
+                version_channel = self.metadata.get("release_channel")
+                # Normalize to ReleaseChannelEnum — defensive against plain strings.
+                if version_channel is not None and not isinstance(version_channel, ReleaseChannelEnum):
+                    try:
+                        version_channel = ReleaseChannelEnum(version_channel)
+                    except ValueError:
+                        version_channel = None
+                channel_set = {version_channel} if version_channel is not None else set()
+            if dev_channel not in channel_set:
+                canonical = self.metadata.get("release_channel")
+                vc_str = getattr(canonical, "value", canonical)
                 return False, f"dev channel '{vc_str}' does not match --dev-channel '{dev_channel.value}'"
         return True, None
 

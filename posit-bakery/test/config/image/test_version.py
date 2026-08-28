@@ -594,6 +594,55 @@ class TestImageVersion:
                 None,
                 id="release-with-channel-filter",
             ),
+            # Collapsed build: release_channels present, queried channel is in the set → included
+            pytest.param(
+                True,
+                DevVersionInclusionEnum.ONLY,
+                ReleaseChannelEnum.DAILY,
+                {
+                    "release_channel": ReleaseChannelEnum.PREVIEW,
+                    "release_channels": [ReleaseChannelEnum.PREVIEW, ReleaseChannelEnum.DAILY],
+                },
+                True,
+                None,
+                id="collapsed-channel-in-set",
+            ),
+            # Collapsed build: release_channels present, queried channel not in the set → excluded
+            pytest.param(
+                True,
+                DevVersionInclusionEnum.ONLY,
+                ReleaseChannelEnum.RELEASE,
+                {
+                    "release_channel": ReleaseChannelEnum.PREVIEW,
+                    "release_channels": [ReleaseChannelEnum.PREVIEW, ReleaseChannelEnum.DAILY],
+                },
+                False,
+                "does not match",
+                id="collapsed-channel-not-in-set",
+            ),
+            # Collapsed build with plain-string metadata (defensive): queried channel matches → included
+            pytest.param(
+                True,
+                DevVersionInclusionEnum.ONLY,
+                ReleaseChannelEnum.DAILY,
+                {
+                    "release_channel": "preview",
+                    "release_channels": ["preview", "daily"],
+                },
+                True,
+                None,
+                id="collapsed-plain-string-channel-in-set",
+            ),
+            # Single-channel build with plain-string metadata (defensive): channel matches → included
+            pytest.param(
+                True,
+                DevVersionInclusionEnum.ONLY,
+                ReleaseChannelEnum.DAILY,
+                {"release_channel": "daily"},
+                True,
+                None,
+                id="single-plain-string-channel-match",
+            ),
         ],
     )
     def test_matches_dev_filter(
