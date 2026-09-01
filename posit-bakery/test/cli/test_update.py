@@ -106,7 +106,7 @@ def check_matrix_rendered_templates(
 
     deps = version_dir / "deps"
     assert deps.is_dir()
-    assert (deps / f"ubuntu-24.04_packages.txt").is_file()
+    assert (deps / "ubuntu-24.04_packages.txt").is_file()
 
     test = version_dir / "test"
     assert test.is_dir()

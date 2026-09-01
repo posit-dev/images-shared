@@ -103,10 +103,10 @@ def files(
         c.rerender_files(_filter, regex_filters=template_pattern)
     except Exception as e:
         stderr_console.print(e, style="error")
-        stderr_console.print(f"❌ Update failed", style="error")
+        stderr_console.print("❌ Update failed", style="error")
         raise typer.Exit(code=1)
 
-    stderr_console.print(f"✅ Files updated successfully", style="success")
+    stderr_console.print("✅ Files updated successfully", style="success")
 
 
 @app.command()

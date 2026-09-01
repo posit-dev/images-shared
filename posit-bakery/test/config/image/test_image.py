@@ -221,7 +221,7 @@ class TestImage:
             assert variant.parent is i
 
     def test_check_dependency_constraints_with_matrix(self, caplog):
-        i = Image(
+        Image(
             name="my-image",
             dependencyConstraints=[{"dependency": "R", "constraint": {"latest": True, "count": 2}}],
             matrix={"dependencyConstraints": [{"dependency": "python", "constraint": {"latest": True, "count": 2}}]},

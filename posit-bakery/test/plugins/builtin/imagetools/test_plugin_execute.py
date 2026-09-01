@@ -9,7 +9,7 @@ import posit_bakery.util as util
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.imagetools import ImageToolsPlugin
 from posit_bakery.plugins.builtin.imagetools.options import SociOptions
-from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, SociConvertWorkflowResult
+from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflowResult
 
 pytestmark = [pytest.mark.unit]
 

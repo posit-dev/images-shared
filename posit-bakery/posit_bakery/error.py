@@ -40,7 +40,7 @@ class BakeryRenderError(BakeryError):
         self.destination = destination
 
     def __str__(self) -> str:
-        s = f"Error rendering template"
+        s = "Error rendering template"
         if self.template:
             s += f" {self.template.relative_to(self.context)}"
         if isinstance(self.__cause__, TemplateError) and hasattr(self.__cause__, "lineno") and self.__cause__.lineno:
@@ -61,7 +61,7 @@ class BakeryRenderErrorGroup(ExceptionGroup):
     """Group of template errors"""
 
     def __str__(self) -> str:
-        s = f""
+        s = ""
         for e in self.exceptions:
             s += f"{e}\n"
         s += "\n"
@@ -83,7 +83,7 @@ class BakeryFileError(BakeryError):
         self.filepath = filepath
 
         if filepath:
-            filepath_note = f"Expected filepath(s): "
+            filepath_note = "Expected filepath(s): "
             if isinstance(filepath, (str, bytes, os.PathLike)):
                 filepath_note += f"  - {filepath}\n"
             elif isinstance(filepath, list):
@@ -156,7 +156,7 @@ class BakeryToolRuntimeErrorGroup(ExceptionGroup):
     """Group of tool runtime errors"""
 
     def __str__(self) -> str:
-        s = f""
+        s = ""
         for e in self.exceptions:
             s += f"{e}\n"
         s += "\n"
@@ -169,7 +169,7 @@ class BakeryBuildErrorGroup(ExceptionGroup):
     """Group of tool runtime errors"""
 
     def __str__(self) -> str:
-        s = f""
+        s = ""
         for e in self.exceptions:
             s += f"{e.message}\n"
             if isinstance(e, BakeryToolRuntimeError):

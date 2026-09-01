@@ -1,7 +1,5 @@
-from pydantic import BaseModel
 import pytest
 
-from posit_bakery.config.dependencies import DependencyVersion, DependencyConstraintField, DependencyVersionsField
 from posit_bakery.config.image import Image, ImageVersion
 
 
@@ -13,7 +11,7 @@ class TestImageDependencyConstraints:
         ],
     )
     def test_dependency_constraint_valid(self, constraints):
-        img = Image(
+        Image(
             **{
                 "name": "test-image",
                 "dependencyConstraints": constraints,
@@ -47,7 +45,7 @@ class TestImageDependencyVersions:
     )
     def test_dependency_versions_valid(self, dependencies):
         """Test that a valid dependency versions list is accepted."""
-        ver = ImageVersion(
+        ImageVersion(
             **{
                 "name": "test-image",
                 "dependencies": dependencies,

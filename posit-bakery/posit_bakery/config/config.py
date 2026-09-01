@@ -12,14 +12,13 @@ from typing import Annotated, Callable, Self, Any
 
 import jinja2
 import pydantic
-import python_on_whales
 from pydantic import Field, model_validator, field_validator, BaseModel
 from python_on_whales import DockerException
 from ruamel.yaml import YAML
 
 from posit_bakery import util
 from posit_bakery.config.dependencies import DependencyConstraint, DependencyVersions
-from posit_bakery.config.image import Image
+from posit_bakery.config.image import Image, ImageVersion
 from posit_bakery.config.image.matrix import DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.registry import BaseRegistry
 from posit_bakery.config.repository import Repository
@@ -33,7 +32,6 @@ from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, Matr
 from posit_bakery.error import (
     BakeryError,
     BakeryToolRuntimeError,
-    BakeryToolRuntimeErrorGroup,
     BakeryFileError,
     BakeryBuildErrorGroup,
     BakeryRenderError,
@@ -70,7 +68,7 @@ def _retry_build(fn, retry: int, label: str, sleep: Callable[[float], None] | No
             return
         except BakeryFileError:
             raise  # Never retry file errors
-        except (DockerException, BakeryToolRuntimeError) as e:
+        except (DockerException, BakeryToolRuntimeError):
             if attempt < retry:
                 log.warning(
                     f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "
@@ -199,7 +197,7 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
 
         # Create a new Containerfile template if it doesn't exist
         containerfile_name = "Containerfile.jinja2"
-        containerfile_glob = image_template_path.glob(f"Containerfile*.jinja2")
+        containerfile_glob = image_template_path.glob("Containerfile*.jinja2")
         if not any(containerfile_path.is_file() for containerfile_path in containerfile_glob):
             containerfile_path = image_template_path / containerfile_name
             log.debug(f"Creating new Containerfile template [bold]{containerfile_path}")
@@ -767,7 +765,7 @@ class BakeryConfig:
         new_version: str,
         values: dict[str, str] | None = None,
         clean: bool = True,
-    ) -> "ImageVersion":
+    ) -> ImageVersion:
         """Patches an existing image version with a new version and regenerates templates."""
         image = self.model.get_image(image_name)
 

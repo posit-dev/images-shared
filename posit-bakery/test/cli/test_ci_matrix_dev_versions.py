@@ -37,7 +37,7 @@ def _make_version(name: str, *, is_dev: bool, channel: ReleaseChannelEnum | None
             return False, "not a development version (excluded by --dev-versions only)"
         if dev_channel is not None and is_dev:
             if channel != dev_channel:
-                return False, f"channel mismatch"
+                return False, "channel mismatch"
         return True, None
 
     ver.matches_dev_filter = matches_dev_filter

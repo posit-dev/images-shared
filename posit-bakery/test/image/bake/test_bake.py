@@ -277,22 +277,6 @@ class TestBakePlan:
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_write_remove(self, get_expected_plan, get_tmpconfig, suite):
         """Test that barebones bake plan generates as expected."""
-        expected_plan = get_expected_plan(suite)
-        config_obj = get_tmpconfig(suite)
-
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
-        assert not plan.bake_file.is_file()
-        plan.write()
-
-        assert plan.bake_file.is_file()
-        assert expected_plan.read_text().strip() == plan.bake_file.read_text()
-
-        plan.remove()
-        assert not plan.bake_file.is_file()
-
-    @pytest.mark.parametrize("suite", SUCCESS_SUITES)
-    def test_write_remove(self, get_expected_plan, get_tmpconfig, suite):
-        """Test that barebones bake plan generates as expected."""
         expected_plan = get_expected_plan("default", suite)
         config_obj = get_tmpconfig(suite)
 

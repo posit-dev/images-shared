@@ -271,7 +271,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for dc in dependency_constraints:
             if dc.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency constraints found in image matrix:\n"
+                    error_message = "Duplicate dependency constraints found in image matrix:\n"
                 error_message += f" - {dc.dependency}\n"
             seen_dependencies.add(dc.dependency)
         if error_message:
@@ -295,7 +295,7 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         for d in dependencies:
             if d.dependency in seen_dependencies:
                 if not error_message:
-                    error_message = f"Duplicate dependency definition found in image matrix:\n"
+                    error_message = "Duplicate dependency definition found in image matrix:\n"
                 error_message += f" - {d.dependency}\n"
             seen_dependencies.add(d.dependency)
 

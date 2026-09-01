@@ -2,7 +2,6 @@ import json
 import logging
 import re
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +11,6 @@ from posit_bakery.cli.ci import _resolve_changed_files, _resolve_base_bakery_yam
 from posit_bakery.config.config import version_matches
 from posit_bakery.config.image.version import ImageVersion
 
-from posit_bakery.plugins.protocol import ToolCallResult
 
 scenarios(
     "cli/ci/matrix.feature",
@@ -130,7 +128,7 @@ def patch_image_target_merge_method(mocker):
 
 
 @then("the files read include:")
-def check_log_metadata_targets(command_logs, datatable):
+def check_log_files_read(command_logs, datatable):
     for row in datatable:
         assert re.search(f"Reading targets from .*{row[0]}", command_logs.text)
 
@@ -146,7 +144,7 @@ def check_log_verified_targets(command_logs, num_verified):
 
 
 @then("the merge calls include:")
-def check_log_metadata_targets(bakery_command, datatable, ci_patched_merge_method_calls):
+def check_log_merge_calls(bakery_command, datatable, ci_patched_merge_method_calls):
     calls = [call[0] for call in ci_patched_merge_method_calls]
     expected_calls = []
     for row in datatable:

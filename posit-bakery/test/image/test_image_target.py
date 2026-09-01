@@ -263,7 +263,7 @@ class TestImageTarget:
         expected_path = (
             basic_standard_image_target.image_version.parent.path
             / basic_standard_image_target.image_version.path
-            / f"Containerfile"
+            / "Containerfile"
         ).relative_to(basic_config_obj.model.path)
         assert basic_standard_image_target.containerfile == expected_path
 
@@ -632,8 +632,8 @@ class TestImageTarget:
             ),
         ],
     )
-    def test_build_args(self, get_config_obj, is_matrix, dependencies, values, expected_args):
-        """Test creating a new ImageTarget object."""
+    def test_build_args_from_dependencies(self, get_config_obj, is_matrix, dependencies, values, expected_args):
+        """Test that a version's dependencies and values resolve into build args."""
         basic_config_obj = get_config_obj("basic")
         image = basic_config_obj.model.get_image("test-image")
         version = image.get_version("1.0.0")
