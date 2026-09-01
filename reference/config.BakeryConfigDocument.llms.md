@@ -6,7 +6,7 @@ Model representation of the top-level bakery.yaml configuration document.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L84-L258)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L82-L256)
 
 ``` python
 config.BakeryConfigDocument()
@@ -42,7 +42,7 @@ Ensures that there are no duplicate image names in the config. Raises an error i
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L128-L146)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L126-L144)
 
 ``` python
 check_image_duplicates(images)
@@ -59,7 +59,7 @@ Ensures that the images list is not empty. Warns if no images are found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L117-L126)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L115-L124)
 
 ``` python
 check_images_not_empty(images)
@@ -76,7 +76,7 @@ Creates the necessary directories and files for a new image template.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L171-L223)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L169-L221)
 
 ``` python
 create_image_files_template(image_path, image_name, base_tag)
@@ -103,7 +103,7 @@ Creates a new image directory and adds it to the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L225-L258)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L223-L256)
 
 ``` python
 create_image_model(
@@ -145,7 +145,7 @@ Ensures that the registries list is unique. Warns if duplicates are found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L104-L115)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L102-L113)
 
 ``` python
 deduplicate_registries(registries)
@@ -162,7 +162,7 @@ Returns an image by name, or None if not found.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L161-L169)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L159-L167)
 
 ``` python
 get_image(name)
@@ -179,7 +179,7 @@ Sets the parent reference for the Repository and Image child objects.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L148-L154)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L146-L152)
 
 ``` python
 resolve_parentage()
