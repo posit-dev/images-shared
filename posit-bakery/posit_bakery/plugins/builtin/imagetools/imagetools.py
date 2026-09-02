@@ -715,15 +715,18 @@ class ImageToolsPlugin(BakeryToolPlugin):
             else:
                 copied_targets.append(t)
 
-        # Stage 3: verify each final destination tag resolves. Read-only and order-independent,
-        # so it stays a simple sequential loop.
+        # Stage 3: verify each final destination tag and repair stale tags serially.
         verify_failed = False
         if not dry_run:
             for t in copied_targets:
                 verify = OrasIndexVerifyWorkflow(
                     oras_bin=oras_bin,
                     image_target=t,
-                ).run(expected_digest=stage1_results[t.uid].expected_digest, dry_run=dry_run)
+                ).run(
+                    expected_digest=stage1_results[t.uid].expected_digest,
+                    source=stage1_results[t.uid].temp_ref,
+                    dry_run=dry_run,
+                )
                 if not verify.success:
                     log.error(f"verification failed for '{t}': {verify.error}")
                     failures.append((str(t), "verify", str(verify.error)))
