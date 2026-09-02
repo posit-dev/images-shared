@@ -84,7 +84,7 @@ def patch_image_target_merge_method(mocker):
             self.image_target = image_target
             self.oras_bin = oras_bin
 
-        def run(self, expected_digest, dry_run=False):
+        def run(self, expected_digest, source=None, dry_run=False):
             result = MagicMock()
             result.success = True
             result.verified = self.image_target.tags.as_strings()
