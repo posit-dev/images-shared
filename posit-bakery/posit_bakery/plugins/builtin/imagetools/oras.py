@@ -339,7 +339,7 @@ class OrasIndexVerifyResult(BaseModel):
 
 
 class OrasIndexVerifyWorkflow(BaseModel):
-    """Verify that each final destination tag resolves to the copied digest."""
+    """Verify final tags and repair digest mismatches with single-tag copies."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -348,47 +348,95 @@ class OrasIndexVerifyWorkflow(BaseModel):
     plain_http: Annotated[bool, Field(default=False)]
     retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
-    def run(self, expected_digest: str | None, dry_run: bool = False) -> OrasIndexVerifyResult:
+    def _verify_ref(self, ref: str, expected_digest: str) -> None:
+        def fetch_and_compare() -> None:
+            observed_digest = fetch_manifest_digest(
+                self.oras_bin,
+                ref,
+                plain_http=self.plain_http,
+            )
+            if observed_digest != expected_digest:
+                message = f"digest mismatch for '{ref}': expected {expected_digest}, observed {observed_digest}"
+                log.warning(message)
+                raise BakeryToolRuntimeError(
+                    message=message,
+                    tool_name="oras",
+                    cmd=[self.oras_bin, "manifest", "fetch", "--descriptor", ref],
+                    stderr=b"digest mismatch",
+                    metadata={"expected_digest": expected_digest, "observed_digest": observed_digest},
+                )
+
+        # A copied tag may briefly resolve to its old digest while a registry
+        # propagates the write, so a mismatch uses the same bounded retry policy
+        # as a missing descriptor.
+        retry_on_transient(
+            fetch_and_compare,
+            policy=self.retry_policy,
+            description=f"index-verify for '{self.image_target.uid}' -> {ref}",
+        )
+
+    def run(self, expected_digest: str | None, source: str | None = None, dry_run: bool = False) -> OrasIndexVerifyResult:
+        refs = self.image_target.tags.as_strings()
         verified: list[str] = []
+        stale: list[tuple[str, BakeryToolRuntimeError]] = []
         if dry_run:
-            return OrasIndexVerifyResult(success=True, verified=self.image_target.tags.as_strings())
+            return OrasIndexVerifyResult(success=True, verified=refs)
         if expected_digest is None:
             return OrasIndexVerifyResult(
                 success=False,
                 error=f"cannot verify '{self.image_target.uid}' without an expected digest",
             )
-        try:
-            for ref in self.image_target.tags.as_strings():
 
-                def verify_ref(ref: str = ref) -> None:
-                    observed_digest = fetch_manifest_digest(
-                        self.oras_bin,
-                        ref,
-                        plain_http=self.plain_http,
-                    )
-                    if observed_digest != expected_digest:
-                        message = f"digest mismatch for '{ref}': expected {expected_digest}, observed {observed_digest}"
-                        log.warning(message)
-                        raise BakeryToolRuntimeError(
-                            message=message,
-                            tool_name="oras",
-                            cmd=[self.oras_bin, "manifest", "fetch", "--descriptor", ref],
-                            stderr=b"digest mismatch",
-                        )
-
-                # A copied tag may briefly resolve to its old digest while a registry
-                # propagates the write, so a mismatch uses the same bounded retry policy
-                # as a missing descriptor.
-                retry_on_transient(
-                    verify_ref,
-                    policy=self.retry_policy,
-                    description=f"index-verify for '{self.image_target.uid}' -> {ref}",
-                )
+        for ref in refs:
+            try:
+                self._verify_ref(ref, expected_digest)
                 verified.append(ref)
+            except BakeryToolRuntimeError as e:
+                if not e.metadata or "observed_digest" not in e.metadata:
+                    log.error(f"oras manifest verify failed: {e}")
+                    return OrasIndexVerifyResult(success=False, verified=verified, error=str(e))
+                stale.append((ref, e))
+
+        if not stale:
             return OrasIndexVerifyResult(success=True, verified=verified)
-        except BakeryToolRuntimeError as e:
-            log.error(f"oras manifest verify failed: {e}")
-            return OrasIndexVerifyResult(success=False, verified=verified, error=str(e))
+        if source is None:
+            error = stale[0][1]
+            log.error(f"oras manifest verify failed: {error}")
+            return OrasIndexVerifyResult(success=False, verified=verified, error=str(error))
+
+        log.warning(f"Starting single-tag copy fallback for {len(stale)} stale tag(s) from '{source}'.")
+        errors: list[str] = []
+        for ref, mismatch in stale:
+            log.warning(f"Fallback selected '{ref}': {mismatch.message}")
+            copy = OrasCopy(
+                oras_bin=self.oras_bin,
+                source=source,
+                destination=ref,
+                plain_http=self.plain_http,
+            )
+            try:
+                retry_on_transient(
+                    copy.run,
+                    policy=self.retry_policy,
+                    description=f"index-copy fallback for '{self.image_target.uid}' -> {ref}",
+                )
+            except BakeryToolRuntimeError as e:
+                error = f"{mismatch.message}; fallback copy failed: {e}"
+                log.error(error)
+                errors.append(error)
+                continue
+
+            try:
+                self._verify_ref(ref, expected_digest)
+                verified.append(ref)
+                log.info(f"Fallback verification succeeded for '{ref}': resolved to {expected_digest}.")
+            except BakeryToolRuntimeError as e:
+                log.error(f"Fallback verification failed for '{ref}': {e}")
+                errors.append(str(e))
+
+        if errors:
+            return OrasIndexVerifyResult(success=False, verified=verified, error="\n".join(errors))
+        return OrasIndexVerifyResult(success=True, verified=verified)
 
 
 class OrasSourcesReadyResult(BaseModel):
