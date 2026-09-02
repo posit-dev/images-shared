@@ -6,7 +6,6 @@ from typing import Any, Self
 import python_on_whales
 from pydantic import BaseModel, Field, ValidationError
 from python_on_whales.components.buildx.imagetools.models import Manifest
-from python_on_whales.components.image.models import ImageInspectResult
 from rich.filesize import decimal as format_size
 from rich.table import Table
 from rich.text import Text
@@ -276,7 +275,6 @@ class BuildSummary(BaseModel):
             platforms or (target.image_os.platforms if target.image_os else DEFAULT_PLATFORMS) for target in targets
         ]
         platform_counts = [len(bp) for bp in build_platforms]
-        registry_tags = sum(len(target.tags) for target in targets)
 
         target_rows = [
             BuildSummaryTarget(
