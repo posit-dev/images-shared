@@ -104,11 +104,13 @@ class WizCLISuite:
 
             # Try to parse the results file written by wizcli
             report = None
+            parse_err = None
             if wizcli_command.results_file.exists():
                 try:
                     report = WizScanReport.load(wizcli_command.results_file)
                 except Exception as e:
                     log.error(f"Failed to parse wizcli results for '{str(wizcli_command.image_target)}': {e}")
+                    parse_err = e
 
             # Record every target exactly once, independent of the exit code. A target that
             # reaches neither add_report nor add_failure vanishes from the results table,

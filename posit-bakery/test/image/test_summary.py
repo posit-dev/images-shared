@@ -3,7 +3,6 @@ import subprocess
 from unittest.mock import Mock, patch
 
 import python_on_whales
-from python_on_whales.components.buildx.imagetools.models import Manifest
 
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.summary import (
