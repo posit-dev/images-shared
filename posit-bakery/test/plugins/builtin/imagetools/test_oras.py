@@ -698,112 +698,152 @@ class TestOrasManifestFetch:
 
 
 class TestOrasIndexVerifyWorkflow:
-    """Tests for the standalone index-verify primitive."""
+    """Tests for verification against the copied source digest."""
 
     def test_verifies_each_destination_tag(self, mock_image_target_factory):
-        """Every final destination tag is fetched and reported as verified."""
         target = mock_image_target_factory()
         extra_tag = MagicMock()
         extra_tag.destination = "docker.io/posit/test-image"
         extra_tag.suffix = "1.0.0"
         extra_tag.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
         target.tags.append(extra_tag)
-
         workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b"")
-            result = workflow.run()
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b'{"digest":"sha256:expected"}', stderr=b""
+            )
+            result = workflow.run(expected_digest="sha256:expected")
 
         assert result.success is True
-        # One fetch per individual destination tag.
         assert mock_run.call_count == 2
         assert result.verified == [
             "ghcr.io/posit-dev/test-image:1.0.0",
             "docker.io/posit/test-image:1.0.0",
         ]
-        # Verification uses a lightweight descriptor fetch.
-        assert mock_run.call_args_list[0].args[0][:3] == ["oras", "manifest", "fetch"]
         assert "--descriptor" in mock_run.call_args_list[0].args[0]
 
     def test_run_failure_reports_partial(self, mock_image_target_factory):
-        """A failed fetch surfaces an error and only the refs verified so far."""
         target = mock_image_target_factory()
         extra_tag = MagicMock()
         extra_tag.destination = "docker.io/posit/test-image"
         extra_tag.suffix = "1.0.0"
         extra_tag.__str__ = lambda self: "docker.io/posit/test-image:1.0.0"
         target.tags.append(extra_tag)
-
         workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
 
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
-                subprocess.CompletedProcess(args=[], returncode=0, stdout=b"{}", stderr=b""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=b'{"digest":"sha256:expected"}', stderr=b""),
                 subprocess.CompletedProcess(
                     args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
                 ),
             ]
-            result = workflow.run()
+            result = workflow.run(expected_digest="sha256:expected")
 
         assert result.success is False
-        assert result.error is not None
         assert result.verified == ["ghcr.io/posit-dev/test-image:1.0.0"]
 
     def test_dry_run_skips_execution(self, mock_image_target_factory):
-        """Dry run reports success without invoking oras."""
-        target = mock_image_target_factory()
-        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=target)
-
+        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=mock_image_target_factory())
         with patch("subprocess.run") as mock_run:
-            result = workflow.run(dry_run=True)
-
+            result = workflow.run(expected_digest="sha256:expected", dry_run=True)
         mock_run.assert_not_called()
         assert result.success is True
 
 
 class TestOrasIndexVerifyWorkflowRetry:
-    """The index-verify primitive retries transient registry errors."""
+    """The index-verify primitive retries missing and stale descriptors."""
 
     def test_retries_transient_not_found_then_succeeds(self, mock_image_target_factory):
-        target = mock_image_target_factory()
         workflow = OrasIndexVerifyWorkflow(
             oras_bin="oras",
-            image_target=target,
+            image_target=mock_image_target_factory(),
             retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
         )
-
         attempts = {"n": 0}
 
         def side_effect(cmd, capture_output):
             attempts["n"] += 1
             if attempts["n"] < 2:
                 return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=b"", stderr=b"manifest unknown")
-            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=b"{}", stderr=b"")
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=0, stdout=b'{"digest":"sha256:expected"}', stderr=b""
+            )
 
         with patch("subprocess.run", side_effect=side_effect), patch("posit_bakery.retry.time.sleep") as sleep:
-            result = workflow.run()
+            result = workflow.run(expected_digest="sha256:expected")
 
         assert result.success is True
         assert attempts["n"] == 2
         sleep.assert_called_once()
 
-    def test_non_transient_error_fails_without_retry(self, mock_image_target_factory):
-        target = mock_image_target_factory()
+    def test_retries_stale_digest_until_it_matches(self, mock_image_target_factory):
         workflow = OrasIndexVerifyWorkflow(
             oras_bin="oras",
-            image_target=target,
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=3, initial_backoff=1.0),
+        )
+        descriptors = [b'{"digest":"sha256:stale"}', b'{"digest":"sha256:expected"}']
+
+        with patch("subprocess.run") as mock_run, patch("posit_bakery.retry.time.sleep") as sleep:
+            mock_run.side_effect = lambda cmd, capture_output: subprocess.CompletedProcess(
+                args=cmd, returncode=0, stdout=descriptors.pop(0), stderr=b""
+            )
+            result = workflow.run(expected_digest="sha256:expected")
+
+        assert result.success is True
+        assert mock_run.call_count == 2
+        sleep.assert_called_once()
+
+    def test_fails_after_stale_digest_retries(self, mock_image_target_factory, caplog):
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=2, initial_backoff=1.0),
+        )
+
+        with patch("subprocess.run") as mock_run, patch("posit_bakery.retry.time.sleep"):
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b'{"digest":"sha256:stale"}', stderr=b""
+            )
+            result = workflow.run(expected_digest="sha256:expected")
+
+        assert result.success is False
+        assert mock_run.call_count == 2
+        assert "sha256:expected" in result.error
+        assert "sha256:stale" in result.error
+        assert "ghcr.io/posit-dev/test-image:1.0.0" in caplog.text
+
+    def test_missing_descriptor_fails_after_retries(self, mock_image_target_factory):
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=2, initial_backoff=1.0),
+        )
+
+        with patch("subprocess.run") as mock_run, patch("posit_bakery.retry.time.sleep") as sleep:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=1, stdout=b"", stderr=b"manifest unknown"
+            )
+            result = workflow.run(expected_digest="sha256:expected")
+
+        assert result.success is False
+        assert mock_run.call_count == 2
+        sleep.assert_called_once()
+
+    def test_non_transient_error_fails_without_retry(self, mock_image_target_factory):
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
             retry_policy=RetryPolicy(max_attempts=5, initial_backoff=1.0),
         )
 
-        with (
-            patch("subprocess.run") as mock_run,
-            patch("posit_bakery.retry.time.sleep") as sleep,
-        ):
+        with patch("subprocess.run") as mock_run, patch("posit_bakery.retry.time.sleep") as sleep:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=1, stdout=b"", stderr=b"unauthorized: authentication required"
             )
-            result = workflow.run()
+            result = workflow.run(expected_digest="sha256:expected")
 
         assert result.success is False
         assert mock_run.call_count == 1

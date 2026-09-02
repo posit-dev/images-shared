@@ -57,12 +57,17 @@ class TestRunPublishStage1:
                     run=MagicMock(return_value=MagicMock(success=True, temp_ref="ghcr.io/x/tmp:created"))
                 ),
             ),
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                return_value="sha256:expected",
+            ),
         ):
             result = _run_publish_stage1(target, "oras", "soci", dry_run=False)
 
         assert result.success is True
         assert result.skipped is False
         assert result.temp_ref == "ghcr.io/x/tmp:created"
+        assert result.expected_digest == "sha256:expected"
 
     def test_wait_failure_marks_target_failed(self):
         target = _target()
@@ -135,11 +140,16 @@ class TestRunPublishStage1:
                     run=MagicMock(return_value=MagicMock(success=True, destination_ref="ghcr.io/x/tmp:created-soci"))
                 ),
             ),
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                return_value="sha256:expected",
+            ),
         ):
             result = _run_publish_stage1(target, "oras", "soci", dry_run=False)
 
         assert result.success is True
         assert result.temp_ref == "ghcr.io/x/tmp:created-soci"
+        assert result.expected_digest == "sha256:expected"
 
     def test_soci_failure_marks_target_failed(self):
         target = _target()
@@ -184,8 +194,13 @@ class TestRunPublishStage1:
                     run=MagicMock(return_value=MagicMock(success=True, temp_ref="ghcr.io/x/tmp:created"))
                 ),
             ) as create_ctor,
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                return_value="sha256:expected",
+            ) as resolve_digest,
         ):
             _run_publish_stage1(target, "oras", "soci", dry_run=False, runner=fake_runner)
 
         wait_ctor.return_value.run.assert_called_once_with(dry_run=False, runner=fake_runner)
         create_ctor.return_value.run.assert_called_once_with(dry_run=False, runner=fake_runner)
+        resolve_digest.assert_called_once_with("oras", "ghcr.io/x/tmp:created", runner=fake_runner)

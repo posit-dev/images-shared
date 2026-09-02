@@ -84,7 +84,7 @@ def patch_image_target_merge_method(mocker):
             self.image_target = image_target
             self.oras_bin = oras_bin
 
-        def run(self, dry_run=False):
+        def run(self, expected_digest, dry_run=False):
             result = MagicMock()
             result.success = True
             result.verified = self.image_target.tags.as_strings()
@@ -115,6 +115,10 @@ def patch_image_target_merge_method(mocker):
     mocker.patch(
         "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow",
         MockOrasIndexCopyWorkflow,
+    )
+    mocker.patch(
+        "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+        return_value="sha256:expected",
     )
     mocker.patch(
         "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
