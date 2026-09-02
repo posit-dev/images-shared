@@ -6,7 +6,7 @@ Counts (and, once a build has produced artifacts, sizes) for a set of image targ
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L254-L595)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L253-L593)
 
 ``` python
 image.BuildSummary()
@@ -30,7 +30,7 @@ Flatten to a CI-friendly dict for `--summary-format json`.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L362-L375)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L360-L373)
 
 ``` python
 as_dict()
@@ -44,7 +44,7 @@ Compute build and artifact counts for the given image targets.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L260-L298)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L259-L296)
 
 ``` python
 from_image_targets(targets, *, platforms=None)
@@ -66,7 +66,7 @@ Reconstructs a `BuildSummary` from a file written by `--summary-format json`
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L310-L322)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L308-L320)
 
 ``` python
 from_json_file(path)
@@ -82,7 +82,7 @@ Populate registry size, local size, layer count, and cache size for each target 
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L377-L474)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L375-L472)
 
 ``` python
 measure_sizes(targets, *, push, load, jobs=None, succeeded_uids=None)
@@ -113,7 +113,7 @@ Combines multiple summaries into one, deduped by `BuildSummaryTarget.uid`.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L324-L360)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L322-L358)
 
 ``` python
 merge(summaries)
@@ -132,7 +132,7 @@ Render the summary as a Rich table.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L476-L528)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L474-L526)
 
 ``` python
 table(*, sizes)
@@ -149,7 +149,7 @@ Renders this summary as a GitHub-Flavored Markdown report, for a GitHub job or
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L530-L595)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/image/summary.py#L528-L593)
 
 ``` python
 to_markdown(*, disclaimer=None)
