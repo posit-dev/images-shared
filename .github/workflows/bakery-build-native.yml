@@ -456,8 +456,17 @@ jobs:
       # name-free `repo@sha256:...` entry per target -- all of them coexist,
       # unlike tags. wizcli's `extract` driver reads the local store, so it can
       # only resolve every target once Test has warmed it.
-      - name: Scan
-        if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
+      # Production builds scan only the latest version of each image, now that the
+      # backlog has been scanned once; development builds keep scanning every push.
+      # Gated here rather than by passing `--latest` to the scan: this job is already
+      # pinned to one version, so `--latest` combined with that pin resolved to an
+      # empty target set on every non-latest version and exited 1, which
+      # continue-on-error then hid behind a red annotation on an otherwise green job.
+      # matrix.img.latest comes from `bakery ci matrix`, so the "is this the latest
+      # version" decision is made once, in one place.
+      - name: Wiz Scan
+        if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true'
+                && (inputs.dev-versions == 'only' || matrix.img.latest) }}
         continue-on-error: true
         env:
           IMAGE_NAME: ${{ matrix.img.image }}
@@ -479,11 +488,6 @@ jobs:
           [[ -n "$WIZ_POLICY_ID" ]] && POLICY_FLAGS=(--policies "$WIZ_POLICY_ID")
           PROJECT_FLAGS=()
           [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
-          # Production builds (dev-versions != only) scan only the --latest
-          # version of each image now that the backlog has been scanned once.
-          # Development builds keep scanning every push.
-          LATEST_FLAGS=()
-          [[ "$DEV_VERSIONS" != "only" ]] && LATEST_FLAGS=(--latest)
           WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli scan \
             --image-name "^${IMAGE_NAME}$" \
@@ -494,9 +498,36 @@ jobs:
             "${DEV_SPEC_FLAGS[@]}" \
             "${POLICY_FLAGS[@]}" \
             "${PROJECT_FLAGS[@]}" \
-            "${LATEST_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      - name: Setup trivy
+        if: ${{ inputs.push && matrix.img.latest }}
+        uses: "posit-dev/images-shared/setup-trivy@main"
+
+      # After Test for the same reason the Wiz scan is: only Test's `docker run`
+      # makes every target addressable locally. Scanning earlier silently pulled
+      # and scanned the published image instead of the one just built.
+      - name: Trivy Scan
+        if: ${{ inputs.push && matrix.img.latest }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          bakery trivy scan \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$NORMALIZED_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
