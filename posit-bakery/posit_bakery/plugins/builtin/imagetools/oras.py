@@ -199,7 +199,6 @@ def fetch_manifest_digest(
     reference: str,
     *,
     plain_http: bool = False,
-    dry_run: bool = False,
     runner: "CommandRunner | None" = None,
 ) -> str:
     """Fetch and return the digest from an ORAS manifest descriptor."""
@@ -209,7 +208,7 @@ def fetch_manifest_digest(
         descriptor=True,
         plain_http=plain_http,
     )
-    result = fetch.run(dry_run=dry_run, runner=runner)
+    result = fetch.run(runner=runner)
     try:
         descriptor = json.loads(result.stdout)
         digest = descriptor["digest"]
