@@ -751,6 +751,14 @@ class TestOrasIndexVerifyWorkflow:
         mock_run.assert_not_called()
         assert result.success is True
 
+    def test_missing_expected_digest_fails_without_fetching(self, mock_image_target_factory):
+        workflow = OrasIndexVerifyWorkflow(oras_bin="oras", image_target=mock_image_target_factory())
+        with patch("subprocess.run") as mock_run:
+            result = workflow.run(expected_digest=None)
+        mock_run.assert_not_called()
+        assert result.success is False
+        assert "expected digest" in result.error
+
 
 class TestOrasIndexVerifyWorkflowRetry:
     """The index-verify primitive retries missing and stale descriptors."""

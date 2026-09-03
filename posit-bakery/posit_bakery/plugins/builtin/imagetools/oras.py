@@ -348,10 +348,15 @@ class OrasIndexVerifyWorkflow(BaseModel):
     plain_http: Annotated[bool, Field(default=False)]
     retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
-    def run(self, expected_digest: str, dry_run: bool = False) -> OrasIndexVerifyResult:
+    def run(self, expected_digest: str | None, dry_run: bool = False) -> OrasIndexVerifyResult:
         verified: list[str] = []
         if dry_run:
             return OrasIndexVerifyResult(success=True, verified=self.image_target.tags.as_strings())
+        if expected_digest is None:
+            return OrasIndexVerifyResult(
+                success=False,
+                error=f"cannot verify '{self.image_target.uid}' without an expected digest",
+            )
         try:
             for ref in self.image_target.tags.as_strings():
 
