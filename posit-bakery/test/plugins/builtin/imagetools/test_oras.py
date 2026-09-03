@@ -742,6 +742,7 @@ class TestOrasIndexVerifyWorkflow:
             result = workflow.run(expected_digest="sha256:expected")
 
         assert result.success is False
+        assert result.error is not None
         assert result.verified == ["ghcr.io/posit-dev/test-image:1.0.0"]
 
     def test_dry_run_skips_execution(self, mock_image_target_factory):
