@@ -88,6 +88,18 @@ class TestBakeTarget:
         json_data = bake_target.model_dump(exclude_none=True)
         assert json_data["target"] == "my-stage"
 
+    def test_temp_registry_with_port_not_mangled(self, basic_standard_image_target):
+        """A temp registry with a port keeps its full reference as the bake target tag (#738)."""
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="localhost:5000")
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        assert bake_target.tags == ["localhost:5000/test-image/tmp"]
+
+    def test_temp_name_matches_build_strategy(self, basic_standard_image_target):
+        """Bake and build strategies derive the same temp image.name (#738)."""
+        basic_standard_image_target.settings = ImageTargetSettings(temp_registry="localhost:5000")
+        bake_target = BakeTarget.from_image_target(basic_standard_image_target)
+        assert bake_target.tags == [basic_standard_image_target.temp_name]
+
     def test_secret_populated_when_env_set(self, basic_standard_image_target, monkeypatch):
         """Configured build secrets surface on the bake target as env-typed dicts."""
         from posit_bakery.config.image.build_secret import BuildSecret
