@@ -66,7 +66,7 @@ class TestRunPublishStage1:
 
         assert result.success is True
         assert result.skipped is False
-        assert result.temp_ref == "ghcr.io/x/tmp:created"
+        assert result.temp_ref == "ghcr.io/x/tmp@sha256:expected"
         assert result.expected_digest == "sha256:expected"
 
     def test_wait_failure_marks_target_failed(self):
@@ -148,7 +148,7 @@ class TestRunPublishStage1:
             result = _run_publish_stage1(target, "oras", "soci", dry_run=False)
 
         assert result.success is True
-        assert result.temp_ref == "ghcr.io/x/tmp:created-soci"
+        assert result.temp_ref == "ghcr.io/x/tmp@sha256:expected"
         assert result.expected_digest == "sha256:expected"
 
     def test_soci_failure_marks_target_failed(self):
