@@ -717,6 +717,31 @@ jobs:
           fi
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Tag
+        # Tag each per-platform digest in Wiz using the final published registry
+        # repo (repo@sha256:PLATFORM_DIGEST). The digest is identical to the one
+        # scanned in the build-test job, so Wiz correlates scan findings to the
+        # published image. Per Wiz docs, multi-platform images must be tagged by
+        # child (per-platform) digest, not the manifest list digest.
+        # Only runs on real production pushes; dev builds are excluded.
+        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZCLI_PATH: ${{ github.workspace }}/tools/wizcli
+        run: |
+          bakery wizcli tag \
+            --image-name "^${IMAGE_NAME}$" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$CONTEXT" \
+            ./*-metadata.json
+
   readme:
     name: Push READMEs
     permissions:
