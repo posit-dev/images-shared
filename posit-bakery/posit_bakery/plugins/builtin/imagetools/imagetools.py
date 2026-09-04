@@ -28,6 +28,7 @@ from posit_bakery.plugins.builtin.imagetools.options import SociOptions
 from posit_bakery.plugins.builtin.imagetools.oras import OrasMergeWorkflow, find_oras_bin
 from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow, find_soci_bin
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
+from posit_bakery.retry import retry_on_transient
 
 if TYPE_CHECKING:
     from posit_bakery.const import SummaryOutputFormat
@@ -81,6 +82,7 @@ class _PublishStage1Result:
     skipped: bool = False
     skip_reason: str | None = None
     temp_ref: str | None = None
+    expected_digest: str | None = None
     error: str | None = None
     failed_phase: str | None = None
 
@@ -101,7 +103,11 @@ def _run_publish_stage1(
     the source modules are honoured at call time.
     """
     from posit_bakery.error import BakeryToolRuntimeError
-    from posit_bakery.plugins.builtin.imagetools.oras import OrasIndexCreateWorkflow, OrasWaitForSourcesWorkflow
+    from posit_bakery.plugins.builtin.imagetools.oras import (
+        OrasIndexCreateWorkflow,
+        OrasWaitForSourcesWorkflow,
+        fetch_manifest_digest,
+    )
     from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow
 
     if not target.get_merge_sources():
@@ -157,7 +163,24 @@ def _run_publish_stage1(
             return _PublishStage1Result(target=target, success=False, failed_phase="soci", error=soci.error)
         temp_ref = soci.destination_ref
 
-    return _PublishStage1Result(target=target, temp_ref=temp_ref)
+    if dry_run:
+        return _PublishStage1Result(target=target, temp_ref=temp_ref)
+
+    try:
+        expected_digest = retry_on_transient(
+            lambda: fetch_manifest_digest(oras_bin, temp_ref, runner=runner),
+            description=f"manifest-resolve for '{target.uid}' -> {temp_ref}",
+            sleep=runner.sleep if runner is not None else None,
+        )
+    except BakeryToolRuntimeError as e:
+        return _PublishStage1Result(
+            target=target,
+            success=False,
+            failed_phase="resolve",
+            error=f"Failed to resolve published source digest: {e.dump_stderr() or e}",
+        )
+
+    return _PublishStage1Result(target=target, temp_ref=temp_ref, expected_digest=expected_digest)
 
 
 class ImageToolsPlugin(BakeryToolPlugin):
@@ -650,7 +673,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
         failures: list[tuple[str, str, str]] = []
 
         stage1_failed = False
-        temp_refs: dict[str, str] = {}
+        stage1_results: dict[str, _PublishStage1Result] = {}
         for jr in job_results:
             if not jr.ok:
                 stage1_failed = True
@@ -671,7 +694,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
                     (str(stage1_result.target), f"stage1:{stage1_result.failed_phase}", str(stage1_result.error))
                 )
                 continue
-            temp_refs[stage1_result.target.uid] = stage1_result.temp_ref
+            stage1_results[stage1_result.target.uid] = stage1_result
 
         # Stage 2: index copy. Sequential, in push_sort_key order (targets is already sorted
         # that way) -- this is the only stage that must stay ordered, since it is the actual
@@ -679,12 +702,12 @@ class ImageToolsPlugin(BakeryToolPlugin):
         copy_failed = False
         copied_targets: list[ImageTarget] = []
         for t in targets:
-            if t.uid not in temp_refs:
+            if t.uid not in stage1_results:
                 continue
             copy = OrasIndexCopyWorkflow(
                 oras_bin=oras_bin,
                 image_target=t,
-            ).run(source=temp_refs[t.uid], dry_run=dry_run)
+            ).run(source=stage1_results[t.uid].temp_ref, dry_run=dry_run)
             if not copy.success:
                 log.error(f"index-copy failed for '{t}': {copy.error}")
                 failures.append((str(t), "index-copy", str(copy.error)))
@@ -700,7 +723,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 verify = OrasIndexVerifyWorkflow(
                     oras_bin=oras_bin,
                     image_target=t,
-                ).run(dry_run=dry_run)
+                ).run(expected_digest=stage1_results[t.uid].expected_digest, dry_run=dry_run)
                 if not verify.success:
                     log.error(f"verification failed for '{t}': {verify.error}")
                     failures.append((str(t), "verify", str(verify.error)))

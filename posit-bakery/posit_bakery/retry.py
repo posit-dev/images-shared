@@ -39,6 +39,7 @@ _TRANSIENT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"manifest unknown",
         r"blob unknown",
         r"name unknown",
+        r"digest mismatch",  # destination tag has not propagated its copied digest yet
         r"\b5\d\d\b",  # 5xx HTTP status codes
         r"\b429\b",  # too many requests
         r"too many requests",

@@ -142,6 +142,10 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
             "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
             return_value=MagicMock(run=MagicMock(return_value=create_result)),
         ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+            return_value="sha256:expected",
+        ),
         _bypass_pydantic_init(OrasIndexCopyWorkflow),
         patch("posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow.run", fake_copy_run, create=True),
         patch(
@@ -195,6 +199,10 @@ def test_publish_isolates_one_targets_create_failure_from_others(tmp_path):
         ),
         _bypass_pydantic_init(OrasIndexCreateWorkflow),
         patch("posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow.run", fake_create_run, create=True),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+            return_value="sha256:expected",
+        ),
         _bypass_pydantic_init(OrasIndexCopyWorkflow),
         patch("posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow.run", fake_copy_run, create=True),
         patch(

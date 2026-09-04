@@ -1,5 +1,6 @@
 import hashlib
 import itertools
+import json
 import logging
 import subprocess
 import time
@@ -193,6 +194,43 @@ class OrasManifestFetch(OrasCommand):
         return cmd
 
 
+def fetch_manifest_digest(
+    oras_bin: str,
+    reference: str,
+    *,
+    plain_http: bool = False,
+    runner: "CommandRunner | None" = None,
+) -> str:
+    """Fetch and return the digest from an ORAS manifest descriptor."""
+    fetch = OrasManifestFetch(
+        oras_bin=oras_bin,
+        reference=reference,
+        descriptor=True,
+        plain_http=plain_http,
+    )
+    result = fetch.run(runner=runner)
+    try:
+        descriptor = json.loads(result.stdout)
+        digest = descriptor["digest"]
+    except (json.JSONDecodeError, KeyError, TypeError, UnicodeDecodeError) as e:
+        raise BakeryToolRuntimeError(
+            message=f"oras manifest descriptor for '{reference}' did not include a digest",
+            tool_name="oras",
+            cmd=fetch.command,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        ) from e
+    if not isinstance(digest, str):
+        raise BakeryToolRuntimeError(
+            message=f"oras manifest descriptor for '{reference}' did not include a digest",
+            tool_name="oras",
+            cmd=fetch.command,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        )
+    return digest
+
+
 class OrasIndexCreateResult(BaseModel):
     """Result of an ORAS manifest-index-create phase."""
 
@@ -301,12 +339,7 @@ class OrasIndexVerifyResult(BaseModel):
 
 
 class OrasIndexVerifyWorkflow(BaseModel):
-    """Verify that each final destination tag exists in its registry.
-
-    Run after :class:`OrasIndexCopyWorkflow` as a sanity check that the copied
-    indexes are actually resolvable. Each tag is fetched with ``oras manifest
-    fetch --descriptor``; the first missing tag aborts the workflow.
-    """
+    """Verify that each final destination tag resolves to the copied digest."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -315,20 +348,39 @@ class OrasIndexVerifyWorkflow(BaseModel):
     plain_http: Annotated[bool, Field(default=False)]
     retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
 
-    def run(self, dry_run: bool = False) -> OrasIndexVerifyResult:
+    def run(self, expected_digest: str | None, dry_run: bool = False) -> OrasIndexVerifyResult:
         verified: list[str] = []
+        if dry_run:
+            return OrasIndexVerifyResult(success=True, verified=self.image_target.tags.as_strings())
+        if expected_digest is None:
+            return OrasIndexVerifyResult(
+                success=False,
+                error=f"cannot verify '{self.image_target.uid}' without an expected digest",
+            )
         try:
             for ref in self.image_target.tags.as_strings():
-                fetch = OrasManifestFetch(
-                    oras_bin=self.oras_bin,
-                    reference=ref,
-                    descriptor=True,
-                    plain_http=self.plain_http,
-                )
-                # Retry transient registry errors: the copy phase's write may
-                # still be propagating when this verify fetch first reads it.
+
+                def verify_ref(ref: str = ref) -> None:
+                    observed_digest = fetch_manifest_digest(
+                        self.oras_bin,
+                        ref,
+                        plain_http=self.plain_http,
+                    )
+                    if observed_digest != expected_digest:
+                        message = f"digest mismatch for '{ref}': expected {expected_digest}, observed {observed_digest}"
+                        log.warning(message)
+                        raise BakeryToolRuntimeError(
+                            message=message,
+                            tool_name="oras",
+                            cmd=[self.oras_bin, "manifest", "fetch", "--descriptor", ref],
+                            stderr=b"digest mismatch",
+                        )
+
+                # A copied tag may briefly resolve to its old digest while a registry
+                # propagates the write, so a mismatch uses the same bounded retry policy
+                # as a missing descriptor.
                 retry_on_transient(
-                    lambda f=fetch: f.run(dry_run=dry_run),
+                    verify_ref,
                     policy=self.retry_policy,
                     description=f"index-verify for '{self.image_target.uid}' -> {ref}",
                 )
