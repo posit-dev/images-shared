@@ -72,8 +72,9 @@ via its postinst script.
 
 On RHEL-like systems, installs via dnf from the Open rpm repo.
 
-Requires `curl` to be installed prior to execution so that the Posit Open
-repository can be added via its setup script.
+Requires the Posit Open apt/dnf repository to already be registered earlier
+in the build, e.g. via `apt.setup(open_repo=True)` / `apt.run_setup(open_repo=True)`
+(or the dnf equivalent) — this macro does not register the repository itself.
 
 When `with_tinytex` is `True`, `xz-utils` (apt) or `xz` (dnf) is also
 installed because the TinyTeX release tarball is `.tar.xz`.
@@ -82,12 +83,11 @@ installed because the TinyTeX release tarball is `.tar.xz`.
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_update_path: Adds --update-path to the TinyTeX install command to add TinyTeX binaries to the PATH. Defaults to False.
 :param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
-:param codename: Override the OS codename for the Open repo setup script.
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, codename = None, os_family = "debian") -%}
+{% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, os_family = "debian") -%}
 {%- if os_family == "debian" -%}
-{{ apt.setup_posit_repo("open", codename) }} && \
+apt-get update -yqq && \
 apt-get install -yqq --no-install-recommends \
     quarto={{ version | trim }}{% if with_tinytex %} \
     xz-utils{% endif %} && \
@@ -95,7 +95,6 @@ apt-mark hold quarto && \
 {{ apt.clean_command() }}{% if with_tinytex %} && \
 {{ install_tinytex_command("/opt/quarto/bin/quarto", tinytex_update_path, tinytex_home_path) }}{% endif %}
 {%- elif os_family == "rhel" -%}
-{{ dnf.setup_posit_repo("open") }} && \
 dnf install -yq \
     quarto-{{ version | trim }} \
     'dnf-command(versionlock)'{% if with_tinytex %} \
@@ -116,17 +115,16 @@ so only a single version is supported.
 :param version: A Quarto version string, or a single-element list (e.g. Dependencies.quarto).
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
-:param codename: Override the OS codename for the Open repo setup script.
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro run_install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, codename = None, os_family = "debian") -%}
+{% macro run_install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, os_family = "debian") -%}
 {%- if version is not string -%}
 {%- if version | length != 1 -%}
 {{ raise("Only one Quarto version may be passed to quarto.run_install() (got " ~ version | length ~ "). Quarto installs to a flat /opt/quarto/ directory and cannot coexist with other versions.") }}
 {%- endif -%}
 {%- set version = version[0] -%}
 {%- endif -%}
-RUN {% if with_tinytex %}{{ github_token_secret_mount() }} {% endif %}{{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path, codename, os_family) | indent(4) }}
+RUN {% if with_tinytex %}{{ github_token_secret_mount() }} {% endif %}{{ install(version, with_tinytex, tinytex_update_path, tinytex_home_path, os_family) | indent(4) }}
 {%- endmacro %}
 
 {# Symlinks the Quarto install directory to the target path.

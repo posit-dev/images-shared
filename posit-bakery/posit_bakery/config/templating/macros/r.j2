@@ -1,5 +1,8 @@
 {# Macros for installing R and installing packages to R installations #}
 
+{%- import "apt.j2" as apt -%}
+{%- import "dnf.j2" as dnf -%}
+
 {%- set _BUILD_ARG_NAME = "R_VERSION" -%}
 
 {# Declare a generic build argument for an R version #}
@@ -17,25 +20,52 @@ ${{ name }}
 /opt/R/{{ version | trim }}
 {%- endmacro %}
 
-{# Downloads and runs the Posit r-install shell script to install a version of R
+{# Installs a specific version of R from the Posit Open repository.
+
+Requires the Posit Open apt/dnf repository to already be registered earlier
+in the build, e.g. via `apt.setup(open_repo=True)` / `apt.run_setup(open_repo=True)`
+(or the dnf equivalent). This macro does not register the repository itself:
+run_install() below emits one RUN per R version, and re-registering the repo
+on every version would re-run its GPG key exchange and full package index
+update once per version instead of once per build.
 
 :param version: The R version to install, e.g. "4.4.3"
+:param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro install(version) -%}
-RUN_UNATTENDED=1 R_VERSION={{ version | trim }} bash -c "$(curl -fsSL https://rstd.io/r-install)" && \
-find . -type f -name '[rR]-{{ version | trim }}.*\.(deb|rpm)' -delete
+{% macro install(version, os_family = "debian") -%}
+{%- if os_family == "debian" -%}
+apt-get update -yqq && \
+apt-get install -yqq --no-install-recommends \
+    r-{{ version | trim }} && \
+apt-mark hold r-{{ version | trim }} && \
+{{ apt.clean_command() }}
+{%- elif os_family == "rhel" -%}
+dnf install -yq \
+    R-{{ version | trim }} \
+    'dnf-command(versionlock)' && \
+dnf versionlock add R-{{ version | trim }} && \
+{{ dnf.clean_command() }}
+{%- else -%}
+{{ raise("Unsupported os_family '" ~ os_family ~ "' in r.install(). Must be 'debian' or 'rhel'.") }}
+{%- endif -%}
 {%- endmacro %}
 
-{# Installs one or more versions of R as separate RUN statements
+{# Installs one or more versions of R as separate RUN statements.
+
+Each version is its own RUN statement, so adding a new R version later only
+adds a layer instead of invalidating the cache for versions already
+installed. Requires the Posit Open repository to already be registered; see
+install() above.
 
 :param versions: A list of R versions or a comma separated string of R versions to install
+:param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
-{% macro run_install(versions) -%}
+{% macro run_install(versions, os_family = "debian") -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") | map('trim') -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install(version) | indent(4) }}
+RUN {{ install(version, os_family) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
