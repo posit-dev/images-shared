@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from posit_bakery.error import BakeryToolRuntimeError
-from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings
+from posit_bakery.image.image_target import StringableList, ImageTarget, ImageTargetContext, ImageTargetSettings, Tag
 from posit_bakery.plugins.builtin.imagetools.oras import (
     find_oras_bin,
     get_repository_from_ref,
@@ -857,6 +857,135 @@ class TestOrasIndexVerifyWorkflowRetry:
         assert result.success is False
         assert mock_run.call_count == 1
         sleep.assert_not_called()
+
+
+class TestOrasIndexVerifyWorkflowFallback:
+    """Stale destination tags are recopied individually from the immutable source."""
+
+    def test_repairs_only_stale_tag(self, mock_image_target_factory, caplog):
+        target = mock_image_target_factory()
+        correct = "ghcr.io/posit-dev/test-image:1.0.0"
+        stale = "ghcr.io/posit-dev/test-image:latest"
+        target.tags = StringableList([Tag.from_string(correct), Tag.from_string(stale)])
+        fetches = {correct: 0, stale: 0}
+
+        def fake_fetch(oras_bin, ref, **kwargs):
+            fetches[ref] += 1
+            return "sha256:stale" if ref == stale and fetches[ref] == 1 else "sha256:expected"
+
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=1),
+        )
+        with (
+            patch("posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest", side_effect=fake_fetch),
+            patch.object(OrasCopy, "run", autospec=True) as copy_run,
+        ):
+            result = workflow.run(
+                expected_digest="sha256:expected",
+                source="ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            )
+
+        assert result.success is True
+        assert result.verified == [correct, stale]
+        copy_run.assert_called_once()
+        assert copy_run.call_args.args[0].command == [
+            "oras",
+            "cp",
+            "ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            stale,
+        ]
+        assert "Starting single-tag copy fallback" in caplog.text
+        assert f"Fallback selected '{stale}'" in caplog.text
+        assert f"Fallback verification succeeded for '{stale}'" in caplog.text
+
+    def test_repairs_multiple_stale_tags_serially(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        refs = [
+            "ghcr.io/posit-dev/test-image:1.0.0",
+            "ghcr.io/posit-dev/test-image:latest",
+        ]
+        target.tags = StringableList([Tag.from_string(ref) for ref in refs])
+        fetches = {ref: 0 for ref in refs}
+
+        def fake_fetch(oras_bin, ref, **kwargs):
+            fetches[ref] += 1
+            return "sha256:stale" if fetches[ref] == 1 else "sha256:expected"
+
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=1),
+        )
+        with (
+            patch("posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest", side_effect=fake_fetch),
+            patch.object(OrasCopy, "run", autospec=True) as copy_run,
+        ):
+            result = workflow.run(
+                expected_digest="sha256:expected",
+                source="ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            )
+
+        assert result.success is True
+        assert [call.args[0].destination for call in copy_run.call_args_list] == refs
+        assert all("," not in call.args[0].destination for call in copy_run.call_args_list)
+
+    def test_fails_when_fallback_copy_fails(self, mock_image_target_factory):
+        stale = "ghcr.io/posit-dev/test-image:1.0.0"
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=1),
+        )
+        copy_error = BakeryToolRuntimeError(
+            message="fallback copy failed",
+            tool_name="oras",
+            cmd=["oras", "cp"],
+            stderr=b"unauthorized",
+        )
+        with (
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                return_value="sha256:stale",
+            ),
+            patch.object(OrasCopy, "run", autospec=True, side_effect=copy_error) as copy_run,
+        ):
+            result = workflow.run(
+                expected_digest="sha256:expected",
+                source="ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            )
+
+        assert result.success is False
+        copy_run.assert_called_once()
+        assert stale in result.error
+        assert "sha256:expected" in result.error
+        assert "sha256:stale" in result.error
+        assert "fallback copy failed" in result.error
+
+    def test_fails_when_fallback_tag_remains_stale(self, mock_image_target_factory):
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=2, initial_backoff=0),
+        )
+        with (
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                return_value="sha256:stale",
+            ) as fetch,
+            patch.object(OrasCopy, "run", autospec=True) as copy_run,
+        ):
+            result = workflow.run(
+                expected_digest="sha256:expected",
+                source="ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            )
+
+        assert result.success is False
+        assert fetch.call_count == 4
+        copy_run.assert_called_once()
+        assert "sha256:expected" in result.error
+        assert "sha256:stale" in result.error
 
 
 @pytest.mark.slow

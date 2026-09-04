@@ -124,6 +124,7 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
     wait_result = MagicMock(success=True, ready=["x"], missing=[], waited_seconds=0.1, error=None)
     create_result = MagicMock(success=True, temp_ref="ghcr.io/posit-dev/tmp:created")
     copy_order = []
+    verify_run = MagicMock(return_value=MagicMock(success=True, verified=["ghcr.io/posit-dev/test:1.0.0"]))
 
     def fake_copy_run(self, source, dry_run=False):
         copy_order.append(self.image_target.uid)
@@ -150,9 +151,7 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
         patch("posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow.run", fake_copy_run, create=True),
         patch(
             "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
-            return_value=MagicMock(
-                run=MagicMock(return_value=MagicMock(success=True, verified=["ghcr.io/posit-dev/test:1.0.0"]))
-            ),
+            return_value=MagicMock(run=verify_run),
         ),
     ):
         result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
@@ -160,6 +159,10 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
     assert result.exit_code == 0, result.stdout
     # Stage 2 pushes in push_sort_key order regardless of how Stage 1 completed.
     assert copy_order == ["uid-b", "uid-a"]
+    assert [call.kwargs["source"] for call in verify_run.call_args_list] == [
+        "ghcr.io/posit-dev/tmp:created",
+        "ghcr.io/posit-dev/tmp:created",
+    ]
 
 
 def test_publish_isolates_one_targets_create_failure_from_others(tmp_path):
