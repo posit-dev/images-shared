@@ -898,7 +898,34 @@ class TestOrasIndexVerifyWorkflowFallback:
         ]
         assert "Starting single-tag copy fallback" in caplog.text
         assert f"Fallback selected '{stale}'" in caplog.text
+        assert f"Fallback copying 'ghcr.io/posit-dev/test-image/tmp@sha256:immutable' -> '{stale}'" in caplog.text
         assert f"Fallback verification succeeded for '{stale}'" in caplog.text
+
+    def test_waits_for_fallback_tag_to_settle(self, mock_image_target_factory):
+        workflow = OrasIndexVerifyWorkflow(
+            oras_bin="oras",
+            image_target=mock_image_target_factory(),
+            retry_policy=RetryPolicy(max_attempts=1, initial_backoff=1),
+            settle_timeout=60,
+        )
+        digests = iter(["sha256:stale", "sha256:stale", "sha256:expected"])
+        with (
+            patch(
+                "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+                side_effect=lambda *_args, **_kwargs: next(digests),
+            ) as fetch,
+            patch.object(OrasCopy, "run", autospec=True) as copy_run,
+            patch("posit_bakery.plugins.builtin.imagetools.oras.time.sleep") as sleep,
+        ):
+            result = workflow.run(
+                expected_digest="sha256:expected",
+                source="ghcr.io/posit-dev/test-image/tmp@sha256:immutable",
+            )
+
+        assert result.success is True
+        assert fetch.call_count == 3
+        copy_run.assert_called_once()
+        sleep.assert_called_once_with(1)
 
     def test_repairs_multiple_stale_tags_serially(self, mock_image_target_factory):
         target = mock_image_target_factory()
@@ -968,6 +995,7 @@ class TestOrasIndexVerifyWorkflowFallback:
             oras_bin="oras",
             image_target=mock_image_target_factory(),
             retry_policy=RetryPolicy(max_attempts=2, initial_backoff=0),
+            settle_timeout=0,
         )
         with (
             patch(
