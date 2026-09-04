@@ -375,7 +375,9 @@ class OrasIndexVerifyWorkflow(BaseModel):
             description=f"index-verify for '{self.image_target.uid}' -> {ref}",
         )
 
-    def run(self, expected_digest: str | None, source: str | None = None, dry_run: bool = False) -> OrasIndexVerifyResult:
+    def run(
+        self, expected_digest: str | None, source: str | None = None, dry_run: bool = False
+    ) -> OrasIndexVerifyResult:
         refs = self.image_target.tags.as_strings()
         verified: list[str] = []
         stale: list[tuple[str, BakeryToolRuntimeError]] = []
