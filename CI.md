@@ -146,14 +146,14 @@ flowchart TD
     end
     subgraph build_amd64[Build/Test amd64]
         a_setup[Checkout + bakery + goss + docker + buildx + oras] --> a_login[Login GHCR/DH/ECR]
-        a_login --> a_build["bakery build --strategy build<br/>--push to temp registry --summary"]
+        a_login --> a_build["bakery build --strategy bake<br/>--push to temp registry --summary"]
         a_build --> a_sum[Upload build summary artifact]
         a_sum --> a_test["bakery dgoss run"]
         a_test --> a_meta[Upload metadata artifact]
     end
     subgraph build_arm64[Build/Test arm64]
         r_setup[Checkout + bakery + goss + docker + buildx + oras] --> r_login[Login GHCR/DH/ECR]
-        r_login --> r_build["bakery build --strategy build<br/>--push to temp registry --summary"]
+        r_login --> r_build["bakery build --strategy bake<br/>--push to temp registry --summary"]
         r_build --> r_sum[Upload build summary artifact]
         r_sum --> r_test["bakery dgoss run"]
         r_test --> r_meta[Upload metadata artifact]

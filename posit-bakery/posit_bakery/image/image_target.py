@@ -82,9 +82,11 @@ class Tag(BaseModel):
         suffix = None
         digest = None
 
-        # Handle digest references
+        # Handle digest references, which may also retain a tag (name:tag@digest).
         if "@" in ref:
             name_part, digest = ref.rsplit("@", 1)
+            if name_part.rfind(":") > name_part.rfind("/"):
+                name_part, suffix = name_part.rsplit(":", 1)
         elif ":" in ref:
             # Handle tag references, but be careful with ports
             parts = ref.rsplit(":", 1)
@@ -823,7 +825,9 @@ class ImageTarget(BaseModel):
         sorted_metadata = sorted(self.build_metadata, key=lambda x: x.created_at, reverse=True)
         collected_platforms = set()
         for metadata in sorted_metadata:
-            ref = metadata.image_ref
+            # Buildx inconsistently includes :latest in push-by-digest metadata. ORAS requires
+            # every source to name the same repository, so normalize to the tag-free digest ref.
+            ref = metadata.digest_ref or metadata.image_ref
             if ref is None:
                 # Metadata without a resolvable image ref (e.g. missing image.name)
                 # can't be merged; skip it rather than emitting a null source.

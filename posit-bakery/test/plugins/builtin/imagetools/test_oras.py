@@ -33,6 +33,7 @@ pytestmark = [
     "ref,expected_repo",
     [
         ("ghcr.io/posit-dev/test/tmp@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
+        ("ghcr.io/posit-dev/test/tmp:latest@sha256:abc123", "ghcr.io/posit-dev/test/tmp"),
         ("ghcr.io/posit-dev/test:latest", "ghcr.io/posit-dev/test"),
         ("localhost:5000/repo/image:tag", "localhost:5000/repo/image"),
         ("docker.io/library/ubuntu:22.04", "docker.io/library/ubuntu"),

@@ -185,28 +185,25 @@ class BuildMetadata(BaseModel):
 
     @property
     def created_at(self) -> datetime.datetime:
-        """Returns the creation timestamp of the built image if available."""
+        """Return the creation timestamp as an offset-aware UTC datetime."""
+        timestamps = []
         if self.container_image_descriptor and self.container_image_descriptor.annotations:
-            dt_str = self.container_image_descriptor.annotations.get("org.opencontainers.image.created")
-            if dt_str:
-                try:
-                    return datetime.datetime.fromisoformat(dt_str)
-                except ValueError:
-                    pass
-        if self.build_provenance:
-            # If the creation timestamp is not available in the annotations, we can use the build start time from
-            # labels.
-            if self.build_provenance.invocation and self.build_provenance.invocation.parameters:
-                start_time_str = self.build_provenance.invocation.parameters.get("args", {}).get(
+            timestamps.append(self.container_image_descriptor.annotations.get("org.opencontainers.image.created"))
+        if self.build_provenance and self.build_provenance.invocation and self.build_provenance.invocation.parameters:
+            timestamps.append(
+                self.build_provenance.invocation.parameters.get("args", {}).get(
                     "label:org.opencontainers.image.created"
                 )
-                if start_time_str:
-                    try:
-                        return datetime.datetime.fromisoformat(start_time_str)
-                    except ValueError:
-                        pass
+            )
+        for timestamp in timestamps:
+            if timestamp:
+                try:
+                    value = datetime.datetime.fromisoformat(timestamp)
+                    return value if value.tzinfo else value.replace(tzinfo=datetime.UTC)
+                except ValueError:
+                    pass
         log.debug("Creation timestamp not found in metadata, defaulting to current time.")
-        return datetime.datetime.now()
+        return datetime.datetime.now(datetime.UTC)
 
     def base_image_digest(self, os_name: str) -> str | None:
         """Returns the digest of the base OS image material matching ``os_name``, if present.

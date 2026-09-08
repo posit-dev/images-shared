@@ -390,7 +390,7 @@ jobs:
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery build \
-            --strategy build --pull \
+            --strategy bake --pull \
             --retry "$RETRY" \
             --image-name "^${IMAGE_NAME}$" \
             --image-version "$IMAGE_VERSION" \
