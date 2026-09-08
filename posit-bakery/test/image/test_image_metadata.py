@@ -111,8 +111,16 @@ class TestBuildMetadata:
             },
         }
         metadata = BuildMetadata.model_validate(data)
-        expected_dt = datetime.datetime.fromisoformat("2024-06-15T10:30:00")
+        expected_dt = datetime.datetime(2024, 6, 15, 10, 30, tzinfo=datetime.UTC)
         assert metadata.created_at == expected_dt
+
+        annotated_metadata = BuildMetadata.model_validate(
+            {"containerimage.descriptor": {"annotations": {"org.opencontainers.image.created": "2024-06-15T10:30:01Z"}}}
+        )
+        assert sorted([metadata, annotated_metadata], key=lambda item: item.created_at) == [
+            metadata,
+            annotated_metadata,
+        ]
 
     def test_created_at_defaults_to_now(self):
         """Test created_at defaults to current time when no timestamp available."""
@@ -122,7 +130,7 @@ class TestBuildMetadata:
         }
         metadata = BuildMetadata.model_validate(data)
         # Should be close to now (within a few seconds)
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         assert abs((metadata.created_at - now).total_seconds()) < 5
 
     def test_platform_from_descriptor(self, image_testdata_path):
