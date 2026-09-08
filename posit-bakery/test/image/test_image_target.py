@@ -1259,7 +1259,9 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[1].platform = "linux/arm64"
         basic_standard_image_target.build_metadata[0].image_ref = "image1@sha256:amd64digest"
+        basic_standard_image_target.build_metadata[0].digest_ref = "image1@sha256:amd64digest"
         basic_standard_image_target.build_metadata[1].image_ref = "image2@sha256:arm64digest"
+        basic_standard_image_target.build_metadata[1].digest_ref = "image2@sha256:arm64digest"
 
         sources = basic_standard_image_target.get_merge_sources()
 
@@ -1281,14 +1283,17 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].created_at = older_time
         basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[0].image_ref = "old-amd64@sha256:old"
+        basic_standard_image_target.build_metadata[0].digest_ref = "old-amd64@sha256:old"
         # Newer amd64 build
         basic_standard_image_target.build_metadata[1].created_at = newer_time
         basic_standard_image_target.build_metadata[1].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[1].image_ref = "new-amd64@sha256:new"
+        basic_standard_image_target.build_metadata[1].digest_ref = "new-amd64@sha256:new"
         # arm64 build
         basic_standard_image_target.build_metadata[2].created_at = older_time
         basic_standard_image_target.build_metadata[2].platform = "linux/arm64"
         basic_standard_image_target.build_metadata[2].image_ref = "arm64@sha256:arm"
+        basic_standard_image_target.build_metadata[2].digest_ref = "arm64@sha256:arm"
 
         sources = basic_standard_image_target.get_merge_sources()
 
@@ -1311,10 +1316,38 @@ class TestImageTarget:
         basic_standard_image_target.build_metadata[0].created_at = datetime.datetime.now()
         basic_standard_image_target.build_metadata[0].platform = "linux/amd64"
         basic_standard_image_target.build_metadata[0].image_ref = "image@sha256:digest"
+        basic_standard_image_target.build_metadata[0].digest_ref = "image@sha256:digest"
 
         sources = basic_standard_image_target.get_merge_sources()
 
         assert sources == ["image@sha256:digest"]
+
+    def test_get_merge_sources_normalizes_inconsistent_tags(self, basic_standard_image_target):
+        """Push-by-digest metadata may report the same repository with or without :latest."""
+        basic_standard_image_target.build_metadata = [MagicMock(spec=BuildMetadata), MagicMock(spec=BuildMetadata)]
+        for metadata, platform, image_ref, digest_ref in (
+            (
+                basic_standard_image_target.build_metadata[0],
+                "linux/amd64",
+                "ghcr.io/posit-dev/test/tmp@sha256:amd64",
+                "ghcr.io/posit-dev/test/tmp@sha256:amd64",
+            ),
+            (
+                basic_standard_image_target.build_metadata[1],
+                "linux/arm64",
+                "ghcr.io/posit-dev/test/tmp:latest@sha256:arm64",
+                "ghcr.io/posit-dev/test/tmp@sha256:arm64",
+            ),
+        ):
+            metadata.created_at = datetime.datetime.now()
+            metadata.platform = platform
+            metadata.image_ref = image_ref
+            metadata.digest_ref = digest_ref
+
+        assert set(basic_standard_image_target.get_merge_sources()) == {
+            "ghcr.io/posit-dev/test/tmp@sha256:amd64",
+            "ghcr.io/posit-dev/test/tmp@sha256:arm64",
+        }
 
 
 class TestGetToolOption:
