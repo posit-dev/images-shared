@@ -1418,7 +1418,6 @@ class TestBakeryConfig:
                     tar && \\
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
@@ -1470,7 +1469,6 @@ class TestBakeryConfig:
                     tar && \\
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
