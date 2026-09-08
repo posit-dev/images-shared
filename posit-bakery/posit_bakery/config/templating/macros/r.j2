@@ -29,6 +29,13 @@ run_install() below emits one RUN per R version, and re-registering the repo
 on every version would re-run its GPG key exchange and full package index
 update once per version instead of once per build.
 
+Unlike quarto.install(), this does not hold/versionlock the package after
+installing it. Each R version is its own package name (e.g. "r-4.6.1"), so
+apt/dnf can never resolve one R version's package as an upgrade target for
+another; holding would only guard against a same-named package being
+republished at a new internal revision, and nothing in this codebase runs
+an upgrade after R installs to trigger that.
+
 :param version: The R version to install, e.g. "4.4.3"
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
@@ -37,13 +44,10 @@ update once per version instead of once per build.
 apt-get update -yqq && \
 apt-get install -yqq --no-install-recommends \
     r-{{ version | trim }} && \
-apt-mark hold r-{{ version | trim }} && \
 {{ apt.clean_command() }}
 {%- elif os_family == "rhel" -%}
 dnf install -yq \
-    R-{{ version | trim }} \
-    'dnf-command(versionlock)' && \
-dnf versionlock add R-{{ version | trim }} && \
+    R-{{ version | trim }} && \
 {{ dnf.clean_command() }}
 {%- else -%}
 {{ raise("Unsupported os_family '" ~ os_family ~ "' in r.install(). Must be 'debian' or 'rhel'.") }}

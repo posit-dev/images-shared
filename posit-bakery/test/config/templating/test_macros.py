@@ -2410,7 +2410,6 @@ class TestRMacros:
             apt-get update -yqq && \\
             apt-get install -yqq --no-install-recommends \\
                 r-4.4.3 && \\
-            apt-mark hold r-4.4.3 && \\
             apt-get clean -yqq && \\
             rm -rf /var/lib/apt/lists/*"""
         )
@@ -2422,9 +2421,7 @@ class TestRMacros:
         expected = textwrap.dedent(
             """\
             dnf install -yq \\
-                R-4.4.3 \\
-                'dnf-command(versionlock)' && \\
-            dnf versionlock add R-4.4.3 && \\
+                R-4.4.3 && \\
             dnf clean all -yq"""
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -2445,7 +2442,6 @@ class TestRMacros:
                     RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             r-4.4.3 && \\
-                        apt-mark hold r-4.4.3 && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*"""
                 ),
@@ -2458,13 +2454,11 @@ class TestRMacros:
                     RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             r-4.4.3 && \\
-                        apt-mark hold r-4.4.3 && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             r-4.3.3 && \\
-                        apt-mark hold r-4.3.3 && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*"""
                 ),
@@ -2477,13 +2471,11 @@ class TestRMacros:
                     RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             r-4.4.3 && \\
-                        apt-mark hold r-4.4.3 && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             r-4.3.3 && \\
-                        apt-mark hold r-4.3.3 && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*"""
                 ),
@@ -2501,9 +2493,7 @@ class TestRMacros:
         expected = textwrap.dedent(
             """\
             RUN dnf install -yq \\
-                    R-4.4.3 \\
-                    'dnf-command(versionlock)' && \\
-                dnf versionlock add R-4.4.3 && \\
+                    R-4.4.3 && \\
                 dnf clean all -yq"""
         )
         rendered = environment_with_macros.from_string(template).render()
