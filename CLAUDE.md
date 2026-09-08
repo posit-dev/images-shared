@@ -182,7 +182,7 @@ Each product repo has 2-3 workflow files that call the shared workflows:
 ### Build pipeline flow
 
 1. `bakery ci matrix` generates a JSON matrix of image/version/platform combinations
-2. Each combination builds on a separate runner (`bakery build --strategy build --push`)
+2. Each combination builds on a separate runner (`bakery build --strategy bake --push`)
 3. Build artifacts push to a temp registry (`--temp-registry ghcr.io/posit-dev`)
 4. `bakery ci merge` creates multi-platform manifests and pushes final tags
 
