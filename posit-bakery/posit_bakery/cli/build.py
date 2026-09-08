@@ -363,7 +363,7 @@ def build(
                 "❌ --metadata-file requires a single platform: the following target(s) build for "
                 "multiple platforms, which produces an index descriptor with no platform that "
                 "'dgoss run' / 'ci publish' cannot resolve. Pass a single --image-platform (e.g. "
-                f"'linux/amd64'):\n  - " + "\n  - ".join(sorted(t.uid for t in multi)),
+                "'linux/amd64'):\n  - " + "\n  - ".join(sorted(t.uid for t in multi)),
                 style="error",
             )
             raise typer.Exit(code=1)
