@@ -1497,7 +1497,6 @@ class TestBakeryConfig:
             RUN apt-get update -yqq && \\
                 apt-get install -yqq --no-install-recommends \\
                     r-4.5.1 && \\
-                apt-mark hold r-4.5.1 && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
 
