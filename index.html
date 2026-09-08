@@ -796,6 +796,7 @@ window.onload = function () {
   <ul class="collapse">
   <li><a href="#project-structure" id="toc-project-structure" class="nav-link" data-scroll-target="#project-structure">Project Structure</a></li>
   <li><a href="#image-tags" id="toc-image-tags" class="nav-link" data-scroll-target="#image-tags">Image Tags</a></li>
+  <li><a href="#build-strategies" id="toc-build-strategies" class="nav-link" data-scroll-target="#build-strategies">Build Strategies</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -1101,8 +1102,66 @@ Tip
 </tr>
 </tbody>
 </table>
+</section>
+<section id="build-strategies" class="level3">
+<h3 class="anchored" data-anchor-id="build-strategies">Build Strategies</h3>
+<p><code>bakery build</code> supports two strategies, selected with <code>--strategy</code>. Both emit the same <code>--metadata-file</code> contract, so either can feed <code>bakery dgoss run</code> and <code>bakery imagetools merge</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Aspect</th>
+<th style="text-align: left;"><code>--strategy bake</code> (default)</th>
+<th style="text-align: left;"><code>--strategy build</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Builder</td>
+<td style="text-align: left;"><code>docker buildx bake</code> (requires Docker Buildkit)</td>
+<td style="text-align: left;">Docker, Podman, or nerdctl</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Parallelism</td>
+<td style="text-align: left;">Builds all targets in parallel</td>
+<td style="text-align: left;">Concurrent, bounded by <code>--jobs</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>--plan</code></td>
+<td style="text-align: left;">Supported (prints the bake plan)</td>
+<td style="text-align: left;">Not supported; errors out</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>--fail-fast</code></td>
+<td style="text-align: left;">Buildx stops the whole bake on first failure</td>
+<td style="text-align: left;">Stops scheduling new targets after the first failure</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>--metadata-file</code> write</td>
+<td style="text-align: left;">Buildx owns the file</td>
+<td style="text-align: left;">Written only after <strong>all</strong> targets succeed</td>
+</tr>
+</tbody>
+</table>
+<section id="metadata-file-semantics" class="level4">
+<h4 class="anchored" data-anchor-id="metadata-file-semantics">Metadata file semantics</h4>
+<p>The <code>--metadata-file</code> JSON is keyed by image-target UID, one entry per target. Because <code>--strategy build</code> writes the file only after every target succeeds, a failed target leaves the file <strong>absent</strong> entirely; under <code>--strategy bake</code> a failed bake means buildx leaves a <strong>missing</strong> file. Either way, downstream <code>dgoss run</code> / <code>ci publish</code> see no file rather than a partial one.</p>
+</section>
+<section id="one-platform-per-invocation" class="level4">
+<h4 class="anchored" data-anchor-id="one-platform-per-invocation">One platform per invocation</h4>
+<p>A target built for more than one platform in a single invocation produces one metadata entry describing an index/manifest-list descriptor with <strong>no</strong> <code>platform</code> field. This has two concrete consequences for consumers:</p>
+<ul>
+<li><code>bakery dgoss run --metadata-file</code> can no longer match the exact built digest and falls back to a tag-based reference, so it stops testing the digest that was actually built.</li>
+<li><code>bakery imagetools merge</code> loses its per-platform merge inputs, collapsing them to a single unkeyed source.</li>
+</ul>
+<p>For this reason <code>bakery build</code> <strong>requires <code>--image-platform</code> to select a single platform</strong> whenever <code>--metadata-file</code> is set and any target supports more than one platform. Build <strong>one platform per invocation</strong> when the metadata file is consumed downstream — this is what <code>bakery-build-native.yml</code> already does (one image/version/platform per runner).</p>
 
 
+</section>
 </section>
 </section>
 
