@@ -182,14 +182,18 @@ RUN {{ install(packages, files) | indent(4) }}
 optionally adding the Posit Pro and/or Open apt repositories. Also installs and generates a
 locale so every image has a consistent, non-C locale available.
 
+Both repository flags default to False. Registering a repository re-runs Cloudsmith's
+GPG key exchange and config fetch, so every caller must opt in explicitly to the ones it
+actually installs packages from; do not turn one on "just in case".
+
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 :param codename: Override the OS codename for the Cloudsmith setup script.
-:param pro_repo: Whether to add the Posit Pro apt repository. Defaults to True.
+:param pro_repo: Whether to add the Posit Pro apt repository. Defaults to False.
 :param open_repo: Whether to add the Posit Open apt repository. Defaults to False.
 :param locale: The locale to generate. Defaults to "en_US.UTF-8". Pass a falsy value
     (False or None) to skip locale generation entirely.
 #}
-{% macro setup(clean = True, codename = None, pro_repo = True, open_repo = False, locale = "en_US.UTF-8") -%}
+{% macro setup(clean = True, codename = None, pro_repo = False, open_repo = False, locale = "en_US.UTF-8") -%}
 {{ configure_retries() }} && \
 {{ update_upgrade(False) }} && \
 apt-get install -yqq --no-install-recommends \
@@ -214,7 +218,7 @@ apt-get install -yqq --no-install-recommends \
 {# The setup() commands wrapped with a Docker RUN statement, followed by ENV statements
 exporting the configured locale. Pass a falsy locale (False or None) to skip locale
 generation and its ENV statements entirely. #}
-{% macro run_setup(codename = None, pro_repo = True, open_repo = False, locale = "en_US.UTF-8") -%}
+{% macro run_setup(codename = None, pro_repo = False, open_repo = False, locale = "en_US.UTF-8") -%}
 RUN {{ setup(codename=codename, pro_repo=pro_repo, open_repo=open_repo, locale=locale) | indent(4) }}
 {%- if locale %}
 {{ locale_env(locale) }}
