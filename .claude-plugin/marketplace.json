@@ -1,0 +1,10 @@
+{
+  "name": "posit-images-shared",
+  "plugins": [
+    {
+      "description": "Encodes critical invariants and workflows for editing Containerfile templates, image versions, and CI in Posit's container image repos.",
+      "name": "bakery",
+      "source": "./plugins/bakery"
+    }
+  ]
+}
