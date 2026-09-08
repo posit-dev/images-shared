@@ -178,6 +178,40 @@ class ImageVersion(BakeryPathMixin, BakeryYAMLModel):
                 return False, f"dev channel '{vc_str}' does not match --dev-channel '{dev_channel.value}'"
         return True, None
 
+    @property
+    def is_latest_release(self) -> bool:
+        """Whether ``--latest`` selects this version.
+
+        A development version is never the latest release, even if it carries the
+        flag: ``--latest`` selects the newest *release*. Every dev-version
+        constructor currently hardcodes ``latest=False``, so the second clause is
+        belt-and-braces -- but this predicate is what CI gates key on to decide
+        what gets security-scanned, and a wrong boolean there fails silently.
+
+        Deliberately a plain ``property`` and not a ``computed_field``:
+        ImageVersion is round-tripped back into bakery.yaml via ``model_dump``
+        (see ``BakeryConfig.patch_version``), and a computed field would write a
+        derived key into the user's config file.
+        """
+        return self.latest and not self.isDevelopmentVersion
+
+    def matches_latest_filter(self, latest: bool) -> tuple[bool, str | None]:
+        """Check whether this version should be included given the ``--latest`` filter.
+
+        Shares :pyattr:`is_latest_release` with the ``latest`` field emitted by
+        ``bakery ci matrix``, so a workflow gating on that field and a caller
+        passing ``--latest`` always select the same versions.
+
+        :param latest: Whether the --latest filter is active. When False, every
+            version is included and the filter is a no-op.
+        :return: A tuple of (included, reason). If excluded, reason explains why.
+        """
+        if not latest or self.is_latest_release:
+            return True, None
+        if self.isDevelopmentVersion:
+            return False, "development version ignored by --latest"
+        return False, "not the latest version (excluded by --latest)"
+
     @field_validator("extraRegistries", "overrideRegistries", mode="after")
     @classmethod
     def deduplicate_registries(

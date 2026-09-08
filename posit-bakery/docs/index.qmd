@@ -18,10 +18,11 @@ Bakery is a CLI tool that binds together various tools to manage a matrixed buil
 | [dgoss](https://github.com/goss-org/goss#installation)                                                                                                                    | `bakery dgoss run`              | Test container images for expected content & behavior              |
 | [hadolint](https://github.com/hadolint/hadolint#install)                                                                                                                  | `bakery hadolint run`           | Lint Containerfiles for best practices                             |
 | [oras](https://oras.land/)                                                                                                                                                | `bakery imagetools merge`       | Merge multi-platform images into an OCI index                      |
+| [trivy](https://trivy.dev/docs/latest/getting-started/)                                                                                                                   | `bakery trivy scan`             | Scan container images for vulnerabilities                          |
 | [wizcli](https://www.wiz.io/)                                                                                                                                             | `bakery wizcli scan`            | Scan container images for vulnerabilities                          |
 
 ::: {.callout-note}
-Additional tool integrations (trivy, openscap) are planned. See the [architecture diagrams](architecture.qmd) for the full roadmap.
+Additional tool integrations (openscap) are planned. See the [architecture diagrams](architecture.qmd) for the full roadmap.
 :::
 
 ## Installation

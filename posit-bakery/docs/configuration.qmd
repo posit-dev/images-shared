@@ -666,6 +666,33 @@ images:
               - linux/arm64
 ```
 
+#### TrivyOptions
+
+A TrivyOption configures [Trivy](https://trivy.dev/docs/latest/getting-started/) vulnerability scanning for an image target.
+
+Trivy options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant's options are merged over the image's options, with any field not explicitly set on the variant inheriting the image-level value. Scanning runs via `bakery trivy scan`, which writes SARIF results to `results/trivy/`. CLI flags (`--severity`, `--fail-on-severity`, `--disabled-scanners`, `--timeout`) take precedence over these options when both are set.
+
+| Field                                  | Description                                                       | Default Value  | Example                  |
+|-----------------------------------------|-------------------------------------------------------------------|-----------------|---------------------------|
+| `tool`<br/>*"trivy" literal string*     | *(Required)* The name of the tool.                                 |                 | `trivy`                   |
+| `severity`<br/>*string array*           | Severities to report (e.g. HIGH, CRITICAL).                        | Trivy default   | `["HIGH", "CRITICAL"]`    |
+| `failOnSeverity`<br/>*string array*     | Severities that fail the scan if found. Unset means never fail.    | Never fails     | `["CRITICAL"]`            |
+| `disabledScanners`<br/>*string array*   | Scanners to disable (e.g. secret, license, misconfig).             | Trivy default   | `["secret"]`              |
+| `timeout`<br/>*string*                  | Timeout for the scan (e.g. 1h, 10m).                                | Trivy default   | `"10m"`                   |
+
+##### Example TrivyOptions
+
+```yaml
+images:
+  - name: workbench
+    options:
+      - tool: trivy
+        severity: ["HIGH", "CRITICAL"]
+        failOnSeverity: ["CRITICAL"]
+        disabledScanners: ["secret"]
+        timeout: "10m"
+```
+
 ### DevBuildSpec
 
 A DevBuildSpec is a typed payload passed to the `--dev-spec` CLI option to configure development (daily) version builds. It supports either a dispatch-pinned version or a branch-targeted discovery build. At least one of `version` or `release_branch` must be set.

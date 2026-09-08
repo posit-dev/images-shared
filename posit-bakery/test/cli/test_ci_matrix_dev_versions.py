@@ -22,11 +22,16 @@ runner = CliRunner()
 BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
 
 
-def _make_version(name: str, *, is_dev: bool, channel: ReleaseChannelEnum | None = None):
+def _make_version(name: str, *, is_dev: bool, channel: ReleaseChannelEnum | None = None, latest: bool = False):
     """Return a minimal MagicMock ImageVersion with working matches_dev_filter."""
     ver = MagicMock()
     ver.name = name
     ver.isDevelopmentVersion = is_dev
+    ver.latest = latest
+    # Mirrors ImageVersion.is_latest_release. Set explicitly because an unset
+    # MagicMock attribute is a MagicMock, which is not JSON serializable and
+    # would fail the matrix command's json.dumps rather than the assertion.
+    ver.is_latest_release = latest and not is_dev
     ver.metadata = {"release_channel": channel} if channel else {}
     ver.supported_platforms = ["linux/amd64"]
 
