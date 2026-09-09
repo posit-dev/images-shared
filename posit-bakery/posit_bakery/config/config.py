@@ -1196,7 +1196,10 @@ class BakeryConfig:
             )
             set_opts = None
             if self.settings.temp_registry is not None and push:
-                set_opts = {"*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True}}
+                set_opts = {
+                    "*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True},
+                    "*.attest": "type=provenance,disabled=true",
+                }
             _retry_build(
                 lambda: bake_plan.build(
                     load=load,
