@@ -6,7 +6,7 @@ Manager for the bakery.yaml configuration file and operations against the config
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L482-L1318)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L482-L1321)
 
 ``` python
 config.BakeryConfig()
@@ -103,7 +103,7 @@ Build image targets using the specified strategy.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1158-L1264)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1158-L1267)
 
 ``` python
 build_targets(
@@ -158,7 +158,7 @@ Cleans up dangling caches in the specified registry for all generated image targ
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1266-L1291)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1269-L1294)
 
 ``` python
 clean_caches(remove_untagged=True, remove_older_than=None, dry_run=False)
@@ -181,7 +181,7 @@ Cleans up temporary images in the specified registry for all generated image tar
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1293-L1318)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1296-L1321)
 
 ``` python
 clean_temporary(remove_untagged=True, remove_older_than=None, dry_run=False)
