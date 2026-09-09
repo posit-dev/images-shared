@@ -2587,6 +2587,17 @@ class TestBuildTargetsBakeStrategy:
         mock_build.assert_called_once()
         assert mock_build.call_args.kwargs["metadata_file"] == metadata_path
 
+    def test_temp_registry_push_disables_provenance(self, get_config_file, mocker):
+        config = BakeryConfig(get_config_file("basic"), BakerySettings(temp_registry="registry.example.com"))
+        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
+
+        config.build_targets(strategy=ImageBuildStrategy.BAKE, push=True)
+
+        assert mock_build.call_args.kwargs["set_opts"] == {
+            "*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True},
+            "*.attest": "type=provenance,disabled=true",
+        }
+
     def test_no_metadata_file_by_default(self, get_config_obj, mocker):
         """When metadata_file is not given, None must be forwarded and no metadata load attempted."""
         config = get_config_obj("basic")
