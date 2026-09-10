@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Annotated
+from typing import Annotated, Callable
 from urllib.parse import quote
 
 import requests
@@ -44,10 +44,17 @@ class ReleaseChannelPath:
         channel_url: str,
         resolver_map: dict[str, resolvers.AbstractResolver | str],
         version_templatable: bool = False,
+        version_url_encoding: Callable[[str], str] | None = None,
     ):
         self.channel_url = channel_url
         self.resolver_map = resolver_map
         self.version_templatable = version_templatable
+        # How a version string is written into this product's download URLs.
+        # Default: percent-encode reserved characters (RFC 3986) -- correct for
+        # Connect, where "+" and "%2B" are two textual forms of the identical
+        # character. Products with a genuinely different filename convention
+        # (Workbench uses a literal "-" in place of "+") pass their own.
+        self.version_url_encoding = version_url_encoding or (lambda v: quote(v, safe=""))
 
     def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
         """Fetches data from the channel URL and resolves the data using the given resolvers."""
@@ -127,22 +134,20 @@ class ReleaseChannelPath:
                 if override_stream != manifest_stream:
                     url_str = url_str.replace(f"/{manifest_stream}/", f"/{override_stream}/", 1)
 
-            # Try each known transform until we find the manifest version in the URL.
-            candidates = [
-                (manifest_version, version_override),
-                (quote(manifest_version, safe=""), quote(version_override, safe="")),
-                (manifest_version.replace("+", "-"), version_override.replace("+", "-")),
-            ]
-            substituted_url = None
-            for needle, replacement in candidates:
-                if needle and needle in url_str:
-                    substituted_url = url_str.replace(needle, replacement)
-                    break
+            # Encode using this product's known URL convention -- never infer it by
+            # checking whether the *current* manifest head happens to contain a "+".
+            # A head with no reserved characters (e.g. a plain "2026.09.0" release
+            # build with no dev suffix) gives no signal either way, and guessing
+            # "unencoded" produces a URL cdn.posit.co silently 404s on (a literal
+            # "+" in the path is rejected; "%2B" is required for the same artifact).
+            needle = self.version_url_encoding(manifest_version)
+            replacement = self.version_url_encoding(version_override)
+            substituted_url = url_str.replace(needle, replacement) if needle and needle in url_str else None
 
             if substituted_url is None:
                 raise VersionSubstitutionError(
                     f"Cannot substitute version {version_override!r} into URL {url_str!r}: "
-                    f"manifest version {manifest_version!r} not found under any known transform."
+                    f"manifest version {manifest_version!r} (encoded as {needle!r}) not found in URL."
                 )
 
             result["download_url"] = substituted_url
@@ -263,6 +268,7 @@ product_release_channel_url_map = {
                     ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
                 ),
             },
+            version_url_encoding=lambda v: v.replace("+", "-"),
         ),
         ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
@@ -274,6 +280,7 @@ product_release_channel_url_map = {
                     ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
                 ),
             },
+            version_url_encoding=lambda v: v.replace("+", "-"),
         ),
     },
     ProductEnum.WORKBENCH_SESSION: {
@@ -298,6 +305,7 @@ product_release_channel_url_map = {
                     ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
                 ),
             },
+            version_url_encoding=lambda v: v.replace("+", "-"),
         ),
         ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
@@ -309,6 +317,7 @@ product_release_channel_url_map = {
                     ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
                 ),
             },
+            version_url_encoding=lambda v: v.replace("+", "-"),
         ),
     },
 }

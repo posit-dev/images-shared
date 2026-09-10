@@ -888,6 +888,34 @@ class TestDispatchOverride:
             "https://cdn.posit.co/connect/2025.05/rstudio-connect_2025.05.0-dev%2B3-gcafefeed12~ubuntu24_amd64.deb"
         )
 
+    def test_connect_daily_override_encodes_plus_when_head_has_none(self, mocker):
+        """Regression test: a channel head with no '+' (e.g. a plain release-shaped
+        build like '2026.09.0') must not make the substitution fall back to an
+        unencoded literal '+'. cdn.posit.co 404s on a literal '+' in the path and
+        requires '%2B' for the same artifact."""
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_response = mocker.MagicMock()
+        mock_response.json.return_value = {
+            "packages": [
+                {
+                    "platform": "ubuntu22/amd64",
+                    "version": "2026.09.0",
+                    "url": "https://cdn.posit.co/connect/2026.09/rstudio-connect_2026.09.0~ubuntu22_amd64.deb",
+                }
+            ]
+        }
+        mock_session.return_value.get.return_value = mock_response
+        mock_session.return_value.head.return_value.ok = True
+
+        result = get_product_artifact_by_channel(
+            ProductEnum.CONNECT,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["22"],
+            version_override="2026.09.0-dev+304-g1fd43ee181",
+        )
+        assert "2026.09.0-dev%2B304-g1fd43ee181" in str(result.download_url)
+        assert "+" not in str(result.download_url)
+
     def test_workbench_daily_override_substitutes_url(self, patch_requests_get):
         """Workbench override substitutes the version in the manifest URL."""
         patch_requests_get.return_value.head.return_value.ok = True
@@ -901,6 +929,37 @@ class TestDispatchOverride:
         assert result.version == override
         assert "2025.04.0-daily-300.pro3" in str(result.download_url)
         assert result.channel_latest is False
+
+    def test_workbench_daily_override_dash_substitution_when_head_has_no_plus(self, mocker):
+        """Regression test: same root cause as the Connect case above, applied to
+        Workbench's dash convention -- a head version with no '+' must not fall
+        back to an unencoded literal '+' in the substituted URL."""
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_response = mocker.MagicMock()
+        mock_response.json.return_value = {
+            "products": {
+                "workbench": {
+                    "platforms": {
+                        "noble-amd64": {
+                            "version": "2026.09.0",
+                            "link": "https://dl.dailies.rstudio.com/server/noble/amd64/"
+                            "rstudio-workbench-2026.09.0-amd64.deb",
+                        }
+                    }
+                }
+            }
+        }
+        mock_session.return_value.get.return_value = mock_response
+        mock_session.return_value.head.return_value.ok = True
+
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override="2026.09.0-daily+300.pro3",
+        )
+        assert "2026.09.0-daily-300.pro3" in str(result.download_url)
+        assert "+" not in str(result.download_url)
 
     def test_ppm_channel_latest_true_when_override_equals_head(self, mocker):
         """channel_latest is True when the override exactly matches the channel head."""
