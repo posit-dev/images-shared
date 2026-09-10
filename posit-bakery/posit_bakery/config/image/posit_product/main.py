@@ -107,11 +107,25 @@ class ReleaseChannelPath:
                 resolver.set_metadata(metadata)
                 result[key] = resolver.resolve(data)
 
+        # Not a public field on ReleaseChannelResult; used below to correct the CDN
+        # directory segment, then discarded so it never reaches the model constructor.
+        manifest_stream = result.pop("primary_version", None) or None
+
         if version_override is not None:
             # Manifest-based products (Connect, Workbench): substitute the version token in
             # the manifest URL and probe the resulting artifact URL.
             manifest_version: str = result.get("version", "")
             url_str: str = result.get("download_url", "")
+
+            # Connect nests artifacts under a release-stream directory (e.g. "2026.09") that
+            # is a separate literal from the version token substituted below. When the override
+            # targets a different stream than the manifest head, that directory must be
+            # corrected too, or the version-token substitution alone leaves it stale.
+            override_stream_match = CALVER_REGEX_PATTERN.match(version_override)
+            if manifest_stream and override_stream_match:
+                override_stream = f"{override_stream_match.group(1)}.{override_stream_match.group(2)}"
+                if override_stream != manifest_stream:
+                    url_str = url_str.replace(f"/{manifest_stream}/", f"/{override_stream}/", 1)
 
             # Try each known transform until we find the manifest version in the URL.
             candidates = [
@@ -174,6 +188,13 @@ product_release_channel_url_map = {
                         resolvers.StringMapPathResolver(["packages"]),
                         resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
                         resolvers.StringMapPathResolver(["url"]),
+                    ]
+                ),
+                "primary_version": resolvers.ChainedResolver(
+                    [
+                        resolvers.StringMapPathResolver(["packages"]),
+                        resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
+                        resolvers.StringMapPathResolver(["primary_version"]),
                     ]
                 ),
             },

@@ -873,6 +873,21 @@ class TestDispatchOverride:
         assert "2025.04.0-dev%2B5-gabcdef1234" in str(result.download_url)
         assert result.channel_latest is False
 
+    def test_connect_daily_override_crossing_stream_corrects_directory(self, patch_requests_get):
+        """Connect override in a different release stream than the manifest head also corrects the CDN directory."""
+        patch_requests_get.return_value.head.return_value.ok = True
+        override = "2025.05.0-dev+3-gcafefeed12"
+        result = get_product_artifact_by_channel(
+            ProductEnum.CONNECT,
+            ReleaseChannelEnum.DAILY,
+            SUPPORTED_OS["ubuntu"]["24"],
+            version_override=override,
+        )
+        assert result.version == override
+        assert str(result.download_url) == (
+            "https://cdn.posit.co/connect/2025.05/rstudio-connect_2025.05.0-dev%2B3-gcafefeed12~ubuntu24_amd64.deb"
+        )
+
     def test_workbench_daily_override_substitutes_url(self, patch_requests_get):
         """Workbench override substitutes the version in the manifest URL."""
         patch_requests_get.return_value.head.return_value.ok = True
