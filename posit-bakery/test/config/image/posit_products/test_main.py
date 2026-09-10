@@ -889,10 +889,10 @@ class TestDispatchOverride:
         )
 
     def test_connect_daily_override_encodes_plus_when_head_has_none(self, mocker):
-        """Regression test: a channel head with no '+' (e.g. a plain release-shaped
-        build like '2026.09.0') must not make the substitution fall back to an
-        unencoded literal '+'. cdn.posit.co 404s on a literal '+' in the path and
-        requires '%2B' for the same artifact."""
+        """Regression test for a channel head with no "+", for example a
+        plain "2026.09.0" release. The substitution must not fall back to
+        an unencoded literal "+". cdn.posit.co rejects a literal "+" in the
+        path and needs "%2B" for the same file."""
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         mock_response = mocker.MagicMock()
         mock_response.json.return_value = {
@@ -931,9 +931,9 @@ class TestDispatchOverride:
         assert result.channel_latest is False
 
     def test_workbench_daily_override_dash_substitution_when_head_has_no_plus(self, mocker):
-        """Regression test: same root cause as the Connect case above, applied to
-        Workbench's dash convention -- a head version with no '+' must not fall
-        back to an unencoded literal '+' in the substituted URL."""
+        """Regression test for the same root cause as the Connect test above,
+        for Workbench's dash convention. A head version with no "+" must not
+        make the substitution fall back to a literal "+" in the URL."""
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         mock_response = mocker.MagicMock()
         mock_response.json.return_value = {

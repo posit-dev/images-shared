@@ -49,11 +49,10 @@ class ReleaseChannelPath:
         self.channel_url = channel_url
         self.resolver_map = resolver_map
         self.version_templatable = version_templatable
-        # How a version string is written into this product's download URLs.
-        # Default: percent-encode reserved characters (RFC 3986) -- correct for
-        # Connect, where "+" and "%2B" are two textual forms of the identical
-        # character. Products with a genuinely different filename convention
-        # (Workbench uses a literal "-" in place of "+") pass their own.
+        # Encoder for this product's version strings in download URLs.
+        # Default: percent-encode (RFC 3986). Correct for Connect, where "+"
+        # and "%2B" are the same character. Workbench writes "-" instead of
+        # "+", so it passes its own encoder.
         self.version_url_encoding = version_url_encoding or (lambda v: quote(v, safe=""))
 
     def get(self, metadata: dict, version_override: str | None = None) -> ReleaseChannelResult:
@@ -134,12 +133,11 @@ class ReleaseChannelPath:
                 if override_stream != manifest_stream:
                     url_str = url_str.replace(f"/{manifest_stream}/", f"/{override_stream}/", 1)
 
-            # Encode using this product's known URL convention -- never infer it by
-            # checking whether the *current* manifest head happens to contain a "+".
-            # A head with no reserved characters (e.g. a plain "2026.09.0" release
-            # build with no dev suffix) gives no signal either way, and guessing
-            # "unencoded" produces a URL cdn.posit.co silently 404s on (a literal
-            # "+" in the path is rejected; "%2B" is required for the same artifact).
+            # Use this product's own encoding. Do not guess it from the
+            # manifest head. A head with no "+" (for example, a plain
+            # "2026.09.0" release) gives no signal either way.
+            # cdn.posit.co rejects a literal "+" in the path. It needs
+            # "%2B" for the same file.
             needle = self.version_url_encoding(manifest_version)
             replacement = self.version_url_encoding(version_override)
             substituted_url = url_str.replace(needle, replacement) if needle and needle in url_str else None
