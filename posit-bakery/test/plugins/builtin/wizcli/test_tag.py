@@ -2,8 +2,10 @@ import subprocess
 from unittest.mock import patch
 
 import pytest
+from python_on_whales.exceptions import DockerException
 
 from posit_bakery.image.image_metadata import BuildMetadata
+from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
 from posit_bakery.plugins.builtin.wizcli.tag import tag_published_repositories
 
 pytestmark = [
@@ -36,7 +38,7 @@ class TestTagPublishedRepositories:
         completed = subprocess.CompletedProcess([], 0, stdout="tagged", stderr="")
 
         with (
-            patch("posit_bakery.plugins.builtin.wizcli.tag.find_bin", return_value="/tools/wizcli"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag") as docker_tag,
             patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run", return_value=completed) as run,
         ):
@@ -71,7 +73,7 @@ class TestTagPublishedRepositories:
         completed = subprocess.CompletedProcess([], 0, stdout="tagged", stderr="")
 
         with (
-            patch("posit_bakery.plugins.builtin.wizcli.tag.find_bin", return_value="/tools/wizcli"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run", return_value=completed) as run,
         ):
@@ -94,7 +96,7 @@ class TestTagPublishedRepositories:
         add_build_metadata(basic_standard_image_target, platform="linux/arm64")
 
         with (
-            patch("posit_bakery.plugins.builtin.wizcli.tag.find_bin", return_value="/tools/wizcli"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag") as docker_tag,
             patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run") as run,
         ):
@@ -113,7 +115,7 @@ class TestTagPublishedRepositories:
         completed = subprocess.CompletedProcess([], 1, stdout="unknown image", stderr="")
 
         with (
-            patch("posit_bakery.plugins.builtin.wizcli.tag.find_bin", return_value="/tools/wizcli"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag"),
             patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run", return_value=completed),
         ):
@@ -125,3 +127,95 @@ class TestTagPublishedRepositories:
 
         assert len(failures) == 2
         assert all("@sha256:built-digest: unknown image" in failure for failure in failures)
+
+    def test_docker_tag_failure_is_reported_and_skips_wizcli(self, basic_standard_image_target):
+        add_build_metadata(basic_standard_image_target)
+        docker_error = DockerException(["docker", "image", "tag"], 1, stderr=b"no such image")
+
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
+            patch(
+                "posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag",
+                side_effect=docker_error,
+            ),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run") as run,
+        ):
+            failures = tag_published_repositories(
+                basic_standard_image_target.context.base_path,
+                [basic_standard_image_target],
+                platform="linux/amd64",
+            )
+
+        assert len(failures) == 2
+        assert all("could not create local alias" in failure for failure in failures)
+        run.assert_not_called()
+
+    def test_no_destination_tags_is_a_failure(self, basic_standard_image_target):
+        add_build_metadata(basic_standard_image_target)
+
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag._destination_tags", return_value=[]),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag") as docker_tag,
+            patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run") as run,
+        ):
+            failures = tag_published_repositories(
+                basic_standard_image_target.context.base_path,
+                [basic_standard_image_target],
+                platform="linux/amd64",
+            )
+
+        assert failures == [f"{basic_standard_image_target}: no final repository tags"]
+        docker_tag.assert_not_called()
+        run.assert_not_called()
+
+    def test_projects_falls_back_to_bakery_yaml_when_not_passed(self, basic_standard_image_target):
+        add_build_metadata(basic_standard_image_target)
+        completed = subprocess.CompletedProcess([], 0, stdout="tagged", stderr="")
+
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
+            patch.object(
+                type(basic_standard_image_target),
+                "get_tool_option",
+                return_value=WizCLIOptions(projects=["from-config"]),
+            ),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run", return_value=completed) as run,
+        ):
+            failures = tag_published_repositories(
+                basic_standard_image_target.context.base_path,
+                [basic_standard_image_target],
+                platform="linux/amd64",
+            )
+
+        assert failures == []
+        for call in run.call_args_list:
+            command = call.args[0]
+            assert command[command.index("--projects") + 1] == "from-config"
+
+    def test_explicit_projects_overrides_bakery_yaml(self, basic_standard_image_target):
+        add_build_metadata(basic_standard_image_target)
+        completed = subprocess.CompletedProcess([], 0, stdout="tagged", stderr="")
+
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.tag.find_wizcli_bin", return_value="/tools/wizcli"),
+            patch.object(
+                type(basic_standard_image_target),
+                "get_tool_option",
+                return_value=WizCLIOptions(projects=["from-config"]),
+            ),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.python_on_whales.docker.image.tag"),
+            patch("posit_bakery.plugins.builtin.wizcli.tag.subprocess.run", return_value=completed) as run,
+        ):
+            failures = tag_published_repositories(
+                basic_standard_image_target.context.base_path,
+                [basic_standard_image_target],
+                platform="linux/amd64",
+                projects="explicit-project",
+            )
+
+        assert failures == []
+        for call in run.call_args_list:
+            command = call.args[0]
+            assert command[command.index("--projects") + 1] == "explicit-project"

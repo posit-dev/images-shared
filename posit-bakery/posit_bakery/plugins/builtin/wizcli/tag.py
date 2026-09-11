@@ -6,7 +6,7 @@ from pathlib import Path
 import python_on_whales
 
 from posit_bakery.image.image_target import ImageTarget
-from posit_bakery.util import find_bin
+from posit_bakery.plugins.builtin.wizcli.command import find_wizcli_bin
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def tag_published_repositories(
     Returns human-readable failures so callers can report all destinations rather
     than stopping after the first failure.
     """
-    wizcli_bin = find_bin(context, "wizcli", "WIZCLI_PATH") or "wizcli"
+    wizcli_bin = find_wizcli_bin(context)
     run_env = os.environ.copy()
     if client_id:
         run_env["WIZ_CLIENT_ID"] = client_id
@@ -62,6 +62,13 @@ def tag_published_repositories(
             failures.append(f"{target}: no final repository tags")
             continue
 
+        # An explicit --projects always wins over bakery.yaml, since CI feeds this from a
+        # secret and bakery.yaml never should. Mirrors WizCLICommand.command's own precedence.
+        tool_options = target.get_tool_option("wizcli")
+        target_projects = projects or (
+            ",".join(tool_options.projects) if tool_options and tool_options.projects else None
+        )
+
         for destination_tag in destination_tags:
             attempts += 1
             try:
@@ -71,8 +78,8 @@ def tag_published_repositories(
                 continue
 
             cmd = [wizcli_bin, "tag", destination_tag, "--digest", digest, "--no-color", "--no-style"]
-            if projects:
-                cmd.extend(["--projects", projects])
+            if target_projects:
+                cmd.extend(["--projects", target_projects])
 
             result = subprocess.run(
                 cmd,

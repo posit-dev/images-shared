@@ -377,8 +377,7 @@ class WizCLIPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(
                     show_default=False,
-                    envvar="WIZ_CLIENT_ID",
-                    help="Wiz service account client ID.",
+                    help="Wiz service account client ID (overrides WIZ_CLIENT_ID env var).",
                     rich_help_panel=RichHelpPanelEnum.AUTH,
                 ),
             ] = None,
@@ -386,8 +385,7 @@ class WizCLIPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(
                     show_default=False,
-                    envvar="WIZ_CLIENT_SECRET",
-                    help="Wiz service account client secret.",
+                    help="Wiz service account client secret (overrides WIZ_CLIENT_SECRET env var).",
                     rich_help_panel=RichHelpPanelEnum.AUTH,
                 ),
             ] = None,

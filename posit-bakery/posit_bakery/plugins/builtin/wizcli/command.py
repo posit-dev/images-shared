@@ -4,15 +4,15 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-from posit_bakery.image.image_target import ImageTarget, ImageTargetContext
+from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
 from posit_bakery.settings import SETTINGS
 from posit_bakery.util import find_bin
 
 
-def find_wizcli_bin(context: ImageTargetContext) -> str | None:
+def find_wizcli_bin(base_path: Path) -> str | None:
     """Find the path to the wizcli binary."""
-    return find_bin(context.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
+    return find_bin(base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
 
 
 def default_scan_platform() -> str:
@@ -34,7 +34,9 @@ class WizCLIDriverEnum(str, Enum):
 
 class WizCLICommand(BaseModel):
     image_target: ImageTarget
-    wizcli_bin: Annotated[str, Field(default_factory=lambda data: find_wizcli_bin(data["image_target"].context))]
+    wizcli_bin: Annotated[
+        str, Field(default_factory=lambda data: find_wizcli_bin(data["image_target"].context.base_path))
+    ]
     results_file: Path
     platform: Annotated[
         str,
