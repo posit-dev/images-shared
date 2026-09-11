@@ -66,7 +66,7 @@ def tag_published_repositories(
             attempts += 1
             try:
                 python_on_whales.docker.image.tag(source_ref, destination_tag)
-            except Exception as exc:
+            except python_on_whales.exceptions.DockerException as exc:
                 failures.append(f"{target}: could not create local alias {destination_tag}: {exc}")
                 continue
 

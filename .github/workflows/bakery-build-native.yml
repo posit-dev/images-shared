@@ -523,8 +523,9 @@ jobs:
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           PROJECT_FLAGS=()
           [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
-          LATEST_FLAGS=()
-          [[ "$DEV_VERSIONS" != "only" ]] && LATEST_FLAGS=(--latest)
+          # This step's own `if:` already requires dev-versions != 'only', so every
+          # build reaching here is latest-only, unlike Scan (which also runs for
+          # dev-only builds and needs the runtime check).
           WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli tag \
             --image-name "^${IMAGE_NAME}$" \
@@ -534,7 +535,7 @@ jobs:
             --matrix-versions "$MATRIX_VERSIONS" \
             "${DEV_SPEC_FLAGS[@]}" \
             "${PROJECT_FLAGS[@]}" \
-            "${LATEST_FLAGS[@]}" \
+            --latest \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
 
