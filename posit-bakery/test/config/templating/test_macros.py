@@ -2052,7 +2052,7 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 && \\
                     apt-mark hold quarto && \\
@@ -2067,7 +2067,7 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 && \\
                     apt-mark hold quarto && \\
@@ -2082,7 +2082,7 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
                         xz-utils && \\
@@ -2099,7 +2099,7 @@ class TestQuartoMacros:
                 None,
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
                         xz-utils && \\
@@ -2116,7 +2116,7 @@ class TestQuartoMacros:
                 "/root",
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
                         xz-utils && \\
@@ -2133,7 +2133,7 @@ class TestQuartoMacros:
                 "/root",
                 textwrap.dedent(
                     """\
-                    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
                         xz-utils && \\
@@ -2168,7 +2168,6 @@ class TestQuartoMacros:
         )
         expected = textwrap.dedent(
             """\
-            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \\
             dnf install -yq \\
                 quarto-1.8.24 \\
                 'dnf-command(versionlock)' && \\
@@ -2186,7 +2185,6 @@ class TestQuartoMacros:
         )
         expected = textwrap.dedent(
             """\
-            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \\
             dnf install -yq \\
                 quarto-1.8.24 \\
                 'dnf-command(versionlock)' \\
@@ -2214,7 +2212,7 @@ class TestQuartoMacros:
                 (["1.8.24"], False, False, None),
                 textwrap.dedent(
                     """\
-                    RUN bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    RUN apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 && \\
                         apt-mark hold quarto && \\
@@ -2227,7 +2225,7 @@ class TestQuartoMacros:
                 (["1.8.24"], True, False, None),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
                             xz-utils && \\
@@ -2242,7 +2240,7 @@ class TestQuartoMacros:
                 (["1.8.24"], True, True, None),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
                             xz-utils && \\
@@ -2257,7 +2255,7 @@ class TestQuartoMacros:
                 (["1.8.24"], True, False, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
                             xz-utils && \\
@@ -2272,7 +2270,7 @@ class TestQuartoMacros:
                 (["1.8.24"], True, True, "/root"),
                 textwrap.dedent(
                     """\
-                    RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+                    RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
                             xz-utils && \\
@@ -2409,11 +2407,30 @@ class TestRMacros:
         template = '{%- import "r.j2" as r -%}\n{{ r.install("4.4.3") }}'
         expected = textwrap.dedent(
             """\
-            RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-            find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete"""
+            apt-get update -yqq && \\
+            apt-get install -yqq --no-install-recommends \\
+                r-4.4.3 && \\
+            apt-get clean -yqq && \\
+            rm -rf /var/lib/apt/lists/*"""
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+    def test_install_rhel(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.install("4.4.3", os_family="rhel") }}'
+        expected = textwrap.dedent(
+            """\
+            dnf install -yq \\
+                R-4.4.3 && \\
+            dnf clean all -yq"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_install_rejects_invalid_os_family(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.install("4.4.3", os_family="sles") }}'
+        with pytest.raises(Exception, match="Unsupported os_family"):
+            environment_with_macros.from_string(template).render()
 
     @pytest.mark.parametrize(
         "input,expected",
@@ -2422,8 +2439,11 @@ class TestRMacros:
                 ["4.4.3"],
                 textwrap.dedent(
                     """\
-                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete"""
+                    RUN apt-get update -yqq && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            r-4.4.3 && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="single-version",
             ),
@@ -2431,10 +2451,16 @@ class TestRMacros:
                 ["4.4.3", "4.3.3"],
                 textwrap.dedent(
                     """\
-                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete
-                    RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.3.3.*\\.(deb|rpm)' -delete"""
+                    RUN apt-get update -yqq && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            r-4.4.3 && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*
+                    RUN apt-get update -yqq && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            r-4.3.3 && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="multiple-versions",
             ),
@@ -2442,10 +2468,16 @@ class TestRMacros:
                 "'4.4.3,4.3.3'",
                 textwrap.dedent(
                     """\
-                    RUN RUN_UNATTENDED=1 R_VERSION=4.4.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.4.3.*\\.(deb|rpm)' -delete
-                    RUN RUN_UNATTENDED=1 R_VERSION=4.3.3 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                        find . -type f -name '[rR]-4.3.3.*\\.(deb|rpm)' -delete"""
+                    RUN apt-get update -yqq && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            r-4.4.3 && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*
+                    RUN apt-get update -yqq && \\
+                        apt-get install -yqq --no-install-recommends \\
+                            r-4.3.3 && \\
+                        apt-get clean -yqq && \\
+                        rm -rf /var/lib/apt/lists/*"""
                 ),
                 id="string-versions",
             ),
@@ -2453,6 +2485,17 @@ class TestRMacros:
     )
     def test_run_install(self, environment_with_macros, input, expected):
         template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + str(input) + ") }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install_rhel(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3"], os_family="rhel") }}'
+        expected = textwrap.dedent(
+            """\
+            RUN dnf install -yq \\
+                    R-4.4.3 && \\
+                dnf clean all -yq"""
+        )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 

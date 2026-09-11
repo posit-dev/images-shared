@@ -1419,6 +1419,7 @@ class TestBakeryConfig:
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             ENV LANG=en_US.UTF-8
@@ -1470,6 +1471,7 @@ class TestBakeryConfig:
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
+                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             ENV LANG=en_US.UTF-8
@@ -1492,11 +1494,14 @@ class TestBakeryConfig:
             COPY --from=python-builder /opt/python /opt/python
 
             # Install R
-            RUN RUN_UNATTENDED=1 R_VERSION=4.5.1 bash -c "$(curl -fsSL https://rstd.io/r-install)" && \\
-                find . -type f -name '[rR]-4.5.1.*\\.(deb|rpm)' -delete
+            RUN apt-get update -yqq && \\
+                apt-get install -yqq --no-install-recommends \\
+                    r-4.5.1 && \\
+                apt-get clean -yqq && \\
+                rm -rf /var/lib/apt/lists/*
 
             # Install Quarto
-            RUN --mount=type=secret,id=github_token,required=false bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
+            RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                 apt-get install -yqq --no-install-recommends \\
                     quarto=1.8.27 \\
                     xz-utils && \\
