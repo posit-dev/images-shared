@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
@@ -6,6 +7,7 @@ from typing import Annotated, Optional
 import typer
 
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
+from posit_bakery.util import find_bin
 from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
@@ -280,6 +282,177 @@ class WizCLIPlugin(BakeryToolPlugin):
                 log_file=log_file,
             )
             plugin.results(results)
+
+        @wizcli_app.command()
+        def tag(
+            image_name: Annotated[
+                str,
+                typer.Option(
+                    "--image-name",
+                    help="Filter to a specific image name. Supports regular expressions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            image_version: Annotated[
+                str,
+                typer.Option(
+                    "--image-version",
+                    help="Filter to a specific image version. A leading 'v' is stripped automatically.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            image_platform: Annotated[
+                str,
+                typer.Option(
+                    "--image-platform",
+                    help="Filter to a specific image platform (e.g. linux/amd64).",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = "",
+            dev_versions: Annotated[
+                DevVersionInclusionEnum,
+                typer.Option(
+                    "--dev-versions",
+                    help="How to handle development versions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help="JSON spec for a dispatched dev build.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
+            matrix_versions: Annotated[
+                Optional[MatrixVersionInclusionEnum],
+                typer.Option(
+                    "--matrix-versions",
+                    help="How to handle matrix versions.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            context: Annotated[
+                Path,
+                typer.Option(
+                    "--context",
+                    help="The Bakery context to use (directory).",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = Path("."),
+            metadata_files: Annotated[
+                list[Path],
+                typer.Argument(
+                    help="Build metadata JSON files produced by the build step (one per platform).",
+                    metavar="METADATA_FILE",
+                ),
+            ] = [],  # noqa: B006
+            client_id: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--client-id",
+                    envvar="WIZ_CLIENT_ID",
+                    help="Wiz service account client ID.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            client_secret: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--client-secret",
+                    envvar="WIZ_CLIENT_SECRET",
+                    help="Wiz service account client secret.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+        ):
+            """Tag published container images in Wiz for code-to-cloud correlation.
+
+            Reads per-platform digests from build metadata files and calls
+            `wizcli tag {final-registry-repo}@{digest}` for each, using the same
+            digest that was scanned. Wiz matches scan results to inventory by
+            content digest, so this correctly links build findings to the
+            published image regardless of which registry holds it.
+
+            Per Wiz documentation, multi-platform images must be tagged per
+            child digest — not by the multi-arch manifest list digest.
+
+            Run after publishing (merge step), restricted to production builds.
+            Authentication can be provided via `--client-id`/`--client-secret`
+            or the `WIZ_CLIENT_ID`/`WIZ_CLIENT_SECRET` environment variables.
+            """
+            # Local import: only needed here, avoids a top-level dep on image_metadata.
+            from posit_bakery.image.image_metadata import BuildMetadata
+
+            platform = normalize_platform(image_platform) if image_platform else None
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=image_name,
+                    image_version=image_version,
+                    image_platform=[platform] if platform else [],
+                ),
+                dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]
+                matrix_versions=matrix_versions,
+            )
+            c = BakeryConfig.from_context(context, settings)
+            exit_if_no_targets(c)
+
+            # Build a map of image_name → set of final registry repo destinations.
+            # Tag.destination gives "registry.host/namespace/image-name" without suffix.
+            repo_map: dict[str, set[str]] = {}
+            for target in c.targets:
+                repos = {t.destination for t in target.tags if t.destination}
+                repo_map.setdefault(target.image_name, set()).update(repos)
+
+            wizcli_bin = find_bin(c.base_path, "wizcli", "WIZCLI_PATH") or "wizcli"
+            errors: list[str] = []
+
+            for mf in metadata_files:
+                try:
+                    metadata = BuildMetadata.model_validate_json(mf.read_text())
+                except Exception as exc:
+                    log.warning(f"Skipping {mf}: could not parse metadata ({exc})")
+                    continue
+
+                digest = metadata.container_image_digest
+                if not digest:
+                    log.warning(f"Skipping {mf}: no containerimage.digest")
+                    continue
+
+                # Derive image name from the metadata's primary tag path.
+                # image.name is the temp registry ref; strip registry prefix to get
+                # the image name, then look up the published repos from the config.
+                meta_image_name = next(
+                    (name for name in repo_map if any(name in tag for tag in metadata.image_tags)),
+                    None,
+                )
+                if meta_image_name is None:
+                    log.warning(f"Skipping {mf}: image name not matched in config")
+                    continue
+
+                for repo in sorted(repo_map[meta_image_name]):
+                    ref = f"{repo}@{digest}"
+                    cmd = [wizcli_bin, "tag", ref, "--no-color", "--no-style"]
+                    if client_id:
+                        cmd.extend(["--client-id", client_id])
+                    if client_secret:
+                        cmd.extend(["--client-secret", client_secret])
+                    result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
+                    if result.returncode != 0:
+                        log.error(
+                            f"wizcli tag failed for {ref}:\n"
+                            f"  exit {result.returncode}: {result.stdout.strip() or result.stderr.strip()}"
+                        )
+                        errors.append(ref)
+                    else:
+                        log.info(f"Tagged {ref}")
+
+            if errors:
+                raise typer.Exit(code=1)
 
         app.add_typer(wizcli_app, name="wizcli", help="Scan container images for vulnerabilities with WizCLI")
 
