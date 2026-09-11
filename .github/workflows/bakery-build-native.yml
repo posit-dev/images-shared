@@ -551,9 +551,17 @@ jobs:
         env:
           HAS_DOCKER_HUB: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
           HAS_AWS_ROLE: ${{ secrets.AWS_ROLE != '' }}
+          HAS_WIZ_AUTH: ${{ secrets.WIZ_CLIENT_ID != '' }}
         run: |
-          echo "docker-hub=$HAS_DOCKER_HUB" >> "$GITHUB_OUTPUT"
-          echo "ecr=$HAS_AWS_ROLE" >> "$GITHUB_OUTPUT"
+          {
+            echo "docker-hub=$HAS_DOCKER_HUB"
+            echo "ecr=$HAS_AWS_ROLE"
+            echo "wiz-auth=$HAS_WIZ_AUTH"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Setup wizcli
+        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        uses: "posit-dev/images-shared/setup-wizcli@main"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
@@ -648,6 +656,32 @@ jobs:
             --summary --summary-format json \
             ./*-metadata.json \
             > "./${IMAGE_NAME}-publish-summary.json"
+
+      - name: Tag
+        # Tag each per-platform digest in Wiz using the final published registry
+        # repo (repo@sha256:PLATFORM_DIGEST). The digest is identical to the one
+        # scanned in the build-test job, so Wiz correlates scan findings to the
+        # published image. Per Wiz docs, multi-platform images must be tagged by
+        # child (per-platform) digest, not the manifest list digest.
+        # Only runs on real production pushes; dev builds are excluded.
+        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          CONTEXT: ${{ inputs.context }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZCLI_PATH: ${{ github.workspace }}/tools/wizcli
+        run: |
+          bakery wizcli tag \
+            --image-name "^${IMAGE_NAME}$" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            --context "$CONTEXT" \
+            ./*-metadata.json
+
       - name: Compute artifact scope
         id: artifact-scope
         env:
@@ -716,31 +750,6 @@ jobs:
             bakery ci summary "${FILES[@]}" --output summary.md
           fi
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Tag
-        # Tag each per-platform digest in Wiz using the final published registry
-        # repo (repo@sha256:PLATFORM_DIGEST). The digest is identical to the one
-        # scanned in the build-test job, so Wiz correlates scan findings to the
-        # published image. Per Wiz docs, multi-platform images must be tagged by
-        # child (per-platform) digest, not the manifest list digest.
-        # Only runs on real production pushes; dev builds are excluded.
-        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' }}
-        continue-on-error: true
-        env:
-          IMAGE_NAME: ${{ matrix.image }}
-          DEV_VERSIONS: ${{ inputs.dev-versions }}
-          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
-          CONTEXT: ${{ inputs.context }}
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-          WIZCLI_PATH: ${{ github.workspace }}/tools/wizcli
-        run: |
-          bakery wizcli tag \
-            --image-name "^${IMAGE_NAME}$" \
-            --dev-versions "$DEV_VERSIONS" \
-            --matrix-versions "$MATRIX_VERSIONS" \
-            --context "$CONTEXT" \
-            ./*-metadata.json
 
   readme:
     name: Push READMEs
