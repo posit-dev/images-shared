@@ -6,7 +6,7 @@ Manager for the bakery.yaml configuration file and operations against the config
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L482-L1321)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L482-L1317)
 
 ``` python
 config.BakeryConfig()
@@ -86,7 +86,7 @@ Generates a bake plan JSON string for the image targets defined in the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1149-L1156)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1145-L1152)
 
 ``` python
 bake_plan_targets(push=False)
@@ -103,7 +103,7 @@ Build image targets using the specified strategy.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1158-L1267)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1154-L1263)
 
 ``` python
 build_targets(
@@ -158,7 +158,7 @@ Cleans up dangling caches in the specified registry for all generated image targ
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1269-L1294)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1265-L1290)
 
 ``` python
 clean_caches(remove_untagged=True, remove_older_than=None, dry_run=False)
@@ -181,7 +181,7 @@ Cleans up temporary images in the specified registry for all generated image tar
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1296-L1321)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1292-L1317)
 
 ``` python
 clean_temporary(remove_untagged=True, remove_older_than=None, dry_run=False)
@@ -356,7 +356,7 @@ Generates image targets from the images defined in the config.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L960-L1108)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L960-L1104)
 
 ``` python
 generate_image_targets(settings=BakerySettings())
@@ -373,7 +373,7 @@ Returns an image target by its UID.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1110-L1118)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1106-L1114)
 
 ``` python
 get_image_target_by_uid(uid)
@@ -395,7 +395,7 @@ Loads build metadata from a given metadata file.
 
 Usage
 
-[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1132-L1147)
+[Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/config.py#L1128-L1143)
 
 ``` python
 load_build_metadata_from_file(metadata_file)

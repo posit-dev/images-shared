@@ -782,6 +782,7 @@ window.onload = function () {
   <li><a href="#attributes" id="toc-attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a>
   <ul class="collapse">
   <li><a href="#all_registries" id="toc-all_registries" class="nav-link" data-scroll-target="#all_registries"><span class="doc-object-name doc-attribute doc-label doc-label-property">all_registries</span></a></li>
+  <li><a href="#is_latest_release" id="toc-is_latest_release" class="nav-link" data-scroll-target="#is_latest_release"><span class="doc-object-name doc-attribute doc-label doc-label-property">is_latest_release</span></a></li>
   <li><a href="#parsed_version" id="toc-parsed_version" class="nav-link" data-scroll-target="#parsed_version"><span class="doc-object-name doc-attribute doc-label doc-label-property">parsed_version</span></a></li>
   <li><a href="#path" id="toc-path" class="nav-link" data-scroll-target="#path"><span class="doc-object-name doc-attribute doc-label doc-label-property">path</span></a></li>
   <li><a href="#supported_platforms" id="toc-supported_platforms" class="nav-link" data-scroll-target="#supported_platforms"><span class="doc-object-name doc-attribute doc-label doc-label-property">supported_platforms</span></a></li>
@@ -796,6 +797,7 @@ window.onload = function () {
   <li><a href="#generate_template_values" id="toc-generate_template_values" class="nav-link" data-scroll-target="#generate_template_values"><span class="doc-object-name doc-function doc-label doc-label-method">generate_template_values()</span></a></li>
   <li><a href="#make_single_os_primary" id="toc-make_single_os_primary" class="nav-link" data-scroll-target="#make_single_os_primary"><span class="doc-object-name doc-function doc-label doc-label-method">make_single_os_primary()</span></a></li>
   <li><a href="#matches_dev_filter" id="toc-matches_dev_filter" class="nav-link" data-scroll-target="#matches_dev_filter"><span class="doc-object-name doc-function doc-label doc-label-method">matches_dev_filter()</span></a></li>
+  <li><a href="#matches_latest_filter" id="toc-matches_latest_filter" class="nav-link" data-scroll-target="#matches_latest_filter"><span class="doc-object-name doc-function doc-label doc-label-method">matches_latest_filter()</span></a></li>
   <li><a href="#max_one_primary_os" id="toc-max_one_primary_os" class="nav-link" data-scroll-target="#max_one_primary_os"><span class="doc-object-name doc-function doc-label doc-label-method">max_one_primary_os()</span></a></li>
   <li><a href="#render_files" id="toc-render_files" class="nav-link" data-scroll-target="#render_files"><span class="doc-object-name doc-function doc-label doc-label-method">render_files()</span></a></li>
   <li><a href="#resolve_parentage" id="toc-resolve_parentage" class="nav-link" data-scroll-target="#resolve_parentage"><span class="doc-object-name doc-function doc-label doc-label-method">resolve_parentage()</span></a></li>
@@ -834,7 +836,7 @@ window.onload = function () {
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L30-L584" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L30-L618" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.CLASS">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>config.ImageVersion()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -859,6 +861,14 @@ Description
 </td>
 <td>
 Returns the merged registries for this image version.
+</td>
+</tr>
+<tr>
+<td>
+<a href="#is_latest_release" class="doc-attribute doc-label doc-label-property">is_latest_release</a>
+</td>
+<td>
+Whether <code>--latest</code> selects this version.
 </td>
 </tr>
 <tr>
@@ -894,6 +904,19 @@ Returns a list of supported target platforms for this image version.
 </div>
 <div class="doc-signature doc-attribute">
 <p><code><span class="doc-parameter-name">all_registries</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[Registry | BaseRegistry]</span></code></p>
+</div>
+</section>
+<section id="is_latest_release" class="level3">
+<h3 class="anchored" data-anchor-id="is_latest_release"><span class="doc-object-name doc-attribute doc-label doc-label-property">is_latest_release</span></h3>
+<div class="doc-subject">
+<p>Whether <code>--latest</code> selects this version.</p>
+</div>
+<div class="doc-signature doc-attribute">
+<p><code><span class="doc-parameter-name">is_latest_release</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span></code></p>
+</div>
+<div class="doc-text">
+<p>A development version is never the latest release, even if it carries the flag: <code>--latest</code> selects the newest <em>release</em>. Every dev-version constructor currently hardcodes <code>latest=False</code>, so the second clause is belt-and-braces – but this predicate is what CI gates key on to decide what gets security-scanned, and a wrong boolean there fails silently.</p>
+<p>Deliberately a plain <code>property</code> and not a <code>computed_field</code>: ImageVersion is round-tripped back into bakery.yaml via <code>model_dump</code> (see <code>BakeryConfig.patch_version</code>), and a computed field would write a derived key into the user’s config file.</p>
 </div>
 </section>
 <section id="parsed_version" class="level3">
@@ -1018,6 +1041,14 @@ Check whether this version should be included given dev version filters.
 </tr>
 <tr>
 <td>
+<a href="#matches_latest_filter" class="doc-function doc-label doc-label-method">matches_latest_filter()</a>
+</td>
+<td>
+Check whether this version should be included given the <code>--latest</code> filter.
+</td>
+</tr>
+<tr>
+<td>
 <a href="#max_one_primary_os" class="doc-function doc-label doc-label-method">max_one_primary_os()</a>
 </td>
 <td>
@@ -1049,7 +1080,7 @@ Sets the parent for all OSes in this image version.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L283-L307" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L317-L341" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>check_duplicate_dependencies(dependencies, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1099,7 +1130,7 @@ If duplicate dependencies are found.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L202-L218" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L236-L252" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>check_os_not_empty(os, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1138,7 +1169,7 @@ The unmodified list of ImageVersionOS objects.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L220-L235" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L254-L269" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>deduplicate_os(os, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1177,7 +1208,7 @@ A list of unique ImageVersionOS objects.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L181-L200" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L215-L234" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>deduplicate_registries(registries, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1216,7 +1247,7 @@ A list of unique registries.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L309-L319" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L343-L353" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>extra_registries_or_override_registries()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1240,7 +1271,7 @@ If both extraRegistries and overrideRegistries are defined.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L386-L428" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L420-L462" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>generate_template_values(variant<span class="op">=</span><span class="va">None</span>, version_os<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1279,7 +1310,7 @@ A dictionary of values to use for rendering version templates.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L237-L256" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L271-L290" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>make_single_os_primary(os, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1350,6 +1381,44 @@ A tuple of (included, reason). If excluded, reason explains why.
 </div>
 </section>
 </section>
+<section id="matches_latest_filter" class="level3">
+<h3 class="anchored" data-anchor-id="matches_latest_filter"><span class="doc-object-name doc-function doc-label doc-label-method">matches_latest_filter()</span></h3>
+<div class="doc-subject">
+<p>Check whether this version should be included given the <code>--latest</code> filter.</p>
+</div>
+<div class="doc-usage-source">
+<p>Usage</p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L198-L213" target="_blank" rel="noopener">Source</a></p>
+</div>
+<div class="doc-signature doc-Kind.FUNCTION">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>matches_latest_filter(latest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="doc-text">
+<p>Shares :pyattr:<code>is_latest_release</code> with the <code>latest</code> field emitted by <code>bakery ci matrix</code>, so a workflow gating on that field and a caller passing <code>--latest</code> always select the same versions.</p>
+</div>
+<section id="parameters-7" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code><span class="doc-parameter-name">latest</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">bool</span></code></dt>
+<dd>
+Whether the –latest filter is active. When False, every version is included and the filter is a no-op.
+</dd>
+</dl>
+</div>
+</section>
+<section id="returns-7" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-7">Returns</h4>
+<div class="doc-definition-items">
+<dl>
+<dt><code> <span class="doc-parameter-annotation">tuple[bool, str | None]</span></code></dt>
+<dd>
+A tuple of (included, reason). If excluded, reason explains why.
+</dd>
+</dl>
+</div>
+</section>
+</section>
 <section id="max_one_primary_os" class="level3">
 <h3 class="anchored" data-anchor-id="max_one_primary_os"><span class="doc-object-name doc-function doc-label doc-label-method">max_one_primary_os()</span></h3>
 <div class="doc-subject">
@@ -1357,13 +1426,13 @@ A tuple of (included, reason). If excluded, reason explains why.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L258-L281" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L292-L315" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>max_one_primary_os(os, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>max_one_primary_os(os, info)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<section id="parameters-7" class="level4 doc-parameters">
-<h4 class="doc-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<section id="parameters-8" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
 <div class="doc-definition-items">
 <dl>
 <dt><code><span class="doc-parameter-name">os</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[ImageVersionOS]</span></code></dt>
@@ -1377,8 +1446,8 @@ ValidationInfo containing the data being validated.
 </dl>
 </div>
 </section>
-<section id="returns-7" class="level4 doc-returns">
-<h4 class="doc-returns anchored" data-anchor-id="returns-7">Returns</h4>
+<section id="returns-8" class="level4 doc-returns">
+<h4 class="doc-returns anchored" data-anchor-id="returns-8">Returns</h4>
 <div class="doc-definition-items">
 <dl>
 <dt><code> <span class="doc-parameter-annotation">list[ImageVersionOS]</span></code></dt>
@@ -1407,13 +1476,13 @@ If more than one OS is marked as primary.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L430-L584" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L464-L618" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>render_files(variants<span class="op">=</span><span class="va">None</span>, regex_filters<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>render_files(variants<span class="op">=</span><span class="va">None</span>, regex_filters<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<section id="parameters-8" class="level4 doc-parameters">
-<h4 class="doc-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<section id="parameters-9" class="level4 doc-parameters">
+<h4 class="doc-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
 <div class="doc-definition-items">
 <dl>
 <dt><code><span class="doc-parameter-name">variants</span><span class="doc-parameter-annotation-sep">:</span> <span class="doc-parameter-annotation">list[ImageVariant] | None</span> <span class="doc-parameter-default-sep op">=</span> <span class="doc-parameter-default">None</span></code></dt>
@@ -1454,10 +1523,10 @@ If multiple templates fail to render.
 </div>
 <div class="doc-usage-source">
 <p>Usage</p>
-<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L321-L326" target="_blank" rel="noopener">Source</a></p>
+<p><a href="https://github.com/posit-dev/images-shared/blob/main/posit_bakery/config/image/version.py#L355-L360" target="_blank" rel="noopener">Source</a></p>
 </div>
 <div class="doc-signature doc-Kind.FUNCTION">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>resolve_parentage()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>resolve_parentage()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 
 
