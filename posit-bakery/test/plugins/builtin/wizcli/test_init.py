@@ -21,6 +21,7 @@ pytestmark = [
 runner = CliRunner()
 
 BASIC_CONTEXT = str(Path(__file__).parent.parent.parent.parent / "resources" / "basic")
+BASIC_METADATA = str(Path(__file__).parent.parent / "dgoss" / "testdata" / "basic_metadata.json")
 
 
 @pytest.fixture
@@ -149,6 +150,62 @@ class TestWizcliScanPoliciesProjectsFlags:
         assert result.exit_code == 0, result.stdout
         assert mock_execute.call_args.kwargs["policies"] is None
         assert mock_execute.call_args.kwargs["projects"] is None
+
+
+class TestWizcliTag:
+    def test_loads_matching_metadata_and_tags_requested_platform(self):
+        with patch("posit_bakery.plugins.builtin.wizcli.tag_published_repositories", return_value=[]) as tag_images:
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "tag",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-name",
+                    "^test-image$",
+                    "--image-version",
+                    "1.0.0",
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    BASIC_METADATA,
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.stdout
+        call = tag_images.call_args
+        assert call.kwargs["platform"] == "linux/amd64"
+        assert len(call.args[1]) == 2
+        assert all(target.build_metadata for target in call.args[1])
+
+    def test_tag_failure_exits_nonzero(self):
+        with patch(
+            "posit_bakery.plugins.builtin.wizcli.tag_published_repositories",
+            return_value=["tag failed"],
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "tag",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-name",
+                    "^test-image$",
+                    "--image-version",
+                    "1.0.0",
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    BASIC_METADATA,
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 1
+        assert "tag failed" in result.output
 
 
 class TestWizcliScanDevSpec:

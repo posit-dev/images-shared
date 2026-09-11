@@ -457,6 +457,7 @@ jobs:
       # unlike tags. wizcli's `extract` driver reads the local store, so it can
       # only resolve every target once Test has warmed it.
       - name: Scan
+        id: wiz-scan
         if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
         continue-on-error: true
         env:
@@ -497,6 +498,46 @@ jobs:
             "${LATEST_FLAGS[@]}" \
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
+
+      # Run on the same machine as the local scan. The final repository aliases
+      # exist only in this runner's Docker daemon; --digest binds each alias to
+      # the immutable platform image that Wiz just scanned. Publishing happens
+      # later and preserves that digest.
+      - name: Tag final repositories in Wiz
+        if: ${{ inputs.push && inputs.dev-versions != 'only' && steps.filter-steps.outputs.wiz-auth == 'true' && steps.wiz-scan.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.img.image }}
+          IMAGE_VERSION: ${{ matrix.img.version }}
+          IMAGE_PLATFORM: ${{ matrix.img.platform }}
+          DEV_VERSIONS: ${{ inputs.dev-versions }}
+          MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          DEV_SPEC_RESOLVED: ${{ steps.resolve-dev-spec.outputs.dev-spec }}
+          NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
+          CONTEXT: ${{ inputs.context }}
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          WIZ_PROJECT_ID: ${{ secrets.WIZ_PROJECT_ID }}
+        run: |
+          DEV_SPEC_FLAGS=()
+          [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
+          PROJECT_FLAGS=()
+          [[ -n "$WIZ_PROJECT_ID" ]] && PROJECT_FLAGS=(--projects "$WIZ_PROJECT_ID")
+          LATEST_FLAGS=()
+          [[ "$DEV_VERSIONS" != "only" ]] && LATEST_FLAGS=(--latest)
+          WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
+          bakery wizcli tag \
+            --image-name "^${IMAGE_NAME}$" \
+            --image-version "$IMAGE_VERSION" \
+            --image-platform "$IMAGE_PLATFORM" \
+            --dev-versions "$DEV_VERSIONS" \
+            --matrix-versions "$MATRIX_VERSIONS" \
+            "${DEV_SPEC_FLAGS[@]}" \
+            "${PROJECT_FLAGS[@]}" \
+            "${LATEST_FLAGS[@]}" \
+            --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
+            --context "$CONTEXT"
+
       - name: Upload Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:

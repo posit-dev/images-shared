@@ -16,6 +16,7 @@ from posit_bakery.plugins.builtin.wizcli.errors import WIZCLI_EXIT_CODE_POLICY_V
 from posit_bakery.plugins.builtin.wizcli.options import WizCLIOptions
 from posit_bakery.plugins.builtin.wizcli.report import WizScanReportCollection
 from posit_bakery.plugins.builtin.wizcli.suite import WizCLISuite
+from posit_bakery.plugins.builtin.wizcli.tag import tag_published_repositories
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
 from posit_bakery.settings import SETTINGS
 from posit_bakery.util import auto_path
@@ -280,6 +281,153 @@ class WizCLIPlugin(BakeryToolPlugin):
                 log_file=log_file,
             )
             plugin.results(results)
+
+        @wizcli_app.command()
+        @with_verbosity_flags
+        def tag(
+            context: Annotated[
+                Path,
+                typer.Option(
+                    exists=True,
+                    file_okay=False,
+                    dir_okay=True,
+                    readable=True,
+                    writable=True,
+                    resolve_path=True,
+                    help="The root path to use.",
+                ),
+            ] = auto_path(),
+            image_name: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    help="The image name to isolate tagging to.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            image_version: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    help="The image version to isolate tagging to.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            image_platform: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=SETTINGS.get_host_architecture(),
+                    help="Which locally scanned image platform to tag, e.g. 'linux/amd64'.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = None,
+            dev_versions: Annotated[
+                Optional[DevVersionInclusionEnum],
+                typer.Option(
+                    help="Include or exclude development versions defined in config.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = DevVersionInclusionEnum.EXCLUDE,
+            dev_spec: Annotated[
+                str | None,
+                typer.Option(
+                    "--dev-spec",
+                    envvar="BAKERY_DEV_SPEC",
+                    help="JSON spec for a dispatched dev build.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                    callback=parse_dev_spec,
+                ),
+            ] = None,
+            matrix_versions: Annotated[
+                Optional[MatrixVersionInclusionEnum],
+                typer.Option(
+                    help="Include or exclude versions defined in image matrix.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = MatrixVersionInclusionEnum.EXCLUDE,
+            latest: Annotated[
+                Optional[bool],
+                typer.Option(
+                    "--latest",
+                    help="Tag only the latest version of each image.",
+                    rich_help_panel=RichHelpPanelEnum.FILTERS,
+                ),
+            ] = False,
+            metadata_file: Annotated[
+                Path,
+                typer.Option(
+                    exists=True,
+                    file_okay=True,
+                    dir_okay=False,
+                    readable=True,
+                    resolve_path=True,
+                    help="Build metadata file used by the preceding local scan.",
+                ),
+            ] = ...,
+            projects: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--projects",
+                    show_default=False,
+                    help="Comma-separated Wiz project IDs to scope tagging to.",
+                    rich_help_panel=RichHelpPanelEnum.WIZCLI,
+                ),
+            ] = None,
+            client_id: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    envvar="WIZ_CLIENT_ID",
+                    help="Wiz service account client ID.",
+                    rich_help_panel=RichHelpPanelEnum.AUTH,
+                ),
+            ] = None,
+            client_secret: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    envvar="WIZ_CLIENT_SECRET",
+                    help="Wiz service account client secret.",
+                    rich_help_panel=RichHelpPanelEnum.AUTH,
+                ),
+            ] = None,
+        ) -> None:
+            """Associate local scan results with their future registry repositories.
+
+            Run on the same machine immediately after ``bakery wizcli scan``.
+            Bakery creates local aliases for each configured final repository and
+            supplies the scanned platform digest explicitly to ``wizcli tag``.
+            """
+            platform = normalize_platform(image_platform)
+            settings = BakerySettings(
+                filter=BakeryConfigFilter(
+                    image_name=image_name,
+                    image_version=image_version,
+                    image_platform=[platform],
+                ),
+                dev_versions=dev_versions,
+                dev_spec=dev_spec,  # type: ignore[arg-type]
+                matrix_versions=matrix_versions,
+                latest=latest,
+            )
+            c = BakeryConfig.from_context(context, settings)
+            exit_if_no_targets(c, settings)
+            c.load_build_metadata_from_file(metadata_file)
+
+            failures = tag_published_repositories(
+                c.base_path,
+                c.targets,
+                platform=platform,
+                projects=projects,
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+            if failures:
+                for failure in failures:
+                    stderr_console.print(f"❌ {failure}", style="error")
+                raise typer.Exit(code=1)
+
+            stderr_console.print("✅ Wiz repository tags completed", style="success")
 
         app.add_typer(wizcli_app, name="wizcli", help="Scan container images for vulnerabilities with WizCLI")
 
