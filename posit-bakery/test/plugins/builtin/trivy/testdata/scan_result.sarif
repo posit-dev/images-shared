@@ -1,0 +1,171 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "informationUri": "https://github.com/aquasecurity/trivy",
+          "version": "0.56.2",
+          "rules": [
+            {
+              "id": "CVE-2024-0001",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-0001 openssl"
+              },
+              "fullDescription": {
+                "text": "A critical vulnerability in openssl."
+              },
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2024-0001",
+              "help": {
+                "text": "Package: openssl\nFixed Version: 3.0.14",
+                "markdown": ""
+              },
+              "properties": {
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "CRITICAL"
+                ],
+                "precision": "very-high",
+                "security-severity": "9.8"
+              }
+            },
+            {
+              "id": "CVE-2024-0002",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-0002 curl"
+              },
+              "fullDescription": {
+                "text": "A high severity vulnerability in curl."
+              },
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2024-0002",
+              "help": {
+                "text": "Package: curl\nFixed Version: 8.9.0",
+                "markdown": ""
+              },
+              "properties": {
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "HIGH"
+                ],
+                "precision": "very-high",
+                "security-severity": "7.5"
+              }
+            },
+            {
+              "id": "CVE-2024-0003",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-0003 zlib"
+              },
+              "fullDescription": {
+                "text": "A medium severity vulnerability in zlib."
+              },
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2024-0003",
+              "help": {
+                "text": "Package: zlib\nFixed Version: 1.3.1",
+                "markdown": ""
+              },
+              "properties": {
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "MEDIUM"
+                ],
+                "precision": "very-high",
+                "security-severity": "5.3"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-0001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Package: openssl\nInstalled Version: 3.0.13\nSeverity: CRITICAL\nFixed Version: 3.0.14"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/x86_64-linux-gnu/libssl.so.3"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-0002",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Package: curl\nInstalled Version: 8.5.0\nSeverity: HIGH\nFixed Version: 8.9.0"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/bin/curl"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-0002",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Package: libcurl4\nInstalled Version: 8.5.0\nSeverity: HIGH\nFixed Version: 8.9.0"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/x86_64-linux-gnu/libcurl.so.4"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-0003",
+          "ruleIndex": 2,
+          "level": "note",
+          "message": {
+            "text": "Package: zlib1g\nInstalled Version: 1.3\nSeverity: MEDIUM\nFixed Version: 1.3.1"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/x86_64-linux-gnu/libz.so.1"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

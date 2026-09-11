@@ -39,7 +39,7 @@ Full documentation is available at **[posit-dev.github.io/images-shared](https:/
 | [dgoss](https://github.com/goss-org/goss#installation)                                                                                                                    | `bakery dgoss run`              | Test container images for expected content & behavior              |
 | [hadolint](https://github.com/hadolint/hadolint#install)                                                                                                                  | `bakery hadolint run`           | Lint Dockerfile/Containerfile                                      |
 | [openscap](https://static.open-scap.org/)                                                                                                                                 | to be implemented               | Scan container images for secure configuration and vulnerabilities |
-| [trivy](https://trivy.dev/docs/latest/getting-started/)                                                                                                                   | to be implemented               | Scan container images for vulnerabilities                          |
+| [trivy](https://trivy.dev/docs/latest/getting-started/)                                                                                                                   | `bakery trivy scan`             | Scan container images for vulnerabilities                          |
 | [wizcli](https://www.wiz.io/lp/wiz-cli)                                                                                                                                   | `bakery wizcli scan`            | Scan container images for vulnerabilities                          |
 
 ## Installation
