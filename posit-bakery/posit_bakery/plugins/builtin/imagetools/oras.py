@@ -347,6 +347,7 @@ class OrasIndexVerifyWorkflow(BaseModel):
     image_target: Annotated[ImageTarget, Field(description="Target whose destination tags to verify.")]
     plain_http: Annotated[bool, Field(default=False)]
     retry_policy: Annotated[RetryPolicy, Field(default_factory=RetryPolicy)]
+    settle_timeout: Annotated[float, Field(default=600.0, ge=0)]
 
     def _verify_ref(self, ref: str, expected_digest: str) -> None:
         def fetch_and_compare() -> None:
@@ -408,6 +409,7 @@ class OrasIndexVerifyWorkflow(BaseModel):
 
         log.warning(f"Starting single-tag copy fallback for {len(stale)} stale tag(s) from '{source}'.")
         errors: list[str] = []
+        pending: list[str] = []
         for ref, mismatch in stale:
             log.warning(f"Fallback selected '{ref}': {mismatch.message}")
             copy = OrasCopy(
@@ -416,6 +418,7 @@ class OrasIndexVerifyWorkflow(BaseModel):
                 destination=ref,
                 plain_http=self.plain_http,
             )
+            log.info(f"Fallback copying '{source}' -> '{ref}'.")
             try:
                 retry_on_transient(
                     copy.run,
@@ -427,14 +430,36 @@ class OrasIndexVerifyWorkflow(BaseModel):
                 log.error(error)
                 errors.append(error)
                 continue
+            pending.append(ref)
 
-            try:
-                self._verify_ref(ref, expected_digest)
-                verified.append(ref)
-                log.info(f"Fallback verification succeeded for '{ref}': resolved to {expected_digest}.")
-            except BakeryToolRuntimeError as e:
-                log.error(f"Fallback verification failed for '{ref}': {e}")
-                errors.append(str(e))
+        # Registries can accept a tag write before reads of that tag converge.
+        # Copy every stale tag first, then give the whole target one bounded
+        # settling window rather than only one short retry window per tag.
+        deadline = time.monotonic() + self.settle_timeout
+        while pending:
+            still_pending: list[tuple[str, BakeryToolRuntimeError]] = []
+            for ref in pending:
+                try:
+                    self._verify_ref(ref, expected_digest)
+                    verified.append(ref)
+                    log.info(f"Fallback verification succeeded for '{ref}': resolved to {expected_digest}.")
+                except BakeryToolRuntimeError as e:
+                    if not e.metadata or "observed_digest" not in e.metadata:
+                        log.error(f"Fallback verification failed for '{ref}': {e}")
+                        errors.append(str(e))
+                    else:
+                        still_pending.append((ref, e))
+
+            if errors or not still_pending:
+                break
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                errors.extend(str(error) for _, error in still_pending)
+                break
+            delay = min(max(self.retry_policy.initial_backoff, 0.1), remaining)
+            log.warning(f"Waiting for {len(still_pending)} fallback tag(s) to settle; retrying in {delay:.1f}s.")
+            time.sleep(delay)
+            pending = [ref for ref, _ in still_pending]
 
         if errors:
             return OrasIndexVerifyResult(success=False, verified=verified, error="\n".join(errors))
