@@ -1365,7 +1365,7 @@ class TestBakeryConfig:
                     primary: true
                 dependencies:
                   - dependency: R
-                    version: 4.5.1
+                    version: 4.5.3
                   - dependency: python
                     version: 3.13.7
                   - dependency: quarto
@@ -1383,7 +1383,7 @@ class TestBakeryConfig:
                     primary: true
                 dependencies:
                   - dependency: R
-                    version: 4.5.1
+                    version: 4.5.3
                   - dependency: python
                     version: 3.13.7
                   - dependency: quarto
@@ -1494,7 +1494,7 @@ class TestBakeryConfig:
             # Install R
             RUN apt-get update -yqq && \\
                 apt-get install -yqq --no-install-recommends \\
-                    r-4.5.1 && \\
+                    r-4.5.3 && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
 

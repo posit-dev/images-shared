@@ -55,7 +55,7 @@ COPY --from=python-builder /opt/python /opt/python
 # Install R
 RUN apt-get update -yqq && \
     apt-get install -yqq --no-install-recommends \
-        r-4.5.1 && \
+        r-4.5.3 && \
     apt-get clean -yqq && \
     rm -rf /var/lib/apt/lists/*
 

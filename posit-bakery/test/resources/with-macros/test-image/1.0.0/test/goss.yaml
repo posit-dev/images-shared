@@ -18,9 +18,9 @@ file:
   python-3.13.7:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
     path: /opt/python/3.13.7
-  r-4.5.1:
+  r-4.5.3:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
-    path: /opt/R/4.5.1
+    path: /opt/R/4.5.3
   quarto:
     exists: {{ if eq .Env.IMAGE_VARIANT "Minimal" }}false{{ else }}true{{ end }}
     path: /opt/quarto/bin/quarto

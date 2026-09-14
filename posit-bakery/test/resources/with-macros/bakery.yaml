@@ -47,7 +47,7 @@ images:
             primary: true
         dependencies:
           - dependency: R
-            version: 4.5.1
+            version: 4.5.3
           - dependency: python
             version: 3.13.7
           - dependency: quarto
