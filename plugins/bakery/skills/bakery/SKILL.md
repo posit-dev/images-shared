@@ -26,27 +26,38 @@ them directly.
 **Always:**
 1. Edit the template: `<image>/template/Containerfile.jinja` (or other `.jinja` files)
 2. Re-render with filter flags scoped to the most recent version:
-   `uv run bakery update files --image-name <name> --image-version <version>`
+   `bakery update files --image-name <name> --image-version <version>`
 
-**Never:** run `uv run bakery update files` without filter flags — it re-renders every
-version, which is almost never the right action.
+**Never:** run `bakery update files` without `--image-name`/`--image-version` or `--all` —
+the CLI rejects unscoped calls, since re-rendering every version is almost never the right
+action.
 
 **Exception:** for systematic changes that must land in every version, it is often easier
 to render one version, make the change locally in that rendered file to validate it, then
-apply the edit to the template and re-render.
+apply the edit to the template and re-render. Pass `--all` only when you deliberately mean
+every image and version.
 
-### 2. Invoke bakery with `uv run`
+### 2. Install bakery once; invoke it bare
 
-Always prefix bakery commands with `uv run`:
+`bakery` is a standalone CLI, installed as a `uv tool` — not a project-local script. Invoke
+it directly, without a `uv run` prefix:
 
 ```bash
-uv run bakery build --plan
-uv run bakery update files
-uv run bakery create version 1.2.3
+bakery build --plan
+bakery update files --image-name connect --image-version 2025.08.0
+bakery create version 1.2.3
 ```
 
-Bare `bakery` is not on the system PATH — it is installed via uv in the `posit-bakery/`
-project and only available through `uv run`.
+Install it once per machine:
+
+```bash
+uv tool install posit-bakery                    # released version from PyPI (default)
+uv tool install --editable ./posit-bakery       # local development build (images-shared checkout)
+```
+
+If `bakery` isn't found, install it before running any bakery command — do not fall back to
+`uv run bakery` inside `posit-bakery/`; that only works from within that project's own
+development checkout, not from product repos like `images-connect`.
 
 ### 3. Read sibling repos before cross-repo changes
 
@@ -60,15 +71,15 @@ When a task requires editing templates, macros, or `bakery.yaml` in a sibling re
 `workbench-session`) produce **zero build targets** unless you explicitly pass
 `--matrix-versions include` or `--matrix-versions only`.
 
-Always verify with `uv run bakery build --plan` or `uv run bakery get tags` before
-building — a plan with no targets means a filter flag is wrong or missing.
+Always verify with `bakery build --plan` or `bakery get tags` before building — a plan
+with no targets means a filter flag is wrong or missing.
 
 ### 5. Use `--dev-channel`, not `--dev-stream`
 
 `--dev-stream` is deprecated (hidden, emits a warning). Use `--dev-channel` instead:
 
 ```bash
-uv run bakery build --dev-versions only --dev-channel daily
+bakery build --dev-versions only --dev-channel daily
 ```
 
 `--dev-channel` is silently ignored when `--dev-versions` is `exclude` (the default) —
@@ -79,7 +90,7 @@ For CI dispatch builds that must pin an exact dev version, use `--dev-spec` (or 
 overrides CDN discovery for the matching channel:
 
 ```bash
-uv run bakery build --dev-versions only \
+bakery build --dev-versions only \
   --dev-spec '{"version": "2026.05.0-dev+185-gSHA", "channel": "daily"}'
 ```
 
@@ -135,7 +146,7 @@ non-destructive re-renders.
 `bakery run dgoss` is deprecated and emits a warning. Use:
 
 ```bash
-uv run bakery dgoss run
+bakery dgoss run
 ```
 
 ### 11. Guard `clean.yml` with a branch condition
@@ -158,10 +169,10 @@ is hard to diagnose.
 ### Add a new image version
 
 ```bash
-uv run bakery create version <version>
+bakery create version <version>
 # Edit the generated template if the new version needs adjustments
-uv run bakery update files --image-name <name> --image-version <version>
-uv run bakery build --plan   # preview before building
+bakery update files --image-name <name> --image-version <version>
+bakery build --plan   # preview before building
 ```
 
 ### Update a template (Containerfile, goss tests, etc.)
@@ -171,14 +182,14 @@ uv run bakery build --plan   # preview before building
 $EDITOR <image>/template/Containerfile.jinja
 
 # Re-render scoped to the most recent version (always specify filters)
-uv run bakery update files --image-name <name> --image-version <version>
+bakery update files --image-name <name> --image-version <version>
 ```
 
 ### Preview what will be built
 
 ```bash
-uv run bakery get tags                                  # list tags by component
-uv run bakery build --plan                              # full bake plan (JSON)
+bakery get tags                                  # list tags by component
+bakery build --plan                              # full bake plan (JSON)
 ```
 
 `--plan` only works with `--strategy bake` (the default). It errors with
@@ -187,21 +198,21 @@ uv run bakery build --plan                              # full bake plan (JSON)
 ### Build locally
 
 ```bash
-uv run bakery build                                     # build + load into Docker
-uv run bakery build --image-name connect --image-version 2025.08.0
-uv run bakery build --push --no-load                    # push to registry (CI pattern)
+bakery build                                     # build + load into Docker
+bakery build --image-name connect --image-version 2025.08.0
+bakery build --push --no-load                    # push to registry (CI pattern)
 ```
 
 ### Run goss tests
 
 ```bash
-uv run bakery dgoss run
+bakery dgoss run
 ```
 
 ### Inspect the CI matrix
 
 ```bash
-uv run bakery ci matrix
+bakery ci matrix
 ```
 
 ### Debug a CI failure
