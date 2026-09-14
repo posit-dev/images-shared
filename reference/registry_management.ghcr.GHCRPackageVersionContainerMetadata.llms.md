@@ -1,7 +1,5 @@
 # registry_management.ghcr.GHCRPackageVersionContainerMetadata
 
-# registry_management.ghcr.GHCRPackageVersionContainerMetadata
-
 Represents container metadata for a GitHub Container Registry package version.
 
 Usage

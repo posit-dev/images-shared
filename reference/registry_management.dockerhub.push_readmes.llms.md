@@ -1,7 +1,5 @@
 # registry_management.dockerhub.push_readmes()
 
-# registry_management.dockerhub.push_readmes()
-
 Push READMEs to Docker Hub for eligible image targets.
 
 Usage

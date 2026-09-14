@@ -1,7 +1,5 @@
 # registry_management.ghcr.GHCRPackageVersion
 
-# registry_management.ghcr.GHCRPackageVersion
-
 Represents a GitHub Container Registry package version.
 
 Usage

@@ -1,7 +1,5 @@
 # registry_management.ghcr.clean_temporary_artifacts()
 
-# registry_management.ghcr.clean_temporary_artifacts()
-
 Cleans up temporary caches and images that are not tagged or are older than a given timedelta.
 
 Usage

@@ -1,45 +1,12 @@
 # registry_management.dockerhub.DockerhubClient
 
-# registry_management.dockerhub.DockerhubClient
-
 Usage
 
 [Source](https://github.com/posit-dev/images-shared/blob/main/posit_bakery/registry_management/dockerhub/api.py#L8-L161)
 
 ``` python
-registry_management.dockerhub.DockerhubClient()
+registry_management.dockerhub.DockerhubClient(identifier=None, secret=None)
 ```
-
-## Attributes
-
-| Name                    | Description                     |
-|-------------------------|---------------------------------|
-| [BASE_URL](#BASE_URL)   | str(object=’’) -\> str          |
-| [ENDPOINTS](#ENDPOINTS) | dict() -\> new empty dictionary |
-
-### BASE_URL
-
-str(object=’’) -\> str
-
-`BASE_URL``=``"https://hub.docker.com/v2/"`
-
-str(bytes_or_buffer\[, encoding\[, errors\]\]) -\> str
-
-Create a new string object from the given object. If encoding or errors is specified, then the object must expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns the result of object.\_\_str\_\_() (if defined) or repr(object). encoding defaults to sys.getdefaultencoding(). errors defaults to ‘strict’.
-
-### ENDPOINTS
-
-dict() -\> new empty dictionary
-
-`ENDPOINTS``=``{`\
-`    ``"auth"``: ``"auth/token"``,`\
-`    ``"repositories"``: ``"namespaces/{namespace}/repositories"``,`\
-`    ``"repository"``: ``"namespaces/{namespace}/repositories/{repository}"``,`\
-`    ``"tags"``: ``"namespaces/{namespace}/repositories/{repository}/tags"``,`\
-`    ``"tag"``: ``"namespaces/{namespace}/repositories/{repository}/tags/{tag}"``,`\
-`}`\
-
-dict(mapping) -\> new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -\> new dictionary initialized as if via: d = {} for k, v in iterable: d\[k\] = v dict(\*\*kwargs) -\> new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)
 
 ## Methods
 

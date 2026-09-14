@@ -1,7 +1,5 @@
 # registry_management.dockerhub.clean_registry()
 
-# registry_management.dockerhub.clean_registry()
-
 Cleans up images in the specified registry.
 
 Usage

@@ -59,7 +59,7 @@
     "href": "reference/registry_management.ghcr.clean_registry.html",
     "title": "registry_management.ghcr.clean_registry()",
     "section": "",
-    "text": "registry_management.ghcr.clean_registry()\n\nCleans up images in the specified registry.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.clean_registry(\n    image_registry,\n    remove_tagged_older_than=timedelta(weeks=80),\n    remove_untagged_older_than=timedelta(weeks=26),\n    dry_run=False\n)\n\n\n\n\n\n Back to top",
+    "text": "Cleans up images in the specified registry.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.clean_registry(\n    image_registry,\n    remove_tagged_older_than=timedelta(weeks=80),\n    remove_untagged_older_than=timedelta(weeks=26),\n    dry_run=False\n)\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -73,7 +73,7 @@
     "href": "reference/registry_management.ghcr.GHCRPackageVersionMetadata.html",
     "title": "registry_management.ghcr.GHCRPackageVersionMetadata",
     "section": "",
-    "text": "registry_management.ghcr.GHCRPackageVersionMetadata\n\nRepresents metadata for a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersionMetadata()\n\n\n\n\n\n Back to top",
+    "text": "Represents metadata for a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersionMetadata()\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -87,7 +87,7 @@
     "href": "reference/registry_management.ghcr.GHCRPackageVersion.html",
     "title": "registry_management.ghcr.GHCRPackageVersion",
     "section": "",
-    "text": "registry_management.ghcr.GHCRPackageVersion\n\nRepresents a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersion()\n\n\n\n\n\n Back to top",
+    "text": "Represents a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersion()\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -101,7 +101,7 @@
     "href": "reference/registry_management.dockerhub.push_readmes.html",
     "title": "registry_management.dockerhub.push_readmes()",
     "section": "",
-    "text": "Push READMEs to Docker Hub for eligible image targets.\n\n\nUsage\nSource\n\n\nregistry_management.dockerhub.push_readmes(targets)\n\n\nPushes the README.md from each image directory to the corresponding Docker Hub repository description. Only pushes for targets that are:\n\nMarked as latest, or a matrix version\nNot a development version\nHave Docker Hub registry tags\n\nPushes once per Docker Hub repository, regardless of how many targets share it.\nRequires DOCKER_HUB_README_USERNAME and DOCKER_HUB_README_PASSWORD environment variables to be set. Skips gracefully if credentials are not configured. Raises on authentication or push failures.\n\n\n\n\n\ntargets: list[ImageTarget]\n\nList of image targets to evaluate.\n\n\n\n\n\n\n\n\n int\n\nNumber of READMEs pushed.\n\n\n\n\n\n\n\n\n ValueError\n\nIf one or more eligible READMEs exceed Docker Hub’s length limit.\n\n RuntimeError\n\nIf one or more README pushes fail.",
+    "text": "Push READMEs to Docker Hub for eligible image targets.",
     "crumbs": [
       "Home",
       "API Reference",
@@ -114,8 +114,8 @@
     "objectID": "reference/registry_management.dockerhub.push_readmes.html#parameters",
     "href": "reference/registry_management.dockerhub.push_readmes.html#parameters",
     "title": "registry_management.dockerhub.push_readmes()",
-    "section": "",
-    "text": "targets: list[ImageTarget]\n\nList of image targets to evaluate.",
+    "section": "Parameters",
+    "text": "Parameters\n\n\ntargets: list[ImageTarget]\n\nList of image targets to evaluate.",
     "crumbs": [
       "Home",
       "API Reference",
@@ -128,8 +128,8 @@
     "objectID": "reference/registry_management.dockerhub.push_readmes.html#returns",
     "href": "reference/registry_management.dockerhub.push_readmes.html#returns",
     "title": "registry_management.dockerhub.push_readmes()",
-    "section": "",
-    "text": "int\n\nNumber of READMEs pushed.",
+    "section": "Returns",
+    "text": "Returns\n\n\n int\n\nNumber of READMEs pushed.",
     "crumbs": [
       "Home",
       "API Reference",
@@ -142,8 +142,8 @@
     "objectID": "reference/registry_management.dockerhub.push_readmes.html#raises",
     "href": "reference/registry_management.dockerhub.push_readmes.html#raises",
     "title": "registry_management.dockerhub.push_readmes()",
-    "section": "",
-    "text": "ValueError\n\nIf one or more eligible READMEs exceed Docker Hub’s length limit.\n\n RuntimeError\n\nIf one or more README pushes fail.",
+    "section": "Raises",
+    "text": "Raises\n\n\n ValueError\n\nIf one or more eligible READMEs exceed Docker Hub’s length limit.\n\n RuntimeError\n\nIf one or more README pushes fail.",
     "crumbs": [
       "Home",
       "API Reference",
@@ -153,39 +153,11 @@
     ]
   },
   {
-    "objectID": "reference/registry_management.dockerhub.DockerhubClient.html",
-    "href": "reference/registry_management.dockerhub.DockerhubClient.html",
-    "title": "registry_management.dockerhub.DockerhubClient",
-    "section": "",
-    "text": "Usage\nSource\n\n\nregistry_management.dockerhub.DockerhubClient()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nBASE_URL\n\n\nstr(object=’’) -&gt; str\n\n\n\n\nENDPOINTS\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\nstr(object=’’) -&gt; str\n\n\nBASE_URL=\"https://hub.docker.com/v2/\"\n\n\nstr(bytes_or_buffer[, encoding[, errors]]) -&gt; str\nCreate a new string object from the given object. If encoding or errors is specified, then the object must expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns the result of object.__str__() (if defined) or repr(object). encoding defaults to sys.getdefaultencoding(). errors defaults to ‘strict’.\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nENDPOINTS={    \"auth\": \"auth/token\",    \"repositories\": \"namespaces/{namespace}/repositories\",    \"repository\": \"namespaces/{namespace}/repositories/{repository}\",    \"tags\": \"namespaces/{namespace}/repositories/{repository}/tags\",    \"tag\": \"namespaces/{namespace}/repositories/{repository}/tags/{tag}\",}\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nupdate_full_description()\n\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\n\n\n\n\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\nUsage\nSource\n\n\nupdate_full_description(namespace=None, repository=None, full_description=None)\n\n\n\n\n\nnamespace: str | None = None\n\nThe namespace (organization or user) of the repository.\n\nrepository: str | None = None\n\nThe name of the repository.\n\nfull_description: str | None = None\n\nThe full description content (typically README.md contents). Docker Hub limits this to 25,000 bytes.\n\n\n\n\n\n\n\n\n dict\n\nThe updated repository data from Docker Hub.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "registry_management",
-      "Reference",
-      "[registry_management.dockerhub.DockerhubClient]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/registry_management.dockerhub.DockerhubClient.html#attributes",
-    "href": "reference/registry_management.dockerhub.DockerhubClient.html#attributes",
-    "title": "registry_management.dockerhub.DockerhubClient",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nBASE_URL\n\n\nstr(object=’’) -&gt; str\n\n\n\n\nENDPOINTS\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\nstr(object=’’) -&gt; str\n\n\nBASE_URL=\"https://hub.docker.com/v2/\"\n\n\nstr(bytes_or_buffer[, encoding[, errors]]) -&gt; str\nCreate a new string object from the given object. If encoding or errors is specified, then the object must expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns the result of object.__str__() (if defined) or repr(object). encoding defaults to sys.getdefaultencoding(). errors defaults to ‘strict’.\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nENDPOINTS={    \"auth\": \"auth/token\",    \"repositories\": \"namespaces/{namespace}/repositories\",    \"repository\": \"namespaces/{namespace}/repositories/{repository}\",    \"tags\": \"namespaces/{namespace}/repositories/{repository}/tags\",    \"tag\": \"namespaces/{namespace}/repositories/{repository}/tags/{tag}\",}\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "registry_management",
-      "Reference",
-      "[registry_management.dockerhub.DockerhubClient]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
     "objectID": "reference/registry_management.dockerhub.DockerhubClient.html#methods",
     "href": "reference/registry_management.dockerhub.DockerhubClient.html#methods",
     "title": "registry_management.dockerhub.DockerhubClient",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nupdate_full_description()\n\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\n\n\n\n\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\nUsage\nSource\n\n\nupdate_full_description(namespace=None, repository=None, full_description=None)\n\n\n\n\n\nnamespace: str | None = None\n\nThe namespace (organization or user) of the repository.\n\nrepository: str | None = None\n\nThe name of the repository.\n\nfull_description: str | None = None\n\nThe full description content (typically README.md contents). Docker Hub limits this to 25,000 bytes.\n\n\n\n\n\n\n\n\n dict\n\nThe updated repository data from Docker Hub.",
+    "section": "Methods",
+    "text": "Methods\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nupdate_full_description()\n\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\n\n\n\nupdate_full_description()\n\nUpdate the full description (README) of a Docker Hub repository.\n\n\nUsage\nSource\n\n\nupdate_full_description(namespace=None, repository=None, full_description=None)\n\n\nParameters\n\n\nnamespace: str | None = None\n\nThe namespace (organization or user) of the repository.\n\nrepository: str | None = None\n\nThe name of the repository.\n\nfull_description: str | None = None\n\nThe full description content (typically README.md contents). Docker Hub limits this to 25,000 bytes.\n\n\n\n\n\nReturns\n\n\n dict\n\nThe updated repository data from Docker Hub.",
     "crumbs": [
       "Home",
       "API Reference",
@@ -195,382 +167,97 @@
     ]
   },
   {
-    "objectID": "reference/plugins.BakeryToolPlugin.html",
-    "href": "reference/plugins.BakeryToolPlugin.html",
-    "title": "plugins.BakeryToolPlugin",
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "API Reference",
     "section": "",
-    "text": "Usage\nSource\n\n\nplugins.BakeryToolPlugin()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nexecute()\n\n\nExecute the plugin’s tools against the given ImageTarget objects.\n\n\n\n\nregister_cli()\n\n\nRegister the plugin’s CLI commands with the given Typer app.\n\n\n\n\nresults()\n\n\nDisplay the results of the plugin’s execution and exit non-zero on failures.\n\n\n\n\n\n\n\nExecute the plugin’s tools against the given ImageTarget objects.\n\n\nUsage\nSource\n\n\nexecute(base_path, targets, **kwargs)\n\n\n\n\n\nRegister the plugin’s CLI commands with the given Typer app.\n\n\nUsage\nSource\n\n\nregister_cli(app)\n\n\n\n\n\nDisplay the results of the plugin’s execution and exit non-zero on failures.\n\n\nUsage\nSource\n\n\nresults(results)",
+    "text": "Models for bakery.yaml\n\n\nconfig",
     "crumbs": [
       "Home",
       "API Reference",
-      "plugins",
-      "Reference",
-      "[plugins.BakeryToolPlugin]{.doc-object-name .doc-class .doc-label .doc-label-protocol}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/plugins.BakeryToolPlugin.html#methods",
-    "href": "reference/plugins.BakeryToolPlugin.html#methods",
-    "title": "plugins.BakeryToolPlugin",
+    "objectID": "reference/index.html#configuration",
+    "href": "reference/index.html#configuration",
+    "title": "API Reference",
     "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nexecute()\n\n\nExecute the plugin’s tools against the given ImageTarget objects.\n\n\n\n\nregister_cli()\n\n\nRegister the plugin’s CLI commands with the given Typer app.\n\n\n\n\nresults()\n\n\nDisplay the results of the plugin’s execution and exit non-zero on failures.\n\n\n\n\n\n\n\nExecute the plugin’s tools against the given ImageTarget objects.\n\n\nUsage\nSource\n\n\nexecute(base_path, targets, **kwargs)\n\n\n\n\n\nRegister the plugin’s CLI commands with the given Typer app.\n\n\nUsage\nSource\n\n\nregister_cli(app)\n\n\n\n\n\nDisplay the results of the plugin’s execution and exit non-zero on failures.\n\n\nUsage\nSource\n\n\nresults(results)",
+    "text": "Models for bakery.yaml\n\n\nconfig",
     "crumbs": [
       "Home",
       "API Reference",
-      "plugins",
-      "Reference",
-      "[plugins.BakeryToolPlugin]{.doc-object-name .doc-class .doc-label .doc-label-protocol}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/image.ImageTargetContext.html",
-    "href": "reference/image.ImageTargetContext.html",
-    "title": "image.ImageTargetContext",
-    "section": "",
-    "text": "Container for contextual path information related to an image target.\n\n\nUsage\nSource\n\n\nimage.ImageTargetContext()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nmodel_config\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nmodel_config=ConfigDict(frozen=True)\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
+    "objectID": "reference/index.html#image",
+    "href": "reference/index.html#image",
+    "title": "API Reference",
+    "section": "Image",
+    "text": "Image\n\nImage build targets and plans\n\n\nimage",
     "crumbs": [
       "Home",
       "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageTargetContext]{.doc-object-name .doc-class .doc-label .doc-label-class}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/image.ImageTargetContext.html#attributes",
-    "href": "reference/image.ImageTargetContext.html#attributes",
-    "title": "image.ImageTargetContext",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nmodel_config\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nmodel_config=ConfigDict(frozen=True)\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
+    "objectID": "reference/index.html#plugins",
+    "href": "reference/index.html#plugins",
+    "title": "API Reference",
+    "section": "Plugins",
+    "text": "Plugins\n\nProtocol for extending bakery with custom tools\n\n\nplugins",
     "crumbs": [
       "Home",
       "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageTargetContext]{.doc-object-name .doc-class .doc-label .doc-label-class}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/image.ImageBuildStrategy.html",
-    "href": "reference/image.ImageBuildStrategy.html",
-    "title": "image.ImageBuildStrategy",
-    "section": "",
-    "text": "Enumeration for image build strategies.\n\n\nUsage\nSource\n\n\nimage.ImageBuildStrategy()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nBAKE\n\n\nEnumeration for image build strategies.\n\n\n\n\nBUILD\n\n\nEnumeration for image build strategies.\n\n\n\n\n\n\n\nEnumeration for image build strategies.\n\n\nBAKE=\"bake\"\n\n\n\n\n\nEnumeration for image build strategies.\n\n\nBUILD=\"build\"",
+    "objectID": "reference/index.html#registry-management",
+    "href": "reference/index.html#registry-management",
+    "title": "API Reference",
+    "section": "Registry Management",
+    "text": "Registry Management\n\nClients for DockerHub and GHCR\n\n\nregistry_management.dockerhub.DockerhubClient\n\n\n\nregistry_management.dockerhub.clean_registry()\n\nCleans up images in the specified registry.\n\nregistry_management.dockerhub.push_readmes()\n\nPush READMEs to Docker Hub for eligible image targets.\n\nregistry_management.ghcr.GHCRClient\n\n\n\nregistry_management.ghcr.clean_registry()\n\nCleans up images in the specified registry.\n\nregistry_management.ghcr.clean_temporary_artifacts()\n\nCleans up temporary caches and images that are not tagged or are older than a given timedelta.\n\nregistry_management.ghcr.GHCRPackageVersion\n\nRepresents a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersionMetadata\n\nRepresents metadata for a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersionContainerMetadata\n\nRepresents container metadata for a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersions\n\nRepresents a list of GitHub Container Registry package versions.",
     "crumbs": [
       "Home",
       "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageBuildStrategy]{.doc-object-name .doc-class .doc-label .doc-label-enum}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/image.ImageBuildStrategy.html#attributes",
-    "href": "reference/image.ImageBuildStrategy.html#attributes",
-    "title": "image.ImageBuildStrategy",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nBAKE\n\n\nEnumeration for image build strategies.\n\n\n\n\nBUILD\n\n\nEnumeration for image build strategies.\n\n\n\n\n\n\n\nEnumeration for image build strategies.\n\n\nBAKE=\"bake\"\n\n\n\n\n\nEnumeration for image build strategies.\n\n\nBUILD=\"build\"",
+    "objectID": "reference/index.html#errors",
+    "href": "reference/index.html#errors",
+    "title": "API Reference",
+    "section": "Errors",
+    "text": "Errors\n\nException hierarchy\n\n\nerror",
     "crumbs": [
       "Home",
       "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageBuildStrategy]{.doc-object-name .doc-class .doc-label .doc-label-enum}"
+      "Overview"
     ]
   },
   {
-    "objectID": "reference/image.BuildSummaryRow.html",
-    "href": "reference/image.BuildSummaryRow.html",
-    "title": "image.BuildSummaryRow",
+    "objectID": "reference/error.html",
+    "href": "reference/error.html",
+    "title": "error",
     "section": "",
-    "text": "image.BuildSummaryRow\n\nA single labeled metric in a build summary report.\n\n\nUsage\nSource\n\n\nimage.BuildSummaryRow()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BuildSummaryRow]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "text": "error"
   },
   {
-    "objectID": "reference/image.BakePlan.html",
-    "href": "reference/image.BakePlan.html",
-    "title": "image.BakePlan",
-    "section": "",
-    "text": "Represents a JSON bake plan for building Docker images using Docker Bake.\n\n\nUsage\nSource\n\n\nimage.BakePlan()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nbake_file\n\n\nReturn the path to the bake file in the context directory.\n\n\n\n\n\n\n\nReturn the path to the bake file in the context directory.\n\n\nbake_file: Path\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nbuild()\n\n\nRun the bake plan to build all targets.\n\n\n\n\nfrom_image_targets()\n\n\nCreate a BakePlan from a list of ImageTarget objects.\n\n\n\n\nremove()\n\n\nDelete the bake plan file if it exists.\n\n\n\n\nupdate_groups()\n\n\nUpdate the default, image name, and image variant groups with the given UID.\n\n\n\n\nwrite()\n\n\nWrite the bake plan to a file in the context directory.\n\n\n\n\n\n\n\nRun the bake plan to build all targets.\n\n\nUsage\nSource\n\n\nbuild(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    cache_from=None,\n    cache_to=None,\n    platforms=None,\n    set_opts=None,\n    clean_bakefile=True,\n    metadata_file=None\n)\n\n\n\n\n\nmetadata_file: Path | None = None\n\nOptional path to write JSON build metadata to. Passed through to docker buildx bake --metadata-file, which writes one entry per bake target, keyed by the same target name used in the bake plan (i.e. the image target UID).\n\n\n\n\n\n\n\n\nCreate a BakePlan from a list of ImageTarget objects.\n\n\nUsage\nSource\n\n\nfrom_image_targets(context, image_targets, platforms=None, push=False)\n\n\n\n\n\ncontext: Path\n\nThe absolute path to the build context directory.\n\nimage_targets: list[ImageTarget]\n\nA list of ImageTarget objects to include in the bake plan.\n\nplatforms: list[str] | None = None\n\nOptional platform override (e.g., from CLI –platform flag). When provided, this takes precedence over each image target’s OS platform configuration for cache tag generation.\n\npush: bool = False\n\nIf True, include cache-to in bake targets to push cache layers to the registry.\n\n\n\n\n\n\n\n\n BakePlan\n\nA BakePlan object containing the context, groups, and targets.\n\n\n\n\n\n\n\n\nDelete the bake plan file if it exists.\n\n\nUsage\nSource\n\n\nremove()\n\n\n\n\n\nUpdate the default, image name, and image variant groups with the given UID.\n\n\nUsage\nSource\n\n\nupdate_groups(groups, uid, image_name, image_variant)\n\n\n\n\n\ngroups: dict[str, BakeGroup]\n\nThe current groups of targets.\n\nuid: str\n\nThe unique identifier for the target.\n\nimage_name: str\n\nThe name of the image.\n\nimage_variant: str\n\nThe variant of the image.\n\n\n\n\n\n\n\n\n dict[str, BakeGroup]\n\nThe updated groups with the new target added.\n\n\n\n\n\n\n\n\nWrite the bake plan to a file in the context directory.\n\n\nUsage\nSource\n\n\nwrite()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BakePlan]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "objectID": "reference/error.html#classes",
+    "href": "reference/error.html#classes",
+    "title": "error",
+    "section": "Classes",
+    "text": "Classes\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nBakeryBuildErrorGroup\n\n\nGroup of tool runtime errors\n\n\n\n\nBakeryError\n\n\nBase class for all Bakery exceptions\n\n\n\n\nBakeryFileError\n\n\nGeneric error for file/directory issues\n\n\n\n\nBakeryRenderError\n\n\nGeneric error for rendering issues\n\n\n\n\nBakeryRenderErrorGroup\n\n\nGroup of template errors\n\n\n\n\nBakeryTemplateError\n\n\nGeneric error for template issues\n\n\n\n\nBakeryToolError\n\n\nGeneric error for external tool issues\n\n\n\n\nBakeryToolNotFoundError\n\n\nError for an expected tool not being found\n\n\n\n\nBakeryToolRuntimeErrorGroup\n\n\nGroup of tool runtime errors\n\n\n\n\n\nBakeryBuildErrorGroup\n\nGroup of tool runtime errors\n\n\nUsage\nSource\n\n\nBakeryBuildErrorGroup()\n\n\n\nBakeryError\n\nBase class for all Bakery exceptions\n\n\nUsage\nSource\n\n\nBakeryError()\n\n\n\nBakeryFileError\n\nGeneric error for file/directory issues\n\n\nUsage\nSource\n\n\nBakeryFileError(message=None, filepath=None)\n\n\n\nBakeryRenderError\n\nGeneric error for rendering issues\n\n\nUsage\nSource\n\n\nBakeryRenderError(\n    cause,\n    context=None,\n    image=None,\n    version=None,\n    variant=None,\n    template=None,\n    destination=None\n)\n\n\n\nBakeryRenderErrorGroup\n\nGroup of template errors\n\n\nUsage\nSource\n\n\nBakeryRenderErrorGroup()\n\n\n\nBakeryTemplateError\n\nGeneric error for template issues\n\n\nUsage\nSource\n\n\nBakeryTemplateError()\n\n\n\nBakeryToolError\n\nGeneric error for external tool issues\n\n\nUsage\nSource\n\n\nBakeryToolError(message=None, tool_name=None)\n\n\n\nBakeryToolNotFoundError\n\nError for an expected tool not being found\n\n\nUsage\nSource\n\n\nBakeryToolNotFoundError(message=None, tool_name=None)\n\n\n\nBakeryToolRuntimeErrorGroup\n\nGroup of tool runtime errors\n\n\nUsage\nSource\n\n\nBakeryToolRuntimeErrorGroup()"
   },
   {
-    "objectID": "reference/image.BakePlan.html#attributes",
-    "href": "reference/image.BakePlan.html#attributes",
-    "title": "image.BakePlan",
+    "objectID": "reference/cli/index.html",
+    "href": "reference/cli/index.html",
+    "title": "CLI Reference",
     "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nbake_file\n\n\nReturn the path to the bake file in the context directory.\n\n\n\n\n\n\n\nReturn the path to the bake file in the context directory.\n\n\nbake_file: Path",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BakePlan]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.BakePlan.html#methods",
-    "href": "reference/image.BakePlan.html#methods",
-    "title": "image.BakePlan",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nbuild()\n\n\nRun the bake plan to build all targets.\n\n\n\n\nfrom_image_targets()\n\n\nCreate a BakePlan from a list of ImageTarget objects.\n\n\n\n\nremove()\n\n\nDelete the bake plan file if it exists.\n\n\n\n\nupdate_groups()\n\n\nUpdate the default, image name, and image variant groups with the given UID.\n\n\n\n\nwrite()\n\n\nWrite the bake plan to a file in the context directory.\n\n\n\n\n\n\n\nRun the bake plan to build all targets.\n\n\nUsage\nSource\n\n\nbuild(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    cache_from=None,\n    cache_to=None,\n    platforms=None,\n    set_opts=None,\n    clean_bakefile=True,\n    metadata_file=None\n)\n\n\n\n\n\nmetadata_file: Path | None = None\n\nOptional path to write JSON build metadata to. Passed through to docker buildx bake --metadata-file, which writes one entry per bake target, keyed by the same target name used in the bake plan (i.e. the image target UID).\n\n\n\n\n\n\n\n\nCreate a BakePlan from a list of ImageTarget objects.\n\n\nUsage\nSource\n\n\nfrom_image_targets(context, image_targets, platforms=None, push=False)\n\n\n\n\n\ncontext: Path\n\nThe absolute path to the build context directory.\n\nimage_targets: list[ImageTarget]\n\nA list of ImageTarget objects to include in the bake plan.\n\nplatforms: list[str] | None = None\n\nOptional platform override (e.g., from CLI –platform flag). When provided, this takes precedence over each image target’s OS platform configuration for cache tag generation.\n\npush: bool = False\n\nIf True, include cache-to in bake targets to push cache layers to the registry.\n\n\n\n\n\n\n\n\n BakePlan\n\nA BakePlan object containing the context, groups, and targets.\n\n\n\n\n\n\n\n\nDelete the bake plan file if it exists.\n\n\nUsage\nSource\n\n\nremove()\n\n\n\n\n\nUpdate the default, image name, and image variant groups with the given UID.\n\n\nUsage\nSource\n\n\nupdate_groups(groups, uid, image_name, image_variant)\n\n\n\n\n\ngroups: dict[str, BakeGroup]\n\nThe current groups of targets.\n\nuid: str\n\nThe unique identifier for the target.\n\nimage_name: str\n\nThe name of the image.\n\nimage_variant: str\n\nThe variant of the image.\n\n\n\n\n\n\n\n\n dict[str, BakeGroup]\n\nThe updated groups with the new target added.\n\n\n\n\n\n\n\n\nWrite the bake plan to a file in the context directory.\n\n\nUsage\nSource\n\n\nwrite()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BakePlan]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryToolRuntimeError.html",
-    "href": "reference/error.BakeryToolRuntimeError.html",
-    "title": "error.BakeryToolRuntimeError",
-    "section": "",
-    "text": "error.BakeryToolRuntimeError\n\n\n\n\nUsage\nSource\n\n\nerror.BakeryToolRuntimeError()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryToolRuntimeError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryToolError.html",
-    "href": "reference/error.BakeryToolError.html",
-    "title": "error.BakeryToolError",
-    "section": "",
-    "text": "error.BakeryToolError\n\nGeneric error for external tool issues\n\n\nUsage\nSource\n\n\nerror.BakeryToolError()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryToolError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryRenderErrorGroup.html",
-    "href": "reference/error.BakeryRenderErrorGroup.html",
-    "title": "error.BakeryRenderErrorGroup",
-    "section": "",
-    "text": "error.BakeryRenderErrorGroup\n\nGroup of template errors\n\n\nUsage\nSource\n\n\nerror.BakeryRenderErrorGroup()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryRenderErrorGroup]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryFileError.html",
-    "href": "reference/error.BakeryFileError.html",
-    "title": "error.BakeryFileError",
-    "section": "",
-    "text": "error.BakeryFileError\n\nGeneric error for file/directory issues\n\n\nUsage\nSource\n\n\nerror.BakeryFileError()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryFileError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryBuildErrorGroup.html",
-    "href": "reference/error.BakeryBuildErrorGroup.html",
-    "title": "error.BakeryBuildErrorGroup",
-    "section": "",
-    "text": "error.BakeryBuildErrorGroup\n\nGroup of tool runtime errors\n\n\nUsage\nSource\n\n\nerror.BakeryBuildErrorGroup()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryBuildErrorGroup]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Repository.html",
-    "href": "reference/config.Repository.html",
-    "title": "config.Repository",
-    "section": "",
-    "text": "Model representing a project repository in the Bakery configuration.\n\n\nUsage\nSource\n\n\nconfig.Repository()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nrevision\n\n\nGet the git commit SHA for the repository.\n\n\n\n\n\n\n\nGet the git commit SHA for the repository.\n\n\nrevision: str | None\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\ndeduplicate_authors()\n\n\nDe-duplicate and sort authors. Logs a warning if duplicates are found.\n\n\n\n\ndefault_https_url_scheme()\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\n\n\nparse_authors()\n\n\nParse the authors field into a list of NameEmail objects from dicts or as strings for later validation.\n\n\n\n\nparse_maintainer()\n\n\nParse the maintainer field into a NameEmail object or return as is if already a str for later validation.\n\n\n\n\n\n\n\nDe-duplicate and sort authors. Logs a warning if duplicates are found.\n\n\nUsage\nSource\n\n\ndeduplicate_authors(authors)\n\n\n\n\n\nauthors: list[NameEmail]\n\nThe list of authors to deduplicate.\n\n\n\n\n\n\n\n\n list[NameEmail]\n\nA list of unique authors.\n\n\n\n\n\n\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\nUsage\nSource\n\n\ndefault_https_url_scheme(value)\n\n\n\n\n\nvalue: Any\n\nThe URL to validate and possibly modify.\n\n\n\n\n\n\n\n\nParse the authors field into a list of NameEmail objects from dicts or as strings for later validation.\n\n\nUsage\nSource\n\n\nparse_authors(value)\n\n\n\n\n\nvalue: list[Any]\n\nThe list of authors to parse.\n\n\n\n\n\n\n\n\n list[HashableNameEmail | str]\n\nA list of HashableNameEmail objects parsed from dictionaries and/or strings.\n\n\n\n\n\n\n\n\nParse the maintainer field into a NameEmail object or return as is if already a str for later validation.\n\n\nUsage\nSource\n\n\nparse_maintainer(value)\n\n\n\n\n\nvalue: Any\n\nThe maintainer to parse.\n\n\n\n\n\n\n\n\n HashableNameEmail | str\n\nA HashableNameEmail object parsed from a dictionary or the string value if already a string.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Repository]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Repository.html#attributes",
-    "href": "reference/config.Repository.html#attributes",
-    "title": "config.Repository",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nrevision\n\n\nGet the git commit SHA for the repository.\n\n\n\n\n\n\n\nGet the git commit SHA for the repository.\n\n\nrevision: str | None",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Repository]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Repository.html#methods",
-    "href": "reference/config.Repository.html#methods",
-    "title": "config.Repository",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\ndeduplicate_authors()\n\n\nDe-duplicate and sort authors. Logs a warning if duplicates are found.\n\n\n\n\ndefault_https_url_scheme()\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\n\n\nparse_authors()\n\n\nParse the authors field into a list of NameEmail objects from dicts or as strings for later validation.\n\n\n\n\nparse_maintainer()\n\n\nParse the maintainer field into a NameEmail object or return as is if already a str for later validation.\n\n\n\n\n\n\n\nDe-duplicate and sort authors. Logs a warning if duplicates are found.\n\n\nUsage\nSource\n\n\ndeduplicate_authors(authors)\n\n\n\n\n\nauthors: list[NameEmail]\n\nThe list of authors to deduplicate.\n\n\n\n\n\n\n\n\n list[NameEmail]\n\nA list of unique authors.\n\n\n\n\n\n\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\nUsage\nSource\n\n\ndefault_https_url_scheme(value)\n\n\n\n\n\nvalue: Any\n\nThe URL to validate and possibly modify.\n\n\n\n\n\n\n\n\nParse the authors field into a list of NameEmail objects from dicts or as strings for later validation.\n\n\nUsage\nSource\n\n\nparse_authors(value)\n\n\n\n\n\nvalue: list[Any]\n\nThe list of authors to parse.\n\n\n\n\n\n\n\n\n list[HashableNameEmail | str]\n\nA list of HashableNameEmail objects parsed from dictionaries and/or strings.\n\n\n\n\n\n\n\n\nParse the maintainer field into a NameEmail object or return as is if already a str for later validation.\n\n\nUsage\nSource\n\n\nparse_maintainer(value)\n\n\n\n\n\nvalue: Any\n\nThe maintainer to parse.\n\n\n\n\n\n\n\n\n HashableNameEmail | str\n\nA HashableNameEmail object parsed from a dictionary or the string value if already a string.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Repository]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVersionOS.html",
-    "href": "reference/config.ImageVersionOS.html",
-    "title": "config.ImageVersionOS",
-    "section": "",
-    "text": "Model representing a supported operating system for an image version.\n\n\nUsage\nSource\n\n\nconfig.ImageVersionOS()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\n__eq__()\n\n\nEquality check for ImageVersionOS based on name.\n\n\n\n\npopulate_build_os()\n\n\nPopulates the build_os field based on the name field. If the OS cannot be determined, it defaults to unknown.\n\n\n\n\nserialize_platforms()\n\n\nSerialize the platforms field to a list of strings for YAML output.\n\n\n\n\n\n\n\nEquality check for ImageVersionOS based on name.\n\n\nUsage\nSource\n\n\n__eq__(other)\n\n\n\n\n\nother\n\nThe other object to compare against.\n\n\n\n\n\n\n\n\nPopulates the build_os field based on the name field. If the OS cannot be determined, it defaults to unknown.\n\n\nUsage\nSource\n\n\npopulate_build_os(value, info)\n\n\n\n\n\nSerialize the platforms field to a list of strings for YAML output.\n\n\nUsage\nSource\n\n\nserialize_platforms(platforms)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVersionOS]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVersionOS.html#methods",
-    "href": "reference/config.ImageVersionOS.html#methods",
-    "title": "config.ImageVersionOS",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\n__eq__()\n\n\nEquality check for ImageVersionOS based on name.\n\n\n\n\npopulate_build_os()\n\n\nPopulates the build_os field based on the name field. If the OS cannot be determined, it defaults to unknown.\n\n\n\n\nserialize_platforms()\n\n\nSerialize the platforms field to a list of strings for YAML output.\n\n\n\n\n\n\n\nEquality check for ImageVersionOS based on name.\n\n\nUsage\nSource\n\n\n__eq__(other)\n\n\n\n\n\nother\n\nThe other object to compare against.\n\n\n\n\n\n\n\n\nPopulates the build_os field based on the name field. If the OS cannot be determined, it defaults to unknown.\n\n\nUsage\nSource\n\n\npopulate_build_os(value, info)\n\n\n\n\n\nSerialize the platforms field to a list of strings for YAML output.\n\n\nUsage\nSource\n\n\nserialize_platforms(platforms)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVersionOS]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVariant.html",
-    "href": "reference/config.ImageVariant.html",
-    "title": "config.ImageVariant",
-    "section": "",
-    "text": "Model representing a variant of an image.\n\n\nUsage\nSource\n\n\nconfig.ImageVariant()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nget_tool_option()\n\n\nReturns tool options for this image variant.\n\n\n\n\n\n\n\nReturns tool options for this image variant.\n\n\nUsage\nSource\n\n\nget_tool_option(tool, merge_with_parent=True)\n\n\nBy default, the tool option for the variant will be merged with the parent image’s tool options if they exist. Tool options set to non-defaults in the variant will take precedence over those in the parent.\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVariant]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVariant.html#methods",
-    "href": "reference/config.ImageVariant.html#methods",
-    "title": "config.ImageVariant",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nget_tool_option()\n\n\nReturns tool options for this image variant.\n\n\n\n\n\n\n\nReturns tool options for this image variant.\n\n\nUsage\nSource\n\n\nget_tool_option(tool, merge_with_parent=True)\n\n\nBy default, the tool option for the variant will be merged with the parent image’s tool options if they exist. Tool options set to non-defaults in the variant will take precedence over those in the parent.\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVariant]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.BaseRegistry.html",
-    "href": "reference/config.BaseRegistry.html",
-    "title": "config.BaseRegistry",
-    "section": "",
-    "text": "Model representing an image registry in the Bakery configuration.\n\n\nUsage\nSource\n\n\nconfig.BaseRegistry()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nbase_url\n\n\nGet the base URL for the registry.\n\n\n\n\nmodel_config\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\nGet the base URL for the registry.\n\n\nbase_url: str\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nmodel_config=ConfigDict(extra=\"forbid\")\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BaseRegistry]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.BaseRegistry.html#attributes",
-    "href": "reference/config.BaseRegistry.html#attributes",
-    "title": "config.BaseRegistry",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nbase_url\n\n\nGet the base URL for the registry.\n\n\n\n\nmodel_config\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\nGet the base URL for the registry.\n\n\nbase_url: str\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nmodel_config=ConfigDict(extra=\"forbid\")\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BaseRegistry]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.BakeryConfig.html",
-    "href": "reference/config.BakeryConfig.html",
-    "title": "config.BakeryConfig",
-    "section": "",
-    "text": "Manager for the bakery.yaml configuration file and operations against the configuration.\n\n\nUsage\nSource\n\n\nconfig.BakeryConfig()\n\n\n\n\n\nyaml\n\nThe YAML parser used to read and write the bakery.yaml file.\n\nconfig_file\n\nPath to the bakery.yaml configuration file.\n\nbase_path\n\nThe base path where the bakery.yaml file is located.\n\nmodel\n\nThe BakeryConfigDocument model representation of the bakery.yaml file.\n\ntargets\n\nList of ImageTarget objects representing the image build targets defined in the config.\n\nlast_build_succeeded_uids: set[str] | None\n\nUIDs that succeeded in the most recent build_targets() call with strategy=ImageBuildStrategy.BUILD; None after a BAKE-strategy call, which has no per-target result to report. Consumed by --summary to avoid measuring a size for a target that failed this run off whatever it happens to find already sitting at that target’s tag.\n\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\n__init__()\n\n\nInitializes the BakeryConfig with the given config file path.\n\n\n\n\nbake_plan_targets()\n\n\nGenerates a bake plan JSON string for the image targets defined in the config.\n\n\n\n\nbuild_targets()\n\n\nBuild image targets using the specified strategy.\n\n\n\n\nclean_caches()\n\n\nCleans up dangling caches in the specified registry for all generated image targets.\n\n\n\n\nclean_temporary()\n\n\nCleans up temporary images in the specified registry for all generated image targets.\n\n\n\n\ncreate_image()\n\n\nCreates a new image.\n\n\n\n\ncreate_matrix()\n\n\nCreates a matrix definition for an image.\n\n\n\n\ncreate_version()\n\n\nCreates a new version for an image.\n\n\n\n\nfrom_context()\n\n\nCreates a BakeryConfig instance from a given context path.\n\n\n\n\ngenerate_image_targets()\n\n\nGenerates image targets from the images defined in the config.\n\n\n\n\nget_image_target_by_uid()\n\n\nReturns an image target by its UID.\n\n\n\n\nload_build_metadata_from_file()\n\n\nLoads build metadata from a given metadata file.\n\n\n\n\nnew()\n\n\nCreates a new bakery.yaml file in the given base path.\n\n\n\n\npatch_version()\n\n\nPatches an existing image version with a new version and regenerates templates.\n\n\n\n\nremove_image()\n\n\nRemoves an image from the config and deletes its directory.\n\n\n\n\nremove_version()\n\n\nRemoves an existing version from an image in the config.\n\n\n\n\nrerender_files()\n\n\nRegenerates version files from templates matching the given filters.\n\n\n\n\nwrite()\n\n\nWrite the bakery config to the config file.\n\n\n\n\n\n\n\nInitializes the BakeryConfig with the given config file path.\n\n\nUsage\nSource\n\n\n__init__(config_file, settings=None)\n\n\n\n\n\nconfig_file: str | Path | os.PathLike\n\nPath to the target bakery.yaml configuration file.\n\nsettings: BakerySettings | None = None\n\nOptional BakeryConfigFilter to apply when generating image targets.\n\n\n\n\n\n\n\n\n FileNotFoundError\n\nIf the config file does not exist.\n\n\n\n\n\n\n\n\nGenerates a bake plan JSON string for the image targets defined in the config.\n\n\nUsage\nSource\n\n\nbake_plan_targets(push=False)\n\n\n\n\n\npush: bool = False\n\nWhen True, include cache-to exports in the bake plan so that cache layers are written to the registry alongside the built images.\n\n\n\n\n\n\n\n\nBuild image targets using the specified strategy.\n\n\nUsage\nSource\n\n\nbuild_targets(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    platforms=None,\n    strategy=ImageBuildStrategy.BAKE,\n    metadata_file=None,\n    fail_fast=False,\n    retry=0,\n    jobs=None\n)\n\n\n\n\n\nload: bool = True\n\nIf True, load the built images into the local Docker daemon.\n\npush: bool = False\n\nIf True, push the built images to the configured registries.\n\npull: bool = False\n\nIf True, always pull the latest version of base images.\n\ncache: bool = True\n\nIf True, use the build cache when building images.\n\nplatforms: list[str] | None = None\n\nOptional list of platforms to build for. If None, builds for the configuration specified platform.\n\nstrategy: ImageBuildStrategy = ImageBuildStrategy.BAKE\n\nThe strategy to use when building images.\n\nmetadata_file: Path | None = None\n\nOptional path to a metadata file to write build metadata to.\n\nfail_fast: bool = False\n\nIf True, stop building targets on the first failure. Only affects targets whose build has not yet started; already-running builds finish.\n\nretry: int = 0\n\nNumber of times to retry a failed build (default 0, no retries).\n\njobs: int | None = None\n\nMaximum number of targets to build concurrently for --strategy build (ignored for --strategy bake, which manages its own parallelism). Falls back to SETTINGS.max_concurrency when not given. Sets self.last_build_succeeded_uids as a side effect: the UIDs that succeeded, for strategy=BUILD (even when this call goes on to raise for the ones that didn’t); reset to None for strategy=BAKE, which has no per-target result to give.\n\n\n\n\n\n\n\n\nCleans up dangling caches in the specified registry for all generated image targets.\n\n\nUsage\nSource\n\n\nclean_caches(remove_untagged=True, remove_older_than=None, dry_run=False)\n\n\n\n\n\nremove_untagged: bool = True\n\nIf True, remove untagged caches.\n\nremove_older_than: timedelta | None = None\n\nOptional timedelta to remove caches older than the specified duration.\n\ndry_run: bool = False\n\nIf True, print what would be deleted without actually deleting anything.\n\n\n\n\n\n\n\n\nCleans up temporary images in the specified registry for all generated image targets.\n\n\nUsage\nSource\n\n\nclean_temporary(remove_untagged=True, remove_older_than=None, dry_run=False)\n\n\n\n\n\nremove_untagged: bool = True\n\nIf True, remove untagged images.\n\nremove_older_than: timedelta | None = None\n\nOptional timedelta to remove images older than the specified duration.\n\ndry_run: bool = False\n\nIf True, print what would be deleted without actually deleting anything.\n\n\n\n\n\n\n\n\nCreates a new image.\n\n\nUsage\nSource\n\n\ncreate_image(\n    image_name,\n    base_image=None,\n    subpath=None,\n    display_name=None,\n    description=None,\n    documentation_url=None\n)\n\n\nCreates a new image directory, adds the image to the config, and writes the image back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create.\n\nbase_image: str | None = None\n\nOptional base image to use in the Containerfile template. This is used in the FROM directive.\n\nsubpath: str | None = None\n\nOptional subpath for the image. If not provided, the image name will be used as the subpath.\n\ndisplay_name: str | None = None\n\nOptional display name for the image. If not provided, the image name will be used.\n\ndescription: str | None = None\n\nOptional description for the image. Used in labels.\n\ndocumentation_url: str | None = None\n\nOptional URL for the image documentation. Used in labels.\n\n\n\n\n\n\n\n\nCreates a matrix definition for an image.\n\n\nUsage\nSource\n\n\ncreate_matrix(\n    image_name,\n    name_pattern=None,\n    subpath=None,\n    dependency_constraints=None,\n    dependencies=None,\n    values=None,\n    force=False\n)\n\n\nCreates a new matrix directory from image templates, add the matrix definition to the config, and writes the matrix back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create the matrix for.\n\nname_pattern: str | None = None\n\nOptional name pattern for the matrix versions. If not provided, the default pattern will be used.\n\nsubpath: str | None = None\n\nOptional subpath for the matrix. If not provided, the matrix name will be used as the subpath.\n\ndependency_constraints: list[DependencyConstraint] | None = None\n\nOptional list of DependencyConstraint objects to define constraints for the matrix.\n\ndependencies: list[DependencyVersions] | None = None\n\nOptional list of DependencyVersions objects to define dependencies for the matrix.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of values to use in the matrix. This can be used to provide additional context or configuration for the matrix. Often used to specify unmanaged dependency versions.\n\nforce: bool = False\n\nIf True, will overwrite an existing matrix.\n\n\n\n\n\n\n\n\nCreates a new version for an image.\n\n\nUsage\nSource\n\n\ncreate_version(\n    image_name, version, subpath=None, values=None, latest=True, force=False\n)\n\n\nCreates a new version directory from image templates, add the version to the image config, and writes the version back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create the version for.\n\nversion: str\n\nThe version name to create.\n\nsubpath: str | None = None\n\nOptional subpath for the version. If not provided, the version name will be used as the subpath.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of values to use in the version. This can be used to provide additional context or configuration for the version. Often used to specify versions of R, Python, or Quarto.\n\nlatest: bool = True\n\nWhether this version should be marked as the latest version.\n\nforce: bool = False\n\nIf True, will overwrite an existing version with the same name.\n\n\n\n\n\n\n\n\nCreates a BakeryConfig instance from a given context path.\n\n\nUsage\nSource\n\n\nfrom_context(context, settings=None)\n\n\n\n\n\ncontext: str | Path | os.PathLike\n\nThe path to the bakery.yaml file or its parent directory.\n\nsettings: BakerySettings | None = None\n\nOptional BakerySettings to apply when generating image targets.\n\n\n\n\n\n\n\n\n BakeryConfig\n\nA BakeryConfig instance.\n\n\n\n\n\n\n\n\n FileNotFoundError\n\nIf no bakery.yaml or bakery.yml file is found in the context path.\n\n\n\n\n\n\n\n\nGenerates image targets from the images defined in the config.\n\n\nUsage\nSource\n\n\ngenerate_image_targets(settings=BakerySettings())\n\n\n\n\n\nsettings: BakerySettings = BakerySettings()\n\nOptional settings to apply when generating image targets. If None, all images will be included.\n\n\n\n\n\n\n\n\nReturns an image target by its UID.\n\n\nUsage\nSource\n\n\nget_image_target_by_uid(uid)\n\n\n\n\n\nuid: str\n\nThe UID of the image target to find.\n\n\n\n\n\n\n\n\n ImageTarget | None\n\nThe ImageTarget with the given UID, or None if not found.\n\n\n\n\n\n\n\n\nLoads build metadata from a given metadata file.\n\n\nUsage\nSource\n\n\nload_build_metadata_from_file(metadata_file)\n\n\n\n\n\nmetadata_file: Path\n\nPath to the metadata file to load.\n\n\n\n\n\n\n\n\n list[str]\n\nA list of targets loaded.\n\n\n\n\n\n\n\n\nCreates a new bakery.yaml file in the given base path.\n\n\nUsage\nSource\n\n\nnew(base_path)\n\n\n\n\n\nbase_path\n\nThe path where the new bakery.yaml file will be created.\n\n\n\n\n\n\n\n\nPatches an existing image version with a new version and regenerates templates.\n\n\nUsage\nSource\n\n\npatch_version(image_name, old_version, new_version, values=None, clean=True)\n\n\n\n\n\nRemoves an image from the config and deletes its directory.\n\n\nUsage\nSource\n\n\nremove_image(image_name)\n\n\n\n\n\nimage_name: str\n\nThe name of the image to remove.\n\n\n\n\n\n\n\n\nRemoves an existing version from an image in the config.\n\n\nUsage\nSource\n\n\nremove_version(image_name, version_name)\n\n\n\n\n\nimage_name: str\n\nThe name of the image to which the version belongs.\n\nversion_name: str\n\nThe name of the version to remove.\n\n\n\n\n\n\n\n\nRegenerates version files from templates matching the given filters.\n\n\nUsage\nSource\n\n\nrerender_files(_filter=None, regex_filters=None)\n\n\n\n\n\n_filter: BakeryConfigFilter | None = None\n\nA BakeryConfigFilter to apply when regenerating version files.\n\nregex_filters: list[str] | None = None\n\nA list of regex patterns to filter which templates to render.\n\n\n\n\n\n\n\n\n BakeryFileError\n\nIf any errors occur while regenerating version files.\n\n\n\n\n\n\n\n\nWrite the bakery config to the config file.\n\n\nUsage\nSource\n\n\nwrite()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfig]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.BakeryConfig.html#attributes",
-    "href": "reference/config.BakeryConfig.html#attributes",
-    "title": "config.BakeryConfig",
-    "section": "",
-    "text": "yaml\n\nThe YAML parser used to read and write the bakery.yaml file.\n\nconfig_file\n\nPath to the bakery.yaml configuration file.\n\nbase_path\n\nThe base path where the bakery.yaml file is located.\n\nmodel\n\nThe BakeryConfigDocument model representation of the bakery.yaml file.\n\ntargets\n\nList of ImageTarget objects representing the image build targets defined in the config.\n\nlast_build_succeeded_uids: set[str] | None\n\nUIDs that succeeded in the most recent build_targets() call with strategy=ImageBuildStrategy.BUILD; None after a BAKE-strategy call, which has no per-target result to report. Consumed by --summary to avoid measuring a size for a target that failed this run off whatever it happens to find already sitting at that target’s tag.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfig]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.BakeryConfig.html#methods",
-    "href": "reference/config.BakeryConfig.html#methods",
-    "title": "config.BakeryConfig",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\n__init__()\n\n\nInitializes the BakeryConfig with the given config file path.\n\n\n\n\nbake_plan_targets()\n\n\nGenerates a bake plan JSON string for the image targets defined in the config.\n\n\n\n\nbuild_targets()\n\n\nBuild image targets using the specified strategy.\n\n\n\n\nclean_caches()\n\n\nCleans up dangling caches in the specified registry for all generated image targets.\n\n\n\n\nclean_temporary()\n\n\nCleans up temporary images in the specified registry for all generated image targets.\n\n\n\n\ncreate_image()\n\n\nCreates a new image.\n\n\n\n\ncreate_matrix()\n\n\nCreates a matrix definition for an image.\n\n\n\n\ncreate_version()\n\n\nCreates a new version for an image.\n\n\n\n\nfrom_context()\n\n\nCreates a BakeryConfig instance from a given context path.\n\n\n\n\ngenerate_image_targets()\n\n\nGenerates image targets from the images defined in the config.\n\n\n\n\nget_image_target_by_uid()\n\n\nReturns an image target by its UID.\n\n\n\n\nload_build_metadata_from_file()\n\n\nLoads build metadata from a given metadata file.\n\n\n\n\nnew()\n\n\nCreates a new bakery.yaml file in the given base path.\n\n\n\n\npatch_version()\n\n\nPatches an existing image version with a new version and regenerates templates.\n\n\n\n\nremove_image()\n\n\nRemoves an image from the config and deletes its directory.\n\n\n\n\nremove_version()\n\n\nRemoves an existing version from an image in the config.\n\n\n\n\nrerender_files()\n\n\nRegenerates version files from templates matching the given filters.\n\n\n\n\nwrite()\n\n\nWrite the bakery config to the config file.\n\n\n\n\n\n\n\nInitializes the BakeryConfig with the given config file path.\n\n\nUsage\nSource\n\n\n__init__(config_file, settings=None)\n\n\n\n\n\nconfig_file: str | Path | os.PathLike\n\nPath to the target bakery.yaml configuration file.\n\nsettings: BakerySettings | None = None\n\nOptional BakeryConfigFilter to apply when generating image targets.\n\n\n\n\n\n\n\n\n FileNotFoundError\n\nIf the config file does not exist.\n\n\n\n\n\n\n\n\nGenerates a bake plan JSON string for the image targets defined in the config.\n\n\nUsage\nSource\n\n\nbake_plan_targets(push=False)\n\n\n\n\n\npush: bool = False\n\nWhen True, include cache-to exports in the bake plan so that cache layers are written to the registry alongside the built images.\n\n\n\n\n\n\n\n\nBuild image targets using the specified strategy.\n\n\nUsage\nSource\n\n\nbuild_targets(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    platforms=None,\n    strategy=ImageBuildStrategy.BAKE,\n    metadata_file=None,\n    fail_fast=False,\n    retry=0,\n    jobs=None\n)\n\n\n\n\n\nload: bool = True\n\nIf True, load the built images into the local Docker daemon.\n\npush: bool = False\n\nIf True, push the built images to the configured registries.\n\npull: bool = False\n\nIf True, always pull the latest version of base images.\n\ncache: bool = True\n\nIf True, use the build cache when building images.\n\nplatforms: list[str] | None = None\n\nOptional list of platforms to build for. If None, builds for the configuration specified platform.\n\nstrategy: ImageBuildStrategy = ImageBuildStrategy.BAKE\n\nThe strategy to use when building images.\n\nmetadata_file: Path | None = None\n\nOptional path to a metadata file to write build metadata to.\n\nfail_fast: bool = False\n\nIf True, stop building targets on the first failure. Only affects targets whose build has not yet started; already-running builds finish.\n\nretry: int = 0\n\nNumber of times to retry a failed build (default 0, no retries).\n\njobs: int | None = None\n\nMaximum number of targets to build concurrently for --strategy build (ignored for --strategy bake, which manages its own parallelism). Falls back to SETTINGS.max_concurrency when not given. Sets self.last_build_succeeded_uids as a side effect: the UIDs that succeeded, for strategy=BUILD (even when this call goes on to raise for the ones that didn’t); reset to None for strategy=BAKE, which has no per-target result to give.\n\n\n\n\n\n\n\n\nCleans up dangling caches in the specified registry for all generated image targets.\n\n\nUsage\nSource\n\n\nclean_caches(remove_untagged=True, remove_older_than=None, dry_run=False)\n\n\n\n\n\nremove_untagged: bool = True\n\nIf True, remove untagged caches.\n\nremove_older_than: timedelta | None = None\n\nOptional timedelta to remove caches older than the specified duration.\n\ndry_run: bool = False\n\nIf True, print what would be deleted without actually deleting anything.\n\n\n\n\n\n\n\n\nCleans up temporary images in the specified registry for all generated image targets.\n\n\nUsage\nSource\n\n\nclean_temporary(remove_untagged=True, remove_older_than=None, dry_run=False)\n\n\n\n\n\nremove_untagged: bool = True\n\nIf True, remove untagged images.\n\nremove_older_than: timedelta | None = None\n\nOptional timedelta to remove images older than the specified duration.\n\ndry_run: bool = False\n\nIf True, print what would be deleted without actually deleting anything.\n\n\n\n\n\n\n\n\nCreates a new image.\n\n\nUsage\nSource\n\n\ncreate_image(\n    image_name,\n    base_image=None,\n    subpath=None,\n    display_name=None,\n    description=None,\n    documentation_url=None\n)\n\n\nCreates a new image directory, adds the image to the config, and writes the image back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create.\n\nbase_image: str | None = None\n\nOptional base image to use in the Containerfile template. This is used in the FROM directive.\n\nsubpath: str | None = None\n\nOptional subpath for the image. If not provided, the image name will be used as the subpath.\n\ndisplay_name: str | None = None\n\nOptional display name for the image. If not provided, the image name will be used.\n\ndescription: str | None = None\n\nOptional description for the image. Used in labels.\n\ndocumentation_url: str | None = None\n\nOptional URL for the image documentation. Used in labels.\n\n\n\n\n\n\n\n\nCreates a matrix definition for an image.\n\n\nUsage\nSource\n\n\ncreate_matrix(\n    image_name,\n    name_pattern=None,\n    subpath=None,\n    dependency_constraints=None,\n    dependencies=None,\n    values=None,\n    force=False\n)\n\n\nCreates a new matrix directory from image templates, add the matrix definition to the config, and writes the matrix back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create the matrix for.\n\nname_pattern: str | None = None\n\nOptional name pattern for the matrix versions. If not provided, the default pattern will be used.\n\nsubpath: str | None = None\n\nOptional subpath for the matrix. If not provided, the matrix name will be used as the subpath.\n\ndependency_constraints: list[DependencyConstraint] | None = None\n\nOptional list of DependencyConstraint objects to define constraints for the matrix.\n\ndependencies: list[DependencyVersions] | None = None\n\nOptional list of DependencyVersions objects to define dependencies for the matrix.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of values to use in the matrix. This can be used to provide additional context or configuration for the matrix. Often used to specify unmanaged dependency versions.\n\nforce: bool = False\n\nIf True, will overwrite an existing matrix.\n\n\n\n\n\n\n\n\nCreates a new version for an image.\n\n\nUsage\nSource\n\n\ncreate_version(\n    image_name, version, subpath=None, values=None, latest=True, force=False\n)\n\n\nCreates a new version directory from image templates, add the version to the image config, and writes the version back to bakery.yaml.\n\n\n\n\n\nimage_name: str\n\nThe name of the image to create the version for.\n\nversion: str\n\nThe version name to create.\n\nsubpath: str | None = None\n\nOptional subpath for the version. If not provided, the version name will be used as the subpath.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of values to use in the version. This can be used to provide additional context or configuration for the version. Often used to specify versions of R, Python, or Quarto.\n\nlatest: bool = True\n\nWhether this version should be marked as the latest version.\n\nforce: bool = False\n\nIf True, will overwrite an existing version with the same name.\n\n\n\n\n\n\n\n\nCreates a BakeryConfig instance from a given context path.\n\n\nUsage\nSource\n\n\nfrom_context(context, settings=None)\n\n\n\n\n\ncontext: str | Path | os.PathLike\n\nThe path to the bakery.yaml file or its parent directory.\n\nsettings: BakerySettings | None = None\n\nOptional BakerySettings to apply when generating image targets.\n\n\n\n\n\n\n\n\n BakeryConfig\n\nA BakeryConfig instance.\n\n\n\n\n\n\n\n\n FileNotFoundError\n\nIf no bakery.yaml or bakery.yml file is found in the context path.\n\n\n\n\n\n\n\n\nGenerates image targets from the images defined in the config.\n\n\nUsage\nSource\n\n\ngenerate_image_targets(settings=BakerySettings())\n\n\n\n\n\nsettings: BakerySettings = BakerySettings()\n\nOptional settings to apply when generating image targets. If None, all images will be included.\n\n\n\n\n\n\n\n\nReturns an image target by its UID.\n\n\nUsage\nSource\n\n\nget_image_target_by_uid(uid)\n\n\n\n\n\nuid: str\n\nThe UID of the image target to find.\n\n\n\n\n\n\n\n\n ImageTarget | None\n\nThe ImageTarget with the given UID, or None if not found.\n\n\n\n\n\n\n\n\nLoads build metadata from a given metadata file.\n\n\nUsage\nSource\n\n\nload_build_metadata_from_file(metadata_file)\n\n\n\n\n\nmetadata_file: Path\n\nPath to the metadata file to load.\n\n\n\n\n\n\n\n\n list[str]\n\nA list of targets loaded.\n\n\n\n\n\n\n\n\nCreates a new bakery.yaml file in the given base path.\n\n\nUsage\nSource\n\n\nnew(base_path)\n\n\n\n\n\nbase_path\n\nThe path where the new bakery.yaml file will be created.\n\n\n\n\n\n\n\n\nPatches an existing image version with a new version and regenerates templates.\n\n\nUsage\nSource\n\n\npatch_version(image_name, old_version, new_version, values=None, clean=True)\n\n\n\n\n\nRemoves an image from the config and deletes its directory.\n\n\nUsage\nSource\n\n\nremove_image(image_name)\n\n\n\n\n\nimage_name: str\n\nThe name of the image to remove.\n\n\n\n\n\n\n\n\nRemoves an existing version from an image in the config.\n\n\nUsage\nSource\n\n\nremove_version(image_name, version_name)\n\n\n\n\n\nimage_name: str\n\nThe name of the image to which the version belongs.\n\nversion_name: str\n\nThe name of the version to remove.\n\n\n\n\n\n\n\n\nRegenerates version files from templates matching the given filters.\n\n\nUsage\nSource\n\n\nrerender_files(_filter=None, regex_filters=None)\n\n\n\n\n\n_filter: BakeryConfigFilter | None = None\n\nA BakeryConfigFilter to apply when regenerating version files.\n\nregex_filters: list[str] | None = None\n\nA list of regex patterns to filter which templates to render.\n\n\n\n\n\n\n\n\n BakeryFileError\n\nIf any errors occur while regenerating version files.\n\n\n\n\n\n\n\n\nWrite the bakery config to the config file.\n\n\nUsage\nSource\n\n\nwrite()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfig]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "text": "bakery\n\nA tool for building, testing, and managing container images\n\n\n\n\n\n Back to top"
   },
   {
     "objectID": "index.html",
@@ -727,440 +414,39 @@
     ]
   },
   {
-    "objectID": "reference/cli/index.html",
-    "href": "reference/cli/index.html",
+    "objectID": "reference/cli/bakery.html",
+    "href": "reference/cli/bakery.html",
     "title": "bakery",
     "section": "",
-    "text": "bakery\n\nA tool for building, testing, and managing container images\n\n\nbakery\n\n\n\nUsage: bakery [OPTIONS] COMMAND [ARGS]...\n\n  A tool for building, testing, and managing container images\n\nOptions:\n  --install-completion  Install completion for the current shell.  [default:\n                        &lt;object object at 0x7f6092378c10&gt;]\n  --show-completion     Show completion for the current shell, to copy it or\n                        customize the installation.  [default: &lt;object object\n                        at 0x7f6092378c10&gt;]\n  --help                Show this message and exit.\n\nCommands:\n  build       Build images using buildkit bake (aliases: b, bake)\n  version     Show the Posit Bakery version\n  run         Run extra tools/commands against images (aliases: r)\n  create      Create new projects, images, and versions (aliases: c, new)\n  update      Update managed files and configurations (aliases: u, up)\n  remove      Remove images and versions from the project (aliases: rm, r)\n  get         Get information about the bakery configuration\n  ci          Construct a CI matrix from the project.\n  clean       Cleaning utilities for remote build caches\n  dgoss       Run Goss tests against container images\n  hadolint    Lint Containerfiles using hadolint\n  imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n  wizcli      Scan container images for vulnerabilities with WizCLI\n\n\n\n\n\n\n Back to top"
+    "text": "bakery\n\nA tool for building, testing, and managing container images\n\n\nbakery\n\n\n\nUsage: bakery [OPTIONS] COMMAND [ARGS]...\n\n  A tool for building, testing, and managing container images\n\nOptions:\n  --install-completion  Install completion for the current shell.  [default:\n                        &lt;object object at 0x7fb78e8953e0&gt;]\n  --show-completion     Show completion for the current shell, to copy it or\n                        customize the installation.  [default: &lt;object object\n                        at 0x7fb78e8953e0&gt;]\n  --help                Show this message and exit.\n\nCommands:\n  build       Build images using buildkit bake (aliases: b, bake)\n  version     Show the Posit Bakery version\n  run         Run extra tools/commands against images (aliases: r)\n  create      Create new projects, images, and versions (aliases: c, new)\n  update      Update managed files and configurations (aliases: u, up)\n  remove      Remove images and versions from the project (aliases: rm, r)\n  get         Get information about the bakery configuration\n  ci          Construct a CI matrix from the project.\n  clean       Cleaning utilities for remote build caches\n  dgoss       Run Goss tests against container images\n  hadolint    Lint Containerfiles using hadolint\n  imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)\n  wizcli      Scan container images for vulnerabilities with WizCLI\n\n\n\n\n\n\n Back to top"
   },
   {
-    "objectID": "reference/config.BakeryConfigDocument.html",
-    "href": "reference/config.BakeryConfigDocument.html",
-    "title": "config.BakeryConfigDocument",
+    "objectID": "reference/config.html",
+    "href": "reference/config.html",
+    "title": "config",
     "section": "",
-    "text": "Model representation of the top-level bakery.yaml configuration document.\n\n\nUsage\nSource\n\n\nconfig.BakeryConfigDocument()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\npath\n\n\nReturns the path to the bakery config parent directory.\n\n\n\n\n\n\n\nReturns the path to the bakery config parent directory.\n\n\npath: Path | None\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\ncheck_image_duplicates()\n\n\nEnsures that there are no duplicate image names in the config. Raises an error if duplicates are found.\n\n\n\n\ncheck_images_not_empty()\n\n\nEnsures that the images list is not empty. Warns if no images are found.\n\n\n\n\ncreate_image_files_template()\n\n\nCreates the necessary directories and files for a new image template.\n\n\n\n\ncreate_image_model()\n\n\nCreates a new image directory and adds it to the config.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique. Warns if duplicates are found.\n\n\n\n\nget_image()\n\n\nReturns an image by name, or None if not found.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent reference for the Repository and Image child objects.\n\n\n\n\n\n\n\nEnsures that there are no duplicate image names in the config. Raises an error if duplicates are found.\n\n\nUsage\nSource\n\n\ncheck_image_duplicates(images)\n\n\n\n\n\nimages: list[Image]\n\nList of Image objects to check for duplicates.\n\n\n\n\n\n\n\n\nEnsures that the images list is not empty. Warns if no images are found.\n\n\nUsage\nSource\n\n\ncheck_images_not_empty(images)\n\n\n\n\n\nimages: list[Image]\n\nList of Image objects to check.\n\n\n\n\n\n\n\n\nCreates the necessary directories and files for a new image template.\n\n\nUsage\nSource\n\n\ncreate_image_files_template(image_path, image_name, base_tag)\n\n\nThis function does NOT create a new image model. Use create_image_model for that.\nCreates the following structure: - image_path/ - template/ - Containerfile.{{ base_tag | condensed }}.jinja2 - test/ - goss.yaml.jinja2 - deps/ - packages.txt.jinja2\n\n\n\n\n\nimage_path: Path\n\nThe path to the image directory.\n\nimage_name: str\n\nThe name of the image.\n\nbase_tag: str\n\nThe base tag for the image to use in the FROM directive of the Containerfile template.\n\n\n\n\n\n\n\n\nCreates a new image directory and adds it to the config.\n\n\nUsage\nSource\n\n\ncreate_image_model(\n    name,\n    subpath=None,\n    display_name=None,\n    description=None,\n    documentation_url=None\n)\n\n\nThis function does NOT create the image files template. Use create_image_files_template for that.\n\n\n\n\n\nname: str\n\nThe name of the image to create.\n\nsubpath: str | None = None\n\nOptional alternate subpath for the image.\n\ndisplay_name: str | None = None\n\nOptional display name for the image. If not provided, the image name will be used.\n\ndescription: str | None = None\n\nOptional description for the image. Used in labels.\n\ndocumentation_url: str | None = None\n\nOptional URL for the image documentation. Used in labels.\n\n\n\n\n\n\n\n\n Image\n\nThe newly created Image model.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique. Warns if duplicates are found.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries)\n\n\n\n\n\nregistries: list[BaseRegistry]\n\nList of BaseRegistry objects to deduplicate.\n\n\n\n\n\n\n\n\nReturns an image by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_image(name)\n\n\n\n\n\nname: str\n\nThe name of the image to get.\n\n\n\n\n\n\n\n\nSets the parent reference for the Repository and Image child objects.\n\n\nUsage\nSource\n\n\nresolve_parentage()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfigDocument]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "text": "config\n\n\nUsage\n\n\n\n\n\n\n\n Back to top"
   },
   {
-    "objectID": "reference/config.BakeryConfigDocument.html#attributes",
-    "href": "reference/config.BakeryConfigDocument.html#attributes",
-    "title": "config.BakeryConfigDocument",
+    "objectID": "reference/image.html",
+    "href": "reference/image.html",
+    "title": "image",
     "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\npath\n\n\nReturns the path to the bakery config parent directory.\n\n\n\n\n\n\n\nReturns the path to the bakery config parent directory.\n\n\npath: Path | None",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfigDocument]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "text": "image\n\n\nUsage\n\n\n\n\n\n\n\n Back to top"
   },
   {
-    "objectID": "reference/config.BakeryConfigDocument.html#methods",
-    "href": "reference/config.BakeryConfigDocument.html#methods",
-    "title": "config.BakeryConfigDocument",
+    "objectID": "reference/plugins.html",
+    "href": "reference/plugins.html",
+    "title": "plugins",
     "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\ncheck_image_duplicates()\n\n\nEnsures that there are no duplicate image names in the config. Raises an error if duplicates are found.\n\n\n\n\ncheck_images_not_empty()\n\n\nEnsures that the images list is not empty. Warns if no images are found.\n\n\n\n\ncreate_image_files_template()\n\n\nCreates the necessary directories and files for a new image template.\n\n\n\n\ncreate_image_model()\n\n\nCreates a new image directory and adds it to the config.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique. Warns if duplicates are found.\n\n\n\n\nget_image()\n\n\nReturns an image by name, or None if not found.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent reference for the Repository and Image child objects.\n\n\n\n\n\n\n\nEnsures that there are no duplicate image names in the config. Raises an error if duplicates are found.\n\n\nUsage\nSource\n\n\ncheck_image_duplicates(images)\n\n\n\n\n\nimages: list[Image]\n\nList of Image objects to check for duplicates.\n\n\n\n\n\n\n\n\nEnsures that the images list is not empty. Warns if no images are found.\n\n\nUsage\nSource\n\n\ncheck_images_not_empty(images)\n\n\n\n\n\nimages: list[Image]\n\nList of Image objects to check.\n\n\n\n\n\n\n\n\nCreates the necessary directories and files for a new image template.\n\n\nUsage\nSource\n\n\ncreate_image_files_template(image_path, image_name, base_tag)\n\n\nThis function does NOT create a new image model. Use create_image_model for that.\nCreates the following structure: - image_path/ - template/ - Containerfile.{{ base_tag | condensed }}.jinja2 - test/ - goss.yaml.jinja2 - deps/ - packages.txt.jinja2\n\n\n\n\n\nimage_path: Path\n\nThe path to the image directory.\n\nimage_name: str\n\nThe name of the image.\n\nbase_tag: str\n\nThe base tag for the image to use in the FROM directive of the Containerfile template.\n\n\n\n\n\n\n\n\nCreates a new image directory and adds it to the config.\n\n\nUsage\nSource\n\n\ncreate_image_model(\n    name,\n    subpath=None,\n    display_name=None,\n    description=None,\n    documentation_url=None\n)\n\n\nThis function does NOT create the image files template. Use create_image_files_template for that.\n\n\n\n\n\nname: str\n\nThe name of the image to create.\n\nsubpath: str | None = None\n\nOptional alternate subpath for the image.\n\ndisplay_name: str | None = None\n\nOptional display name for the image. If not provided, the image name will be used.\n\ndescription: str | None = None\n\nOptional description for the image. Used in labels.\n\ndocumentation_url: str | None = None\n\nOptional URL for the image documentation. Used in labels.\n\n\n\n\n\n\n\n\n Image\n\nThe newly created Image model.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique. Warns if duplicates are found.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries)\n\n\n\n\n\nregistries: list[BaseRegistry]\n\nList of BaseRegistry objects to deduplicate.\n\n\n\n\n\n\n\n\nReturns an image by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_image(name)\n\n\n\n\n\nname: str\n\nThe name of the image to get.\n\n\n\n\n\n\n\n\nSets the parent reference for the Repository and Image child objects.\n\n\nUsage\nSource\n\n\nresolve_parentage()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.BakeryConfigDocument]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Image.html",
-    "href": "reference/config.Image.html",
-    "title": "config.Image",
-    "section": "",
-    "text": "Model representing an image in the bakery configuration.\n\n\nUsage\nSource\n\n\nconfig.Image()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nall_registries\n\n\nReturns the merged registries for this image.\n\n\n\n\npath\n\n\nReturns the path to the image directory.\n\n\n\n\ntemplate_path\n\n\nReturns the path to the image template directory.\n\n\n\n\n\n\n\nReturns the merged registries for this image.\n\n\nall_registries: list[Registry | BaseRegistry]\n\n\n\n\n\nReturns the path to the image directory.\n\n\npath: Path | None\n\n\n\n\n\nReturns the path to the image template directory.\n\n\ntemplate_path: Path\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\ncheck_dependency_constraints_with_matrix()\n\n\nChecks if dependencyConstraints and matrix are both defined.\n\n\n\n\ncheck_duplicate_dependency_constraints()\n\n\nEnsures that there are no duplicate dependencies in the image.\n\n\n\n\ncheck_not_empty()\n\n\nEnsures one version or matrix is defined.\n\n\n\n\ncheck_variant_duplicates()\n\n\nEnsures that there are no duplicate variant names in the image.\n\n\n\n\ncheck_version_duplicates()\n\n\nEnsures that there are no duplicate version names in the image.\n\n\n\n\ncreate_matrix()\n\n\nCreates a new image version and adds it to the image.\n\n\n\n\ncreate_version()\n\n\nCreates a new image version and adds it to the image.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\n\n\ndefault_https_url_scheme()\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\n\n\nextra_registries_or_override_registries()\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\n\n\nget_tool_option()\n\n\nReturns the Goss options for this image variant.\n\n\n\n\nget_variant()\n\n\nReturns an image variant by name, or None if not found.\n\n\n\n\nget_version()\n\n\nReturns an image version by name, or None if not found.\n\n\n\n\nget_version_by_subpath()\n\n\nReturns an image version by subpath, or None if not found.\n\n\n\n\nload_dev_versions()\n\n\nLoad the development versions for this image.\n\n\n\n\npatch_version()\n\n\nPatches an existing image version with a new version name.\n\n\n\n\nremove_ephemeral_version_files()\n\n\nRemove the files for all ephemeral image versions.\n\n\n\n\nrender_ephemeral_version_files()\n\n\nCreate the files for all ephemeral image versions.\n\n\n\n\nresolve_dependency_versions()\n\n\nResolves the dependency versions for this image.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent for all variants and versions in this image.\n\n\n\n\nserialize_documentation_url()\n\n\nSerializes the documentation URL to a string.\n\n\n\n\n\n\n\nChecks if dependencyConstraints and matrix are both defined.\n\n\nUsage\nSource\n\n\ncheck_dependency_constraints_with_matrix()\n\n\nWarns if dependencyConstraints will be ineffectual as they must be defined at matrix-level.\n\n\n\n\n\nEnsures that there are no duplicate dependencies in the image.\n\n\nUsage\nSource\n\n\ncheck_duplicate_dependency_constraints(dependency_constraints, info)\n\n\n\n\n\ndependency_constraints: list[DependencyConstraintField]\n\nList of DependencyConstraintField objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[DependencyConstraintField]\n\nThe unmodified list of DependencyConstraintField objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate dependencies are found.\n\n\n\n\n\n\n\n\nEnsures one version or matrix is defined.\n\n\nUsage\nSource\n\n\ncheck_not_empty()\n\n\n\n\n\n Self\n\nThe unmodified Image object.\n\n\n\n\n\n\n\n\nEnsures that there are no duplicate variant names in the image.\n\n\nUsage\nSource\n\n\ncheck_variant_duplicates(variants, info)\n\n\n\n\n\nvariants: list[ImageVariant]\n\nList of ImageVariant objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVariant]\n\nThe unmodified list of ImageVariant objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate variant names are found.\n\n\n\n\n\n\n\n\nEnsures that there are no duplicate version names in the image.\n\n\nUsage\nSource\n\n\ncheck_version_duplicates(versions, info)\n\n\n\n\n\nversions: list[ImageVersion]\n\nList of ImageVersion objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersion]\n\nThe unmodified list of ImageVersion objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate version names are found.\n\n\n\n\n\n\n\n\nCreates a new image version and adds it to the image.\n\n\nUsage\nSource\n\n\ncreate_matrix(\n    name_pattern=None,\n    subpath=None,\n    dependency_constraints=None,\n    dependencies=None,\n    values=None,\n    update_if_exists=False\n)\n\n\n\n\n\nname_pattern: str | None = None\n\nThe name pattern for the new image version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\nsubpath: str | None = None\n\nOptional subpath for the new version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\ndependency_constraints: list[DependencyConstraint] | None = None\n\nOptional list of DependencyConstraint objects to use for resolving dependencies for the new version.\n\ndependencies: list[DependencyVersions] | None = None\n\nOptional list of DependencyVersions objects to use for the new version.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of additional key-value pairs to include in the template values.\n\nupdate_if_exists: bool = False\n\nIf True, updates the existing version if it already exists, otherwise raises an error if the version exists.\n\n\n\n\n\n\n\n\n ImageMatrix\n\nThe created or updated ImageVersion object.\n\n\n\n\n\n\n\n\nCreates a new image version and adds it to the image.\n\n\nUsage\nSource\n\n\ncreate_version(\n    version_name,\n    subpath=None,\n    values=None,\n    latest=True,\n    update_if_exists=False\n)\n\n\n\n\n\nversion_name: str\n\nThe name of the new image version.\n\nsubpath: str | None = None\n\nOptional subpath for the new version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of additional key-value pairs to include in the template values.\n\nlatest: bool = True\n\nIf True, sets this version as the latest version of the image. Unsets latest on all other image versions.\n\nupdate_if_exists: bool = False\n\nIf True, updates the existing version if it already exists, otherwise raises an error if the version exists.\n\n\n\n\n\n\n\n\n ImageVersion\n\nThe created or updated ImageVersion object.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries, info)\n\n\n\n\n\nregistries: list[Registry | BaseRegistry]\n\nList of registries to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[Registry | BaseRegistry]\n\nA list of unique registries.\n\n\n\n\n\n\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\nUsage\nSource\n\n\ndefault_https_url_scheme(value)\n\n\n\n\n\nvalue: Any\n\nThe URL to validate and possibly modify.\n\n\n\n\n\n\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\nUsage\nSource\n\n\nextra_registries_or_override_registries()\n\n\n\n\n\n ValueError\n\nIf both extraRegistries and overrideRegistries are defined.\n\n\n\n\n\n\n\n\nReturns the Goss options for this image variant.\n\n\nUsage\nSource\n\n\nget_tool_option(tool)\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.\n\n\n\n\n\n\n\n\nReturns an image variant by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_variant(name)\n\n\n\n\n\nname: str\n\nThe name property of the image variant to find.\n\n\n\n\n\n\n\n\n ImageVariant | None\n\nThe ImageVariant object if found, otherwise None.\n\n\n\n\n\n\n\n\nReturns an image version by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_version(name)\n\n\n\n\n\nname: str\n\nThe name property of the image version to find.\n\n\n\n\n\n\n\n\n ImageVersion | None\n\nThe ImageVersion object if found, otherwise None.\n\n\n\n\n\n\n\n\nReturns an image version by subpath, or None if not found.\n\n\nUsage\nSource\n\n\nget_version_by_subpath(subpath)\n\n\n\n\n\nsubpath: str\n\nThe subpath to match against.\n\n\n\n\n\n\n\n\n ImageVersion | None\n\nThe ImageVersion object if found, otherwise None.\n\n\n\n\n\n\n\n\nLoad the development versions for this image.\n\n\nUsage\nSource\n\n\nload_dev_versions()\n\n\nWhen multiple dev channels resolve to the same version (e.g. daily and preview both at the current head between branch cut and release), collapse them into a single ImageVersion carrying every channel’s floating tag instead of building byte-identical images once per channel (#632).\n\n\n\n\n\nPatches an existing image version with a new version name.\n\n\nUsage\nSource\n\n\npatch_version(old_version_name, new_version_name, values=None, clean=True)\n\n\n\n\n\nold_version_name: str\n\nThe existing version name to be patched.\n\nnew_version_name: str\n\nThe new version name to replace the old version with.\n\nvalues: dict[str, str] = None\n\nOptional dictionary of additional key-value pairs to include or update in the template values.\n\nclean: bool = True\n\nIf True, removes all existing version files before rendering the new version files\n\n\n\n\n\n\n\n\n ImageVersion\n\nThe patched ImageVersion object.\n\n\n\n\n\n\n\n\nRemove the files for all ephemeral image versions.\n\n\nUsage\nSource\n\n\nremove_ephemeral_version_files()\n\n\n\n\n\nCreate the files for all ephemeral image versions.\n\n\nUsage\nSource\n\n\nrender_ephemeral_version_files()\n\n\n\n\n\nResolves the dependency versions for this image.\n\n\nUsage\nSource\n\n\nresolve_dependency_versions()\n\n\n\n\n\n list[DependencyVersions]\n\nA list of DependencyVersions objects with resolved versions.\n\n\n\n\n\n\n\n\nSets the parent for all variants and versions in this image.\n\n\nUsage\nSource\n\n\nresolve_parentage()\n\n\n\n\n\nSerializes the documentation URL to a string.\n\n\nUsage\nSource\n\n\nserialize_documentation_url(value)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Image]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Image.html#attributes",
-    "href": "reference/config.Image.html#attributes",
-    "title": "config.Image",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nall_registries\n\n\nReturns the merged registries for this image.\n\n\n\n\npath\n\n\nReturns the path to the image directory.\n\n\n\n\ntemplate_path\n\n\nReturns the path to the image template directory.\n\n\n\n\n\n\n\nReturns the merged registries for this image.\n\n\nall_registries: list[Registry | BaseRegistry]\n\n\n\n\n\nReturns the path to the image directory.\n\n\npath: Path | None\n\n\n\n\n\nReturns the path to the image template directory.\n\n\ntemplate_path: Path",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Image]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Image.html#methods",
-    "href": "reference/config.Image.html#methods",
-    "title": "config.Image",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\ncheck_dependency_constraints_with_matrix()\n\n\nChecks if dependencyConstraints and matrix are both defined.\n\n\n\n\ncheck_duplicate_dependency_constraints()\n\n\nEnsures that there are no duplicate dependencies in the image.\n\n\n\n\ncheck_not_empty()\n\n\nEnsures one version or matrix is defined.\n\n\n\n\ncheck_variant_duplicates()\n\n\nEnsures that there are no duplicate variant names in the image.\n\n\n\n\ncheck_version_duplicates()\n\n\nEnsures that there are no duplicate version names in the image.\n\n\n\n\ncreate_matrix()\n\n\nCreates a new image version and adds it to the image.\n\n\n\n\ncreate_version()\n\n\nCreates a new image version and adds it to the image.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\n\n\ndefault_https_url_scheme()\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\n\n\nextra_registries_or_override_registries()\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\n\n\nget_tool_option()\n\n\nReturns the Goss options for this image variant.\n\n\n\n\nget_variant()\n\n\nReturns an image variant by name, or None if not found.\n\n\n\n\nget_version()\n\n\nReturns an image version by name, or None if not found.\n\n\n\n\nget_version_by_subpath()\n\n\nReturns an image version by subpath, or None if not found.\n\n\n\n\nload_dev_versions()\n\n\nLoad the development versions for this image.\n\n\n\n\npatch_version()\n\n\nPatches an existing image version with a new version name.\n\n\n\n\nremove_ephemeral_version_files()\n\n\nRemove the files for all ephemeral image versions.\n\n\n\n\nrender_ephemeral_version_files()\n\n\nCreate the files for all ephemeral image versions.\n\n\n\n\nresolve_dependency_versions()\n\n\nResolves the dependency versions for this image.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent for all variants and versions in this image.\n\n\n\n\nserialize_documentation_url()\n\n\nSerializes the documentation URL to a string.\n\n\n\n\n\n\n\nChecks if dependencyConstraints and matrix are both defined.\n\n\nUsage\nSource\n\n\ncheck_dependency_constraints_with_matrix()\n\n\nWarns if dependencyConstraints will be ineffectual as they must be defined at matrix-level.\n\n\n\n\n\nEnsures that there are no duplicate dependencies in the image.\n\n\nUsage\nSource\n\n\ncheck_duplicate_dependency_constraints(dependency_constraints, info)\n\n\n\n\n\ndependency_constraints: list[DependencyConstraintField]\n\nList of DependencyConstraintField objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[DependencyConstraintField]\n\nThe unmodified list of DependencyConstraintField objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate dependencies are found.\n\n\n\n\n\n\n\n\nEnsures one version or matrix is defined.\n\n\nUsage\nSource\n\n\ncheck_not_empty()\n\n\n\n\n\n Self\n\nThe unmodified Image object.\n\n\n\n\n\n\n\n\nEnsures that there are no duplicate variant names in the image.\n\n\nUsage\nSource\n\n\ncheck_variant_duplicates(variants, info)\n\n\n\n\n\nvariants: list[ImageVariant]\n\nList of ImageVariant objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVariant]\n\nThe unmodified list of ImageVariant objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate variant names are found.\n\n\n\n\n\n\n\n\nEnsures that there are no duplicate version names in the image.\n\n\nUsage\nSource\n\n\ncheck_version_duplicates(versions, info)\n\n\n\n\n\nversions: list[ImageVersion]\n\nList of ImageVersion objects to check for duplicates.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersion]\n\nThe unmodified list of ImageVersion objects if no duplicates are found.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate version names are found.\n\n\n\n\n\n\n\n\nCreates a new image version and adds it to the image.\n\n\nUsage\nSource\n\n\ncreate_matrix(\n    name_pattern=None,\n    subpath=None,\n    dependency_constraints=None,\n    dependencies=None,\n    values=None,\n    update_if_exists=False\n)\n\n\n\n\n\nname_pattern: str | None = None\n\nThe name pattern for the new image version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\nsubpath: str | None = None\n\nOptional subpath for the new version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\ndependency_constraints: list[DependencyConstraint] | None = None\n\nOptional list of DependencyConstraint objects to use for resolving dependencies for the new version.\n\ndependencies: list[DependencyVersions] | None = None\n\nOptional list of DependencyVersions objects to use for the new version.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of additional key-value pairs to include in the template values.\n\nupdate_if_exists: bool = False\n\nIf True, updates the existing version if it already exists, otherwise raises an error if the version exists.\n\n\n\n\n\n\n\n\n ImageMatrix\n\nThe created or updated ImageVersion object.\n\n\n\n\n\n\n\n\nCreates a new image version and adds it to the image.\n\n\nUsage\nSource\n\n\ncreate_version(\n    version_name,\n    subpath=None,\n    values=None,\n    latest=True,\n    update_if_exists=False\n)\n\n\n\n\n\nversion_name: str\n\nThe name of the new image version.\n\nsubpath: str | None = None\n\nOptional subpath for the new version. If None, defaults to the version name with spaces replaced by hyphens and lowercase.\n\nvalues: dict[str, str] | None = None\n\nOptional dictionary of additional key-value pairs to include in the template values.\n\nlatest: bool = True\n\nIf True, sets this version as the latest version of the image. Unsets latest on all other image versions.\n\nupdate_if_exists: bool = False\n\nIf True, updates the existing version if it already exists, otherwise raises an error if the version exists.\n\n\n\n\n\n\n\n\n ImageVersion\n\nThe created or updated ImageVersion object.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries, info)\n\n\n\n\n\nregistries: list[Registry | BaseRegistry]\n\nList of registries to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[Registry | BaseRegistry]\n\nA list of unique registries.\n\n\n\n\n\n\n\n\nPrepend ‘https://’ to the URL if it does not already start with it.\n\n\nUsage\nSource\n\n\ndefault_https_url_scheme(value)\n\n\n\n\n\nvalue: Any\n\nThe URL to validate and possibly modify.\n\n\n\n\n\n\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\nUsage\nSource\n\n\nextra_registries_or_override_registries()\n\n\n\n\n\n ValueError\n\nIf both extraRegistries and overrideRegistries are defined.\n\n\n\n\n\n\n\n\nReturns the Goss options for this image variant.\n\n\nUsage\nSource\n\n\nget_tool_option(tool)\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.\n\n\n\n\n\n\n\n\nReturns an image variant by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_variant(name)\n\n\n\n\n\nname: str\n\nThe name property of the image variant to find.\n\n\n\n\n\n\n\n\n ImageVariant | None\n\nThe ImageVariant object if found, otherwise None.\n\n\n\n\n\n\n\n\nReturns an image version by name, or None if not found.\n\n\nUsage\nSource\n\n\nget_version(name)\n\n\n\n\n\nname: str\n\nThe name property of the image version to find.\n\n\n\n\n\n\n\n\n ImageVersion | None\n\nThe ImageVersion object if found, otherwise None.\n\n\n\n\n\n\n\n\nReturns an image version by subpath, or None if not found.\n\n\nUsage\nSource\n\n\nget_version_by_subpath(subpath)\n\n\n\n\n\nsubpath: str\n\nThe subpath to match against.\n\n\n\n\n\n\n\n\n ImageVersion | None\n\nThe ImageVersion object if found, otherwise None.\n\n\n\n\n\n\n\n\nLoad the development versions for this image.\n\n\nUsage\nSource\n\n\nload_dev_versions()\n\n\nWhen multiple dev channels resolve to the same version (e.g. daily and preview both at the current head between branch cut and release), collapse them into a single ImageVersion carrying every channel’s floating tag instead of building byte-identical images once per channel (#632).\n\n\n\n\n\nPatches an existing image version with a new version name.\n\n\nUsage\nSource\n\n\npatch_version(old_version_name, new_version_name, values=None, clean=True)\n\n\n\n\n\nold_version_name: str\n\nThe existing version name to be patched.\n\nnew_version_name: str\n\nThe new version name to replace the old version with.\n\nvalues: dict[str, str] = None\n\nOptional dictionary of additional key-value pairs to include or update in the template values.\n\nclean: bool = True\n\nIf True, removes all existing version files before rendering the new version files\n\n\n\n\n\n\n\n\n ImageVersion\n\nThe patched ImageVersion object.\n\n\n\n\n\n\n\n\nRemove the files for all ephemeral image versions.\n\n\nUsage\nSource\n\n\nremove_ephemeral_version_files()\n\n\n\n\n\nCreate the files for all ephemeral image versions.\n\n\nUsage\nSource\n\n\nrender_ephemeral_version_files()\n\n\n\n\n\nResolves the dependency versions for this image.\n\n\nUsage\nSource\n\n\nresolve_dependency_versions()\n\n\n\n\n\n list[DependencyVersions]\n\nA list of DependencyVersions objects with resolved versions.\n\n\n\n\n\n\n\n\nSets the parent for all variants and versions in this image.\n\n\nUsage\nSource\n\n\nresolve_parentage()\n\n\n\n\n\nSerializes the documentation URL to a string.\n\n\nUsage\nSource\n\n\nserialize_documentation_url(value)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Image]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVersion.html",
-    "href": "reference/config.ImageVersion.html",
-    "title": "config.ImageVersion",
-    "section": "",
-    "text": "Model representing a version of an image.\n\n\nUsage\nSource\n\n\nconfig.ImageVersion()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nall_registries\n\n\nReturns the merged registries for this image version.\n\n\n\n\nis_latest_release\n\n\nWhether --latest selects this version.\n\n\n\n\nparsed_version\n\n\nReturn the parsed semver/calver representation of self.name.\n\n\n\n\npath\n\n\nReturns the path to the image version directory.\n\n\n\n\nsupported_platforms\n\n\nReturns a list of supported target platforms for this image version.\n\n\n\n\n\n\n\nReturns the merged registries for this image version.\n\n\nall_registries: list[Registry | BaseRegistry]\n\n\n\n\n\nWhether --latest selects this version.\n\n\nis_latest_release: bool\n\n\nA development version is never the latest release, even if it carries the flag: --latest selects the newest release. Every dev-version constructor currently hardcodes latest=False, so the second clause is belt-and-braces – but this predicate is what CI gates key on to decide what gets security-scanned, and a wrong boolean there fails silently.\nDeliberately a plain property and not a computed_field: ImageVersion is round-tripped back into bakery.yaml via model_dump (see BakeryConfig.patch_version), and a computed field would write a derived key into the user’s config file.\n\n\n\n\n\nReturn the parsed semver/calver representation of self.name.\n\n\nparsed_version: ParsedVersion | None\n\n\nReturns None for matrix versions (without warning) and for unparseable names (with a single log.warning from ParsedVersion.parse).\n\n\n\n\n\nReturns the path to the image version directory.\n\n\npath: Path | None\n\n\n\n\n\n ValueError\n\nIf the parent image does not have a valid path.\n\n\n\n\n\n\n\n\nReturns a list of supported target platforms for this image version.\n\n\nsupported_platforms: list[TargetPlatform]\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\ncheck_duplicate_dependencies()\n\n\nEnsures that the dependencies list is unique and errors on duplicates.\n\n\n\n\ncheck_os_not_empty()\n\n\nEnsures that the os list is not empty.\n\n\n\n\ndeduplicate_os()\n\n\nEnsures that the os list is unique and warns on duplicates.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\n\n\nextra_registries_or_override_registries()\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\n\n\ngenerate_template_values()\n\n\nGenerates the template values for rendering.\n\n\n\n\nmake_single_os_primary()\n\n\nEnsures that at most one OS is marked as primary.\n\n\n\n\nmatches_dev_filter()\n\n\nCheck whether this version should be included given dev version filters.\n\n\n\n\nmatches_latest_filter()\n\n\nCheck whether this version should be included given the --latest filter.\n\n\n\n\nmax_one_primary_os()\n\n\nEnsures that at most one OS is marked as primary.\n\n\n\n\nrender_files()\n\n\nRender a new image version from the template.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent for all OSes in this image version.\n\n\n\n\n\n\n\nEnsures that the dependencies list is unique and errors on duplicates.\n\n\nUsage\nSource\n\n\ncheck_duplicate_dependencies(dependencies, info)\n\n\n\n\n\ndependencies: list[DependencyVersionsField]\n\nList of dependencies to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[DependencyVersionsField]\n\nA list of unique dependencies.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate dependencies are found.\n\n\n\n\n\n\n\n\nEnsures that the os list is not empty.\n\n\nUsage\nSource\n\n\ncheck_os_not_empty(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe unmodified list of ImageVersionOS objects.\n\n\n\n\n\n\n\n\nEnsures that the os list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_os(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nA list of unique ImageVersionOS objects.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries, info)\n\n\n\n\n\nregistries: list[Registry | BaseRegistry]\n\nList of registries to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[Registry | BaseRegistry]\n\nA list of unique registries.\n\n\n\n\n\n\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\nUsage\nSource\n\n\nextra_registries_or_override_registries()\n\n\n\n\n\n ValueError\n\nIf both extraRegistries and overrideRegistries are defined.\n\n\n\n\n\n\n\n\nGenerates the template values for rendering.\n\n\nUsage\nSource\n\n\ngenerate_template_values(variant=None, version_os=None)\n\n\n\n\n\nvariant: Union[ImageVariant, None] = None\n\nThe ImageVariant object.\n\nversion_os: Union[ImageVersionOS, None] = None\n\nThe ImageVersionOS object, if applicable.\n\n\n\n\n\n\n\n\n dict[str, Any]\n\nA dictionary of values to use for rendering version templates.\n\n\n\n\n\n\n\n\nEnsures that at most one OS is marked as primary.\n\n\nUsage\nSource\n\n\nmake_single_os_primary(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe list of ImageVersionOS objects with at most one primary OS.\n\n\n\n\n\n\n\n\nCheck whether this version should be included given dev version filters.\n\n\nUsage\nSource\n\n\nmatches_dev_filter(dev_versions, dev_channel=None)\n\n\n\n\n\ndev_versions: DevVersionInclusionEnum\n\nWhether dev versions are included, excluded, or the only versions.\n\ndev_channel: ReleaseChannelEnum | None = None\n\nIf set, only include dev versions from this release channel.\n\n\n\n\n\n\n\n\n tuple[bool, str | None]\n\nA tuple of (included, reason). If excluded, reason explains why.\n\n\n\n\n\n\n\n\nCheck whether this version should be included given the --latest filter.\n\n\nUsage\nSource\n\n\nmatches_latest_filter(latest)\n\n\nShares :pyattr:is_latest_release with the latest field emitted by bakery ci matrix, so a workflow gating on that field and a caller passing --latest always select the same versions.\n\n\n\n\n\nlatest: bool\n\nWhether the –latest filter is active. When False, every version is included and the filter is a no-op.\n\n\n\n\n\n\n\n\n tuple[bool, str | None]\n\nA tuple of (included, reason). If excluded, reason explains why.\n\n\n\n\n\n\n\n\nEnsures that at most one OS is marked as primary.\n\n\nUsage\nSource\n\n\nmax_one_primary_os(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe list of ImageVersionOS objects with at most one primary OS.\n\n\n\n\n\n\n\n\n ValueError\n\nIf more than one OS is marked as primary.\n\n\n\n\n\n\n\n\nRender a new image version from the template.\n\n\nUsage\nSource\n\n\nrender_files(variants=None, regex_filters=None)\n\n\n\n\n\nvariants: list[ImageVariant] | None = None\n\nOptional list of ImageVariant objects to render Containerfiles for each variant.\n\nregex_filters: list[str] | None = None\n\nOptional list of regex patterns to filter which templates to render.\n\n\n\n\n\n\n\n\n BakeryFileError\n\nIf the template path does not exist.\n\n BakeryRenderError\n\nIf a template fails to render.\n\n BakeryRenderErrorGroup\n\nIf multiple templates fail to render.\n\n\n\n\n\n\n\n\nSets the parent for all OSes in this image version.\n\n\nUsage\nSource\n\n\nresolve_parentage()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVersion]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVersion.html#attributes",
-    "href": "reference/config.ImageVersion.html#attributes",
-    "title": "config.ImageVersion",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nall_registries\n\n\nReturns the merged registries for this image version.\n\n\n\n\nis_latest_release\n\n\nWhether --latest selects this version.\n\n\n\n\nparsed_version\n\n\nReturn the parsed semver/calver representation of self.name.\n\n\n\n\npath\n\n\nReturns the path to the image version directory.\n\n\n\n\nsupported_platforms\n\n\nReturns a list of supported target platforms for this image version.\n\n\n\n\n\n\n\nReturns the merged registries for this image version.\n\n\nall_registries: list[Registry | BaseRegistry]\n\n\n\n\n\nWhether --latest selects this version.\n\n\nis_latest_release: bool\n\n\nA development version is never the latest release, even if it carries the flag: --latest selects the newest release. Every dev-version constructor currently hardcodes latest=False, so the second clause is belt-and-braces – but this predicate is what CI gates key on to decide what gets security-scanned, and a wrong boolean there fails silently.\nDeliberately a plain property and not a computed_field: ImageVersion is round-tripped back into bakery.yaml via model_dump (see BakeryConfig.patch_version), and a computed field would write a derived key into the user’s config file.\n\n\n\n\n\nReturn the parsed semver/calver representation of self.name.\n\n\nparsed_version: ParsedVersion | None\n\n\nReturns None for matrix versions (without warning) and for unparseable names (with a single log.warning from ParsedVersion.parse).\n\n\n\n\n\nReturns the path to the image version directory.\n\n\npath: Path | None\n\n\n\n\n\n ValueError\n\nIf the parent image does not have a valid path.\n\n\n\n\n\n\n\n\nReturns a list of supported target platforms for this image version.\n\n\nsupported_platforms: list[TargetPlatform]",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVersion]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.ImageVersion.html#methods",
-    "href": "reference/config.ImageVersion.html#methods",
-    "title": "config.ImageVersion",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\ncheck_duplicate_dependencies()\n\n\nEnsures that the dependencies list is unique and errors on duplicates.\n\n\n\n\ncheck_os_not_empty()\n\n\nEnsures that the os list is not empty.\n\n\n\n\ndeduplicate_os()\n\n\nEnsures that the os list is unique and warns on duplicates.\n\n\n\n\ndeduplicate_registries()\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\n\n\nextra_registries_or_override_registries()\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\n\n\ngenerate_template_values()\n\n\nGenerates the template values for rendering.\n\n\n\n\nmake_single_os_primary()\n\n\nEnsures that at most one OS is marked as primary.\n\n\n\n\nmatches_dev_filter()\n\n\nCheck whether this version should be included given dev version filters.\n\n\n\n\nmatches_latest_filter()\n\n\nCheck whether this version should be included given the --latest filter.\n\n\n\n\nmax_one_primary_os()\n\n\nEnsures that at most one OS is marked as primary.\n\n\n\n\nrender_files()\n\n\nRender a new image version from the template.\n\n\n\n\nresolve_parentage()\n\n\nSets the parent for all OSes in this image version.\n\n\n\n\n\n\n\nEnsures that the dependencies list is unique and errors on duplicates.\n\n\nUsage\nSource\n\n\ncheck_duplicate_dependencies(dependencies, info)\n\n\n\n\n\ndependencies: list[DependencyVersionsField]\n\nList of dependencies to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[DependencyVersionsField]\n\nA list of unique dependencies.\n\n\n\n\n\n\n\n\n ValueError\n\nIf duplicate dependencies are found.\n\n\n\n\n\n\n\n\nEnsures that the os list is not empty.\n\n\nUsage\nSource\n\n\ncheck_os_not_empty(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe unmodified list of ImageVersionOS objects.\n\n\n\n\n\n\n\n\nEnsures that the os list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_os(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nA list of unique ImageVersionOS objects.\n\n\n\n\n\n\n\n\nEnsures that the registries list is unique and warns on duplicates.\n\n\nUsage\nSource\n\n\ndeduplicate_registries(registries, info)\n\n\n\n\n\nregistries: list[Registry | BaseRegistry]\n\nList of registries to deduplicate.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[Registry | BaseRegistry]\n\nA list of unique registries.\n\n\n\n\n\n\n\n\nEnsures that only one of extraRegistries or overrideRegistries is defined.\n\n\nUsage\nSource\n\n\nextra_registries_or_override_registries()\n\n\n\n\n\n ValueError\n\nIf both extraRegistries and overrideRegistries are defined.\n\n\n\n\n\n\n\n\nGenerates the template values for rendering.\n\n\nUsage\nSource\n\n\ngenerate_template_values(variant=None, version_os=None)\n\n\n\n\n\nvariant: Union[ImageVariant, None] = None\n\nThe ImageVariant object.\n\nversion_os: Union[ImageVersionOS, None] = None\n\nThe ImageVersionOS object, if applicable.\n\n\n\n\n\n\n\n\n dict[str, Any]\n\nA dictionary of values to use for rendering version templates.\n\n\n\n\n\n\n\n\nEnsures that at most one OS is marked as primary.\n\n\nUsage\nSource\n\n\nmake_single_os_primary(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe list of ImageVersionOS objects with at most one primary OS.\n\n\n\n\n\n\n\n\nCheck whether this version should be included given dev version filters.\n\n\nUsage\nSource\n\n\nmatches_dev_filter(dev_versions, dev_channel=None)\n\n\n\n\n\ndev_versions: DevVersionInclusionEnum\n\nWhether dev versions are included, excluded, or the only versions.\n\ndev_channel: ReleaseChannelEnum | None = None\n\nIf set, only include dev versions from this release channel.\n\n\n\n\n\n\n\n\n tuple[bool, str | None]\n\nA tuple of (included, reason). If excluded, reason explains why.\n\n\n\n\n\n\n\n\nCheck whether this version should be included given the --latest filter.\n\n\nUsage\nSource\n\n\nmatches_latest_filter(latest)\n\n\nShares :pyattr:is_latest_release with the latest field emitted by bakery ci matrix, so a workflow gating on that field and a caller passing --latest always select the same versions.\n\n\n\n\n\nlatest: bool\n\nWhether the –latest filter is active. When False, every version is included and the filter is a no-op.\n\n\n\n\n\n\n\n\n tuple[bool, str | None]\n\nA tuple of (included, reason). If excluded, reason explains why.\n\n\n\n\n\n\n\n\nEnsures that at most one OS is marked as primary.\n\n\nUsage\nSource\n\n\nmax_one_primary_os(os, info)\n\n\n\n\n\nos: list[ImageVersionOS]\n\nList of ImageVersionOS objects to check.\n\ninfo: ValidationInfo\n\nValidationInfo containing the data being validated.\n\n\n\n\n\n\n\n\n list[ImageVersionOS]\n\nThe list of ImageVersionOS objects with at most one primary OS.\n\n\n\n\n\n\n\n\n ValueError\n\nIf more than one OS is marked as primary.\n\n\n\n\n\n\n\n\nRender a new image version from the template.\n\n\nUsage\nSource\n\n\nrender_files(variants=None, regex_filters=None)\n\n\n\n\n\nvariants: list[ImageVariant] | None = None\n\nOptional list of ImageVariant objects to render Containerfiles for each variant.\n\nregex_filters: list[str] | None = None\n\nOptional list of regex patterns to filter which templates to render.\n\n\n\n\n\n\n\n\n BakeryFileError\n\nIf the template path does not exist.\n\n BakeryRenderError\n\nIf a template fails to render.\n\n BakeryRenderErrorGroup\n\nIf multiple templates fail to render.\n\n\n\n\n\n\n\n\nSets the parent for all OSes in this image version.\n\n\nUsage\nSource\n\n\nresolve_parentage()",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.ImageVersion]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.Registry.html",
-    "href": "reference/config.Registry.html",
-    "title": "config.Registry",
-    "section": "",
-    "text": "config.Registry\n\nModel representing an image from a registry in the Bakery configuration.\n\n\nUsage\nSource\n\n\nconfig.Registry()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.Registry]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.TagPattern.html",
-    "href": "reference/config.TagPattern.html",
-    "title": "config.TagPattern",
-    "section": "",
-    "text": "Model representing a tag pattern for images in the Bakery configuration.\n\n\nUsage\nSource\n\n\nconfig.TagPattern()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nrender()\n\n\nRender the Jinja2 tag patterns with the provided keyword arguments.\n\n\n\n\n\n\n\nRender the Jinja2 tag patterns with the provided keyword arguments.\n\n\nUsage\nSource\n\n\nrender(**kwargs)\n\n\n\n\n\nkwargs={}\n\nKey-value pairs to render variables in the Jinja2 tag template.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.TagPattern]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/config.TagPattern.html#methods",
-    "href": "reference/config.TagPattern.html#methods",
-    "title": "config.TagPattern",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nrender()\n\n\nRender the Jinja2 tag patterns with the provided keyword arguments.\n\n\n\n\n\n\n\nRender the Jinja2 tag patterns with the provided keyword arguments.\n\n\nUsage\nSource\n\n\nrender(**kwargs)\n\n\n\n\n\nkwargs={}\n\nKey-value pairs to render variables in the Jinja2 tag template.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "config",
-      "Reference",
-      "[config.TagPattern]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryError.html",
-    "href": "reference/error.BakeryError.html",
-    "title": "error.BakeryError",
-    "section": "",
-    "text": "error.BakeryError\n\nBase class for all Bakery exceptions\n\n\nUsage\nSource\n\n\nerror.BakeryError()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryError]{.doc-object-name .doc-class .doc-label .doc-label-exception}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryRenderError.html",
-    "href": "reference/error.BakeryRenderError.html",
-    "title": "error.BakeryRenderError",
-    "section": "",
-    "text": "Generic error for rendering issues\n\n\nUsage\nSource\n\n\nerror.BakeryRenderError()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\n__cause__\n\n\nexception cause\n\n\n\n\n\n\n\nexception cause\n\n\ncause=cause",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryRenderError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryRenderError.html#attributes",
-    "href": "reference/error.BakeryRenderError.html#attributes",
-    "title": "error.BakeryRenderError",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\n__cause__\n\n\nexception cause\n\n\n\n\n\n\n\nexception cause\n\n\ncause=cause",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryRenderError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryTemplateError.html",
-    "href": "reference/error.BakeryTemplateError.html",
-    "title": "error.BakeryTemplateError",
-    "section": "",
-    "text": "error.BakeryTemplateError\n\nGeneric error for template issues\n\n\nUsage\nSource\n\n\nerror.BakeryTemplateError()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryTemplateError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryToolNotFoundError.html",
-    "href": "reference/error.BakeryToolNotFoundError.html",
-    "title": "error.BakeryToolNotFoundError",
-    "section": "",
-    "text": "error.BakeryToolNotFoundError\n\nError for an expected tool not being found\n\n\nUsage\nSource\n\n\nerror.BakeryToolNotFoundError(message=None, tool_name=None)\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryToolNotFoundError]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/error.BakeryToolRuntimeErrorGroup.html",
-    "href": "reference/error.BakeryToolRuntimeErrorGroup.html",
-    "title": "error.BakeryToolRuntimeErrorGroup",
-    "section": "",
-    "text": "error.BakeryToolRuntimeErrorGroup\n\nGroup of tool runtime errors\n\n\nUsage\nSource\n\n\nerror.BakeryToolRuntimeErrorGroup()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "error",
-      "Reference",
-      "[error.BakeryToolRuntimeErrorGroup]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.BuildSummary.html",
-    "href": "reference/image.BuildSummary.html",
-    "title": "image.BuildSummary",
-    "section": "",
-    "text": "Counts (and, once a build has produced artifacts, sizes) for a set of image targets.\n\n\nUsage\nSource\n\n\nimage.BuildSummary()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nas_dict()\n\n\nFlatten to a CI-friendly dict for --summary-format json.\n\n\n\n\nfrom_image_targets()\n\n\nCompute build and artifact counts for the given image targets.\n\n\n\n\nfrom_json_file()\n\n\nReconstructs a BuildSummary from a file written by --summary-format json\n\n\n\n\nmeasure_sizes()\n\n\nPopulate registry size, local size, layer count, and cache size for each target via real I/O.\n\n\n\n\nmerge()\n\n\nCombines multiple summaries into one, deduped by BuildSummaryTarget.uid.\n\n\n\n\ntable()\n\n\nRender the summary as a Rich table.\n\n\n\n\nto_markdown()\n\n\nRenders this summary as a GitHub-Flavored Markdown report, for a GitHub job or\n\n\n\n\n\n\n\nFlatten to a CI-friendly dict for --summary-format json.\n\n\nUsage\nSource\n\n\nas_dict()\n\n\nAggregate counts are top-level keys (unchanged since Phase 1). registry_size_bytes and local_size_bytes are null when nothing could be measured – never 0, which would misreport “we measured nothing” as “we measured empty”. targets gives the full per-target breakdown for consumers that want it.\n\n\n\n\n\nCompute build and artifact counts for the given image targets.\n\n\nUsage\nSource\n\n\nfrom_image_targets(targets, *, platforms=None)\n\n\nPerforms no I/O: every count is derived from configuration already resolved onto the targets, so this is safe to call for both --plan and real builds.\n\n\n\n\n\ntargets: list[ImageTarget]\n\nThe resolved image targets to summarize.\n\nplatforms: list[str] | None = None\n\nThe --image-platform CLI override, if any. A target that survives that filter keeps its full declared image_os.platforms list unchanged (config/config.py:1056-1071 is an any-match gate, not a narrowing one) — the actual narrowing to fewer platforms happens later, uniformly across targets, via this same value (image_target.py:664: platforms or (...)). Passing it here keeps the count matching what will actually build.\n\n\n\n\n\n\n\n\nReconstructs a BuildSummary from a file written by --summary-format json\n\n\nUsage\nSource\n\n\nfrom_json_file(path)\n\n\n(either bakery build or bakery ci publish).\nRebuilds targets from the dumped targets list and recomputes the three aggregate rows from that list, rather than trusting the file’s own top-level counts – keeps a single source of truth for how aggregates are derived, shared with merge() below.\n\n\n\n\n\nPopulate registry size, local size, layer count, and cache size for each target via real I/O.\n\n\nUsage\nSource\n\n\nmeasure_sizes(targets, *, push, load, jobs=None, succeeded_uids=None)\n\n\nNever raises: a failed measurement leaves that target’s fields as None (rendered as a dash), logged at debug – a registry hiccup or a target that never built must never fail the build itself.\n\n\n\n\n\ntargets: list[ImageTarget]\n\nThe same image targets from_image_targets was built from. Needed here (unlike the zero-I/O counts) because measurement keys off ImageTarget.ref(). A target under --temp-registry with no build metadata is skipped entirely – see _measurable_ref() for why measuring it would be worse than not measuring it.\n\npush: bool\n\nWhether this build pushed to a registry – gates the registry size lookup. Cache size is not gated on this: cache_from pulls whatever is at cache_ref regardless of push (only cache_to, the write side, requires it), so the ref is just as measurable on a pull-only build.\n\nload: bool\n\nWhether this build loaded to the local daemon – gates the local size lookup.\n\njobs: int | None = None\n\nMaximum concurrent inspects; defaults to SETTINGS.max_concurrency.\n\nsucceeded_uids: set[str] | None = None\n\nUIDs that succeeded in this build run, if known – further narrows the registry size lookup so a target that failed this run isn’t measured off whatever image happens to already be sitting at its tag from an earlier, unrelated push. None (the default) skips this narrowing and measures every target whenever push is true, matching the original behavior; --strategy bake has no per-target result to give, so it always passes None.\n\n\n\n\n\n\n\n\nCombines multiple summaries into one, deduped by BuildSummaryTarget.uid.\n\n\nUsage\nSource\n\n\nmerge(summaries)\n\n\nuid has no platform component, so the same uid can appear in more than one input summary – e.g. one JSON file per platform for a multi-platform target, or a build-time file and a separate publish-time file for the same target. Slices sharing a uid are folded into a single row:\n\nplatforms, registry_size, local_size are summed: each slice reports only what it measured (its own platform’s share), so summing reconstructs the true total, the same way a single combined multi-platform registry inspect already sums across manifest children internally.\ntags, layers, cache_ref, cache_size take the first non-None value across a uid’s slices – they describe the whole manifest, not one platform’s share, so summing them would be wrong (and, for cache_size, would double-count a cache tag shared by more than one platform slice).\n\nAggregate rows are recomputed from the merged, deduped-by-uid target list – never by summing each input’s own aggregate rows, which would double-count any uid appearing in more than one input.\n\n\n\n\n\nRender the summary as a Rich table.\n\n\nUsage\nSource\n\n\ntable(*, sizes)\n\n\n\n\n\nsizes: bool\n\nFalse renders the three aggregate count rows only (unchanged since Phase 1). True renders a per-target breakdown – one row per image target, grouped/nested by image, version, OS, and variant with repeated identity values blanked (mirroring the Goss test report’s table), plus a closing Total row. A target whose size wasn’t measured (build failure, or measure_sizes() never called) shows a dash rather than a misleading zero.\n\n\n\n\n\n\n\n\nRenders this summary as a GitHub-Flavored Markdown report, for a GitHub job or\n\n\nUsage\nSource\n\n\nto_markdown(*, disclaimer=None)\n\n\nrun summary. Always renders the full per-target breakdown – a summary page reader wants the detail, not just the three aggregate counts a terminal caller sees by default without --summary-format table’s sizes view.\n\n\n\n\n\ndisclaimer: str | None = None\n\nIf given, prepended as a warning-styled blockquote ahead of the table – e.g. “this run had failures, so these totals are incomplete.”",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BuildSummary]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.BuildSummary.html#methods",
-    "href": "reference/image.BuildSummary.html#methods",
-    "title": "image.BuildSummary",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nas_dict()\n\n\nFlatten to a CI-friendly dict for --summary-format json.\n\n\n\n\nfrom_image_targets()\n\n\nCompute build and artifact counts for the given image targets.\n\n\n\n\nfrom_json_file()\n\n\nReconstructs a BuildSummary from a file written by --summary-format json\n\n\n\n\nmeasure_sizes()\n\n\nPopulate registry size, local size, layer count, and cache size for each target via real I/O.\n\n\n\n\nmerge()\n\n\nCombines multiple summaries into one, deduped by BuildSummaryTarget.uid.\n\n\n\n\ntable()\n\n\nRender the summary as a Rich table.\n\n\n\n\nto_markdown()\n\n\nRenders this summary as a GitHub-Flavored Markdown report, for a GitHub job or\n\n\n\n\n\n\n\nFlatten to a CI-friendly dict for --summary-format json.\n\n\nUsage\nSource\n\n\nas_dict()\n\n\nAggregate counts are top-level keys (unchanged since Phase 1). registry_size_bytes and local_size_bytes are null when nothing could be measured – never 0, which would misreport “we measured nothing” as “we measured empty”. targets gives the full per-target breakdown for consumers that want it.\n\n\n\n\n\nCompute build and artifact counts for the given image targets.\n\n\nUsage\nSource\n\n\nfrom_image_targets(targets, *, platforms=None)\n\n\nPerforms no I/O: every count is derived from configuration already resolved onto the targets, so this is safe to call for both --plan and real builds.\n\n\n\n\n\ntargets: list[ImageTarget]\n\nThe resolved image targets to summarize.\n\nplatforms: list[str] | None = None\n\nThe --image-platform CLI override, if any. A target that survives that filter keeps its full declared image_os.platforms list unchanged (config/config.py:1056-1071 is an any-match gate, not a narrowing one) — the actual narrowing to fewer platforms happens later, uniformly across targets, via this same value (image_target.py:664: platforms or (...)). Passing it here keeps the count matching what will actually build.\n\n\n\n\n\n\n\n\nReconstructs a BuildSummary from a file written by --summary-format json\n\n\nUsage\nSource\n\n\nfrom_json_file(path)\n\n\n(either bakery build or bakery ci publish).\nRebuilds targets from the dumped targets list and recomputes the three aggregate rows from that list, rather than trusting the file’s own top-level counts – keeps a single source of truth for how aggregates are derived, shared with merge() below.\n\n\n\n\n\nPopulate registry size, local size, layer count, and cache size for each target via real I/O.\n\n\nUsage\nSource\n\n\nmeasure_sizes(targets, *, push, load, jobs=None, succeeded_uids=None)\n\n\nNever raises: a failed measurement leaves that target’s fields as None (rendered as a dash), logged at debug – a registry hiccup or a target that never built must never fail the build itself.\n\n\n\n\n\ntargets: list[ImageTarget]\n\nThe same image targets from_image_targets was built from. Needed here (unlike the zero-I/O counts) because measurement keys off ImageTarget.ref(). A target under --temp-registry with no build metadata is skipped entirely – see _measurable_ref() for why measuring it would be worse than not measuring it.\n\npush: bool\n\nWhether this build pushed to a registry – gates the registry size lookup. Cache size is not gated on this: cache_from pulls whatever is at cache_ref regardless of push (only cache_to, the write side, requires it), so the ref is just as measurable on a pull-only build.\n\nload: bool\n\nWhether this build loaded to the local daemon – gates the local size lookup.\n\njobs: int | None = None\n\nMaximum concurrent inspects; defaults to SETTINGS.max_concurrency.\n\nsucceeded_uids: set[str] | None = None\n\nUIDs that succeeded in this build run, if known – further narrows the registry size lookup so a target that failed this run isn’t measured off whatever image happens to already be sitting at its tag from an earlier, unrelated push. None (the default) skips this narrowing and measures every target whenever push is true, matching the original behavior; --strategy bake has no per-target result to give, so it always passes None.\n\n\n\n\n\n\n\n\nCombines multiple summaries into one, deduped by BuildSummaryTarget.uid.\n\n\nUsage\nSource\n\n\nmerge(summaries)\n\n\nuid has no platform component, so the same uid can appear in more than one input summary – e.g. one JSON file per platform for a multi-platform target, or a build-time file and a separate publish-time file for the same target. Slices sharing a uid are folded into a single row:\n\nplatforms, registry_size, local_size are summed: each slice reports only what it measured (its own platform’s share), so summing reconstructs the true total, the same way a single combined multi-platform registry inspect already sums across manifest children internally.\ntags, layers, cache_ref, cache_size take the first non-None value across a uid’s slices – they describe the whole manifest, not one platform’s share, so summing them would be wrong (and, for cache_size, would double-count a cache tag shared by more than one platform slice).\n\nAggregate rows are recomputed from the merged, deduped-by-uid target list – never by summing each input’s own aggregate rows, which would double-count any uid appearing in more than one input.\n\n\n\n\n\nRender the summary as a Rich table.\n\n\nUsage\nSource\n\n\ntable(*, sizes)\n\n\n\n\n\nsizes: bool\n\nFalse renders the three aggregate count rows only (unchanged since Phase 1). True renders a per-target breakdown – one row per image target, grouped/nested by image, version, OS, and variant with repeated identity values blanked (mirroring the Goss test report’s table), plus a closing Total row. A target whose size wasn’t measured (build failure, or measure_sizes() never called) shows a dash rather than a misleading zero.\n\n\n\n\n\n\n\n\nRenders this summary as a GitHub-Flavored Markdown report, for a GitHub job or\n\n\nUsage\nSource\n\n\nto_markdown(*, disclaimer=None)\n\n\nrun summary. Always renders the full per-target breakdown – a summary page reader wants the detail, not just the three aggregate counts a terminal caller sees by default without --summary-format table’s sizes view.\n\n\n\n\n\ndisclaimer: str | None = None\n\nIf given, prepended as a warning-styled blockquote ahead of the table – e.g. “this run had failures, so these totals are incomplete.”",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BuildSummary]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.BuildSummaryTarget.html",
-    "href": "reference/image.BuildSummaryTarget.html",
-    "title": "image.BuildSummaryTarget",
-    "section": "",
-    "text": "image.BuildSummaryTarget\n\nPer-target row for the sizes view of a build summary.\n\n\nUsage\nSource\n\n\nimage.BuildSummaryTarget()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.BuildSummaryTarget]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.ImageTarget.html",
-    "href": "reference/image.ImageTarget.html",
-    "title": "image.ImageTarget",
-    "section": "",
-    "text": "Represents a combination of image variant, image version, and image version OS that make up a target image.\n\n\nUsage\nSource\n\n\nimage.ImageTarget()\n\n\nImage targets represent a unique image specified by configuration elements. Image targets are the functional representation of a bakery.yaml configuration and can be used for various operations such as: - Build - Push - Bake - Goss Test\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nbuild_args\n\n\nGenerate build arguments for the image based on its properties.\n\n\n\n\nbuild_target\n\n\nReturn the target build stage, if configured.\n\n\n\n\ncontainerfile\n\n\nReturn the path of the Containerfile for this image target.\n\n\n\n\nimage_name\n\n\nReturn the name of the image.\n\n\n\n\nis_channel_latest\n\n\nCheck whether this build targets the current channel head.\n\n\n\n\nis_latest\n\n\nCheck if the image version is marked as latest.\n\n\n\n\nis_latest_patch_combination\n\n\nCheck if the image version is the latest patch for its matrix (minor, …) group.\n\n\n\n\nis_primary_os\n\n\nCheck if the image OS is marked as primary.\n\n\n\n\nis_primary_variant\n\n\nCheck if the image variant is marked as primary.\n\n\n\n\nlabels\n\n\nGenerate labels for the image based on its properties.\n\n\n\n\npush_sort_key\n\n\nDeterministic ordering for push to ordered-display registries (e.g. Docker Hub).\n\n\n\n\nrelease_channel\n\n\nThe release channel for this target, defaulting to release when unset.\n\n\n\n\nrelease_channels\n\n\nEvery release channel whose floating tag this build carries.\n\n\n\n\nresolved_build_secrets\n\n\nReturn the parent Image’s BuildSecrets whose envVar is set in the environment.\n\n\n\n\ntag_patterns\n\n\nEnsure tag patterns are unique.\n\n\n\n\ntag_suffixes\n\n\nGenerate tag suffixes from set patterns.\n\n\n\n\ntag_template_values\n\n\nReturn a dictionary of values for templating tags.\n\n\n\n\ntags\n\n\nGenerate tags for the image based on tag patterns.\n\n\n\n\ntemp_name\n\n\nGenerate the image name and tag to use for temporary image storage in multiplatform split/merge builds.\n\n\n\n\ntemp_registry\n\n\nGet the temporary registry from settings.\n\n\n\n\nuid\n\n\nGenerate a unique identifier for the target.\n\n\n\n\n\n\n\nGenerate build arguments for the image based on its properties.\n\n\nbuild_args: dict[str, str]\n\n\n\n\n\nReturn the target build stage, if configured.\n\n\nbuild_target: str | None\n\n\nResolves hierarchically: ImageVersion &gt; ImageMatrix &gt; Image. Matrix values are propagated to versions at creation time, so the fallback here is version -&gt; parent image.\n\n\n\n\n\nReturn the path of the Containerfile for this image target.\n\n\ncontainerfile: Path\n\n\n\n\n\nReturn the name of the image.\n\n\nimage_name: str\n\n\n\n\n\nCheck whether this build targets the current channel head.\n\n\nis_channel_latest: bool\n\n\nReturns False when the build was dispatched with an older version override so that floating {{ Channel }} tags (which should always point at the head) are suppressed. Defaults to True for non-channel sources.\n\n\n\n\n\nCheck if the image version is marked as latest.\n\n\nis_latest: bool\n\n\n\n\n\nCheck if the image version is the latest patch for its matrix (minor, …) group.\n\n\nis_latest_patch_combination: bool\n\n\n\n\n\nCheck if the image OS is marked as primary.\n\n\nis_primary_os: bool\n\n\n\n\n\nCheck if the image variant is marked as primary.\n\n\nis_primary_variant: bool\n\n\n\n\n\nGenerate labels for the image based on its properties.\n\n\nlabels: dict[str, str]\n\n\n\n\n\nDeterministic ordering for push to ordered-display registries (e.g. Docker Hub).\n\n\npush_sort_key: tuple[str, bool, ParsedVersion, int, str, str, str]\n\n\nTuple semantics, ascending sort: 1. image_name — group all targets of one image together. 2. is_latest — False before True; latest target pushed LAST in its group. 3. version — ParsedVersion (semver §11) or MIN for matrix/unparseable. 4. primary_score — 0..2; (primary OS + primary variant) target pushes LAST within a version, so its simplest tag is most-recent. 5. version.name — stable lex tiebreaker (load-bearing for matrix rows that collapse to MIN under (3)). 6. variant.name — stable tiebreaker. 7. os.name — stable tiebreaker.\n\n\n\n\n\nThe release channel for this target, defaulting to release when unset.\n\n\nrelease_channel: ReleaseChannelEnum\n\n\n\n\n\nEvery release channel whose floating tag this build carries.\n\n\nrelease_channels: list[ReleaseChannelEnum]\n\n\nNormally one, but when multiple dev channels collapse to the same version (e.g. daily and preview both at the current head between branch cut and release, #632) the single build floats every collapsed channel’s tag.\n\n\n\n\n\nReturn the parent Image’s BuildSecrets whose envVar is set in the environment.\n\n\nresolved_build_secrets: list[BuildSecret]\n\n\nSecrets whose envVar is unset are skipped with a warning; the build command itself decides whether a missing secret is fatal (via required=true on the Dockerfile mount). Each build path (sequential, bake) formats these into its own option shape.\n\n\n\n\n\nEnsure tag patterns are unique.\n\n\ntag_patterns: list[TagPattern]\n\n\n\n\n\nGenerate tag suffixes from set patterns.\n\n\ntag_suffixes: list[str]\n\n\nChannel-bearing patterns render once per collapsed release channel so a single build can float every channel’s tag (#632); all others render once.\n\n\n\n\n\nReturn a dictionary of values for templating tags.\n\n\ntag_template_values: dict[str, str]\n\n\n\n\n\nGenerate tags for the image based on tag patterns.\n\n\ntags: StringableList[Tag]\n\n\n\n\n\nGenerate the image name and tag to use for temporary image storage in multiplatform split/merge builds.\n\n\ntemp_name: str | None\n\n\n\n\n\nGet the temporary registry from settings.\n\n\ntemp_registry: str | None\n\n\n\n\n\nGenerate a unique identifier for the target.\n\n\nuid: str\n\n\nThe channel is appended for development versions so a dev build and a release build of the same version never share a UID. Release UIDs stay unsuffixed.\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\n__str__()\n\n\nReturn a string representation of the image target.\n\n\n\n\nbuild()\n\n\nBuild the image using the Containerfile and return the built image.\n\n\n\n\nbuild_metadata_for_platform()\n\n\nReturns the most recent build metadata matching platform, if any.\n\n\n\n\ncache_name()\n\n\nGenerate the image name and tag to use for a build cache.\n\n\n\n\nget_merge_sources()\n\n\nGet the list of source image references to use for merging.\n\n\n\n\nget_tool_option()\n\n\nReturns tool options for this image target, falling back from variant to parent image.\n\n\n\n\nload_build_metadata_from_file()\n\n\nLoad build metadata from a given file.\n\n\n\n\nnew_image_target()\n\n\nCreate a new ImageTarget instance from a repository, version, variant, and OS combination.\n\n\n\n\nref()\n\n\nReturns a reference to the image, preferring a build metadata digest if available.\n\n\n\n\nremove()\n\n\nRemove the image from the local image cache or registry.\n\n\n\n\n\n\n\nReturn a string representation of the image target.\n\n\nUsage\nSource\n\n\n__str__()\n\n\n\n\n\nBuild the image using the Containerfile and return the built image.\n\n\nUsage\nSource\n\n\nbuild(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    platforms=None,\n    metadata_file=None,\n    log_callback=None\n)\n\n\nWhen log_callback is set, streams build output line-by-line into it and returns None instead of a python_on_whales.Image (python_on_whales returns an iterator of lines rather than an Image object when streaming).\n\n\n\n\n\nReturns the most recent build metadata matching platform, if any.\n\n\nUsage\nSource\n\n\nbuild_metadata_for_platform(platform)\n\n\nShares ref()’s newest-first, platform-filtered selection so callers that need the underlying BuildMetadata (e.g. for provenance fields) see the same artifact ref() would resolve to.\n\n\n\n\n\nGenerate the image name and tag to use for a build cache.\n\n\nUsage\nSource\n\n\ncache_name(platform=None)\n\n\n\n\n\nplatform: str | None = None\n\nOptional platform string (e.g., “linux/amd64”) to include in the cache tag for platform-specific cache differentiation.\n\n\n\n\n\n\n\n\nGet the list of source image references to use for merging.\n\n\nUsage\nSource\n\n\nget_merge_sources()\n\n\nSources collected will be the most recent artifact for each platform represented in the build metadata.\n\n\n\n\n\nReturns tool options for this image target, falling back from variant to parent image.\n\n\nUsage\nSource\n\n\nget_tool_option(tool)\n\n\nWhen the target has a variant, this delegates to ImageVariant.get_tool_option, which already merges the variant’s options with its parent Image’s options. When the target has no variant, this falls back directly to the parent Image’s own get_tool_option so variant-less images can still configure tool options via Image.options in bakery.yaml, instead of that configuration being silently ignored.\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.\n\n\n\n\n\n\n\n\nLoad build metadata from a given file.\n\n\nUsage\nSource\n\n\nload_build_metadata_from_file(metadata_file)\n\n\n\n\n\nCreate a new ImageTarget instance from a repository, version, variant, and OS combination.\n\n\nUsage\nSource\n\n\nnew_image_target(\n    repository,\n    image_version,\n    image_variant=None,\n    image_os=None,\n    settings=None\n)\n\n\n\n\n\nrepository: Repository\n\nThe repository containing the image.\n\nimage_version: ImageVersion\n\nThe specific version of the image.\n\nimage_variant: ImageVariant | None = None\n\nThe variant of the image, if applicable.\n\nimage_os: ImageVersionOS | None = None\n\nThe operating system of the image, if applicable.\n\nsettings: ImageTargetSettings | None = None\n\nOptional settings for the image target.\n\n\n\n\n\n\n\n\n ImageTarget\n\nA new ImageTarget representing the given combination of configurations.\n\n\n\n\n\n\n\n\nReturns a reference to the image, preferring a build metadata digest if available.\n\n\nUsage\nSource\n\n\nref(platform=f'linux/{SETTINGS.architecture}', *, digest_only=False)\n\n\n\n\n\nplatform: str = f\"linux/{SETTINGS.architecture}\"\n\nThe platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.\n\ndigest_only: bool = False\n\nReturn a tag-free repo@sha256:DIGEST reference instead of the default repo:tag@sha256:DIGEST. Temp-registry images are pushed by digest and therefore carry no tag in the registry, so consumers that resolve the tag portion rather than ignoring it need the tag-free form.\n\n\n\n\n\n\n\n\n str\n\nA string reference to the image, using the build metadata digest if available, otherwise falling back to the first tag.\n\n\n\n\n\n\n\n\nRemove the image from the local image cache or registry.\n\n\nUsage\nSource\n\n\nremove(prune=True, force=False)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageTarget]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.ImageTarget.html#attributes",
-    "href": "reference/image.ImageTarget.html#attributes",
-    "title": "image.ImageTarget",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nbuild_args\n\n\nGenerate build arguments for the image based on its properties.\n\n\n\n\nbuild_target\n\n\nReturn the target build stage, if configured.\n\n\n\n\ncontainerfile\n\n\nReturn the path of the Containerfile for this image target.\n\n\n\n\nimage_name\n\n\nReturn the name of the image.\n\n\n\n\nis_channel_latest\n\n\nCheck whether this build targets the current channel head.\n\n\n\n\nis_latest\n\n\nCheck if the image version is marked as latest.\n\n\n\n\nis_latest_patch_combination\n\n\nCheck if the image version is the latest patch for its matrix (minor, …) group.\n\n\n\n\nis_primary_os\n\n\nCheck if the image OS is marked as primary.\n\n\n\n\nis_primary_variant\n\n\nCheck if the image variant is marked as primary.\n\n\n\n\nlabels\n\n\nGenerate labels for the image based on its properties.\n\n\n\n\npush_sort_key\n\n\nDeterministic ordering for push to ordered-display registries (e.g. Docker Hub).\n\n\n\n\nrelease_channel\n\n\nThe release channel for this target, defaulting to release when unset.\n\n\n\n\nrelease_channels\n\n\nEvery release channel whose floating tag this build carries.\n\n\n\n\nresolved_build_secrets\n\n\nReturn the parent Image’s BuildSecrets whose envVar is set in the environment.\n\n\n\n\ntag_patterns\n\n\nEnsure tag patterns are unique.\n\n\n\n\ntag_suffixes\n\n\nGenerate tag suffixes from set patterns.\n\n\n\n\ntag_template_values\n\n\nReturn a dictionary of values for templating tags.\n\n\n\n\ntags\n\n\nGenerate tags for the image based on tag patterns.\n\n\n\n\ntemp_name\n\n\nGenerate the image name and tag to use for temporary image storage in multiplatform split/merge builds.\n\n\n\n\ntemp_registry\n\n\nGet the temporary registry from settings.\n\n\n\n\nuid\n\n\nGenerate a unique identifier for the target.\n\n\n\n\n\n\n\nGenerate build arguments for the image based on its properties.\n\n\nbuild_args: dict[str, str]\n\n\n\n\n\nReturn the target build stage, if configured.\n\n\nbuild_target: str | None\n\n\nResolves hierarchically: ImageVersion &gt; ImageMatrix &gt; Image. Matrix values are propagated to versions at creation time, so the fallback here is version -&gt; parent image.\n\n\n\n\n\nReturn the path of the Containerfile for this image target.\n\n\ncontainerfile: Path\n\n\n\n\n\nReturn the name of the image.\n\n\nimage_name: str\n\n\n\n\n\nCheck whether this build targets the current channel head.\n\n\nis_channel_latest: bool\n\n\nReturns False when the build was dispatched with an older version override so that floating {{ Channel }} tags (which should always point at the head) are suppressed. Defaults to True for non-channel sources.\n\n\n\n\n\nCheck if the image version is marked as latest.\n\n\nis_latest: bool\n\n\n\n\n\nCheck if the image version is the latest patch for its matrix (minor, …) group.\n\n\nis_latest_patch_combination: bool\n\n\n\n\n\nCheck if the image OS is marked as primary.\n\n\nis_primary_os: bool\n\n\n\n\n\nCheck if the image variant is marked as primary.\n\n\nis_primary_variant: bool\n\n\n\n\n\nGenerate labels for the image based on its properties.\n\n\nlabels: dict[str, str]\n\n\n\n\n\nDeterministic ordering for push to ordered-display registries (e.g. Docker Hub).\n\n\npush_sort_key: tuple[str, bool, ParsedVersion, int, str, str, str]\n\n\nTuple semantics, ascending sort: 1. image_name — group all targets of one image together. 2. is_latest — False before True; latest target pushed LAST in its group. 3. version — ParsedVersion (semver §11) or MIN for matrix/unparseable. 4. primary_score — 0..2; (primary OS + primary variant) target pushes LAST within a version, so its simplest tag is most-recent. 5. version.name — stable lex tiebreaker (load-bearing for matrix rows that collapse to MIN under (3)). 6. variant.name — stable tiebreaker. 7. os.name — stable tiebreaker.\n\n\n\n\n\nThe release channel for this target, defaulting to release when unset.\n\n\nrelease_channel: ReleaseChannelEnum\n\n\n\n\n\nEvery release channel whose floating tag this build carries.\n\n\nrelease_channels: list[ReleaseChannelEnum]\n\n\nNormally one, but when multiple dev channels collapse to the same version (e.g. daily and preview both at the current head between branch cut and release, #632) the single build floats every collapsed channel’s tag.\n\n\n\n\n\nReturn the parent Image’s BuildSecrets whose envVar is set in the environment.\n\n\nresolved_build_secrets: list[BuildSecret]\n\n\nSecrets whose envVar is unset are skipped with a warning; the build command itself decides whether a missing secret is fatal (via required=true on the Dockerfile mount). Each build path (sequential, bake) formats these into its own option shape.\n\n\n\n\n\nEnsure tag patterns are unique.\n\n\ntag_patterns: list[TagPattern]\n\n\n\n\n\nGenerate tag suffixes from set patterns.\n\n\ntag_suffixes: list[str]\n\n\nChannel-bearing patterns render once per collapsed release channel so a single build can float every channel’s tag (#632); all others render once.\n\n\n\n\n\nReturn a dictionary of values for templating tags.\n\n\ntag_template_values: dict[str, str]\n\n\n\n\n\nGenerate tags for the image based on tag patterns.\n\n\ntags: StringableList[Tag]\n\n\n\n\n\nGenerate the image name and tag to use for temporary image storage in multiplatform split/merge builds.\n\n\ntemp_name: str | None\n\n\n\n\n\nGet the temporary registry from settings.\n\n\ntemp_registry: str | None\n\n\n\n\n\nGenerate a unique identifier for the target.\n\n\nuid: str\n\n\nThe channel is appended for development versions so a dev build and a release build of the same version never share a UID. Release UIDs stay unsuffixed.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageTarget]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/image.ImageTarget.html#methods",
-    "href": "reference/image.ImageTarget.html#methods",
-    "title": "image.ImageTarget",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\n__str__()\n\n\nReturn a string representation of the image target.\n\n\n\n\nbuild()\n\n\nBuild the image using the Containerfile and return the built image.\n\n\n\n\nbuild_metadata_for_platform()\n\n\nReturns the most recent build metadata matching platform, if any.\n\n\n\n\ncache_name()\n\n\nGenerate the image name and tag to use for a build cache.\n\n\n\n\nget_merge_sources()\n\n\nGet the list of source image references to use for merging.\n\n\n\n\nget_tool_option()\n\n\nReturns tool options for this image target, falling back from variant to parent image.\n\n\n\n\nload_build_metadata_from_file()\n\n\nLoad build metadata from a given file.\n\n\n\n\nnew_image_target()\n\n\nCreate a new ImageTarget instance from a repository, version, variant, and OS combination.\n\n\n\n\nref()\n\n\nReturns a reference to the image, preferring a build metadata digest if available.\n\n\n\n\nremove()\n\n\nRemove the image from the local image cache or registry.\n\n\n\n\n\n\n\nReturn a string representation of the image target.\n\n\nUsage\nSource\n\n\n__str__()\n\n\n\n\n\nBuild the image using the Containerfile and return the built image.\n\n\nUsage\nSource\n\n\nbuild(\n    load=True,\n    push=False,\n    pull=False,\n    cache=True,\n    platforms=None,\n    metadata_file=None,\n    log_callback=None\n)\n\n\nWhen log_callback is set, streams build output line-by-line into it and returns None instead of a python_on_whales.Image (python_on_whales returns an iterator of lines rather than an Image object when streaming).\n\n\n\n\n\nReturns the most recent build metadata matching platform, if any.\n\n\nUsage\nSource\n\n\nbuild_metadata_for_platform(platform)\n\n\nShares ref()’s newest-first, platform-filtered selection so callers that need the underlying BuildMetadata (e.g. for provenance fields) see the same artifact ref() would resolve to.\n\n\n\n\n\nGenerate the image name and tag to use for a build cache.\n\n\nUsage\nSource\n\n\ncache_name(platform=None)\n\n\n\n\n\nplatform: str | None = None\n\nOptional platform string (e.g., “linux/amd64”) to include in the cache tag for platform-specific cache differentiation.\n\n\n\n\n\n\n\n\nGet the list of source image references to use for merging.\n\n\nUsage\nSource\n\n\nget_merge_sources()\n\n\nSources collected will be the most recent artifact for each platform represented in the build metadata.\n\n\n\n\n\nReturns tool options for this image target, falling back from variant to parent image.\n\n\nUsage\nSource\n\n\nget_tool_option(tool)\n\n\nWhen the target has a variant, this delegates to ImageVariant.get_tool_option, which already merges the variant’s options with its parent Image’s options. When the target has no variant, this falls back directly to the parent Image’s own get_tool_option so variant-less images can still configure tool options via Image.options in bakery.yaml, instead of that configuration being silently ignored.\n\n\n\n\n\ntool: str\n\nThe name of the tool to get options for.\n\n\n\n\n\n\n\n\n ToolOptions | None\n\nThe ToolOptions object for the specified tool, or None if not found.\n\n\n\n\n\n\n\n\nLoad build metadata from a given file.\n\n\nUsage\nSource\n\n\nload_build_metadata_from_file(metadata_file)\n\n\n\n\n\nCreate a new ImageTarget instance from a repository, version, variant, and OS combination.\n\n\nUsage\nSource\n\n\nnew_image_target(\n    repository,\n    image_version,\n    image_variant=None,\n    image_os=None,\n    settings=None\n)\n\n\n\n\n\nrepository: Repository\n\nThe repository containing the image.\n\nimage_version: ImageVersion\n\nThe specific version of the image.\n\nimage_variant: ImageVariant | None = None\n\nThe variant of the image, if applicable.\n\nimage_os: ImageVersionOS | None = None\n\nThe operating system of the image, if applicable.\n\nsettings: ImageTargetSettings | None = None\n\nOptional settings for the image target.\n\n\n\n\n\n\n\n\n ImageTarget\n\nA new ImageTarget representing the given combination of configurations.\n\n\n\n\n\n\n\n\nReturns a reference to the image, preferring a build metadata digest if available.\n\n\nUsage\nSource\n\n\nref(platform=f'linux/{SETTINGS.architecture}', *, digest_only=False)\n\n\n\n\n\nplatform: str = f\"linux/{SETTINGS.architecture}\"\n\nThe platform to reference, used for selecting the appropriate build metadata in multi-platform builds. Defaults to the host architecture.\n\ndigest_only: bool = False\n\nReturn a tag-free repo@sha256:DIGEST reference instead of the default repo:tag@sha256:DIGEST. Temp-registry images are pushed by digest and therefore carry no tag in the registry, so consumers that resolve the tag portion rather than ignoring it need the tag-free form.\n\n\n\n\n\n\n\n\n str\n\nA string reference to the image, using the build metadata digest if available, otherwise falling back to the first tag.\n\n\n\n\n\n\n\n\nRemove the image from the local image cache or registry.\n\n\nUsage\nSource\n\n\nremove(prune=True, force=False)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "image",
-      "Reference",
-      "[image.ImageTarget]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/index.html",
-    "href": "reference/index.html",
-    "title": "Reference",
-    "section": "",
-    "text": "Models for bakery.yaml\n\n\nconfig.BakeryConfigDocument\n\nModel representation of the top-level bakery.yaml configuration document.\n\nconfig.BakeryConfig\n\nManager for the bakery.yaml configuration file and operations against the configuration.\n\nconfig.ImageVersionOS\n\nModel representing a supported operating system for an image version.\n\nconfig.ImageVersion\n\nModel representing a version of an image.\n\nconfig.ImageVariant\n\nModel representing a variant of an image.\n\nconfig.Image\n\nModel representing an image in the bakery configuration.\n\nconfig.BaseRegistry\n\nModel representing an image registry in the Bakery configuration.\n\nconfig.Registry\n\nModel representing an image from a registry in the Bakery configuration.\n\nconfig.Repository\n\nModel representing a project repository in the Bakery configuration.\n\nconfig.TagPattern\n\nModel representing a tag pattern for images in the Bakery configuration.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/index.html#configuration",
-    "href": "reference/index.html#configuration",
-    "title": "Reference",
-    "section": "",
-    "text": "Models for bakery.yaml\n\n\nconfig.BakeryConfigDocument\n\nModel representation of the top-level bakery.yaml configuration document.\n\nconfig.BakeryConfig\n\nManager for the bakery.yaml configuration file and operations against the configuration.\n\nconfig.ImageVersionOS\n\nModel representing a supported operating system for an image version.\n\nconfig.ImageVersion\n\nModel representing a version of an image.\n\nconfig.ImageVariant\n\nModel representing a variant of an image.\n\nconfig.Image\n\nModel representing an image in the bakery configuration.\n\nconfig.BaseRegistry\n\nModel representing an image registry in the Bakery configuration.\n\nconfig.Registry\n\nModel representing an image from a registry in the Bakery configuration.\n\nconfig.Repository\n\nModel representing a project repository in the Bakery configuration.\n\nconfig.TagPattern\n\nModel representing a tag pattern for images in the Bakery configuration.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/index.html#image",
-    "href": "reference/index.html#image",
-    "title": "Reference",
-    "section": "Image",
-    "text": "Image\n\nImage build targets and plans\n\n\nimage.BakePlan\n\nRepresents a JSON bake plan for building Docker images using Docker Bake.\n\nimage.ImageTarget\n\nRepresents a combination of image variant, image version, and image version OS that make up a target image.\n\nimage.ImageTargetContext\n\nContainer for contextual path information related to an image target.\n\nimage.BuildSummary\n\nCounts (and, once a build has produced artifacts, sizes) for a set of image targets.\n\nimage.BuildSummaryRow\n\nA single labeled metric in a build summary report.\n\nimage.BuildSummaryTarget\n\nPer-target row for the sizes view of a build summary.\n\nimage.ImageBuildStrategy\n\nEnumeration for image build strategies.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/index.html#plugins",
-    "href": "reference/index.html#plugins",
-    "title": "Reference",
-    "section": "Plugins",
-    "text": "Plugins\n\nProtocol for extending bakery with custom tools\n\n\nplugins.ToolCallResult\n\nRepresent the result of a tool call.\n\nplugins.BakeryToolPlugin",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/index.html#registry-management",
-    "href": "reference/index.html#registry-management",
-    "title": "Reference",
-    "section": "Registry Management",
-    "text": "Registry Management\n\nClients for DockerHub and GHCR\n\n\nregistry_management.dockerhub.DockerhubClient\n\n\n\nregistry_management.dockerhub.clean_registry()\n\nCleans up images in the specified registry.\n\nregistry_management.dockerhub.push_readmes()\n\nPush READMEs to Docker Hub for eligible image targets.\n\nregistry_management.ghcr.GHCRClient\n\n\n\nregistry_management.ghcr.clean_registry()\n\nCleans up images in the specified registry.\n\nregistry_management.ghcr.clean_temporary_artifacts()\n\nCleans up temporary caches and images that are not tagged or are older than a given timedelta.\n\nregistry_management.ghcr.GHCRPackageVersion\n\nRepresents a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersionMetadata\n\nRepresents metadata for a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersionContainerMetadata\n\nRepresents container metadata for a GitHub Container Registry package version.\n\nregistry_management.ghcr.GHCRPackageVersions\n\nRepresents a list of GitHub Container Registry package versions.",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/index.html#errors",
-    "href": "reference/index.html#errors",
-    "title": "Reference",
-    "section": "Errors",
-    "text": "Errors\n\nException hierarchy\n\n\nerror.BakeryTemplateError\n\nGeneric error for template issues\n\nerror.BakeryRenderError\n\nGeneric error for rendering issues\n\nerror.BakeryRenderErrorGroup\n\nGroup of template errors\n\nerror.BakeryFileError\n\nGeneric error for file/directory issues\n\nerror.BakeryToolError\n\nGeneric error for external tool issues\n\nerror.BakeryToolNotFoundError\n\nError for an expected tool not being found\n\nerror.BakeryToolRuntimeError\n\n\n\nerror.BakeryToolRuntimeErrorGroup\n\nGroup of tool runtime errors\n\nerror.BakeryBuildErrorGroup\n\nGroup of tool runtime errors\n\nerror.BakeryError\n\nBase class for all Bakery exceptions",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "Overview"
-    ]
-  },
-  {
-    "objectID": "reference/plugins.ToolCallResult.html",
-    "href": "reference/plugins.ToolCallResult.html",
-    "title": "plugins.ToolCallResult",
-    "section": "",
-    "text": "plugins.ToolCallResult\n\nRepresent the result of a tool call.\n\n\nUsage\nSource\n\n\nplugins.ToolCallResult()\n\n\n\n\n\n Back to top",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "plugins",
-      "Reference",
-      "[plugins.ToolCallResult]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
+    "text": "plugins\n\n\nUsage\n\n\n\n\n\n\n\n Back to top"
   },
   {
     "objectID": "reference/registry_management.dockerhub.clean_registry.html",
     "href": "reference/registry_management.dockerhub.clean_registry.html",
     "title": "registry_management.dockerhub.clean_registry()",
     "section": "",
-    "text": "registry_management.dockerhub.clean_registry()\n\nCleans up images in the specified registry.\n\n\nUsage\nSource\n\n\nregistry_management.dockerhub.clean_registry(\n    image_registry,\n    remove_tagged_older_than=timedelta(weeks=80),\n    remove_untagged_older_than=timedelta(weeks=26),\n    dry_run=False\n)\n\n\n\n\n\n Back to top",
+    "text": "Cleans up images in the specified registry.\n\n\nUsage\nSource\n\n\nregistry_management.dockerhub.clean_registry(\n    image_registry,\n    remove_tagged_older_than=timedelta(weeks=80),\n    remove_untagged_older_than=timedelta(weeks=26),\n    dry_run=False\n)\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -1170,39 +456,11 @@
     ]
   },
   {
-    "objectID": "reference/registry_management.ghcr.GHCRClient.html",
-    "href": "reference/registry_management.ghcr.GHCRClient.html",
-    "title": "registry_management.ghcr.GHCRClient",
-    "section": "",
-    "text": "Usage\nSource\n\n\nregistry_management.ghcr.GHCRClient()\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nENDPOINTS\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nENDPOINTS={    \"package\": \"/orgs/{organization}/packages/container/{package}\",    \"package_versions\": \"/orgs/{organization}/packages/container/{package}/versions\",}\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)\n\n\n\n\n\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nget_package()\n\n\nGet details on a package.\n\n\n\n\n\n\n\nGet details on a package.\n\n\nUsage\nSource\n\n\nget_package(organization, package)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "registry_management",
-      "Reference",
-      "[registry_management.ghcr.GHCRClient]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
-    "objectID": "reference/registry_management.ghcr.GHCRClient.html#attributes",
-    "href": "reference/registry_management.ghcr.GHCRClient.html#attributes",
-    "title": "registry_management.ghcr.GHCRClient",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nENDPOINTS\n\n\ndict() -&gt; new empty dictionary\n\n\n\n\n\n\n\ndict() -&gt; new empty dictionary\n\n\nENDPOINTS={    \"package\": \"/orgs/{organization}/packages/container/{package}\",    \"package_versions\": \"/orgs/{organization}/packages/container/{package}/versions\",}\n\n\ndict(mapping) -&gt; new dictionary initialized from a mapping object’s (key, value) pairs dict(iterable) -&gt; new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v dict(**kwargs) -&gt; new dictionary initialized with the name=value pairs in the keyword argument list. For example: dict(one=1, two=2)",
-    "crumbs": [
-      "Home",
-      "API Reference",
-      "registry_management",
-      "Reference",
-      "[registry_management.ghcr.GHCRClient]{.doc-object-name .doc-class .doc-label .doc-label-class}"
-    ]
-  },
-  {
     "objectID": "reference/registry_management.ghcr.GHCRClient.html#methods",
     "href": "reference/registry_management.ghcr.GHCRClient.html#methods",
     "title": "registry_management.ghcr.GHCRClient",
-    "section": "",
-    "text": "Name\n\n\nDescription\n\n\n\n\n\n\nget_package()\n\n\nGet details on a package.\n\n\n\n\n\n\n\nGet details on a package.\n\n\nUsage\nSource\n\n\nget_package(organization, package)",
+    "section": "Methods",
+    "text": "Methods\n\n\n\n\nName\n\n\nDescription\n\n\n\n\n\n\nget_package()\n\n\nGet details on a package.\n\n\n\n\n\nget_package()\n\nGet details on a package.\n\n\nUsage\nSource\n\n\nget_package(organization, package)",
     "crumbs": [
       "Home",
       "API Reference",
@@ -1216,7 +474,7 @@
     "href": "reference/registry_management.ghcr.GHCRPackageVersionContainerMetadata.html",
     "title": "registry_management.ghcr.GHCRPackageVersionContainerMetadata",
     "section": "",
-    "text": "registry_management.ghcr.GHCRPackageVersionContainerMetadata\n\nRepresents container metadata for a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersionContainerMetadata()\n\n\n\n\n\n Back to top",
+    "text": "Represents container metadata for a GitHub Container Registry package version.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersionContainerMetadata()\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -1230,7 +488,7 @@
     "href": "reference/registry_management.ghcr.GHCRPackageVersions.html",
     "title": "registry_management.ghcr.GHCRPackageVersions",
     "section": "",
-    "text": "registry_management.ghcr.GHCRPackageVersions\n\nRepresents a list of GitHub Container Registry package versions.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersions()\n\n\n\n\n\n Back to top",
+    "text": "Represents a list of GitHub Container Registry package versions.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.GHCRPackageVersions()\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",
@@ -1244,7 +502,7 @@
     "href": "reference/registry_management.ghcr.clean_temporary_artifacts.html",
     "title": "registry_management.ghcr.clean_temporary_artifacts()",
     "section": "",
-    "text": "registry_management.ghcr.clean_temporary_artifacts()\n\nCleans up temporary caches and images that are not tagged or are older than a given timedelta.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.clean_temporary_artifacts(\n    ghcr_registry, remove_untagged=True, remove_older_than=None, dry_run=False\n)\n\n\n\n\n\n Back to top",
+    "text": "Cleans up temporary caches and images that are not tagged or are older than a given timedelta.\n\n\nUsage\nSource\n\n\nregistry_management.ghcr.clean_temporary_artifacts(\n    ghcr_registry, remove_untagged=True, remove_older_than=None, dry_run=False\n)\n\n\n\n\n Back to top",
     "crumbs": [
       "Home",
       "API Reference",

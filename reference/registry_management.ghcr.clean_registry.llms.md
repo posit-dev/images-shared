@@ -1,7 +1,5 @@
 # registry_management.ghcr.clean_registry()
 
-# registry_management.ghcr.clean_registry()
-
 Cleans up images in the specified registry.
 
 Usage

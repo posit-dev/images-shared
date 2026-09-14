@@ -1,72 +1,22 @@
-# Reference
+# API Reference
 
 ## Configuration
 
 Models for bakery.yaml
 
-[config.BakeryConfigDocument](../reference/config.BakeryConfigDocument.llms.md#posit_bakery.config.BakeryConfigDocument)  
-Model representation of the top-level bakery.yaml configuration document.
-
-[config.BakeryConfig](../reference/config.BakeryConfig.llms.md#posit_bakery.config.BakeryConfig)  
-Manager for the bakery.yaml configuration file and operations against the configuration.
-
-[config.ImageVersionOS](../reference/config.ImageVersionOS.llms.md#posit_bakery.config.ImageVersionOS)  
-Model representing a supported operating system for an image version.
-
-[config.ImageVersion](../reference/config.ImageVersion.llms.md#posit_bakery.config.ImageVersion)  
-Model representing a version of an image.
-
-[config.ImageVariant](../reference/config.ImageVariant.llms.md#posit_bakery.config.ImageVariant)  
-Model representing a variant of an image.
-
-[config.Image](../reference/config.Image.llms.md#posit_bakery.config.Image)  
-Model representing an image in the bakery configuration.
-
-[config.BaseRegistry](../reference/config.BaseRegistry.llms.md#posit_bakery.config.BaseRegistry)  
-Model representing an image registry in the Bakery configuration.
-
-[config.Registry](../reference/config.Registry.llms.md#posit_bakery.config.Registry)  
-Model representing an image from a registry in the Bakery configuration.
-
-[config.Repository](../reference/config.Repository.llms.md#posit_bakery.config.Repository)  
-Model representing a project repository in the Bakery configuration.
-
-[config.TagPattern](../reference/config.TagPattern.llms.md#posit_bakery.config.TagPattern)  
-Model representing a tag pattern for images in the Bakery configuration.
+[config](../reference/config.llms.md#posit_bakery.config)  
 
 ## Image
 
 Image build targets and plans
 
-[image.BakePlan](../reference/image.BakePlan.llms.md#posit_bakery.image.BakePlan)  
-Represents a JSON bake plan for building Docker images using Docker Bake.
-
-[image.ImageTarget](../reference/image.ImageTarget.llms.md#posit_bakery.image.ImageTarget)  
-Represents a combination of image variant, image version, and image version OS that make up a target image.
-
-[image.ImageTargetContext](../reference/image.ImageTargetContext.llms.md#posit_bakery.image.ImageTargetContext)  
-Container for contextual path information related to an image target.
-
-[image.BuildSummary](../reference/image.BuildSummary.llms.md#posit_bakery.image.BuildSummary)  
-Counts (and, once a build has produced artifacts, sizes) for a set of image targets.
-
-[image.BuildSummaryRow](../reference/image.BuildSummaryRow.llms.md#posit_bakery.image.BuildSummaryRow)  
-A single labeled metric in a build summary report.
-
-[image.BuildSummaryTarget](../reference/image.BuildSummaryTarget.llms.md#posit_bakery.image.BuildSummaryTarget)  
-Per-target row for the sizes view of a build summary.
-
-[image.ImageBuildStrategy](../reference/image.ImageBuildStrategy.llms.md#posit_bakery.image.ImageBuildStrategy)  
-Enumeration for image build strategies.
+[image](../reference/image.llms.md#posit_bakery.image)  
 
 ## Plugins
 
 Protocol for extending bakery with custom tools
 
-[plugins.ToolCallResult](../reference/plugins.ToolCallResult.llms.md#posit_bakery.plugins.ToolCallResult)  
-Represent the result of a tool call.
-
-[plugins.BakeryToolPlugin](../reference/plugins.BakeryToolPlugin.llms.md#posit_bakery.plugins.BakeryToolPlugin)  
+[plugins](../reference/plugins.llms.md#posit_bakery.plugins)  
 
 ## Registry Management
 
@@ -104,33 +54,6 @@ Represents a list of GitHub Container Registry package versions.
 
 Exception hierarchy
 
-[error.BakeryTemplateError](../reference/error.BakeryTemplateError.llms.md#posit_bakery.error.BakeryTemplateError)  
-Generic error for template issues
-
-[error.BakeryRenderError](../reference/error.BakeryRenderError.llms.md#posit_bakery.error.BakeryRenderError)  
-Generic error for rendering issues
-
-[error.BakeryRenderErrorGroup](../reference/error.BakeryRenderErrorGroup.llms.md#posit_bakery.error.BakeryRenderErrorGroup)  
-Group of template errors
-
-[error.BakeryFileError](../reference/error.BakeryFileError.llms.md#posit_bakery.error.BakeryFileError)  
-Generic error for file/directory issues
-
-[error.BakeryToolError](../reference/error.BakeryToolError.llms.md#posit_bakery.error.BakeryToolError)  
-Generic error for external tool issues
-
-[error.BakeryToolNotFoundError](../reference/error.BakeryToolNotFoundError.llms.md#posit_bakery.error.BakeryToolNotFoundError)  
-Error for an expected tool not being found
-
-[error.BakeryToolRuntimeError](../reference/error.BakeryToolRuntimeError.llms.md#posit_bakery.error.BakeryToolRuntimeError)  
-
-[error.BakeryToolRuntimeErrorGroup](../reference/error.BakeryToolRuntimeErrorGroup.llms.md#posit_bakery.error.BakeryToolRuntimeErrorGroup)  
-Group of tool runtime errors
-
-[error.BakeryBuildErrorGroup](../reference/error.BakeryBuildErrorGroup.llms.md#posit_bakery.error.BakeryBuildErrorGroup)  
-Group of tool runtime errors
-
-[error.BakeryError](../reference/error.BakeryError.llms.md#posit_bakery.error.BakeryError)  
-Base class for all Bakery exceptions
+[error](../reference/error.llms.md#posit_bakery.error)  
 
 Back to top
