@@ -56,6 +56,20 @@ To install an unreleased development version directly from GitHub:
 uv tool install 'git+https://github.com/posit-dev/images-shared.git@main#subdirectory=posit-bakery&egg=posit-bakery'
 ```
 
+To install your own local checkout — e.g. to test changes to `posit_bakery/` before opening a
+PR — install it in editable mode. `bakery` then reflects source edits immediately, with no
+reinstall step:
+
+```bash
+just install-tool          # from anywhere in the repo
+# or, equivalently, from the repository root:
+uv tool install --editable ./posit-bakery
+```
+
+All three methods install the same `bakery` command on your `PATH`. `uv tool install` replaces
+whichever install is currently active, so switch back to the released version with
+`uv tool install posit-bakery` when you're done testing locally.
+
 ## Examples
 
 See the [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) repository for step-by-step tutorials on creating and managing container image projects with Bakery.
