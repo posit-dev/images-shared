@@ -119,11 +119,15 @@ RUN {{ install(packages, files) | indent(4) }}
 essential packages like curl, ca-certificates, gnupg, and tar, optionally adding the Posit Pro and/or Open rpm
 repositories.
 
+Both repository flags default to False. Registering a repository re-runs Cloudsmith's
+GPG key exchange and config fetch, so every caller must opt in explicitly to the ones it
+actually installs packages from; do not turn one on "just in case".
+
 :param clean: Whether to clean the dnf cache after installation. Defaults to True.
-:param pro_repo: Whether to add the Posit Pro rpm repository. Defaults to True.
+:param pro_repo: Whether to add the Posit Pro rpm repository. Defaults to False.
 :param open_repo: Whether to add the Posit Open rpm repository. Defaults to False.
 #}
-{% macro setup(clean = True, pro_repo = True, open_repo = False) -%}
+{% macro setup(clean = True, pro_repo = False, open_repo = False) -%}
 dnf upgrade {{ global_options }} && \
 dnf install {{ global_options }} --allowerasing \
     curl \
@@ -143,6 +147,6 @@ dnf install {{ global_options }} --allowerasing \
 {%- endmacro %}
 
 {# The setup() commands wrapped with a Docker RUN statement. #}
-{% macro run_setup(pro_repo = True, open_repo = False) -%}
+{% macro run_setup(pro_repo = False, open_repo = False) -%}
 RUN {{ setup(pro_repo=pro_repo, open_repo=open_repo) | indent(4) }}
 {%- endmacro %}

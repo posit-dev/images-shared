@@ -1365,7 +1365,7 @@ class TestBakeryConfig:
                     primary: true
                 dependencies:
                   - dependency: R
-                    version: 4.5.1
+                    version: 4.5.3
                   - dependency: python
                     version: 3.13.7
                   - dependency: quarto
@@ -1383,7 +1383,7 @@ class TestBakeryConfig:
                     primary: true
                 dependencies:
                   - dependency: R
-                    version: 4.5.1
+                    version: 4.5.3
                   - dependency: python
                     version: 3.13.7
                   - dependency: quarto
@@ -1418,7 +1418,6 @@ class TestBakeryConfig:
                     tar && \\
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
@@ -1470,7 +1469,6 @@ class TestBakeryConfig:
                     tar && \\
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
@@ -1496,7 +1494,7 @@ class TestBakeryConfig:
             # Install R
             RUN apt-get update -yqq && \\
                 apt-get install -yqq --no-install-recommends \\
-                    r-4.5.1 && \\
+                    r-4.5.3 && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
 

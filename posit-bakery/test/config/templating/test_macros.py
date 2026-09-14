@@ -722,7 +722,6 @@ class TestAptMacros:
                     tar && \\
                 apt-get install -yqq --no-install-recommends locales && \\
                 localedef -i en_US -f UTF-8 en_US.UTF-8 && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             ENV LANG=en_US.UTF-8
@@ -761,7 +760,7 @@ class TestAptMacros:
         assert rendered == expected
 
     def test_run_setup_with_codename(self, environment_with_macros):
-        template = '{%- import "apt.j2" as apt -%}\n{{ apt.run_setup(codename="noble") }}\n'
+        template = '{%- import "apt.j2" as apt -%}\n{{ apt.run_setup(codename="noble", pro_repo=True) }}\n'
         rendered = environment_with_macros.from_string(template).render()
         expected = textwrap.dedent(
             """\
@@ -803,7 +802,6 @@ class TestAptMacros:
                 ca-certificates \\
                 gnupg \\
                 tar && \\
-            bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
             apt-get clean -yqq && \\
             rm -rf /var/lib/apt/lists/*
             """
@@ -826,7 +824,6 @@ class TestAptMacros:
                     ca-certificates \\
                     gnupg \\
                     tar && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.deb.sh')" && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
             """
@@ -1213,7 +1210,7 @@ class TestDnfMacros:
         ],
     )
     def test_setup(self, environment_with_macros, clean, expected):
-        template = '{%- import "dnf.j2" as dnf -%}\n' + "{{ dnf.setup(" + str(clean) + ") }}\n"
+        template = '{%- import "dnf.j2" as dnf -%}\n' + "{{ dnf.setup(" + str(clean) + ", pro_repo=True) }}\n"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -1229,7 +1226,6 @@ class TestDnfMacros:
                     findutils \\
                     gnupg \\
                     tar && \\
-                bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \\
                 dnf clean all -yq
             """
         )
