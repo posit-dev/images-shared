@@ -23,7 +23,7 @@ ARG BUILDARCH
 ARG TARGETARCH=${BUILDARCH}
 
 ### Install Apt Packages ###
-{{ apt.run_setup() }}
+{{ apt.run_setup(open_repo=True) }}
 
 COPY {{ Path.Version }}/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
 {{ apt.run_install(files = '/tmp/ubuntu2204_packages.txt') }}
