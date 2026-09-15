@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml_diff, ImageChangeSet, MatrixSelection
-from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, version_matches
+from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, apply_recent_versions, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
@@ -208,6 +208,15 @@ def matrix(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
+    recent: Annotated[
+        int | None,
+        typer.Option(
+            "--recent",
+            min=1,
+            help="Include only the N highest-sorted release versions of each non-matrix image.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     exclude: Annotated[
         Optional[list[BakeryCIMatrixFieldEnum]],
         typer.Option(help="Fields to exclude splitting the matrix by."),
@@ -284,6 +293,7 @@ def matrix(
             filter=BakeryConfigFilter(image_name=image_name),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
+            recent=recent,
             dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
@@ -339,6 +349,22 @@ def matrix(
                         versions = img.matrix.to_image_versions() + dev_versions_loaded
                     else:
                         versions = img.matrix.to_image_versions()
+            elif img.matrix is None and settings.recent is not None:
+                release_versions = [version for version in versions if not version.isDevelopmentVersion]
+                versions = apply_recent_versions(
+                    versions,
+                    settings.recent,
+                    img.name,
+                    image_version,
+                )
+                included_release_ids = {id(version) for version in versions if not version.isDevelopmentVersion}
+                if cs is not None:
+                    for version in release_versions:
+                        if id(version) not in included_release_ids and version.name in cs.versions:
+                            log.warning(
+                                f"Version '{version.name}' in image '{img.name}' was modified in this changeset "
+                                f"but is excluded by --recent {settings.recent}. It will not be built."
+                            )
 
             for ver in versions:
                 # The caller's flags decide which kinds of version are eligible

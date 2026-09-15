@@ -44,7 +44,7 @@ def exit_if_no_targets(config: "BakeryConfig", settings: "BakerySettings") -> No
     stderr_console.print(
         f"❌ No image targets{detail}. Check the --image-name, --image-version, "
         "--image-variant, --image-os, and --image-platform filters along with the "
-        "--dev-versions/--matrix-versions selection.",
+        "--recent, --dev-versions, and --matrix-versions selection.",
         style="error",
     )
     raise typer.Exit(code=1)
@@ -61,6 +61,7 @@ def _describe_active_filters(settings: "BakerySettings") -> str:
             ("image-variant", f.image_variant),
             ("image-os", f.image_os),
             ("image-platform", f.image_platform),
+            ("recent", settings.recent),
         )
         if value
     ]

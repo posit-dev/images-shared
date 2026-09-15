@@ -35,6 +35,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      recent:
+        description: "Number of most recent release versions to build [default: 0, unlimited]"
+        default: 0
+        required: false
+        type: number
       retry:
         description: "Number of times to retry a failed build"
         default: 1
@@ -113,6 +118,7 @@ jobs:
           IS_FORK: ${{ needs.detect.outputs.is-fork }}
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          RECENT: ${{ inputs.recent }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           # pull_request.base.sha for regular PR pushes; merge_group.base_sha
           # for merge-queue runs. base_sha is the real, unmoved tip of the
@@ -125,7 +131,9 @@ jobs:
           if [ -n "$BASE_REF" ]; then
             BASE_FLAG=(--base-ref "$BASE_REF")
           fi
-          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --context "$BAKERY_CONTEXT" | jq --compact-output .)
+          RECENT_FLAG=()
+          (( RECENT > 0 )) && RECENT_FLAG=(--recent "$RECENT")
+          FULL_MATRIX=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${RECENT_FLAG[@]}" "${BASE_FLAG[@]}" --context "$BAKERY_CONTEXT" | jq --compact-output .)
           if [ "$IS_FORK" = "true" ]; then
             # Skip arm64 for fork PRs — paid runners may not be available
             FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --compact-output '[.[] | select(.platform != "linux/arm64")]')
@@ -137,6 +145,7 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          RECENT: ${{ inputs.recent }}
           BAKERY_CONTEXT: ${{ inputs.context }}
           # See the "Images by Version/Platform" step above for why this
           # falls back to merge_group.base_sha.
@@ -146,7 +155,9 @@ jobs:
           if [ -n "$BASE_REF" ]; then
             BASE_FLAG=(--base-ref "$BASE_REF")
           fi
-          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
+          RECENT_FLAG=()
+          (( RECENT > 0 )) && RECENT_FLAG=(--recent "$RECENT")
+          result=$(bakery ci matrix --quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" "${RECENT_FLAG[@]}" "${BASE_FLAG[@]}" --exclude platform --context "$BAKERY_CONTEXT")
           echo "versions_matrix=$(echo "$result" | jq --compact-output .)" >> "$GITHUB_OUTPUT"
 
       - name: Save dependency version cache
