@@ -27,6 +27,11 @@ on:
         default: "exclude"
         required: false
         type: string
+      recent:
+        description: "Number of most recent release versions to build [default: 0, unlimited]"
+        default: 0
+        required: false
+        type: number
       image-name:
         description: "Filter to a specific image name or pattern (e.g., 'workbench', '^workbench$')"
         default: ""
@@ -202,6 +207,7 @@ jobs:
         env:
           DEV_VERSIONS: ${{ inputs.dev-versions }}
           MATRIX_VERSIONS: ${{ inputs.matrix-versions }}
+          RECENT: ${{ inputs.recent }}
           IMAGE_NAME_FILTER: ${{ inputs.image-name }}
           IMAGE_VERSION: ${{ inputs.image-version }}
           DEV_CHANNEL: ${{ inputs.dev-channel || inputs.dev-stream }}
@@ -217,6 +223,7 @@ jobs:
         run: |
           IMAGE_VERSION="${IMAGE_VERSION#v}"
           ARGS=(--quiet --dev-versions "$DEV_VERSIONS" --matrix-versions "$MATRIX_VERSIONS" --context "$CONTEXT")
+          (( RECENT > 0 )) && ARGS+=(--recent "$RECENT")
           [[ -n "$IMAGE_VERSION" ]] && ARGS+=(--image-version "$IMAGE_VERSION")
           [[ -n "$BASE_REF" ]] && ARGS+=(--base-ref "$BASE_REF")
           if [[ -n "$DEV_SPEC_RESOLVED" ]]; then

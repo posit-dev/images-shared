@@ -252,6 +252,15 @@ def build(
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = False,
+    recent: Annotated[
+        int | None,
+        typer.Option(
+            "--recent",
+            min=1,
+            help="Build only the N highest-sorted release versions of each non-matrix image.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
+        ),
+    ] = None,
     dev_spec: Annotated[
         str | None,
         typer.Option(
@@ -288,6 +297,7 @@ def build(
         dev_channel=dev_channel,
         matrix_versions=matrix_versions,
         latest=latest,
+        recent=recent,
         clean_temporary=clean,
         cache_registry=cache_registry,
         temp_registry=temp_registry,

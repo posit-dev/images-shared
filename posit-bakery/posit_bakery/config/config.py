@@ -26,7 +26,7 @@ from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
-from posit_bakery.config.image.parsed_version import ParsedVersion
+from posit_bakery.config.image.parsed_version import ParsedVersion, version_sort_key
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, CALVER_REGEX_PATTERN
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import (
@@ -256,6 +256,33 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         return new_image
 
 
+def apply_recent_versions(
+    versions: list[ImageVersion],
+    count: int,
+    image_name: str,
+    image_version_filter: str | None = None,
+) -> list[ImageVersion]:
+    """Limit release candidates to the highest-sorted versions.
+
+    Development versions are exempt from the limit. Warn when an excluded
+    release version explicitly matches ``--image-version`` so a named build is
+    never silently skipped.
+    """
+    release_versions = [version for version in versions if not version.isDevelopmentVersion]
+    dev_versions = [version for version in versions if version.isDevelopmentVersion]
+
+    release_versions.sort(key=version_sort_key, reverse=True)
+    excluded_versions = release_versions[count:]
+    if image_version_filter is not None:
+        for version in excluded_versions:
+            if version_matches(version.name, image_version_filter):
+                log.warning(
+                    f"Version '{version.name}' in image '{image_name}' matches --image-version filter "
+                    f"but is being skipped: excluded by --recent {count}"
+                )
+    return release_versions[:count] + dev_versions
+
+
 def version_matches(ver_name: str, filter_version: str) -> bool:
     """Check if a version name matches a filter by comparing release segments.
 
@@ -398,6 +425,14 @@ class BakerySettings(BaseModel):
             default=False,
         ),
     ]
+    recent: Annotated[
+        int | None,
+        Field(
+            default=None,
+            gt=0,
+            description="Limit non-matrix images to their N highest-sorted release versions.",
+        ),
+    ]
     clean_temporary: Annotated[
         bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
     ]
@@ -533,6 +568,13 @@ class BakeryConfig:
             log.warning(
                 f"--latest ignores development versions; --dev-versions {self.settings.dev_versions.value} "
                 "has no effect on the latest filter."
+            )
+
+        if self.settings.latest and self.settings.recent is not None:
+            log.warning(
+                "--latest is set alongside a recent-version limit; the limit will be applied first, then "
+                "--latest will further reduce to a single version. If no targets result, check that the "
+                "'latest: true' version is within the selected recent releases."
             )
 
         if self.settings.dev_versions in [DevVersionInclusionEnum.ONLY, DevVersionInclusionEnum.INCLUDE]:
@@ -969,7 +1011,7 @@ class BakeryConfig:
                     f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'"
                 )
                 continue
-            versions = image.versions
+            versions = list(image.versions)
             image_name_filter_matched = settings.filter.image_name is not None and re.search(
                 settings.filter.image_name, image.name
             )
@@ -995,6 +1037,13 @@ class BakeryConfig:
                     versions = image.matrix.to_image_versions() + dev_versions_loaded
                 else:
                     versions = image.matrix.to_image_versions()
+            elif image.matrix is None and settings.recent is not None:
+                versions = apply_recent_versions(
+                    versions,
+                    settings.recent,
+                    image.name,
+                    settings.filter.image_version,
+                )
             targets_before = len(targets)
             for version in versions:
                 version_filter_matched = settings.filter.image_version is not None and version_matches(

@@ -147,6 +147,39 @@ class TestBuildLatestFlag:
         assert settings.latest is False
 
 
+class TestBuildRecentFlag:
+    def test_recent_passed_to_settings(self, mock_build_config):
+        result = runner.invoke(
+            app,
+            ["build", "--recent", "2", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        settings = mock_build_config.from_context.call_args[0][1]
+        assert settings.recent == 2
+
+    def test_recent_must_be_positive(self):
+        result = runner.invoke(
+            app,
+            ["build", "--recent", "0", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output
+
+    def test_former_long_option_is_not_supported(self):
+        result = runner.invoke(
+            app,
+            ["build", "--build-version-window", "2", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code != 0
+        assert "No such option" in result.output
+
+
 class TestBuildJobsFlag:
     def test_jobs_passed_to_build_targets(self, mock_build_config):
         instance = mock_build_config.from_context.return_value
