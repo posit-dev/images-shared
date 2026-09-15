@@ -924,6 +924,12 @@ window.onload = function () {
 </tr>
 </tbody>
 </table>
+<section id="limit-builds-to-recent-releases" class="level4">
+<h4 class="anchored" data-anchor-id="limit-builds-to-recent-releases">Limit Builds to Recent Releases</h4>
+<p>Pass <code>--recent N</code> to <code>bakery build</code> or <code>bakery ci matrix</code> to limit a non-matrix image to its N highest-sorted release versions. <code>N</code> must be a positive integer. Development versions are not counted against the limit, and matrix images are not limited.</p>
+<p>The shared GitHub Actions build workflows accept a <code>recent</code> input and pass it to <code>bakery ci matrix</code> as <code>--recent N</code>.</p>
+<p><code>--recent</code> is applied before <code>bakery build --latest</code>. If the version marked <code>latest: true</code> is outside the selected recent releases, no target is selected and the command exits with an error.</p>
+</section>
 <section id="example-image" class="level4">
 <h4 class="anchored" data-anchor-id="example-image">Example Image</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">images</span><span class="kw">:</span></span>

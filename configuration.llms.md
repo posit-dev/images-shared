@@ -141,6 +141,14 @@ An Image represents a container image managed by the project. Each image has one
 
 [TABLE]
 
+#### Limit Builds to Recent Releases
+
+Pass `--recent N` to `bakery build` or `bakery ci matrix` to limit a non-matrix image to its N highest-sorted release versions. `N` must be a positive integer. Development versions are not counted against the limit, and matrix images are not limited.
+
+The shared GitHub Actions build workflows accept a `recent` input and pass it to `bakery ci matrix` as `--recent N`.
+
+`--recent` is applied before `bakery build --latest`. If the version marked `latest: true` is outside the selected recent releases, no target is selected and the command exits with an error.
+
 #### Example Image
 
 ``` yaml
