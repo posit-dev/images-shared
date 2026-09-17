@@ -1,0 +1,407 @@
+name: VIP smoke test
+description: Run a product image smoke test against the images EKS cluster
+
+inputs:
+  product:
+    description: Product to smoke-test
+    required: true
+  image-repository:
+    description: Image repository without a tag
+    required: true
+  image-tag:
+    description: Image tag under test
+    required: true
+  vip-filter:
+    description: Pytest expression passed to VIP
+    required: true
+  pytest-args:
+    description: Additional pytest arguments passed after VIP's -- separator
+    required: false
+    default: ""
+  license-contents:
+    description: Product license contents
+    required: true
+  tailscale-client-id:
+    description: Tailscale OAuth client ID
+    required: true
+  tailscale-secret:
+    description: Tailscale OAuth secret
+    required: true
+  aws-role:
+    description: AWS IAM role to assume for the smoke test
+    required: true
+  cluster:
+    description: EKS cluster name
+    required: true
+  aws-region:
+    description: AWS region containing the EKS cluster
+    required: true
+  vip-image:
+    description: VIP container image
+    required: false
+    default: ghcr.io/posit-dev/vip:latest
+
+runs:
+  using: composite
+  steps:
+    - name: Set smoke test inputs
+      env:
+        PRODUCT: ${{ inputs.product }}
+        IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+        VIP_FILTER: ${{ inputs.vip-filter }}
+        PYTEST_ARGS: ${{ inputs.pytest-args }}
+        CLUSTER: ${{ inputs.cluster }}
+        AWS_REGION: ${{ inputs.aws-region }}
+        VIP_IMAGE: ${{ inputs.vip-image }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "PRODUCT=$PRODUCT"
+          echo "IMAGE_REPOSITORY=$IMAGE_REPOSITORY"
+          echo "IMAGE_TAG=$IMAGE_TAG"
+          echo "VIP_FILTER=$VIP_FILTER"
+          echo "PYTEST_ARGS=$PYTEST_ARGS"
+          echo "CLUSTER=$CLUSTER"
+          echo "AWS_REGION=$AWS_REGION"
+          echo "VIP_IMAGE=$VIP_IMAGE"
+        } >> "$GITHUB_ENV"
+
+    - name: Validate product inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$PRODUCT" in
+          connect|workbench|package-manager) ;;
+          *) echo "::error::Unsupported product: $PRODUCT"; exit 1 ;;
+        esac
+        [ -n "$IMAGE_TAG" ] || {
+          echo "::error::No image tag configured for $PRODUCT"; exit 1;
+        }
+
+    - name: Connect to Tailscale
+      uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3.3.0
+      with:
+        oauth-client-id: ${{ inputs.tailscale-client-id }}
+        oauth-secret: ${{ inputs.tailscale-secret }}
+        tags: tag:platform-gha
+        args: --accept-routes --accept-dns
+        use-cache: true
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+      with:
+        role-to-assume: ${{ inputs.aws-role }}
+        role-session-name: vip-smoke-${{ inputs.product }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Update kubeconfig
+      shell: bash
+      run: aws eks update-kubeconfig --name "$CLUSTER" --region "$AWS_REGION"
+
+    - name: Set product variables
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$PRODUCT" in
+          connect)
+            echo "NS=vip-smoke-connect" >> "$GITHUB_ENV"
+            echo "RELEASE=posit-connect" >> "$GITHUB_ENV"
+            echo "CHART=rstudio/rstudio-connect" >> "$GITHUB_ENV"
+            echo "SERVICE=posit-connect-rstudio-connect" >> "$GITHUB_ENV"
+            echo "LICENSE_SECRET=connect-license" >> "$GITHUB_ENV"
+            echo 'VIP_USERNAME=admin' >> "$GITHUB_ENV"
+            echo 'VIP_PASSWORD=password' >> "$GITHUB_ENV"
+            ;;
+          workbench)
+            echo "NS=vip-smoke-workbench" >> "$GITHUB_ENV"
+            echo "RELEASE=posit-workbench" >> "$GITHUB_ENV"
+            echo "CHART=rstudio/rstudio-workbench" >> "$GITHUB_ENV"
+            echo "SERVICE=posit-workbench-rstudio-workbench" >> "$GITHUB_ENV"
+            echo "LICENSE_SECRET=workbench-license" >> "$GITHUB_ENV"
+            echo 'VIP_USERNAME=pwbadmin' >> "$GITHUB_ENV"
+            echo 'VIP_PASSWORD=p@ssw0rd' >> "$GITHUB_ENV"
+            ;;
+          package-manager)
+            echo "NS=vip-smoke-package-manager" >> "$GITHUB_ENV"
+            echo "RELEASE=posit-package-manager" >> "$GITHUB_ENV"
+            echo "CHART=rstudio/rstudio-pm" >> "$GITHUB_ENV"
+            echo "SERVICE=posit-package-manager-rstudio-pm" >> "$GITHUB_ENV"
+            echo "LICENSE_SECRET=package-manager-license" >> "$GITHUB_ENV"
+            echo 'VIP_USERNAME=' >> "$GITHUB_ENV"
+            echo 'VIP_PASSWORD=' >> "$GITHUB_ENV"
+            ;;
+        esac
+
+    - name: RBAC sanity
+      shell: bash
+      run: |
+        set -euo pipefail
+        kubectl auth can-i create deployments -n "$NS"
+        denied=$(kubectl auth can-i get secrets -n kube-system 2>/dev/null || true)
+        if [ "$denied" != "no" ]; then
+          echo "::error::vip-smoke must NOT access kube-system secrets (got: '${denied:-<error>}')"
+          exit 1
+        fi
+
+    - name: Set up Helm
+      uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
+    - name: Resolve license into an in-namespace Secret
+      env:
+        LICENSE_CONTENTS: ${{ inputs.license-contents }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        trap 'rm -f /tmp/license.lic' EXIT
+        umask 077
+        [ -n "$LICENSE_CONTENTS" ] || {
+          echo "::error::License secret is empty"; exit 1;
+        }
+        printf '%s' "$LICENSE_CONTENTS" > /tmp/license.lic
+        kubectl -n "$NS" create secret generic "$LICENSE_SECRET" \
+          --from-file=license.lic=/tmp/license.lic \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy product
+      shell: bash
+      run: |
+        set -euo pipefail
+        helm repo add rstudio https://helm.rstudio.com
+        helm repo update
+        common=(
+          --namespace "$NS"
+          --set image.repository="$IMAGE_REPOSITORY"
+          --set image.tag="$IMAGE_TAG"
+          --set service.type=ClusterIP
+          --set sharedStorage.create=true
+          --set-string 'sharedStorage.annotations.helm\.sh/resource-policy=delete'
+          --set sharedStorage.storageClassName=gp3
+          --set sharedStorage.requests.storage=1Gi
+          --set license.file.secret="$LICENSE_SECRET"
+        )
+        case "$PRODUCT" in
+          connect)
+            common+=(
+              --set sharedStorage.mount=true
+              --set-string "config.Server.EnvAddress=http://${SERVICE}.${NS}:80"
+              --set-string "config.Launcher.KubernetesNamespace=${NS}"
+            )
+            ;;
+          workbench)
+            common+=(
+              --set homeStorage.create=true
+              --set homeStorage.mount=true
+              --set homeStorage.storageClassName=gp3
+              --set homeStorage.requests.storage=1Gi
+              --set userCreate=true
+            )
+            ;;
+          package-manager)
+            common+=(
+              --set resources.requests.enabled=true
+              --set resources.requests.cpu=1
+              --set resources.requests.memory=2Gi
+              --set sharedStorage.accessModes[0]=ReadWriteOnce
+              --set config.Sqlite.NoNFSCheck=true
+            )
+            ;;
+        esac
+        helm upgrade --install "$RELEASE" "$CHART" "${common[@]}" \
+          --wait --timeout 10m --atomic
+
+    - name: Run VIP smoke check
+      shell: bash
+      run: |
+        set -euo pipefail
+        url="http://${SERVICE}.${NS}.svc:80"
+        case "$PRODUCT" in
+          connect)
+            cat > vip.toml <<EOF
+        [connect]
+        enabled = true
+        url = "${url}"
+        EOF
+            ;;
+          workbench)
+            cat > vip.toml <<EOF
+        [workbench]
+        enabled = true
+        url = "${url}"
+        EOF
+            ;;
+          package-manager)
+            cat > vip.toml <<EOF
+        [package_manager]
+        enabled = true
+        url = "${url}"
+        EOF
+            ;;
+        esac
+        kubectl -n "$NS" create configmap vip-config \
+          --from-file=vip.toml=vip.toml \
+          --dry-run=client -o yaml | kubectl apply -f -
+        kubectl -n "$NS" delete job vip-smoke --ignore-not-found --wait=true
+        cat <<EOF | kubectl apply -f -
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: vip-smoke
+          namespace: ${NS}
+        spec:
+          backoffLimit: 0
+          activeDeadlineSeconds: 600
+          template:
+            spec:
+              nodeSelector:
+                kubernetes.io/arch: amd64
+              restartPolicy: Never
+              automountServiceAccountToken: false
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+              containers:
+                - name: vip
+                  image: ${VIP_IMAGE}
+                  command: ["sh", "-c"]
+                  args:
+                    - >-
+                      exec uv run vip verify --config /config/vip.toml
+                      --filter "\$VIP_FILTER" --report /report/results.json
+                      \$PYTEST_ARGS
+                  env:
+                    - name: VIP_FILTER
+                      value: "${VIP_FILTER}"
+                    - name: PYTEST_ARGS
+                      value: "${PYTEST_ARGS}"
+                    - name: VIP_TEST_USERNAME
+                      value: "${VIP_USERNAME}"
+                    - name: VIP_TEST_PASSWORD
+                      value: "${VIP_PASSWORD}"
+                  resources:
+                    requests:
+                      cpu: "250m"
+                      memory: "512Mi"
+                  volumeMounts:
+                    - name: vip-config
+                      mountPath: /config
+                    - name: vip-report
+                      mountPath: /report
+              volumes:
+                - name: vip-config
+                  configMap:
+                    name: vip-config
+                - name: vip-report
+                  emptyDir: {}
+        EOF
+        result=timeout
+        for _ in $(seq 1 132); do
+          succeeded=$(kubectl -n "$NS" get job vip-smoke -o jsonpath='{.status.succeeded}' 2>/dev/null || true)
+          failed=$(kubectl -n "$NS" get job vip-smoke -o jsonpath='{.status.failed}' 2>/dev/null || true)
+          if [ "$succeeded" = "1" ]; then result=ok; echo "vip status PASSED"; break; fi
+          if [ -n "$failed" ] && [ "$failed" -ge 1 ]; then result=fail; echo "vip status FAILED"; break; fi
+          sleep 5
+        done
+        if [ "$result" = timeout ]; then
+          echo "vip status TIMED OUT (job did not complete)"
+        fi
+        kubectl -n "$NS" logs job/vip-smoke > vip-smoke.log 2>&1 || true
+        pod=$(kubectl -n "$NS" get pods -l job-name=vip-smoke -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        if [ -n "$pod" ]; then
+          kubectl -n "$NS" cp "$pod:/report/results.json" vip-results.json 2>/dev/null || true
+        fi
+        cat vip-smoke.log
+        [ "$result" = ok ]
+
+    - name: Parse VIP results
+      id: vip-results
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        log=vip-smoke.log
+        if grep -q "vip status PASSED" "$log" 2>/dev/null; then
+          status=PASSED
+        elif grep -q "vip status FAILED" "$log" 2>/dev/null; then
+          status=FAILED
+        else
+          status=TIMED_OUT
+        fi
+        summary=$(grep -E '[0-9]+ (passed|failed|error|errors|skipped)' "$log" 2>/dev/null | tail -1 || true)
+        summary=${summary:-No pytest summary found}
+        count() {
+          printf '%s\n' "$summary" | grep -oE "[0-9]+ $1" | awk '{print $1}' | head -1 || true
+        }
+        passed=$(count passed); failed=$(count failed); errors=$(count 'errors?'); skipped=$(count skipped)
+        passed=${passed:-0}; failed=${failed:-0}; errors=${errors:-0}; skipped=${skipped:-0}
+        total=$((passed + failed + errors + skipped))
+        {
+          echo "status=$status"
+          echo "summary=$summary"
+          echo "passed=$passed"
+          echo "failed=$failed"
+          echo "errors=$errors"
+          echo "skipped=$skipped"
+          echo "total=$total"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Upload VIP log
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: vip-smoke-${{ inputs.product }}
+        path: |
+          vip-smoke.log
+          vip-results.json
+        if-no-files-found: ignore
+
+    - name: Publish VIP results to job summary
+      if: always()
+      env:
+        VIP_STATUS: ${{ steps.vip-results.outputs.status }}
+        VIP_SUMMARY: ${{ steps.vip-results.outputs.summary }}
+        VIP_PASSED: ${{ steps.vip-results.outputs.passed }}
+        VIP_FAILED: ${{ steps.vip-results.outputs.failed }}
+        VIP_ERRORS: ${{ steps.vip-results.outputs.errors }}
+        VIP_SKIPPED: ${{ steps.vip-results.outputs.skipped }}
+        VIP_TOTAL: ${{ steps.vip-results.outputs.total }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "## VIP smoke results: ${PRODUCT}"
+          echo
+          echo "**Status:** ${VIP_STATUS:-UNKNOWN}"
+          echo
+          echo '| Result | Count |'
+          echo '|---|---:|'
+          echo "| ✅ Passed | ${VIP_PASSED:-0} |"
+          echo "| ❌ Failed | ${VIP_FAILED:-0} |"
+          echo "| ⚠️ Errors | ${VIP_ERRORS:-0} |"
+          echo "| ⏭️ Skipped | ${VIP_SKIPPED:-0} |"
+          echo "| 📝 **Total** | **${VIP_TOTAL:-0}** |"
+          echo
+          echo "**Pytest:** ${VIP_SUMMARY:-No pytest summary found}"
+          echo
+          echo '<details><summary>Full VIP output</summary>'
+          echo
+          echo '```text'
+          if [ -f vip-smoke.log ]; then cat vip-smoke.log; else echo 'vip-smoke.log was not produced'; fi
+          echo '```'
+          echo '</details>'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Teardown
+      if: always()
+      shell: bash
+      run: |
+        set -uo pipefail
+        helm uninstall "$RELEASE" -n "$NS" --wait --timeout 5m || true
+        kubectl -n "$NS" delete job vip-smoke --ignore-not-found
+        kubectl -n "$NS" delete configmap vip-config --ignore-not-found
+        kubectl -n "$NS" delete secret "$LICENSE_SECRET" --ignore-not-found
+        kubectl -n "$NS" delete pvc --all --ignore-not-found
+        left=$(kubectl -n "$NS" get all,pvc,secret -o name | grep -v '^service/kubernetes$' || true)
+        [ -z "$left" ] || echo "::warning::residual objects in $NS: $left"
