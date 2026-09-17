@@ -10,6 +10,15 @@ This repository provides reusable GitHub Actions workflows and composite actions
 
 For the cross-repo dispatch chain (product repo → image repo → helm chart), see [Cross-repository workflows](./CI_CROSS_REPO_WORKFLOWS.md).
 
+## Reference policy
+
+| Consumer | Ref | Notes |
+|---|---|---|
+| Product repos and community consumers | `@v0` | Moving major alias, currently tracking `main` HEAD. Will track releases once release cadence is formalized. |
+| Builds on self-hosted Posit runners | Full 40-character commit SHA | A moving tag changes what runs immediately and without a version bump to opt into, which is not an acceptable contract for Posit-hosted runners. |
+
+The `v0` tag is advanced automatically by [`tag.yml`](.github/workflows/tag.yml) on every push to `main`.
+
 ## Reusable workflows
 
 | Workflow | Purpose | Pushes? |
@@ -82,7 +91,7 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `version` | No | `main` | Bakery version to install (release tag or branch). |
+| `version` | No | `v0` | Bakery version to install (release tag or branch). |
 | `context` | No | `.` | Path to the bakery context (project root). |
 | `dev-versions` | No | `exclude` | Dev version filter. One of `include`, `exclude`, `only`. |
 | `matrix-versions` | No | `exclude` | Matrix version filter (e.g., R × Python content or session images). One of `include`, `exclude`, `only`. |
@@ -125,7 +134,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: posit-dev/images-shared/.github/workflows/bakery-build-native.yml@main
+    uses: posit-dev/images-shared/.github/workflows/bakery-build-native.yml@v0
     secrets:
       DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       DOCKER_HUB_README_USERNAME: ${{ secrets.DOCKER_HUB_README_USERNAME }}
@@ -187,7 +196,7 @@ Builds, tests, and optionally pushes images on a single runner using QEMU for cr
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `version` | No | `main` | Bakery version to install. |
+| `version` | No | `v0` | Bakery version to install. |
 | `context` | No | `.` | Path to the bakery context. |
 | `dev-versions` | No | `exclude` | Dev version filter (`include`, `exclude`, `only`). |
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
@@ -242,7 +251,7 @@ Fork-safe variant for pull requests. Inherits only `GITHUB_TOKEN`, never pushes,
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `version` | No | `main` | Bakery version to install. |
+| `version` | No | `v0` | Bakery version to install. |
 | `context` | No | `.` | Path to the bakery context. |
 | `dev-versions` | No | `exclude` | Dev version filter (`include`, `exclude`, `only`). |
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
@@ -267,7 +276,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@main
+    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@v0
     with:
       dev-versions: "exclude"
       matrix-versions: "exclude"
@@ -276,7 +285,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@main
+    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@v0
     with:
       dev-versions: "only"
       matrix-versions: "exclude"
@@ -285,7 +294,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@main
+    uses: posit-dev/images-shared/.github/workflows/bakery-build-pr.yml@v0
     with:
       matrix-versions: "only"
 ```
@@ -327,7 +336,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: posit-dev/images-shared/.github/workflows/product-release.yml@main
+    uses: posit-dev/images-shared/.github/workflows/product-release.yml@v0
     with:
       version: ${{ inputs.version }}
       images: "connect connect-content-init"
@@ -354,7 +363,7 @@ Cleans the GHCR cache registry and the temporary registry that `bakery-build-nat
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `version` | No | `main` | Bakery version to install. |
+| `version` | No | `v0` | Bakery version to install. |
 | `context` | No | `.` | Path to the bakery context. |
 | `clean-caches` | No | `true` | Run the `clean-caches` job. |
 | `remove-dangling-caches` | No | `true` | Delete untagged cache entries. |
@@ -383,7 +392,7 @@ clean:
     contents: read
     packages: write
   needs: [build]
-  uses: posit-dev/images-shared/.github/workflows/clean.yml@main
+  uses: posit-dev/images-shared/.github/workflows/clean.yml@v0
   with:
     remove-dangling-caches: true
     remove-caches-older-than: 14
@@ -399,7 +408,7 @@ Runs [hadolint](https://github.com/hadolint/hadolint) against every rendered Con
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `version` | No | `main` | Bakery version to install. |
+| `version` | No | `v0` | Bakery version to install. |
 | `hadolint-version` | No | `latest` | Hadolint release version (e.g., `v2.12.0`). |
 | `context` | No | `.` | Path to the bakery context. |
 

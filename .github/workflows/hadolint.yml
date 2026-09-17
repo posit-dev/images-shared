@@ -4,7 +4,7 @@ on:
     inputs:
       version:
         description: "The version of the Posit Bakery tool to install"
-        default: "main"
+        default: "v0"
         required: false
         type: string
       hadolint-version:
@@ -42,13 +42,13 @@ jobs:
           persist-credentials: false
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           restore-cache: "false"
 
       - name: Setup hadolint
-        uses: "posit-dev/images-shared/setup-hadolint@main"
+        uses: "posit-dev/images-shared/setup-hadolint@v0"
         with:
           version: ${{ inputs.hadolint-version }}
           base_path: ${{ inputs.context }}

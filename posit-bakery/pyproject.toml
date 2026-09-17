@@ -116,6 +116,9 @@ docs = [
 
 
 [tool.uv-dynamic-versioning]
+# Only match full version tags (e.g. v0.6.0), not floating alias
+# tags like v0 which do not carry parseable version information.
+pattern = "^v(?P<base>\\d+\\.\\d+\\.\\d+).*$"
 format-jinja = """
 {% if distance == 0 -%}
 {{ serialize_pep440(base, stage, revision) }}

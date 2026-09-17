@@ -17,7 +17,7 @@ on:
     inputs:
       version:
         description: "Bakery version to install"
-        default: "main"
+        default: "v0"
         required: false
         type: string
       context:
@@ -106,7 +106,7 @@ jobs:
 
       - name: Install
         id: setup-bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
@@ -183,7 +183,7 @@ jobs:
           persist-credentials: false
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
 
@@ -223,13 +223,13 @@ jobs:
           persist-credentials: false
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@main"
+        uses: "posit-dev/images-shared/setup-goss@v0"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1  # v5.4.0
@@ -380,7 +380,7 @@ jobs:
           persist-credentials: false
 
       - name: Install
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
 

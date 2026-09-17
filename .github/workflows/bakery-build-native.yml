@@ -9,7 +9,7 @@ on:
     inputs:
       version:
         description: "The version of the Posit Bakery tool to install"
-        default: "main"
+        default: "v0"
         required: false
         type: string
       context:
@@ -172,7 +172,7 @@ jobs:
 
       - name: Install
         id: setup-bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
@@ -271,13 +271,13 @@ jobs:
           persist-credentials: false
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
 
       - name: Setup goss
-        uses: "posit-dev/images-shared/setup-goss@main"
+        uses: "posit-dev/images-shared/setup-goss@v0"
 
       - name: Set up Docker
         uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1  # v5.4.0
@@ -311,7 +311,7 @@ jobs:
 
       - name: Setup wizcli
         if: ${{ inputs.push && steps.filter-steps.outputs.wiz-auth == 'true' }}
-        uses: "posit-dev/images-shared/setup-wizcli@main"
+        uses: "posit-dev/images-shared/setup-wizcli@v0"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
@@ -578,7 +578,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
@@ -640,7 +640,7 @@ jobs:
         uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d  # v2.0.1
 
       - name: Setup SOCI
-        uses: "posit-dev/images-shared/setup-soci@main"
+        uses: "posit-dev/images-shared/setup-soci@v0"
 
       - name: Download Metadata
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
@@ -726,7 +726,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
 
@@ -791,7 +791,7 @@ jobs:
       # matrix already covered. It's also last in the job DAG, so nothing
       # would ever restore a save from here anyway.
       - name: Setup bakery
-        uses: "posit-dev/images-shared/setup-bakery@main"
+        uses: "posit-dev/images-shared/setup-bakery@v0"
         with:
           version: ${{ inputs.version }}
           cache-scope: ${{ toJSON(inputs) }}
