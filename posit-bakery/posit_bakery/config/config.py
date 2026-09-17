@@ -1,19 +1,15 @@
 import atexit
 import io
-import json
 import logging
 import os
 import re
 import shutil
-import time
-from datetime import timedelta
 from pathlib import Path
-from typing import Annotated, Callable, Self, Any
+from typing import Annotated, Self
 
 import jinja2
 import pydantic
-from pydantic import Field, model_validator, field_validator, BaseModel
-from python_on_whales import DockerException
+from pydantic import Field, model_validator, field_validator
 from ruamel.yaml import YAML
 
 from posit_bakery import util
@@ -25,58 +21,18 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
-from posit_bakery.config.image.dev_version.spec import DevBuildSpec
-from posit_bakery.config.image.parsed_version import ParsedVersion, version_sort_key
-from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, CALVER_REGEX_PATTERN
-from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.config.image.parsed_version import version_matches
+from posit_bakery.config.image.posit_product.const import CALVER_REGEX_PATTERN
+from posit_bakery.config.settings import BakerySettings, BakeryConfigFilter
+from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
+from posit_bakery.targets.selection import select_targets
 from posit_bakery.error import (
-    BakeryError,
-    BakeryToolRuntimeError,
     BakeryFileError,
-    BakeryBuildErrorGroup,
     BakeryRenderError,
     BakeryRenderErrorGroup,
 )
-from posit_bakery.image.bake.bake import BakePlan
-from posit_bakery.image.image_metadata import MetadataFile
-from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy, ImageTargetSettings
-from posit_bakery.parallel import ParallelShellExecutor, PrefixedLogSink, ShellJob, resolve_max_workers
-from posit_bakery.registry_management import ghcr
-from posit_bakery.settings import SETTINGS
 
 log = logging.getLogger(__name__)
-
-_RETRY_DELAY_SECONDS = 5
-
-
-def _retry_build(fn, retry: int, label: str, sleep: Callable[[float], None] | None = None) -> None:
-    """Attempt fn() up to (retry + 1) times, re-raising on final failure.
-
-    :param fn: The function to call.
-    :param retry: Number of retries (0 means no retries, just one attempt).
-    :param label: A label for logging purposes.
-    :param sleep: Sleep function used between retry attempts. When omitted (``None``),
-        ``time.sleep`` is looked up fresh on each call rather than bound as a parameter
-        default, so tests that ``patch("posit_bakery.config.config.time.sleep")`` keep
-        working. Pass ``CommandRunner.sleep`` when retrying inside a parallel job so
-        backoff waits notice a shutdown request promptly instead of blocking process exit.
-    """
-    effective_sleep = sleep if sleep is not None else time.sleep
-    for attempt in range(retry + 1):
-        try:
-            fn()
-            return
-        except BakeryFileError:
-            raise  # Never retry file errors
-        except (DockerException, BakeryToolRuntimeError):
-            if attempt < retry:
-                log.warning(
-                    f"Build failed for '{label}' (attempt {attempt + 1}/{retry + 1}). "
-                    f"Retrying in {_RETRY_DELAY_SECONDS}s..."
-                )
-                effective_sleep(_RETRY_DELAY_SECONDS)
-            else:
-                raise
 
 
 class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
@@ -256,190 +212,6 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         return new_image
 
 
-def apply_recent_versions(
-    versions: list[ImageVersion],
-    count: int,
-    image_name: str,
-    image_version_filter: str | None = None,
-) -> list[ImageVersion]:
-    """Limit release candidates to the highest-sorted versions.
-
-    Development versions are exempt from the limit. Warn when an excluded
-    release version explicitly matches ``--image-version`` so a named build is
-    never silently skipped.
-    """
-    release_versions = [version for version in versions if not version.isDevelopmentVersion]
-    dev_versions = [version for version in versions if version.isDevelopmentVersion]
-
-    release_versions.sort(key=version_sort_key, reverse=True)
-    excluded_versions = release_versions[count:]
-    if image_version_filter is not None:
-        for version in excluded_versions:
-            if version_matches(version.name, image_version_filter):
-                log.warning(
-                    f"Version '{version.name}' in image '{image_name}' matches --image-version filter "
-                    f"but is being skipped: excluded by --recent {count}"
-                )
-    return release_versions[:count] + dev_versions
-
-
-def version_matches(ver_name: str, filter_version: str) -> bool:
-    """Check if a version name matches a filter by comparing release segments.
-
-    Uses ParsedVersion when both strings are parseable; falls back to
-    dot-separated segment comparison for short filters like "2026".
-
-    Supports exact matches and prefix matches at segment boundaries:
-      "2026.05" matches "2026.05.0-dev+15-gSHA"
-      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
-      "2026" matches all 2026.x versions
-    """
-    if ver_name == filter_version:
-        return True
-    ver = ParsedVersion.parse(ver_name)
-    filt = ParsedVersion.parse(filter_version)
-    if ver is not None and filt is not None:
-        if ver.dep_versions is not None or filt.dep_versions is not None:
-            if ver.dep_versions is None or filt.dep_versions is None:
-                return False
-            return ver.dep_versions[: len(filt.dep_versions)] == filt.dep_versions
-        return ver.release[: len(filt.release)] == filt.release and (
-            filt.prerelease is None or ver.prerelease == filt.prerelease
-        )
-    # Fallback for unparseable filters (e.g. single-segment "2026")
-    ver_parts = ver_name.split(".")
-    filter_parts = filter_version.split(".")
-    if len(filter_parts) > len(ver_parts):
-        return False
-    return all(v == f or v.startswith(f + "-") for v, f in zip(ver_parts, filter_parts))
-
-
-class BakeryConfigFilter(BaseModel):
-    """Container for filtering options when generating image targets from the BakeryConfig."""
-
-    image_name: Annotated[
-        str | None, Field(description="Name or regex pattern of the image to filter by.", default=None)
-    ]
-    image_variant: Annotated[
-        str | None, Field(description="Name or regex pattern of the image variant to filter by.", default=None)
-    ]
-    image_version: Annotated[str | None, Field(description="Version string or prefix to filter by.", default=None)]
-    image_os: Annotated[
-        str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
-    ]
-    image_platform: Annotated[
-        list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
-    ]
-
-
-class BakerySettings(BaseModel):
-    """Container for global settings that can be applied to the BakeryConfig."""
-
-    filter: BakeryConfigFilter = Field(
-        default_factory=BakeryConfigFilter, description="Filter(s) to apply when generating image targets."
-    )
-    dev_versions: Annotated[
-        DevVersionInclusionEnum,
-        Field(
-            description="Include or exclude development versions defined in config.",
-            default=DevVersionInclusionEnum.EXCLUDE,
-        ),
-    ]
-    dev_channel: Annotated[
-        ReleaseChannelEnum | None,
-        Field(
-            default=None,
-            description="Filter development versions to a specific release channel.",
-        ),
-    ] = None
-    dev_spec: Annotated[
-        DevBuildSpec | None,
-        Field(
-            default=None,
-            description="Pinned dev build spec from a workflow dispatch. When set, overrides "
-            "CDN discovery for the matching channel dev version.",
-        ),
-    ] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_dev_stream_to_dev_channel(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        if "dev_stream" in data and data.get("dev_channel") is None:
-            import warnings
-
-            warnings.warn(
-                "BakerySettings: 'dev_stream' is deprecated, use 'dev_channel' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            data = dict(data)
-            data["dev_channel"] = data.pop("dev_stream")
-        elif "dev_stream" in data:
-            # dev_channel already set — dev_channel wins, drop the stale dev_stream key
-            data = dict(data)
-            data.pop("dev_stream")
-        return data
-
-    @property
-    def dev_stream(self) -> ReleaseChannelEnum | None:
-        """Deprecated: use dev_channel."""
-        import warnings
-
-        warnings.warn(
-            "BakerySettings.dev_stream is deprecated, use dev_channel instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.dev_channel
-
-    @property
-    def effective_dev_channel(self) -> ReleaseChannelEnum | None:
-        """Channel used to filter dev versions, honoring both --dev-channel and --dev-spec.
-
-        A --dev-spec carrying a channel implies dev versions should be filtered to
-        that channel. The shared CI workflow folds the dispatched channel into the
-        dev-spec and stops passing --dev-channel, so without this derivation the
-        other channels' dev versions leak through both the matrix output and the
-        build target list. --dev-channel wins when explicitly set; _apply_dev_spec
-        validates that the two never conflict.
-        """
-        if self.dev_channel is not None:
-            return self.dev_channel
-        if self.dev_spec is not None:
-            return self.dev_spec.channel
-        return None
-
-    matrix_versions: Annotated[
-        MatrixVersionInclusionEnum,
-        Field(
-            description="Include or exclude versions defined in image matrix.",
-            default=MatrixVersionInclusionEnum.EXCLUDE,
-        ),
-    ]
-    latest: Annotated[
-        bool,
-        Field(
-            description="Build only the latest version of each image. Development versions are ignored.",
-            default=False,
-        ),
-    ]
-    recent: Annotated[
-        int | None,
-        Field(
-            default=None,
-            gt=0,
-            description="Limit non-matrix images to their N highest-sorted release versions.",
-        ),
-    ]
-    clean_temporary: Annotated[
-        bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
-    ]
-    cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
-    temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
-
-
 def _extract_calver_minor(version: str) -> str:
     """Extract the YYYY.MM segment from a CalVer version string.
 
@@ -522,11 +294,6 @@ class BakeryConfig:
     :var base_path: The base path where the bakery.yaml file is located.
     :var model: The BakeryConfigDocument model representation of the bakery.yaml file.
     :var targets: List of ImageTarget objects representing the image build targets defined in the config.
-    :var last_build_succeeded_uids: UIDs that succeeded in the most recent `build_targets()`
-        call with `strategy=ImageBuildStrategy.BUILD`; `None` after a `BAKE`-strategy call,
-        which has no per-target result to report. Consumed by `--summary` to avoid measuring
-        a size for a target that failed this run off whatever it happens to find already
-        sitting at that target's tag.
     """
 
     def __init__(self, config_file: str | Path | os.PathLike, settings: BakerySettings | None = None):
@@ -586,10 +353,6 @@ class BakeryConfig:
                 image.render_ephemeral_version_files()
                 if self.settings.clean_temporary:
                     atexit.register(image.remove_ephemeral_version_files)
-
-        self.targets = []
-        self.generate_image_targets(self.settings)
-        self.last_build_succeeded_uids: set[str] | None = None
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
@@ -964,6 +727,16 @@ class BakeryConfig:
                 raise exceptions[0]
             raise BakeryRenderErrorGroup("Multiple errors occurred while rendering templates.", exceptions)
 
+    @property
+    def targets(self) -> list:
+        """Convenience property that returns selected image targets using current settings.
+
+        Delegates to targets.selection.select_targets() for backward compatibility.
+        Tests and code that accessed config.targets directly should migrate to explicitly
+        calling select_targets(config, settings), but this property eases the transition.
+        """
+        return select_targets(self, self.settings)
+
     def remove_version(self, image_name: str, version_name: str) -> None:
         """Removes an existing version from an image in the config.
 
@@ -998,369 +771,3 @@ class BakeryConfig:
 
         # Remove the version from the model.
         image.versions.remove(version)
-
-    def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
-        """Generates image targets from the images defined in the config.
-
-        :param settings: Optional settings to apply when generating image targets. If None, all images will be included.
-        """
-        targets: list[ImageTarget] = []
-        for image in self.model.images:
-            if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
-                log.debug(
-                    f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'"
-                )
-                continue
-            versions = list(image.versions)
-            image_name_filter_matched = settings.filter.image_name is not None and re.search(
-                settings.filter.image_name, image.name
-            )
-            if (image.matrix is None and settings.matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
-                image.matrix is not None and settings.matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
-            ):
-                if image_name_filter_matched:
-                    reason = (
-                        "matrix image excluded by default (use --matrix-versions include)"
-                        if image.matrix is not None
-                        else "non-matrix image excluded by --matrix-versions only"
-                    )
-                    log.warning(f"Image '{image.name}' matches --image-name filter but is being skipped: {reason}")
-                continue
-            elif image.matrix is not None and settings.matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                if settings.dev_versions == DevVersionInclusionEnum.ONLY:
-                    # Dev versions are already in image.versions (from load_dev_versions()).
-                    # Matrix production versions (isDevelopmentVersion=False) would all be
-                    # filtered out by --dev-versions only, so there is nothing to merge.
-                    pass
-                elif settings.dev_versions == DevVersionInclusionEnum.INCLUDE:
-                    dev_versions_loaded = [v for v in image.versions if v.isDevelopmentVersion]
-                    versions = image.matrix.to_image_versions() + dev_versions_loaded
-                else:
-                    versions = image.matrix.to_image_versions()
-            elif image.matrix is None and settings.recent is not None:
-                versions = apply_recent_versions(
-                    versions,
-                    settings.recent,
-                    image.name,
-                    settings.filter.image_version,
-                )
-            targets_before = len(targets)
-            for version in versions:
-                version_filter_matched = settings.filter.image_version is not None and version_matches(
-                    version.name, settings.filter.image_version
-                )
-                included, reason = version.matches_dev_filter(settings.dev_versions, settings.effective_dev_channel)
-                if not included:
-                    if version_filter_matched:
-                        log.warning(
-                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                            f"but is being skipped: {reason}"
-                        )
-                    else:
-                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
-                    continue
-                if settings.filter.image_version is not None and not version_matches(
-                    version.name, settings.filter.image_version
-                ):
-                    log.debug(
-                        f"Skipping image version '{version.name}' in image '{image.name}' "
-                        f"due to not matching version filter '{settings.filter.image_version}'"
-                    )
-                    continue
-                included, reason = version.matches_latest_filter(settings.latest)
-                if not included:
-                    if version_filter_matched:
-                        log.warning(
-                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                            f"but is being skipped: {reason}"
-                        )
-                    else:
-                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
-                    continue
-                for variant in image.variants or [None]:
-                    if (
-                        settings.filter.image_variant is not None
-                        and re.search(settings.filter.image_variant, variant.name) is None
-                    ):
-                        log.debug(
-                            f"Skipping image variant '{variant.name}' in image '{image.name}' "
-                            f"due to not matching variant filter '{settings.filter.image_variant}'"
-                        )
-                        continue
-                    for _os in version.os or [None]:
-                        if settings.filter.image_os is not None and _os is None:
-                            log.warning(
-                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-os "
-                                "filter is set. --image-os filter will be ignored for this image version."
-                            )
-                        elif (
-                            settings.filter.image_os is not None
-                            and re.search(settings.filter.image_os, _os.name) is None
-                        ):
-                            log.debug(
-                                f"Skipping image OS '{_os.name}' in image '{image.name}' "
-                                f"due to not matching OS filter '{settings.filter.image_os}'"
-                            )
-                            continue
-                        if settings.filter.image_platform and _os is None:
-                            log.warning(
-                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-platform "
-                                "filter is set. --image-platform filter will be ignored for this image version."
-                            )
-                        elif settings.filter.image_platform and all(
-                            re.search(filter_platform, platform) is None
-                            for platform in _os.platforms
-                            for filter_platform in settings.filter.image_platform
-                        ):
-                            log.debug(
-                                f"Skipping image '{image.name}' "
-                                f"due to no matching platforms for patterns {settings.filter.image_platform}, "
-                                f"supported platforms are: {', '.join(_os.platforms)}"
-                            )
-                            continue
-                        targets.append(
-                            ImageTarget.new_image_target(
-                                repository=self.model.repository,
-                                image_version=version,
-                                image_variant=variant,
-                                image_os=_os,
-                                settings=ImageTargetSettings(
-                                    temp_registry=settings.temp_registry, cache_registry=settings.cache_registry
-                                ),
-                            )
-                        )
-            if image_name_filter_matched and len(targets) == targets_before:
-                log.warning(
-                    f"Image '{image.name}' matches --image-name filter but yielded no targets after applying "
-                    f"other filters (--image-version, --image-variant, --image-os, --image-platform, --dev-versions)"
-                )
-
-        targets = sorted(targets, key=lambda t: str(t))
-
-        # Build metadata is matched to targets by UID, so a duplicate would let one
-        # build's artifacts be pushed as another's. Fail fast.
-        seen: dict[str, ImageTarget] = {}
-        for target in targets:
-            if target.uid in seen:
-                raise BakeryError(
-                    f"Duplicate image target UID '{target.uid}': two targets resolve to the same "
-                    f"image, version, variant, OS, and release channel ({target.release_channel.value}). "
-                    "Check for a duplicate version definition or multiple development channels "
-                    "resolving to the same version."
-                )
-            seen[target.uid] = target
-
-        self.targets = targets
-
-    def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
-        """Returns an image target by its UID.
-        :param uid: The UID of the image target to find.
-        :return: The ImageTarget with the given UID, or None if not found.
-        """
-        for target in self.targets:
-            if target.uid == uid:
-                return target
-        return None
-
-    def _merge_sequential_build_metadata_files(self) -> dict[str, Any]:
-        """Merges all sequential build metadata files generated during image builds.
-
-        :return: A dictionary containing the merged metadata.
-        """
-        merged_metadata: dict[str, dict[str, Any]] = {}
-        for target in self.targets:
-            for build_metadata in target.build_metadata:
-                merged_metadata[target.uid] = build_metadata.model_dump(exclude_none=True, by_alias=True)
-
-        return merged_metadata
-
-    def load_build_metadata_from_file(self, metadata_file: Path) -> list[str]:
-        """Loads build metadata from a given metadata file.
-
-        :param metadata_file: Path to the metadata file to load.
-        :return: A list of targets loaded.
-        """
-        metadata_file = MetadataFile.load(metadata_file)
-
-        targets_loaded = []
-        for target in self.targets:
-            result = target.load_build_metadata_from_file(metadata_file)
-            if result is not None:
-                targets_loaded.append(target.uid)
-                log.info(f"Loaded build metadata for target '{target}' from file '{metadata_file.filepath}'.")
-
-        return targets_loaded
-
-    def bake_plan_targets(self, push: bool = False) -> str:
-        """Generates a bake plan JSON string for the image targets defined in the config.
-
-        :param push: When True, include cache-to exports in the bake plan so that
-            cache layers are written to the registry alongside the built images.
-        """
-        bake_plan = BakePlan.from_image_targets(context=self.base_path, image_targets=self.targets, push=push)
-        return bake_plan.model_dump_json(indent=2, exclude_none=True, by_alias=True)
-
-    def build_targets(
-        self,
-        load: bool = True,
-        push: bool = False,
-        pull: bool = False,
-        cache: bool = True,
-        platforms: list[str] | None = None,
-        strategy: ImageBuildStrategy = ImageBuildStrategy.BAKE,
-        metadata_file: Path | None = None,
-        fail_fast: bool = False,
-        retry: int = 0,
-        jobs: int | None = None,
-    ):
-        """Build image targets using the specified strategy.
-
-        :param load: If True, load the built images into the local Docker daemon.
-        :param push: If True, push the built images to the configured registries.
-        :param pull: If True, always pull the latest version of base images.
-        :param cache: If True, use the build cache when building images.
-        :param platforms: Optional list of platforms to build for. If None, builds for the configuration specified
-            platform.
-        :param strategy: The strategy to use when building images.
-        :param metadata_file: Optional path to a metadata file to write build metadata to.
-        :param fail_fast: If True, stop building targets on the first failure. Only affects
-            targets whose build has not yet started; already-running builds finish.
-        :param retry: Number of times to retry a failed build (default 0, no retries).
-        :param jobs: Maximum number of targets to build concurrently for `--strategy build`
-            (ignored for `--strategy bake`, which manages its own parallelism). Falls back to
-            `SETTINGS.max_concurrency` when not given.
-
-        Sets `self.last_build_succeeded_uids` as a side effect: the UIDs that succeeded, for
-        `strategy=BUILD` (even when this call goes on to raise for the ones that didn't); reset
-        to `None` for `strategy=BAKE`, which has no per-target result to give.
-        """
-        self.last_build_succeeded_uids = None
-        if strategy == ImageBuildStrategy.BAKE:
-            bake_plan = BakePlan.from_image_targets(
-                context=self.base_path, image_targets=self.targets, platforms=platforms, push=push
-            )
-            set_opts = None
-            if self.settings.temp_registry is not None and push:
-                set_opts = {
-                    "*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True},
-                    "*.attest": "type=provenance,disabled=true",
-                }
-            _retry_build(
-                lambda: bake_plan.build(
-                    load=load,
-                    push=push,
-                    pull=pull,
-                    cache=cache,
-                    clean_bakefile=self.settings.clean_temporary,
-                    platforms=platforms,
-                    set_opts=set_opts,
-                    metadata_file=metadata_file,
-                ),
-                retry=retry,
-                label="bake plan",
-            )
-            if metadata_file is not None:
-                self.load_build_metadata_from_file(metadata_file)
-        elif strategy == ImageBuildStrategy.BUILD:
-            sink = PrefixedLogSink()
-            # Mirrors ImageTarget.build()'s own quiet check: streaming is pointless (and
-            # forces docker's "plain" progress mode) when -q means the lines are discarded.
-            quiet = SETTINGS.log_level >= logging.ERROR
-            shell_jobs = [
-                ShellJob(
-                    key=target.uid,
-                    label=str(target),
-                    run=lambda runner, t=target: _retry_build(
-                        lambda: t.build(
-                            load=load,
-                            push=push,
-                            pull=pull,
-                            cache=cache,
-                            platforms=platforms,
-                            metadata_file=True if metadata_file else None,
-                            log_callback=None if quiet else (lambda line, u=t.uid: sink.write(u, line)),
-                        ),
-                        retry=retry,
-                        label=str(t),
-                        # python_on_whales owns the build subprocess and doesn't expose its Popen
-                        # (utils.py), so a mid-build target can't be cancelled -- only the
-                        # inter-attempt backoff can. Routing it through runner.sleep lets
-                        # --fail-fast/shutdown interrupt a queued retry instead of blocking on it.
-                        sleep=runner.sleep,
-                    ),
-                )
-                for target in self.targets
-            ]
-            executor = ParallelShellExecutor(max_workers=resolve_max_workers(jobs, len(shell_jobs)), use_live=False)
-            job_results = executor.run_jobs(shell_jobs, fail_fast=fail_fast)
-            self.last_build_succeeded_uids = {jr.job.key for jr in job_results if jr.ok}
-
-            errors: list[Exception] = []
-            for jr in job_results:
-                if not jr.ok:
-                    log.error(f"Failed to build image target '{jr.job.display_label}'.")
-                    errors.append(jr.exception)
-            if fail_fast and errors:
-                log.info("--fail-fast is set, stopping builds...")
-            if errors:
-                if len(errors) == 1:
-                    raise errors[0]
-                raise BakeryBuildErrorGroup("Multiple errors occurred while building images.", errors)
-            if metadata_file is not None:
-                with open(metadata_file, "w") as f:
-                    log.info(f"Writing build metadata to '{str(metadata_file)}'.")
-                    json.dump(self._merge_sequential_build_metadata_files(), f, indent=2)
-
-    def clean_caches(
-        self,
-        remove_untagged: bool = True,
-        remove_older_than: timedelta | None = None,
-        dry_run: bool = False,
-    ):
-        """Cleans up dangling caches in the specified registry for all generated image targets.
-
-        :param remove_untagged: If True, remove untagged caches.
-        :param remove_older_than: Optional timedelta to remove caches older than the specified duration.
-        :param dry_run: If True, print what would be deleted without actually deleting anything.
-        """
-        target_caches = list(set([cn.split(":")[0] for target in self.targets if (cn := target.cache_name())]))
-
-        errors = []
-        for target_cache in target_caches:
-            errors.extend(
-                ghcr.clean_temporary_artifacts(
-                    ghcr_registry=target_cache,
-                    remove_untagged=remove_untagged,
-                    remove_older_than=remove_older_than,
-                    dry_run=dry_run,
-                )
-            )
-
-        return errors
-
-    def clean_temporary(
-        self,
-        remove_untagged: bool = True,
-        remove_older_than: timedelta | None = None,
-        dry_run: bool = False,
-    ):
-        """Cleans up temporary images in the specified registry for all generated image targets.
-
-        :param remove_untagged: If True, remove untagged images.
-        :param remove_older_than: Optional timedelta to remove images older than the specified duration.
-        :param dry_run: If True, print what would be deleted without actually deleting anything.
-        """
-        target_caches = list(set([target.temp_name for target in self.targets]))
-
-        errors = []
-        for target_cache in target_caches:
-            errors.extend(
-                ghcr.clean_temporary_artifacts(
-                    ghcr_registry=target_cache,
-                    remove_untagged=remove_untagged,
-                    remove_older_than=remove_older_than,
-                    dry_run=dry_run,
-                )
-            )
-
-        return errors
