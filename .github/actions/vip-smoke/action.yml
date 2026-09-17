@@ -44,7 +44,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Set smoke test inputs
+    - name: Validate and set smoke test inputs
       env:
         PRODUCT: ${{ inputs.product }}
         IMAGE_REPOSITORY: ${{ inputs.image-repository }}
@@ -57,28 +57,39 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        {
-          echo "PRODUCT=$PRODUCT"
-          echo "IMAGE_REPOSITORY=$IMAGE_REPOSITORY"
-          echo "IMAGE_TAG=$IMAGE_TAG"
-          echo "VIP_FILTER=$VIP_FILTER"
-          echo "PYTEST_ARGS=$PYTEST_ARGS"
-          echo "CLUSTER=$CLUSTER"
-          echo "AWS_REGION=$AWS_REGION"
-          echo "VIP_IMAGE=$VIP_IMAGE"
-        } >> "$GITHUB_ENV"
-
-    - name: Validate product inputs
-      shell: bash
-      run: |
-        set -euo pipefail
         case "$PRODUCT" in
           connect|workbench|package-manager) ;;
           *) echo "::error::Unsupported product: $PRODUCT"; exit 1 ;;
         esac
-        [ -n "$IMAGE_TAG" ] || {
-          echo "::error::No image tag configured for $PRODUCT"; exit 1;
+        if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+          echo "::error::Invalid image tag for $PRODUCT"; exit 1;
+        fi
+        case "$VIP_FILTER" in
+          'not https'|'not https and not push') ;;
+          *) echo "::error::Unsupported VIP filter"; exit 1 ;;
+        esac
+        case "$PYTEST_ARGS" in
+          ''|'-- -n 0') ;;
+          *) echo "::error::Unsupported pytest arguments"; exit 1 ;;
+        esac
+
+        write_env() {
+          local name=$1 value=$2 delimiter
+          delimiter="ghadelimiter_$(openssl rand -hex 16)"
+          {
+            echo "${name}<<${delimiter}"
+            printf '%s\\n' "$value"
+            echo "$delimiter"
+          } >> "$GITHUB_ENV"
         }
+        write_env PRODUCT "$PRODUCT"
+        write_env IMAGE_REPOSITORY "$IMAGE_REPOSITORY"
+        write_env IMAGE_TAG "$IMAGE_TAG"
+        write_env VIP_FILTER "$VIP_FILTER"
+        write_env PYTEST_ARGS "$PYTEST_ARGS"
+        write_env CLUSTER "$CLUSTER"
+        write_env AWS_REGION "$AWS_REGION"
+        write_env VIP_IMAGE "$VIP_IMAGE"
 
     - name: Connect to Tailscale
       uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3.3.0
