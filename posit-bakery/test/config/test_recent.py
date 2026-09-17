@@ -4,7 +4,9 @@ import textwrap
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings, apply_recent_versions
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import apply_recent_versions
 from posit_bakery.config.image import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum
 
