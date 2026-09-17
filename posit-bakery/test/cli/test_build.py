@@ -32,10 +32,24 @@ _ENV = {"TERM": "dumb", "NO_COLOR": "true", "COLUMNS": "200"}
 @pytest.fixture
 def mock_build_config():
     """Mock BakeryConfig in the build command to capture settings without building."""
-    with patch("posit_bakery.cli.build.BakeryConfig") as mock:
+    from posit_bakery.build import BuildResult
+
+    with (
+        patch("posit_bakery.cli.build.BakeryConfig") as mock,
+        patch("posit_bakery.cli.build.run_build_targets") as mock_run_build,
+    ):
         instance = MagicMock()
-        instance.build_targets.return_value = None
+        # Set up attributes that build_targets function needs
+        instance.base_path = Path(BASIC_CONTEXT)
+        # Add a fake target so exit_if_no_targets doesn't fail
+        fake_target = _fake_target()
+        instance.targets = [fake_target]
+        instance.settings = MagicMock()
+        instance.settings.temp_registry = None
+        instance.settings.clean_temporary = False
         mock.from_context.return_value = instance
+        # Mock the build_targets function
+        mock_run_build.return_value = BuildResult(succeeded_uids=set())
         yield mock
 
 
