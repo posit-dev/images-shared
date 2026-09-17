@@ -1,0 +1,196 @@
+name: VIP smoke test
+description: Run VIP against a caller-provided product endpoint
+
+inputs:
+  product:
+    description: Product to smoke-test
+    required: true
+  base-url:
+    description: HTTP endpoint for the product under test
+    required: true
+  vip-filter:
+    description: Pytest expression passed to VIP
+    required: true
+  pytest-args:
+    description: Additional arguments passed after VIP's -- separator
+    required: false
+    default: ""
+  vip-image:
+    description: VIP container image
+    required: false
+    default: ghcr.io/posit-dev/vip:latest
+  vip-username:
+    description: Optional product test username
+    required: false
+    default: ""
+  vip-password:
+    description: Optional product test password
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate and set VIP inputs
+      env:
+        PRODUCT: ${{ inputs.product }}
+        BASE_URL: ${{ inputs.base-url }}
+        VIP_FILTER: ${{ inputs.vip-filter }}
+        PYTEST_ARGS: ${{ inputs.pytest-args }}
+        VIP_IMAGE: ${{ inputs.vip-image }}
+        VIP_USERNAME: ${{ inputs.vip-username }}
+        VIP_PASSWORD: ${{ inputs.vip-password }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$PRODUCT" in
+          connect|workbench|package-manager) ;;
+          *) echo "::error::Unsupported product: $PRODUCT"; exit 1 ;;
+        esac
+        case "$BASE_URL" in
+          http://*|https://*) ;;
+          *) echo "::error::base-url must use HTTP or HTTPS"; exit 1 ;;
+        esac
+        if [[ "$BASE_URL" == *$'\n'* || "$BASE_URL" == *$'\r'* || "$BASE_URL" == *'"'* || "$BASE_URL" == *"'"* || "$BASE_URL" == *'\\'* ]]; then
+          echo "::error::base-url contains unsupported characters"; exit 1;
+        fi
+        [ -n "$VIP_IMAGE" ] || {
+          echo "::error::VIP image is empty"; exit 1;
+        }
+
+        write_env() {
+          local name=$1 value=$2 delimiter
+          delimiter="ghadelimiter_$(openssl rand -hex 16)"
+          {
+            echo "${name}<<${delimiter}"
+            printf '%s\n' "$value"
+            echo "$delimiter"
+          } >> "$GITHUB_ENV"
+        }
+        write_env PRODUCT "$PRODUCT"
+        write_env BASE_URL "$BASE_URL"
+        write_env VIP_FILTER "$VIP_FILTER"
+        write_env PYTEST_ARGS "$PYTEST_ARGS"
+        write_env VIP_IMAGE "$VIP_IMAGE"
+        write_env VIP_USERNAME "$VIP_USERNAME"
+        write_env VIP_PASSWORD "$VIP_PASSWORD"
+
+    - name: Create VIP configuration
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$PRODUCT" in
+          connect) section=connect ;;
+          workbench) section=workbench ;;
+          package-manager) section=package_manager ;;
+        esac
+        printf '[%s]\nenabled = true\nurl = "%s"\n' \
+          "$section" "$BASE_URL" > vip.toml
+
+    - name: Run VIP smoke check
+      shell: bash
+      run: |
+        set +e
+        read -r -a pytest_args <<< "$PYTEST_ARGS"
+        docker run --rm --network host \
+          --volume "$PWD/vip.toml:/config/vip.toml:ro" \
+          --volume "$PWD:/report" \
+          --env VIP_TEST_USERNAME="$VIP_USERNAME" \
+          --env VIP_TEST_PASSWORD="$VIP_PASSWORD" \
+          "$VIP_IMAGE" \
+          uv run vip verify \
+          --config /config/vip.toml \
+          --filter "$VIP_FILTER" \
+          --report /report/vip-results.json \
+          "${pytest_args[@]}" > vip-smoke.log 2>&1
+        result=$?
+        if [ "$result" -eq 0 ]; then
+          echo "vip status PASSED"
+        else
+          echo "vip status FAILED"
+        fi
+        cat vip-smoke.log
+        exit "$result"
+
+    - name: Parse VIP results
+      id: vip-results
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        log=vip-smoke.log
+        if [ ! -f "$log" ]; then
+          status=TIMED_OUT
+          summary=No VIP log was produced
+        elif grep -q "vip status PASSED" "$log"; then
+          status=PASSED
+          summary=$(grep -E '[0-9]+ (passed|failed|error|errors|skipped)' "$log" | tail -1 || true)
+        elif grep -q "vip status FAILED" "$log"; then
+          status=FAILED
+          summary=$(grep -E '[0-9]+ (passed|failed|error|errors|skipped)' "$log" | tail -1 || true)
+        else
+          status=TIMED_OUT
+          summary=$(grep -E '[0-9]+ (passed|failed|error|errors|skipped)' "$log" | tail -1 || true)
+        fi
+        summary=${summary:-No pytest summary found}
+        count() {
+          printf '%s\n' "$summary" | grep -oE "[0-9]+ $1" | awk '{print $1}' | head -1 || true
+        }
+        passed=$(count passed); failed=$(count failed); errors=$(count 'errors?'); skipped=$(count skipped)
+        passed=${passed:-0}; failed=${failed:-0}; errors=${errors:-0}; skipped=${skipped:-0}
+        total=$((passed + failed + errors + skipped))
+        {
+          echo "status=$status"
+          echo "summary=$summary"
+          echo "passed=$passed"
+          echo "failed=$failed"
+          echo "errors=$errors"
+          echo "skipped=$skipped"
+          echo "total=$total"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Upload VIP log
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: vip-smoke-${{ inputs.product }}
+        path: |
+          vip-smoke.log
+          vip-results.json
+        if-no-files-found: ignore
+
+    - name: Publish VIP results to job summary
+      if: always()
+      env:
+        VIP_STATUS: ${{ steps.vip-results.outputs.status }}
+        VIP_SUMMARY: ${{ steps.vip-results.outputs.summary }}
+        VIP_PASSED: ${{ steps.vip-results.outputs.passed }}
+        VIP_FAILED: ${{ steps.vip-results.outputs.failed }}
+        VIP_ERRORS: ${{ steps.vip-results.outputs.errors }}
+        VIP_SKIPPED: ${{ steps.vip-results.outputs.skipped }}
+        VIP_TOTAL: ${{ steps.vip-results.outputs.total }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "## VIP smoke results: ${PRODUCT}"
+          echo
+          echo "**Status:** ${VIP_STATUS:-UNKNOWN}"
+          echo
+          echo '| Result | Count |'
+          echo '|---|---:|'
+          echo "| ✅ Passed | ${VIP_PASSED:-0} |"
+          echo "| ❌ Failed | ${VIP_FAILED:-0} |"
+          echo "| ⚠️ Errors | ${VIP_ERRORS:-0} |"
+          echo "| ⏭️ Skipped | ${VIP_SKIPPED:-0} |"
+          echo "| 📝 **Total** | **${VIP_TOTAL:-0}** |"
+          echo
+          echo "**Pytest:** ${VIP_SUMMARY:-No pytest summary found}"
+          echo
+          echo '<details><summary>Full VIP output</summary>'
+          echo
+          echo '```text'
+          if [ -f vip-smoke.log ]; then cat vip-smoke.log; else echo 'vip-smoke.log was not produced'; fi
+          echo '```'
+          echo '</details>'
+        } >> "$GITHUB_STEP_SUMMARY"
