@@ -25,6 +25,7 @@ from posit_bakery.config.image.parsed_version import version_matches
 from posit_bakery.config.image.posit_product.const import CALVER_REGEX_PATTERN
 from posit_bakery.config.settings import BakerySettings, BakeryConfigFilter
 from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
+from posit_bakery.targets.selection import select_targets
 from posit_bakery.error import (
     BakeryFileError,
     BakeryRenderError,
@@ -725,6 +726,16 @@ class BakeryConfig:
             if len(exceptions) == 1:
                 raise exceptions[0]
             raise BakeryRenderErrorGroup("Multiple errors occurred while rendering templates.", exceptions)
+
+    @property
+    def targets(self) -> list:
+        """Convenience property that returns selected image targets using current settings.
+
+        Delegates to targets.selection.select_targets() for backward compatibility.
+        Tests and code that accessed config.targets directly should migrate to explicitly
+        calling select_targets(config, settings), but this property eases the transition.
+        """
+        return select_targets(self, self.settings)
 
     def remove_version(self, image_name: str, version_name: str) -> None:
         """Removes an existing version from an image in the config.
