@@ -6,7 +6,9 @@ from typing import Annotated, Optional
 import typer
 
 from posit_bakery.cli.common import with_verbosity_flags
-from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, BakeryConfig
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakerySettings, BakeryConfigFilter
+from posit_bakery.targets.selection import select_targets
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, GetTagsOutputFormat, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console, stdout_console
@@ -137,11 +139,12 @@ def tags(
             latest=latest,
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
+        targets = select_targets(config, settings)
 
         if output == GetTagsOutputFormat.UID:
-            data = _format_uid_output(config.targets)
+            data = _format_uid_output(targets)
         else:
-            data = _format_component_output(config.targets)
+            data = _format_component_output(targets)
 
         stdout_console.print(json.dumps(data, indent=2))
 

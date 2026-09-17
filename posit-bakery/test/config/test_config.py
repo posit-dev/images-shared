@@ -2152,6 +2152,8 @@ class TestBakeryConfig:
         metadata match another target and push to the wrong registries. This is a
         defense-in-depth guard for the posit-dev/images-shared#553 collision class.
         """
+        from posit_bakery.targets.selection import select_targets
+
         config = get_config_obj("basic")
         image = config.model.get_image("test-image")
         version = image.get_version("1.0.0")
@@ -2160,7 +2162,7 @@ class TestBakeryConfig:
         image.versions.append(clone)
 
         with pytest.raises(BakeryError, match="Duplicate image target UID"):
-            config.generate_image_targets()
+            select_targets(config, config.settings)
 
     def test_dev_and_release_same_version_do_not_collide(self, get_config_obj):
         """A dev-stream version and a release version of the same number coexist with

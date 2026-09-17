@@ -165,6 +165,37 @@ ParsedVersion.MIN = ParsedVersion(  # type: ignore[attr-defined]
 )
 
 
+def version_matches(ver_name: str, filter_version: str) -> bool:
+    """Check if a version name matches a filter by comparing release segments.
+
+    Uses ParsedVersion when both strings are parseable; falls back to
+    dot-separated segment comparison for short filters like "2026".
+
+    Supports exact matches and prefix matches at segment boundaries:
+      "2026.05" matches "2026.05.0-dev+15-gSHA"
+      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
+      "2026" matches all 2026.x versions
+    """
+    if ver_name == filter_version:
+        return True
+    ver = ParsedVersion.parse(ver_name)
+    filt = ParsedVersion.parse(filter_version)
+    if ver is not None and filt is not None:
+        if ver.dep_versions is not None or filt.dep_versions is not None:
+            if ver.dep_versions is None or filt.dep_versions is None:
+                return False
+            return ver.dep_versions[: len(filt.dep_versions)] == filt.dep_versions
+        return ver.release[: len(filt.release)] == filt.release and (
+            filt.prerelease is None or ver.prerelease == filt.prerelease
+        )
+    # Fallback for unparseable filters (e.g. single-segment "2026")
+    ver_parts = ver_name.split(".")
+    filter_parts = filter_version.split(".")
+    if len(filter_parts) > len(ver_parts):
+        return False
+    return all(v == f or v.startswith(f + "-") for v, f in zip(ver_parts, filter_parts))
+
+
 def version_sort_key(image_version: "ImageVersion") -> ParsedVersion:
     """Sort key for ``ImageVersion``: unparseable / matrix versions sort first.
 

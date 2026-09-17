@@ -5,11 +5,11 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Annotated, Self, Any
+from typing import Annotated, Self
 
 import jinja2
 import pydantic
-from pydantic import Field, model_validator, field_validator, BaseModel
+from pydantic import Field, model_validator, field_validator
 from ruamel.yaml import YAML
 
 from posit_bakery import util
@@ -21,17 +21,15 @@ from posit_bakery.config.repository import Repository
 from posit_bakery.config.shared import BakeryPathMixin, BakeryYAMLModel
 from posit_bakery.config.templating import TPL_CONTAINERFILE, TPL_BAKERY_CONFIG_YAML
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
-from posit_bakery.config.image.dev_version.spec import DevBuildSpec
-from posit_bakery.config.image.parsed_version import ParsedVersion, version_sort_key
-from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum, CALVER_REGEX_PATTERN
-from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum, MatrixVersionInclusionEnum
+from posit_bakery.config.image.parsed_version import version_matches
+from posit_bakery.config.image.posit_product.const import CALVER_REGEX_PATTERN
+from posit_bakery.config.settings import BakerySettings, BakeryConfigFilter
+from posit_bakery.const import DEFAULT_BASE_IMAGE, DevVersionInclusionEnum
 from posit_bakery.error import (
-    BakeryError,
     BakeryFileError,
     BakeryRenderError,
     BakeryRenderErrorGroup,
 )
-from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 
 log = logging.getLogger(__name__)
 
@@ -213,190 +211,6 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
         return new_image
 
 
-def apply_recent_versions(
-    versions: list[ImageVersion],
-    count: int,
-    image_name: str,
-    image_version_filter: str | None = None,
-) -> list[ImageVersion]:
-    """Limit release candidates to the highest-sorted versions.
-
-    Development versions are exempt from the limit. Warn when an excluded
-    release version explicitly matches ``--image-version`` so a named build is
-    never silently skipped.
-    """
-    release_versions = [version for version in versions if not version.isDevelopmentVersion]
-    dev_versions = [version for version in versions if version.isDevelopmentVersion]
-
-    release_versions.sort(key=version_sort_key, reverse=True)
-    excluded_versions = release_versions[count:]
-    if image_version_filter is not None:
-        for version in excluded_versions:
-            if version_matches(version.name, image_version_filter):
-                log.warning(
-                    f"Version '{version.name}' in image '{image_name}' matches --image-version filter "
-                    f"but is being skipped: excluded by --recent {count}"
-                )
-    return release_versions[:count] + dev_versions
-
-
-def version_matches(ver_name: str, filter_version: str) -> bool:
-    """Check if a version name matches a filter by comparing release segments.
-
-    Uses ParsedVersion when both strings are parseable; falls back to
-    dot-separated segment comparison for short filters like "2026".
-
-    Supports exact matches and prefix matches at segment boundaries:
-      "2026.05" matches "2026.05.0-dev+15-gSHA"
-      "2026.05.0" matches "2026.05.0-dev+15-gSHA"
-      "2026" matches all 2026.x versions
-    """
-    if ver_name == filter_version:
-        return True
-    ver = ParsedVersion.parse(ver_name)
-    filt = ParsedVersion.parse(filter_version)
-    if ver is not None and filt is not None:
-        if ver.dep_versions is not None or filt.dep_versions is not None:
-            if ver.dep_versions is None or filt.dep_versions is None:
-                return False
-            return ver.dep_versions[: len(filt.dep_versions)] == filt.dep_versions
-        return ver.release[: len(filt.release)] == filt.release and (
-            filt.prerelease is None or ver.prerelease == filt.prerelease
-        )
-    # Fallback for unparseable filters (e.g. single-segment "2026")
-    ver_parts = ver_name.split(".")
-    filter_parts = filter_version.split(".")
-    if len(filter_parts) > len(ver_parts):
-        return False
-    return all(v == f or v.startswith(f + "-") for v, f in zip(ver_parts, filter_parts))
-
-
-class BakeryConfigFilter(BaseModel):
-    """Container for filtering options when generating image targets from the BakeryConfig."""
-
-    image_name: Annotated[
-        str | None, Field(description="Name or regex pattern of the image to filter by.", default=None)
-    ]
-    image_variant: Annotated[
-        str | None, Field(description="Name or regex pattern of the image variant to filter by.", default=None)
-    ]
-    image_version: Annotated[str | None, Field(description="Version string or prefix to filter by.", default=None)]
-    image_os: Annotated[
-        str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
-    ]
-    image_platform: Annotated[
-        list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
-    ]
-
-
-class BakerySettings(BaseModel):
-    """Container for global settings that can be applied to the BakeryConfig."""
-
-    filter: BakeryConfigFilter = Field(
-        default_factory=BakeryConfigFilter, description="Filter(s) to apply when generating image targets."
-    )
-    dev_versions: Annotated[
-        DevVersionInclusionEnum,
-        Field(
-            description="Include or exclude development versions defined in config.",
-            default=DevVersionInclusionEnum.EXCLUDE,
-        ),
-    ]
-    dev_channel: Annotated[
-        ReleaseChannelEnum | None,
-        Field(
-            default=None,
-            description="Filter development versions to a specific release channel.",
-        ),
-    ] = None
-    dev_spec: Annotated[
-        DevBuildSpec | None,
-        Field(
-            default=None,
-            description="Pinned dev build spec from a workflow dispatch. When set, overrides "
-            "CDN discovery for the matching channel dev version.",
-        ),
-    ] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_dev_stream_to_dev_channel(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        if "dev_stream" in data and data.get("dev_channel") is None:
-            import warnings
-
-            warnings.warn(
-                "BakerySettings: 'dev_stream' is deprecated, use 'dev_channel' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            data = dict(data)
-            data["dev_channel"] = data.pop("dev_stream")
-        elif "dev_stream" in data:
-            # dev_channel already set — dev_channel wins, drop the stale dev_stream key
-            data = dict(data)
-            data.pop("dev_stream")
-        return data
-
-    @property
-    def dev_stream(self) -> ReleaseChannelEnum | None:
-        """Deprecated: use dev_channel."""
-        import warnings
-
-        warnings.warn(
-            "BakerySettings.dev_stream is deprecated, use dev_channel instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.dev_channel
-
-    @property
-    def effective_dev_channel(self) -> ReleaseChannelEnum | None:
-        """Channel used to filter dev versions, honoring both --dev-channel and --dev-spec.
-
-        A --dev-spec carrying a channel implies dev versions should be filtered to
-        that channel. The shared CI workflow folds the dispatched channel into the
-        dev-spec and stops passing --dev-channel, so without this derivation the
-        other channels' dev versions leak through both the matrix output and the
-        build target list. --dev-channel wins when explicitly set; _apply_dev_spec
-        validates that the two never conflict.
-        """
-        if self.dev_channel is not None:
-            return self.dev_channel
-        if self.dev_spec is not None:
-            return self.dev_spec.channel
-        return None
-
-    matrix_versions: Annotated[
-        MatrixVersionInclusionEnum,
-        Field(
-            description="Include or exclude versions defined in image matrix.",
-            default=MatrixVersionInclusionEnum.EXCLUDE,
-        ),
-    ]
-    latest: Annotated[
-        bool,
-        Field(
-            description="Build only the latest version of each image. Development versions are ignored.",
-            default=False,
-        ),
-    ]
-    recent: Annotated[
-        int | None,
-        Field(
-            default=None,
-            gt=0,
-            description="Limit non-matrix images to their N highest-sorted release versions.",
-        ),
-    ]
-    clean_temporary: Annotated[
-        bool, Field(description="Clean intermediary and temporary files created by Bakery.", default=True)
-    ]
-    cache_registry: Annotated[str | None, Field(description="Registry to use for image build cache.", default=None)]
-    temp_registry: Annotated[str | None, Field(description="Registry to use for image build temp cache.", default=None)]
-
-
 def _extract_calver_minor(version: str) -> str:
     """Extract the YYYY.MM segment from a CalVer version string.
 
@@ -538,9 +352,6 @@ class BakeryConfig:
                 image.render_ephemeral_version_files()
                 if self.settings.clean_temporary:
                     atexit.register(image.remove_ephemeral_version_files)
-
-        self.targets = []
-        self.generate_image_targets(self.settings)
 
     @classmethod
     def from_context(cls, context: str | Path | os.PathLike, settings: BakerySettings | None = None) -> "BakeryConfig":
@@ -949,166 +760,3 @@ class BakeryConfig:
 
         # Remove the version from the model.
         image.versions.remove(version)
-
-    def generate_image_targets(self, settings: BakerySettings = BakerySettings()):
-        """Generates image targets from the images defined in the config.
-
-        :param settings: Optional settings to apply when generating image targets. If None, all images will be included.
-        """
-        targets: list[ImageTarget] = []
-        for image in self.model.images:
-            if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
-                log.debug(
-                    f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'"
-                )
-                continue
-            versions = list(image.versions)
-            image_name_filter_matched = settings.filter.image_name is not None and re.search(
-                settings.filter.image_name, image.name
-            )
-            if (image.matrix is None and settings.matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
-                image.matrix is not None and settings.matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
-            ):
-                if image_name_filter_matched:
-                    reason = (
-                        "matrix image excluded by default (use --matrix-versions include)"
-                        if image.matrix is not None
-                        else "non-matrix image excluded by --matrix-versions only"
-                    )
-                    log.warning(f"Image '{image.name}' matches --image-name filter but is being skipped: {reason}")
-                continue
-            elif image.matrix is not None and settings.matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                if settings.dev_versions == DevVersionInclusionEnum.ONLY:
-                    # Dev versions are already in image.versions (from load_dev_versions()).
-                    # Matrix production versions (isDevelopmentVersion=False) would all be
-                    # filtered out by --dev-versions only, so there is nothing to merge.
-                    pass
-                elif settings.dev_versions == DevVersionInclusionEnum.INCLUDE:
-                    dev_versions_loaded = [v for v in image.versions if v.isDevelopmentVersion]
-                    versions = image.matrix.to_image_versions() + dev_versions_loaded
-                else:
-                    versions = image.matrix.to_image_versions()
-            elif image.matrix is None and settings.recent is not None:
-                versions = apply_recent_versions(
-                    versions,
-                    settings.recent,
-                    image.name,
-                    settings.filter.image_version,
-                )
-            targets_before = len(targets)
-            for version in versions:
-                version_filter_matched = settings.filter.image_version is not None and version_matches(
-                    version.name, settings.filter.image_version
-                )
-                included, reason = version.matches_dev_filter(settings.dev_versions, settings.effective_dev_channel)
-                if not included:
-                    if version_filter_matched:
-                        log.warning(
-                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                            f"but is being skipped: {reason}"
-                        )
-                    else:
-                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
-                    continue
-                if settings.filter.image_version is not None and not version_matches(
-                    version.name, settings.filter.image_version
-                ):
-                    log.debug(
-                        f"Skipping image version '{version.name}' in image '{image.name}' "
-                        f"due to not matching version filter '{settings.filter.image_version}'"
-                    )
-                    continue
-                included, reason = version.matches_latest_filter(settings.latest)
-                if not included:
-                    if version_filter_matched:
-                        log.warning(
-                            f"Version '{version.name}' in image '{image.name}' matches --image-version filter "
-                            f"but is being skipped: {reason}"
-                        )
-                    else:
-                        log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
-                    continue
-                for variant in image.variants or [None]:
-                    if (
-                        settings.filter.image_variant is not None
-                        and re.search(settings.filter.image_variant, variant.name) is None
-                    ):
-                        log.debug(
-                            f"Skipping image variant '{variant.name}' in image '{image.name}' "
-                            f"due to not matching variant filter '{settings.filter.image_variant}'"
-                        )
-                        continue
-                    for _os in version.os or [None]:
-                        if settings.filter.image_os is not None and _os is None:
-                            log.warning(
-                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-os "
-                                "filter is set. --image-os filter will be ignored for this image version."
-                            )
-                        elif (
-                            settings.filter.image_os is not None
-                            and re.search(settings.filter.image_os, _os.name) is None
-                        ):
-                            log.debug(
-                                f"Skipping image OS '{_os.name}' in image '{image.name}' "
-                                f"due to not matching OS filter '{settings.filter.image_os}'"
-                            )
-                            continue
-                        if settings.filter.image_platform and _os is None:
-                            log.warning(
-                                f"Image '{image.name}' version '{version.name}' has no OS defined but --image-platform "
-                                "filter is set. --image-platform filter will be ignored for this image version."
-                            )
-                        elif settings.filter.image_platform and all(
-                            re.search(filter_platform, platform) is None
-                            for platform in _os.platforms
-                            for filter_platform in settings.filter.image_platform
-                        ):
-                            log.debug(
-                                f"Skipping image '{image.name}' "
-                                f"due to no matching platforms for patterns {settings.filter.image_platform}, "
-                                f"supported platforms are: {', '.join(_os.platforms)}"
-                            )
-                            continue
-                        targets.append(
-                            ImageTarget.new_image_target(
-                                repository=self.model.repository,
-                                image_version=version,
-                                image_variant=variant,
-                                image_os=_os,
-                                settings=ImageTargetSettings(
-                                    temp_registry=settings.temp_registry, cache_registry=settings.cache_registry
-                                ),
-                            )
-                        )
-            if image_name_filter_matched and len(targets) == targets_before:
-                log.warning(
-                    f"Image '{image.name}' matches --image-name filter but yielded no targets after applying "
-                    f"other filters (--image-version, --image-variant, --image-os, --image-platform, --dev-versions)"
-                )
-
-        targets = sorted(targets, key=lambda t: str(t))
-
-        # Build metadata is matched to targets by UID, so a duplicate would let one
-        # build's artifacts be pushed as another's. Fail fast.
-        seen: dict[str, ImageTarget] = {}
-        for target in targets:
-            if target.uid in seen:
-                raise BakeryError(
-                    f"Duplicate image target UID '{target.uid}': two targets resolve to the same "
-                    f"image, version, variant, OS, and release channel ({target.release_channel.value}). "
-                    "Check for a duplicate version definition or multiple development channels "
-                    "resolving to the same version."
-                )
-            seen[target.uid] = target
-
-        self.targets = targets
-
-    def get_image_target_by_uid(self, uid: str) -> ImageTarget | None:
-        """Returns an image target by its UID.
-        :param uid: The UID of the image target to find.
-        :return: The ImageTarget with the given UID, or None if not found.
-        """
-        for target in self.targets:
-            if target.uid == uid:
-                return target
-        return None
