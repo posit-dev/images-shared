@@ -1,0 +1,27 @@
+name: Tag
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    name: Advance v0 to main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Advance v0 tag to HEAD
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/git/refs" \
+            --method POST \
+            -f ref="refs/tags/v0" \
+            -f sha="$SHA" 2>/dev/null \
+          || gh api "repos/$REPO/git/refs/tags/v0" \
+            --method PATCH \
+            -f sha="$SHA" \
+            -F force=true
