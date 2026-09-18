@@ -30,8 +30,14 @@ class TestImageVariant:
         assert not i.primary
         assert i.extension == "variant1"
         assert i.tagDisplayName == "variant-1"
+        assert i.tagAliases == []
         assert len(i.tagPatterns) == 0
         assert len(i.options) == len(get_tool_options_classes())
+
+    def test_tag_aliases(self):
+        variant = ImageVariant(name="Standard", tagAliases=["default"])
+
+        assert variant.tagAliases == ["default"]
 
     def test_custom_options(self):
         """Test creating an ImageVariant with custom options."""

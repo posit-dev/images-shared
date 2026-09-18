@@ -474,12 +474,15 @@ class ImageTarget(BaseModel):
         collapsed = self.image_version.metadata.get("release_channels")
         channel_values = [c.value for c in self.release_channels] if collapsed else [values["Channel"]]
         tags = []
+        variants = [values["Variant"], *(self.image_variant.tagAliases if self.image_variant else [])]
         for pattern in self.tag_patterns:
-            if any("{{ Channel }}" in p for p in pattern.patterns):
-                for channel in channel_values:
-                    tags.extend(pattern.render(**{**values, "Channel": channel}))
-            else:
-                tags.extend(pattern.render(**values))
+            for variant in variants:
+                pattern_values = {**values, "Variant": variant}
+                if any("{{ Channel }}" in p for p in pattern.patterns):
+                    for channel in channel_values:
+                        tags.extend(pattern.render(**{**pattern_values, "Channel": channel}))
+                else:
+                    tags.extend(pattern.render(**pattern_values))
 
         # Ensure tags are unique and sorted
         tags = sorted(list(set(tags)))

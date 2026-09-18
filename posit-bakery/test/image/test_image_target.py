@@ -520,6 +520,28 @@ class TestImageTarget:
         assert len(expected_tag_suffixes) == len(target.tag_suffixes)
         assert all(tag_suffix in target.tag_suffixes for tag_suffix in expected_tag_suffixes)
 
+    def test_tag_aliases(self, basic_standard_image_target):
+        """Aliases render under the same patterns and primary filters as their variant."""
+        basic_standard_image_target.image_variant.tagAliases = ["default"]
+
+        assert basic_standard_image_target.tag_suffixes == [
+            "1.0.0",
+            "1.0.0-default",
+            "1.0.0-std",
+            "1.0.0-ubuntu-22.04",
+            "1.0.0-ubuntu-22.04-default",
+            "1.0.0-ubuntu-22.04-std",
+            "default",
+            "latest",
+            "std",
+            "ubuntu-22.04",
+            "ubuntu-22.04-default",
+            "ubuntu-22.04-std",
+        ]
+
+        basic_standard_image_target.image_version.metadata["release_channel"] = ReleaseChannelEnum.DAILY
+        assert {"daily-default", "daily-ubuntu-22.04-default"} <= set(basic_standard_image_target.tag_suffixes)
+
     @pytest.mark.parametrize(
         "target_name,expected_tag_suffixes",
         [
