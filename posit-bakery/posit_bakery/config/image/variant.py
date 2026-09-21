@@ -36,6 +36,14 @@ class ImageVariant(BakeryYAMLModel):
             examples=["std", "min"],
         ),
     ]
+    tagAliases: Annotated[
+        list[TagDisplayNameField],
+        Field(
+            default_factory=list,
+            description="Additional names used for this variant in image tags.",
+            examples=[["default"]],
+        ),
+    ]
     tagPatterns: Annotated[
         list[TagPattern], Field(default_factory=list, description="List of tag patterns for this variant.")
     ]
