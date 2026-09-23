@@ -11,17 +11,20 @@ from posit_bakery.registry_management.dockerhub.readme import (
     DOCKER_HUB_README_USERNAME_ENV,
     DOCKER_HUB_README_PASSWORD_ENV,
 )
+from posit_bakery.targets.selection import select_targets
 
 
 @pytest.fixture
 def basic_targets(get_config_obj):
-    return get_config_obj("basic").targets
+    config = get_config_obj("basic")
+    return select_targets(config, config.settings)
 
 
 @pytest.fixture
 def tmp_targets(get_tmpconfig):
     """Targets backed by a temporary directory copy, safe for file creation/deletion."""
-    return get_tmpconfig("basic").targets
+    config = get_tmpconfig("basic")
+    return select_targets(config, config.settings)
 
 
 @pytest.fixture

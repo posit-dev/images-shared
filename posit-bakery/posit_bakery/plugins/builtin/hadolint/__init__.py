@@ -5,8 +5,10 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, exit_if_no_targets
-from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.cli.common import with_verbosity_flags
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import exit_if_no_targets, select_targets
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
@@ -221,8 +223,9 @@ class HadolintPlugin(BakeryToolPlugin):
                 latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
+            targets = select_targets(c, settings)
 
-            exit_if_no_targets(c, settings)
+            exit_if_no_targets(targets, settings, context="lint")
 
             # Build options override from CLI flags
             override_dict = {}
@@ -265,7 +268,7 @@ class HadolintPlugin(BakeryToolPlugin):
                 options_kwargs["trustedRegistries"] = trusted_registry
             options_override = HadolintOptions(**options_kwargs)
 
-            results = plugin.execute(c.base_path, c.targets, options_override=options_override)
+            results = plugin.execute(c.base_path, targets, options_override=options_override)
             plugin.results(results)
 
         app.add_typer(hadolint_app, name="hadolint", help="Lint Containerfiles using hadolint")

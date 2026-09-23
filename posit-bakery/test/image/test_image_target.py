@@ -14,6 +14,7 @@ from posit_bakery.error import BakeryToolRuntimeError
 from posit_bakery.image.image_metadata import BuildMetadata
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings, Tag
 from posit_bakery.settings import SETTINGS
+from posit_bakery.targets.selection import select_targets
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
@@ -1234,7 +1235,7 @@ class TestImageTarget:
     def test_build(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
         config_obj = get_tmpconfig(suite)
-        for target in config_obj.targets:
+        for target in select_targets(config_obj, config_obj.settings):
             target.build()
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)
@@ -1251,7 +1252,7 @@ class TestImageTarget:
     def test_build_metadata_file(self, suite, get_tmpconfig):
         """Test the build property of an ImageTarget."""
         config_obj = get_tmpconfig(suite)
-        for target in config_obj.targets:
+        for target in select_targets(config_obj, config_obj.settings):
             target.build(metadata_file=True)
             for tag in target.tags.as_strings():
                 assert python_on_whales.docker.image.exists(tag)

@@ -5,8 +5,11 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
-from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.build.runner import load_build_metadata_from_file
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, normalize_platform
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import exit_if_no_targets, select_targets
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
@@ -258,15 +261,16 @@ class WizCLIPlugin(BakeryToolPlugin):
                 latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
+            targets = select_targets(c, settings)
 
-            exit_if_no_targets(c, settings)
+            exit_if_no_targets(targets, settings, context="scan")
 
             if metadata_file:
-                c.load_build_metadata_from_file(metadata_file)
+                load_build_metadata_from_file(targets, metadata_file)
 
             results = plugin.execute(
                 c.base_path,
-                c.targets,
+                targets,
                 platform=platform,
                 disabled_scanners=disabled_scanners,
                 driver=driver,
@@ -409,12 +413,13 @@ class WizCLIPlugin(BakeryToolPlugin):
                 latest=latest,
             )
             c = BakeryConfig.from_context(context, settings)
-            exit_if_no_targets(c, settings)
-            c.load_build_metadata_from_file(metadata_file)
+            targets = select_targets(c, settings)
+            exit_if_no_targets(targets, settings, context="tag")
+            load_build_metadata_from_file(targets, metadata_file)
 
             failures = tag_published_repositories(
                 c.base_path,
-                c.targets,
+                targets,
                 platform=platform,
                 projects=projects,
                 client_id=client_id,

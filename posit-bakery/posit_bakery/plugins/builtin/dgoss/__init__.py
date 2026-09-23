@@ -5,9 +5,12 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
+from posit_bakery.build.runner import load_build_metadata_from_file
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, normalize_platform
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
-from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import exit_if_no_targets, select_targets
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
@@ -205,13 +208,14 @@ class DGossPlugin(BakeryToolPlugin):
                 clean_temporary=clean,
             )
             c = BakeryConfig.from_context(context, settings)
+            targets = select_targets(c, settings)
 
-            exit_if_no_targets(c, settings)
+            exit_if_no_targets(targets, settings, context="test")
 
             if metadata_file:
-                c.load_build_metadata_from_file(metadata_file)
+                load_build_metadata_from_file(targets, metadata_file)
 
-            results = plugin.execute(c.base_path, c.targets, platform=platform, jobs=jobs)
+            results = plugin.execute(c.base_path, targets, platform=platform, jobs=jobs)
             plugin.results(results)
 
         app.add_typer(dgoss_app, name="dgoss", help="Run Goss tests against container images")

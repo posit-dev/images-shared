@@ -6,9 +6,11 @@ from typing import Annotated, Optional
 
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, exit_if_no_targets, normalize_platform
+from posit_bakery.build.runner import load_build_metadata_from_file
+from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec, normalize_platform
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import select_targets, exit_if_no_targets
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
 from posit_bakery.log import stderr_console
@@ -194,11 +196,12 @@ def dgoss(
     )
     c = BakeryConfig.from_context(context, settings)
 
-    exit_if_no_targets(c, settings)
+    targets = select_targets(c, settings)
+    exit_if_no_targets(targets, settings, context="test")
 
     if metadata_file:
-        c.load_build_metadata_from_file(metadata_file)
+        load_build_metadata_from_file(targets, metadata_file)
 
     dgoss_plugin = get_plugin("dgoss")
-    results = dgoss_plugin.execute(c.base_path, c.targets, platform=image_platform)
+    results = dgoss_plugin.execute(c.base_path, targets, platform=image_platform)
     dgoss_plugin.results(results)

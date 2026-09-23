@@ -6,9 +6,11 @@ from typing import Annotated, Optional
 import python_on_whales
 import typer
 
-from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec, exit_if_no_targets
+from posit_bakery.build import build_targets as run_build_targets, bake_plan_json
+from posit_bakery.cli.common import with_verbosity_flags, with_temporary_storage, parse_dev_spec
 from posit_bakery.config import BakeryConfig
-from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import select_targets, exit_if_no_targets
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
@@ -310,7 +312,11 @@ def build(
         stderr_console.print(f"❌ {e}", style="error")
         raise typer.Exit(code=1)
 
-    exit_if_no_targets(config, settings)
+    targets = select_targets(config, settings)
+    exit_if_no_targets(targets, settings, context="build")
+
+    # Initialize build_result so nested functions can reference it
+    build_result = None
 
     def _emit_summary(*, sizes: bool) -> None:
         """Render `--summary` for the current target set.
@@ -320,14 +326,14 @@ def build(
             artifacts the build just produced (or failed to) and renders the per-target
             breakdown.
         """
-        build_summary = BuildSummary.from_image_targets(config.targets, platforms=image_platform)
+        build_summary = BuildSummary.from_image_targets(targets, platforms=image_platform)
         if sizes:
             build_summary.measure_sizes(
-                config.targets,
+                targets,
                 push=push,
                 load=load,
                 jobs=jobs,
-                succeeded_uids=config.last_build_succeeded_uids,
+                succeeded_uids=build_result.succeeded_uids if build_result else None,
             )
         if summary_format == SummaryOutputFormat.JSON:
             stdout_console.print_json(data=build_summary.as_dict())
@@ -358,7 +364,7 @@ def build(
                 style="error",
             )
             raise typer.Exit(code=1)
-        stdout_console.print_json(config.bake_plan_targets(push=push))
+        stdout_console.print_json(bake_plan_json(config.base_path, targets, push=push))
         if summary:
             _emit_summary(sizes=False)
         # --plan is the dry-run flag, with or without --summary: never fall through to a build.
@@ -366,9 +372,7 @@ def build(
 
     if metadata_file is not None:
         multi = [
-            t
-            for t in config.targets
-            if len(image_platform or (t.image_os.platforms if t.image_os else DEFAULT_PLATFORMS)) > 1
+            t for t in targets if len(image_platform or (t.image_os.platforms if t.image_os else DEFAULT_PLATFORMS)) > 1
         ]
         if multi:
             stderr_console.print(
@@ -381,7 +385,11 @@ def build(
             raise typer.Exit(code=1)
 
     try:
-        config.build_targets(
+        build_result = run_build_targets(
+            base_path=config.base_path,
+            targets=targets,
+            temp_registry=config.settings.temp_registry,
+            clean_temporary=config.settings.clean_temporary,
             load=load,
             push=push,
             pull=pull,
@@ -394,12 +402,14 @@ def build(
             jobs=jobs,
         )
     except BakeryBuildErrorGroup as e:
+        build_result = getattr(e, "build_result", None)
         stderr_console.print(str(e))
         stderr_console.print("❌ Build failed", style="error")
         if summary:
             _try_emit_summary()
         raise typer.Exit(code=1)
-    except (python_on_whales.DockerException, BakeryToolRuntimeError):
+    except (python_on_whales.DockerException, BakeryToolRuntimeError) as e:
+        build_result = getattr(e, "build_result", None)
         stderr_console.print("❌ Build failed", style="error")
         if summary:
             _try_emit_summary()

@@ -9,6 +9,7 @@ from pytest_mock import MockFixture
 from posit_bakery.image.bake import BakePlan
 from posit_bakery.image.bake.bake import BakeTarget, BakeGroup
 from posit_bakery.image.image_target import ImageTargetSettings
+from posit_bakery.targets.selection import select_targets
 from test.helpers import remove_images, SUCCESS_SUITES
 
 pytestmark = [
@@ -205,7 +206,7 @@ class TestBakePlan:
         expected_plan = get_expected_plan("default", suite)
         config_obj = get_config_obj(suite)
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
@@ -218,10 +219,12 @@ class TestBakePlan:
         config_obj = get_config_obj(suite)
 
         settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
-        for target in config_obj.targets:
+        # select_targets returns new objects per call; reuse one list to observe mutation
+        targets = select_targets(config_obj, config_obj.settings)
+        for target in targets:
             target.settings = settings
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, targets)
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         # Strip cache_to from expected plan — without push, only cache_from should be set
@@ -242,10 +245,12 @@ class TestBakePlan:
         config_obj = get_config_obj(suite)
 
         settings = ImageTargetSettings(cache_registry="ghcr.io/posit-dev")
-        for target in config_obj.targets:
+        # select_targets returns new objects per call; reuse one list to observe mutation
+        targets = select_targets(config_obj, config_obj.settings)
+        for target in targets:
             target.settings = settings
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets, push=True)
+        plan = BakePlan.from_image_targets(config_obj.base_path, targets, push=True)
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
@@ -258,10 +263,12 @@ class TestBakePlan:
         config_obj = get_config_obj(suite)
 
         settings = ImageTargetSettings(temp_registry="ghcr.io/posit-dev")
-        for target in config_obj.targets:
+        # select_targets returns new objects per call; reuse one list to observe mutation
+        targets = select_targets(config_obj, config_obj.settings)
+        for target in targets:
             target.settings = settings
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, targets)
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
@@ -278,7 +285,7 @@ class TestBakePlan:
         original_dir = os.getcwd()
         os.chdir(project_path)  # Change to root directory
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
         output = plan.model_dump_json(indent=2, exclude_none=True)
 
         assert plan.bake_file == resource_path / suite / ".bakery-bake.json"
@@ -292,7 +299,7 @@ class TestBakePlan:
         expected_plan = get_expected_plan("default", suite)
         config_obj = get_tmpconfig(suite)
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
         assert not plan.bake_file.is_file()
         plan.write()
 
@@ -316,7 +323,7 @@ class TestBakePlan:
         """Test that the build arguments are constructed correctly."""
         config_obj = get_config_obj(suite)
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
 
         expected_build_args = {
             "files": [str(plan.bake_file.name)],
@@ -347,7 +354,7 @@ class TestBakePlan:
         """Test that a given metadata_file is forwarded to `docker buildx bake --metadata-file`."""
         config_obj = get_config_obj(suite)
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
         metadata_file = tmp_path / "metadata.json"
 
         with patch("python_on_whales.docker.buildx.bake") as mock_bake:
@@ -365,7 +372,7 @@ class TestBakePlan:
         """Test that the build arguments are constructed correctly."""
         config_obj = get_tmpconfig(suite)
 
-        plan = BakePlan.from_image_targets(config_obj.base_path, config_obj.targets)
+        plan = BakePlan.from_image_targets(config_obj.base_path, select_targets(config_obj, config_obj.settings))
 
         plan.build()
 

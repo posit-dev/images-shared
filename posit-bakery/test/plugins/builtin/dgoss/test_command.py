@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.plugins.builtin.dgoss.command import DGossCommand, find_dgoss_bin
 from posit_bakery.image.image_metadata import MetadataFile
+from posit_bakery.targets.selection import select_targets
 
 pytestmark = [
     pytest.mark.unit,
@@ -111,9 +112,9 @@ class TestDGossCommand:
     def test_validate_no_test_path(self, get_tmpconfig):
         """Test that DGossCommand validate raises an error if the test path does not exist."""
         basic_tmpconfig = get_tmpconfig("basic")
-        shutil.rmtree(basic_tmpconfig.targets[0].context.version_path / "test")
+        shutil.rmtree(select_targets(basic_tmpconfig, basic_tmpconfig.settings)[0].context.version_path / "test")
         with pytest.raises(ValidationError, match="No test directory was found"):
-            DGossCommand.from_image_target(image_target=basic_tmpconfig.targets[0])
+            DGossCommand.from_image_target(image_target=select_targets(basic_tmpconfig, basic_tmpconfig.settings)[0])
 
     def test_command(self, basic_standard_image_target):
         """Test that DGossCommand command returns the expected command."""
