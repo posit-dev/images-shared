@@ -3,12 +3,12 @@ name: Bakery Skill Eval
 on:
   pull_request:
     paths:
-      - ".claude/skills/bakery/**"
+      - "plugins/bakery/skills/bakery/**"
   push:
     branches:
       - main
     paths:
-      - ".claude/skills/bakery/**"
+      - "plugins/bakery/skills/bakery/**"
   workflow_dispatch:
 
 concurrency:
@@ -32,11 +32,11 @@ jobs:
           enable-cache: false
 
       - name: Install dependencies
-        working-directory: .claude/skills/bakery/evals
+        working-directory: plugins/bakery/skills/bakery/evals
         run: uv sync
 
       - name: Run evals
-        working-directory: .claude/skills/bakery/evals
+        working-directory: plugins/bakery/skills/bakery/evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run inspect eval task.py --model anthropic/claude-sonnet-4-6
@@ -46,6 +46,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: eval-logs
-          path: .claude/skills/bakery/evals/logs/
+          path: plugins/bakery/skills/bakery/evals/logs/
           retention-days: 7
           if-no-files-found: ignore
