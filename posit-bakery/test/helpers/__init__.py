@@ -1,16 +1,65 @@
 import enum
 import filecmp
 import os
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import List, Tuple
+from unittest.mock import NonCallableMock, patch
 
 import pytest
 import python_on_whales
 
 from posit_bakery.config import BakeryConfig
 from posit_bakery.image import ImageTarget
+from posit_bakery.targets import selection
+from posit_bakery.targets.selection import select_targets
 
 from test.helpers.registry_container import RegistryContainer
+
+# Modules that import select_targets at module level, plus its source module for
+# callers that import it at call time (imagetools).
+#
+# Not auto-derived: a new module that imports select_targets and is exercised by a
+# CLI test with a mocked BakeryConfig must be added here by hand. Otherwise that
+# test calls the real select_targets against the mock, which fails with an
+# unrelated-looking error (e.g. iterating a Mock's `model.images`) rather than a
+# clear "add your module to SELECT_TARGETS_MODULES" message.
+SELECT_TARGETS_MODULES = (
+    "posit_bakery.cli.build",
+    "posit_bakery.cli.ci",
+    "posit_bakery.cli.clean",
+    "posit_bakery.cli.get",
+    "posit_bakery.cli.run",
+    "posit_bakery.plugins.builtin.dgoss",
+    "posit_bakery.plugins.builtin.hadolint",
+    "posit_bakery.plugins.builtin.wizcli",
+    "posit_bakery.targets.selection",
+)
+
+
+@contextmanager
+def select_targets_from_mocked_config(modules=SELECT_TARGETS_MODULES):
+    """Let tests that mock BakeryConfig supply targets through ``config.targets``.
+
+    Commands call select_targets(config, settings), which finds no images on a
+    mocked config, so the command would exit with "No image targets". A mocked
+    config whose test assigned ``targets`` returns that list. Everything else,
+    including mocks with hand-built models, goes through the real function.
+    """
+    real = selection.select_targets
+
+    def fake(config, settings, **kwargs):
+        # Assigned attributes live in the instance __dict__; auto-created mock
+        # children do not, so this matches only an explicit `config.targets = ...`.
+        if isinstance(config, NonCallableMock) and "targets" in vars(config):
+            return list(config.targets)
+        return real(config, settings, **kwargs)
+
+    with ExitStack() as stack:
+        for module in modules:
+            stack.enter_context(patch(f"{module}.select_targets", side_effect=fake))
+        yield
+
 
 IMAGE_INDENT = " " * 2
 MATRIX_INDENT = " " * 4
@@ -56,7 +105,7 @@ def try_format_values(value_list: List[str], **kwargs):
 def remove_images(obj: BakeryConfig | ImageTarget | None = None):
     """Remove any images created during testing."""
     if isinstance(obj, BakeryConfig):
-        for target in obj.targets:
+        for target in select_targets(obj, obj.settings):
             for tag in target.tags.as_strings():
                 try:
                     python_on_whales.docker.image.remove(tag)

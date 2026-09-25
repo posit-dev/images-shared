@@ -1,4 +1,3 @@
-# conftest.py loads this file via pytest_plugins
 import os
 import shutil
 from pathlib import Path
@@ -8,7 +7,14 @@ import pytest
 from pytest_bdd import given, when, then, parsers
 
 from test.cli.bakery_command import BakeryCommand
-from test.helpers import remove_images
+from test.helpers import remove_images, select_targets_from_mocked_config
+
+
+@pytest.fixture(autouse=True)
+def _select_targets_from_mocked_config():
+    """CLI tests mock BakeryConfig and set ``targets`` on it; route selection there."""
+    with select_targets_from_mocked_config():
+        yield
 
 
 def settings_from_call(mock):

@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from posit_bakery.plugins.builtin.hadolint.suite import HadolintSuite
+from posit_bakery.targets.selection import select_targets
 
 pytestmark = [
     pytest.mark.unit,
@@ -15,15 +16,15 @@ class TestHadolintSuite:
     def test_init(self, get_config_obj):
         """Test that HadolintSuite initializes with the correct attributes."""
         basic_config_obj = get_config_obj("basic")
-        suite = HadolintSuite(basic_config_obj.base_path, basic_config_obj.targets)
+        suite = HadolintSuite(basic_config_obj.base_path, select_targets(basic_config_obj, basic_config_obj.settings))
         assert suite.context == basic_config_obj.base_path
-        assert suite.image_targets == basic_config_obj.targets
+        assert suite.image_targets == select_targets(basic_config_obj, basic_config_obj.settings)
         assert len(suite.hadolint_commands) == 2
 
     def test_run_creates_results_directory(self, get_tmpconfig):
         """Test that run creates the results/hadolint/ directory."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
 
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -39,7 +40,7 @@ class TestHadolintSuite:
     def test_run_writes_json_results(self, get_tmpconfig):
         """Test that run writes JSON results for each target."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
 
         hadolint_output = json.dumps(
             [
@@ -62,7 +63,7 @@ class TestHadolintSuite:
             report_collection, errors = suite.run()
 
         assert errors is None
-        for target in basic_tmpconfig.targets:
+        for target in select_targets(basic_tmpconfig, basic_tmpconfig.settings):
             results_file = basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
             assert results_file.exists()
             with open(results_file) as f:
@@ -73,7 +74,7 @@ class TestHadolintSuite:
     def test_run_parses_empty_results(self, get_tmpconfig):
         """Test that run handles empty hadolint output (no issues)."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
 
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -91,7 +92,7 @@ class TestHadolintSuite:
     def test_run_handles_parse_error(self, get_tmpconfig):
         """Test that run creates an error when JSON parsing fails and exit code is non-zero."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
 
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -106,7 +107,7 @@ class TestHadolintSuite:
     def test_deduplicates_shared_containerfiles(self, get_tmpconfig):
         """Test that targets sharing the same Containerfile only run hadolint once."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
 
         # The basic fixture has 2 targets with different Containerfiles (std/min),
         # so hadolint should be called twice (once per unique Containerfile).
@@ -124,7 +125,7 @@ class TestHadolintSuite:
     def test_deduplicates_matrix_targets(self, get_tmpconfig):
         """Test that matrix targets sharing a Containerfile are grouped and labeled 'matrix'."""
         basic_tmpconfig = get_tmpconfig("basic")
-        targets = basic_tmpconfig.targets
+        targets = select_targets(basic_tmpconfig, basic_tmpconfig.settings)
 
         # Simulate matrix by duplicating a target (same containerfile, different uid)
         from copy import deepcopy
@@ -167,11 +168,11 @@ class TestHadolintSuite:
     def test_run_integration(self, get_tmpconfig):
         """Test running hadolint against real Containerfiles."""
         basic_tmpconfig = get_tmpconfig("basic")
-        suite = HadolintSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        suite = HadolintSuite(basic_tmpconfig.base_path, select_targets(basic_tmpconfig, basic_tmpconfig.settings))
         report_collection, errors = suite.run()
 
         assert errors is None
         assert len(report_collection) > 0
-        for target in basic_tmpconfig.targets:
+        for target in select_targets(basic_tmpconfig, basic_tmpconfig.settings):
             results_file = basic_tmpconfig.base_path / "results" / "hadolint" / target.image_name / f"{target.uid}.json"
             assert results_file.exists()

@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import subprocess
 import sys
 from enum import Enum
@@ -13,8 +12,10 @@ from pydantic import ValidationError
 from posit_bakery.cli.common import with_verbosity_flags, parse_dev_spec
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.changeset import classify_changes, classify_bakery_yaml_diff, ImageChangeSet, MatrixSelection
-from posit_bakery.config.config import BakerySettings, BakeryConfigFilter, apply_recent_versions, version_matches
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
+from posit_bakery.config.settings import BakerySettings, BakeryConfigFilter
+from posit_bakery.targets.selection import apply_recent_versions, select_targets
+from posit_bakery.targets.ci_matrix import matrix_rows, BakeryCIMatrixFieldEnum
 from posit_bakery.config.image.version import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum, SummaryOutputFormat
 from posit_bakery.image import BuildSummary
@@ -30,13 +31,6 @@ class RichHelpPanelEnum(str, Enum):
     """Enum for categorizing options into rich help panels."""
 
     FILTERS = "Filters"
-
-
-class BakeryCIMatrixFieldEnum(str, Enum):
-    VERSION = "version"
-    DEV = "dev"
-    LATEST = "latest"
-    PLATFORM = "platform"
 
 
 def _resolve_changed_files(base_ref: str | None, changed_files_from: str | None, rebase_root: Path) -> list[str] | None:
@@ -290,15 +284,19 @@ def matrix(
             dev_channel = dev_stream
     try:
         settings = BakerySettings(
-            filter=BakeryConfigFilter(image_name=image_name),
+            filter=BakeryConfigFilter(
+                image_name=image_name,
+                image_version=image_version,
+            ),
             dev_versions=dev_versions,
             dev_channel=dev_channel,
+            matrix_versions=matrix_versions,
             recent=recent,
             dev_spec=dev_spec,  # type: ignore[arg-type]  # typer requires str annotation; parse_dev_spec callback delivers DevBuildSpec at runtime
         )
         c = BakeryConfig.from_context(context=context, settings=settings)
-        images = [i for i in c.model.images if image_name is None or re.search(image_name, i.name) is not None]
 
+        # Check for change-aware filtering
         selection: MatrixSelection | None = None
         changed = _resolve_changed_files(base_ref, changed_files_from, c.base_path)
         if changed is not None:
@@ -323,78 +321,45 @@ def matrix(
                     {name: vars(cs) for name, cs in selection.images.items()} or "no affected images",
                 )
 
-        data = []
-        for img in images:
-            if selection is not None and img.name not in selection.images:
-                continue
-            cs = selection.images[img.name] if selection is not None else None
+        # Keep bakery.yaml order: matrix rows (and so CI job order) follow the
+        # config, newest version first by convention, not the string sort.
+        targets = select_targets(c, settings, sort=False)
 
-            entry = {"image": img.name}
+        # Apply change-aware filtering if active
+        if selection is not None:
+            filtered_targets = []
+            for target in targets:
+                if target.image_name not in selection.images:
+                    continue
+                cs = selection.images[target.image_name]
+                if not _version_selected(target.image_version, cs):
+                    continue
+                filtered_targets.append(target)
+            targets = filtered_targets
 
-            # Candidate versions honor --dev-versions / --matrix-versions identically
-            # whether or not change-aware filtering is active. Preserves the matrix+dev
-            # filtering fix (commit 92c72833 / generate_image_targets): when matrix
-            # versions are included, fold the already-loaded dev versions into the
-            # matrix product per the dev_versions setting so they survive the
-            # matches_dev_filter check below.
-            versions = list(img.versions)
-            if img.matrix is None and matrix_versions == MatrixVersionInclusionEnum.ONLY:
-                continue
-            elif img.matrix is not None:
-                if matrix_versions != MatrixVersionInclusionEnum.EXCLUDE:
-                    if dev_versions == DevVersionInclusionEnum.ONLY:
-                        pass  # img.versions has dev versions; matrix prod versions all fail the dev filter
-                    elif dev_versions == DevVersionInclusionEnum.INCLUDE:
-                        dev_versions_loaded = [v for v in img.versions if v.isDevelopmentVersion]
-                        versions = img.matrix.to_image_versions() + dev_versions_loaded
-                    else:
-                        versions = img.matrix.to_image_versions()
-            elif img.matrix is None and settings.recent is not None:
-                release_versions = [version for version in versions if not version.isDevelopmentVersion]
-                versions = apply_recent_versions(
-                    versions,
-                    settings.recent,
-                    img.name,
-                    image_version,
-                )
-                included_release_ids = {id(version) for version in versions if not version.isDevelopmentVersion}
-                if cs is not None:
+            # Warn about versions excluded by --recent that were changed
+            if recent is not None:
+                for img in c.model.images:
+                    if img.name not in selection.images:
+                        continue
+                    cs = selection.images[img.name]
+                    if img.matrix is not None:
+                        continue  # --recent doesn't apply to matrix images
+                    release_versions = [v for v in img.versions if not v.isDevelopmentVersion]
+                    recent_release_names = {
+                        v.name
+                        for v in apply_recent_versions(list(img.versions), recent, img.name)
+                        if not v.isDevelopmentVersion
+                    }
                     for version in release_versions:
-                        if id(version) not in included_release_ids and version.name in cs.versions:
+                        if version.name in cs.versions and version.name not in recent_release_names:
                             log.warning(
                                 f"Version '{version.name}' in image '{img.name}' was modified in this changeset "
-                                f"but is excluded by --recent {settings.recent}. It will not be built."
+                                f"but is excluded by --recent {recent}. It will not be built."
                             )
 
-            for ver in versions:
-                # The caller's flags decide which kinds of version are eligible
-                # (release / dev / matrix), in both full and change-aware modes. The
-                # channel comes from effective_dev_channel (honors --dev-channel and
-                # falls back to --dev-spec's channel).
-                included, _ = ver.matches_dev_filter(dev_versions, settings.effective_dev_channel)
-                if not included:
-                    continue
-                # In change-aware mode the change set then narrows to the versions
-                # the PR actually touched. It only ever removes candidates.
-                if cs is not None and not _version_selected(ver, cs):
-                    continue
-                if image_version is not None and not version_matches(ver.name, image_version):
-                    continue
-
-                if BakeryCIMatrixFieldEnum.VERSION not in exclude:
-                    entry["version"] = ver.name
-                if BakeryCIMatrixFieldEnum.DEV not in exclude:
-                    entry["dev"] = ver.isDevelopmentVersion
-                if BakeryCIMatrixFieldEnum.LATEST not in exclude:
-                    # Same predicate the --latest filter uses, so a workflow gating on
-                    # this field selects exactly what `--latest` would have.
-                    entry["latest"] = ver.is_latest_release
-                if BakeryCIMatrixFieldEnum.PLATFORM not in exclude:
-                    for platform in ver.supported_platforms:
-                        entry["platform"] = platform
-                        data.append(entry.copy())
-                else:
-                    data.append(entry.copy())
+        # Convert targets to matrix rows
+        data = matrix_rows(targets, exclude=exclude)
 
         if image_version is not None and not data:
             log.error(f"No matrix entries matched --image-version '{image_version}'")
@@ -673,9 +638,10 @@ def readme(
         matrix_versions=matrix_versions,
     )
     config: BakeryConfig = BakeryConfig.from_context(context, settings)
+    targets = select_targets(config, settings)
 
     if check:
-        violations = find_oversized_readmes(config.targets)
+        violations = find_oversized_readmes(targets)
         if violations:
             for violation in violations:
                 stderr_console.print(f"❌ {violation}", style="error")
@@ -684,7 +650,7 @@ def readme(
         return
 
     try:
-        count = push_readmes(config.targets)
+        count = push_readmes(targets)
     except (ValueError, RuntimeError) as e:
         stderr_console.print(f"❌ {e}", style="error")
         raise typer.Exit(code=1)

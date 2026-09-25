@@ -197,8 +197,11 @@ class ImageToolsPlugin(BakeryToolPlugin):
         """
         from typing import Annotated, Optional
 
+        from posit_bakery.build.runner import load_build_metadata_from_file
         from posit_bakery.cli.common import with_verbosity_flags
-        from posit_bakery.config.config import BakeryConfig, BakerySettings
+        from posit_bakery.config.config import BakeryConfig
+        from posit_bakery.config.settings import BakerySettings
+        from posit_bakery.targets.selection import select_targets
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
         from posit_bakery.util import auto_path
 
@@ -237,6 +240,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 temp_registry=temp_registry,
             )
             config: BakeryConfig = BakeryConfig.from_context(context, settings)
+            targets = select_targets(config, settings)
 
             metadata_file = _resolve_metadata_files(metadata_file)
             log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
@@ -245,7 +249,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
             loaded_targets: list[str] = []
             for file in metadata_file:
                 try:
-                    loaded_targets.extend(config.load_build_metadata_from_file(file))
+                    loaded_targets.extend(load_build_metadata_from_file(targets, file))
                 except Exception as e:
                     log.error(f"Failed to load metadata from file '{file}'")
                     log.error(str(e))
@@ -259,7 +263,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
             log.info(f"Found {len(loaded_targets)} targets")
             log.debug(", ".join(loaded_targets))
 
-            results = plugin.merge_execute(config.base_path, config.targets, dry_run=dry_run)
+            results = plugin.merge_execute(config.base_path, targets, dry_run=dry_run)
             plugin.merge_results(results)
 
         @with_verbosity_flags
@@ -291,13 +295,14 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 temp_registry=temp_registry,
             )
             config: BakeryConfig = BakeryConfig.from_context(context, settings)
+            targets = select_targets(config, settings)
 
             metadata_file = _resolve_metadata_files(metadata_file)
             log.info(f"Reading targets from {', '.join(f.name for f in metadata_file)}")
             files_ok = True
             for f in metadata_file:
                 try:
-                    config.load_build_metadata_from_file(f)
+                    load_build_metadata_from_file(targets, f)
                 except Exception as e:
                     log.error(f"Failed to load metadata from file '{f}': {e}")
                     files_ok = False
@@ -306,14 +311,14 @@ class ImageToolsPlugin(BakeryToolPlugin):
 
             # Build source_refs from each target's most recent build metadata.
             source_refs: dict[str, str] = {}
-            for t in config.targets:
+            for t in targets:
                 if t.build_metadata:
                     latest = max(t.build_metadata, key=lambda m: m.created_at)
                     source_refs[t.uid] = latest.image_ref
 
             results = plugin.execute(
                 config.base_path,
-                config.targets,
+                targets,
                 source_refs=source_refs,
                 dry_run=dry_run,
             )
@@ -587,8 +592,10 @@ class ImageToolsPlugin(BakeryToolPlugin):
         Raises ``typer.Exit(1)`` if any target failed Stage 1, or if any index-copy or verify
         failed.
         """
+        from posit_bakery.build.runner import load_build_metadata_from_file
         from posit_bakery.config import BakeryConfig
-        from posit_bakery.config.config import BakeryConfigFilter, BakerySettings
+        from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+        from posit_bakery.targets.selection import select_targets
         from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
         from posit_bakery.parallel import ParallelShellExecutor, ShellJob, resolve_max_workers
 
@@ -611,6 +618,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
             temp_registry=temp_registry,
         )
         config: BakeryConfig = BakeryConfig.from_context(context, settings)
+        all_targets = select_targets(config, settings)
 
         metadata_file = _resolve_metadata_files(metadata_file)
 
@@ -620,7 +628,7 @@ class ImageToolsPlugin(BakeryToolPlugin):
         loaded_targets: list[str] = []
         for f in metadata_file:
             try:
-                loaded_targets.extend(config.load_build_metadata_from_file(f))
+                loaded_targets.extend(load_build_metadata_from_file(all_targets, f))
             except Exception as e:
                 log.error(f"Failed to load metadata from file '{f}': {e}")
                 files_ok = False
@@ -637,10 +645,10 @@ class ImageToolsPlugin(BakeryToolPlugin):
         # files, not every target defined in the config. Publishing a single set of
         # files (e.g. one version / dev stream) otherwise drags in every other
         # version and variant, which each phase then has to re-skip individually.
-        # The UIDs in loaded_targets all originate from config.targets, so the
+        # The UIDs in loaded_targets all originate from all_targets, so the
         # lookups always resolve.
         targets = sorted(
-            (t for uid in loaded_targets if (t := config.get_image_target_by_uid(uid)) is not None),
+            (t for t in all_targets if t.uid in loaded_targets),
             key=lambda t: t.push_sort_key,
         )
 
