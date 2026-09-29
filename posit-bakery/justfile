@@ -63,6 +63,12 @@ test-all *ARGS:
     NO_COLOR="true" \
     just _pytest -n 4 {{ ARGS }}
 
+# Build and goss-test the macros-functional blackbox context. Accepts bakery filter flags,
+# e.g. `just test-macros --image-name '^macros-r$' --image-os 'Rocky Linux 9'`
+test-macros *ARGS:
+    uv run bakery build --load --context {{ CWD }}/test/resources/macros-functional {{ ARGS }}
+    uv run bakery dgoss run --context {{ CWD }}/test/resources/macros-functional {{ ARGS }}
+
 # Regenerate API reference pages from package source using great-docs
 docs-reference:
     uv run --group docs great-docs build --project-path {{ CWD }}

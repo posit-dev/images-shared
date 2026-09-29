@@ -30,6 +30,7 @@ jobs:
       - bakery
       - bakery-native
       - bakery-pr
+      - blackbox
       - release
       - pypi-publish
       - zizmor
@@ -158,6 +159,19 @@ jobs:
       context: "./posit-bakery/test/resources/with-macros/"
       dev-versions: include
 
+  # Functional tests for Bakery's Jinja2 macros: builds every scenario image in the
+  # macros-functional context and runs its goss tests. Runs in parallel with `test`.
+  blackbox:
+    name: Blackbox Tests
+    permissions:
+      contents: read
+      packages: write
+
+    uses: "./.github/workflows/bakery-build.yml"
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      context: "./posit-bakery/test/resources/macros-functional/"
+
   bakery-native:
     name: Bakery Native Build
     permissions:
@@ -215,6 +229,22 @@ jobs:
       remove-dangling-caches: true
       remove-caches-older-than: 14
       clean-temporary-images: false  # TODO: flip to true if this build starts using the native workflow
+
+  blackbox-clean-caches:
+    name: Clean Caches (macros-functional suite)
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - blackbox
+
+    uses: "./.github/workflows/clean.yml"
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      context: "./posit-bakery/test/resources/macros-functional/"
+      remove-dangling-caches: true
+      remove-caches-older-than: 14
+      clean-temporary-images: false  # Flip to true if this suite moves to the native workflow
 
   multiplatform-clean-caches:
     name: Clean Caches (multiplatform suite)
