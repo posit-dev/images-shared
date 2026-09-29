@@ -97,3 +97,17 @@ class TestLogging:
 
             assert handler.tracebacks_max_frames == 0
             assert handler.tracebacks_show_locals is False
+
+
+def test_console_width_non_tty_default(monkeypatch):
+    """Non-TTY output without COLUMNS gets a wider default than Rich's 80."""
+    from posit_bakery.log import NON_TTY_DEFAULT_WIDTH, _console_width
+
+    class Stream:
+        def isatty(self):
+            return False
+
+    monkeypatch.delenv("COLUMNS", raising=False)
+    assert _console_width(Stream()) == NON_TTY_DEFAULT_WIDTH
+    monkeypatch.setenv("COLUMNS", "100")
+    assert _console_width(Stream()) is None
