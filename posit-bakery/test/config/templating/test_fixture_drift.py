@@ -20,6 +20,7 @@ pytestmark = [
 # Test contexts whose rendered output is built and tested against real images.
 RENDERED_CONTEXTS = [
     "with-macros",
+    "macros-functional",
 ]
 
 

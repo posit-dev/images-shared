@@ -1,0 +1,43 @@
+{#-
+Every Containerfile.<os>.jinja2 in this image is identical; OS differences branch on
+Image.OS so each scenario (variant) runs the same macros on every OS.
+-#}
+{%- import "apt.j2" as apt -%}
+{%- import "dnf.j2" as dnf -%}
+{%- import "python.j2" as python -%}
+{%- if Image.OS.Family == "debian" -%}
+{%- set pm = apt -%}
+{%- set base_image = "docker.io/library/ubuntu:" ~ Image.OS.Version -%}
+{%- else -%}
+{%- set pm = dnf -%}
+{%- set base_image = "docker.io/rockylinux/rockylinux:" ~ Image.OS.Version -%}
+{%- endif -%}
+{%- set default_version = Dependencies.python[0] -%}
+
+{{ python.build_stage(Dependencies.python) }}
+
+FROM {{ base_image }}
+LABEL org.opencontainers.image.base.name="{{ base_image }}"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+{{ pm.run_setup() }}
+
+{{ python.copy_from_build_stage() }}
+
+{% if Image.Variant == "install" -%}
+RUN {{ python.symlink_version(default_version, "/opt/python/default") }} && \
+    {{ python.symlink_binary(default_version, "python", "/usr/local/bin/python") }}
+{%- for version in Dependencies.python %} && \
+    {{ python.symlink_binary(version, "python" ~ (version | stripPatch), "/usr/local/bin/python" ~ (version | stripPatch)) }}
+{%- endfor %}
+{%- elif Image.Variant == "packages" -%}
+COPY {{ Path.Version }}/deps/requirements-1.txt /tmp/requirements-1.txt
+COPY {{ Path.Version }}/deps/requirements-2.txt /tmp/requirements-2.txt
+{{ python.run_install_packages(Dependencies.python, ["six", "idna"], ["/tmp/requirements-1.txt", "/tmp/requirements-2.txt"]) }}
+{%- elif Image.Variant == "jupyter" -%}
+{{ python.run_install_jupyterlab_workbench(Dependencies.python) }}
+{%- else -%}
+{{ raise("Unhandled variant '" ~ Image.Variant ~ "'") }}
+{%- endif %}
