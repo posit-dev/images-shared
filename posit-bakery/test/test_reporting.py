@@ -83,3 +83,21 @@ class TestGroupedTable:
         assert table.row_count == 1  # just the Total row
         assert _cell(table, 0, "Group") == "Total"
         assert _cell(table, 0, "Value") == "0"
+
+
+def test_folding_table_folds_instead_of_truncating():
+    """Long unbroken content (e.g. URLs) wraps rather than being cut off with an ellipsis."""
+    from io import StringIO
+
+    from rich.console import Console
+
+    from posit_bakery.reporting import FoldingTable
+
+    url = "https://example.com/" + "a" * 60
+    table = FoldingTable()
+    table.add_column("URL")
+    table.add_row(url)
+    out = StringIO()
+    Console(file=out, width=40).print(table)
+    assert "…" not in out.getvalue()
+    assert url == "".join(line.strip("│ ") for line in out.getvalue().splitlines() if "a" in line)

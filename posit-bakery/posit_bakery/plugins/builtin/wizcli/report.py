@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Annotated
 
 from pydantic import BaseModel, Field
-from rich.table import Table
 from rich.text import Text
 
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.reporting import FoldingTable
 
 
 class WizScanReport(BaseModel):
@@ -152,11 +152,11 @@ class WizScanReportCollection(dict):
 
         return results
 
-    def table(self) -> Table:
+    def table(self) -> FoldingTable:
         aggregated = self.aggregate()
         total_row = aggregated.pop("total")
 
-        table = Table(title="WizCLI Scan Results")
+        table = FoldingTable(title="WizCLI Scan Results")
         table.add_column("Image Name", justify="left")
         table.add_column("Version", justify="left")
         table.add_column("Variant", justify="left")

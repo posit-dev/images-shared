@@ -4,6 +4,14 @@ from typing import Any, Callable
 from rich.table import Table
 
 
+class FoldingTable(Table):
+    """A Rich `Table` whose columns fold long content (e.g. URLs) onto extra lines instead of truncating with "..."."""
+
+    def add_column(self, *args, **kwargs) -> None:
+        kwargs.setdefault("overflow", "fold")
+        super().add_column(*args, **kwargs)
+
+
 @dataclass
 class GroupColumn:
     """A leading identity column used to nest rows; a repeated value is blanked once every
@@ -49,7 +57,7 @@ def grouped_table(
     `items` must already be ordered so that equal group keys are adjacent -- this function
     renders in the given order, it does not sort or bucket by the group keys itself.
     """
-    table = Table(title=title, caption=caption)
+    table = FoldingTable(title=title, caption=caption)
     for group_column in group_columns:
         table.add_column(group_column.header, justify="left")
     for value_column in value_columns:

@@ -7,13 +7,12 @@ import python_on_whales
 from pydantic import BaseModel, Field, ValidationError
 from python_on_whales.components.buildx.imagetools.models import Manifest
 from rich.filesize import decimal as format_size
-from rich.table import Table
 from rich.text import Text
 
 from posit_bakery.config.image.build_os import DEFAULT_PLATFORMS
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.parallel import CommandRunner, JobResult, ParallelShellExecutor, ShellJob, resolve_max_workers
-from posit_bakery.reporting import GroupColumn, ValueColumn, grouped_table
+from posit_bakery.reporting import FoldingTable, GroupColumn, ValueColumn, grouped_table
 
 log = logging.getLogger(__name__)
 
@@ -471,7 +470,7 @@ class BuildSummary(BaseModel):
             on_result=_apply,
         )
 
-    def table(self, *, sizes: bool) -> Table:
+    def table(self, *, sizes: bool) -> FoldingTable:
         """Render the summary as a Rich table.
 
         :param sizes: `False` renders the three aggregate count rows only (unchanged since
@@ -482,7 +481,7 @@ class BuildSummary(BaseModel):
             called) shows a dash rather than a misleading zero.
         """
         if not sizes:
-            table = Table(title="Build Summary", caption=TAG_ALIAS_NOTE)
+            table = FoldingTable(title="Build Summary", caption=TAG_ALIAS_NOTE)
             table.add_column("Metric", justify="left")
             table.add_column("Count", justify="right")
             for row in self.rows:
