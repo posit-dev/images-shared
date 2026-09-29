@@ -1,8 +1,8 @@
 """Guard against committed rendered fixtures drifting from their templates.
 
-Image build tests (pytest `@image_build` scenarios and the CI blackbox job) build the
-committed rendered files, not freshly rendered ones. Without this check, a macro change
-that isn't re-rendered into these fixtures would still pass CI.
+The CI blackbox job builds the committed rendered files, not freshly rendered ones.
+Without this check, a macro change that isn't re-rendered into these fixtures would
+still pass CI. `with-macros` isn't built, but render tests compare against it.
 """
 
 import filecmp
@@ -17,7 +17,7 @@ pytestmark = [
     pytest.mark.unit,
 ]
 
-# Test contexts whose rendered output is built and tested against real images.
+# Test contexts whose committed rendered output must match their templates.
 RENDERED_CONTEXTS = [
     "with-macros",
     "macros-functional",
