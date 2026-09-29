@@ -1,0 +1,20 @@
+{%- import "quarto.j2" as quarto -%}
+# run_install() from the Posit Open repository.
+package:
+  quarto:
+    installed: true
+
+file:
+  {{ quarto.get_directory() }}/bin/quarto:
+    exists: true
+
+command:
+  quarto --version:
+    exit-status: 0
+    stdout:
+      - "{{ Dependencies.quarto[0] }}"
+  quarto-package-held:
+    exec: '{% raw %}{{ if eq .Env.IMAGE_OS_FAMILY "debian" }}apt-mark showhold{{ else }}cat /etc/dnf/plugins/versionlock.list{{ end }}{% endraw %}'
+    exit-status: 0
+    stdout:
+      - "quarto"

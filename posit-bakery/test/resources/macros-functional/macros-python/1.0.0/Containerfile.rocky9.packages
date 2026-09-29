@@ -1,0 +1,41 @@
+FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
+
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+ENV UV_PYTHON_PREFERENCE=only-managed
+RUN uv python install 3.14.7 3.13.7
+RUN mv /opt/python/cpython-3.14.7-linux-*/ /opt/python/3.14.7 && \
+    mv /opt/python/cpython-3.13.7-linux-*/ /opt/python/3.13.7
+
+
+FROM docker.io/rockylinux/rockylinux:9
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:9"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    dnf clean all -yq
+
+COPY --from=python-builder /opt/python /opt/python
+
+COPY macros-python/1.0.0/deps/requirements-1.txt /tmp/requirements-1.txt
+COPY macros-python/1.0.0/deps/requirements-2.txt /tmp/requirements-2.txt
+RUN /opt/python/3.14.7/bin/pip install --no-cache-dir --upgrade --break-system-packages \
+        six \
+        idna \
+        -r /tmp/requirements-1.txt \
+        -r /tmp/requirements-2.txt && \
+    rm -f /tmp/requirements-1.txt /tmp/requirements-2.txt
+RUN /opt/python/3.13.7/bin/pip install --no-cache-dir --upgrade --break-system-packages \
+        six \
+        idna \
+        -r /tmp/requirements-1.txt \
+        -r /tmp/requirements-2.txt && \
+    rm -f /tmp/requirements-1.txt /tmp/requirements-2.txt

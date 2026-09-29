@@ -1,0 +1,17 @@
+FROM docker.io/rockylinux/rockylinux:10
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:10"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    dnf clean all -yq
+
+RUN dnf install -yq \
+        jq

@@ -1,0 +1,9 @@
+# install(clean=False) leaves the package cache in place.
+package:
+  jq:
+    installed: true
+
+command:
+  package-cache-kept:
+    exec: '{{ if eq .Env.IMAGE_OS_FAMILY "debian" }}ls -A /var/lib/apt/lists{{ else }}find /var/cache/dnf -name repomd.xml{{ end }} | grep -q .'
+    exit-status: 0
