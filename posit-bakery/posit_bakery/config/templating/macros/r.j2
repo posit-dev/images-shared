@@ -183,13 +183,15 @@ more versions of R as separate RUN statements
 :param _os: An optional OS dictionary containing Name, Version, and Codename keys to determine the appropriate Posit
     Package Manager CRAN repository URL for binary packages. If not provided, the default P3M CRAN repository URL
     will be used.
+:param clean: Whether to remove the package list file(s) after installation. Defaults to True. Removal happens only
+    after the last version, since every version's RUN statement reads the same file(s).
 #}
-{% macro run_install_packages(versions, packages = None, package_list_files = None, _os = None) -%}
+{% macro run_install_packages(versions, packages = None, package_list_files = None, _os = None, clean = True) -%}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {%- for version in versions -%}
-RUN {{ install_packages((version | trim), packages, package_list_files, _os) | indent(4) }}
+RUN {{ install_packages((version | trim), packages, package_list_files, _os, clean and loop.last) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
