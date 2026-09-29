@@ -57,12 +57,12 @@ on:
         type: string
       amd64-builder:
         description: "Runner label for amd64 builds"
-        default: "ubuntu-latest-4x"
+        default: "ubuntu-latest-amd64-4-core"
         required: false
         type: string
       arm64-builder:
         description: "Runner label for arm64 builds"
-        default: "ubuntu-24.04-arm64-4-core"
+        default: "ubuntu-24-arm64-4-core"
         required: false
         type: string
     # NO secrets section — only inherited GITHUB_TOKEN
