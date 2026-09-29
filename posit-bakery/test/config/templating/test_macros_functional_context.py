@@ -5,7 +5,10 @@ fast checks catch layout mistakes that would otherwise surface there as confusin
 failures, or silently reduce coverage.
 """
 
+from pathlib import Path
+
 import pytest
+from ruamel.yaml import YAML
 
 from posit_bakery.config import BakeryConfig
 
@@ -26,6 +29,17 @@ def test_every_variant_has_a_goss_scenario(macros_functional_images):
         scenarios = {p.name.removesuffix(".jinja2").removesuffix(".yaml") for p in scenarios_path.iterdir()}
         variants = {v.name for v in image.variants}
         assert scenarios == variants, f"{image.name}: scenarios {sorted(scenarios)} != variants {sorted(variants)}"
+
+
+def test_ci_runs_every_macro_scenario_os(macros_functional_images):
+    """Keep the CI job's OS matrix in sync with the functional test context."""
+    workflow_path = Path(__file__).resolve().parents[4] / ".github/workflows/ci.yml"
+    workflow = YAML(typ="safe").load(workflow_path.read_text())
+    matrix_oses = workflow["jobs"]["blackbox"]["strategy"]["matrix"]["os"]
+
+    for image in macros_functional_images:
+        for version in image.versions:
+            assert sorted(matrix_oses) == sorted(os.name for os in version.os), image.name
 
 
 def test_every_os_has_an_identical_containerfile(macros_functional_images):
