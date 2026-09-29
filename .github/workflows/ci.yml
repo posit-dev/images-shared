@@ -27,7 +27,6 @@ jobs:
     needs:
       - lint
       - test
-      - bakery
       - bakery-native
       - bakery-pr
       - blackbox
@@ -147,20 +146,9 @@ jobs:
         with:
           files: ./posit-bakery/results.xml
 
-  bakery:
-    name: Bakery
-    permissions:
-      contents: read
-      packages: write
-
-    uses: "./.github/workflows/bakery-build.yml"
-    with:
-      version: ${{ github.head_ref || github.ref_name }}
-      context: "./posit-bakery/test/resources/with-macros/"
-      dev-versions: include
-
   # Functional tests for Bakery's Jinja2 macros: builds every scenario image in the
   # macros-functional context and runs its goss tests. Runs in parallel with `test`.
+  # Also the only CI caller of the QEMU-based bakery-build.yml workflow.
   blackbox:
     name: Blackbox Tests
     permissions:
@@ -213,23 +201,6 @@ jobs:
           persist-credentials: false
       - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482  # v0.6.4
 
-  with-macros-clean-caches:
-    name: Clean Caches (with-macros suite)
-    permissions:
-      contents: read
-      packages: write
-    needs:
-      - bakery
-      - bakery-native
-
-    uses: "./.github/workflows/clean.yml"
-    with:
-      version: ${{ github.head_ref || github.ref_name }}
-      context: "./posit-bakery/test/resources/with-macros/"
-      remove-dangling-caches: true
-      remove-caches-older-than: 14
-      clean-temporary-images: false  # TODO: flip to true if this build starts using the native workflow
-
   blackbox-clean-caches:
     name: Clean Caches (macros-functional suite)
     permissions:
@@ -252,7 +223,6 @@ jobs:
       contents: read
       packages: write
     needs:
-      - bakery
       - bakery-native
 
     uses: "./.github/workflows/clean.yml"
@@ -271,7 +241,7 @@ jobs:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request' || github.event_name == 'merge_group')
     needs:
       - test
-      - bakery
+      - blackbox
       - bakery-native
     runs-on: ubuntu-latest
 
