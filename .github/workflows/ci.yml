@@ -148,7 +148,7 @@ jobs:
 
   # Group macro scenarios by OS so each runner reuses its base image layers.
   blackbox:
-    name: Macro Functional Tests (${{ matrix.os }})
+    name: Functional Tests (${{ matrix.os }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
