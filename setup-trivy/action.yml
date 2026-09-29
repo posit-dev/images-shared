@@ -1,0 +1,18 @@
+name: 'Setup trivy'
+description: 'Installs the trivy CLI via the aquasecurity/setup-trivy marketplace action'
+
+inputs:
+  version:
+    description: "The trivy release version to install"
+    required: false
+    # renovate: datasource=github-releases depName=aquasecurity/trivy
+    default: "v0.74.0"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install trivy
+      uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
+      with:
+        cache: true
+        version: ${{ inputs.version }} # zizmor: ignore[unpinned-tools] resolves aquasecurity/setup-trivy's own internal trivy version; the marketplace action above is hash-pinned
