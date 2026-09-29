@@ -199,3 +199,8 @@ out/
 # Claude superpowers
 .superpowers/
 **/docs/superpowers/
+
+# Agent tooling
+.pi-subagents/
+.rpiv/
+.serena/
