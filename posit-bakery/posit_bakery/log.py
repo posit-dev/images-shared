@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 
 import typer
 from rich.console import Console
@@ -15,8 +17,19 @@ default_theme = Theme(
     }
 )
 
-stdout_console = Console(theme=default_theme)
-stderr_console = Console(stderr=True, theme=default_theme)
+# Rich falls back to 80 columns when output is not a TTY and COLUMNS is unset (e.g. GitHub Actions),
+# which squashes tables. Use a wider default there; a real terminal or COLUMNS still takes precedence.
+NON_TTY_DEFAULT_WIDTH = 160
+
+
+def _console_width(stream) -> int | None:
+    if os.environ.get("COLUMNS") or stream.isatty():
+        return None
+    return NON_TTY_DEFAULT_WIDTH
+
+
+stdout_console = Console(theme=default_theme, width=_console_width(sys.stdout))
+stderr_console = Console(stderr=True, theme=default_theme, width=_console_width(sys.stderr))
 
 
 def init_logging(log_level: str | int = logging.INFO) -> None:
