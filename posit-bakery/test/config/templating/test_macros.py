@@ -1575,8 +1575,7 @@ class TestPythonMacros:
                 textwrap.dedent(
                     """\
                     RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
-                            -r /tmp/requirements.txt && \\
-                        rm -f /tmp/requirements.txt
+                            -r /tmp/requirements.txt
                     RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             -r /tmp/requirements.txt && \\
                         rm -f /tmp/requirements.txt"""
@@ -1590,8 +1589,7 @@ class TestPythonMacros:
                     RUN /opt/python/3.12.11/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
-                            -r /tmp/requirements.txt && \\
-                        rm -f /tmp/requirements.txt
+                            -r /tmp/requirements.txt
                     RUN /opt/python/3.11.9/bin/pip install --no-cache-dir --upgrade --break-system-packages \\
                             numpy \\
                             pandas \\
@@ -2824,13 +2822,21 @@ class TestRMacros:
                 textwrap.dedent(
                     """\
                     RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        rm -f /tmp/packages.txt /tmp/extra.txt
+                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-version-multi-file-list",
+            ),
+            pytest.param(
+                (["4.4.3", "4.3.3"], None, ["/tmp/packages.txt"], None, False),
+                textwrap.dedent(
+                    """\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'"""
+                ),
+                id="multi-version-file-list-noclean",
             ),
             pytest.param(
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None),
