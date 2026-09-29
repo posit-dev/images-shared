@@ -98,18 +98,18 @@ on:
         required: false
         type: string
       merge-builder:
-        description: "The type of runner to use for merging [default: ubuntu-latest-4x]"
-        default: "ubuntu-latest-4x"
+        description: "The type of runner to use for merging [default: ubuntu-latest-amd64-4-core]"
+        default: "ubuntu-latest-amd64-4-core"
         required: false
         type: string
       amd64-builder:
-        description: "The type of runner to use for amd64 builds [default: ubuntu-latest-4x]"
-        default: "ubuntu-latest-4x"
+        description: "The type of runner to use for amd64 builds [default: ubuntu-latest-amd64-4-core]"
+        default: "ubuntu-latest-amd64-4-core"
         required: false
         type: string
       arm64-builder:
-        description: "The type of runner to use for arm64 builds [default: ubuntu-24.04-arm64-4-core]"
-        default: "ubuntu-24.04-arm64-4-core"
+        description: "The type of runner to use for arm64 builds [default: ubuntu-24-arm64-4-core]"
+        default: "ubuntu-24-arm64-4-core"
         required: false
         type: string
       aws-region:
