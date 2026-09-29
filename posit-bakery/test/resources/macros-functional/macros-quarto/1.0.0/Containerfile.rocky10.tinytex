@@ -17,6 +17,7 @@ RUN dnf upgrade -yq && \
 RUN --mount=type=secret,id=github_token,required=false dnf install -yq \
         quarto-1.9.38 \
         'dnf-command(versionlock)' \
+        perl \
         xz && \
     dnf versionlock add quarto && \
     dnf clean all -yq && \

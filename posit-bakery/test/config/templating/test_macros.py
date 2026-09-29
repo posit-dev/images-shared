@@ -2079,6 +2079,7 @@ class TestQuartoMacros:
                     apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
+                        perl \\
                         xz-utils && \\
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
@@ -2096,6 +2097,7 @@ class TestQuartoMacros:
                     apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
+                        perl \\
                         xz-utils && \\
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
@@ -2113,6 +2115,7 @@ class TestQuartoMacros:
                     apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
+                        perl \\
                         xz-utils && \\
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
@@ -2130,6 +2133,7 @@ class TestQuartoMacros:
                     apt-get update -yqq && \\
                     apt-get install -yqq --no-install-recommends \\
                         quarto=1.8.24 \\
+                        perl \\
                         xz-utils && \\
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
@@ -2182,6 +2186,7 @@ class TestQuartoMacros:
             dnf install -yq \\
                 quarto-1.8.24 \\
                 'dnf-command(versionlock)' \\
+                perl \\
                 xz && \\
             dnf versionlock add quarto && \\
             dnf clean all -yq && \\
@@ -2222,6 +2227,7 @@ class TestQuartoMacros:
                     RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
+                            perl \\
                             xz-utils && \\
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
@@ -2237,6 +2243,7 @@ class TestQuartoMacros:
                     RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
+                            perl \\
                             xz-utils && \\
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
@@ -2252,6 +2259,7 @@ class TestQuartoMacros:
                     RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
+                            perl \\
                             xz-utils && \\
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
@@ -2267,6 +2275,7 @@ class TestQuartoMacros:
                     RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                         apt-get install -yqq --no-install-recommends \\
                             quarto=1.8.24 \\
+                            perl \\
                             xz-utils && \\
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
