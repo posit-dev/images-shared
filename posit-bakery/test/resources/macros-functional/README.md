@@ -23,7 +23,8 @@ check in `test_fixture_drift.py` fails if the committed rendered files are stale
 
 ## Running
 
-CI runs this context in the `Blackbox Tests` job (`.github/workflows/ci.yml`). Locally,
+CI runs this context in five `Macro Functional Tests (<OS>)` jobs
+(`.github/workflows/ci.yml`), one per OS. Locally,
 from `posit-bakery/`:
 
 ```bash
