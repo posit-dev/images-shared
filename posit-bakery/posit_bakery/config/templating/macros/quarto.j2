@@ -77,7 +77,10 @@ in the build, e.g. via `apt.setup(open_repo=True)` / `apt.run_setup(open_repo=Tr
 (or the dnf equivalent) — this macro does not register the repository itself.
 
 When `with_tinytex` is `True`, `xz-utils` (apt) or `xz` (dnf) is also
-installed because the TinyTeX release tarball is `.tar.xz`.
+installed because the TinyTeX release tarball is `.tar.xz`, along with
+`perl`, because `tlmgr` is a Perl script that needs more than the
+`perl-base` shipped in Debian-like base images. Without it `tlmgr` fails,
+and `--update-path` silently leaves TinyTeX off the PATH.
 
 :param version: The Quarto version to install, e.g. "1.9.37"
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
@@ -90,6 +93,7 @@ installed because the TinyTeX release tarball is `.tar.xz`.
 apt-get update -yqq && \
 apt-get install -yqq --no-install-recommends \
     quarto={{ version | trim }}{% if with_tinytex %} \
+    perl \
     xz-utils{% endif %} && \
 apt-mark hold quarto && \
 {{ apt.clean_command() }}{% if with_tinytex %} && \
@@ -98,6 +102,7 @@ apt-mark hold quarto && \
 dnf install -yq \
     quarto-{{ version | trim }} \
     'dnf-command(versionlock)'{% if with_tinytex %} \
+    perl \
     xz{% endif %} && \
 dnf versionlock add quarto && \
 {{ dnf.clean_command() }}{% if with_tinytex %} && \
