@@ -63,11 +63,28 @@ test-all *ARGS:
     NO_COLOR="true" \
     just _pytest -n 4 {{ ARGS }}
 
-# Build and goss-test the macros-functional blackbox context. Accepts bakery filter flags,
+# Build and goss-test the macros-functional blackbox context, then remove the images and
+# build cache it created. Accepts bakery filter flags,
 # e.g. `just test-macros --image-name '^macros-r$' --image-os 'Rocky Linux 9'`
+[positional-arguments]
 test-macros *ARGS:
-    uv run bakery build --load --context {{ CWD }}/test/resources/macros-functional {{ ARGS }}
-    uv run bakery dgoss run --context {{ CWD }}/test/resources/macros-functional {{ ARGS }}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    context="{{ CWD }}/test/resources/macros-functional"
+    # A dedicated builder keeps this suite's build cache separate, so removing it
+    # frees the space without touching any other build cache.
+    builder="bakery-macros-functional"
+    cleanup() {
+        docker image ls --quiet --filter "reference=ghcr.io/posit-dev/macros-*" | sort -u | xargs -r docker image rm --force >/dev/null || true
+        docker buildx rm --force "$builder" >/dev/null 2>&1 || true
+    }
+    trap cleanup EXIT
+    # Clear anything left behind by an interrupted run.
+    cleanup
+    docker buildx create --name "$builder" --driver docker-container >/dev/null
+    export BUILDX_BUILDER="$builder"
+    uv run bakery build --load --context "$context" "$@"
+    uv run bakery dgoss run --context "$context" "$@"
 
 # Regenerate API reference pages from package source using great-docs
 docs-reference:
