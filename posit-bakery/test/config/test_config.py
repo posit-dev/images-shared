@@ -1505,7 +1505,6 @@ class TestBakeryConfig:
             RUN --mount=type=secret,id=github_token,required=false apt-get update -yqq && \\
                 apt-get install -yqq --no-install-recommends \\
                     quarto=1.8.27 \\
-                    perl \\
                     xz-utils && \\
                 apt-mark hold quarto && \\
                 apt-get clean -yqq && \\

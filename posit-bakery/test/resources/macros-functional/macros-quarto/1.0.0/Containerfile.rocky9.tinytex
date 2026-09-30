@@ -14,10 +14,13 @@ RUN dnf upgrade -yq && \
     bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \
     dnf clean all -yq
 
+
+RUN dnf install -yq \
+        perl && \
+    dnf clean all -yq
 RUN --mount=type=secret,id=github_token,required=false dnf install -yq \
         quarto-1.9.38 \
         'dnf-command(versionlock)' \
-        perl \
         xz && \
     dnf versionlock add quarto && \
     dnf clean all -yq && \

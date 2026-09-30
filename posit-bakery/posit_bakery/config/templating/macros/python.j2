@@ -122,8 +122,7 @@ rm -f {{ requirements_files | map('trim') | join(' ') }}
 :param versions: A list of Python versions to install packages to, e.g. ["3.11", "3.12"]
 :param packages: A list of packages to install, e.g. ["numpy", "pandas"]. Optional if requirements_file is provided.
 :param requirements_file: A requirements.txt file to install packages from. Optional if packages is provided.
-:param clean: Whether to remove the requirements.txt file after installation. Defaults to True. Removal happens only
-    after the last version, since every version's RUN statement reads the same file(s).
+:param clean: Whether to remove the requirements.txt file after installation. Defaults to True.
 :param break_system_packages: Whether to set `--break-system-packages` for the pip install command. This is required if
     installing to a uv managed version of Python. Defaults to True.
 #}
@@ -132,7 +131,7 @@ rm -f {{ requirements_files | map('trim') | join(' ') }}
 {%- set versions = versions | split(",") -%}
 {%- endif -%}
 {% for version in versions -%}
-RUN {{ install_packages(version | trim, packages, requirements_file, clean and loop.last, break_system_packages) | indent(4) }}
+RUN {{ install_packages(version | trim, packages, requirements_file, clean, break_system_packages) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
