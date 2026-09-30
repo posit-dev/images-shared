@@ -681,6 +681,51 @@ images:
               - linux/arm64
 ```
 
+#### TrivyOptions
+
+A TrivyOption configures [Trivy](https://trivy.dev/) vulnerability scans run by `bakery trivy scan` against an image target. Scans require the image to exist in the local Docker daemon (run `bakery build` first); results are written as SARIF to `results/trivy/`. The `trivy` binary is located via `TRIVY_PATH` or `PATH`.
+
+Trivy options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant's options are merged over the image's options, with any field not explicitly set on the variant inheriting the image-level value. All fields other than `tool` are optional; unset fields use Trivy's own defaults.
+
+Matching `bakery trivy scan` flags (`--severity`, `--ignore-unfixed/--no-ignore-unfixed`, `--skip-files`, `--skip-dirs`, `--exit-code`, `--scanners`, `--timeout`, `--fail-on-severity`) override `bakery.yaml` values when explicitly passed. List flags take comma-separated values.
+
+| Field                                 | Description                                                                                                                                                                                                  | Default Value | Example                          |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|----------------------------------|
+| `tool`<br/>*"trivy" literal string*   | *(Required)* The name of the tool.                                                                                                                                                                           |               | `trivy`                          |
+| `severity`<br/>*string array*         | Severities to report (e.g. `CRITICAL`, `HIGH`).                                                                                                                                                              | Trivy default | <pre>- CRITICAL<br/>- HIGH</pre> |
+| `ignoreUnfixed`<br/>*bool*            | Only report vulnerabilities that have a fix available.                                                                                                                                                       | Trivy default | `true`                           |
+| `skipFiles`<br/>*string array*        | Files to skip while scanning.                                                                                                                                                                                | Trivy default | <pre>- /opt/app/test.key</pre>   |
+| `skipDirs`<br/>*string array*         | Directories to skip while scanning.                                                                                                                                                                          | Trivy default | <pre>- /usr/share/doc</pre>      |
+| `exitCode`<br/>*int*                  | Exit code Trivy returns when vulnerabilities are found.                                                                                                                                                      | Trivy default | `1`                              |
+| `scanners`<br/>*string array*         | Scanners to run (`vuln`, `secret`, `misconfig`, `license`).                                                                                                                                                  | Trivy default | <pre>- vuln<br/>- secret</pre>   |
+| `timeout`<br/>*string*                | Scan timeout as a Go duration; invalid values are rejected at load time.                                                                                                                                     | Trivy default | `5m0s`                           |
+| `failureSeverity`<br/>*string array*  | Severities that cause the scan to fail. Values are upper-cased and must be one of `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`; an empty list is rejected. At scan time it must be a subset of the effective `severity` (from `bakery.yaml` or `--severity`). If unset, the scan fails based on Trivy's exit code. | Unset         | <pre>- CRITICAL</pre>            |
+
+##### Example TrivyOptions
+
+```yaml
+images:
+  - name: connect
+    options:
+      - tool: trivy
+        severity:
+          - CRITICAL
+          - HIGH
+        ignoreUnfixed: true
+        timeout: 10m0s
+    variants:
+      - name: Standard
+        extension: std
+        tagDisplayName: std
+        primary: true
+        options:
+          # Inherits severity, ignoreUnfixed, and timeout from the image; adds failureSeverity.
+          - tool: trivy
+            failureSeverity:
+              - CRITICAL
+```
+
+
 ### DevBuildSpec
 
 A DevBuildSpec is a typed payload passed to the `--dev-spec` CLI option to configure development (daily) version builds. It supports either a dispatch-pinned version or a branch-targeted discovery build. At least one of `version` or `release_branch` must be set.
