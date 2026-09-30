@@ -31,7 +31,7 @@ RUN {{ r.symlink_version(default_version, "/opt/R/default") }} && \
 {%- elif Image.Variant == "packages" -%}
 COPY {{ Path.Version }}/deps/packages-1.txt /tmp/r-packages-1.txt
 COPY {{ Path.Version }}/deps/packages-2.txt /tmp/r-packages-2.txt
-{{ r.run_install_packages([Dependencies.R[0]], ["R6", "jsonlite"], ["/tmp/r-packages-1.txt", "/tmp/r-packages-2.txt"], _os=Image.OS) }}
+{{ r.run_install_packages(Dependencies.R, ["R6", "jsonlite"], ["/tmp/r-packages-1.txt", "/tmp/r-packages-2.txt"], _os=Image.OS) }}
 {%- else -%}
 {{ raise("Unhandled variant '" ~ Image.Variant ~ "'") }}
 {%- endif %}
