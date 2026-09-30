@@ -210,7 +210,7 @@ class DGossPlugin(BakeryToolPlugin):
             c = BakeryConfig.from_context(context, settings)
             targets = select_targets(c, settings)
 
-            exit_if_no_targets(targets, settings, context="test")
+            exit_if_no_targets(targets, settings, context="dgoss")
 
             if metadata_file:
                 load_build_metadata_from_file(targets, metadata_file)

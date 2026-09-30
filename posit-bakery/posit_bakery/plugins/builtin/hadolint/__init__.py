@@ -225,7 +225,7 @@ class HadolintPlugin(BakeryToolPlugin):
             c = BakeryConfig.from_context(context, settings)
             targets = select_targets(c, settings)
 
-            exit_if_no_targets(targets, settings, context="lint")
+            exit_if_no_targets(targets, settings, context="hadolint")
 
             # Build options override from CLI flags
             override_dict = {}
