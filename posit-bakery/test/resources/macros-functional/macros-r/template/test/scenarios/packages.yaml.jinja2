@@ -1,7 +1,8 @@
 {%- import "r.j2" as r -%}
-# run_install_packages() with packages and multiple package list files, for one version.
+# run_install_packages() with packages and multiple package list files, across every
+# R version.
 command:
-{%- for version in [Dependencies.R[0]] %}
+{%- for version in Dependencies.R %}
   r-{{ version }}-packages-loadable:
     exec: "{{ r.get_version_directory(version) }}/bin/Rscript -e 'library(R6); library(jsonlite); library(glue); library(magrittr)'"
     exit-status: 0
