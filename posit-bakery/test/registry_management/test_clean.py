@@ -15,6 +15,17 @@ pytestmark = pytest.mark.unit
 class TestCleanCaches:
     """Tests for clean_caches function."""
 
+    def test_clean_caches_skips_targets_without_cache_name(self, mocker):
+        """Targets without cache names do not trigger registry cleanup."""
+        target = mocker.Mock()
+        target.cache_name.return_value = None
+        clean_artifacts = mocker.patch("posit_bakery.registry_management.ghcr.clean_temporary_artifacts")
+
+        errors = clean_caches([target])
+
+        assert errors == []
+        clean_artifacts.assert_not_called()
+
     @pytest.mark.parametrize(
         "untagged,older_than_days,expected_deletions",
         [

@@ -15,8 +15,12 @@ def _clean_registries(
     dry_run: bool,
 ) -> list[Exception]:
     """Cleans up the registries named by ``registry_name`` for all given image targets."""
-    # dict.fromkeys, not set(), so cleanup order is deterministic (first-seen).
-    target_registries = dict.fromkeys(registry_name(target) for target in targets)
+    # Keep first-seen order while skipping targets without a registry.
+    target_registries: dict[str, None] = {}
+    for target in targets:
+        registry = registry_name(target)
+        if registry is not None:
+            target_registries.setdefault(registry, None)
 
     errors = []
     for registry in target_registries:
@@ -30,6 +34,15 @@ def _clean_registries(
         )
 
     return errors
+
+
+def _cache_registry_name(target: ImageTarget) -> str | None:
+    """Return the registry from a target's cache name, if it has one."""
+    cache_name = target.cache_name()
+    if not cache_name:
+        return None
+
+    return cache_name.split(":", maxsplit=1)[0]
 
 
 def clean_caches(
@@ -48,7 +61,7 @@ def clean_caches(
     """
     return _clean_registries(
         targets,
-        registry_name=lambda target: cn.split(":")[0] if (cn := target.cache_name()) else None,
+        registry_name=_cache_registry_name,
         remove_untagged=remove_untagged,
         remove_older_than=remove_older_than,
         dry_run=dry_run,
