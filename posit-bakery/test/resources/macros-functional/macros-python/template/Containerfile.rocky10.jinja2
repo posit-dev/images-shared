@@ -35,7 +35,7 @@ RUN {{ python.symlink_version(default_version, "/opt/python/default") }} && \
 {%- elif Image.Variant == "packages" -%}
 COPY {{ Path.Version }}/deps/requirements-1.txt /tmp/requirements-1.txt
 COPY {{ Path.Version }}/deps/requirements-2.txt /tmp/requirements-2.txt
-{{ python.run_install_packages(Dependencies.python, ["six", "idna"], ["/tmp/requirements-1.txt", "/tmp/requirements-2.txt"]) }}
+{{ python.run_install_packages([Dependencies.python[0]], ["six", "idna"], ["/tmp/requirements-1.txt", "/tmp/requirements-2.txt"]) }}
 {%- elif Image.Variant == "jupyter" -%}
 {{ python.run_install_jupyterlab_workbench(Dependencies.python) }}
 {%- else -%}

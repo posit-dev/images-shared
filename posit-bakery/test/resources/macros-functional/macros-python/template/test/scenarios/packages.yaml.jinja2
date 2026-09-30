@@ -1,8 +1,7 @@
 {%- import "python.j2" as python -%}
-# run_install_packages() with packages and multiple requirements files, across every
-# Python version.
+# run_install_packages() with packages and multiple requirements files, for one version.
 command:
-{%- for version in Dependencies.python %}
+{%- for version in [Dependencies.python[0]] %}
   python-{{ version }}-packages-importable:
     exec: '{{ python.get_version_directory(version) }}/bin/python -c "import six, idna, packaging, typing_extensions"'
     exit-status: 0

@@ -24,6 +24,8 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 {% if Image.Variant == "install" -%}
 {{ quarto.run_install(Dependencies.quarto, os_family=Image.OS.Family) }}
 {%- elif Image.Variant == "tinytex" -%}
+{# TinyTeX's tlmgr needs Perl; keep this dependency in the test fixture. #}
+{{ pm.run_install(packages=["perl"]) }}
 {{ quarto.run_install(Dependencies.quarto, with_tinytex=True, tinytex_update_path=True, tinytex_home_path="/opt/tinytex", os_family=Image.OS.Family) }}
 {%- else -%}
 {{ raise("Unhandled variant '" ~ Image.Variant ~ "'") }}
