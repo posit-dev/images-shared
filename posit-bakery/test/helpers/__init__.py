@@ -33,6 +33,7 @@ SELECT_TARGETS_MODULES = (
     "posit_bakery.plugins.builtin.dgoss",
     "posit_bakery.plugins.builtin.hadolint",
     "posit_bakery.plugins.builtin.wizcli",
+    "posit_bakery.plugins.builtin.trivy",
     "posit_bakery.targets.selection",
 )
 

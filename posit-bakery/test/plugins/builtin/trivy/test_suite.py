@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from posit_bakery.targets.selection import select_targets
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.plugins.builtin.trivy.errors import (
     TRIVY_EXIT_CODE_GENERAL_ERROR,
@@ -52,7 +53,7 @@ def trivy_stub(returncode: int = 0, results_payload: str | None = None):
 
 def run_suite(tmpconfig, *, returncode: int = 0, results_payload: str | None = None):
     """Run a TrivySuite over every target in ``tmpconfig`` with a stubbed trivy."""
-    suite = TrivySuite(tmpconfig.base_path, tmpconfig.targets)
+    suite = TrivySuite(tmpconfig.base_path, select_targets(tmpconfig, tmpconfig.settings))
     with patch(
         f"{SUITE_LOGGER}.subprocess.run",
         side_effect=trivy_stub(returncode, results_payload),
@@ -83,7 +84,7 @@ class TestTrivySuiteRun:
 
         assert errors is None
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         for report in recorded.values():
             assert isinstance(report, TrivyScanReport)
             assert report.total_count == SCAN_RESULT_TOTAL_COUNT
@@ -101,16 +102,16 @@ class TestTrivySuiteRun:
             collection, errors = run_suite(tmpconfig, returncode=0, results_payload=None)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         # "NO REPORT" distinguishes a claimed-successful scan with nothing to show for it
         # from a scan that failed outright.
         assert set(recorded.values()) == {TrivyScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {TRIVY_EXIT_CODE_GENERAL_ERROR}
-        for target in tmpconfig.targets:
+        for target in select_targets(tmpconfig, tmpconfig.settings):
             assert any(str(target) in err.message for err in errs)
         for err in errs:
             assert err.metadata["trivy_exit_code"] == 0
@@ -127,12 +128,12 @@ class TestTrivySuiteRun:
             collection, errors = run_suite(tmpconfig, returncode=0, results_payload=results_payload)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {TrivyScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         for err in errs:
             assert err.exit_code == TRIVY_EXIT_CODE_GENERAL_ERROR
             assert "parse_error" in str(err)
@@ -148,12 +149,12 @@ class TestTrivySuiteRun:
             collection, errors = run_suite(tmpconfig, returncode=1, results_payload=SCAN_RESULT)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         for report in recorded.values():
             assert isinstance(report, TrivyScanReport)
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {TRIVY_EXIT_CODE_SEVERITY_THRESHOLD}
         for err in errs:
             assert err.metadata["trivy_exit_code"] == 1
@@ -168,11 +169,11 @@ class TestTrivySuiteRun:
         collection, errors = run_suite(tmpconfig, returncode=1, results_payload=None)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {TrivyScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {TRIVY_EXIT_CODE_GENERAL_ERROR}
         for err in errs:
             assert err.metadata["trivy_exit_code"] == 1
@@ -183,11 +184,11 @@ class TestTrivySuiteRun:
         collection, errors = run_suite(tmpconfig, returncode=1, results_payload="this is not json")
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {TrivyScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         for err in errs:
             assert err.exit_code == TRIVY_EXIT_CODE_GENERAL_ERROR
             assert "parse_error" in str(err)
@@ -214,7 +215,7 @@ class TestTrivySuiteRun:
         separate passing target is not mixed into this same batch).
         """
         tmpconfig = get_tmpconfig("basic")
-        targets = tmpconfig.targets
+        targets = select_targets(tmpconfig, tmpconfig.settings)
         assert len(targets) == 2, "expects the 'basic' fixture's 2 targets (Minimal, Standard)"
 
         suite = TrivySuite(tmpconfig.base_path, targets)
@@ -243,7 +244,9 @@ class TestTrivySuiteRun:
 
 class TestTrivySuiteFailureSeverity:
     def run_with(self, tmpconfig, *, returncode, failure_severity=None):
-        suite = TrivySuite(tmpconfig.base_path, tmpconfig.targets, failure_severity=failure_severity)
+        suite = TrivySuite(
+            tmpconfig.base_path, select_targets(tmpconfig, tmpconfig.settings), failure_severity=failure_severity
+        )
         with patch(
             f"{SUITE_LOGGER}.subprocess.run",
             side_effect=trivy_stub(returncode, SCAN_RESULT),
@@ -275,10 +278,10 @@ class TestTrivySuiteFailureSeverity:
     def test_run_integration(self, get_tmpconfig):
         """Run a real trivy binary against real image targets."""
         tmpconfig = get_tmpconfig("basic")
-        report_collection, errors = TrivySuite(tmpconfig.base_path, tmpconfig.targets).run()
+        report_collection, errors = TrivySuite(tmpconfig.base_path, select_targets(tmpconfig, tmpconfig.settings)).run()
 
         assert errors is None
         assert len(report_collection) > 0
-        for target in tmpconfig.targets:
+        for target in select_targets(tmpconfig, tmpconfig.settings):
             results_file = tmpconfig.base_path / "results" / "trivy" / target.image_name / f"{target.uid}.sarif"
             assert results_file.exists()
