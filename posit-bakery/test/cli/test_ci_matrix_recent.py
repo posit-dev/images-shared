@@ -96,6 +96,29 @@ def test_ci_matrix_recent_wins_over_full_release_changeset(tmp_path):
     assert {entry["version"] for entry in matrix} == {"4.0.0", "3.0.0"}
 
 
+def test_ci_matrix_does_not_blame_recent_for_dev_filter(tmp_path, caplog):
+    """A recent release can be removed by --dev-versions only instead."""
+    _write_config(tmp_path)
+    changed = tmp_path / "changed-files.txt"
+    changed.write_text("app/4.0.0/Containerfile\n")
+
+    with caplog.at_level(logging.WARNING):
+        result, matrix = _matrix(
+            tmp_path,
+            "--recent",
+            "2",
+            "--dev-versions",
+            "only",
+            "--changed-files-from",
+            str(changed),
+        )
+
+    assert result.exit_code == 0
+    assert matrix == []
+    assert "Version '4.0.0' in image 'app' was modified" not in caplog.text
+    assert "excluded by --recent" not in caplog.text
+
+
 def test_ci_matrix_reports_filtered_image_version(tmp_path, caplog):
     _write_config(tmp_path)
 

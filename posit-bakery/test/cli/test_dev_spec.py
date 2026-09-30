@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
@@ -15,10 +16,18 @@ BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
 
 
 class TestBuildDevSpec:
+    @pytest.fixture(autouse=True)
+    def _no_build(self):
+        """Never run a real build against the mocked targets."""
+        with patch("posit_bakery.cli.build.run_build_targets"):
+            yield
+
     def test_dev_spec_via_flag(self):
         """--dev-spec JSON is parsed and forwarded to BakerySettings."""
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
             instance = MagicMock()
+            # Non-empty so the zero-match guard does not abort the happy-path runs.
+            instance.targets = [MagicMock()]
             mock.from_context.return_value = instance
             result = runner.invoke(
                 app,
@@ -43,6 +52,8 @@ class TestBuildDevSpec:
         """BAKERY_DEV_SPEC env var is equivalent to --dev-spec flag."""
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
             instance = MagicMock()
+            # Non-empty so the zero-match guard does not abort the happy-path runs.
+            instance.targets = [MagicMock()]
             mock.from_context.return_value = instance
             result = runner.invoke(
                 app,
@@ -86,6 +97,8 @@ class TestBuildDevSpec:
         """When --dev-spec is not passed, BakerySettings.dev_spec is None."""
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
             instance = MagicMock()
+            # Non-empty so the zero-match guard does not abort the happy-path runs.
+            instance.targets = [MagicMock()]
             mock.from_context.return_value = instance
             result = runner.invoke(
                 app,

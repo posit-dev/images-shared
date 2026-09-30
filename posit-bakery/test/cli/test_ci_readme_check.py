@@ -21,16 +21,19 @@ _ENV = {"TERM": "dumb", "NO_COLOR": "true", "COLUMNS": "200"}
 
 
 @pytest.fixture
-def mock_config():
-    with patch("posit_bakery.cli.ci.BakeryConfig") as mock_config_cls:
-        instance = MagicMock()
-        instance.targets = []
-        mock_config_cls.from_context.return_value = instance
-        yield mock_config_cls
+def mock_targets():
+    """Stub config loading and target selection; yields the selected targets."""
+    targets = []
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig") as mock_config_cls,
+        patch("posit_bakery.cli.ci.select_targets", return_value=targets),
+    ):
+        mock_config_cls.from_context.return_value = MagicMock()
+        yield targets
 
 
 class TestReadmeCheckFlag:
-    def test_passes_with_no_violations(self, mock_config):
+    def test_passes_with_no_violations(self, mock_targets):
         with patch("posit_bakery.cli.ci.find_oversized_readmes", return_value=[]) as mock_find:
             with patch("posit_bakery.cli.ci.push_readmes") as mock_push:
                 result = runner.invoke(
@@ -41,10 +44,11 @@ class TestReadmeCheckFlag:
                 )
 
         assert result.exit_code == 0, result.stdout + result.stderr
-        mock_find.assert_called_once_with(mock_config.from_context.return_value.targets)
+        mock_find.assert_called_once()
+        assert mock_find.call_args.args[0] is mock_targets
         mock_push.assert_not_called()
 
-    def test_fails_with_violations(self, mock_config):
+    def test_fails_with_violations(self, mock_targets):
         violation = (
             "/repo/workbench/README.md is 25,069 bytes, exceeding Docker Hub's 25,000-byte README limit by 69 bytes"
         )
@@ -61,7 +65,7 @@ class TestReadmeCheckFlag:
         assert violation in " ".join(result.stderr.split())
         mock_push.assert_not_called()
 
-    def test_reports_all_violations(self, mock_config):
+    def test_reports_all_violations(self, mock_targets):
         violations = ["README A is oversized", "README B is oversized"]
         with patch("posit_bakery.cli.ci.find_oversized_readmes", return_value=violations):
             with patch("posit_bakery.cli.ci.push_readmes"):
@@ -77,7 +81,7 @@ class TestReadmeCheckFlag:
         assert "README A is oversized" in normalized_stderr
         assert "README B is oversized" in normalized_stderr
 
-    def test_without_check_does_not_call_find(self, mock_config):
+    def test_without_check_does_not_call_find(self, mock_targets):
         with patch("posit_bakery.cli.ci.find_oversized_readmes") as mock_find:
             with patch("posit_bakery.cli.ci.push_readmes", return_value=0) as mock_push:
                 result = runner.invoke(

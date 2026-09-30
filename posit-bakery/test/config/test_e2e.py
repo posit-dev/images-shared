@@ -5,10 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
+from posit_bakery.build.runner import bake_plan_json
 from posit_bakery.config import BakeryConfig
 from posit_bakery.config.templating import TPL_BAKERY_CONFIG_YAML, render_template
 from posit_bakery.config.templating.render import normalize_rendered_output
 from posit_bakery.const import DEFAULT_BASE_IMAGE
+from posit_bakery.targets.selection import select_targets
 from test.helpers import IMAGE_INDENT, VERSION_INDENT
 
 pytestmark = [
@@ -102,11 +104,8 @@ def test_create_from_scratch_bake_plan(tmpdir, common_image_variants_objects):
     # Create a new version for the image.
     config.create_version("image-one", "1.0.0")
 
-    # Regenerate targets.
-    config.generate_image_targets()
-
-    # Render the bake plan.
-    result = config.bake_plan_targets()
+    # Render the bake plan from freshly selected targets.
+    result = bake_plan_json(config.base_path, select_targets(config, config.settings))
 
     expected_plan = {
         "group": {

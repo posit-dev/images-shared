@@ -21,6 +21,8 @@ from posit_bakery.cli.main import app
 from posit_bakery.config.config import BakeryConfig, BakerySettings
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.targets.selection import select_targets
 
 runner = CliRunner()
 CHANGESET_CONTEXT = str(Path(__file__).parent.parent / "resources" / "changeset")
@@ -69,8 +71,10 @@ class TestCiMatrixLatestMatchesFilter:
     def test_agrees_with_generate_image_targets(self):
         from_matrix = {e["version"] for e in _matrix() if e["image"] == "app" and e["latest"]}
 
-        config = BakeryConfig.from_context(CHANGESET_CONTEXT, BakerySettings(latest=True))
-        from_filter = {t.image_version.name for t in config.targets if t.image_name == "app"}
+        config = BakeryConfig.from_context(CHANGESET_CONTEXT)
+        settings = BakerySettings(latest=True)
+        targets = select_targets(config, settings)
+        from_filter = {t.image_version.name for t in targets if t.image_name == "app"}
 
         assert from_matrix == from_filter
         assert from_matrix == {"2.0.0"}
@@ -94,22 +98,37 @@ class TestCiMatrixLatestDevVersions:
         dev_ver.is_latest_release = False
         dev_ver.metadata = {"release_channel": ReleaseChannelEnum.DAILY}
         dev_ver.supported_platforms = ["linux/amd64"]
+        dev_ver.os = None  # Needed for select_targets iteration
         dev_ver.matches_dev_filter = lambda dev_versions, dev_channel=None: (
             (False, "excluded by --dev-versions exclude")
             if dev_versions == DevVersionInclusionEnum.EXCLUDE
             else (True, None)
+        )
+        dev_ver.matches_latest_filter = lambda latest: (
+            (True, None) if not latest else (False, "development version ignored by --latest")
         )
 
         img = MagicMock()
         img.name = "app"
         img.matrix = None
         img.versions = [dev_ver]
+        img.variants = None  # Needed for select_targets iteration
 
-        with patch("posit_bakery.cli.ci.BakeryConfig") as mock:
-            instance = MagicMock()
-            instance.model.images = [img]
-            mock.from_context.return_value = instance
-            yield mock
+        with patch("posit_bakery.cli.ci.BakeryConfig") as mock_config:
+            with patch.object(ImageTarget, "new_image_target") as mock_new_image_target:
+                instance = MagicMock()
+                instance.model.images = [img]
+                mock_config.from_context.return_value = instance
+
+                # Mock ImageTarget.new_image_target to return a minimal mock
+                def make_mock_target(*args, **kwargs):
+                    target = MagicMock()
+                    target.image_version = dev_ver
+                    target.image_name = img.name
+                    return target
+
+                mock_new_image_target.side_effect = make_mock_target
+                yield mock_config
 
     def test_dev_version_is_not_latest(self, mock_config_with_latest_dev_version):
         entries = _matrix("--dev-versions", "only")

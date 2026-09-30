@@ -4,9 +4,12 @@ import textwrap
 import pytest
 from pydantic import ValidationError
 
-from posit_bakery.config.config import BakeryConfig, BakeryConfigFilter, BakerySettings, apply_recent_versions
+from posit_bakery.config.config import BakeryConfig
+from posit_bakery.config.settings import BakeryConfigFilter, BakerySettings
+from posit_bakery.targets.selection import apply_recent_versions
 from posit_bakery.config.image import ImageVersion
 from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.targets.selection import select_targets
 
 pytestmark = [pytest.mark.unit, pytest.mark.config]
 
@@ -43,7 +46,7 @@ def _write_config(tmp_path):
 
 
 def _target_versions(config: BakeryConfig) -> set[str]:
-    return {target.image_version.name for target in config.targets}
+    return {target.image_version.name for target in select_targets(config, config.settings)}
 
 
 def test_apply_recent_versions_sorts_releases_and_exempts_development_versions():
@@ -79,7 +82,7 @@ def test_excluded_image_version_logs_a_warning(tmp_path, caplog):
             BakerySettings(filter=BakeryConfigFilter(image_version="1.0.0"), recent=2),
         )
 
-    assert config.targets == []
+    assert select_targets(config, config.settings) == []
     assert "Version '1.0.0' in image 'app' matches --image-version filter" in caplog.text
     assert "excluded by --recent 2" in caplog.text
 
@@ -97,4 +100,4 @@ def test_dev_versions_only_still_excludes_limited_releases(tmp_path):
         BakerySettings(dev_versions=DevVersionInclusionEnum.ONLY, recent=2),
     )
 
-    assert config.targets == []
+    assert select_targets(config, config.settings) == []

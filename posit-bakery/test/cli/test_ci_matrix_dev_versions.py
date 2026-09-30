@@ -17,6 +17,7 @@ from typer.testing import CliRunner
 from posit_bakery.cli.main import app
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum
+from posit_bakery.image.image_target import ImageTarget
 
 runner = CliRunner()
 BASIC_CONTEXT = str(Path(__file__).parent.parent / "resources" / "basic")
@@ -45,7 +46,27 @@ def _make_version(name: str, *, is_dev: bool, channel: ReleaseChannelEnum | None
                 return False, "channel mismatch"
         return True, None
 
+    def matches_latest_filter(filter_latest: bool):
+        if not filter_latest or ver.is_latest_release:
+            return True, None
+        if is_dev:
+            return False, "development version ignored by --latest"
+        return False, "not the latest version (excluded by --latest)"
+
     ver.matches_dev_filter = matches_dev_filter
+    ver.matches_latest_filter = matches_latest_filter
+    ver.os = None  # Needed for select_targets iteration
+
+    # Mock the parent chain for ImageTargetContext path construction
+    version_parent = MagicMock()
+    version_parent.path = Path(__file__).parent.parent / "resources" / "basic"
+    version_parent.parent = MagicMock()
+    version_parent.parent.path = version_parent.path.parent
+    version_parent.parent.parent = MagicMock()
+    version_parent.parent.parent.path = version_parent.path.parent.parent
+    ver.parent = version_parent
+    ver.path = version_parent.path
+
     return ver
 
 
@@ -62,23 +83,46 @@ def _make_matrix_image(name: str, dev_versions: list, prod_versions: list):
     # In practice bakery loads dev versions into image.versions; prod matrix versions
     # come from img.matrix.to_image_versions() at filter time.
     img.versions = dev_versions
+    img.variants = None  # Needed for select_targets iteration
 
     return img
 
 
+def _make_image_target(version: MagicMock, image_name: str) -> MagicMock:
+    """Return a mock ImageTarget with the minimum attributes needed by matrix_rows()."""
+    target = MagicMock(spec=ImageTarget)
+    target.image_name = image_name
+    target.image_version = version
+    return target
+
+
 @pytest.fixture
 def mock_config_with_matrix_dev_image():
-    """Patch BakeryConfig to return a single matrix image with a dev version loaded."""
+    """Patch BakeryConfig to return a single matrix image with a dev version loaded.
+
+    Also patches ImageTarget.new_image_target() to return mock ImageTarget objects
+    since the test is focused on matrix filtering logic, not ImageTarget construction.
+    """
     dev_ver = _make_version("2026.99.0-dev+1", is_dev=True, channel=ReleaseChannelEnum.DAILY)
     prod_ver1 = _make_version("2026.1.0", is_dev=False)
     prod_ver2 = _make_version("2026.2.0", is_dev=False)
     img = _make_matrix_image("positron-session", [dev_ver], [prod_ver1, prod_ver2])
 
-    with patch("posit_bakery.cli.ci.BakeryConfig") as mock:
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig") as mock_config,
+        patch("posit_bakery.targets.selection.ImageTarget.new_image_target") as mock_new_target,
+    ):
         instance = MagicMock()
         instance.model.images = [img]
-        mock.from_context.return_value = instance
-        yield mock, dev_ver, prod_ver1, prod_ver2
+        mock_config.from_context.return_value = instance
+
+        # Mock ImageTarget.new_image_target to return a simple mock with required attributes
+        def new_image_target(image_version, **kwargs):
+            return _make_image_target(image_version, img.name)
+
+        mock_new_target.side_effect = new_image_target
+
+        yield mock_config, dev_ver, prod_ver1, prod_ver2
 
 
 class TestCiMatrixDevVersionsOnly:
@@ -181,19 +225,34 @@ class TestCiMatrixDevVersionsInclude:
 @pytest.fixture
 def mock_config_with_two_channel_dev_image():
     """Patch BakeryConfig to return one non-matrix image carrying both a
-    daily and a preview dev version (the workbench/session-init shape)."""
+    daily and a preview dev version (the workbench/session-init shape).
+
+    Also patches ImageTarget.new_image_target() to return mock ImageTarget objects
+    since the test is focused on matrix filtering logic, not ImageTarget construction.
+    """
     daily = _make_version("2026.99.0+237", is_dev=True, channel=ReleaseChannelEnum.DAILY)
     preview = _make_version("2026.99.0+240", is_dev=True, channel=ReleaseChannelEnum.PREVIEW)
     img = MagicMock()
     img.name = "workbench"
     img.matrix = None
     img.versions = [daily, preview]
+    img.variants = None  # Needed for select_targets iteration
 
-    with patch("posit_bakery.cli.ci.BakeryConfig") as mock:
+    with (
+        patch("posit_bakery.cli.ci.BakeryConfig") as mock_config,
+        patch("posit_bakery.targets.selection.ImageTarget.new_image_target") as mock_new_target,
+    ):
         instance = MagicMock()
         instance.model.images = [img]
-        mock.from_context.return_value = instance
-        yield mock, daily, preview
+        mock_config.from_context.return_value = instance
+
+        # Mock ImageTarget.new_image_target to return a simple mock with required attributes
+        def new_image_target(image_version, **kwargs):
+            return _make_image_target(image_version, img.name)
+
+        mock_new_target.side_effect = new_image_target
+
+        yield mock_config, daily, preview
 
 
 class TestCiMatrixDevSpecChannelFilter:

@@ -16,6 +16,7 @@ from posit_bakery.plugins.registry import discover_plugins
 discover_plugins()
 
 from posit_bakery.config import BakeryConfig  # noqa: E402  # must follow discover_plugins()
+from posit_bakery.targets.selection import select_targets  # noqa: E402  # must follow discover_plugins()
 
 TEST_DIRECTORY = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -229,7 +230,8 @@ def get_targets(get_config_obj):
     """Return a function that can get the list of ImageTarget objects for a test suite by name"""
 
     def _get_targets(suite_name: str):
-        return get_config_obj(suite_name).targets
+        config = get_config_obj(suite_name)
+        return select_targets(config, config.settings)
 
     return _get_targets
 
@@ -239,6 +241,7 @@ def get_target_variant(get_config_obj):
     """Return a function that can get an ImageTarget object for a specific variant of a test suite by name"""
 
     def _get_target_variant(suite_name: str, variant_name: str):
-        return [t for t in get_config_obj(suite_name).targets if t.image_variant.name == variant_name]
+        config = get_config_obj(suite_name)
+        return [t for t in select_targets(config, config.settings) if t.image_variant.name == variant_name]
 
     return _get_target_variant

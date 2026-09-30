@@ -8,6 +8,7 @@ from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.plugins.builtin.wizcli.errors import WIZCLI_EXIT_CODE_POLICY_VIOLATION
 from posit_bakery.plugins.builtin.wizcli.report import WizScanFailure, WizScanReport, WizScanReportCollection
 from posit_bakery.plugins.builtin.wizcli.suite import WizCLISuite
+from posit_bakery.targets.selection import select_targets
 
 pytestmark = [
     pytest.mark.unit,
@@ -43,7 +44,7 @@ def wizcli_stub(returncode: int = 0, results_payload: str | None = None):
 
 def run_suite(tmpconfig, *, returncode: int = 0, results_payload: str | None = None):
     """Run a WizCLISuite over every target in ``tmpconfig`` with a stubbed wizcli."""
-    suite = WizCLISuite(tmpconfig.base_path, tmpconfig.targets)
+    suite = WizCLISuite(tmpconfig.base_path, select_targets(tmpconfig, tmpconfig.settings))
     with patch(
         f"{SUITE_LOGGER}.subprocess.run",
         side_effect=wizcli_stub(returncode, results_payload),
@@ -74,7 +75,7 @@ class TestWizCLISuiteRun:
 
         assert errors is None
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         for report in recorded.values():
             assert isinstance(report, WizScanReport)
             assert report.status_verdict == "WARN_BY_POLICY"
@@ -92,22 +93,22 @@ class TestWizCLISuiteRun:
             collection, errors = run_suite(tmpconfig, returncode=0, results_payload=None)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         # "NO REPORT" distinguishes a claimed-successful scan with nothing to show for it
         # from a scan that failed outright.
         assert set(recorded.values()) == {WizScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         # One row per target plus the Total row: the targets stay visible in the table.
-        assert collection.table().row_count == len(tmpconfig.targets) + 1
+        assert collection.table().row_count == len(select_targets(tmpconfig, tmpconfig.settings)) + 1
 
         # Counts are unknown, not zero, so they must not understate the totals.
         assert collection.aggregate()["total"] == {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         # The plugin attributes errors to targets by matching str(target) in the message.
-        for target in tmpconfig.targets:
+        for target in select_targets(tmpconfig, tmpconfig.settings):
             assert any(str(target) in err.message for err in errs)
 
     @pytest.mark.parametrize(
@@ -122,12 +123,12 @@ class TestWizCLISuiteRun:
             collection, errors = run_suite(tmpconfig, returncode=0, results_payload=results_payload)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {WizScanFailure(verdict="NO REPORT")}
         assert "Scan passed" not in caplog.text
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         # The parse failure explains itself in the rendered error output.
         for err in errs:
             assert "parse_error" in str(err)
@@ -138,12 +139,12 @@ class TestWizCLISuiteRun:
         collection, errors = run_suite(tmpconfig, returncode=1, results_payload=SCAN_RESULT)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         for report in recorded.values():
             assert isinstance(report, WizScanReport)
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {1}
 
     def test_nonzero_exit_without_results_file_records_failure(self, get_tmpconfig):
@@ -152,11 +153,11 @@ class TestWizCLISuiteRun:
         collection, errors = run_suite(tmpconfig, returncode=1, results_payload=None)
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {WizScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {1}
 
     def test_nonzero_exit_with_unparseable_results_file_explains_itself(self, get_tmpconfig):
@@ -165,11 +166,11 @@ class TestWizCLISuiteRun:
         collection, errors = run_suite(tmpconfig, returncode=1, results_payload="this is not json")
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         assert set(recorded.values()) == {WizScanFailure(verdict="SCAN FAILED")}
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         for err in errs:
             assert err.exit_code == 1
             assert "parse_error" in str(err)
@@ -185,12 +186,12 @@ class TestWizCLISuiteRun:
             )
 
         recorded = entries(collection)
-        assert set(recorded) == {target.uid for target in tmpconfig.targets}
+        assert set(recorded) == {target.uid for target in select_targets(tmpconfig, tmpconfig.settings)}
         for report in recorded.values():
             assert isinstance(report, WizScanReport)
 
         errs = error_list(errors)
-        assert len(errs) == len(tmpconfig.targets)
+        assert len(errs) == len(select_targets(tmpconfig, tmpconfig.settings))
         assert {err.exit_code for err in errs} == {WIZCLI_EXIT_CODE_POLICY_VIOLATION}
 
         assert "Security policy violation" in caplog.text

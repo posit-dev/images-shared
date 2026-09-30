@@ -1,11 +1,7 @@
-import json
 import logging
 import os
 import shutil
 import textwrap
-import threading
-import time
-from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch, call
 
@@ -25,11 +21,8 @@ from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.dependencies import PythonDependencyConstraint, RDependencyVersions
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
 from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEnum
-from posit_bakery.error import BakeryError, BakeryBuildErrorGroup, BakeryToolRuntimeError
-from posit_bakery.image.image_metadata import BuildMetadata
-from posit_bakery.image.image_target import ImageTarget, ImageBuildStrategy
-from posit_bakery.settings import SETTINGS
-from test.config.conftest import CONFIG_TESTDATA_DIR
+from posit_bakery.error import BakeryError
+from posit_bakery.targets.selection import select_targets
 from test.helpers import (
     yaml_file_testcases,
     FileTestResultEnum,
@@ -269,7 +262,9 @@ class TestBakeryConfig:
                         clean_temporary=False,
                     ),
                 )
-                dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
+                dev_targets = [
+                    t for t in select_targets(config, config.settings) if t.image_version.isDevelopmentVersion
+                ]
                 # package-manager has 2 variants and each dev version has 2 OSes = 4 targets per dev version
                 assert len(dev_targets) == expected_dev_version_count * 4
 
@@ -292,8 +287,12 @@ class TestBakeryConfig:
                         clean_temporary=False,
                     ),
                 )
-                dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
-                release_targets = [t for t in config.targets if not t.image_version.isDevelopmentVersion]
+                dev_targets = [
+                    t for t in select_targets(config, config.settings) if t.image_version.isDevelopmentVersion
+                ]
+                release_targets = [
+                    t for t in select_targets(config, config.settings) if not t.image_version.isDevelopmentVersion
+                ]
                 # Only daily dev versions included (1 dev version × 2 variants × 2 OSes = 4)
                 assert len(dev_targets) == 4
                 # Release versions still present
@@ -320,12 +319,12 @@ class TestBakeryConfig:
                     ),
                 )
                 # Targets are produced.
-                assert len(config.targets) > 0
+                assert len(select_targets(config, config.settings)) > 0
                 # No target is a development version (the dev versions loaded by
                 # --dev-versions include are excluded by --latest).
-                assert all(not t.image_version.isDevelopmentVersion for t in config.targets)
+                assert all(not t.image_version.isDevelopmentVersion for t in select_targets(config, config.settings))
                 # Every target is the latest release version.
-                assert all(t.image_version.name == "2025.04.2-8" for t in config.targets)
+                assert all(t.image_version.name == "2025.04.2-8" for t in select_targets(config, config.settings))
 
     @pytest.mark.parametrize(
         "dev_versions",
@@ -613,8 +612,10 @@ class TestBakeryConfig:
                 with patch.object(posit_bakery.config.image.Image, "remove_ephemeral_version_files"):
                     config = BakeryConfig(bakery_yaml, settings=settings)
 
-            channels = {t.image_version.metadata.get("release_channel") for t in config.targets}
-            assert config.targets, "expected at least one preview target"
+            channels = {
+                t.image_version.metadata.get("release_channel") for t in select_targets(config, config.settings)
+            }
+            assert select_targets(config, config.settings), "expected at least one preview target"
             assert ReleaseChannelEnum.PREVIEW in channels
             assert ReleaseChannelEnum.DAILY not in channels
 
@@ -661,12 +662,12 @@ class TestBakeryConfig:
         config = BakeryConfig(yaml_file, BakerySettings(matrix_versions=include_matrix_versions))
         assert config is not None
         assert "WARNING" not in caplog.text
-        matrix_versions = [t for t in config.targets if t.image_version.isMatrixVersion]
+        matrix_versions = [t for t in select_targets(config, config.settings) if t.image_version.isMatrixVersion]
         assert len(matrix_versions) == len(expected_uids)
         if include_matrix_versions == MatrixVersionInclusionEnum.INCLUDE:
-            assert len(config.targets) > len(matrix_versions)
+            assert len(select_targets(config, config.settings)) > len(matrix_versions)
         elif include_matrix_versions == MatrixVersionInclusionEnum.ONLY:
-            assert len(config.targets) == len(matrix_versions)
+            assert len(select_targets(config, config.settings)) == len(matrix_versions)
         for target in matrix_versions:
             assert target.uid in expected_uids
 
@@ -683,8 +684,8 @@ class TestBakeryConfig:
                     matrix_versions=MatrixVersionInclusionEnum.ONLY,
                 ),
             )
-        assert len(config.targets) == 1
-        target = config.targets[0]
+        assert len(select_targets(config, config.settings)) == 1
+        target = select_targets(config, config.settings)[0]
         assert target.image_version.isDevelopmentVersion is True
         assert target.image_version.name == "2026.07.0-55"
         assert target.image_version.isMatrixVersion is True
@@ -702,8 +703,10 @@ class TestBakeryConfig:
                     matrix_versions=MatrixVersionInclusionEnum.ONLY,
                 ),
             )
-        matrix_targets = [t for t in config.targets if not t.image_version.isDevelopmentVersion]
-        dev_targets = [t for t in config.targets if t.image_version.isDevelopmentVersion]
+        matrix_targets = [
+            t for t in select_targets(config, config.settings) if not t.image_version.isDevelopmentVersion
+        ]
+        dev_targets = [t for t in select_targets(config, config.settings) if t.image_version.isDevelopmentVersion]
         assert len(matrix_targets) == 2
         assert len(dev_targets) == 1
         assert dev_targets[0].image_version.name == "2026.07.0-55"
@@ -719,9 +722,9 @@ class TestBakeryConfig:
                 latest=True,
             ),
         )
-        assert len(config.targets) > 0
-        assert all(t.image_version.name == "2025.04.2-8" for t in config.targets)
-        assert all(t.image_version.latest for t in config.targets)
+        assert len(select_targets(config, config.settings)) > 0
+        assert all(t.image_version.name == "2025.04.2-8" for t in select_targets(config, config.settings))
+        assert all(t.image_version.latest for t in select_targets(config, config.settings))
 
     @pytest.mark.usefixtures("patch_requests_get")
     def test_latest_filters_matrix_versions(self, testdata_path):
@@ -735,8 +738,8 @@ class TestBakeryConfig:
                 latest=True,
             ),
         )
-        assert len(config.targets) == 1
-        target = config.targets[0]
+        assert len(select_targets(config, config.settings)) == 1
+        target = select_targets(config, config.settings)[0]
         assert target.image_version.latest
         assert target.uid == "session-r4-5-1-python3-13-7-quarto1-7-34-ubuntu-24-04"
 
@@ -751,7 +754,7 @@ class TestBakeryConfig:
                 latest=True,
             ),
         )
-        assert len(config.targets) == 0
+        assert len(select_targets(config, config.settings)) == 0
         assert "WARNING" in caplog.text
         assert "Version '2024.11.0-7' in image 'package-manager' matches --image-version filter" in caplog.text
         assert "not the latest version (excluded by --latest)" in caplog.text
@@ -768,7 +771,7 @@ class TestBakeryConfig:
             ),
         )
         assert config is not None
-        assert len(config.targets) == 0
+        assert len(select_targets(config, config.settings)) == 0
         assert "WARNING" in caplog.text
         assert "Image 'session' matches --image-name filter but is being skipped" in caplog.text
         assert "matrix image excluded by default" in caplog.text
@@ -791,7 +794,7 @@ class TestBakeryConfig:
             ),
         )
         assert config is not None
-        assert len(config.targets) == 0
+        assert len(select_targets(config, config.settings)) == 0
         assert "WARNING" in caplog.text
         assert "Image 'package-manager' matches --image-name filter but is being skipped" in caplog.text
         assert "non-matrix image excluded by --matrix-versions only" in caplog.text
@@ -809,7 +812,7 @@ class TestBakeryConfig:
                 ),
             )
         assert config is not None
-        assert len(config.targets) == 0
+        assert len(select_targets(config, config.settings)) == 0
         assert "WARNING" in caplog.text
         assert "Version '2025.04.2-8' in image 'package-manager' matches --image-version filter" in caplog.text
         assert "not a development version" in caplog.text
@@ -825,7 +828,7 @@ class TestBakeryConfig:
             ),
         )
         assert config is not None
-        assert len(config.targets) == 0
+        assert len(select_targets(config, config.settings)) == 0
         assert "WARNING" in caplog.text
         assert "Image 'package-manager' matches --image-name filter but yielded no targets" in caplog.text
 
@@ -840,7 +843,7 @@ class TestBakeryConfig:
             ),
         )
         assert config is not None
-        assert len(config.targets) > 0
+        assert len(select_targets(config, config.settings)) > 0
         assert "WARNING" not in caplog.text
 
     @pytest.mark.parametrize("yaml_file", yaml_file_testcases(FileTestResultEnum.VALID_WITH_WARNING))
@@ -1961,59 +1964,59 @@ class TestBakeryConfig:
             get_tmpcontext("matrix") / "bakery.yaml",
             settings=BakerySettings(matrix_versions=MatrixVersionInclusionEnum.INCLUDE),
         )
-        assert len(config.targets) == 4
+        assert len(select_targets(config, config.settings)) == 4
 
     def test_target_filtering_no_filter(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
         config = BakeryConfig(complex_yaml)
-        assert len(config.targets) == 10
+        assert len(select_targets(config, config.settings)) == 10
 
     def test_target_filtering_filter_image(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"package-manager-init"))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 2
+        assert len(select_targets(config, config.settings)) == 2
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"^package-manager$"))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 8
+        assert len(select_targets(config, config.settings)) == 8
 
     def test_target_filtering_filter_variant(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_variant="std"))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 6
+        assert len(select_targets(config, config.settings)) == 6
 
     def test_target_filtering_filter_version(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_version="2025.04.2-8"))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 6
+        assert len(select_targets(config, config.settings)) == 6
 
     def test_target_filtering_filter_os(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_os="Ubuntu 24.04"))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 3
+        assert len(select_targets(config, config.settings)) == 3
 
     def test_target_filtering_filter_platform(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/arm64"]))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 2
+        assert len(select_targets(config, config.settings)) == 2
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/amd64"]))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 10
+        assert len(select_targets(config, config.settings)) == 10
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_platform=["linux/amd64", "linux/arm64"]))
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 10
+        assert len(select_targets(config, config.settings)) == 10
 
     def test_target_filtering_filter_multi(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
@@ -2024,7 +2027,7 @@ class TestBakeryConfig:
             )
         )
         config = BakeryConfig(complex_yaml, settings)
-        assert len(config.targets) == 2
+        assert len(select_targets(config, config.settings)) == 2
 
     @pytest.mark.parametrize("suite", SUCCESS_SUITES)
     def test_remove_image(self, suite, get_tmpcontext):
@@ -2153,31 +2156,6 @@ class TestBakeryConfig:
         with pytest.raises(ValueError, match=f"Version 'non-existent' does not exist for image '{image_name}'"):
             config.remove_version(image_name, "non-existent")
 
-    def test__merge_sequential_build_metadata_files(self, get_config_obj):
-        """Test merging sequential build metadata files."""
-        config = get_config_obj("basic")
-        for target in config.targets:
-            metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / f"{target.uid}.json"
-            target.build_metadata.append(BuildMetadata.model_validate_json(metadata_filepath.read_text()))
-
-        merged_metadata = config._merge_sequential_build_metadata_files()
-        with open(CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json", "r") as f:
-            expected_metadata = json.load(f)
-
-        assert merged_metadata == expected_metadata
-
-    def test_load_build_metadata_file(self, get_config_obj):
-        """Test loading a build metadata file."""
-        metadata_filepath = CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json"
-        config = get_config_obj("basic")
-        config.load_build_metadata_from_file(metadata_filepath)
-
-        for target in config.targets:
-            assert len(target.build_metadata) == 1
-            assert target.build_metadata[0] is not None
-            assert target.build_metadata[0].image_name is not None
-            assert target.build_metadata[0].container_image_digest is not None
-
     def test_generate_image_targets_rejects_duplicate_uid(self, get_config_obj):
         """Two targets sharing a UID fail fast instead of silently colliding.
 
@@ -2193,7 +2171,18 @@ class TestBakeryConfig:
         image.versions.append(clone)
 
         with pytest.raises(BakeryError, match="Duplicate image target UID"):
-            config.generate_image_targets()
+            select_targets(config, config.settings)
+
+    def test_select_targets_sort_false_keeps_config_order(self, get_config_obj):
+        """sort=False keeps bakery.yaml order (2.0.0 before 1.0.0); the default
+        string sort puts 1.0.0 first. ci matrix relies on the former."""
+        config = get_config_obj("changeset")
+
+        unsorted = [t.image_version.name for t in select_targets(config, config.settings, sort=False)]
+        default = [t.image_version.name for t in select_targets(config, config.settings)]
+
+        assert unsorted == ["2.0.0", "1.0.0"]
+        assert default == ["1.0.0", "2.0.0"]
 
     def test_dev_and_release_same_version_do_not_collide(self, get_config_obj):
         """A dev-stream version and a release version of the same number coexist with
@@ -2208,426 +2197,11 @@ class TestBakeryConfig:
         dev.metadata = {"release_channel": ReleaseChannelEnum.DAILY}
         image.versions.append(dev)
 
-        config.generate_image_targets(BakerySettings(dev_versions=DevVersionInclusionEnum.INCLUDE))
-
-        uids = [t.uid for t in config.targets if t.image_version.name == "1.0.0"]
+        settings = BakerySettings(dev_versions=DevVersionInclusionEnum.INCLUDE)
+        uids = [t.uid for t in select_targets(config, settings) if t.image_version.name == "1.0.0"]
         assert len(uids) == len(set(uids))
         assert any(u.endswith("-daily") for u in uids)
         assert any(not u.endswith("-daily") for u in uids)
-
-    @pytest.mark.parametrize(
-        "untagged,older_than_days,expected_deletions",
-        [
-            pytest.param(
-                False,
-                None,
-                [],
-                id="no-untagged-no-older-than-days-no-deletions",
-            ),
-            pytest.param(
-                True,
-                None,
-                [565937362, 565937363],
-                id="untagged-no-older-than-days-deletions",
-            ),
-            pytest.param(
-                False,
-                14,
-                [565937361, 565937362],
-                id="no-untagged-older-than-days-deletions",
-            ),
-            pytest.param(
-                True,
-                14,
-                [565937361, 565937362, 565937363],
-                id="untagged-older-than-days-deletions",
-            ),
-        ],
-    )
-    def test_clean_caches(
-        self,
-        mocker,
-        get_tmpcontext,
-        cache_ghcr_package_versions_data,
-        untagged,
-        older_than_days,
-        expected_deletions,
-    ):
-        """Test cleaning caches in the BakeryConfig."""
-        context = get_tmpcontext("basic")
-        cache_registry = "ghcr.io/posit-test"
-        settings = BakerySettings(cache_registry=cache_registry)
-        config = BakeryConfig.from_context(context, settings)
-
-        mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
-        mock_ghcr_client_instance = mock_ghcr_client.return_value
-        mock_ghcr_client_instance.get_package_versions.return_value = cache_ghcr_package_versions_data
-
-        # Clean caches
-        config.clean_caches(
-            remove_untagged=untagged,
-            remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
-        )
-
-        mock_ghcr_client.assert_called_once()
-        mock_ghcr_client_instance.get_package_versions.assert_called_once()
-        if expected_deletions:
-            versions_deleted = mock_ghcr_client_instance.delete_package_versions.call_args.args[0]
-            assert len(versions_deleted.versions) == len(expected_deletions)
-            for version_id in expected_deletions:
-                assert version_id in [v.id for v in versions_deleted.versions]
-        else:
-            mock_ghcr_client_instance.delete_package_version.assert_not_called()
-
-    def test_clean_caches_dry_run(
-        self,
-        mocker,
-        get_tmpcontext,
-        cache_ghcr_package_versions_data,
-    ):
-        """Test cleaning caches in the BakeryConfig."""
-        context = get_tmpcontext("basic")
-        cache_registry = "ghcr.io/posit-test"
-        settings = BakerySettings(cache_registry=cache_registry)
-        config = BakeryConfig.from_context(context, settings)
-
-        mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
-        mock_ghcr_client_instance = mock_ghcr_client.return_value
-        mock_ghcr_client_instance.get_package_versions.return_value = cache_ghcr_package_versions_data
-
-        # Clean caches
-        config.clean_caches(
-            remove_untagged=True,
-            remove_older_than=timedelta(days=14),
-            dry_run=True,
-        )
-
-        mock_ghcr_client.assert_called_once()
-        mock_ghcr_client_instance.get_package_versions.assert_called_once()
-        mock_ghcr_client_instance.delete_package_version.assert_not_called()
-
-    @pytest.mark.parametrize(
-        "untagged,older_than_days,expected_deletions",
-        [
-            pytest.param(
-                False,
-                None,
-                [],
-                id="no-untagged-no-older-than-days-no-deletions",
-            ),
-            pytest.param(
-                True,
-                None,
-                [565937359, 565937360, 565937361, 565937362, 565937363],
-                id="untagged-no-older-than-days-deletions",
-            ),
-            pytest.param(
-                False,
-                14,
-                [565937361, 565937362],
-                id="no-untagged-older-than-days-deletions",
-            ),
-            pytest.param(
-                True,
-                14,
-                [565937359, 565937360, 565937361, 565937362, 565937363],
-                id="untagged-older-than-days-deletions",
-            ),
-        ],
-    )
-    def test_clean_temporary(
-        self,
-        mocker,
-        get_tmpcontext,
-        temp_ghcr_package_versions_data,
-        untagged,
-        older_than_days,
-        expected_deletions,
-    ):
-        """Test cleaning temporary images in the BakeryConfig."""
-        context = get_tmpcontext("basic")
-        temp_registry = "ghcr.io/posit-test"
-        settings = BakerySettings(temp_registry=temp_registry)
-        config = BakeryConfig.from_context(context, settings)
-
-        mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
-        mock_ghcr_client_instance = mock_ghcr_client.return_value
-        mock_ghcr_client_instance.get_package_versions.return_value = temp_ghcr_package_versions_data
-
-        # Clean temp images
-        config.clean_temporary(
-            remove_untagged=untagged,
-            remove_older_than=timedelta(days=older_than_days) if older_than_days is not None else None,
-        )
-
-        mock_ghcr_client.assert_called_once()
-        mock_ghcr_client_instance.get_package_versions.assert_called_once()
-        if expected_deletions:
-            versions_deleted = mock_ghcr_client_instance.delete_package_versions.call_args.args[0]
-            assert len(versions_deleted.versions) == len(expected_deletions)
-            for version_id in expected_deletions:
-                assert version_id in [v.id for v in versions_deleted.versions]
-        else:
-            mock_ghcr_client_instance.delete_package_version.assert_not_called()
-
-    def test_clean_temporary_dry_run(
-        self,
-        mocker,
-        get_tmpcontext,
-        temp_ghcr_package_versions_data,
-    ):
-        """Test cleaning temp images in the BakeryConfig."""
-        context = get_tmpcontext("basic")
-        temp_registry = "ghcr.io/posit-test"
-        settings = BakerySettings(temp_registry=temp_registry)
-        config = BakeryConfig.from_context(context, settings)
-
-        mock_ghcr_client = mocker.patch("posit_bakery.registry_management.ghcr.clean.GHCRClient")
-        mock_ghcr_client_instance = mock_ghcr_client.return_value
-        mock_ghcr_client_instance.get_package_versions.return_value = temp_ghcr_package_versions_data
-
-        # Clean temp images
-        config.clean_temporary(
-            remove_untagged=True,
-            remove_older_than=timedelta(days=14),
-            dry_run=True,
-        )
-
-        mock_ghcr_client.assert_called_once()
-        mock_ghcr_client_instance.get_package_versions.assert_called_once()
-        mock_ghcr_client_instance.delete_package_version.assert_not_called()
-
-
-class TestBuildTargetsBuildStrategy:
-    """Tests for BakeryConfig.build_targets() with ImageBuildStrategy.BUILD."""
-
-    def test_all_targets_built_no_error(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
-
-    def test_runs_concurrently_bounded_by_jobs(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        assert len(config.targets) >= 2
-        lock = threading.Lock()
-        active = 0
-        max_active = 0
-
-        def fake_build(self, **kwargs):
-            nonlocal active, max_active
-            with lock:
-                active += 1
-                max_active = max(max_active, active)
-            time.sleep(0.1)
-            with lock:
-                active -= 1
-            return None
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD, jobs=2)
-
-        assert max_active >= 2
-
-    def test_single_failure_raised_directly(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        failing_uid = config.targets[0].uid
-
-        def fake_build(self, **kwargs):
-            if self.uid == failing_uid:
-                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
-            return None
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-
-        with pytest.raises(BakeryToolRuntimeError):
-            config.build_targets(strategy=ImageBuildStrategy.BUILD)
-
-    def test_multiple_failures_raised_as_error_group(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        assert len(config.targets) >= 2
-
-        def fake_build(self, **kwargs):
-            raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-
-        with pytest.raises(BakeryBuildErrorGroup):
-            config.build_targets(strategy=ImageBuildStrategy.BUILD)
-
-    def test_fail_fast_stops_unstarted_targets(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        assert len(config.targets) >= 2
-        failing_uid = config.targets[0].uid
-        called_uids = []
-
-        def fake_build(self, **kwargs):
-            called_uids.append(self.uid)
-            if self.uid == failing_uid:
-                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
-            return None
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-
-        # jobs=1 fully serializes the two targets, so the second must never start
-        # once the first (and only) job fails with fail_fast set.
-        with pytest.raises(BakeryToolRuntimeError):
-            config.build_targets(strategy=ImageBuildStrategy.BUILD, fail_fast=True, jobs=1)
-
-        assert called_uids == [failing_uid]
-
-    def test_metadata_file_written(self, get_config_obj, mocker, tmp_path):
-        config = get_config_obj("basic")
-        metadata_path = tmp_path / "metadata.json"
-        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD, metadata_file=metadata_path)
-
-        assert metadata_path.is_file()
-
-    def test_real_build_streams_through_prefixed_log_sink(self, get_config_obj, mocker, capsys):
-        """Exercises the real BUILD-branch wiring end to end: ImageTarget.build() is NOT
-        mocked, only python_on_whales.docker.build() at the tool boundary, so the closure
-        `build_targets()` constructs (streaming build() output into a real PrefixedLogSink)
-        actually runs. Regression test for the Task 1 + Task 2 + Task 4 integration seam.
-        """
-        config = get_config_obj("basic")
-        assert len(config.targets) >= 2
-        fake_lines = ["Step 1/2 : FROM ubuntu", "Step 2/2 : RUN true"]
-        mocker.patch("python_on_whales.docker.build", side_effect=lambda **kwargs: iter(fake_lines))
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
-
-        output = capsys.readouterr().err
-        for target in config.targets:
-            assert target.uid in output
-        assert fake_lines[0] in output
-
-    def test_quiet_mode_skips_log_streaming(self, get_config_obj, mocker):
-        """Under -q (SETTINGS.log_level == ERROR), log_callback must not be wired up --
-        otherwise ImageTarget.build() forces docker's "plain" progress and streams output
-        the user asked to suppress.
-        """
-        config = get_config_obj("basic")
-        original_log_level = SETTINGS.log_level
-        SETTINGS.log_level = logging.ERROR
-        try:
-            captured_kwargs = []
-            mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: captured_kwargs.append(kwargs))
-            config.build_targets(strategy=ImageBuildStrategy.BUILD)  # must not raise
-        finally:
-            SETTINGS.log_level = original_log_level
-
-        assert captured_kwargs
-        assert all(kwargs["log_callback"] is None for kwargs in captured_kwargs)
-
-    def test_retry_backoff_uses_interruptible_runner_sleep(self, get_config_obj, mocker):
-        """_retry_build's backoff must go through CommandRunner.sleep (interruptible via
-        ExecutorInterrupted when the executor is shutting down), not a bare time.sleep --
-        otherwise a queued retry can't be woken by a shutdown request and blocks the full
-        delay.
-        """
-        config = get_config_obj("basic")
-        failing_uid = config.targets[0].uid
-        attempted = {"done": False}
-
-        def fake_build(self, **kwargs):
-            if self.uid == failing_uid and not attempted["done"]:
-                attempted["done"] = True
-                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
-            return None
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-        mock_time_sleep = mocker.patch("posit_bakery.config.config.time.sleep")
-        spy_runner_sleep = mocker.patch("posit_bakery.parallel.executor.CommandRunner.sleep", autospec=True)
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD, retry=1)  # must not raise
-
-        spy_runner_sleep.assert_called_once()
-        mock_time_sleep.assert_not_called()
-
-    def test_last_build_succeeded_uids_set_on_full_success(self, get_config_obj, mocker):
-        config = get_config_obj("basic")
-        mocker.patch.object(ImageTarget, "build", lambda self, **kwargs: None)
-
-        config.build_targets(strategy=ImageBuildStrategy.BUILD)
-
-        assert config.last_build_succeeded_uids == {t.uid for t in config.targets}
-
-    def test_last_build_succeeded_uids_excludes_the_target_that_failed(self, get_config_obj, mocker):
-        """Set before the raise, not after -- --summary needs it even on a failed build."""
-        config = get_config_obj("basic")
-        assert len(config.targets) >= 2
-        failing_uid = config.targets[0].uid
-
-        def fake_build(self, **kwargs):
-            if self.uid == failing_uid:
-                raise BakeryToolRuntimeError("boom", cmd=["docker", "build"])
-            return None
-
-        mocker.patch.object(ImageTarget, "build", fake_build)
-
-        with pytest.raises(BakeryToolRuntimeError):
-            config.build_targets(strategy=ImageBuildStrategy.BUILD)
-
-        assert config.last_build_succeeded_uids == {t.uid for t in config.targets if t.uid != failing_uid}
-
-
-class TestBuildTargetsBakeStrategy:
-    """Tests for BakeryConfig.build_targets() with ImageBuildStrategy.BAKE."""
-
-    def test_metadata_file_forwarded_to_bake_plan(self, get_config_obj, mocker):
-        """metadata_file must be forwarded to BakePlan.build() so it reaches
-        `docker buildx bake --metadata-file`."""
-        config = get_config_obj("basic")
-        metadata_path = Path("/tmp/does-not-matter.json")
-        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
-        mocker.patch.object(BakeryConfig, "load_build_metadata_from_file")
-
-        config.build_targets(strategy=ImageBuildStrategy.BAKE, metadata_file=metadata_path)
-
-        mock_build.assert_called_once()
-        assert mock_build.call_args.kwargs["metadata_file"] == metadata_path
-
-    def test_temp_registry_push_disables_provenance(self, get_config_file, mocker):
-        config = BakeryConfig(get_config_file("basic"), BakerySettings(temp_registry="registry.example.com"))
-        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
-
-        config.build_targets(strategy=ImageBuildStrategy.BAKE, push=True)
-
-        assert mock_build.call_args.kwargs["set_opts"] == {
-            "*.output": {"type": "image", "push-by-digest": True, "name-canonical": True, "push": True},
-            "*.attest": "type=provenance,disabled=true",
-        }
-
-    def test_no_metadata_file_by_default(self, get_config_obj, mocker):
-        """When metadata_file is not given, None must be forwarded and no metadata load attempted."""
-        config = get_config_obj("basic")
-        mock_build = mocker.patch("posit_bakery.image.bake.BakePlan.build")
-        mock_load = mocker.patch.object(BakeryConfig, "load_build_metadata_from_file")
-
-        config.build_targets(strategy=ImageBuildStrategy.BAKE)
-
-        assert mock_build.call_args.kwargs["metadata_file"] is None
-        mock_load.assert_not_called()
-
-    def test_metadata_loaded_back_into_targets(self, get_config_obj, mocker, tmp_path):
-        """After a successful bake with a metadata_file, the resulting file (written by
-        `docker buildx bake --metadata-file`, keyed by bake target/UID) must be loaded back
-        into each target's build_metadata, mirroring the BUILD strategy's behavior."""
-        config = get_config_obj("basic")
-        metadata_path = tmp_path / "metadata.json"
-
-        expected_metadata_path = CONFIG_TESTDATA_DIR / "build_metadata" / "expected.json"
-        shutil.copyfile(expected_metadata_path, metadata_path)
-
-        mocker.patch("posit_bakery.image.bake.BakePlan.build")
-
-        config.build_targets(strategy=ImageBuildStrategy.BAKE, metadata_file=metadata_path)
-
-        for target in config.targets:
-            assert len(target.build_metadata) == 1
 
 
 class TestApplyDevSpecReleaseBranch:

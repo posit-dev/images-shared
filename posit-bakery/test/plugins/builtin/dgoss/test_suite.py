@@ -3,10 +3,12 @@ import subprocess
 
 import pytest
 
+from posit_bakery.build.runner import build_targets
 from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.parallel import ShellResult
 from posit_bakery.plugins.builtin.dgoss.errors import BakeryDGossError
 from posit_bakery.plugins.builtin.dgoss.suite import DGossSuite
+from posit_bakery.targets.selection import select_targets
 from test.helpers import remove_images
 
 pytestmark = [
@@ -19,18 +21,26 @@ class TestDGossSuite:
     def test_init(self, get_config_obj):
         """Test that DGossSuite initializes with the correct attributes."""
         basic_config_obj = get_config_obj("basic")
-        dgoss_suite = DGossSuite(basic_config_obj.base_path, basic_config_obj.targets)
+        dgoss_suite = DGossSuite(
+            basic_config_obj.base_path, select_targets(basic_config_obj, basic_config_obj.settings)
+        )
         assert dgoss_suite.context == basic_config_obj.base_path
-        assert dgoss_suite.image_targets == basic_config_obj.targets
+        assert dgoss_suite.image_targets == select_targets(basic_config_obj, basic_config_obj.settings)
         assert len(dgoss_suite.dgoss_commands) == 2
 
     @pytest.mark.image_build
     def test_run(self, get_tmpconfig):
         """Test that DGossSuite run executes the DGoss commands."""
         basic_tmpconfig = get_tmpconfig("basic")
-        basic_tmpconfig.build_targets()
+        targets = select_targets(basic_tmpconfig, basic_tmpconfig.settings)
+        build_targets(
+            base_path=basic_tmpconfig.base_path,
+            targets=targets,
+            temp_registry=basic_tmpconfig.settings.temp_registry,
+            clean_temporary=basic_tmpconfig.settings.clean_temporary,
+        )
 
-        dgoss_suite = DGossSuite(basic_tmpconfig.base_path, basic_tmpconfig.targets)
+        dgoss_suite = DGossSuite(basic_tmpconfig.base_path, targets)
 
         report_collection, errors = dgoss_suite.run()
 
@@ -48,7 +58,7 @@ class TestDGossSuite:
     def test_run_parallel_mocked(self, get_tmpconfig, mocker):
         """Suite.run() processes successful executor results into reports + files."""
         cfg = get_tmpconfig("basic")
-        suite = DGossSuite(cfg.base_path, cfg.targets)
+        suite = DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings))
 
         goss_json = json.dumps(
             {
@@ -86,12 +96,12 @@ class TestDGossSuite:
     def test_jobs_sets_max_workers(self, get_config_obj):
         cfg = get_config_obj("basic")
         # jobs is clamped to the number of commands (2 targets in the basic config)
-        assert DGossSuite(cfg.base_path, cfg.targets, jobs=1).max_workers == 1
-        assert DGossSuite(cfg.base_path, cfg.targets, jobs=5).max_workers == 2
+        assert DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings), jobs=1).max_workers == 1
+        assert DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings), jobs=5).max_workers == 2
 
     def test_run_spawn_failure_records_errors(self, get_tmpconfig, mocker):
         cfg = get_tmpconfig("basic")
-        suite = DGossSuite(cfg.base_path, cfg.targets)
+        suite = DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings))
 
         def fake_run(self, tasks, *, on_result=None):
             results = []
@@ -120,7 +130,7 @@ class TestDGossSuite:
 
     def test_run_timeout_records_error(self, get_tmpconfig, mocker):
         cfg = get_tmpconfig("basic")
-        suite = DGossSuite(cfg.base_path, cfg.targets)
+        suite = DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings))
 
         def fake_run(self, tasks, *, on_result=None):
             results = []
@@ -156,7 +166,7 @@ class TestDGossSuite:
             return []
 
         cfg = get_tmpconfig("basic")
-        suite = DGossSuite(cfg.base_path, cfg.targets)
+        suite = DGossSuite(cfg.base_path, select_targets(cfg, cfg.settings))
         mocker.patch("posit_bakery.plugins.builtin.dgoss.suite.ParallelShellExecutor.run", fake_run)
         suite.run()
         assert captured["tasks"]

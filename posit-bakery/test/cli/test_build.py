@@ -11,12 +11,14 @@ import python_on_whales
 from pytest_bdd import scenarios, then, parsers
 from typer.testing import CliRunner
 
+from posit_bakery.build import BuildResult
 from posit_bakery.cli.main import app
 from posit_bakery.config.image.posit_product.errors import (
     ArtifactNotAvailableError,
     VersionSubstitutionError,
 )
 from posit_bakery.error import BakeryBuildErrorGroup, BakeryToolRuntimeError
+from posit_bakery.targets.selection import select_targets
 
 scenarios(
     "cli/build.feature",
@@ -30,11 +32,30 @@ _ENV = {"TERM": "dumb", "NO_COLOR": "true", "COLUMNS": "200"}
 
 
 @pytest.fixture
-def mock_build_config():
+def mock_run_build():
+    """Patch the build runner the build command calls; returns an empty BuildResult."""
+    with patch("posit_bakery.cli.build.run_build_targets", return_value=BuildResult(succeeded_uids=set())) as m:
+        yield m
+
+
+@pytest.fixture
+def mock_bake_plan():
+    """Patch bake plan generation for --plan; returns an empty plan."""
+    with patch("posit_bakery.cli.build.bake_plan_json", return_value="{}") as m:
+        yield m
+
+
+@pytest.fixture
+def mock_build_config(mock_run_build, mock_bake_plan):
     """Mock BakeryConfig in the build command to capture settings without building."""
     with patch("posit_bakery.cli.build.BakeryConfig") as mock:
         instance = MagicMock()
-        instance.build_targets.return_value = None
+        instance.base_path = Path(BASIC_CONTEXT)
+        # A fake target so exit_if_no_targets doesn't fail
+        instance.targets = [_fake_target()]
+        instance.settings = MagicMock()
+        instance.settings.temp_registry = None
+        instance.settings.clean_temporary = False
         mock.from_context.return_value = instance
         yield mock
 
@@ -94,7 +115,7 @@ class TestBuildErrorHandling:
 class TestBuildZeroMatchGuard:
     """A filter that matches no targets must fail the build, not silently pass."""
 
-    def test_no_targets_exits_nonzero(self):
+    def test_no_targets_exits_nonzero(self, mock_run_build):
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
             instance = MagicMock()
             instance.targets = []
@@ -107,9 +128,9 @@ class TestBuildZeroMatchGuard:
         assert result.exit_code == 1
         assert "No image targets" in result.output
         assert "9999.99.99" in result.output
-        instance.build_targets.assert_not_called()
+        mock_run_build.assert_not_called()
 
-    def test_no_targets_blocks_plan_output(self):
+    def test_no_targets_blocks_plan_output(self, mock_bake_plan):
         """--plan must also fail rather than emit an empty bake plan."""
         with patch("posit_bakery.cli.build.BakeryConfig") as mock:
             instance = MagicMock()
@@ -122,7 +143,7 @@ class TestBuildZeroMatchGuard:
             )
         assert result.exit_code == 1
         assert "No image targets" in result.output
-        instance.bake_plan_targets.assert_not_called()
+        mock_bake_plan.assert_not_called()
 
 
 class TestBuildLatestFlag:
@@ -181,25 +202,23 @@ class TestBuildRecentFlag:
 
 
 class TestBuildJobsFlag:
-    def test_jobs_passed_to_build_targets(self, mock_build_config):
-        instance = mock_build_config.from_context.return_value
+    def test_jobs_passed_to_build_targets(self, mock_build_config, mock_run_build):
         result = runner.invoke(
             app,
             ["build", "--jobs", "3", "--context", BASIC_CONTEXT],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert instance.build_targets.call_args.kwargs["jobs"] == 3
+        assert mock_run_build.call_args.kwargs["jobs"] == 3
 
-    def test_jobs_defaults_to_none(self, mock_build_config):
-        instance = mock_build_config.from_context.return_value
+    def test_jobs_defaults_to_none(self, mock_build_config, mock_run_build):
         result = runner.invoke(
             app,
             ["build", "--context", BASIC_CONTEXT],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert instance.build_targets.call_args.kwargs["jobs"] is None
+        assert mock_run_build.call_args.kwargs["jobs"] is None
 
 
 class TestBuildSummaryFlag:
@@ -213,7 +232,7 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert "Build Summary" not in result.stderr
 
-    def test_builds_then_prints_the_sizes_table(self, mock_build_config):
+    def test_builds_then_prints_the_sizes_table(self, mock_build_config, mock_run_build):
         """--summary builds first, then reports per-target sizes -- the size columns are the
         reason it has to build, and they only exist in the post-build view."""
         instance = mock_build_config.from_context.return_value
@@ -222,14 +241,14 @@ class TestBuildSummaryFlag:
             app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
         )
         assert result.exit_code == 0
-        instance.build_targets.assert_called_once()
+        mock_run_build.assert_called_once()
         # Assert on the title, not a column header: the sizes view is nine columns wide and
         # Rich wraps or truncates its headers at whatever width the terminal reports, which
         # differs between a local run and CI. Only the sizes view counts targets in its title.
         assert "Build Summary (1 targets)" in result.stderr
         assert "Build Summary" not in result.stdout
 
-    def test_format_json_builds_then_prints_to_stdout(self, mock_build_config):
+    def test_format_json_builds_then_prints_to_stdout(self, mock_build_config, mock_run_build):
         """Sizes are null here because the fake targets expose no ref() to measure -- the
         keys must still be present and null rather than absent or zero."""
         instance = mock_build_config.from_context.return_value
@@ -241,7 +260,7 @@ class TestBuildSummaryFlag:
             env=_ENV,
         )
         assert result.exit_code == 0
-        instance.build_targets.assert_called_once()
+        mock_run_build.assert_called_once()
         assert "Build Summary" not in result.stderr
         data = json.loads(result.stdout)
         assert data["build_targets"] == 1
@@ -252,15 +271,14 @@ class TestBuildSummaryFlag:
         assert data["cache_size_bytes"] is None
         assert len(data["targets"]) == 1
 
-    def test_measurement_is_narrowed_to_the_targets_that_succeeded(self, mock_build_config):
-        """build.py has to forward config.last_build_succeeded_uids into the measurement, or
-        a target that failed this run gets measured off whatever image happens to already sit
+    def test_measurement_is_narrowed_to_the_targets_that_succeeded(self, mock_build_config, mock_run_build):
+        """build.py has to forward BuildResult.succeeded_uids into the measurement, or a
+        target that failed this run gets measured off whatever image happens to already sit
         at its tag from an earlier push. measure_sizes()'s own filtering is covered in
-        test_summary.py; this pins the wiring between the two, which is the part that was
-        missing -- last_build_succeeded_uids had no production consumer at all."""
+        test_summary.py; this pins the wiring between the two."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
-        instance.last_build_succeeded_uids = {"fake-image-1.0.0-standard-ubuntu-22.04"}
+        mock_run_build.return_value = BuildResult(succeeded_uids={"fake-image-1.0.0-standard-ubuntu-22.04"})
         with patch("posit_bakery.image.summary.BuildSummary.measure_sizes") as measure_sizes:
             result = runner.invoke(
                 app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
@@ -268,28 +286,32 @@ class TestBuildSummaryFlag:
         assert result.exit_code == 0
         assert measure_sizes.call_args.kwargs["succeeded_uids"] == {"fake-image-1.0.0-standard-ubuntu-22.04"}
 
-    def test_summary_is_still_emitted_when_the_build_fails(self, mock_build_config):
+    def test_summary_is_still_emitted_when_the_build_fails(self, mock_build_config, mock_run_build):
         """A partially failed build is exactly when the report is most useful, so the
         summary must survive the failure path -- without swallowing the failure itself."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
-        instance.build_targets.side_effect = BakeryBuildErrorGroup(
+        build_error = BakeryBuildErrorGroup(
             "build failed",
             [BakeryToolRuntimeError("target failed", tool_name="docker", cmd=["docker", "build"])],
         )
-        result = runner.invoke(
-            app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
-        )
+        build_error.build_result = BuildResult(succeeded_uids=set())
+        mock_run_build.side_effect = build_error
+        with patch("posit_bakery.image.summary.BuildSummary.measure_sizes") as measure_sizes:
+            result = runner.invoke(
+                app, ["build", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
+            )
         assert result.exit_code == 1
         assert "Build failed" in result.stderr
         assert "Build Summary (1 targets)" in result.stderr
+        assert measure_sizes.call_args.kwargs["succeeded_uids"] == set()
 
-    def test_a_broken_summary_does_not_mask_the_build_failure(self, mock_build_config):
+    def test_a_broken_summary_does_not_mask_the_build_failure(self, mock_build_config, mock_run_build):
         """If the reporting path itself raises, the original build failure must still be the
         thing reported and exited on -- a bug in a report must never eat a build error."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
-        instance.build_targets.side_effect = BakeryToolRuntimeError("docker exploded")
+        mock_run_build.side_effect = BakeryToolRuntimeError("docker exploded")
         with patch(
             "posit_bakery.image.summary.BuildSummary.measure_sizes",
             side_effect=RuntimeError("summary is broken"),
@@ -343,12 +365,12 @@ class TestBuildSummaryFlag:
         assert data["build_targets"] == 1
         assert data["platform_builds"] == 1
 
-    def test_plan_with_summary_prints_plan_json_and_the_counts_table(self, mock_build_config):
+    def test_plan_with_summary_prints_plan_json_and_the_counts_table(self, mock_build_config, mock_bake_plan):
         """--plan builds nothing, so there is nothing to measure: the counts view, not the
         sizes view, or every size column would be a dash."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
-        instance.bake_plan_targets.return_value = "{}"
+        mock_bake_plan.return_value = "{}"
         result = runner.invoke(
             app, ["build", "--plan", "--summary", "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
         )
@@ -357,9 +379,9 @@ class TestBuildSummaryFlag:
         assert "Build Targets" in result.stderr
         assert "Registry Size" not in result.stderr
         assert json.loads(result.stdout) == {}
-        instance.bake_plan_targets.assert_called_once()
+        mock_bake_plan.assert_called_once()
 
-    def test_format_json_with_plan_is_a_hard_error(self, mock_build_config):
+    def test_format_json_with_plan_is_a_hard_error(self, mock_build_config, mock_bake_plan):
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
         result = runner.invoke(
@@ -370,21 +392,21 @@ class TestBuildSummaryFlag:
         )
         assert result.exit_code == 1
         assert "not supported with --plan" in result.stderr
-        instance.bake_plan_targets.assert_not_called()
+        mock_bake_plan.assert_not_called()
 
     @pytest.mark.parametrize("extra_args", [[], ["--summary"]], ids=["plan_alone", "plan_with_summary"])
-    def test_plan_never_builds(self, mock_build_config, extra_args):
+    def test_plan_never_builds(self, mock_build_config, extra_args, mock_run_build, mock_bake_plan):
         """--plan is the dry-run flag and --summary must not change that. Both cases matter:
         the exit that enforces this used to live in the --summary block, which --plan fell
         through to, so it is easy to move in a way that quietly builds for one case only."""
         instance = mock_build_config.from_context.return_value
         instance.targets = [_fake_target()]
-        instance.bake_plan_targets.return_value = "{}"
+        mock_bake_plan.return_value = "{}"
         result = runner.invoke(
             app, ["build", "--plan", *extra_args, "--context", BASIC_CONTEXT], catch_exceptions=False, env=_ENV
         )
         assert result.exit_code == 0
-        instance.build_targets.assert_not_called()
+        mock_run_build.assert_not_called()
 
 
 class TestMetadataFileSinglePlatformGuard:
@@ -401,13 +423,13 @@ class TestMetadataFileSinglePlatformGuard:
             env=_ENV,
         )
 
-    def test_multi_platform_target_without_image_platform_errors(self, mock_build_config, tmp_path):
+    def test_multi_platform_target_without_image_platform_errors(self, mock_build_config, tmp_path, mock_run_build):
         result = self._run(mock_build_config, [_fake_target(platforms=("linux/amd64", "linux/arm64"))], [], tmp_path)
         assert result.exit_code == 1
         assert "--metadata-file requires a single platform" in result.stderr
-        mock_build_config.from_context.return_value.build_targets.assert_not_called()
+        mock_run_build.assert_not_called()
 
-    def test_multi_platform_target_with_single_image_platform_builds(self, mock_build_config, tmp_path):
+    def test_multi_platform_target_with_single_image_platform_builds(self, mock_build_config, tmp_path, mock_run_build):
         result = self._run(
             mock_build_config,
             [_fake_target(platforms=("linux/amd64", "linux/arm64"))],
@@ -415,7 +437,7 @@ class TestMetadataFileSinglePlatformGuard:
             tmp_path,
         )
         assert result.exit_code == 0
-        mock_build_config.from_context.return_value.build_targets.assert_called_once()
+        mock_run_build.assert_called_once()
 
     def test_multiple_image_platform_flags_error(self, mock_build_config, tmp_path):
         result = self._run(
@@ -427,10 +449,10 @@ class TestMetadataFileSinglePlatformGuard:
         assert result.exit_code == 1
         assert "--metadata-file requires a single platform" in result.stderr
 
-    def test_single_platform_target_builds(self, mock_build_config, tmp_path):
+    def test_single_platform_target_builds(self, mock_build_config, tmp_path, mock_run_build):
         result = self._run(mock_build_config, [_fake_target(platforms=("linux/amd64",))], [], tmp_path)
         assert result.exit_code == 0
-        mock_build_config.from_context.return_value.build_targets.assert_called_once()
+        mock_run_build.assert_called_once()
 
 
 @then("the bake plan is valid", target_fixture="bake_plan_data")
@@ -482,7 +504,7 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_tmpconf
     filtered_platforms = [bakery_command.args[i + 1] for i, x in enumerate(bakery_command.args) if x == "--platform"]
 
     config = get_tmpconfig(suite_name)
-    for target in config.targets:
+    for target in select_targets(config, config.settings):
         if filtered_platforms and all(
             re.search(filter_platform, target_platform) is None
             for filter_platform in filtered_platforms
@@ -508,7 +530,7 @@ def check_multiplatform_build(resource_path, bakery_command, suite_name, get_tmp
     docker_path = which("docker")
 
     config = get_tmpconfig(suite_name)
-    for target in config.targets:
+    for target in select_targets(config, config.settings):
         for tag in target.tags.as_strings():
             for row in datatable:
                 platform = row[0]
@@ -529,7 +551,7 @@ def check_multiplatform_no_build(resource_path, bakery_command, suite_name, get_
     docker_path = which("docker")
 
     config = get_tmpconfig(suite_name)
-    for target in config.targets:
+    for target in select_targets(config, config.settings):
         for tag in target.tags.as_strings():
             for row in datatable:
                 platform = row[0]
@@ -543,7 +565,7 @@ def check_build_artifacts_not_built(resource_path, bakery_command, suite_name, g
     assert suite_path.is_dir()
 
     config = get_tmpconfig(suite_name)
-    for target in config.targets:
+    for target in select_targets(config, config.settings):
         for tag in target.tags.as_strings():
             assert not python_on_whales.docker.image.exists(tag)
 
@@ -558,7 +580,7 @@ def check_build_metadata(resource_path, bakery_command, metadata_file, suite_nam
 
     config = get_tmpconfig(suite_name)
 
-    expected_uids = [target.uid for target in config.targets].sort()
+    expected_uids = [target.uid for target in select_targets(config, config.settings)].sort()
     actual_uids = list(data.keys()).sort()
     assert expected_uids == actual_uids
 

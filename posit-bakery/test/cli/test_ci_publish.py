@@ -5,6 +5,7 @@ The orchestration logic lives in the ``imagetools`` plugin
 delegates to it.
 """
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -19,6 +20,23 @@ pytestmark = [pytest.mark.unit]
 # names across rows with embedded ANSI escapes, which defeats substring
 # assertions on narrow CI terminals.
 _WIDE_TERM_ENV = {"COLUMNS": "200", "TERM": "dumb", "NO_COLOR": "1"}
+
+
+@contextmanager
+def _stub_targets(targets):
+    """Make publish() select ``targets`` and report all of them as loaded from metadata.
+
+    publish() imports these functions at call time, so they are patched on their
+    source modules.
+    """
+    with (
+        patch("posit_bakery.targets.selection.select_targets", return_value=list(targets)),
+        patch(
+            "posit_bakery.build.runner.load_build_metadata_from_file",
+            return_value=[t.uid for t in targets],
+        ),
+    ):
+        yield
 
 
 def test_publish_help_lists_command():
@@ -118,8 +136,6 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
 
     fake_config = MagicMock()
     fake_config.base_path = tmp_path
-    fake_config.load_build_metadata_from_file.return_value = ["uid-a", "uid-b"]
-    fake_config.get_image_target_by_uid.side_effect = lambda uid: {"uid-a": target_a, "uid-b": target_b}[uid]
 
     wait_result = MagicMock(success=True, ready=["x"], missing=[], waited_seconds=0.1, error=None)
     create_result = MagicMock(success=True, temp_ref="ghcr.io/posit-dev/tmp:created")
@@ -133,6 +149,7 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        _stub_targets([target_a, target_b]),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         patch(
@@ -175,8 +192,6 @@ def test_publish_isolates_one_targets_create_failure_from_others(tmp_path):
 
     fake_config = MagicMock()
     fake_config.base_path = tmp_path
-    fake_config.load_build_metadata_from_file.return_value = ["uid-fail", "uid-ok"]
-    fake_config.get_image_target_by_uid.side_effect = lambda uid: {"uid-fail": failing, "uid-ok": ok}[uid]
 
     wait_result = MagicMock(success=True, ready=["x"], missing=[], waited_seconds=0.1, error=None)
 
@@ -194,6 +209,7 @@ def test_publish_isolates_one_targets_create_failure_from_others(tmp_path):
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        _stub_targets([failing, ok]),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         patch(
@@ -231,14 +247,13 @@ def test_publish_aborts_when_sources_never_ready(tmp_path):
 
     fake_config = MagicMock()
     fake_config.base_path = tmp_path
-    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
-    fake_config.get_image_target_by_uid.return_value = target
 
     wait_failure = MagicMock(success=False, ready=[], missing=sources, waited_seconds=600.0, error="still unreadable")
 
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        _stub_targets([target]),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         patch(
@@ -265,8 +280,6 @@ def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
 
     fake_config = MagicMock()
     fake_config.base_path = tmp_path
-    fake_config.load_build_metadata_from_file.return_value = ["uid1"]
-    fake_config.get_image_target_by_uid.return_value = target
 
     error = BakeryToolRuntimeError(
         message="oras command failed",
@@ -279,6 +292,7 @@ def test_publish_surfaces_clean_error_on_non_transient_wait_failure(tmp_path):
     runner = CliRunner()
     with (
         patch("posit_bakery.cli.ci.BakeryConfig.from_context", return_value=fake_config),
+        _stub_targets([target]),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         patch(
@@ -307,8 +321,6 @@ def test_publish_jobs_flag_passed_through(tmp_path):
 
     fake_config = MagicMock()
     fake_config.base_path = tmp_path
-    fake_config.load_build_metadata_from_file.return_value = []
-    fake_config.get_image_target_by_uid.return_value = None
 
     def fake_publish(self, *args, **kwargs):
         captured["jobs"] = kwargs.get("jobs")
@@ -347,17 +359,15 @@ def test_publish_summary_skips_registry_measurement_on_dry_run(tmp_path):
     target.cache_name.return_value = None
 
     with (
-        patch("posit_bakery.config.BakeryConfig.from_context") as from_context,
+        patch("posit_bakery.config.BakeryConfig.from_context"),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         _bypass_pydantic_init(OrasIndexCreateWorkflow),
         _bypass_pydantic_init(OrasIndexCopyWorkflow),
         patch.object(OrasIndexCopyWorkflow, "run") as copy_run,
         patch("posit_bakery.image.BuildSummary.measure_sizes") as measure_sizes,
+        _stub_targets([target]),
     ):
-        config = from_context.return_value
-        config.load_build_metadata_from_file.return_value = ["uid-a"]
-        config.get_image_target_by_uid.return_value = target
         copy_run.return_value = Mock(success=True)
 
         ImageToolsPlugin().publish(
@@ -385,17 +395,15 @@ def test_publish_summary_measures_registry_on_a_real_push(tmp_path):
     target.cache_name.return_value = None
 
     with (
-        patch("posit_bakery.config.BakeryConfig.from_context") as from_context,
+        patch("posit_bakery.config.BakeryConfig.from_context"),
         patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
         patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
         _bypass_pydantic_init(OrasIndexCreateWorkflow),
         _bypass_pydantic_init(OrasIndexCopyWorkflow),
         patch.object(OrasIndexCopyWorkflow, "run") as copy_run,
         patch("posit_bakery.image.BuildSummary.measure_sizes") as measure_sizes,
+        _stub_targets([target]),
     ):
-        config = from_context.return_value
-        config.load_build_metadata_from_file.return_value = ["uid-a"]
-        config.get_image_target_by_uid.return_value = target
         copy_run.return_value = Mock(success=True)
 
         ImageToolsPlugin().publish(
