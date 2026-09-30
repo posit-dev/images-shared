@@ -246,6 +246,78 @@ class TestTrivyScanFlagPassThrough:
         assert mock_execute.call_args.kwargs["ignore_unfixed"] is None
         assert mock_execute.call_args.kwargs["exit_code"] is None
 
+    def test_scanners_split_into_list(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--scanners", "vuln,secret", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["scanners"] == ["vuln", "secret"]
+
+    def test_timeout_passed_through_unsplit(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--timeout", "5m0s", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["timeout"] == "5m0s"
+
+    def test_fail_on_severity_split_into_list(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--fail-on-severity", "CRITICAL,HIGH", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["failure_severity"] == ["CRITICAL", "HIGH"]
+
+    def test_fail_on_severity_normalised(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--fail-on-severity", "high, critical", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["failure_severity"] == ["HIGH", "CRITICAL"]
+
+    def test_fail_on_severity_rejects_unknown(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--fail-on-severity", "HIGHH", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 2
+        mock_execute.assert_not_called()
+
+    def test_timeout_rejects_non_duration(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--timeout", "soon", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 2
+        mock_execute.assert_not_called()
+
+    def test_new_flags_default_to_none(self, mocked_trivy_scan):
+        _, mock_execute = mocked_trivy_scan
+        result = runner.invoke(
+            app,
+            ["trivy", "scan", "--context", BASIC_CONTEXT],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        assert mock_execute.call_args.kwargs["scanners"] is None
+        assert mock_execute.call_args.kwargs["timeout"] is None
+        assert mock_execute.call_args.kwargs["failure_severity"] is None
+
 
 class TestTrivyScanHelp:
     def test_help_shows_trivy_panel_no_wizcli_or_auth_panel(self):

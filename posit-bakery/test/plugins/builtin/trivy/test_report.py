@@ -25,7 +25,7 @@ def _sarif(runs: list[dict]) -> dict:
 class TestTrivyScanReport:
     def test_load_from_file(self):
         """`scan_result.sarif` (Phase 3's shared fixture) carries three results: one bucketed
-        via `security-severity` (critical), one via `defaultConfiguration.level` fallback
+        via severity tag (critical), one via `defaultConfiguration.level` fallback
         (medium), and one with an unresolvable `ruleId` (info)."""
         report = TrivyScanReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
         assert report.critical_count == 1
@@ -34,14 +34,15 @@ class TestTrivyScanReport:
         assert report.low_count == 0
         assert report.info_count == 1
 
-    def test_security_severity_bucketing_wins_over_level(self):
-        """CVE-2024-0001 carries `security-severity: 9.8` (>= critical threshold) and a
-        `level: error` default configuration; the security-severity score must win."""
+    def test_tag_bucketing_wins_over_level(self):
+        """CVE-2024-0001 carries a `CRITICAL` tag and `level: error`; the tag must win
+        (level alone would bucket as high)."""
         report = TrivyScanReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
         assert report.critical_count == 1
+        assert report.high_count == 0
 
-    def test_level_fallback_when_no_security_severity(self):
-        """CVE-2024-0002 carries no `security-severity`; its `defaultConfiguration.level:
+    def test_level_fallback_when_no_tag(self):
+        """CVE-2024-0002 carries no severity tag; its `defaultConfiguration.level:
         warning` falls back to the medium bucket."""
         report = TrivyScanReport.load(TRIVY_TESTDATA_DIR / "scan_result.sarif")
         assert report.medium_count == 1
@@ -116,23 +117,50 @@ class TestTrivyScanReport:
         assert report.low_count == 1
         assert report.info_count == 1
 
-    def test_low_severity_via_security_severity_floor(self, tmp_path):
-        """A `security-severity` score below the low threshold (e.g. 0.0) buckets as info,
-        not low -- the CVSS "None" rating has no dedicated bucket of its own."""
+    def test_label_wins_over_cvss_score(self, tmp_path):
+        """A rule labelled LOW with a 9.8 CVSS score counts as low, not critical."""
         data = _sarif(
             [
                 {
                     "tool": {
                         "driver": {
                             "name": "Trivy",
-                            "rules": [{"id": "R1", "properties": {"security-severity": "0.0"}}],
+                            "rules": [
+                                {
+                                    "id": "R1",
+                                    "properties": {"security-severity": "9.8", "tags": ["vulnerability", "LOW"]},
+                                    "defaultConfiguration": {"level": "note"},
+                                }
+                            ],
                         }
                     },
                     "results": [{"ruleId": "R1", "level": "note"}],
                 }
             ]
         )
-        result_file = tmp_path / "zero.sarif"
+        result_file = tmp_path / "low_cvss.sarif"
+        result_file.write_text(json.dumps(data))
+
+        report = TrivyScanReport.load(result_file)
+        assert report.low_count == 1
+        assert report.critical_count == 0
+
+    def test_unknown_tag_buckets_as_info(self, tmp_path):
+        """trivy's `UNKNOWN` label maps to the info bucket."""
+        data = _sarif(
+            [
+                {
+                    "tool": {
+                        "driver": {
+                            "name": "Trivy",
+                            "rules": [{"id": "R1", "properties": {"tags": ["UNKNOWN"]}}],
+                        }
+                    },
+                    "results": [{"ruleId": "R1", "level": "note"}],
+                }
+            ]
+        )
+        result_file = tmp_path / "unknown.sarif"
         result_file.write_text(json.dumps(data))
 
         report = TrivyScanReport.load(result_file)

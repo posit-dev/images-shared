@@ -19,6 +19,23 @@ from posit_bakery.settings import SETTINGS
 log = logging.getLogger(__name__)
 
 
+def _report_breaches_failure_severity(report: TrivyScanReport, failure_severity: list[str]) -> bool:
+    """Whether the parsed report contains any finding at one of the given severities.
+
+    Decoupled from trivy's own `--exit-code`, but not from `--severity`: only severities trivy
+    scanned appear in the report, which `TrivyCommand` enforces by requiring failureSeverity to
+    be a subset of severity. Reads the severity counts already bucketed by `TrivyScanReport`.
+    """
+    counts = {
+        "critical": report.critical_count,
+        "high": report.high_count,
+        "medium": report.medium_count,
+        "low": report.low_count,
+        "info": report.info_count,
+    }
+    return any(counts.get(sev.lower(), 0) > 0 for sev in failure_severity)
+
+
 class TrivySuite:
     def __init__(
         self,
@@ -32,6 +49,9 @@ class TrivySuite:
         skip_files: list[str] | None = None,
         skip_dirs: list[str] | None = None,
         exit_code: int | None = None,
+        scanners: list[str] | None = None,
+        timeout: str | None = None,
+        failure_severity: list[str] | None = None,
     ) -> None:
         self.context = context
         self.results_dir = context / "results" / "trivy"
@@ -47,6 +67,9 @@ class TrivySuite:
                 skip_files=skip_files,
                 skip_dirs=skip_dirs,
                 exit_code=exit_code,
+                scanners=scanners,
+                timeout=timeout,
+                failure_severity=failure_severity,
             )
             for target in image_targets
         ]
@@ -103,12 +126,20 @@ class TrivySuite:
             error_metadata = {"parse_error": str(parse_err)} if parse_err is not None else None
 
             if report is not None:
-                # A report always gets recorded, even when trivy's own exit code signals a
-                # severity-threshold breach: the scan itself succeeded, so the target
-                # belongs in the results table with real counts, never a failure verdict.
+                # A report always gets recorded, even when the scan breached a failure
+                # threshold: the scan itself succeeded, so the target belongs in the results
+                # table with real counts, never a failure verdict.
                 report_collection.add_report(trivy_command.image_target, report)
 
-                if exit_code != 0:
+                failure_severity = trivy_command.resolved_failure_severity
+                if failure_severity:
+                    breached = _report_breaches_failure_severity(report, failure_severity)
+                else:
+                    # No failureSeverity configured: fall back to trivy's own exit code,
+                    # preserving existing behavior for configs that never set the new field.
+                    breached = exit_code != 0
+
+                if breached:
                     log.warning(f"[yellow bold]Severity threshold breached for '{str(trivy_command.image_target)}'")
                     errors.append(
                         BakeryTrivyError(

@@ -30,6 +30,8 @@ images:
         skipDirs:
           - "/tmp"
         exitCode: 1
+        failureSeverity:
+          - "HIGH"
     versions:
       - name: 1.0.0
         latest: true

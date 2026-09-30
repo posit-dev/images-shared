@@ -16,7 +16,12 @@
                 "text": "critical CVE with a security-severity CVSS score"
               },
               "properties": {
-                "security-severity": "9.8"
+                "security-severity": "9.8",
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "CRITICAL"
+                ]
               },
               "defaultConfiguration": {
                 "level": "error"

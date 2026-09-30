@@ -13,7 +13,10 @@ TRIVY_EXIT_CODE_SEVERITY_THRESHOLD = 2
 TRIVY_EXIT_CODE_DESCRIPTIONS = {
     TRIVY_EXIT_CODE_SUCCESS: "Passed",
     TRIVY_EXIT_CODE_GENERAL_ERROR: "General error (scan failed to produce a report)",
-    TRIVY_EXIT_CODE_SEVERITY_THRESHOLD: "Vulnerabilities met or exceeded the configured severity threshold",
+    TRIVY_EXIT_CODE_SEVERITY_THRESHOLD: (
+        "Vulnerabilities found at one of the effective failure-severity levels "
+        "(the configured `failureSeverity` set, or trivy's own --exit-code when unset)"
+    ),
 }
 
 
