@@ -239,3 +239,46 @@ class TestTrivySuiteRun:
         recorded = entries(collection)
         assert isinstance(recorded[targets[0].uid], TrivyScanReport)
         assert recorded[targets[1].uid] == TrivyScanFailure(verdict="SCAN FAILED")
+
+
+class TestTrivySuiteFailureSeverity:
+    def run_with(self, tmpconfig, *, returncode, failure_severity=None):
+        suite = TrivySuite(tmpconfig.base_path, tmpconfig.targets, failure_severity=failure_severity)
+        with patch(
+            f"{SUITE_LOGGER}.subprocess.run",
+            side_effect=trivy_stub(returncode, SCAN_RESULT),
+        ):
+            return suite.run()
+
+    def test_unset_preserves_exit_code_fallback(self, get_tmpconfig):
+        """No failureSeverity: breach follows trivy's own exit code, as before."""
+        _, errors = self.run_with(get_tmpconfig("basic"), returncode=1)
+        assert {err.exit_code for err in error_list(errors)} == {TRIVY_EXIT_CODE_SEVERITY_THRESHOLD}
+
+    def test_set_ignores_nonzero_exit_when_severity_absent(self, get_tmpconfig, caplog):
+        """failureSeverity matching no finding never breaches, even on a nonzero trivy exit."""
+        with caplog.at_level(logging.INFO, logger=SUITE_LOGGER):
+            _, errors = self.run_with(get_tmpconfig("basic"), returncode=1, failure_severity=["HIGH"])
+        assert errors is None
+        assert "Scan passed" in caplog.text
+
+    def test_set_breaches_from_report_even_with_zero_exit(self, get_tmpconfig):
+        """failureSeverity covering every bucket breaches from report counts alone."""
+        _, errors = self.run_with(
+            get_tmpconfig("basic"),
+            returncode=0,
+            failure_severity=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+        )
+        assert {err.exit_code for err in error_list(errors)} == {TRIVY_EXIT_CODE_SEVERITY_THRESHOLD}
+
+    @pytest.mark.slow
+    def test_run_integration(self, get_tmpconfig):
+        """Run a real trivy binary against real image targets."""
+        tmpconfig = get_tmpconfig("basic")
+        report_collection, errors = TrivySuite(tmpconfig.base_path, tmpconfig.targets).run()
+
+        assert errors is None
+        assert len(report_collection) > 0
+        for target in tmpconfig.targets:
+            results_file = tmpconfig.base_path / "results" / "trivy" / target.image_name / f"{target.uid}.sarif"
+            assert results_file.exists()

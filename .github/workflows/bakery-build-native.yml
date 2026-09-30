@@ -470,7 +470,12 @@ jobs:
       # subcommand reads the local daemon the same way, so it has the
       # identical warm-daemon requirement.
       - name: Scan with trivy
+        id: trivy-scan
         if: ${{ inputs.dev-versions != 'only' }}
+        # Intentionally non-blocking for v1: trivy scanning is audit-only
+        # right now. `bakery trivy scan` still detects and prints severity
+        # breaches, it just does not fail this job. Revisit once a v2 gating
+        # design is scoped.
         continue-on-error: true
         env:
           IMAGE_NAME: ${{ matrix.img.image }}

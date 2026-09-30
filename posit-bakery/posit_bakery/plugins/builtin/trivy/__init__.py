@@ -12,7 +12,7 @@ from posit_bakery.error import BakeryToolRuntimeErrorGroup
 from posit_bakery.image.image_target import ImageTarget
 from posit_bakery.log import stderr_console
 from posit_bakery.plugins.builtin.trivy.errors import TRIVY_EXIT_CODE_SEVERITY_THRESHOLD
-from posit_bakery.plugins.builtin.trivy.options import TrivyOptions
+from posit_bakery.plugins.builtin.trivy.options import TrivyOptions, parse_severities, validate_timeout
 from posit_bakery.plugins.builtin.trivy.report import TrivyReportCollection
 from posit_bakery.plugins.builtin.trivy.suite import TrivySuite
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
@@ -178,6 +178,31 @@ class TrivyPlugin(BakeryToolPlugin):
                     rich_help_panel=RichHelpPanelEnum.TRIVY,
                 ),
             ] = None,
+            scanners: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    help="Comma-separated trivy scanner types to enable (e.g. vuln,secret,misconfig,license). Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.TRIVY,
+                ),
+            ] = None,
+            timeout: Annotated[
+                Optional[str],
+                typer.Option(
+                    show_default=False,
+                    help="Timeout for the scan (e.g. 5m0s). Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.TRIVY,
+                ),
+            ] = None,
+            fail_on_severity: Annotated[
+                Optional[str],
+                typer.Option(
+                    "--fail-on-severity",
+                    show_default=False,
+                    help="Comma-separated severities that fail the build when present in the parsed report. Must be a subset of --severity when set. Overrides bakery.yaml if set.",
+                    rich_help_panel=RichHelpPanelEnum.TRIVY,
+                ),
+            ] = None,
         ) -> None:
             """Scan container images for vulnerabilities using Trivy.
 
@@ -194,6 +219,12 @@ class TrivyPlugin(BakeryToolPlugin):
             set with the `TRIVY_PATH` environment variable if not present in the system PATH.
             """
             platform = normalize_platform(image_platform)
+            try:
+                failure_severity = parse_severities(fail_on_severity.split(",")) if fail_on_severity else None
+                if timeout is not None:
+                    validate_timeout(timeout)
+            except ValueError as e:
+                raise typer.BadParameter(str(e)) from e
 
             settings = BakerySettings(
                 filter=BakeryConfigFilter(
@@ -224,6 +255,9 @@ class TrivyPlugin(BakeryToolPlugin):
                 skip_files=skip_files.split(",") if skip_files else None,
                 skip_dirs=skip_dirs.split(",") if skip_dirs else None,
                 exit_code=exit_code,
+                scanners=scanners.split(",") if scanners else None,
+                timeout=timeout,
+                failure_severity=failure_severity,
             )
             plugin.results(results)
 
@@ -240,6 +274,9 @@ class TrivyPlugin(BakeryToolPlugin):
         skip_files: list[str] | None = None,
         skip_dirs: list[str] | None = None,
         exit_code: int | None = None,
+        scanners: list[str] | None = None,
+        timeout: str | None = None,
+        failure_severity: list[str] | None = None,
         **kwargs,
     ) -> list[ToolCallResult]:
         suite = TrivySuite(
@@ -251,6 +288,9 @@ class TrivyPlugin(BakeryToolPlugin):
             skip_files=skip_files,
             skip_dirs=skip_dirs,
             exit_code=exit_code,
+            scanners=scanners,
+            timeout=timeout,
+            failure_severity=failure_severity,
         )
         report_collection, errors = suite.run()
 

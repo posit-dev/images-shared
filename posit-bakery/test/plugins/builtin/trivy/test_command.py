@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from posit_bakery.plugins.builtin.trivy.command import TrivyCommand
 
@@ -8,53 +9,6 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.trivy,
 ]
-
-
-@pytest.fixture
-def basic_standard_image_target(get_config_obj):
-    """Return a standard ImageTarget object for testing.
-
-    Local to this module rather than a shared conftest.py, mirroring the WizCLI test suite's
-    fixture but scoped to trivy's own tests only.
-    """
-    from posit_bakery.image import ImageTarget
-
-    basic_config_obj = get_config_obj("basic")
-
-    image = basic_config_obj.model.get_image("test-image")
-    version = image.get_version("1.0.0")
-    variant = image.get_variant("Standard")
-    os = version.os[0]
-
-    return ImageTarget.new_image_target(
-        repository=basic_config_obj.model.repository,
-        image_version=version,
-        image_variant=variant,
-        image_os=os,
-    )
-
-
-@pytest.fixture
-def no_variant_image_target(get_config_obj):
-    """Return a variant-less ImageTarget with image-level tool options set.
-
-    Regression fixture for posit-dev/images-shared#756: image-level `options:` must not be
-    silently ignored for images with no `variants:` entries.
-    """
-    from posit_bakery.image import ImageTarget
-
-    config_obj = get_config_obj("variant-less-options")
-
-    image = config_obj.model.get_image("no-variant-image")
-    version = image.get_version("1.0.0")
-    os = version.os[0]
-
-    return ImageTarget.new_image_target(
-        repository=config_obj.model.repository,
-        image_version=version,
-        image_variant=None,
-        image_os=os,
-    )
 
 
 class TestTrivyCommand:
@@ -118,6 +72,7 @@ class TestTrivyCommand:
             image_target=no_variant_image_target,
             results_dir=results_dir,
             severity=["LOW"],
+            failure_severity=["LOW"],
         )
         command_str = " ".join(cmd.command)
         assert "--severity" in command_str
@@ -164,3 +119,92 @@ class TestTrivyCommand:
                 results_dir=results_dir,
             )
             assert cmd.platform == "linux/amd64"
+
+    def test_command_scanners_comma_joined(self, basic_standard_image_target):
+        """Test that scanners emit a single comma-joined --scanners flag, like --severity."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            scanners=["vuln", "secret"],
+        )
+        assert cmd.command[cmd.command.index("--scanners") + 1] == "vuln,secret"
+
+    def test_command_timeout_passed_through(self, basic_standard_image_target):
+        """Test that timeout is passed through as a single value, not comma-split."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            timeout="5m0s",
+        )
+        assert cmd.command[cmd.command.index("--timeout") + 1] == "5m0s"
+
+    def test_command_failure_severity_never_reaches_argv(self, basic_standard_image_target):
+        """failure_severity has no trivy CLI equivalent -- it must never appear in argv."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            failure_severity=["CRITICAL"],
+        )
+        assert "--fail-on-severity" not in cmd.command
+        assert "CRITICAL" not in cmd.command
+
+    def test_resolved_failure_severity_cli_wins_over_tool_options(self, no_variant_image_target):
+        """An explicit failure_severity wins over bakery.yaml tool_options."""
+        results_dir = no_variant_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=no_variant_image_target,
+            results_dir=results_dir,
+            failure_severity=["CRITICAL"],
+        )
+        assert cmd.resolved_failure_severity == ["CRITICAL"]
+
+    def test_resolved_failure_severity_falls_back_to_tool_options(self, no_variant_image_target):
+        """With no CLI value, resolves to the bakery.yaml failureSeverity."""
+        results_dir = no_variant_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=no_variant_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.resolved_failure_severity == ["HIGH"]
+
+    def test_resolved_failure_severity_none_by_default(self, basic_standard_image_target):
+        """With no CLI value and no tool_options.failureSeverity, resolves to None."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+        )
+        assert cmd.resolved_failure_severity is None
+
+    def test_failure_severity_outside_severity_rejected(self, basic_standard_image_target):
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        with pytest.raises(ValidationError, match="not in the scanned severities"):
+            TrivyCommand.from_image_target(
+                image_target=basic_standard_image_target,
+                results_dir=results_dir,
+                severity=["CRITICAL"],
+                failure_severity=["HIGH"],
+            )
+
+    def test_failure_severity_within_severity_accepted(self, basic_standard_image_target):
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            severity=["critical", "HIGH"],
+            failure_severity=["HIGH"],
+        )
+        assert cmd.resolved_failure_severity == ["HIGH"]
+
+    def test_failure_severity_unchecked_without_severity(self, basic_standard_image_target):
+        """No severity resolved: trivy scans everything, so any gate severity is reachable."""
+        results_dir = basic_standard_image_target.context.base_path / "results" / "trivy"
+        cmd = TrivyCommand.from_image_target(
+            image_target=basic_standard_image_target,
+            results_dir=results_dir,
+            failure_severity=["LOW"],
+        )
+        assert cmd.resolved_failure_severity == ["LOW"]

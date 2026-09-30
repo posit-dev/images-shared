@@ -48,6 +48,9 @@ class TrivyCommand(BaseModel):
     skip_files: Annotated[list[str] | None, Field(default=None)]
     skip_dirs: Annotated[list[str] | None, Field(default=None)]
     exit_code: Annotated[int | None, Field(default=None)]
+    scanners: Annotated[list[str] | None, Field(default=None)]
+    timeout: Annotated[str | None, Field(default=None)]
+    failure_severity: Annotated[list[str] | None, Field(default=None)]
 
     @classmethod
     def from_image_target(
@@ -62,6 +65,9 @@ class TrivyCommand(BaseModel):
         skip_files: list[str] | None = None,
         skip_dirs: list[str] | None = None,
         exit_code: int | None = None,
+        scanners: list[str] | None = None,
+        timeout: str | None = None,
+        failure_severity: list[str] | None = None,
     ) -> "TrivyCommand":
         # Resolve tool options from variant (or, for variant-less images, the parent Image)
         # config if not explicitly provided
@@ -81,6 +87,9 @@ class TrivyCommand(BaseModel):
             skip_files=skip_files,
             skip_dirs=skip_dirs,
             exit_code=exit_code,
+            scanners=scanners,
+            timeout=timeout,
+            failure_severity=failure_severity,
         )
 
     @model_validator(mode="after")
@@ -91,6 +100,41 @@ class TrivyCommand(BaseModel):
                 "discovered in the system PATH."
             )
         return self
+
+    @model_validator(mode="after")
+    def check_failure_severity_is_scanned(self) -> Self:
+        """failureSeverity is read from trivy's SARIF, which trivy filters by `--severity`.
+
+        A gate severity outside the scanned set could never breach, so reject it up front.
+        Skipped when no severity is resolved: trivy then scans every severity.
+        """
+        failure = self.resolved_failure_severity
+        scanned = (
+            self.severity if self.severity is not None else (self.tool_options.severity if self.tool_options else None)
+        )
+        if not failure or not scanned:
+            return self
+        unscanned = sorted({s.strip().upper() for s in failure} - {s.strip().upper() for s in scanned})
+        if unscanned:
+            raise ValueError(
+                f"failureSeverity {unscanned} is not in the scanned severities {list(scanned)}; "
+                "trivy only reports scanned severities, so it could never fail the build."
+            )
+        return self
+
+    @property
+    def resolved_failure_severity(self) -> list[str] | None:
+        """Resolve the failure-severity threshold used by TrivySuite to compute breach status.
+
+        Not part of trivy's own argv: trivy has no native flag to decouple "what's scanned/
+        reported" from "what fails the build". Same CLI-passthrough-wins-over-tool_options
+        precedence as every other field here.
+        """
+        return (
+            self.failure_severity
+            if self.failure_severity is not None
+            else (self.tool_options.failureSeverity if self.tool_options else None)
+        )
 
     @computed_field
     @property
@@ -138,6 +182,18 @@ class TrivyCommand(BaseModel):
         )
         if exit_code is not None:
             cmd.extend(["--exit-code", str(exit_code)])
+
+        scanners = (
+            self.scanners if self.scanners is not None else (self.tool_options.scanners if self.tool_options else None)
+        )
+        if scanners:
+            cmd.extend(["--scanners", ",".join(scanners)])
+
+        timeout = (
+            self.timeout if self.timeout is not None else (self.tool_options.timeout if self.tool_options else None)
+        )
+        if timeout:
+            cmd.extend(["--timeout", timeout])
 
         # Scan the digest built for the requested platform, not the host's: on a
         # cross-platform scan the host digest is absent and ref() would degrade to a

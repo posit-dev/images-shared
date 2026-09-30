@@ -9,15 +9,17 @@ from rich.text import Text
 
 from posit_bakery.image.image_target import ImageTarget
 
-# CVSS v3 severity thresholds (NVD convention), used to bucket a SARIF rule's
-# `security-severity` score when trivy provides one (vulnerability findings).
-_CVSS_CRITICAL_THRESHOLD = 9.0
-_CVSS_HIGH_THRESHOLD = 7.0
-_CVSS_MEDIUM_THRESHOLD = 4.0
-_CVSS_LOW_THRESHOLD = 0.1
+# Trivy's severity label, carried as an uppercase entry in a SARIF rule's `properties.tags`.
+# This is the label `--severity` filters on; `security-severity` (CVSS) can disagree with it.
+_TAG_SEVERITY = {
+    "CRITICAL": "critical",
+    "HIGH": "high",
+    "MEDIUM": "medium",
+    "LOW": "low",
+    "UNKNOWN": "info",
+}
 
-# SARIF `level` -> severity bucket, used when a rule carries no `security-severity`
-# score (trivy sets this for misconfigurations/secrets, which have no CVSS score).
+# SARIF `level` -> severity bucket, used only when a rule carries no severity tag.
 _SARIF_LEVEL_SEVERITY = {
     "error": "high",
     "warning": "medium",
@@ -26,16 +28,12 @@ _SARIF_LEVEL_SEVERITY = {
 }
 
 
-def _severity_from_security_severity(score: float) -> str:
-    if score >= _CVSS_CRITICAL_THRESHOLD:
-        return "critical"
-    if score >= _CVSS_HIGH_THRESHOLD:
-        return "high"
-    if score >= _CVSS_MEDIUM_THRESHOLD:
-        return "medium"
-    if score >= _CVSS_LOW_THRESHOLD:
-        return "low"
-    return "info"
+def _severity_for_rule(rule: dict) -> str:
+    for tag in rule.get("properties", {}).get("tags", []) or []:
+        if tag in _TAG_SEVERITY:
+            return _TAG_SEVERITY[tag]
+    level = rule.get("defaultConfiguration", {}).get("level", "none")
+    return _SARIF_LEVEL_SEVERITY.get(level, "info")
 
 
 class TrivyScanReport(BaseModel):
@@ -100,14 +98,7 @@ class TrivyScanReport(BaseModel):
                     counts["info"] += 1
                     continue
 
-                security_severity = rule.get("properties", {}).get("security-severity")
-                if security_severity is not None:
-                    severity = _severity_from_security_severity(float(security_severity))
-                else:
-                    level = rule.get("defaultConfiguration", {}).get("level", "none")
-                    severity = _SARIF_LEVEL_SEVERITY.get(level, "info")
-
-                counts[severity] += 1
+                counts[_severity_for_rule(rule)] += 1
 
         return cls(
             filepath=filepath,
