@@ -160,8 +160,8 @@ def test_publish_runs_stage1_per_target_then_copies_in_order(tmp_path):
     # Stage 2 pushes in push_sort_key order regardless of how Stage 1 completed.
     assert copy_order == ["uid-b", "uid-a"]
     assert [call.kwargs["source"] for call in verify_run.call_args_list] == [
-        "ghcr.io/posit-dev/tmp:created",
-        "ghcr.io/posit-dev/tmp:created",
+        "ghcr.io/posit-dev/tmp@sha256:expected",
+        "ghcr.io/posit-dev/tmp@sha256:expected",
     ]
 
 

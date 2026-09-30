@@ -107,6 +107,7 @@ def _run_publish_stage1(
         OrasIndexCreateWorkflow,
         OrasWaitForSourcesWorkflow,
         fetch_manifest_digest,
+        get_repository_from_ref,
     )
     from posit_bakery.plugins.builtin.imagetools.soci import SociConvertWorkflow
 
@@ -180,7 +181,11 @@ def _run_publish_stage1(
             error=f"Failed to resolve published source digest: {e.dump_stderr() or e}",
         )
 
-    return _PublishStage1Result(target=target, temp_ref=temp_ref, expected_digest=expected_digest)
+    return _PublishStage1Result(
+        target=target,
+        temp_ref=f"{get_repository_from_ref(temp_ref)}@{expected_digest}",
+        expected_digest=expected_digest,
+    )
 
 
 class ImageToolsPlugin(BakeryToolPlugin):
