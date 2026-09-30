@@ -20,7 +20,7 @@ updates:
   - package-ecosystem: "uv"
     directories:
       - "/posit-bakery"
-      - "/.claude/skills/bakery/evals"
+      - "/plugins/bakery/skills/bakery/evals"
     schedule:
       interval: "monthly"
     cooldown:

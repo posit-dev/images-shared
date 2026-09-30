@@ -1,0 +1,11 @@
+{
+  "description": "Encodes critical invariants and workflows for editing Containerfile templates, image versions, and CI in Posit's container image repos.",
+  "keywords": [
+    "docker",
+    "containers",
+    "ci",
+    "bakery"
+  ],
+  "name": "bakery",
+  "version": "0.1.0"
+}

@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Annotated
 
 from pydantic import BaseModel, Field
-from rich.table import Table
 from rich.text import Text
 
 from posit_bakery.image.image_target import ImageTarget
+from posit_bakery.reporting import FoldingTable
 
 
 class HadolintResult(BaseModel):
@@ -110,9 +110,9 @@ class HadolintReportCollection(dict):
                     result[uid] = issues
         return result
 
-    def table(self) -> Table:
+    def table(self) -> FoldingTable:
         """Generate a Rich table summarizing lint results."""
-        table = Table(title="Hadolint Results")
+        table = FoldingTable(title="Hadolint Results")
         table.add_column("Image Name", justify="left")
         table.add_column("Version", justify="left")
         table.add_column("OS", justify="left")

@@ -27,10 +27,14 @@ _setup-uv:
 ################
 # Commands
 
-# Install the posit-bakery python project
+# Install the posit-bakery python project (dev environment: tests, lint, etc. via `uv run`)
 install:
     uv sync \
         --directory={{ CWD }}
+
+# Install this checkout as the global `bakery` CLI (editable — reflects source changes immediately)
+install-tool:
+    uv tool install --editable {{ CWD }}
 
 alias package := build
 # Build the posit-bakery python project

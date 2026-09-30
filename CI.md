@@ -102,9 +102,9 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
 | `max-parallel` | No | `0` | Cap on simultaneous build/test and merge matrix jobs. `0` means unlimited. |
-| `merge-builder` | No | `ubuntu-latest-4x` | Runner label for the merge job. |
-| `amd64-builder` | No | `ubuntu-latest-4x` | Runner label for amd64 build jobs. |
-| `arm64-builder` | No | `ubuntu-24.04-arm64-4-core` | Runner label for arm64 build jobs. |
+| `merge-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for the merge job. |
+| `amd64-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for amd64 build jobs. |
+| `arm64-builder` | No | `ubuntu-24-arm64-4-core` | Runner label for arm64 build jobs. |
 | `aws-region` | No | `us-east-2` | AWS region for ECR login. |
 
 ### Secrets
@@ -257,8 +257,8 @@ Fork-safe variant for pull requests. Inherits only `GITHUB_TOKEN`, never pushes,
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use registry caching (disabled automatically on fork PRs). |
-| `amd64-builder` | No | `ubuntu-latest-4x` | Runner label for amd64 builds. |
-| `arm64-builder` | No | `ubuntu-24.04-arm64-4-core` | Runner label for arm64 builds. |
+| `amd64-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for amd64 builds. |
+| `arm64-builder` | No | `ubuntu-24-arm64-4-core` | Runner label for arm64 builds. |
 
 No secrets. This workflow intentionally has no `secrets:` block.
 

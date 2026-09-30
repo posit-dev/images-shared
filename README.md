@@ -24,8 +24,28 @@ This repository contains shared build tooling and CI workflows used by the Posit
 The [bakery](./posit-bakery/) command line interface (CLI) binds together various [tools](./posit-bakery/README.md#3rd-party-tools) to manage a matrix of container image builds.
 
 > [!TIP]
-> - [Get started with `bakery`](./posit-bakery/README.md#getting-started)
+> - [Get started with `bakery`](./posit-bakery/README.md#installation)
 > - [Bakery Examples](https://github.com/posit-dev/images-examples/tree/main/bakery) — step-by-step tutorials
+
+### Claude Code Skill
+
+The [`bakery` skill](./plugins/bakery/skills/bakery/SKILL.md) encodes critical invariants and
+common workflows for editing Containerfile templates, image versions, and CI in this repo and
+its sibling image repos (`images-connect`, `images-workbench`, `images-package-manager`).
+
+Install it as a Claude Code plugin:
+
+```bash
+/plugin marketplace add posit-dev/images-shared
+/plugin install bakery@posit-images-shared
+```
+
+Or from a local checkout, which picks up edits without republishing:
+
+```bash
+/plugin marketplace add /path/to/images-shared
+/plugin install bakery@posit-images-shared
+```
 
 ## GitHub Actions
 
