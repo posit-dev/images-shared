@@ -1,0 +1,16 @@
+FROM docker.io/rockylinux/rockylinux:10
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:10"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/pro/setup.rpm.sh')" && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \
+    dnf clean all -yq

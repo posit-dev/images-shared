@@ -1,0 +1,19 @@
+# run_install() with both a package list and multiple package list files.
+package:
+  jq:
+    installed: true
+  tree:
+    installed: true
+  zip:
+    installed: true
+  unzip:
+    installed: true
+  file:
+    installed: true
+  patch:
+    installed: true
+
+command:
+  package-cache-cleaned:
+    exec: '{{ if eq .Env.IMAGE_OS_FAMILY "debian" }}ls -A /var/lib/apt/lists{{ else }}find /var/cache/dnf -name repomd.xml{{ end }} | grep -q .'
+    exit-status: 1

@@ -27,9 +27,9 @@ jobs:
     needs:
       - lint
       - test
-      - bakery
       - bakery-native
       - bakery-pr
+      - blackbox
       - release
       - pypi-publish
       - zizmor
@@ -74,7 +74,7 @@ jobs:
           fetch-tags: true
 
       - name: Setup goss
-        uses: ./setup-goss
+        uses: $/setup-goss
 
       - name: Set up Docker
         uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70  # v5.5.0
@@ -146,17 +146,70 @@ jobs:
         with:
           files: ./posit-bakery/results.xml
 
-  bakery:
-    name: Bakery
+  # Group macro scenarios by OS so each runner reuses its base image layers.
+  blackbox:
+    name: Functional Tests (${{ matrix.os }})
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - Ubuntu 24.04
+          - Ubuntu 22.04
+          - Ubuntu 26.04
+          - Rocky Linux 9
+          - Rocky Linux 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
-    uses: "./.github/workflows/bakery-build.yml"
-    with:
-      version: ${{ github.head_ref || github.ref_name }}
-      context: "./posit-bakery/test/resources/with-macros/"
-      dev-versions: include
+      - name: Setup bakery
+        uses: $/setup-bakery
+        with:
+          version: ${{ github.head_ref || github.ref_name }}
+          restore-cache: "false"
+
+      - name: Setup goss
+        uses: $/setup-goss
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4.4.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - name: Build macro scenarios
+        env:
+          IMAGE_OS: ${{ matrix.os }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bakery build --load --pull --retry 1 \
+            --image-os "^${IMAGE_OS}$" \
+            --cache-registry "ghcr.io/${GITHUB_REPOSITORY_OWNER}" \
+            --context ./posit-bakery/test/resources/macros-functional/
+
+      - name: Test macro scenarios
+        env:
+          IMAGE_OS: ${{ matrix.os }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
+          DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
+          bakery dgoss run \
+            --image-os "^${IMAGE_OS}$" \
+            --context ./posit-bakery/test/resources/macros-functional/
 
   bakery-native:
     name: Bakery Native Build
@@ -199,22 +252,21 @@ jobs:
           persist-credentials: false
       - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482  # v0.6.4
 
-  with-macros-clean-caches:
-    name: Clean Caches (with-macros suite)
+  blackbox-clean-caches:
+    name: Clean Caches (macros-functional suite)
     permissions:
       contents: read
       packages: write
     needs:
-      - bakery
-      - bakery-native
+      - blackbox
 
     uses: "./.github/workflows/clean.yml"
     with:
       version: ${{ github.head_ref || github.ref_name }}
-      context: "./posit-bakery/test/resources/with-macros/"
+      context: "./posit-bakery/test/resources/macros-functional/"
       remove-dangling-caches: true
       remove-caches-older-than: 14
-      clean-temporary-images: false  # TODO: flip to true if this build starts using the native workflow
+      clean-temporary-images: false  # Flip to true if this suite moves to the native workflow
 
   multiplatform-clean-caches:
     name: Clean Caches (multiplatform suite)
@@ -222,7 +274,6 @@ jobs:
       contents: read
       packages: write
     needs:
-      - bakery
       - bakery-native
 
     uses: "./.github/workflows/clean.yml"
@@ -241,7 +292,7 @@ jobs:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'pull_request' || github.event_name == 'merge_group')
     needs:
       - test
-      - bakery
+      - blackbox
       - bakery-native
     runs-on: ubuntu-latest
 

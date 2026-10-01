@@ -1,0 +1,26 @@
+{%- import "python.j2" as python -%}
+{%- set jupyter_dir = python.get_version_directory("jupyter") -%}
+{%- set site_packages = jupyter_dir ~ "/lib/python" ~ (Dependencies.python[0] | stripPatch) ~ "/site-packages" -%}
+# run_install_jupyterlab_workbench() into a venv built from the first Python version.
+file:
+  /usr/local/bin/jupyter:
+    exists: true
+    filetype: symlink
+    linked-to: {{ jupyter_dir }}/bin/jupyter
+  {{ site_packages }}/jupyterlab/tests:
+    exists: false
+  {{ site_packages }}/jupyterlab/galata:
+    exists: false
+  {{ site_packages }}/jupyterlab/staging/yarn.lock:
+    exists: false
+
+command:
+  {{ jupyter_dir }}/bin/python --version:
+    exit-status: 0
+    stdout:
+      - "Python {{ Dependencies.python[0] }}"
+  jupyter-packages-importable:
+    exec: '{{ jupyter_dir }}/bin/python -c "import jupyterlab, notebook, pwb_jupyterlab"'
+    exit-status: 0
+  jupyter lab --version:
+    exit-status: 0

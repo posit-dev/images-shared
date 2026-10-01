@@ -512,7 +512,7 @@ def check_build_artifacts(resource_path, bakery_command, suite_name, get_tmpconf
         ):
             continue
         for tag in target.tags.as_strings():
-            python_on_whales.docker.image.exists(tag)
+            assert python_on_whales.docker.image.exists(tag), f"Expected image '{tag}' to exist"
             for label, value in target.labels.items():
                 image = python_on_whales.docker.image.inspect(tag)
                 assert label in image.config.labels

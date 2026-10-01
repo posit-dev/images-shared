@@ -1,6 +1,12 @@
 self-hosted-runner:
-  # ubuntu-latest-amd64-8-core is a GitHub-hosted larger runner registered at the
-  # posit-dev organization level. Actionlint doesn't query org settings,
+  # ubuntu-latest-amd64-8-core is a GitHub-hosted larger runner registered
+  # at the posit-dev organization level. Actionlint doesn't query org settings,
   # so the label is listed here for linting.
   labels:
     - ubuntu-latest-amd64-8-core
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      - >-
+        specifying action "\$/setup-(goss|bakery)" in invalid format because
+        ref is missing

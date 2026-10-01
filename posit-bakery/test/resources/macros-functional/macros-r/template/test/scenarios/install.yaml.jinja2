@@ -1,0 +1,29 @@
+{%- import "r.j2" as r -%}
+{%- set default_dir = r.get_version_directory(Dependencies.R[0]) -%}
+# run_install() + symlink_version() + symlink_binary().
+file:
+  /opt/R/default:
+    exists: true
+    filetype: symlink
+    linked-to: {{ default_dir }}
+  /usr/local/bin/R:
+    exists: true
+    filetype: symlink
+    linked-to: {{ default_dir }}/bin/R
+  /usr/local/bin/Rscript:
+    exists: true
+    filetype: symlink
+    linked-to: {{ default_dir }}/bin/Rscript
+
+command:
+  R --version:
+    exit-status: 0
+    stdout:
+      - "R version {{ Dependencies.R[0] }}"
+{%- for version in Dependencies.R %}
+  r-{{ version }}-runs:
+    exec: "{{ r.get_version_directory(version) }}/bin/Rscript -e 'cat(format(getRversion()))'"
+    exit-status: 0
+    stdout:
+      - "{{ version }}"
+{%- endfor %}

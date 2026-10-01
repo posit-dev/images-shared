@@ -1,0 +1,14 @@
+# run_install() with TinyTeX installed under a custom home path.
+package:
+  quarto:
+    installed: true
+
+command:
+  quarto --version:
+    exit-status: 0
+    stdout:
+      - "1.9.38"
+  # The TinyTeX bin directory is arch-specific (x86_64-linux, aarch64-linux).
+  tinytex-installed-to-home-path:
+    exec: "ls /opt/tinytex/.TinyTeX/bin/*/tlmgr"
+    exit-status: 0

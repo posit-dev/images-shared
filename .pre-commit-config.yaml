@@ -13,7 +13,8 @@ repos:
     -   id: check-merge-conflict
     -   id: check-shebang-scripts-are-executable
     -   id: check-yaml
-        exclude: "^.*goss.yaml$"
+        # goss files may contain Go template blocks that are not valid YAML until goss renders them.
+        exclude: "^.*goss.yaml$|/test/scenarios/.*\\.yaml$"
     -   id: debug-statements
     -   id: detect-aws-credentials
         args: [--allow-missing-credentials]

@@ -1,0 +1,37 @@
+FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
+
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+ENV UV_PYTHON_PREFERENCE=only-managed
+RUN uv python install 3.14.7 3.13.7
+RUN mv /opt/python/cpython-3.14.7-linux-*/ /opt/python/3.14.7 && \
+    mv /opt/python/cpython-3.13.7-linux-*/ /opt/python/3.13.7
+
+
+FROM docker.io/rockylinux/rockylinux:9
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:9"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    dnf clean all -yq
+
+COPY --from=python-builder /opt/python /opt/python
+
+RUN /opt/python/3.14.7/bin/python -m venv /opt/python/jupyter && \
+    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \
+        "jupyterlab" \
+        notebook \
+        "pwb_jupyterlab" && \
+    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \
+    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \
+    rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \
+    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
