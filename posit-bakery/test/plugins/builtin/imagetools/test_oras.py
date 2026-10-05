@@ -638,6 +638,29 @@ class TestOrasIndexCopyWorkflow:
         # Two distinct destination repos => two oras cp invocations.
         assert mock_run.call_count == 2
 
+    def test_copy_failure_includes_stdout_and_stderr(self, mock_image_target_factory):
+        target = mock_image_target_factory()
+        workflow = OrasIndexCopyWorkflow(
+            oras_bin="oras",
+            image_target=target,
+            retry_policy=RetryPolicy(max_attempts=1),
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[],
+                returncode=1,
+                stdout=b"registry response body",
+                stderr=b"unauthorized: token expired",
+            )
+            result = workflow.run(source="ghcr.io/posit-dev/test-image/tmp:src")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "Exit code: 1" in result.error
+        assert "unauthorized: token expired" in result.error
+        assert "registry response body" in result.error
+
 
 class TestOrasManifestFetch:
     """Tests for the OrasManifestFetch command."""

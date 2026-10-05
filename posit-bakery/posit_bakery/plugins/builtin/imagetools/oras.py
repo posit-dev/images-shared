@@ -320,11 +320,22 @@ class OrasIndexCopyWorkflow(BaseModel):
                 destinations.append(combined)
             return OrasIndexCopyResult(success=True, destinations=destinations)
         except BakeryToolRuntimeError as e:
-            log.error(f"oras index-copy failed: {e}")
+            error = str(e).rstrip()
+            output = []
+            if stderr := e.dump_stderr():
+                output.append(("stderr", stderr))
+            if stdout := e.dump_stdout():
+                output.append(("stdout", stdout))
+            if output:
+                details = "\n".join(
+                    f"  - {name}:\n" + "\n".join(f"      {line}" for line in text.splitlines()) for name, text in output
+                )
+                error = f"{error}\n{details}"
+
             return OrasIndexCopyResult(
                 success=False,
                 destinations=self.image_target.tags.as_strings(),
-                error=str(e),
+                error=error,
             )
 
 
