@@ -48,12 +48,9 @@ oven-build:
 
 # Build (if stale) and drop into the oven with sibling repos mounted
 #
-# images-shared is worked on via git worktrees, so {{ CWD }} is never the
-# main checkout — sibling product repos live next to *that*, not next to a
-# worktree path, and a worktree's own .git is a pointer file into the main
-# checkout's real .git. Resolving the mount root via git-common-dir + two
-# dirnames gets the right directory either way (plain checkout or
-# worktree). It must be mounted at an identical host/container path because
+# Resolve the shared repository root from git-common-dir so sibling product
+# repos are mounted from their expected location. The path must be identical
+# on the host and in the container because
 # dgoss and `bakery build` construct bind-mount arguments that only the
 # *host* daemon (on the other end of the socket) ever resolves.
 oven *ARGS: oven-build

@@ -67,7 +67,7 @@ ENV HOME=/opt/oven/state/home
 ENV PATH="/opt/oven/bin:${PATH}"
 # uv must never touch the mounted checkout's own posit-bakery/.venv — that
 # file is shared with the host's own direct `uv run` usage, and a
-# container-only interpreter path recorded there breaks it (see CLAUDE.md
+# container-only interpreter path recorded there breaks it (see AGENTS.md
 # for the host workflow). Point uv entirely at paths under /opt/oven/state
 # instead: the venv lives on the same filesystem as the cache (avoids uv's
 # cross-device "falling back to full copy" warning, lets hardlinks work),
@@ -105,7 +105,7 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # just (github.com/casey/just) — for parity with the host dev workflow
-# (CLAUDE.md's `just test`/`just test-all`/`just setup`), not only the
+# (AGENTS.md's `just test`/`just test-all`/`just setup`), not only the
 # `bakery` CLI the entrypoint wraps directly.
 RUN set -eux; \
     case "${TARGETARCH}" in \

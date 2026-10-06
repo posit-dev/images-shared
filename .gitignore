@@ -186,20 +186,18 @@ go.work.sum
 
 out/
 
-# Claude
+# Agent tooling
+.worktrees/
+.agents/plans/
+.pi-subagents/
+.rpiv/
+.serena/
+
+# Claude Code
 */.claude/settings.local.json
 .claude/settings.local.json
 .claude/worktrees/
 .claude/plans/
-
-# Claude playwright-cli files
 .playwright-cli/
-
-# Claude superpowers
 .superpowers/
 **/docs/superpowers/
-
-# Agent tooling
-.pi-subagents/
-.rpiv/
-.serena/

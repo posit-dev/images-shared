@@ -6,5 +6,5 @@
 .idea/
 .vscode/settings.json
 
-# Claude
+# Claude Code
 .claude/settings.local.json

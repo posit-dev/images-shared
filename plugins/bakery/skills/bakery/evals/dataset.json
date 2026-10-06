@@ -17,7 +17,7 @@
   {
     "id": "4-cross-repo-read-first",
     "input": "I need to update the Python installation macro (python.j2) used in images-workbench templates. What's my first step?",
-    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Reads images-workbench/CLAUDE.md before making changes\"}, {\"id\": 2, \"description\": \"Reads images-workbench/bakery.yaml before making changes\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Proceeds directly to editing python.j2 or workbench templates without reading the sibling repo's CLAUDE.md and bakery.yaml first\"}]}"
+    "target": "{\"expected\": [{\"id\": 1, \"description\": \"Reads images-workbench/AGENTS.md before making changes\"}, {\"id\": 2, \"description\": \"Reads images-workbench/bakery.yaml before making changes\"}], \"forbidden\": [{\"id\": \"f1\", \"description\": \"Proceeds directly to editing python.j2 or workbench templates without reading the sibling repo's AGENTS.md and bakery.yaml first\"}]}"
   },
   {
     "id": "5-ci-merge-flag-forwarding",
