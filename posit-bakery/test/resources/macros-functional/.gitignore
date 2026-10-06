@@ -1,0 +1,3 @@
+# dgoss output from local `bakery dgoss run`
+results/
+.bakery-bake.json

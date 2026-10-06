@@ -54,11 +54,14 @@ just setup
 # Install the project locally
 just install
 
-# Run tests (skipping slow tests)
+# Run tests (skipping image_build tests)
 just test
 
 # Run all tests
 just test-all
+
+# Build and goss-test the macros-functional context (needs Docker)
+just test-macros
 ```
 
 **Always use `uv` instead of `python`** for invoking Python commands, running scripts, or

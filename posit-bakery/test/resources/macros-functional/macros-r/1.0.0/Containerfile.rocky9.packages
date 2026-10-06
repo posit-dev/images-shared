@@ -1,0 +1,32 @@
+FROM docker.io/rockylinux/rockylinux:9
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:9"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.rpm.sh')" && \
+    dnf clean all -yq
+
+RUN dnf install -yq \
+        R-4.6.1 && \
+    dnf clean all -yq
+RUN dnf install -yq \
+        R-4.5.3 && \
+    dnf clean all -yq
+
+COPY macros-r/1.0.0/deps/packages-1.txt /tmp/r-packages-1.txt
+COPY macros-r/1.0.0/deps/packages-2.txt /tmp/r-packages-2.txt
+RUN /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(c("R6", "jsonlite"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)' && \
+    /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-1.txt"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)' && \
+    /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-2.txt"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)'
+RUN /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(c("R6", "jsonlite"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)' && \
+    /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-1.txt"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)' && \
+    /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-2.txt"), repos="https://p3m.dev/cran/__linux__/rhel9/latest", clean = TRUE)' && \
+    rm -f /tmp/r-packages-1.txt /tmp/r-packages-2.txt

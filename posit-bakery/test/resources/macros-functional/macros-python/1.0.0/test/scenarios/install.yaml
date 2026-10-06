@@ -1,0 +1,32 @@
+# build_stage() + copy_from_build_stage() + symlink_version() + symlink_binary().
+file:
+  /opt/python/default:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/python/3.14.7
+  /usr/local/bin/python:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/python/3.14.7/bin/python
+
+command:
+  python --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.14.7"
+  /opt/python/3.14.7/bin/python --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.14.7"
+  python3.14 --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.14.7"
+  /opt/python/3.13.7/bin/python --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.13.7"
+  python3.13 --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.13.7"

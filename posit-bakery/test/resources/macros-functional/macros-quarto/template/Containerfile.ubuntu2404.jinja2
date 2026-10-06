@@ -1,0 +1,30 @@
+{#-
+Every Containerfile.<os>.jinja2 in this image is identical; OS differences branch on
+Image.OS so each scenario (variant) runs the same macros on every OS.
+-#}
+{%- import "apt.j2" as apt -%}
+{%- import "dnf.j2" as dnf -%}
+{%- import "quarto.j2" as quarto -%}
+{%- if Image.OS.Family == "debian" -%}
+{%- set pm = apt -%}
+{%- set base_image = "docker.io/library/ubuntu:" ~ Image.OS.Version -%}
+{%- else -%}
+{%- set pm = dnf -%}
+{%- set base_image = "docker.io/rockylinux/rockylinux:" ~ Image.OS.Version -%}
+{%- endif -%}
+
+FROM {{ base_image }}
+LABEL org.opencontainers.image.base.name="{{ base_image }}"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+{{ pm.run_setup(open_repo=True) }}
+
+{% if Image.Variant == "install" -%}
+{{ quarto.run_install(Dependencies.quarto, os_family=Image.OS.Family) }}
+{%- elif Image.Variant == "tinytex" -%}
+{{ quarto.run_install(Dependencies.quarto, with_tinytex=True, tinytex_home_path="/opt/tinytex", os_family=Image.OS.Family) }}
+{%- else -%}
+{{ raise("Unhandled variant '" ~ Image.Variant ~ "'") }}
+{%- endif %}

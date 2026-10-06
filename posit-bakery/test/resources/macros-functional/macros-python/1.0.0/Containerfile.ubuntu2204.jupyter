@@ -1,0 +1,46 @@
+FROM ghcr.io/astral-sh/uv:debian-slim AS python-builder
+
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+ENV UV_PYTHON_PREFERENCE=only-managed
+RUN uv python install 3.14.7 3.13.7
+RUN mv /opt/python/cpython-3.14.7-linux-*/ /opt/python/3.14.7 && \
+    mv /opt/python/cpython-3.13.7-linux-*/ /opt/python/3.13.7
+
+
+FROM docker.io/library/ubuntu:22.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:22.04"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \
+    apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    apt-get install -yqq --no-install-recommends locales && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+COPY --from=python-builder /opt/python /opt/python
+
+RUN /opt/python/3.14.7/bin/python -m venv /opt/python/jupyter && \
+    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /opt/python/jupyter/bin/pip install --no-cache-dir --upgrade \
+        "jupyterlab" \
+        notebook \
+        "pwb_jupyterlab" && \
+    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \
+    rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \
+    rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \
+    ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
