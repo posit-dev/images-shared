@@ -1,0 +1,28 @@
+{
+  "released": [
+    {
+      "version": "2024.12",
+      "published": [
+        {
+          "build": "2024.12.1+563.pro5",
+          "builds_url": "https://dailies.rstudio.com/api/v1/build/2024.12.1+563.pro5/index.json"
+        },
+        {
+          "build": "2024.12.0+541.pro3",
+          "builds_url": "https://dailies.rstudio.com/api/v1/build/2024.12.0+541.pro3/index.json"
+        }
+      ]
+    },
+    {
+      "version": "2024.09",
+      "published": [
+        {
+          "build": "2024.09.1+478.pro2",
+          "builds_url": "https://dailies.rstudio.com/api/v1/build/2024.09.1+478.pro2/index.json"
+        }
+      ]
+    }
+  ],
+  "in_development": [],
+  "upcoming": []
+}

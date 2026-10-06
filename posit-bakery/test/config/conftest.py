@@ -32,6 +32,8 @@ CONNECT_DAILY = PRODUCT_TESTDATA_DIR / "connect_latest-packages.json"
 PACKAGE_MANAGER_PREVIEW = PRODUCT_TESTDATA_DIR / "rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_DAILY = PRODUCT_TESTDATA_DIR / "rstudio-pm-rc-latest.txt"
 WORKBENCH_DAILY = PRODUCT_TESTDATA_DIR / "workbench_index.json"
+WORKBENCH_RELEASE_INDEX = PRODUCT_TESTDATA_DIR / "workbench_release_index.json"
+WORKBENCH_RELEASE_BUILD = PRODUCT_TESTDATA_DIR / "workbench_release_build.json"
 POSITRON_DAILY_X86_64 = DEPENDENCIES_TESTDATA_DIR / "positron_daily_x86_64.json"
 POSITRON_DAILY_ARM64 = DEPENDENCIES_TESTDATA_DIR / "positron_daily_arm64.json"
 
@@ -88,6 +90,10 @@ def patch_testdata_response(url: str):
     elif url == product_const.PACKAGE_MANAGER_DAILY_URL:
         mock_response.json.side_effect = FakeJSONDecodeError
         mock_response.text = PACKAGE_MANAGER_DAILY.read_text()
+    elif url == product_const.WORKBENCH_RELEASE_URL:
+        mock_response.json.return_value = json.loads(WORKBENCH_RELEASE_INDEX.read_text())
+    elif url.startswith("https://dailies.rstudio.com/api/v1/build/") and url.endswith("/index.json"):
+        mock_response.json.return_value = json.loads(WORKBENCH_RELEASE_BUILD.read_text())
     elif url.startswith("https://dailies.rstudio.com/rstudio/") and url.endswith("/index.json"):
         mock_response.json.return_value = json.loads(WORKBENCH_DAILY.read_text())
     # Default mock response for unknown URLs
