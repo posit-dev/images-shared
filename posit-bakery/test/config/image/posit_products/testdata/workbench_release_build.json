@@ -1,0 +1,46 @@
+{
+  "build": "2024.12.1+563.pro5",
+  "version": "2024.12",
+  "products": {
+    "workbench": {
+      "platforms": {
+        "noble-amd64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb"
+        },
+        "jammy-amd64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb"
+        },
+        "rhel8-x86_64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download2.rstudio.org/server/rhel8/x86_64/rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm"
+        },
+        "rhel9-x86_64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download2.rstudio.org/server/rhel9/x86_64/rstudio-workbench-rhel-2024.12.1-563.pro5-x86_64.rpm"
+        }
+      }
+    },
+    "session": {
+      "platforms": {
+        "noble-amd64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz"
+        },
+        "jammy-amd64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download1.rstudio.org/session/jammy/amd64/rsp-session-jammy-2024.12.1-563.pro5-amd64.tar.gz"
+        },
+        "rhel8-x86_64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download1.rstudio.org/session/rhel8/x86_64/rsp-session-rhel8-2024.12.1-563.pro5-x86_64.tar.gz"
+        },
+        "rhel9-x86_64": {
+          "version": "2024.12.1+563.pro5",
+          "link": "https://download1.rstudio.org/session/rhel9/x86_64/rsp-session-rhel9-2024.12.1-563.pro5-x86_64.tar.gz"
+        }
+      }
+    }
+  }
+}

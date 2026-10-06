@@ -12,6 +12,7 @@ from posit_bakery.config.image.posit_product.const import (
     ProductEnum,
     ReleaseChannelEnum,
     WORKBENCH_DAILY_URL,
+    WORKBENCH_RELEASE_URL,
     PACKAGE_MANAGER_DAILY_URL,
     PACKAGE_MANAGER_PREVIEW_URL,
     CONNECT_DAILY_URL,
@@ -245,17 +246,6 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.WORKBENCH: {
-        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
-            DOWNLOADS_JSON_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "stable", "server", "installer", "{download_json_os}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "stable", "server", "installer", "{download_json_os}", "url"]
-                ),
-            },
-        ),
         ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
@@ -282,17 +272,6 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.WORKBENCH_SESSION: {
-        ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
-            DOWNLOADS_JSON_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "stable", "session", "installer", "{download_json_os}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["rstudio", "pro", "stable", "session", "installer", "{download_json_os}", "url"]
-                ),
-            },
-        ),
         ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
             WORKBENCH_DAILY_URL,
             {
@@ -391,6 +370,34 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
     return meta
 
 
+def _get_workbench_release_artifact(product: ProductEnum, os: BuildOS) -> ReleaseChannelResult:
+    """Resolve the latest published Workbench artifact from the release API."""
+    session = cached_session()
+
+    response = session.get(WORKBENCH_RELEASE_URL)
+    response.raise_for_status()
+    release_index = response.json()
+    try:
+        builds_url = release_index["released"][0]["published"][0]["builds_url"]
+    except (IndexError, KeyError, TypeError) as e:
+        raise ValueError("The release API has no published Workbench build.") from e
+
+    response = session.get(builds_url)
+    response.raise_for_status()
+    build = response.json()
+
+    product_key = "session" if product == ProductEnum.WORKBENCH_SESSION else "workbench"
+    platform_os = _parse_download_json_os_identifier(os, product)
+    platform_arch = "x86_64" if os.family in (OSFamilyEnum.REDHAT_LIKE, OSFamilyEnum.SUSE_LIKE) else "amd64"
+    platform_key = f"{platform_os}-{platform_arch}"
+
+    try:
+        artifact = build["products"][product_key]["platforms"][platform_key]
+        return ReleaseChannelResult(version=artifact["version"], download_url=artifact["link"])
+    except (KeyError, TypeError) as e:
+        raise ValueError(f"No {product.value} release artifact for platform {platform_key!r}.") from e
+
+
 def get_product_artifact_by_channel(
     product: ProductEnum,
     channel: ReleaseChannelEnum,
@@ -399,6 +406,9 @@ def get_product_artifact_by_channel(
     release_branch: str = "latest",
 ) -> ReleaseChannelResult:
     """Fetches the version and download URL for a given product, release channel, and OS."""
+    if product in (ProductEnum.WORKBENCH, ProductEnum.WORKBENCH_SESSION) and channel == ReleaseChannelEnum.RELEASE:
+        return _get_workbench_release_artifact(product, os)
+
     if product not in product_release_channel_url_map:
         raise ValueError(f"Product {product} is not supported.")
     if channel not in product_release_channel_url_map[product]:
