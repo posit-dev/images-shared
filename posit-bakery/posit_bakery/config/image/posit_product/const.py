@@ -27,7 +27,6 @@ URL_WITH_ENV_VARS_REGEX_PATTERN = re.compile(
 )
 
 WORKBENCH_RELEASE_URL = "https://dailies.rstudio.com/api/v1/release/index.json"
-WORKBENCH_DAILY_URL = "https://dailies.rstudio.com/rstudio/{release_branch}/index.json"
 PACKAGE_MANAGER_DAILY_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-main-latest.txt"
 PACKAGE_MANAGER_PREVIEW_URL = "https://cdn.posit.co/package-manager/deb/amd64/rstudio-pm-rc-latest.txt"
 CONNECT_DAILY_URL = "https://cdn.posit.co/connect/latest-packages.json"
