@@ -6,6 +6,8 @@ Posit Bakery is a command-line tool for building, testing, and managing containe
 
 The tool uses a YAML configuration file (`bakery.yaml`) and Jinja2 templates to define image builds, with support for parallel building via Docker Buildx Bake.
 
+Follow the [Bakery skill](https://github.com/posit-dev/images-shared/blob/main/plugins/bakery/skills/bakery/SKILL.md) for critical invariants and common workflows when working on Bakery or its image repositories.
+
 ## Sibling Repositories
 
 This project is part of a multi-repo ecosystem for Posit container images. **When making
