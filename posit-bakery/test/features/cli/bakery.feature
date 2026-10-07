@@ -9,6 +9,19 @@ Feature: bakery
         Then The command succeeds
         * help is shown
 
+    Scenario: Bakery lists builtin plugin command groups in help
+        Given I call bakery
+        * with the arguments:
+            | --help |
+        When I execute the command
+        Then The command succeeds
+        * help is shown
+        * the stdout output includes:
+            | dgoss      |
+            | hadolint   |
+            | imagetools |
+            | wizcli     |
+
     # Exit code is expected to be 2 going forward per https://github.com/fastapi/typer/pull/1240
     Scenario: Bakery shows a help message when no commands or arguments are given
         Given I call bakery

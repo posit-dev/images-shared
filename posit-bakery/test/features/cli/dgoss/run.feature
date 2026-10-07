@@ -1,5 +1,5 @@
 @functional
-Feature: dgoss
+Feature: dgoss run
 
     @image_build
     Scenario: Running dgoss tests against basic images
@@ -8,14 +8,14 @@ Feature: dgoss
         When I execute the command
         Then The command succeeds
 
-        Given I call bakery run dgoss
+        Given I call bakery dgoss run
         * in a temp basic context
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
             | Tests completed |
         * the context includes files:
-            | results/dgoss/test-image/test-image-1-0-0-minimal-ubuntu-22-04.json |
+            | results/dgoss/test-image/test-image-1-0-0-minimal-ubuntu-22-04.json  |
             | results/dgoss/test-image/test-image-1-0-0-standard-ubuntu-22-04.json |
         * the basic images are removed
 
@@ -26,14 +26,14 @@ Feature: dgoss
         When I execute the command
         Then The command succeeds
 
-        Given I call bakery run dgoss
+        Given I call bakery dgoss run
         * in a temp with-macros context
         When I execute the command
         Then The command succeeds
         * the stderr output includes:
             | Tests completed |
         * the context includes files:
-            | results/dgoss/test-image/test-image-1-0-0-minimal-ubuntu-22-04.json |
+            | results/dgoss/test-image/test-image-1-0-0-minimal-ubuntu-22-04.json  |
             | results/dgoss/test-image/test-image-1-0-0-standard-ubuntu-22-04.json |
         * the with-macros images are removed
 
@@ -46,7 +46,7 @@ Feature: dgoss
         When I execute the command
         Then The command succeeds
 
-        Given I call bakery run dgoss
+        Given I call bakery dgoss run
         * in a temp matrix context
         * with the arguments:
             | --matrix-versions | only |
@@ -55,3 +55,24 @@ Feature: dgoss
         * the stderr output includes:
             | Tests completed |
         * the matrix images are removed
+
+    Scenario: Running dgoss with no matching targets fails
+        Given I call bakery dgoss run
+        * in a temp basic context
+        * with the arguments:
+            | --image-name | nonexistent |
+        When I execute the command
+        Then The command fails
+        * the stderr output includes:
+            | No image targets to |
+
+    Scenario: The deprecated 'run dgoss' command warns and points to 'dgoss run'
+        Given I call bakery run dgoss
+        * in a temp basic context
+        * with the arguments:
+            | --image-name | nonexistent |
+        When I execute the command
+        Then The command fails
+        * the stderr output includes:
+            | deprecated |
+            | dgoss run  |
