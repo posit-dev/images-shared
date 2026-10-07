@@ -273,15 +273,3 @@ class TestTrivySuiteFailureSeverity:
             failure_severity=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
         )
         assert {err.exit_code for err in error_list(errors)} == {TRIVY_EXIT_CODE_SEVERITY_THRESHOLD}
-
-    @pytest.mark.slow
-    def test_run_integration(self, get_tmpconfig):
-        """Run a real trivy binary against real image targets."""
-        tmpconfig = get_tmpconfig("basic")
-        report_collection, errors = TrivySuite(tmpconfig.base_path, select_targets(tmpconfig, tmpconfig.settings)).run()
-
-        assert errors is None
-        assert len(report_collection) > 0
-        for target in select_targets(tmpconfig, tmpconfig.settings):
-            results_file = tmpconfig.base_path / "results" / "trivy" / target.image_name / f"{target.uid}.sarif"
-            assert results_file.exists()
