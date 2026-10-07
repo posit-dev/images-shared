@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 
 from posit_bakery.config.image.build_os import SUPPORTED_OS, BuildOS
@@ -225,12 +227,20 @@ class TestGetProductArtifactByChannel:
     def test_bad_product(self):
         """Test that an invalid product raises an error"""
         with pytest.raises(ValueError):
-            get_product_artifact_by_channel("bad", "daily", SUPPORTED_OS["ubuntu"]["22"])
+            get_product_artifact_by_channel(
+                cast(ProductEnum, "bad"),
+                cast(ReleaseChannelEnum, "daily"),
+                SUPPORTED_OS["ubuntu"]["22"],
+            )
 
     def test_bad_channel(self):
         """Test that an invalid channel raises an error"""
         with pytest.raises(ValueError):
-            get_product_artifact_by_channel("connect", "preview", SUPPORTED_OS["ubuntu"]["22"])
+            get_product_artifact_by_channel(
+                cast(ProductEnum, "connect"),
+                cast(ReleaseChannelEnum, "preview"),
+                SUPPORTED_OS["ubuntu"]["22"],
+            )
 
     @pytest.mark.parametrize(
         "_os,expected_version,expected_url",
@@ -791,8 +801,37 @@ class TestGetProductArtifactByChannel:
         assert str(output.download_url) == expected_session_url
 
 
-class TestWorkbenchReleaseAPI:
-    def test_uses_latest_published_build(self, mocker):
+class TestWorkbenchDevelopmentAPI:
+    def test_development_channels_use_the_new_api(self, mocker):
+        from test.config.conftest import patch_testdata_response
+
+        mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mock_session.return_value.get.side_effect = patch_testdata_response
+
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"]
+        )
+
+        assert result.version == "2025.04.0-daily+404.pro4"
+        assert str(result.download_url) == (
+            "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/"
+            "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb"
+        )
+        requested_urls = [call.args[0] for call in mock_session.return_value.get.call_args_list]
+        assert requested_urls == [
+            WORKBENCH_RELEASE_URL,
+            "https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json",
+        ]
+
+    def test_preview_channel_uses_release_index_api(self, patch_requests_get):
+        result = get_product_artifact_by_channel(
+            ProductEnum.WORKBENCH_SESSION, ReleaseChannelEnum.PREVIEW, SUPPORTED_OS["ubuntu"]["24"]
+        )
+
+        assert result.version == "2025.04.0-daily+404.pro4"
+        assert str(result.download_url).endswith("rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz")
+
+    def test_stable_release_continues_to_use_downloads_json(self, mocker):
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
@@ -803,48 +842,42 @@ class TestWorkbenchReleaseAPI:
         )
 
         assert result.version == "2024.12.1+563.pro5"
-        assert str(result.download_url) == (
-            "https://download2.rstudio.org/server/jammy/amd64/rstudio-workbench-2024.12.1-563.pro5-amd64.deb"
-        )
         requested_urls = [call.args[0] for call in mock_session.return_value.get.call_args_list]
-        assert requested_urls == [
-            WORKBENCH_RELEASE_URL,
-            "https://dailies.rstudio.com/api/v1/build/2024.12.1+563.pro5/index.json",
-        ]
-        assert "https://posit.co/wp-content/uploads/downloads.json" not in requested_urls
+        assert requested_urls == ["https://posit.co/wp-content/uploads/downloads.json"]
 
 
 class TestGetProductArtifactByChannelReleaseBranch:
-    """release_branch is passed through to the Workbench daily URL."""
+    """release_branch selects a Workbench development entry in the release index."""
 
     def test_default_release_branch_uses_latest(self, mocker):
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         mock_session.return_value.get.side_effect = patch_testdata_response
-        mock_session.return_value.get.return_value.raise_for_status.return_value = None
 
         get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"])
 
-        called_url = mock_session.return_value.get.call_args[0][0]
-        assert called_url == "https://dailies.rstudio.com/rstudio/latest/index.json"
+        called_urls = [call.args[0] for call in mock_session.return_value.get.call_args_list]
+        assert called_urls == [
+            WORKBENCH_RELEASE_URL,
+            "https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json",
+        ]
 
-    def test_named_release_branch_formats_url(self, mocker):
+    def test_named_release_branch_is_selected(self, mocker):
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
         mock_session.return_value.get.side_effect = patch_testdata_response
-        mock_session.return_value.get.return_value.raise_for_status.return_value = None
 
-        get_product_artifact_by_channel(
+        result = get_product_artifact_by_channel(
             ProductEnum.WORKBENCH,
             ReleaseChannelEnum.DAILY,
             SUPPORTED_OS["ubuntu"]["24"],
             release_branch="apple-blossom",
         )
 
-        called_url = mock_session.return_value.get.call_args[0][0]
-        assert called_url == "https://dailies.rstudio.com/rstudio/apple-blossom/index.json"
+        assert result.version == "2025.04.0-daily+404.pro4"
+        assert mock_session.return_value.get.call_args_list[0].args[0] == WORKBENCH_RELEASE_URL
 
 
 class TestDispatchOverride:
@@ -963,8 +996,17 @@ class TestDispatchOverride:
         for Workbench's dash convention. A head version with no "+" must not
         make the substitution fall back to a literal "+" in the URL."""
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
-        mock_response = mocker.MagicMock()
-        mock_response.json.return_value = {
+        index_response = mocker.MagicMock()
+        index_response.json.return_value = {
+            "in_development": [
+                {
+                    "branch": "blue-mistflower",
+                    "latest_build": {"builds_url": "https://dailies.rstudio.com/api/v1/build/current/index.json"},
+                }
+            ]
+        }
+        build_response = mocker.MagicMock()
+        build_response.json.return_value = {
             "products": {
                 "workbench": {
                     "platforms": {
@@ -977,7 +1019,7 @@ class TestDispatchOverride:
                 }
             }
         }
-        mock_session.return_value.get.return_value = mock_response
+        mock_session.return_value.get.side_effect = [index_response, build_response]
         mock_session.return_value.head.return_value.ok = True
 
         result = get_product_artifact_by_channel(
