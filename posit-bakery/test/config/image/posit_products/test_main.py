@@ -220,6 +220,13 @@ class TestHelpers:
     def test__make_resolver_metadata(self, _os: BuildOS, product: ProductEnum, expected: dict):
         """Tests for supported OSes against parsing their associated download.json identifiers"""
         output = _make_resolver_metadata(_os, product)
+        if product in (ProductEnum.WORKBENCH, ProductEnum.WORKBENCH_SESSION):
+            # Workbench also carries the keys used to look up artifacts in the release index API.
+            expected = {
+                **expected,
+                "workbench_product_key": "session" if product == ProductEnum.WORKBENCH_SESSION else "workbench",
+                "workbench_platform_key": f"{expected['download_json_os']}-{expected['arch_identifier']}",
+            }
         assert output == expected
 
 
@@ -806,6 +813,7 @@ class TestWorkbenchDevelopmentAPI:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
 
         result = get_product_artifact_by_channel(
@@ -818,9 +826,10 @@ class TestWorkbenchDevelopmentAPI:
             "rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb"
         )
         requested_urls = [call.args[0] for call in mock_session.return_value.get.call_args_list]
+        # The index is fetched once; each field resolver fetches the build (the real session caches the repeat).
         assert requested_urls == [
             WORKBENCH_RELEASE_URL,
-            "https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json",
+            *["https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json"] * 2,
         ]
 
     def test_preview_channel_uses_release_index_api(self, patch_requests_get):
@@ -835,6 +844,7 @@ class TestWorkbenchDevelopmentAPI:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
 
         result = get_product_artifact_by_channel(
@@ -853,6 +863,7 @@ class TestGetProductArtifactByChannelReleaseBranch:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
 
         get_product_artifact_by_channel(ProductEnum.WORKBENCH, ReleaseChannelEnum.DAILY, SUPPORTED_OS["ubuntu"]["24"])
@@ -860,13 +871,14 @@ class TestGetProductArtifactByChannelReleaseBranch:
         called_urls = [call.args[0] for call in mock_session.return_value.get.call_args_list]
         assert called_urls == [
             WORKBENCH_RELEASE_URL,
-            "https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json",
+            *["https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json"] * 2,
         ]
 
     def test_named_release_branch_is_selected(self, mocker):
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
 
         result = get_product_artifact_by_channel(
@@ -886,6 +898,7 @@ class TestDispatchOverride:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
         mock_session.return_value.head.return_value.ok = True
 
@@ -907,6 +920,7 @@ class TestDispatchOverride:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
         mock_session.return_value.head.return_value.ok = True
 
@@ -955,6 +969,7 @@ class TestDispatchOverride:
         an unencoded literal "+". cdn.posit.co rejects a literal "+" in the
         path and needs "%2B" for the same file."""
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_response = mocker.MagicMock()
         mock_response.json.return_value = {
             "packages": [
@@ -996,6 +1011,7 @@ class TestDispatchOverride:
         for Workbench's dash convention. A head version with no "+" must not
         make the substitution fall back to a literal "+" in the URL."""
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         index_response = mocker.MagicMock()
         index_response.json.return_value = {
             "in_development": [
@@ -1019,7 +1035,7 @@ class TestDispatchOverride:
                 }
             }
         }
-        mock_session.return_value.get.side_effect = [index_response, build_response]
+        mock_session.return_value.get.side_effect = [index_response, build_response, build_response]
         mock_session.return_value.head.return_value.ok = True
 
         result = get_product_artifact_by_channel(
@@ -1036,6 +1052,7 @@ class TestDispatchOverride:
         from test.config.conftest import patch_testdata_response
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_session.return_value.get.side_effect = patch_testdata_response
         mock_session.return_value.head.return_value.ok = True
 
@@ -1067,6 +1084,7 @@ class TestDispatchOverride:
         """VersionSubstitutionError raised when the manifest URL contains no substitutable token."""
 
         mock_session = mocker.patch("posit_bakery.config.image.posit_product.main.cached_session")
+        mocker.patch("posit_bakery.config.image.posit_product.resolvers.cached_session", mock_session)
         mock_response = mocker.MagicMock()
         # URL deliberately omits the version — no substitution is possible under any transform.
         mock_response.json.return_value = {
