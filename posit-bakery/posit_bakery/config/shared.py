@@ -33,6 +33,9 @@ TagDisplayNameField = Annotated[
     ),
 ]
 
+# Item-level type for list fields; defaults only apply to model fields, not list members.
+TagDisplayNameItem = Annotated[str, Field(pattern=r"^[a-zA-Z0-9_.-]+$")]
+
 
 class OSFamilyEnum(str, Enum):
     DEBIAN_LIKE = "debian"
