@@ -6,7 +6,7 @@ from ruamel.yaml import yaml_object, YAML
 yaml = YAML()
 
 UV_PYTHON_DOWNLOADS_JSON_URL = (
-    "https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json"
+    "https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python-managed/download-metadata.json"
 )
 
 # All available R versions from Posit
