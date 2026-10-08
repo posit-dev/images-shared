@@ -238,6 +238,73 @@ def test_publish_isolates_one_targets_create_failure_from_others(tmp_path):
     assert copied == ["uid-ok"]
 
 
+@pytest.mark.parametrize(
+    ("destinations_match", "expected_exit_code"),
+    [(True, 0), (False, 1)],
+)
+def test_publish_checks_destinations_after_copy_failure(tmp_path, caplog, destinations_match, expected_exit_code):
+    """Check destination tags after a failed copy."""
+    target = _fake_target("uid-copy-fail", merge_sources=["ghcr.io/posit-dev/test/tmp@sha256:source"])
+    target.settings.temp_registry = "ghcr.io/posit-dev"
+    target.tags.as_strings.return_value = [
+        "docker.io/posit/test:tag",
+        "docker.io/posit/test:alias",
+    ]
+
+    fake_config = MagicMock()
+    fake_config.base_path = tmp_path
+    wait_result = MagicMock(success=True, ready=["x"], missing=[], waited_seconds=0.1, error=None)
+    create_result = MagicMock(success=True, temp_ref="ghcr.io/posit-dev/test/tmp:created")
+    verified = target.tags.as_strings.return_value if destinations_match else target.tags.as_strings.return_value[:1]
+    destination_check = MagicMock(
+        success=destinations_match,
+        verified=verified,
+        error=None if destinations_match else "digest mismatch for docker.io/posit/test:alias",
+    )
+    final_check = MagicMock(success=True, verified=verified)
+    verify_run = MagicMock(side_effect=[destination_check, final_check])
+
+    runner = CliRunner()
+    with (
+        patch("posit_bakery.config.BakeryConfig.from_context", return_value=fake_config),
+        _stub_targets([target]),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=wait_result)),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=create_result)),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest",
+            return_value="sha256:expected",
+        ),
+        _bypass_pydantic_init(OrasIndexCopyWorkflow),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCopyWorkflow.run",
+            return_value=MagicMock(success=False, error="oras command failed: unauthorized"),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexVerifyWorkflow",
+            return_value=MagicMock(run=verify_run),
+        ),
+    ):
+        result = runner.invoke(app, ["ci", "publish", "meta.json"], env=_WIDE_TERM_ENV)
+
+    assert result.exit_code == expected_exit_code, result.stdout
+    assert verify_run.call_args_list[0].kwargs == {"expected_digest": "sha256:expected"}
+    if destinations_match:
+        assert verify_run.call_count == 2
+        assert "accepting it" in caplog.text
+    else:
+        assert verify_run.call_count == 1
+        assert "unconfirmed: docker.io/posit/test:alias" in caplog.text
+        assert "unauthorized" in caplog.text
+
+
 def test_publish_aborts_when_sources_never_ready(tmp_path):
     """A wait timeout for the only target fails that target (and, since it's the only
     target, the whole run) without raising."""
