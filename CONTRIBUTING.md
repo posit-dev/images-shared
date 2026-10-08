@@ -87,7 +87,7 @@ Do not backport cosmetic changes, new feature additions, or non-security depende
 
 - **Never work directly on `main`.** Multiple CI sessions may be running concurrently. Use a branch. For changes spanning multiple repos, use a git worktree per repo so each change is isolated from `main`.
 
-- **Python version not yet in UV.** When a new CPython minor version is released, there is a lag before UV's managed Python manifest includes it. `bakery build` fails with a `uv python install` error. Check [UV's download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python/download-metadata.json) to confirm availability before adding the version.
+- **Python version not yet in UV.** When a new CPython minor version is released, there is a lag before UV's managed Python manifest includes it. `bakery build` fails with a `uv python install` error. Check [UV's download-metadata.json](https://raw.githubusercontent.com/astral-sh/uv/refs/heads/main/crates/uv-python-managed/download-metadata.json) to confirm availability before adding the version.
 
 - **Stale UV base image cache.** Even after UV upstream adds a new Python version, a cached builder layer from a previous run might not know about it. If a build fails on `uv python install` despite the version being in the manifest, clear the cache:
 
