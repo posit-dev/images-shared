@@ -63,7 +63,7 @@ development checkout, not from product repos like `images-connect`.
 
 When a task requires editing templates, macros, or `bakery.yaml` in a sibling repo
 (`images-connect`, `images-workbench`, `images-package-manager`), read that repo's
-`CLAUDE.md` and `bakery.yaml` before making any changes there.
+`AGENTS.md` and `bakery.yaml` before making any changes there.
 
 ### 4. Matrix versions are excluded by default
 
