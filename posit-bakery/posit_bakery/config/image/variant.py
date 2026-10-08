@@ -4,7 +4,7 @@ from typing import Annotated, Union
 from pydantic import Field
 
 from posit_bakery.config.tag import TagPattern
-from posit_bakery.config.shared import BakeryYAMLModel, ExtensionField, TagDisplayNameField
+from posit_bakery.config.shared import BakeryYAMLModel, ExtensionField, TagDisplayNameField, TagDisplayNameItem
 from posit_bakery.config.tools import ToolField, default_tool_options, ToolOptions
 
 log = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class ImageVariant(BakeryYAMLModel):
         ),
     ]
     tagAliases: Annotated[
-        list[TagDisplayNameField],
+        list[TagDisplayNameItem],
         Field(
             default_factory=list,
             description="Additional names used for this variant in image tags.",
