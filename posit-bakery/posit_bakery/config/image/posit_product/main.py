@@ -11,7 +11,7 @@ from posit_bakery.config.image.posit_product.const import (
     CALVER_REGEX_PATTERN,
     ProductEnum,
     ReleaseChannelEnum,
-    WORKBENCH_DAILY_URL,
+    WORKBENCH_RELEASE_URL,
     PACKAGE_MANAGER_DAILY_URL,
     PACKAGE_MANAGER_PREVIEW_URL,
     CONNECT_DAILY_URL,
@@ -164,6 +164,26 @@ class ReleaseChannelPath:
         return ReleaseChannelResult(**result)
 
 
+def _workbench_version_url_encoding(version: str) -> str:
+    """Workbench artifact URLs use '-' where the build version has '+'."""
+    return version.replace("+", "-")
+
+
+def _workbench_dev_resolver(field: str) -> resolvers.ChainedResolver:
+    """Resolve a field of the selected development build's artifact from the release index API."""
+    return resolvers.ChainedResolver(
+        [
+            resolvers.StringMapPathResolver(["in_development"]),
+            resolvers.ReleaseBranchResolver(),
+            resolvers.StringMapPathResolver(["latest_build", "builds_url"]),
+            resolvers.UrlFetchResolver(),
+            resolvers.StringMapPathResolver(
+                ["products", "{workbench_product_key}", "platforms", "{workbench_platform_key}", field]
+            ),
+        ]
+    )
+
+
 # This map connects products to their respective release channels. Each release channel has a ReleaseChannelPath object
 # that defines one URL to fetch data from and a map of resolvers that can be used to extract a specified property
 # from the fetched data as it is expected to be formatted.
@@ -245,6 +265,22 @@ product_release_channel_url_map = {
         ),
     },
     ProductEnum.WORKBENCH: {
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
+            WORKBENCH_RELEASE_URL,
+            {
+                "version": _workbench_dev_resolver("version"),
+                "download_url": _workbench_dev_resolver("link"),
+            },
+            version_url_encoding=_workbench_version_url_encoding,
+        ),
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
+            WORKBENCH_RELEASE_URL,
+            {
+                "version": _workbench_dev_resolver("version"),
+                "download_url": _workbench_dev_resolver("link"),
+            },
+            version_url_encoding=_workbench_version_url_encoding,
+        ),
         ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
@@ -256,32 +292,24 @@ product_release_channel_url_map = {
                 ),
             },
         ),
-        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
-            WORKBENCH_DAILY_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
-                ),
-            },
-            version_url_encoding=lambda v: v.replace("+", "-"),
-        ),
-        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
-            WORKBENCH_DAILY_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["products", "workbench", "platforms", "{download_json_os}-{arch_identifier}", "link"]
-                ),
-            },
-            version_url_encoding=lambda v: v.replace("+", "-"),
-        ),
     },
     ProductEnum.WORKBENCH_SESSION: {
+        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
+            WORKBENCH_RELEASE_URL,
+            {
+                "version": _workbench_dev_resolver("version"),
+                "download_url": _workbench_dev_resolver("link"),
+            },
+            version_url_encoding=_workbench_version_url_encoding,
+        ),
+        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
+            WORKBENCH_RELEASE_URL,
+            {
+                "version": _workbench_dev_resolver("version"),
+                "download_url": _workbench_dev_resolver("link"),
+            },
+            version_url_encoding=_workbench_version_url_encoding,
+        ),
         ReleaseChannelEnum.RELEASE: ReleaseChannelPath(
             DOWNLOADS_JSON_URL,
             {
@@ -292,30 +320,6 @@ product_release_channel_url_map = {
                     ["rstudio", "pro", "stable", "session", "installer", "{download_json_os}", "url"]
                 ),
             },
-        ),
-        ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
-            WORKBENCH_DAILY_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
-                ),
-            },
-            version_url_encoding=lambda v: v.replace("+", "-"),
-        ),
-        ReleaseChannelEnum.DAILY: ReleaseChannelPath(
-            WORKBENCH_DAILY_URL,
-            {
-                "version": resolvers.StringMapPathResolver(
-                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "version"]
-                ),
-                "download_url": resolvers.StringMapPathResolver(
-                    ["products", "session", "platforms", "{download_json_os}-{arch_identifier}", "link"]
-                ),
-            },
-            version_url_encoding=lambda v: v.replace("+", "-"),
         ),
     },
 }
@@ -337,9 +341,9 @@ def _parse_download_json_os_identifier(_os: BuildOS, product: ProductEnum) -> st
         ):
             return "ubuntu64"
         elif _os.name.lower() == "ubuntu":
-            return _os.codename
+            return _os.codename or "multi"
         elif _os.name.lower() == "debian":
-            return debian_to_ubuntu_codename.get(_os.codename)
+            return debian_to_ubuntu_codename.get(_os.codename or "", "multi")
     elif _os.family == OSFamilyEnum.SUSE_LIKE:
         return "opensuse" + _os.version
     elif _os.family == OSFamilyEnum.REDHAT_LIKE:
@@ -387,6 +391,12 @@ def _make_resolver_metadata(_os: BuildOS, product: ProductEnum):
         if _os.family == OSFamilyEnum.DEBIAN_LIKE and _os.name.lower() == "debian":
             connect_daily_os_name = "ubuntu" + str(int(_os.majorVersion) * 2)
         meta["connect_daily_os_name"] = connect_daily_os_name
+
+    if product in (ProductEnum.WORKBENCH, ProductEnum.WORKBENCH_SESSION):
+        # Keys used by the release index API build manifest.
+        dev_arch = "x86_64" if _os.family in (OSFamilyEnum.REDHAT_LIKE, OSFamilyEnum.SUSE_LIKE) else "amd64"
+        meta["workbench_product_key"] = "session" if product == ProductEnum.WORKBENCH_SESSION else "workbench"
+        meta["workbench_platform_key"] = f"{meta['download_json_os']}-{dev_arch}"
 
     return meta
 

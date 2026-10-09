@@ -1,0 +1,46 @@
+{
+  "build": "2025.04.0-daily+404.pro4",
+  "version": "2025.04",
+  "products": {
+    "workbench": {
+      "platforms": {
+        "noble-amd64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb"
+        },
+        "jammy-amd64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/server/jammy/amd64/rstudio-workbench-2025.04.0-daily-404.pro4-amd64.deb"
+        },
+        "rhel8-x86_64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/server/rhel8/x86_64/rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm"
+        },
+        "rhel9-x86_64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/server/rhel9/x86_64/rstudio-workbench-rhel-2025.04.0-daily-404.pro4-x86_64.rpm"
+        }
+      }
+    },
+    "session": {
+      "platforms": {
+        "noble-amd64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz"
+        },
+        "jammy-amd64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/session/jammy/amd64/rsp-session-jammy-2025.04.0-daily-404.pro4-amd64.tar.gz"
+        },
+        "rhel8-x86_64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/session/rhel8/x86_64/rsp-session-rhel8-2025.04.0-daily-404.pro4-x86_64.tar.gz"
+        },
+        "rhel9-x86_64": {
+          "version": "2025.04.0-daily+404.pro4",
+          "link": "https://s3.amazonaws.com/rstudio-ide-build/session/rhel9/x86_64/rsp-session-rhel9-2025.04.0-daily-404.pro4-x86_64.tar.gz"
+        }
+      }
+    }
+  }
+}
