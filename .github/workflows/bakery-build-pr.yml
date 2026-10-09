@@ -259,7 +259,7 @@ jobs:
 
       - name: Setup trivy
         if: ${{ inputs.trivy-scan }}
-        uses: "posit-dev/images-shared/setup-trivy@feat/trivy-plugin"
+        uses: "posit-dev/images-shared/setup-trivy@v0"
 
       - name: Login to GitHub Container Registry
         if: needs.detect.outputs.is-fork != 'true'
