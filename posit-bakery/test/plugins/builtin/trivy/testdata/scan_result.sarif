@@ -1,0 +1,98 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "informationUri": "https://github.com/aquasecurity/trivy",
+          "version": "0.56.2",
+          "rules": [
+            {
+              "id": "CVE-2024-0001",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "critical CVE with a security-severity CVSS score"
+              },
+              "properties": {
+                "security-severity": "9.8",
+                "tags": [
+                  "vulnerability",
+                  "security",
+                  "CRITICAL"
+                ]
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "CVE-2024-0002",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE with no security-severity score, falls back to level"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-0001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "critical vulnerability bucketed via security-severity"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/libfoo.so"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-0002",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "vulnerability with no security-severity, bucketed via defaultConfiguration.level"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/libbar.so"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-9999",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "unresolvable ruleId, not present in runs[].tool.driver.rules[], bucketed as info"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "usr/lib/libbaz.so"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
