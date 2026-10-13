@@ -341,7 +341,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
         :raises ValueError: If a build arg name is used more than once.
         """
         names = [d.build_arg_name for d in [*self.dependencies, *self.dependencyConstraints]]
-        names += [key.upper() for key in self.values]
+        names += [key for key in self.values]
+        # Case-insensitive: dgoss exposes build args as BUILD_ARG_<NAME.upper()>.
+        names = [n.upper() for n in names]
         duplicates = sorted({n for n in names if names.count(n) > 1})
         if duplicates:
             raise ValueError(

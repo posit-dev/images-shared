@@ -312,12 +312,34 @@ class TestImageMatrix:
                 {"go_version": ["1.24"]},
                 id="value-collision",
             ),
+            pytest.param(
+                [
+                    {"dependency": "R", "versions": ["4.3.3"], "buildArgName": "r_version"},
+                    {"dependency": "python", "versions": ["3.13.7"], "buildArgName": "R_VERSION"},
+                ],
+                {},
+                id="case-insensitive-collision",
+            ),
         ],
     )
     def test_check_unique_build_arg_names(self, dependencies, values):
         """Test an error is raised if two matrix axes map to the same build arg name."""
         with pytest.raises(ValidationError, match="Duplicate build arg names"):
             ImageMatrix(dependencies=dependencies, values=values, namePattern="test")
+
+    def test_build_arg_name_dump_round_trip(self):
+        """Test buildArgName survives the model_dump flags used when writing bakery.yaml."""
+        matrix = ImageMatrix(
+            dependencies=[{"dependency": "R", "versions": ["4.3.3"], "buildArgName": "R_VER"}],
+            dependencyConstraints=[{"dependency": "python", "constraint": {"latest": True}, "buildArgName": "PY_VER"}],
+        )
+        dumped = matrix.model_dump(exclude_defaults=True, exclude_none=True, exclude_unset=True)
+        assert dumped["dependencies"][0]["buildArgName"] == "R_VER"
+        assert dumped["dependencyConstraints"][0]["buildArgName"] == "PY_VER"
+
+        reloaded = ImageMatrix(**dumped)
+        assert reloaded.dependencies[0].build_arg_name == "R_VER"
+        assert reloaded.dependencyConstraints[0].build_arg_name == "PY_VER"
 
     def test_build_arg_name_invalid(self):
         """Test an invalid buildArgName is rejected."""
