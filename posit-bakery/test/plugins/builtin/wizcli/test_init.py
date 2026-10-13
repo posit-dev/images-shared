@@ -5,6 +5,7 @@ BakeryConfig and the plugin's execute/results so the CLI can run end-to-end
 without wizcli installed or any built images.
 """
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -150,6 +151,53 @@ class TestWizcliScanPoliciesProjectsFlags:
         assert result.exit_code == 0, result.stdout
         assert mock_execute.call_args.kwargs["policies"] is None
         assert mock_execute.call_args.kwargs["projects"] is None
+
+
+class TestWizcliScanMetadataFile:
+    """--metadata-file restricts the scan to the targets it contains (#684)."""
+
+    def _invoke(self, metadata_file: Path):
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.execute", return_value=[]) as mock_execute,
+            patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.results"),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "scan",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    str(metadata_file),
+                ],
+                catch_exceptions=False,
+            )
+        return result, mock_execute
+
+    def test_scans_only_targets_in_metadata_file(self, tmp_path):
+        metadata = json.loads(Path(BASIC_METADATA).read_text())
+        uid = "test-image-1-0-0-standard-ubuntu-22-04"
+        partial = tmp_path / "partial.json"
+        partial.write_text(json.dumps({uid: metadata[uid]}))
+
+        result, mock_execute = self._invoke(partial)
+
+        assert result.exit_code == 0, result.stdout
+        scanned = mock_execute.call_args.args[1]
+        assert [t.uid for t in scanned] == [uid]
+        assert scanned[0].build_metadata
+
+    def test_no_matching_targets_in_metadata_file_exits_nonzero(self, tmp_path):
+        empty = tmp_path / "empty.json"
+        empty.write_text("{}")
+
+        result, mock_execute = self._invoke(empty)
+
+        assert result.exit_code == 1
+        mock_execute.assert_not_called()
 
 
 class TestWizcliTag:
