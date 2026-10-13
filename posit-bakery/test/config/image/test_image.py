@@ -668,6 +668,25 @@ class TestImage:
         )
         assert len(i.matrix.resolved_dependencies) == 3
 
+    def test_create_matrix_update_existing_swaps_build_arg_names(self):
+        """Test that update_if_exists validates only the final state, not intermediate field assignments."""
+        i = Image(
+            name="my-image",
+            matrix={
+                "dependencies": [{"dependency": "R", "versions": ["4.3.3"], "buildArgName": "MY_ARG"}],
+                "values": {"other": "x"},
+            },
+        )
+
+        i.create_matrix(
+            dependencies=[{"dependency": "R", "versions": ["4.3.3"], "buildArgName": "OTHER"}],
+            values={"my_arg": "x"},
+            update_if_exists=True,
+        )
+        assert i.matrix.dependencies[0].build_arg_name == "OTHER"
+        assert i.matrix.values == {"my_arg": "x"}
+        assert i.matrix.parent is i
+
     def test_load_dev_versions(self):
         """Test that load_dev_versions correctly loads development versions from configured devVersions."""
         context = Path(__file__).parent.parent.parent / "contexts" / "with-dev-versions"

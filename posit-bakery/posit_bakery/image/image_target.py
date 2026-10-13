@@ -515,9 +515,9 @@ class ImageTarget(BaseModel):
             for dependency in self.image_version.dependencies:
                 log.debug(
                     f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] "
-                    f"Setting build arg {dependency.dependency.upper()}_VERSION='{dependency.versions[0]}'"
+                    f"Setting build arg {dependency.build_arg_name}='{dependency.versions[0]}'"
                 )
-                build_args[f"{dependency.dependency.upper()}_VERSION"] = dependency.versions[0]
+                build_args[dependency.build_arg_name] = dependency.versions[0]
             for key, value in self.image_version.values.items():
                 log.debug(
                     f"[quiet_italicized]\\[{self.uid}][/quiet_italicized] Setting build arg {key.upper()}='{value}'"

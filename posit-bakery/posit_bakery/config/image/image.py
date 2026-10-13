@@ -553,16 +553,18 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
 
         # Logic for updating an existing version.
         else:
-            if name_pattern is not None:
-                self.matrix.namePattern = name_pattern
-            if subpath is not None:
-                self.matrix.subpath = subpath
-            if dependency_constraints is not None:
-                self.matrix.dependencyConstraints = dependency_constraints
-            if dependencies is not None:
-                self.matrix.dependencies = dependencies
-            if values is not None:
-                self.matrix.values = values
+            # Rebuild in one call so validators see only the final state, not intermediate field assignments.
+            args = {k: getattr(self.matrix, k) for k in self.matrix.model_fields_set}
+            args["parent"] = self
+            updates = {
+                "namePattern": name_pattern,
+                "subpath": subpath,
+                "dependencyConstraints": dependency_constraints,
+                "dependencies": dependencies,
+                "values": values,
+            }
+            args.update({k: v for k, v in updates.items() if v is not None})
+            self.matrix = ImageMatrix(**args)
 
         return self.matrix
 

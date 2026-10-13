@@ -447,6 +447,29 @@ images:
         assert not selection.full
         assert "connect-content" not in selection.images
 
+    def test_matrix_dependency_build_arg_name_change_sets_include_matrix_latest(self):
+        old = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+"""
+        new = """
+images:
+  - name: connect-content
+    matrix:
+      dependencies:
+        - dependency: python
+          versions: ["3.12.1"]
+          buildArgName: PY_VER
+"""
+        selection = classify_bakery_yaml_diff(old, new)
+
+        assert not selection.full
+        assert selection.images["connect-content"].include_matrix_latest
+
     def test_matrix_whole_dependency_axis_added_sets_include_matrix_latest(self):
         old = """
 images:

@@ -166,6 +166,8 @@ def _matrix_needs_rebuild(old_image: dict, new_image: dict) -> bool:
         old_dep = old_deps.get(name)
         if old_dep is None:
             return True  # A whole new dependency axis changes the matrix's shape.
+        if new_dep.get("buildArgName") != old_dep.get("buildArgName"):
+            return True  # Same versions, but passed to the build under a different arg name.
         if set(_dependency_versions(new_dep)) - set(_dependency_versions(old_dep)):
             return True  # At least one value added to this axis.
 
