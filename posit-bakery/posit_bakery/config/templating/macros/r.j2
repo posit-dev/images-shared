@@ -104,6 +104,18 @@ https://p3m.dev/cran/latest
 {{ get_version_directory(version | trim) }}/bin/R --vanilla -e '{{ expression | trim | safe }}'
 {%- endmacro %}
 
+{# Returns an R expression that installs packages and fails if any of them cannot be loaded afterwards.
+
+install.packages() only warns when a package fails to download or install, so R would exit 0 and the
+build would silently continue. Checking requireNamespace() after installing turns any failure into an error.
+
+:param packages_expr: An R expression evaluating to a character vector of package names, e.g. 'c("dplyr")'
+:param repo_url: The quoted CRAN repository URL to install from
+#}
+{% macro install_and_verify_expression(packages_expr, repo_url) -%}
+pkgs <- {{ packages_expr | safe }}; install.packages(pkgs, repos={{ repo_url | safe }}, clean = TRUE); failed <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(failed)) stop("Failed to install R packages: ", paste(failed, collapse = ", "))
+{%- endmacro %}
+
 {# Installs one or more R packages from a list of packages or a comma separated string of packages
 
 :param version: The R version to install packages to, e.g. "4.4.3"
@@ -119,8 +131,7 @@ https://p3m.dev/cran/latest
 {%- set package_string_list = packages | map('trim') | map('quote') | join(', ') -%}
 {%- set package_array = 'c(' + package_string_list | safe + ')' -%}
 {%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
-{%- set expr = 'install.packages(' + package_array + ', repos=' + repo_url + ', clean = TRUE)' -%}
-{{ r_expression(version, expr) }}
+{{ r_expression(version, install_and_verify_expression(package_array, repo_url)) }}
 {%- endmacro %}
 
 {# Installs one or more R packages from a text file containing a line separated list of packages
@@ -135,10 +146,9 @@ https://p3m.dev/cran/latest
 #}
 {% macro install_packages_from_file(version, package_list_file, _os = None) -%}
 {%- set package_list_file = package_list_file | quote | safe %}
-{%- set file_readlines = 'readLines(' + package_list_file + ')' -%}
+{%- set file_readlines = 'Filter(nzchar, trimws(readLines(' + package_list_file + ')))' -%}
 {%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
-{%- set expr = 'install.packages(' + file_readlines + ', repos=' + repo_url + ', clean = TRUE)' -%}
-{{ r_expression(version, expr | safe) }}
+{{ r_expression(version, install_and_verify_expression(file_readlines, repo_url)) }}
 {%- endmacro %}
 
 {# Installs one or more R packages and/or text files containing line separated lists of R packages to install to a
