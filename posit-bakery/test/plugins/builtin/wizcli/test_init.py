@@ -255,6 +255,48 @@ class TestWizcliTag:
         assert result.exit_code == 1
         assert "tag failed" in result.output
 
+    def _invoke_tag(self, metadata_file: Path):
+        with patch("posit_bakery.plugins.builtin.wizcli.tag_published_repositories", return_value=[]) as tag_images:
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "tag",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-name",
+                    "^test-image$",
+                    "--image-version",
+                    "1.0.0",
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    str(metadata_file),
+                ],
+                catch_exceptions=False,
+            )
+        return result, tag_images
+
+    def test_tags_only_targets_in_metadata_file(self, tmp_path):
+        metadata = json.loads(Path(BASIC_METADATA).read_text())
+        uid = "test-image-1-0-0-standard-ubuntu-22-04"
+        partial = tmp_path / "partial.json"
+        partial.write_text(json.dumps({uid: metadata[uid]}))
+
+        result, tag_images = self._invoke_tag(partial)
+
+        assert result.exit_code == 0, result.stdout
+        assert [t.uid for t in tag_images.call_args.args[1]] == [uid]
+
+    def test_no_matching_targets_in_metadata_file_exits_nonzero(self, tmp_path):
+        empty = tmp_path / "empty.json"
+        empty.write_text("{}")
+
+        result, tag_images = self._invoke_tag(empty)
+
+        assert result.exit_code == 1
+        tag_images.assert_not_called()
+
 
 class TestWizcliScanDevSpec:
     """--dev-spec is accepted and parsed; this option previously did not exist."""
