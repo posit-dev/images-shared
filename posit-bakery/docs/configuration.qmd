@@ -420,6 +420,7 @@ At the image level, these are specified through a VersionConstraint.
 |------------------------------------------------------------|----------------------------------------------------------|---------------|--------------------------------------|
 | `dependency`<br/>*string*                                  | *(Required)* The name of the dependency.                 |               | `R`, `python`, `quarto`              |
 | `constraint`<br/>*[VersionConstraint](#versionconstraint)* | *(Required)* Constraints to apply to calculate versions. |               | <pre>latest: true<br/>count: 2</pre> |
+| `buildArgName`<br/>*string*                                | Build arg name the version is passed as in [ImageMatrix](#imagematrix) builds. Must be unique within the matrix. | `<DEPENDENCY>_VERSION` | `R_VER`, `PY_VERSION`       |
 
 ::: {.callout-note}
 The `quarto` and `positron` dependency types support an additional `prerelease` field (default: `false`).
@@ -527,8 +528,20 @@ At the version level, dependency versions are specified explicitly.
 | `dependency`<br/>*string*     | *(Required)* The name of the dependency. |               | `R`, `python`, `quarto`            |
 | `version`<br/>*string*        | Single exact version                     |               | `3.13.7`                           |
 | `versions`<br/>*string array* | An array of explicit, exact versions     |               | <pre>- "4.5.1"<br/>- "4.4.3"</pre> |
+| `buildArgName`<br/>*string*   | Build arg name the version is passed as in [ImageMatrix](#imagematrix) builds. Must be unique within the matrix. Ignored outside matrices. | `<DEPENDENCY>_VERSION` (e.g. `R_VERSION`) | `R_VER` |
 
 You must specify either `version` or `versions`.
+
+In matrix builds, each dependency's version is passed to the build as `<DEPENDENCY>_VERSION` (e.g. `R_VERSION`,
+`PYTHON_VERSION`) unless `buildArgName` overrides it. Matrix `values` are passed as their upper-cased key.
+
+```yaml
+matrix:
+  dependencies:
+    - dependency: R
+      versions: ["4.5.1", "4.4.3"]
+      buildArgName: R_VER  # passed as --build-arg R_VER=4.5.1
+```
 
 #### Example Dependency Version List
 

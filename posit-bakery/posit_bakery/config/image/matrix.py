@@ -334,6 +334,22 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_unique_build_arg_names(self) -> Self:
+        """Ensures that no two dependencies or values map to the same build arg name.
+
+        :raises ValueError: If a build arg name is used more than once.
+        """
+        names = [d.build_arg_name for d in [*self.dependencies, *self.dependencyConstraints]]
+        names += [key.upper() for key in self.values]
+        duplicates = sorted({n for n in names if names.count(n) > 1})
+        if duplicates:
+            raise ValueError(
+                f"Duplicate build arg names for image matrix with name pattern '{self.namePattern}': "
+                f"{', '.join(duplicates)}"
+            )
+        return self
+
     @property
     def path(self) -> Path | None:
         """Returns the path to the image version directory.
@@ -679,7 +695,9 @@ class ImageMatrix(BakeryPathMixin, BakeryYAMLModel):
             dependency_versions = []
             for version in dependency.versions:
                 dependency_versions.append(
-                    dependency_version_class(dependency=dependency.dependency, versions=[version])
+                    dependency_version_class(
+                        dependency=dependency.dependency, versions=[version], buildArgName=dependency.buildArgName
+                    )
                 )
             flattened.append(dependency_versions)
         return flattened

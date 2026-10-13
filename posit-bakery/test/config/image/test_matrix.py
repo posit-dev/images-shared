@@ -1,6 +1,6 @@
 import stat
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -15,6 +15,7 @@ from posit_bakery.config.dependencies import (
     RDependencyConstraint,
     QuartoDependencyConstraint,
 )
+from posit_bakery.config.dependencies.version import DependencyVersion
 from posit_bakery.config.image.matrix import generate_default_name_pattern, ImageMatrix, DEFAULT_MATRIX_SUBPATH
 from posit_bakery.config.repository import Repository
 from posit_bakery.image.image_target import ImageTarget
@@ -281,6 +282,47 @@ class TestImageMatrix:
                     {"dependency": "R", "versions": ["4.3.0"]},  # Duplicate dependency
                 ],
             )
+
+    def test_build_arg_name_override_propagates(self):
+        """Test buildArgName is kept on each flattened single-version dependency."""
+        flattened = ImageMatrix._flatten_dependencies(
+            [RDependencyVersions(versions=["4.2.3", "4.3.3"], buildArgName="R_VER")]
+        )
+        assert [d.build_arg_name for d in flattened[0]] == ["R_VER", "R_VER"]
+
+    def test_build_arg_name_constraint_propagates(self):
+        """Test buildArgName on a constraint survives version resolution."""
+        constraint = RDependencyConstraint(constraint={"latest": True, "count": 1}, buildArgName="R_VER")
+        with patch.object(RDependencyConstraint, "available_versions", return_value=[DependencyVersion("4.3.3")]):
+            assert constraint.resolve_versions().build_arg_name == "R_VER"
+
+    @pytest.mark.parametrize(
+        "dependencies,values",
+        [
+            pytest.param(
+                [
+                    {"dependency": "R", "versions": ["4.3.3"], "buildArgName": "PYTHON_VERSION"},
+                    {"dependency": "python", "versions": ["3.13.7"]},
+                ],
+                {},
+                id="dependency-collision",
+            ),
+            pytest.param(
+                [{"dependency": "R", "versions": ["4.3.3"], "buildArgName": "GO_VERSION"}],
+                {"go_version": ["1.24"]},
+                id="value-collision",
+            ),
+        ],
+    )
+    def test_check_unique_build_arg_names(self, dependencies, values):
+        """Test an error is raised if two matrix axes map to the same build arg name."""
+        with pytest.raises(ValidationError, match="Duplicate build arg names"):
+            ImageMatrix(dependencies=dependencies, values=values, namePattern="test")
+
+    def test_build_arg_name_invalid(self):
+        """Test an invalid buildArgName is rejected."""
+        with pytest.raises(ValidationError):
+            RDependencyVersions(versions=["4.3.3"], buildArgName="R-VERSION")
 
     def test_extra_registries_or_override_registries(self):
         """Test that only one of extraRegistries or overrideRegistries can be defined."""
