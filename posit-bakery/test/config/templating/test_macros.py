@@ -271,7 +271,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     apt-get update -yqq && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*"""
                 ),
@@ -282,7 +282,7 @@ class TestAptMacros:
                 True,
                 textwrap.dedent(
                     """\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*"""
                 ),
@@ -294,7 +294,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     apt-get update -yqq && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends"""
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends"""
                 ),
                 id="update-noclean",
             ),
@@ -303,7 +303,7 @@ class TestAptMacros:
                 False,
                 textwrap.dedent(
                     """\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends"""
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends"""
                 ),
                 id="noupdate-noclean",
             ),
@@ -342,6 +342,10 @@ class TestAptMacros:
         package_file.unlink()
         assert subprocess.run(["sh", "-c", command], capture_output=True).returncode != 0
 
+        # A directory at the path fails instead of silently installing nothing.
+        package_file.mkdir()
+        assert subprocess.run(["sh", "-c", command], capture_output=True).returncode != 0
+
     @pytest.mark.parametrize(
         "input,expected",
         [
@@ -355,7 +359,7 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -372,8 +376,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
-                    test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -390,8 +394,8 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
-                    test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -419,7 +423,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     apt-get update -yqq && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -431,7 +435,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     apt-get update -yqq && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -447,7 +451,7 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/*
                     """
@@ -464,7 +468,7 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends
 
                     """
                 ),
@@ -479,7 +483,7 @@ class TestAptMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends
 
                     """
                 ),
@@ -505,7 +509,7 @@ class TestAptMacros:
                             ca-certificates \\
                             gnupg \\
                             tar && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     """
@@ -522,8 +526,8 @@ class TestAptMacros:
                             ca-certificates \\
                             gnupg \\
                             tar && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
-                        test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     """
@@ -540,8 +544,8 @@ class TestAptMacros:
                             ca-certificates \\
                             gnupg \\
                             tar && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
-                        test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     """
@@ -569,7 +573,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     RUN apt-get update -yqq && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     """
@@ -581,7 +585,7 @@ class TestAptMacros:
                 textwrap.dedent(
                     """\
                     RUN apt-get update -yqq && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/*
                     """
@@ -1027,7 +1031,7 @@ class TestDnfMacros:
                 True,
                 textwrap.dedent(
                     """\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
                     dnf clean all -yq
                     """
                 ),
@@ -1037,7 +1041,7 @@ class TestDnfMacros:
                 False,
                 textwrap.dedent(
                     """\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq
                     """
                 ),
                 id="noclean",
@@ -1064,7 +1068,7 @@ class TestDnfMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
                     dnf clean all -yq
                     """
                 ),
@@ -1079,8 +1083,8 @@ class TestDnfMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
-                    test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r dnf install -yq && \\
                     dnf clean all -yq
                     """
                 ),
@@ -1095,8 +1099,8 @@ class TestDnfMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
-                    test -r /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/optional.txt && sed 's/#.*//' /tmp/optional.txt | xargs -r dnf install -yq && \\
                     dnf clean all -yq
                     """
                 ),
@@ -1120,7 +1124,7 @@ class TestDnfMacros:
                 (None, "'/tmp/packages.txt'", True),
                 textwrap.dedent(
                     """\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
                     dnf clean all -yq
                     """
                 ),
@@ -1135,7 +1139,7 @@ class TestDnfMacros:
                         ca-certificates \\
                         gnupg \\
                         tar && \\
-                    test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq
+                    test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq
 
                     """
                 ),
@@ -1160,7 +1164,7 @@ class TestDnfMacros:
                             ca-certificates \\
                             gnupg \\
                             tar && \\
-                        test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                        test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
                         dnf clean all -yq
                     """
                 ),
@@ -1184,7 +1188,7 @@ class TestDnfMacros:
                 (None, "'/tmp/packages.txt'"),
                 textwrap.dedent(
                     """\
-                    RUN test -r /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
+                    RUN test -f /tmp/packages.txt && sed 's/#.*//' /tmp/packages.txt | xargs -r dnf install -yq && \\
                         dnf clean all -yq
                     """
                 ),

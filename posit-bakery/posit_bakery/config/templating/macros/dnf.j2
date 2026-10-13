@@ -67,7 +67,7 @@ dnf install {{ global_options }} \
 :param clean: Whether to clean the dnf cache after installation. Defaults to True.
 #}
 {% macro install_packages_from_file(file, clean = True) -%}
-test -r {{ file }} && sed 's/#.*//' {{ file }} | xargs -r dnf install {{ global_options }}{% if clean %} && \{%- endif %}
+test -f {{ file }} && sed 's/#.*//' {{ file }} | xargs -r dnf install {{ global_options }}{% if clean %} && \{%- endif %}
 {%- if clean %}
 {{ clean_command() }}
 {%- endif %}
