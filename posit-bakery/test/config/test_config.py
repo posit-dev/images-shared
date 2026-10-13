@@ -1430,7 +1430,7 @@ class TestBakeryConfig:
 
             COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
             RUN apt-get update -yqq && \\
-                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                test -r /tmp/ubuntu2204_packages.txt && sed 's/#.*//' /tmp/ubuntu2204_packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
         """)
@@ -1481,13 +1481,13 @@ class TestBakeryConfig:
 
             COPY test-image/1.0.1/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
             RUN apt-get update -yqq && \\
-                xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \\
+                test -r /tmp/ubuntu2204_packages.txt && sed 's/#.*//' /tmp/ubuntu2204_packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
 
             COPY test-image/1.0.1/deps/ubuntu2204_optional_packages.txt /tmp/ubuntu2204_optional_packages.txt
             RUN apt-get update -yqq && \\
-                xargs -a /tmp/ubuntu2204_optional_packages.txt apt-get install -yqq --no-install-recommends && \\
+                test -r /tmp/ubuntu2204_optional_packages.txt && sed 's/#.*//' /tmp/ubuntu2204_optional_packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \\
                 apt-get clean -yqq && \\
                 rm -rf /var/lib/apt/lists/*
 

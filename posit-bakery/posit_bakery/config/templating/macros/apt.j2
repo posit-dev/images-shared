@@ -119,14 +119,14 @@ apt-get install {{ global_options }} --no-install-recommends \
 
 {# Commands to install packages from a file containing a line separated list of packages.
 
-:param file: The file containing the line separated list of packages to install.
+:param file: The file containing the line separated list of packages to install. `#` comments and blank lines are ignored.
 :param clean: Whether to clean the apt cache after installation. Defaults to True.
 #}
 {% macro install_packages_from_file(file, update = True, clean = True) -%}
 {% if update -%}
 apt-get update {{ global_options }} && \
 {% endif -%}
-xargs -a {{ file | trim }} apt-get install {{ global_options }} --no-install-recommends{% if clean %} && \{% endif %}
+test -r {{ file | trim }} && sed 's/#.*//' {{ file | trim }} | xargs -r apt-get install {{ global_options }} --no-install-recommends{% if clean %} && \{% endif %}
 {%- if clean %}
 {{ clean_command() }}
 {%- endif -%}

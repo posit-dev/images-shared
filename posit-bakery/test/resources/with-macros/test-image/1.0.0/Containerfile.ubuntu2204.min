@@ -29,6 +29,6 @@ ENV LC_ALL=en_US.UTF-8
 
 COPY test-image/1.0.0/deps/ubuntu2204_packages.txt /tmp/ubuntu2204_packages.txt
 RUN apt-get update -yqq && \
-    xargs -a /tmp/ubuntu2204_packages.txt apt-get install -yqq --no-install-recommends && \
+    test -r /tmp/ubuntu2204_packages.txt && sed 's/#.*//' /tmp/ubuntu2204_packages.txt | xargs -r apt-get install -yqq --no-install-recommends && \
     apt-get clean -yqq && \
     rm -rf /var/lib/apt/lists/*
