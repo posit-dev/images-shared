@@ -1,0 +1,134 @@
+name: Deprecate Editions
+
+on:
+  workflow_call:
+    inputs:
+      images:
+        description: "Space-separated list of versioned image names to deprecate"
+        required: true
+        type: string
+      update-positron-min:
+        description: "Update workbench-positron-init min constraint to the cutoff edition"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CLIENT_ID:
+        description: "GitHub App client ID for creating tokens"
+        required: true
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key for creating tokens"
+        required: true
+
+# Security policy: No ${{ }} expressions in `run:` blocks.
+# All expression values are assigned to `env:` and referenced as
+# shell variables. This prevents script injection from runtime values
+# and keeps the rule enforceable by zizmor without per-expression exceptions.
+
+jobs:
+  deprecate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: GitHub App Token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install bakery
+        uses: posit-dev/images-shared/setup-bakery@main
+
+      - name: Find and remove expired editions
+        id: remove
+        env:
+          IMAGES: ${{ inputs.images }}
+        run: |
+          # Compute cutoff: the edition exactly 18 months before the current
+          # month. An edition YYYY.MM expires on the last day of
+          # (YYYY.MM + 18 months), so on the 1st of the following month it
+          # should be removed.
+          CUTOFF=$(python3 -c "
+          import datetime
+          today = datetime.date.today()
+          total = today.year * 12 + (today.month - 1) - 18
+          year, month = divmod(total, 12)
+          print(f'{year}.{month + 1:02d}')
+          ")
+          echo "cutoff=${CUTOFF}" >> "$GITHUB_OUTPUT"
+
+          cat > /tmp/remove_expired.py << 'PYEOF'
+          import yaml, os, sys, subprocess
+
+          cutoff = os.environ["CUTOFF"]
+          images = os.environ["IMAGES"].split()
+
+          with open("bakery.yaml") as f:
+              config = yaml.safe_load(f)
+
+          for img in config.get("images", []):
+              name = img.get("name")
+              if name not in images:
+                  continue
+              for ver in img.get("versions", []):
+                  subpath = ver.get("subpath", "")
+                  # Only act on YYYY.MM-format subpaths strictly older than the cutoff.
+                  if (
+                      subpath
+                      and len(subpath) == 7
+                      and subpath[4] == "."
+                      and subpath < cutoff
+                  ):
+                      print(f"Removing {name} {ver['name']}", file=sys.stderr)
+                      subprocess.run(
+                          ["bakery", "remove", "version", name, ver["name"]],
+                          check=True,
+                      )
+          PYEOF
+
+          CUTOFF="$CUTOFF" uv run --with pyyaml python3 /tmp/remove_expired.py
+
+      - name: Update positron min
+        if: inputs.update-positron-min
+        env:
+          CUTOFF: ${{ steps.remove.outputs.cutoff }}
+        run: |
+          # Case 1 (first run): replace count: N with min: "CUTOFF"
+          sed -i "s/count: [0-9][0-9]*/min: \"${CUTOFF}\"/" bakery.yaml
+          # Case 2 (subsequent runs): update existing min: "YYYY.MM" to new cutoff.
+          # The YYYY.MM pattern won't match R/Python mins like "4.2" or "3.10".
+          sed -i "s/min: \"[0-9]\{4\}\.[0-9]\{2\}\"/min: \"${CUTOFF}\"/" bakery.yaml
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CUTOFF: ${{ steps.remove.outputs.cutoff }}
+        run: |
+          if git diff --quiet HEAD; then
+            echo "No editions to deprecate."
+            exit 0
+          fi
+
+          BRANCH="deprecate-editions"
+          git fetch origin "$BRANCH" 2>/dev/null || true
+          git checkout -B "$BRANCH"
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Deprecate editions older than ${CUTOFF}"
+          git push -u origin "$BRANCH" --force-with-lease
+
+          gh pr create \
+            --title "Deprecate editions older than ${CUTOFF}" \
+            --body "Removes version entries for editions that have passed their 18-month end-of-support date." \
+            --base main \
+            --head "$BRANCH" \
+          || gh pr edit "$BRANCH" --title "Deprecate editions older than ${CUTOFF}"
