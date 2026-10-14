@@ -140,6 +140,8 @@ class TestImageVersionOS:
             ("RHEL", SUPPORTED_OS["rhel"]["10"]),
             ("RH 9", SUPPORTED_OS["rhel"]["9"]),
             ("EL8", SUPPORTED_OS["rhel"]["8"]),
+            ("UBI 10", SUPPORTED_OS["rhel"]["10"]),
+            ("UBI", SUPPORTED_OS["rhel"]["10"]),
             ("Alma 9", SUPPORTED_OS["alma"]["9"]),
             ("AlmaLinux 8", SUPPORTED_OS["alma"]["8"]),
             ("Alma Linux", SUPPORTED_OS["alma"]["10"]),
