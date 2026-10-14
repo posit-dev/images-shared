@@ -378,7 +378,7 @@ The macro takes a `_os` argument to specify the target OS. The OS information is
 
 If `clean=True` and `package_list_files` is provided, the files will be removed after installation. Clean is `True` by default.
 
-`install.packages()` alone only warns on failure, so install-failure warnings (non-zero exit status, package not available, failed download) are made fatal; other warnings are left alone. After installing, each package is also checked with `requireNamespace()`, and the command exits non-zero if any package cannot be loaded, failing the build. Blank lines in package list files are ignored.
+`install.packages()` alone only warns on failure, so the expression sets `options(warn = 2)` around `install.packages()`, turning its warnings into errors that fail the build. After installing, each package is also checked with `requireNamespace()`, and the command exits non-zero if any package cannot be loaded, failing the build. Blank lines in package list files are ignored.
 
 ```jinja2
 COPY {{ Path.Version }}/deps/packages.txt /tmp/packages.txt  # Example copy command

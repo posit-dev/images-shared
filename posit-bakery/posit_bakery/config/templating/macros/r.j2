@@ -107,16 +107,15 @@ https://p3m.dev/cran/latest
 {# Returns an R expression that installs packages and fails if any of them cannot be loaded afterwards.
 
 install.packages() only warns when a package fails to download or install, so R would exit 0 and the
-build would silently continue. Install-failure warnings (non-zero exit status, not available, failed
-download) are turned into errors; other warnings stay harmless. The requireNamespace() check afterwards
-catches anything else that left a package unloadable. Warning texts are matched in English, so the build
-locale must not translate R messages.
+build would silently continue. options(warn = 2) turns warnings into errors, but only around
+install.packages() so unrelated warnings (readLines, package .onLoad) stay harmless. The
+requireNamespace() check afterwards catches anything else that left a package unloadable.
 
 :param packages_expr: An R expression evaluating to a character vector of package names, e.g. 'c("dplyr")'
 :param repo_url: The quoted CRAN repository URL to install from
 #}
 {% macro install_and_verify_expression(packages_expr, repo_url) -%}
-pkgs <- {{ packages_expr | safe }}; withCallingHandlers(install.packages(pkgs, repos={{ repo_url | safe }}, clean = TRUE), warning = function(w) if (grepl("non-zero exit status|not available|download of package", conditionMessage(w))) stop(w)); failed <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(failed)) stop("Failed to install R packages: ", paste(failed, collapse = ", "))
+pkgs <- {{ packages_expr | safe }}; old <- options(warn = 2); install.packages(pkgs, repos={{ repo_url | safe }}, clean = TRUE); options(old); failed <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(failed)) stop("Failed to install R packages: ", paste(failed, collapse = ", "))
 {%- endmacro %}
 
 {# Installs one or more R packages from a list of packages or a comma separated string of packages
