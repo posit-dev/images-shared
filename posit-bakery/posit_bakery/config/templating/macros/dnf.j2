@@ -63,11 +63,11 @@ dnf install {{ global_options }} \
 
 {# Commands to install packages from a file containing a line separated list of packages.
 
-:param file: The file containing the line separated list of packages to install.
+:param file: The file containing the line separated list of packages to install. `#` comments and blank lines are ignored.
 :param clean: Whether to clean the dnf cache after installation. Defaults to True.
 #}
 {% macro install_packages_from_file(file, clean = True) -%}
-xargs -a {{ file }} dnf install {{ global_options }}{% if clean %} && \{%- endif %}
+test -f {{ file }} && sed 's/#.*//' {{ file }} | xargs -r dnf install {{ global_options }}{% if clean %} && \{%- endif %}
 {%- if clean %}
 {{ clean_command() }}
 {%- endif %}
