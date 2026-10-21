@@ -18,7 +18,27 @@ class Dependency(BakeryYAMLModel, abc.ABC):
         """Return a list of available versions for the dependency."""
 
 
-class DependencyVersions(BakeryYAMLModel):
+class BuildArgNameMixin(BakeryYAMLModel):
+    """Adds an optional override for the build arg name a dependency is passed as in matrix builds."""
+
+    buildArgName: Annotated[
+        str | None,
+        Field(
+            default=None,
+            pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
+            description="Build arg name to pass the dependency version as in matrix builds. "
+            "Defaults to '<DEPENDENCY>_VERSION' (e.g. 'R_VERSION').",
+        ),
+    ]
+
+    @property
+    def build_arg_name(self) -> str:
+        """Return the build arg name for this dependency, falling back to '<DEPENDENCY>_VERSION'."""
+        # `dependency` is a Literal field on the concrete subclasses; declaring it here would shadow it in the MRO.
+        return self.buildArgName or f"{getattr(self, 'dependency').upper()}_VERSION"
+
+
+class DependencyVersions(BuildArgNameMixin):
     """Class for specifying a list of dependency versions."""
 
     versions: Annotated[
@@ -62,7 +82,7 @@ class DependencyVersions(BakeryYAMLModel):
         return dumped
 
 
-class DependencyConstraint(BakeryYAMLModel):
+class DependencyConstraint(BuildArgNameMixin):
     """Class for specifying a list of dependency version constraints."""
 
     VERSIONS_CLASS: ClassVar[type[DependencyVersions]] = DependencyVersions
@@ -81,7 +101,8 @@ class DependencyConstraint(BakeryYAMLModel):
         Each subclass must implement `available_versions`
         """
         return self.VERSIONS_CLASS(
-            versions=[str(v) for v in self.constraint.resolve_versions(self.available_versions())]
+            versions=[str(v) for v in self.constraint.resolve_versions(self.available_versions())],
+            buildArgName=self.buildArgName,
         )
 
     @model_serializer(mode="wrap")

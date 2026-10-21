@@ -653,6 +653,16 @@ class TestImageTarget:
                 {"PYTHON_VERSION": "3.13.7", "R_VERSION": "4.3.3", "GOLANG_VERSION": "1.25.2"},
                 id="matrix-deps-values",
             ),
+            pytest.param(
+                True,
+                [
+                    PythonDependencyVersions(dependency="python", versions=["3.13.7"], buildArgName="PY_VER"),
+                    RDependencyVersions(dependency="R", versions=["4.3.3"]),
+                ],
+                {},
+                {"PY_VER": "3.13.7", "R_VERSION": "4.3.3"},
+                id="matrix-deps-build-arg-name-override",
+            ),
         ],
     )
     def test_build_args_from_dependencies(self, get_config_obj, is_matrix, dependencies, values, expected_args):
