@@ -82,6 +82,11 @@ on:
         default: true
         required: false
         type: boolean
+      refresh-cache:
+        description: "Rebuild all layers without reading the build cache, but still write fresh layers to the cache registry [default: false]"
+        default: false
+        required: false
+        type: boolean
       max-parallel:
         description: "Maximum number of matrix jobs (build/test and merge) to run simultaneously [default: 0, unlimited]"
         default: 0
@@ -391,12 +396,17 @@ jobs:
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
+          REFRESH_CACHE: ${{ inputs.refresh-cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Cache-to is conditional on --push (handled by bakery internally)
         run: |
           CACHE_FLAGS=()
           if [ "$CACHE" = "true" ]; then
             CACHE_FLAGS=(--cache-registry "$CACHE_REGISTRY")
+          fi
+          # --no-cache skips cache reads only; cache-to still writes fresh layers to the registry
+          if [ "$REFRESH_CACHE" = "true" ]; then
+            CACHE_FLAGS+=(--no-cache)
           fi
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
