@@ -266,7 +266,10 @@ class WizCLIPlugin(BakeryToolPlugin):
             exit_if_no_targets(targets, settings, context="scan")
 
             if metadata_file:
-                load_build_metadata_from_file(targets, metadata_file)
+                # Scan only the targets present in the metadata file, not every configured target.
+                loaded = load_build_metadata_from_file(targets, metadata_file)
+                targets = [t for t in targets if t.uid in loaded]
+                exit_if_no_targets(targets, settings, context="scan")
 
             results = plugin.execute(
                 c.base_path,
@@ -415,7 +418,9 @@ class WizCLIPlugin(BakeryToolPlugin):
             c = BakeryConfig.from_context(context, settings)
             targets = select_targets(c, settings)
             exit_if_no_targets(targets, settings, context="tag")
-            load_build_metadata_from_file(targets, metadata_file)
+            loaded = load_build_metadata_from_file(targets, metadata_file)
+            targets = [t for t in targets if t.uid in loaded]
+            exit_if_no_targets(targets, settings, context="tag")
 
             failures = tag_published_repositories(
                 c.base_path,

@@ -5,6 +5,7 @@ BakeryConfig and the plugin's execute/results so the CLI can run end-to-end
 without wizcli installed or any built images.
 """
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -152,6 +153,53 @@ class TestWizcliScanPoliciesProjectsFlags:
         assert mock_execute.call_args.kwargs["projects"] is None
 
 
+class TestWizcliScanMetadataFile:
+    """--metadata-file restricts the scan to the targets it contains (#684)."""
+
+    def _invoke(self, metadata_file: Path):
+        with (
+            patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.execute", return_value=[]) as mock_execute,
+            patch("posit_bakery.plugins.builtin.wizcli.WizCLIPlugin.results"),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "scan",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    str(metadata_file),
+                ],
+                catch_exceptions=False,
+            )
+        return result, mock_execute
+
+    def test_scans_only_targets_in_metadata_file(self, tmp_path):
+        metadata = json.loads(Path(BASIC_METADATA).read_text())
+        uid = "test-image-1-0-0-standard-ubuntu-22-04"
+        partial = tmp_path / "partial.json"
+        partial.write_text(json.dumps({uid: metadata[uid]}))
+
+        result, mock_execute = self._invoke(partial)
+
+        assert result.exit_code == 0, result.stdout
+        scanned = mock_execute.call_args.args[1]
+        assert [t.uid for t in scanned] == [uid]
+        assert scanned[0].build_metadata
+
+    def test_no_matching_targets_in_metadata_file_exits_nonzero(self, tmp_path):
+        empty = tmp_path / "empty.json"
+        empty.write_text("{}")
+
+        result, mock_execute = self._invoke(empty)
+
+        assert result.exit_code == 1
+        mock_execute.assert_not_called()
+
+
 class TestWizcliTag:
     def test_loads_matching_metadata_and_tags_requested_platform(self):
         with patch("posit_bakery.plugins.builtin.wizcli.tag_published_repositories", return_value=[]) as tag_images:
@@ -206,6 +254,48 @@ class TestWizcliTag:
 
         assert result.exit_code == 1
         assert "tag failed" in result.output
+
+    def _invoke_tag(self, metadata_file: Path):
+        with patch("posit_bakery.plugins.builtin.wizcli.tag_published_repositories", return_value=[]) as tag_images:
+            result = runner.invoke(
+                app,
+                [
+                    "wizcli",
+                    "tag",
+                    "--context",
+                    BASIC_CONTEXT,
+                    "--image-name",
+                    "^test-image$",
+                    "--image-version",
+                    "1.0.0",
+                    "--image-platform",
+                    "linux/amd64",
+                    "--metadata-file",
+                    str(metadata_file),
+                ],
+                catch_exceptions=False,
+            )
+        return result, tag_images
+
+    def test_tags_only_targets_in_metadata_file(self, tmp_path):
+        metadata = json.loads(Path(BASIC_METADATA).read_text())
+        uid = "test-image-1-0-0-standard-ubuntu-22-04"
+        partial = tmp_path / "partial.json"
+        partial.write_text(json.dumps({uid: metadata[uid]}))
+
+        result, tag_images = self._invoke_tag(partial)
+
+        assert result.exit_code == 0, result.stdout
+        assert [t.uid for t in tag_images.call_args.args[1]] == [uid]
+
+    def test_no_matching_targets_in_metadata_file_exits_nonzero(self, tmp_path):
+        empty = tmp_path / "empty.json"
+        empty.write_text("{}")
+
+        result, tag_images = self._invoke_tag(empty)
+
+        assert result.exit_code == 1
+        tag_images.assert_not_called()
 
 
 class TestWizcliScanDevSpec:
