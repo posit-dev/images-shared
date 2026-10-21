@@ -87,6 +87,11 @@ on:
         default: false
         required: false
         type: boolean
+      monthly-cache-refresh:
+        description: "Treat scheduled runs in the first 7 days of the month (UTC) as refresh-cache runs. Meant for weekly schedules [default: false]"
+        default: false
+        required: false
+        type: boolean
       max-parallel:
         description: "Maximum number of matrix jobs (build/test and merge) to run simultaneously [default: 0, unlimited]"
         default: 0
@@ -167,8 +172,35 @@ jobs:
     outputs:
       platform-matrix: ${{ steps.images-by-platform.outputs.platform_matrix }}
       image-matrix: ${{ steps.images-by-platform.outputs.image_matrix }}
+      refresh-cache: ${{ steps.cache-refresh.outputs.refresh-cache }}
 
     steps:
+      # Evaluated once here so every build leg agrees, even if the run crosses midnight.
+      - name: Resolve cache refresh
+        id: cache-refresh
+        env:
+          REFRESH_CACHE: ${{ inputs.refresh-cache }}
+          MONTHLY_CACHE_REFRESH: ${{ inputs.monthly-cache-refresh }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          REFRESH=false
+          REASON=""
+          DAY=$(date -u +%-d)
+          if [ "$REFRESH_CACHE" = "true" ]; then
+            REFRESH=true
+            REASON="the refresh-cache input is true"
+          elif [ "$MONTHLY_CACHE_REFRESH" = "true" ] && [ "$EVENT_NAME" = "schedule" ] && [ "$DAY" -le 7 ]; then
+            # A weekly cron fires exactly once in days 1-7 of any month.
+            REFRESH=true
+            REASON="monthly-cache-refresh is on and this is the first scheduled run of the month (UTC day $DAY)"
+          fi
+          echo "refresh-cache=$REFRESH" >> "$GITHUB_OUTPUT"
+          if [ "$REFRESH" = "true" ]; then
+            MSG="Cache refresh: building every layer with --no-cache and writing fresh layers to the cache registry, because $REASON."
+            echo "::notice title=Cache refresh::$MSG"
+            echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -396,7 +428,7 @@ jobs:
           NORMALIZED_PLATFORM: ${{ steps.normalize-platform.outputs.platform }}
           CONTEXT: ${{ inputs.context }}
           CACHE: ${{ inputs.cache }}
-          REFRESH_CACHE: ${{ inputs.refresh-cache }}
+          REFRESH_CACHE: ${{ needs.matrix.outputs.refresh-cache }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Cache-to is conditional on --push (handled by bakery internally)
         run: |

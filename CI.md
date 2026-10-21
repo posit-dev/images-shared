@@ -101,6 +101,8 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `push` | No | `false` | Push merged manifests to Docker Hub, GHCR, and Amazon Elastic Container Registry (ECR). |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
+| `refresh-cache` | No | `false` | Build every layer with `--no-cache` but still write fresh layers to the cache registry. See [Cache refresh](#cache-refresh). |
+| `monthly-cache-refresh` | No | `false` | Treat the first scheduled run of each month as a `refresh-cache` run. Meant for weekly schedules. See [Cache refresh](#cache-refresh). |
 | `max-parallel` | No | `0` | Cap on simultaneous build/test and merge matrix jobs. `0` means unlimited. |
 | `merge-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for the merge job. |
 | `amd64-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for amd64 build jobs. |
@@ -143,7 +145,24 @@ jobs:
       dev-versions: "exclude"
       matrix-versions: "exclude"
       push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+      refresh-cache: ${{ inputs.refresh-cache || false }}
+      monthly-cache-refresh: true
 ```
+
+### Cache refresh
+
+Every template's first `RUN` does `apt-get update && apt-get upgrade`. BuildKit reuses that layer from the registry cache while the base image digest is unchanged, so cached builds can ship OS packages that are weeks old (#852).
+
+- **`refresh-cache: true`** passes `--no-cache` to `bakery build` but keeps `--cache-registry`. Nothing is read from the cache, and the fresh layers are written back, so later cached builds reuse them.
+- **`monthly-cache-refresh: true`** turns on `refresh-cache` for a run when the triggering event is `schedule` and the UTC day of the month is 1-7. A weekly cron fires exactly once in that window, so the first weekly run of each month refreshes the cache and the rest of the month reuses it. Callers keep a single weekly cron; there is no second cron to duplicate or race with.
+
+The `matrix` job decides once and passes the result to every build job as a job output, so all legs agree even if the run crosses midnight. When a run refreshes, the `matrix` job logs a `Cache refresh` notice with the reason and adds it to the run summary.
+
+Limits:
+
+- The rule assumes at most one scheduled run per week. On a daily schedule it would refresh on 7 days each month, so don't turn it on for daily `development.yml` workflows.
+- "First 7 days" uses the UTC date when the `matrix` job starts. If a cron set close to midnight UTC starts late and crosses into the next day, that month can get no refresh or two. The product crons run between 01:15 and 03:45 UTC on Sundays, so this is unlikely.
+- The cache is written only when the build pushes with `--cache-registry`. A workflow that never writes its cache gets nothing from this. That is why `bakery-build.yml` (its Push step has no `--cache-registry`) has no `monthly-cache-refresh` input.
 
 ### Workflow steps
 
@@ -206,6 +225,7 @@ Builds, tests, and optionally pushes images on a single runner using QEMU for cr
 | `push` | No | `false` | Push images to registries. |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
+| `refresh-cache` | No | `false` | Build every layer with `--no-cache`. This workflow's Push step does not pass `--cache-registry`, so it never writes the registry cache and the fresh layers are not kept for later runs. |
 | `runs-on` | No | `ubuntu-latest` | Runner label for build jobs. |
 | `aws-region` | No | `us-east-2` | AWS region for ECR login. |
 
