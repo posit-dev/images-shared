@@ -102,7 +102,7 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
 | `max-parallel` | No | `0` | Cap on simultaneous build/test and merge matrix jobs. `0` means unlimited. |
-| `merge-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for the merge job. |
+| `merge-builder` | No | `ubuntu-latest-amd64-8-core` | Runner label for the merge job. Publish runs one worker per core. |
 | `amd64-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for amd64 build jobs. |
 | `arm64-builder` | No | `ubuntu-24-arm64-4-core` | Runner label for arm64 build jobs. |
 | `aws-region` | No | `us-east-2` | AWS region for ECR login. |
