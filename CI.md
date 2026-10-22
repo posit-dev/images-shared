@@ -95,8 +95,7 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `context` | No | `.` | Path to the bakery context (project root). |
 | `dev-versions` | No | `exclude` | Dev version filter. One of `include`, `exclude`, `only`. |
 | `matrix-versions` | No | `exclude` | Matrix version filter (e.g., R × Python content or session images). One of `include`, `exclude`, `only`. |
-| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. |
-| `all-versions` | No | `false` | Build all release versions, ignoring `recent`. Lets a caller keep `recent: 3` and pass `all-versions: ${{ inputs.all-versions \|\| false }}` from a dispatch input. |
+| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. To build all versions from a dispatch input, set `recent: ${{ fromJSON(inputs.all-versions && '0' \|\| '3') }}` (a bare `inputs.all-versions && 0 \|\| 3` evaluates to 3 because `0` is falsy). |
 | `image-version` | No | `""` | Filter to a specific image version. Bakery strips a leading `v` automatically. |
 | `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
 | `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
@@ -203,8 +202,7 @@ Builds, tests, and optionally pushes images on a single runner using QEMU for cr
 | `context` | No | `.` | Path to the bakery context. |
 | `dev-versions` | No | `exclude` | Dev version filter (`include`, `exclude`, `only`). |
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
-| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. |
-| `all-versions` | No | `false` | Build all release versions, ignoring `recent`. Lets a caller keep `recent: 3` and pass `all-versions: ${{ inputs.all-versions \|\| false }}` from a dispatch input. |
+| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. To build all versions from a dispatch input, set `recent: ${{ fromJSON(inputs.all-versions && '0' \|\| '3') }}` (a bare `inputs.all-versions && 0 \|\| 3` evaluates to 3 because `0` is falsy). |
 | `image-version` | No | `""` | Filter to a specific image version. Leading `v` is stripped. |
 | `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
 | `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
