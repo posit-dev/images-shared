@@ -2582,37 +2582,37 @@ class TestRMacros:
         [
             pytest.param(
                 None,
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="no-os",
             ),
             pytest.param(
                 {"Name": "gentoo"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="unsupported-os",
             ),
             pytest.param(
                 {"Name": "ubuntu", "Codename": "jammy"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="ubuntu-jammy",
             ),
             pytest.param(
                 {"Name": "ubuntu", "Codename": "noble"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="ubuntu-noble",
             ),
             pytest.param(
                 {"Name": "debian", "Codename": "bookworm"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="debian-bookworm",
             ),
             pytest.param(
                 {"Name": "debian", "Codename": "trixie"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="debian-trixie",
             ),
             pytest.param(
                 {"Name": "rhel", "Version": "8"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "odbc"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="rhel-8",
             ),
         ],
@@ -2671,22 +2671,22 @@ class TestRMacros:
         [
             pytest.param(
                 ("'4.4.3'", ["dplyr"], None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="single-package-list",
             ),
             pytest.param(
                 ("'4.4.3'", "'dplyr'", None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="single-package-string",
             ),
             pytest.param(
                 ("'4.4.3'", ["dplyr", "ggplot2"], None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="multi-package-list",
             ),
             pytest.param(
                 ("'4.4.3'", "'dplyr,ggplot2'", None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\'',
                 id="multi-package-string",
             ),
         ],
@@ -2704,7 +2704,7 @@ class TestRMacros:
             {%- import "r.j2" as r -%}
             {{ r.install_packages_from_file("4.4.3", "/tmp/packages.txt") }}"""
         )
-        expected = '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)\''
+        expected = '/opt/R/4.4.3/bin/R --vanilla -e \'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))\''
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -2715,7 +2715,7 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot2"], None, None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
 
                     """
                 ),
@@ -2725,7 +2725,7 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2735,7 +2735,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2745,7 +2745,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="single-file-string-noclean",
@@ -2754,8 +2754,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                     rm -f /tmp/packages.txt /tmp/extra.txt
                     """
                 ),
@@ -2765,8 +2765,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                     rm -f /tmp/packages.txt /tmp/extra.txt
                     """
                 ),
@@ -2776,8 +2776,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="multi-file-list-noclean",
@@ -2786,8 +2786,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="multi-file-string-noclean",
@@ -2796,8 +2796,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2807,8 +2807,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="packages-and-file-list-noclean",
@@ -2827,7 +2827,7 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="only-packages-list",
@@ -2836,9 +2836,9 @@ class TestRMacros:
                 ("'4.4.3,4.3.3'", ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
 
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="multi-version-string-packages-list",
@@ -2847,9 +2847,9 @@ class TestRMacros:
                 (["4.4.3", "4.3.3"], ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
 
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot2"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))'
                     """
                 ),
                 id="multi-version-list-packages-list",
@@ -2858,7 +2858,7 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="single-file-list",
@@ -2867,7 +2867,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="single-file-string",
@@ -2876,8 +2876,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-file-list",
@@ -2886,11 +2886,11 @@ class TestRMacros:
                 (["4.4.3", "4.3.3"], None, ["/tmp/packages.txt", "/tmp/extra.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                        /opt/R/4.3.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-version-multi-file-list",
@@ -2899,8 +2899,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/extra.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/extra.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-file-string",
@@ -2909,8 +2909,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(Filter(nzchar, trimws(readLines("/tmp/packages.txt"))), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- c("dplyr", "ggplot"); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'pkgs <- Filter(nzchar, trimws(readLines("/tmp/packages.txt"))); options(warn = 2); install.packages(pkgs, repos="https://p3m.dev/cran/latest", clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="packages-and-file-list",

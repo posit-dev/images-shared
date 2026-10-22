@@ -104,16 +104,20 @@ https://p3m.dev/cran/latest
 {{ get_version_directory(version | trim) }}/bin/R --vanilla -e '{{ expression | trim | safe }}'
 {%- endmacro %}
 
-{# Returns an R expression that installs packages and fails the build if the install fails.
+{# Returns an R expression that installs packages and fails the build if any of them are missing afterwards.
 
 install.packages() only warns when a package fails to download or install, so R would exit 0 and the
-build would silently continue. options(warn = 2) turns warnings into errors, which makes R exit non-zero.
+build would silently continue. Two checks guard against that:
+
+1. options(warn = 2) turns warnings into errors, so R stops at the first install problem.
+2. The installed packages are compared against the requested ones, which catches failures that raise no warning.
+   installed.packages() only reads package metadata and does not load anything, so no warnings can fire here.
 
 :param packages_expr: An R expression evaluating to a character vector of package names, e.g. 'c("dplyr")'
 :param repo_url: The quoted CRAN repository URL to install from
 #}
 {% macro install_expression(packages_expr, repo_url) -%}
-options(warn = 2); install.packages({{ packages_expr | safe }}, repos={{ repo_url | safe }}, clean = TRUE)
+pkgs <- {{ packages_expr | safe }}; options(warn = 2); install.packages(pkgs, repos={{ repo_url | safe }}, clean = TRUE); not_installed <- setdiff(pkgs, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))
 {%- endmacro %}
 
 {# Installs one or more R packages from a list of packages or a comma separated string of packages
