@@ -103,8 +103,8 @@ on:
         required: false
         type: string
       merge-builder:
-        description: "The type of runner to use for merging [default: ubuntu-latest-amd64-4-core]"
-        default: "ubuntu-latest-amd64-4-core"
+        description: "The type of runner to use for merging [default: ubuntu-latest-amd64-8-core]"
+        default: "ubuntu-latest-amd64-8-core"
         required: false
         type: string
       amd64-builder:
@@ -734,7 +734,9 @@ jobs:
           if [ "$PUSH" = "true" ]; then PUSH_FLAG=""; else PUSH_FLAG="--dry-run"; fi
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
+          # One publish worker per core; SOCI conversion dominates publish time.
           bakery ci publish \
+            --jobs "$(nproc)" \
             --context "$CONTEXT" \
             --image-name "^${IMAGE_NAME}$" \
             --temp-registry "$TEMP_REGISTRY" \
