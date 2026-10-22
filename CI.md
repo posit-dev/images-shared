@@ -95,12 +95,14 @@ Builds, tests, and pushes images on native hardware. Each `{image, version, plat
 | `context` | No | `.` | Path to the bakery context (project root). |
 | `dev-versions` | No | `exclude` | Dev version filter. One of `include`, `exclude`, `only`. |
 | `matrix-versions` | No | `exclude` | Matrix version filter (e.g., R × Python content or session images). One of `include`, `exclude`, `only`. |
+| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. To build all versions from a dispatch input, set `recent: ${{ fromJSON(inputs.all-versions && '0' \|\| '3') }}` (a bare `inputs.all-versions && 0 \|\| 3` evaluates to 3 because `0` is falsy). |
 | `image-version` | No | `""` | Filter to a specific image version. Bakery strips a leading `v` automatically. |
 | `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
 | `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
 | `push` | No | `false` | Push merged manifests to Docker Hub, GHCR, and Amazon Elastic Container Registry (ECR). |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
+| `refresh-cache` | No | `false` | Rebuild all layers without reading the build cache, but still write fresh layers to the cache registry. |
 | `max-parallel` | No | `0` | Cap on simultaneous build/test and merge matrix jobs. `0` means unlimited. |
 | `merge-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for the merge job. |
 | `amd64-builder` | No | `ubuntu-latest-amd64-4-core` | Runner label for amd64 build jobs. |
@@ -200,12 +202,14 @@ Builds, tests, and optionally pushes images on a single runner using QEMU for cr
 | `context` | No | `.` | Path to the bakery context. |
 | `dev-versions` | No | `exclude` | Dev version filter (`include`, `exclude`, `only`). |
 | `matrix-versions` | No | `exclude` | Matrix version filter (`include`, `exclude`, `only`). |
+| `recent` | No | `0` | Build only the N most recent release versions of each image. `0` means all. To build all versions from a dispatch input, set `recent: ${{ fromJSON(inputs.all-versions && '0' \|\| '3') }}` (a bare `inputs.all-versions && 0 \|\| 3` evaluates to 3 because `0` is falsy). |
 | `image-version` | No | `""` | Filter to a specific image version. Leading `v` is stripped. |
 | `dev-channel` | No | `""` | Filter dev versions to a specific release channel (e.g., `daily`, `preview`). |
 | `dev-stream` | No | `""` | Deprecated: use `dev-channel` instead. |
 | `push` | No | `false` | Push images to registries. |
 | `retry` | No | `1` | Retry count for a failed build. |
 | `cache` | No | `true` | Use the GHCR registry-backed buildx cache. |
+| `refresh-cache` | No | `false` | Rebuild all layers without reading the build cache. |
 | `runs-on` | No | `ubuntu-latest` | Runner label for build jobs. |
 | `aws-region` | No | `us-east-2` | AWS region for ECR login. |
 
