@@ -232,6 +232,10 @@ class BuildSummaryTarget(BaseModel):
     local_size: int | None = None
     cache_ref: str | None = None
     cache_size: int | None = None
+    # Set only by `bakery ci publish` for targets whose every destination tag was verified
+    # at the published multi-platform index digest.
+    digest: str | None = None
+    refs: list[str] | None = None
 
 
 def _deduped_cache_sizes(targets: list[BuildSummaryTarget]) -> list[int | None]:
@@ -353,6 +357,8 @@ class BuildSummary(BaseModel):
                 base.layers = _first_non_none(base.layers, target.layers)
                 base.cache_ref = _first_non_none(base.cache_ref, target.cache_ref)
                 base.cache_size = _first_non_none(base.cache_size, target.cache_size)
+                base.digest = _first_non_none(base.digest, target.digest)
+                base.refs = _first_non_none(base.refs, target.refs)
         merged_targets = list(merged.values())
         return cls(rows=cls._aggregate_rows(merged_targets), targets=merged_targets)
 

@@ -152,6 +152,13 @@ on:
       WIZ_PROJECT_ID:
         description: "Wiz project ID(s) to scope the security scan to, comma-separated [optional]"
         required: false
+    outputs:
+      published-digests:
+        description: >-
+          JSON object mapping each verified published ref (e.g.
+          "ghcr.io/posit-dev/connect:2026.10.0") to its multi-platform index digest.
+          Empty ({}) when nothing was pushed.
+        value: ${{ jobs.summary.outputs.published-digests }}
 
 defaults:
   run:
@@ -798,6 +805,9 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Exposed here, not on merge: each merge matrix leg would overwrite the job output.
+    outputs:
+      published-digests: ${{ steps.published.outputs.digests }}
 
     steps:
       - name: Checkout
@@ -845,6 +855,21 @@ jobs:
             bakery ci summary "${FILES[@]}" --output summary.md
           fi
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect Published Digests
+        id: published
+        run: |
+          shopt -s nullglob
+          FILES=(./*-publish-summary.json)
+          DIGESTS="{}"
+          if [ ${#FILES[@]} -gt 0 ]; then
+            # One entry per destination ref that publish verified at the target's digest.
+            DIGESTS=$(jq -cs '
+              [.[].targets[]? | select(.digest != null) | .digest as $d | .refs[] | {(.): $d}]
+              | add // {}
+            ' "${FILES[@]}")
+          fi
+          echo "digests=$DIGESTS" >> "$GITHUB_OUTPUT"
 
   readme:
     name: Push READMEs
