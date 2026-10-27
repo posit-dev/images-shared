@@ -717,8 +717,33 @@ class ImageToolsPlugin(BakeryToolPlugin):
                 image_target=t,
             ).run(source=stage1_results[t.uid].temp_ref, dry_run=dry_run)
             if not copy.success:
-                log.error(f"index-copy failed for '{t}': {copy.error}")
-                failures.append((str(t), "index-copy", str(copy.error)))
+                copy_error = copy.error or "ORAS copy failed without error details."
+                expected_digest = stage1_results[t.uid].expected_digest
+                if not dry_run and expected_digest is not None:
+                    # Confirm every tag before accepting a failed push.
+                    destination_check = OrasIndexVerifyWorkflow(
+                        oras_bin=oras_bin,
+                        image_target=t,
+                    ).run(expected_digest=expected_digest)
+                    if destination_check.success:
+                        log.warning(
+                            f"Copy reported failure for '{t}', but all tags match {expected_digest}; accepting it."
+                        )
+                        log.debug(f"ORAS copy error: {copy_error}")
+                        copied_targets.append(t)
+                        continue
+
+                    expected_refs = t.tags.as_strings()
+                    verified_refs = set(destination_check.verified)
+                    unconfirmed_refs = [ref for ref in expected_refs if ref not in verified_refs]
+                    copy_error = (
+                        f"{copy_error}\nDestination check: {len(destination_check.verified)}/"
+                        f"{len(expected_refs)} verified; unconfirmed: "
+                        f"{', '.join(unconfirmed_refs) or 'none'}. {destination_check.error or ''}"
+                    )
+
+                log.error(f"index-copy failed for '{t}'")
+                failures.append((str(t), "index-copy", copy_error))
                 copy_failed = True
             else:
                 copied_targets.append(t)
