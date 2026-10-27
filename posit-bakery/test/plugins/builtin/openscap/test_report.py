@@ -119,8 +119,21 @@ class TestValidation:
     def test_nothing_evaluated_fails(self):
         assert self._checks(counts={"pass": 0, "fail": 0, "notapplicable": 300})["evaluated_rules"] is False
 
-    def test_missing_arf_skips_arf_checks(self):
-        assert set(self._checks(arf_text=None)) == {"canary_rule", "evaluated_rules"}
+    def test_missing_arf_fails(self):
+        checks = self._checks(arf_text=None)
+        assert checks["system_info"] is False
+        assert checks["installed_os"] is False
+
+    def test_missing_installed_os_definition_fails(self):
+        arf = (TESTDATA / "arf.xml").read_text().replace("ubuntu2204", "other")
+        assert self._checks(arf_text=arf)["installed_os"] is False
+
+    def test_unknown_product_fails(self):
+        assert self._checks(product=None)["installed_os"] is False
+
+    @pytest.mark.parametrize("results", [{}, {"file_permissions_etc_passwd": "notselected"}])
+    def test_missing_canary_fails(self, results):
+        assert self._checks(results=results)["canary_rule"] is False
 
 
 def test_rendering(basic_standard_image_target):

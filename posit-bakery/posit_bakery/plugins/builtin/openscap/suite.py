@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -13,7 +14,9 @@ from posit_bakery.plugins.builtin.openscap.command import (
     StrategyEnum,
     default_scanner_image,
     ensure_scanner_image,
+    extract_command,
     os_release_command,
+    reclaim_command,
     resolve_strategy,
     scan_command,
     target_mount_args,
@@ -131,6 +134,12 @@ class OpenSCAPSuite:
             )
             try:
                 outcome = self._scan_target(target, options, strategy)
+            except BakeryOpenSCAPError as e:
+                outcome = TargetOutcome(target, OpenSCAPScanNotRun("ERROR", e.message), "ERROR", e)
+            except subprocess.TimeoutExpired:
+                reason = f"timed out after {self.timeout}s"
+                err = BakeryOpenSCAPError(f"OpenSCAP scan of '{target}' {reason}")
+                outcome = TargetOutcome(target, OpenSCAPScanNotRun("ERROR", reason), "ERROR", err)
             except (BakeryOpenSCAPContentError, subprocess.SubprocessError, OSError, ValueError) as e:
                 err = BakeryOpenSCAPError(f"OpenSCAP scan failed for '{target}': {e}")
                 outcome = TargetOutcome(target, OpenSCAPScanNotRun("ERROR", str(e)), "ERROR", err)
@@ -139,13 +148,25 @@ class OpenSCAPSuite:
             outcomes.append(outcome)
         return outcomes
 
+    def _name(self) -> str:
+        return f"bakery-openscap-{uuid.uuid4().hex[:12]}"
+
+    def _run_container(self, cmd: list[str], name: str, **kwargs) -> subprocess.CompletedProcess:
+        """Run a named scanner container, force-removing it if the client is interrupted (e.g. on timeout).
+
+        Killing the docker client does not stop the container, so without this a timed-out scan keeps running.
+        """
+        try:
+            return subprocess.run(cmd, timeout=self.timeout, **kwargs)
+        finally:
+            subprocess.run([self.docker, "rm", "-f", name], capture_output=True)
+
     @contextmanager
-    def _target_mount(self, target: ImageTarget, strategy: StrategyEnum):
-        ref = target.ref(platform=self.platform, digest_only=True)
+    def _target_mount(self, ref: str, strategy: StrategyEnum):
         if strategy == StrategyEnum.IMAGE_MOUNT:
             yield target_mount_args(strategy, ref, None)
             return
-        volume = f"bakery-openscap-{uuid.uuid4().hex[:12]}"
+        volume = self._name()
         container = None
         try:
             subprocess.run([self.docker, "volume", "create", volume], check=True, capture_output=True)
@@ -154,39 +175,72 @@ class OpenSCAPSuite:
                 [self.docker, "create", ref, "bakery-openscap-noop"], check=True, capture_output=True, text=True
             ).stdout.strip()
             export = subprocess.Popen([self.docker, "export", container], stdout=subprocess.PIPE)
-            # Extract as root inside the scanner so ownership is preserved; drop the injected /.dockerenv.
-            subprocess.run(
-                [self.docker, "run", "--rm", "-i", "-v", f"{volume}:/target", "--entrypoint", "tar",
-                 self.scanner_image, "-x", "--numeric-owner", "--exclude=.dockerenv", "-C", "/target"],
-                stdin=export.stdout,
-                check=True,
-                capture_output=True,
-            )  # fmt: skip
-            export.wait()
+            try:
+                name = self._name()
+                tar = self._run_container(
+                    extract_command(self.docker, self.scanner_image, volume, name),
+                    name,
+                    stdin=export.stdout,
+                    capture_output=True,
+                )
+            finally:
+                if export.stdout:
+                    export.stdout.close()
+                if export.poll() is None:
+                    export.kill()
+                export_rc = export.wait()
+            # tar accepts an archive truncated at a file boundary, so both ends must succeed or the rootfs is partial.
+            if export_rc != 0 or tar.returncode != 0:
+                raise BakeryOpenSCAPError(
+                    f"Failed to export '{ref}' into a scan volume",
+                    stdout=tar.stderr,
+                    metadata={"export_exit_code": export_rc, "tar_exit_code": tar.returncode},
+                )
             yield target_mount_args(strategy, ref, volume)
         finally:
             if container:
                 subprocess.run([self.docker, "rm", "-f", container], capture_output=True)
             subprocess.run([self.docker, "volume", "rm", "-f", volume], capture_output=True)
 
-    def _scan_target(self, target: ImageTarget, options: ResolvedOptions, strategy: StrategyEnum) -> TargetOutcome:
-        with (
-            self._target_mount(target, strategy) as mount_args,
-            tempfile.TemporaryDirectory(prefix="bakery-openscap-") as work,
-        ):
+    @contextmanager
+    def _work_dir(self):
+        """Temporary output directory that is handed back to the invoking user before deletion."""
+        with tempfile.TemporaryDirectory(prefix="bakery-openscap-") as work:
             work_dir = Path(work)
-            p = subprocess.run(
-                os_release_command(self.docker, self.scanner_image, mount_args),
+            try:
+                yield work_dir
+            finally:
+                uid = os.getuid()
+                if any(f.lstat().st_uid != uid for f in work_dir.rglob("*")):
+                    subprocess.run(reclaim_command(self.docker, self.scanner_image, work_dir), capture_output=True)
+
+    def _scan_target(self, target: ImageTarget, options: ResolvedOptions, strategy: StrategyEnum) -> TargetOutcome:
+        ref = target.ref(platform=self.platform, digest_only=True)
+        p = subprocess.run(
+            [self.docker, "image", "inspect", "--format", "{{.Id}}", ref], capture_output=True, text=True
+        )
+        if p.returncode != 0:
+            err = BakeryOpenSCAPError(f"Image '{ref}' for '{target}' is not available locally", stdout=p.stderr)
+            return TargetOutcome(target, OpenSCAPScanNotRun("ERROR", "image not found"), "ERROR", err)
+        provenance = {"image_ref": ref, "image_id": p.stdout.strip(), "scanner_image": self.scanner_image}
+
+        with self._target_mount(ref, strategy) as mount_args, self._work_dir() as work_dir:
+            name = self._name()
+            p = self._run_container(
+                os_release_command(self.docker, self.scanner_image, mount_args, name),
+                name,
                 capture_output=True,
                 text=True,
-                timeout=self.timeout,
             )
+            if p.returncode != 0:
+                err = BakeryOpenSCAPError(f"Could not read /etc/os-release from '{ref}'", stdout=p.stderr)
+                return TargetOutcome(target, OpenSCAPScanNotRun("ERROR", "os-release unreadable"), "ERROR", err)
             os_release = parse_os_release(p.stdout)
             product = product_for(os_release.get("ID", ""), os_release.get("VERSION_ID", ""))
             content = f"ComplianceAsCode {options.content_version}"
 
             if options.datastream:
-                datastream = fetch_file(options.datastream)
+                datastream = fetch_file(options.datastream, self.context)
                 content = options.datastream
             elif product is None:
                 return self._skipped(target, f"unsupported OS '{os_release.get('PRETTY_NAME', 'unknown')}'")
@@ -202,7 +256,7 @@ class OpenSCAPSuite:
                     return self._skipped(target, f"profile '{options.profile}' not in {product or 'datastream'}")
                 profile_id, tailoring_xml = container_tailoring(datastream, profile_id)
             elif options.tailoring != NO_TAILORING:
-                tailoring_xml = fetch_file(options.tailoring).read_text(encoding="utf-8")
+                tailoring_xml = fetch_file(options.tailoring, self.context).read_text(encoding="utf-8")
                 # A custom tailoring may define its own profile; accept a full ID found in it.
                 if profile_id is None and f'"{options.profile}"' in tailoring_xml:
                     profile_id = options.profile
@@ -210,7 +264,9 @@ class OpenSCAPSuite:
                 return self._skipped(target, f"profile '{options.profile}' not in {product or 'datastream'}")
             if tailoring_xml is not None:
                 (work_dir / "tailoring.xml").write_text(tailoring_xml, encoding="utf-8")
+            provenance["tailoring"] = options.tailoring
 
+            name = self._name()
             cmd = scan_command(
                 self.docker,
                 self.scanner_image,
@@ -218,11 +274,12 @@ class OpenSCAPSuite:
                 datastream,
                 work_dir,
                 profile_id,
+                name=name,
                 tailoring=tailoring_xml is not None,
                 html=OutputFormatEnum.HTML in options.formats,
             )
             log.debug(f"[bright_black]Executing: {' '.join(cmd)}")
-            p = subprocess.run(cmd, capture_output=True, timeout=self.timeout)
+            p = self._run_container(cmd, name, capture_output=True)
             oscap_log = (
                 (work_dir / "oscap.log").read_text(errors="replace") if (work_dir / "oscap.log").exists() else ""
             )
@@ -246,6 +303,7 @@ class OpenSCAPSuite:
                 fix_file=work_dir / "fix.sh",
                 skip_rules=options.skip_rules,
             )
+            report.provenance.update(provenance)
             self._collect_files(target, report, work_dir, options)
 
         if not report.valid:

@@ -8,7 +8,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.openscap]
 
 def test_update_keeps_explicit_values():
     variant = OpenSCAPOptions(profile="cis_level2_server")
-    image = OpenSCAPOptions(profile="cis_level1_server", failOn="high", skipRules=["x"])
+    image = OpenSCAPOptions(profile="cis_level1_server", failOn=FailOnEnum.HIGH, skipRules=["x"])
     merged = variant.update(image)
     assert merged.profile == "cis_level2_server"
     assert merged.failOn == FailOnEnum.HIGH
@@ -16,15 +16,18 @@ def test_update_keeps_explicit_values():
 
 
 def test_formats_normalised():
-    assert OpenSCAPOptions(formats=["JSON", " html"]).formats == [OutputFormatEnum.JSON, OutputFormatEnum.HTML]
+    assert OpenSCAPOptions.model_validate({"formats": ["JSON", " html"]}).formats == [
+        OutputFormatEnum.JSON,
+        OutputFormatEnum.HTML,
+    ]
 
 
 @pytest.mark.parametrize("formats", [["pdf"], []])
 def test_formats_rejected(formats):
     with pytest.raises(ValidationError):
-        OpenSCAPOptions(formats=formats)
+        OpenSCAPOptions.model_validate({"formats": formats})
 
 
 def test_fail_on_rejected():
     with pytest.raises(ValidationError):
-        OpenSCAPOptions(failOn="critical")
+        OpenSCAPOptions.model_validate({"failOn": "critical"})

@@ -1,7 +1,6 @@
 # Spec: `openscap` plugin for Bakery (CIS benchmark reporting)
 
-Issue: posit-dev/images-shared#88. Status: **DRAFT v2**. It includes the review feedback and two spike rounds.
-Nothing is implemented yet.
+Issue: posit-dev/images-shared#88. Status: **Approved v2, implemented**. See section 13 for where the implementation differs from this design.
 
 ## 1. Goal and scope
 
@@ -336,3 +335,23 @@ Touch:
    table/JSON/markdown/HTML output, docs, tests and `setup-openscap`.
 2. **Later:** an agent workflow that consumes the summary JSON, custom systemd checks, RHEL/Debian testing, and
    baseline/ratchet files.
+
+## 13. Implementation notes
+
+The implementation follows this spec, with these differences:
+
+- **Scanner image is built locally, not published.** Bakery builds it on first use from
+  `posit_bakery/plugins/builtin/openscap/scanner/Containerfile` (about 15 s) and tags it by a hash of that
+  file. The base image digest and the `openscap-scanner` package version are pinned, so every machine builds
+  the same scanner. Publishing it to GHCR is a possible follow-up.
+- **Container tailoring is generated at scan time.** It comes from one rule-name pattern list
+  (`HOST_ONLY_RULE_PATTERN` in `content.py`) applied to the datastream's rules, rather than per-product files
+  shipped with Bakery. That list is what the human review in section 11 item 5 should cover.
+- **Validation fails closed.** Missing ARF, a missing installed-OS result, an absent or unselected canary, an
+  unreadable os-release, a failed export and timeouts are all `ERROR`, never `SKIPPED` or `OK`.
+- **No `--output-dir` option.** Results go to `results/openscap/`, as trivy's do.
+- **`profiles` takes product IDs** (`bakery openscap profiles ubuntu2204 ...`) rather than `--image-os`.
+- **Path resolution.** Relative `datastream` and `tailoring` paths in `bakery.yaml` resolve against the
+  Bakery context. CLI paths resolve against the invoking directory.
+- **Live tests are opt-in.** `test_integration.py` only runs with `BAKERY_TEST_OPENSCAP=1`, which keeps the
+  CIS-titled content download out of public CI.

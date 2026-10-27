@@ -78,8 +78,20 @@ def target_mount_args(strategy: StrategyEnum, ref: str, volume: str | None) -> l
     return ["-v", f"{volume}:{TARGET_MOUNT}:ro"]
 
 
-def os_release_command(docker: str, scanner: str, mount_args: list[str]) -> list[str]:
-    return [docker, "run", "--rm", *mount_args, "--entrypoint", "sh", scanner, "-c", OS_RELEASE_SCRIPT]
+def os_release_command(docker: str, scanner: str, mount_args: list[str], name: str) -> list[str]:
+    return [docker, "run", "--rm", "--name", name, *mount_args, "--entrypoint", "sh", scanner, "-c", OS_RELEASE_SCRIPT]
+
+
+def extract_command(docker: str, scanner: str, volume: str, name: str) -> list[str]:
+    """Untar a `docker export` stream (stdin) into a volume as root, preserving ownership and dropping /.dockerenv."""
+    return [docker, "run", "--rm", "-i", "--name", name, "-v", f"{volume}:{TARGET_MOUNT}", "--entrypoint", "tar",
+            scanner, "-x", "--numeric-owner", "--exclude=.dockerenv", "-C", TARGET_MOUNT]  # fmt: skip
+
+
+def reclaim_command(docker: str, scanner: str, out_dir: Path) -> list[str]:
+    """Hand a work directory back to the invoking user after an interrupted scan left root-owned files in it."""
+    return [docker, "run", "--rm", "-v", f"{out_dir}:{OUT_MOUNT}", "--entrypoint", "chown", scanner,
+            "-R", f"{os.getuid()}:{os.getgid()}", OUT_MOUNT]  # fmt: skip
 
 
 def fix_result_id(profile_id: str) -> str:
@@ -94,6 +106,7 @@ def scan_command(
     out_dir: Path,
     profile_id: str,
     *,
+    name: str,
     tailoring: bool,
     html: bool,
 ) -> list[str]:
@@ -108,6 +121,8 @@ def scan_command(
         docker,
         "run",
         "--rm",
+        "--name",
+        name,
         "--network",
         "none",
         *mount_args,

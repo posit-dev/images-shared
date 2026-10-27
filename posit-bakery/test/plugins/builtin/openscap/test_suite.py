@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -22,16 +23,39 @@ UBUNTU_2204 = textwrap.dedent("""\
     """)
 
 
-def docker_stub(os_release: str = UBUNTU_2204, scan_rc: int = 2, write_results: bool = True):
-    """Mimic the scanner container: answer the os-release probe and drop oscap artifacts into /out."""
-    calls = []
+def docker_stub(
+    os_release: str = UBUNTU_2204,
+    scan_rc: int = 2,
+    write_results: bool = True,
+    probe_rc: int = 0,
+    image_present: bool = True,
+    scan_timeout: bool = False,
+):
+    """Mimic docker: image inspect, the os-release probe, and a scan that drops oscap artifacts into /out.
 
-    def _run(cmd, *_args, **_kwargs):
-        calls.append(cmd)
+    Only `docker run` invocations are recorded in `calls`; `removed` collects `docker rm -f` targets.
+    """
+    calls, removed = [], []
+
+    def _run(cmd, *_args, **kwargs):
         p = MagicMock(returncode=0, stdout=b"", stderr=b"")
-        if OS_RELEASE_SCRIPT in cmd:
-            p.stdout = os_release
+        if cmd[1:3] == ["image", "inspect"]:
+            p.returncode, p.stdout = (0, "sha256:abc") if image_present else (1, "")
             return p
+        if cmd[1:3] == ["rm", "-f"]:
+            removed.append(cmd[3])
+            return p
+        if cmd[1] != "run":  # volume create/rm, create
+            p.stdout = "cid"
+            return p
+        calls.append(cmd)
+        if "tar" in cmd:
+            return p
+        if OS_RELEASE_SCRIPT in cmd:
+            p.stdout, p.returncode = os_release, probe_rc
+            return p
+        if scan_timeout:
+            raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
         out = Path(next(v.split(":")[0] for v in cmd if isinstance(v, str) and v.endswith(":/out")))
         if write_results:
             for src, name in (
@@ -44,6 +68,7 @@ def docker_stub(os_release: str = UBUNTU_2204, scan_rc: int = 2, write_results: 
         p.returncode = scan_rc
         return p
 
+    _run.removed = removed
     return _run, calls
 
 
@@ -58,7 +83,7 @@ def run_suite(tmp_path, target, stub, **kwargs):
 
 
 def test_resolve_options_precedence():
-    yaml = OpenSCAPOptions(profile="cis_level2_server", failOn="high")
+    yaml = OpenSCAPOptions(profile="cis_level2_server", failOn=FailOnEnum.HIGH)
     resolved = resolve_options({"profile": "cis_level1_workstation", "fail_on": None}, yaml)
     assert resolved.profile == "cis_level1_workstation"
     assert resolved.fail_on == FailOnEnum.HIGH
@@ -78,6 +103,10 @@ def test_scan_ok_writes_outputs(tmp_path, basic_standard_image_target):
     summary = json.loads((out_dir / f"{uid}.summary.json").read_text())
     assert summary["status"] == "OK"
     assert summary["profile"].endswith("cis_level1_server_bakery_container")
+    assert summary["image"]["image_id"] == "sha256:abc"
+    assert summary["image"]["image_ref"]
+    assert summary["tailoring"] == "builtin:container"
+    assert summary["scanner"]["oscap"] == "cpe:/a:redhat:openscap:1.3.9"
 
     scan_cmd = calls[-1]
     assert "--tailoring-file" in scan_cmd
@@ -126,3 +155,50 @@ def test_validation_failure_is_error(tmp_path, basic_standard_image_target):
         outcome = run_suite(tmp_path, basic_standard_image_target, stub)
     assert outcome.status == "ERROR"
     assert "system_info" in outcome.error.message
+
+
+def test_missing_image_is_error(tmp_path, basic_standard_image_target):
+    stub, calls = docker_stub(image_present=False)
+    outcome = run_suite(tmp_path, basic_standard_image_target, stub)
+    assert outcome.status == "ERROR"
+    assert calls == []
+
+
+def test_failed_os_probe_is_error_not_skip(tmp_path, basic_standard_image_target):
+    stub, _ = docker_stub(os_release="", probe_rc=125)
+    outcome = run_suite(tmp_path, basic_standard_image_target, stub)
+    assert outcome.status == "ERROR"
+
+
+def test_scan_timeout_removes_container(tmp_path, basic_standard_image_target):
+    stub, calls = docker_stub(scan_timeout=True)
+    outcome = run_suite(tmp_path, basic_standard_image_target, stub, timeout=1)
+    assert outcome.status == "ERROR"
+    scan_name = calls[-1][calls[-1].index("--name") + 1]
+    assert scan_name in stub.removed
+
+
+def test_relative_tailoring_resolves_against_context(tmp_path, basic_standard_image_target):
+    (tmp_path / "policy").mkdir()
+    (tmp_path / "policy" / "t.xml").write_text('<Tailoring><Profile id="my_profile"/></Tailoring>')
+    stub, calls = docker_stub()
+    outcome = run_suite(tmp_path, basic_standard_image_target, stub, tailoring="policy/t.xml", profile="my_profile")
+    assert "--tailoring-file" in calls[-1]
+    assert "my_profile" in calls[-1]
+    assert outcome.status in ("OK", "ERROR")  # canned results do not match the custom profile; only routing matters
+
+
+def test_failed_export_is_error(tmp_path, basic_standard_image_target):
+    stub, calls = docker_stub()
+    export = MagicMock()
+    export.poll.return_value = 1
+    export.wait.return_value = 1
+    with (
+        patch(f"{SUITE}.ensure_scanner_image"),
+        patch(f"{SUITE}.subprocess.Popen", return_value=export),
+        patch(f"{SUITE}.subprocess.run", side_effect=stub),
+    ):
+        outcome = OpenSCAPSuite(tmp_path, [basic_standard_image_target], strategy=StrategyEnum.EXPORT_VOLUME).run()[0]
+    assert outcome.status == "ERROR"
+    assert "export" in outcome.result.reason
+    assert not any(OS_RELEASE_SCRIPT in c for c in calls)

@@ -40,9 +40,9 @@ def test_target_mount_args():
 def test_scan_command():
     cmd = command.scan_command(
         "docker", "scanner:1", ["-v", "vol:/target:ro"], Path("/c/ds.xml"), Path("/w"), "PROFILE",
-        tailoring=True, html=False,
+        name="n1", tailoring=True, html=False,
     )  # fmt: skip
-    assert cmd[:3] == ["docker", "run", "--rm"]
+    assert cmd[:5] == ["docker", "run", "--rm", "--name", "n1"]
     assert "OSCAP_PROBE_ROOT=/target" in cmd
     assert "/c/ds.xml:/content/ds.xml:ro" in cmd
     assert "/w:/out" in cmd

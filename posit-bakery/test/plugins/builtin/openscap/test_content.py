@@ -118,3 +118,18 @@ def test_release_zip_checksum_mismatch(cache, tmp_path):
 def test_fetch_file_missing_path():
     with pytest.raises(BakeryOpenSCAPContentError):
         content.fetch_file("/nonexistent/tailoring.xml")
+
+
+def test_checksum_fetch_failure_leaves_no_cached_zip(cache):
+    def get(url, **_kwargs):
+        raise content.requests.ConnectionError("offline")
+
+    with patch.object(content.requests, "get", side_effect=get):
+        with pytest.raises(BakeryOpenSCAPContentError):
+            content.release_zip("9.9")
+    assert list((cache / "9.9").iterdir()) == []
+
+
+def test_relative_path_resolves_against_base(tmp_path):
+    (tmp_path / "t.xml").write_text("<x/>")
+    assert content.fetch_file("t.xml", tmp_path) == (tmp_path / "t.xml").resolve()

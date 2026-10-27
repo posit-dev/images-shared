@@ -83,7 +83,9 @@ def validate_scan(
     checks = []
     version_id = os_release.get("VERSION_ID", "")
 
-    if arf_text is not None:
+    if arf_text is None:
+        checks.append(ValidationCheck("system_info", False, "ARF results missing; scanned system unknown"))
+    else:
         os_name = re.search(r"<(?:[\w.-]+:)?os_name>([^<]*)<", arf_text)
         os_version = re.search(r"<(?:[\w.-]+:)?os_version>([^<]*)<", arf_text)
         seen = f"{os_name.group(1) if os_name else '?'} {os_version.group(1) if os_version else '?'}"
@@ -95,16 +97,17 @@ def validate_scan(
         )
         checks.append(ValidationCheck("system_info", ok, f"scanned system reported as '{seen}'"))
 
-        if product:
-            definition = f"oval:ssg-installed_OS_is_{product}:def:1"
-            states = re.findall(rf'definition_id="{re.escape(definition)}" result="([^"]+)"', arf_text)
-            if states:
-                ok = "true" in states
-                checks.append(ValidationCheck("installed_os", ok, f"{definition} evaluated {sorted(set(states))}"))
+    # Missing evidence fails the check: a scan we cannot verify must never pass as clean.
+    if not product:
+        checks.append(ValidationCheck("installed_os", False, "OS has no known content product; cannot verify"))
+    else:
+        definition = f"oval:ssg-installed_OS_is_{product}:def:1"
+        states = re.findall(rf'definition_id="{re.escape(definition)}" result="([^"]+)"', arf_text or "")
+        detail = f"{definition} evaluated {sorted(set(states))}" if states else f"{definition} not in results"
+        checks.append(ValidationCheck("installed_os", "true" in states, detail))
 
-    canary = results.get(CANARY_RULE)
-    if canary is not None and canary != "notselected":
-        checks.append(ValidationCheck("canary_rule", canary in ("pass", "fail"), f"{CANARY_RULE} evaluated '{canary}'"))
+    canary = results.get(CANARY_RULE, "missing")
+    checks.append(ValidationCheck("canary_rule", canary in ("pass", "fail"), f"{CANARY_RULE} evaluated '{canary}'"))
 
     evaluated = counts.get("pass", 0) + counts.get("fail", 0)
     checks.append(ValidationCheck("evaluated_rules", evaluated > 0, f"{evaluated} rules passed or failed"))
@@ -120,7 +123,9 @@ class OpenSCAPScanReport:
     counts: dict[str, int]
     findings: list[Finding]
     checks: list[ValidationCheck]
+    scanner_version: str = ""
     files: dict[str, str] = field(default_factory=dict)
+    provenance: dict[str, str] = field(default_factory=dict)
 
     @property
     def valid(self) -> bool:
@@ -214,13 +219,16 @@ class OpenSCAPScanReport:
             counts=counts,
             findings=findings,
             checks=checks,
+            scanner_version=test_results[-1].get("test-system") or "",
         )
 
     def to_dict(self, target: ImageTarget, fail_on: FailOnEnum, status: str) -> dict:
         return {
-            "image": target_metadata(target),
+            "image": {**target_metadata(target), **{k: self.provenance.get(k) for k in ("image_ref", "image_id")}},
             "status": status,
+            "scanner": {"image": self.provenance.get("scanner_image"), "oscap": self.scanner_version},
             "content": self.content,
+            "tailoring": self.provenance.get("tailoring"),
             "product": self.product,
             "profile": self.profile_id,
             "os_release": {k: self.os_release.get(k) for k in ("ID", "VERSION_ID", "NAME", "VERSION")},

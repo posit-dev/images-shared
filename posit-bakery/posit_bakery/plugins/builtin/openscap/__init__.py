@@ -16,11 +16,18 @@ from posit_bakery.plugins.builtin.openscap.command import StrategyEnum
 from posit_bakery.plugins.builtin.openscap.content import (
     DEFAULT_CONTENT_VERSION,
     datastream_for,
+    is_url,
     list_profiles,
     release_zip,
 )
 from posit_bakery.plugins.builtin.openscap.errors import BakeryOpenSCAPContentError, BakeryOpenSCAPError
-from posit_bakery.plugins.builtin.openscap.options import FailOnEnum, OpenSCAPOptions, parse_formats
+from posit_bakery.plugins.builtin.openscap.options import (
+    BUILTIN_CONTAINER_TAILORING,
+    NO_TAILORING,
+    FailOnEnum,
+    OpenSCAPOptions,
+    parse_formats,
+)
 from posit_bakery.plugins.builtin.openscap.report import OpenSCAPReportCollection, OpenSCAPScanNotRun
 from posit_bakery.plugins.builtin.openscap.suite import OpenSCAPSuite
 from posit_bakery.plugins.protocol import BakeryToolPlugin, ToolCallResult
@@ -29,6 +36,13 @@ from posit_bakery.targets.selection import exit_if_no_targets, select_targets
 from posit_bakery.util import auto_path
 
 log = logging.getLogger(__name__)
+
+
+def _cli_path(value: str | None) -> str | None:
+    """CLI paths are relative to the invoking directory; bakery.yaml paths are relative to the context."""
+    if value is None or is_url(value) or value in (BUILTIN_CONTAINER_TAILORING, NO_TAILORING):
+        return value
+    return str(Path(value).expanduser().resolve())
 
 
 class RichHelpPanelEnum(str, Enum):
@@ -265,8 +279,8 @@ class OpenSCAPPlugin(BakeryToolPlugin):
                     timeout=timeout,
                     profile=profile,
                     content_version=content_version,
-                    datastream=datastream,
-                    tailoring=tailoring,
+                    datastream=_cli_path(datastream),
+                    tailoring=_cli_path(tailoring),
                     skip_rules=skip_rule or None,
                     fail_on=fail_on,
                     formats=formats,

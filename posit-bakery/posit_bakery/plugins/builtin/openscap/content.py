@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -87,46 +88,62 @@ def parse_os_release(text: str) -> dict[str, str]:
     return result
 
 
-def _download(url: str, dest: Path) -> None:
-    log.info(f"Downloading {url}")
-    tmp = dest.with_name(dest.name + ".part")
+def _temp_path(dest: Path) -> Path:
+    """A unique sibling path, so concurrent writers never share or expose partial files under `dest`."""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=".part")
+    os.close(fd)
+    return Path(name)
+
+
+def _download(url: str, dest: Path) -> None:
+    """Download `url` to a unique temp file next to `dest`; the caller verifies and publishes it."""
+    log.info(f"Downloading {url}")
     try:
         with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT) as r:
             r.raise_for_status()
-            with open(tmp, "wb") as f:
+            with open(dest, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1 << 20):
                     f.write(chunk)
-    except requests.RequestException as e:
-        tmp.unlink(missing_ok=True)
+    except (requests.RequestException, OSError) as e:
         raise BakeryOpenSCAPContentError(f"Failed to download {url}: {e}") from e
-    tmp.replace(dest)
+
+
+def _sha512(path: Path) -> str:
+    h = hashlib.sha512()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError as e:
+        raise BakeryOpenSCAPContentError(f"Failed to read {path}: {e}") from e
+    return h.hexdigest()
 
 
 def release_zip(version: str = DEFAULT_CONTENT_VERSION) -> Path:
-    """Download (once) and sha512-verify the SCAP Security Guide release zip, returning its cached path."""
+    """Download (once) and sha512-verify the SCAP Security Guide release zip, returning its cached path.
+
+    The zip only appears at its cached path after verification, so an interrupted run never leaves an
+    unverified archive that a later run would trust.
+    """
     dest = cache_root() / version / f"scap-security-guide-{version}.zip"
     if dest.is_file():
         return dest
     url = RELEASE_URL.format(version=version)
-    _download(url, dest)
+    tmp = _temp_path(dest)
     try:
-        r = requests.get(url + ".sha512", timeout=60)
-        r.raise_for_status()
-        expected = r.text.split()[0].lower()
-    except (requests.RequestException, IndexError) as e:
-        dest.unlink(missing_ok=True)
-        raise BakeryOpenSCAPContentError(f"Failed to fetch checksum for {url}: {e}") from e
-    h = hashlib.sha512()
-    try:
-        with open(dest, "rb") as f:
-            for chunk in iter(lambda: f.read(1 << 20), b""):
-                h.update(chunk)
-    except OSError as e:
-        raise BakeryOpenSCAPContentError(f"Failed to read {dest}: {e}") from e
-    if h.hexdigest() != expected:
-        dest.unlink(missing_ok=True)
-        raise BakeryOpenSCAPContentError(f"Checksum mismatch for {url}")
+        try:
+            r = requests.get(url + ".sha512", timeout=60)
+            r.raise_for_status()
+            expected = r.text.split()[0].lower()
+        except (requests.RequestException, IndexError) as e:
+            raise BakeryOpenSCAPContentError(f"Failed to fetch checksum for {url}: {e}") from e
+        _download(url, tmp)
+        if _sha512(tmp) != expected:
+            raise BakeryOpenSCAPContentError(f"Checksum mismatch for {url}")
+        tmp.replace(dest)
+    finally:
+        tmp.unlink(missing_ok=True)
     return dest
 
 
@@ -137,29 +154,42 @@ def datastream_for(product: str, version: str = DEFAULT_CONTENT_VERSION) -> Path
         return dest
     member = f"scap-security-guide-{version}/ssg-{product}-ds.xml"
     archive = release_zip(version)
+    tmp = _temp_path(dest)
     try:
         with zipfile.ZipFile(archive) as z:
             if member not in z.namelist():
                 return None
-            with z.open(member) as src, open(dest, "wb") as out:
+            with z.open(member) as src, open(tmp, "wb") as out:
                 shutil.copyfileobj(src, out)
+        tmp.replace(dest)
     except (OSError, zipfile.BadZipFile) as e:
-        dest.unlink(missing_ok=True)
         raise BakeryOpenSCAPContentError(f"Failed to extract {member} from {archive}: {e}") from e
+    finally:
+        tmp.unlink(missing_ok=True)
     return dest
 
 
-def fetch_file(location: str) -> Path:
-    """Resolve a user-supplied path or URL to a local file, caching URLs by hash."""
-    if location.startswith(("http://", "https://")):
-        name = location.rstrip("/").rsplit("/", 1)[-1] or "file.xml"
-        dest = cache_root() / "url" / hashlib.sha256(location.encode()).hexdigest()[:16] / name
+def is_url(location: str) -> bool:
+    return location.startswith(("http://", "https://"))
+
+
+def fetch_file(location: str, base_dir: Path | None = None) -> Path:
+    """Resolve a path (relative paths against `base_dir`) or URL to a local file, caching URLs by hash."""
+    if is_url(location):
+        dest = cache_root() / "url" / hashlib.sha256(location.encode()).hexdigest()[:16] / "content.xml"
         if not dest.is_file():
-            _download(location, dest)
+            tmp = _temp_path(dest)
+            try:
+                _download(location, tmp)
+                tmp.replace(dest)
+            finally:
+                tmp.unlink(missing_ok=True)
         return dest
     path = Path(location).expanduser()
+    if not path.is_absolute() and base_dir is not None:
+        path = base_dir / path
     if not path.is_file():
-        raise BakeryOpenSCAPContentError(f"File not found: {location}")
+        raise BakeryOpenSCAPContentError(f"File not found: {path}")
     return path.resolve()
 
 
