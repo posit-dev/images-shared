@@ -1,0 +1,6 @@
+# Scanner image for `bakery openscap scan`. Built locally on first use (tagged by a hash of this file).
+# The scanned image is mounted read-only at /target; oscap runs as root so root-only files are readable.
+FROM docker.io/library/ubuntu:24.04
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openscap-scanner \
+    && rm -rf /var/lib/apt/lists/*

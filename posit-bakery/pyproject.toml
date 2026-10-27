@@ -60,6 +60,7 @@ imagetools = "posit_bakery.plugins.builtin.imagetools:ImageToolsPlugin"
 hadolint = "posit_bakery.plugins.builtin.hadolint:HadolintPlugin"
 wizcli = "posit_bakery.plugins.builtin.wizcli:WizCLIPlugin"
 trivy = "posit_bakery.plugins.builtin.trivy:TrivyPlugin"
+openscap = "posit_bakery.plugins.builtin.openscap:OpenSCAPPlugin"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
