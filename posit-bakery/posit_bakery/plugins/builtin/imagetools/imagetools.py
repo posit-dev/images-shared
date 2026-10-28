@@ -725,6 +725,8 @@ class ImageToolsPlugin(BakeryToolPlugin):
 
         # Stage 3: verify each final destination tag and repair stale tags serially.
         verify_failed = False
+        # uid -> (published index digest, verified destination refs), for the publish summary.
+        published: dict[str, tuple[str, list[str]]] = {}
         if not dry_run:
             for t in copied_targets:
                 verify = OrasIndexVerifyWorkflow(
@@ -741,6 +743,9 @@ class ImageToolsPlugin(BakeryToolPlugin):
                     verify_failed = True
                 else:
                     log.info(f"Verified '{t}' -> {', '.join(verify.verified)}")
+                    expected_digest = stage1_results[t.uid].expected_digest
+                    if expected_digest:
+                        published[t.uid] = (expected_digest, list(verify.verified))
 
         # The temporary indexes (and any SOCI-converted variants) are intentionally left in
         # place; they are cleaned up out-of-band by the clean.yml workflow (bakery clean
@@ -755,6 +760,9 @@ class ImageToolsPlugin(BakeryToolPlugin):
             from posit_bakery.log import stderr_console, stdout_console
 
             build_summary = BuildSummary.from_image_targets(targets)
+            for row in build_summary.targets:
+                if row.uid in published:
+                    row.digest, row.refs = published[row.uid]
             build_summary.measure_sizes(
                 targets,
                 push=not dry_run,

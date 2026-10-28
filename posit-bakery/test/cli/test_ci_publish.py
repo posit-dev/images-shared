@@ -9,10 +9,16 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from posit_bakery.cli.main import app
-from posit_bakery.plugins.builtin.imagetools.oras import OrasIndexCopyWorkflow, OrasIndexCreateWorkflow
+from posit_bakery.const import SummaryOutputFormat
+from posit_bakery.plugins.builtin.imagetools.oras import (
+    OrasIndexCopyWorkflow,
+    OrasIndexCreateWorkflow,
+    OrasIndexVerifyWorkflow,
+)
 
 pytestmark = [pytest.mark.unit]
 
@@ -415,3 +421,66 @@ def test_publish_summary_measures_registry_on_a_real_push(tmp_path):
 
     _, kwargs = measure_sizes.call_args
     assert kwargs["push"] is True
+
+
+def test_publish_summary_records_verified_digest_and_refs(tmp_path):
+    """The JSON publish summary carries the verified index digest and refs per target, so
+    CI can hand callers the exact published image. A target that fails verification gets
+    neither."""
+    from posit_bakery.plugins.builtin.imagetools.imagetools import ImageToolsPlugin
+
+    def summary_ready_target(uid, version):
+        t = _fake_target(uid, merge_sources=[f"ghcr.io/posit-dev/tmp@sha256:{uid}"])
+        t.settings.temp_registry = "ghcr.io/posit-dev"
+        t.image_name = "connect"
+        t.image_version.name = version
+        t.image_os = None
+        t.image_variant = None
+        t.tags = [f"ghcr.io/posit-dev/connect:{version}"]
+        t.cache_name.return_value = None
+        return t
+
+    good = summary_ready_target("uid-good", "2026.01.1")
+    bad = summary_ready_target("uid-bad", "2026.01.0")
+
+    def fake_verify_run(self, expected_digest, source, dry_run=False):
+        if self.image_target.uid == "uid-bad":
+            return MagicMock(success=False, verified=[], error="digest mismatch")
+        return MagicMock(
+            success=True, verified=["ghcr.io/posit-dev/connect:2026.01.1", "docker.io/posit/connect:2026.01.1"]
+        )
+
+    with (
+        patch("posit_bakery.config.BakeryConfig.from_context"),
+        _stub_targets([good, bad]),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.find_oras_bin", return_value="oras"),
+        patch("posit_bakery.plugins.builtin.imagetools.soci.find_soci_bin", return_value="soci"),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasWaitForSourcesWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=MagicMock(success=True))),
+        ),
+        patch(
+            "posit_bakery.plugins.builtin.imagetools.oras.OrasIndexCreateWorkflow",
+            return_value=MagicMock(run=MagicMock(return_value=MagicMock(success=True, temp_ref="tmp:x"))),
+        ),
+        patch("posit_bakery.plugins.builtin.imagetools.oras.fetch_manifest_digest", return_value="sha256:abc"),
+        _bypass_pydantic_init(OrasIndexCopyWorkflow),
+        patch.object(OrasIndexCopyWorkflow, "run", return_value=Mock(success=True)),
+        _bypass_pydantic_init(OrasIndexVerifyWorkflow),
+        patch.object(OrasIndexVerifyWorkflow, "run", fake_verify_run),
+        patch("posit_bakery.image.BuildSummary.measure_sizes"),
+        patch("posit_bakery.log.stdout_console.print_json") as print_json,
+        pytest.raises(typer.Exit),
+    ):
+        ImageToolsPlugin().publish(
+            metadata_file=[tmp_path / "a-metadata.json"],
+            context=tmp_path,
+            summary=True,
+            summary_format=SummaryOutputFormat.JSON,
+        )
+
+    rows = {row["uid"]: row for row in print_json.call_args.kwargs["data"]["targets"]}
+    assert rows["uid-good"]["digest"] == "sha256:abc"
+    assert rows["uid-good"]["refs"] == ["ghcr.io/posit-dev/connect:2026.01.1", "docker.io/posit/connect:2026.01.1"]
+    assert rows["uid-bad"]["digest"] is None
+    assert rows["uid-bad"]["refs"] is None
