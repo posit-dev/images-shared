@@ -839,7 +839,7 @@ class TestBakeryConfig:
         config = BakeryConfig(
             yaml_file,
             BakerySettings(
-                filter=BakeryConfigFilter(image_name="^package-manager$", image_version="2025.04.2-8"),
+                filter=BakeryConfigFilter(image_name="package-manager", image_version="2025.04.2-8"),
             ),
         )
         assert config is not None
@@ -1975,6 +1975,14 @@ class TestBakeryConfig:
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 
         settings = BakerySettings(filter=BakeryConfigFilter(image_name=r"package-manager-init"))
+        config = BakeryConfig(complex_yaml, settings)
+        assert len(select_targets(config, config.settings)) == 2
+
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name="package-manager"))
+        config = BakeryConfig(complex_yaml, settings)
+        assert len(select_targets(config, config.settings)) == 8
+
+        settings = BakerySettings(filter=BakeryConfigFilter(image_name="/^package-manager-/"))
         config = BakeryConfig(complex_yaml, settings)
         assert len(select_targets(config, config.settings)) == 2
 

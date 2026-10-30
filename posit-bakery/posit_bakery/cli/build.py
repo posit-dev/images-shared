@@ -180,7 +180,7 @@ def build(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image name or a regex pattern to isolate builds to.",
+            help="The exact image name, or /regex/ for a regular expression, to isolate builds to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -195,14 +195,16 @@ def build(
     image_variant: Annotated[
         Optional[str],
         typer.Option(
-            show_default=False, help="The image type to isolate builds to.", rich_help_panel=RichHelpPanelEnum.FILTERS
+            show_default=False,
+            help="Exact image variant name, or /regex/, to isolate builds to.",
+            rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
     image_os: Annotated[
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image OS name or a regex pattern to isolate builds to.",
+            help="The exact image OS name, or /regex/ for a regular expression, to isolate builds to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,

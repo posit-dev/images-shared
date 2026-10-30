@@ -91,3 +91,22 @@ def test_cached_session_ignores_invalid_expire_after_env_var(mocker):
     mock_cached_session_cls = mocker.patch("posit_bakery.util.CachedSession")
     util.cached_session()
     assert mock_cached_session_cls.call_args.kwargs["expire_after"] == 3600
+
+
+class TestFilterMatches:
+    def test_slash_regex(self):
+        assert util.filter_matches("/^con/", "connect", ["connect"])
+        assert not util.filter_matches("/^x/", "connect", ["connect"])
+
+    def test_exact_name(self):
+        assert util.filter_matches("connect", "connect", ["connect", "connect-content"])
+        assert not util.filter_matches("connect", "connect-content", ["connect", "connect-content"])
+
+    def test_legacy_regex_warns_once(self, caplog):
+        util._warned_filter_patterns.clear()
+        with caplog.at_level("WARNING", logger="posit_bakery.util"):
+            assert util.filter_matches("std", "Standard", ["Standard"]) is False  # case-sensitive search
+            assert util.filter_matches("^con", "connect", ["connect"])
+            assert util.filter_matches("^con", "connect", ["connect"])
+        assert [r.message.count("'^con'") for r in caplog.records].count(1) == 1
+        assert len(caplog.records) == 2
