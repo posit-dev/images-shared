@@ -20,17 +20,17 @@ class BakeryConfigFilter(BaseModel):
     """Container for filtering options when generating image targets from the BakeryConfig."""
 
     image_name: Annotated[
-        str | None, Field(description="Name or regex pattern of the image to filter by.", default=None)
+        str | None, Field(description="Exact name or /regex/ of the image to filter by.", default=None)
     ]
     image_variant: Annotated[
-        str | None, Field(description="Name or regex pattern of the image variant to filter by.", default=None)
+        str | None, Field(description="Exact name or /regex/ of the image variant to filter by.", default=None)
     ]
     image_version: Annotated[str | None, Field(description="Version string or prefix to filter by.", default=None)]
     image_os: Annotated[
-        str | None, Field(description="Name or regex pattern of the image OS to filter by.", default=None)
+        str | None, Field(description="Exact name or /regex/ of the image OS to filter by.", default=None)
     ]
     image_platform: Annotated[
-        list[str], Field(description="Name or regex pattern of the image platform to filter by.", default_factory=list)
+        list[str], Field(description="Exact name or /regex/ of the image platform to filter by.", default_factory=list)
     ]
 
 

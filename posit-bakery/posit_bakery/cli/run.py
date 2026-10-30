@@ -48,7 +48,7 @@ def dgoss(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image name to isolate goss testing to.",
+            help="Exact image name, or /regex/ for a regular expression, to isolate goss testing to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -64,7 +64,7 @@ def dgoss(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image type to isolate goss testing to.",
+            help="Exact image variant name, or /regex/, to isolate goss testing to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -72,7 +72,7 @@ def dgoss(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image OS to isolate goss testing to.",
+            help="Exact image OS name, or /regex/, to isolate goss testing to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,

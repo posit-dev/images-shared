@@ -227,10 +227,10 @@ gh run view <run-id> -R posit-dev/<repo> --log-failed
 
 | Flag | Purpose |
 |------|---------|
-| `--image-name <name>` | Scope to an image (regex) |
+| `--image-name <name>` | Scope to an image (exact name, or `/regex/`) |
 | `--image-version <ver>` | Scope to a version |
-| `--image-variant <var>` | Scope to Standard or Minimal |
-| `--image-os <os>` | Scope to an OS |
+| `--image-variant <var>` | Scope to a variant (exact name, or `/regex/`) |
+| `--image-os <os>` | Scope to an OS (exact name, or `/regex/`) |
 | `--image-platform <plat>` | Scope to a platform (e.g. `linux/amd64`) |
 | `--dev-versions [include\|exclude\|only]` | Include/exclude dev versions |
 | `--dev-channel [release\|preview\|daily]` | Filter to a specific dev channel (replaces deprecated `--dev-stream`) |
