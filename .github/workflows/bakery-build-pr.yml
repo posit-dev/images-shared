@@ -305,7 +305,7 @@ jobs:
           bakery build \
             --strategy build --pull --load \
             --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -353,7 +353,7 @@ jobs:
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -381,7 +381,7 @@ jobs:
           FAIL_FLAGS=()
           [ -n "$FAIL_ON_SEVERITY" ] && FAIL_FLAGS=(--fail-on-severity "$FAIL_ON_SEVERITY")
           bakery trivy scan \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
