@@ -40,7 +40,7 @@ on:
         required: false
         type: number
       image-name:
-        description: "Filter to a specific image name or pattern (e.g., 'workbench', '^workbench$')"
+        description: "Filter by exact image name, or /regex/ (e.g., 'workbench', '/^workbench/')"
         default: ""
         required: false
         type: string
@@ -332,7 +332,7 @@ jobs:
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery build --load --pull \
             --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
@@ -357,7 +357,7 @@ jobs:
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
@@ -384,7 +384,7 @@ jobs:
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery build --push --pull \
             --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --dev-versions "$DEV_VERSIONS" \
             --matrix-versions "$MATRIX_VERSIONS" \
