@@ -2026,6 +2026,26 @@ class TestBakeryConfig:
         config = BakeryConfig(complex_yaml, settings)
         assert len(select_targets(config, config.settings)) == 10
 
+    def test_filter_variant_candidates_are_repo_wide(self, testdata_path):
+        config = BakeryConfig(testdata_path / "valid" / "complex.yaml")
+        # "std" is a variant of package-manager-init, so it is exact even for an image whose only match is longer.
+        for v in config.model.images[1].variants:
+            if v.name == "std":
+                v.name = "std-extra"
+        config.settings = BakerySettings(filter=BakeryConfigFilter(image_variant="std"))
+        targets = select_targets(config, config.settings)
+        assert targets and {t.image_name for t in targets} == {"package-manager-init"}
+
+    def test_filter_os_candidates_are_repo_wide(self, testdata_path):
+        config = BakeryConfig(testdata_path / "valid" / "complex.yaml")
+        # "Ubuntu 24.04" is an OS of package-manager-init, so it must not select package-manager's "Ubuntu 24.04 LTS".
+        for o in config.model.images[1].versions[0].os:
+            if o.name == "Ubuntu 24.04":
+                o.name = "Ubuntu 24.04 LTS"
+        config.settings = BakerySettings(filter=BakeryConfigFilter(image_os="Ubuntu 24.04"))
+        targets = select_targets(config, config.settings)
+        assert targets and all(t.image_os.name == "Ubuntu 24.04" for t in targets)
+
     def test_filter_platform_rejects_regex(self):
         with pytest.raises(ValueError, match="not a regex"):
             BakeryConfigFilter(image_platform=["/amd64/"])
