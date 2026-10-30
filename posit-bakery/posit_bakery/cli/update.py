@@ -41,7 +41,7 @@ def files(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image name to isolate file rendering to.",
+            help="Exact image name, or /regex/ for a regular expression, to isolate file rendering to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,

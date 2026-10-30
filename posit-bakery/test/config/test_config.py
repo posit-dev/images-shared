@@ -2026,6 +2026,10 @@ class TestBakeryConfig:
         config = BakeryConfig(complex_yaml, settings)
         assert len(select_targets(config, config.settings)) == 10
 
+    def test_filter_platform_rejects_regex(self):
+        with pytest.raises(ValueError, match="not a regex"):
+            BakeryConfigFilter(image_platform=["/amd64/"])
+
     def test_target_filtering_filter_multi(self, testdata_path):
         complex_yaml = testdata_path / "valid" / "complex.yaml"
 

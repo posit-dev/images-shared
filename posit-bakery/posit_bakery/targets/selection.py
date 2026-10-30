@@ -63,6 +63,14 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
     """
     targets: list[ImageTarget] = []
     image_names = [i.name for i in config.model.images]
+    # Candidate sets are repo-wide so a bare filter's exact-vs-legacy meaning doesn't vary per image.
+    variant_names = {v.name for i in config.model.images for v in i.variants or []}
+    os_names = {
+        o.name
+        for i in config.model.images
+        for v in (*i.versions, *([i.matrix] if i.matrix else []))
+        for o in v.os or []
+    }
     for image in config.model.images:
         if settings.filter.image_name is not None and not filter_matches(
             settings.filter.image_name, image.name, image_names
@@ -137,7 +145,7 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                 continue
             for variant in image.variants or [None]:
                 if settings.filter.image_variant is not None and not filter_matches(
-                    settings.filter.image_variant, variant.name, [v.name for v in image.variants]
+                    settings.filter.image_variant, variant.name, variant_names
                 ):
                     log.debug(
                         f"Skipping image variant '{variant.name}' in image '{image.name}' "
@@ -151,7 +159,7 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                             "filter is set. --image-os filter will be ignored for this image version."
                         )
                     elif settings.filter.image_os is not None and not filter_matches(
-                        settings.filter.image_os, _os.name, [o.name for o in version.os]
+                        settings.filter.image_os, _os.name, os_names
                     ):
                         log.debug(
                             f"Skipping image OS '{_os.name}' in image '{image.name}' "
@@ -164,7 +172,7 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                             "filter is set. --image-platform filter will be ignored for this image version."
                         )
                     elif settings.filter.image_platform and all(
-                        not filter_matches(filter_platform, platform, _os.platforms)
+                        platform != filter_platform
                         for platform in _os.platforms
                         for filter_platform in settings.filter.image_platform
                     ):

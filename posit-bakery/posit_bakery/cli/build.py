@@ -212,7 +212,7 @@ def build(
         Optional[list[str]],
         typer.Option(
             show_default=False,
-            help="The image platform(s) to isolate builds to, e.g. 'linux/amd64'. "
+            help="The exact image platform(s) to isolate builds to, e.g. 'linux/amd64' (regex not supported). "
             "Image build targets incompatible with the given platform(s) will be skipped.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),

@@ -102,8 +102,8 @@ class TestFilterMatches:
         assert util.filter_matches("connect", "connect", ["connect", "connect-content"])
         assert not util.filter_matches("connect", "connect-content", ["connect", "connect-content"])
 
-    def test_legacy_regex_warns_once(self, caplog):
-        util._warned_filter_patterns.clear()
+    def test_legacy_regex_warns_once(self, caplog, monkeypatch):
+        monkeypatch.setattr(util, "_warned_filter_patterns", set())
         with caplog.at_level("WARNING", logger="posit_bakery.util"):
             assert util.filter_matches("std", "Standard", ["Standard"]) is False  # case-sensitive search
             assert util.filter_matches("^con", "connect", ["connect"])

@@ -7,7 +7,7 @@ import logging
 import warnings
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from posit_bakery.config.image.dev_version.spec import DevBuildSpec
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -30,8 +30,17 @@ class BakeryConfigFilter(BaseModel):
         str | None, Field(description="Exact name or /regex/ of the image OS to filter by.", default=None)
     ]
     image_platform: Annotated[
-        list[str], Field(description="Exact name or /regex/ of the image platform to filter by.", default_factory=list)
+        list[str], Field(description="Exact image platform(s) to filter by, e.g. 'linux/amd64'.", default_factory=list)
     ]
+
+    @field_validator("image_platform")
+    @classmethod
+    def _platform_not_regex(cls, value: list[str]) -> list[str]:
+        # Platforms flow into buildx --platform and dgoss, which cannot take a regex.
+        for p in value:
+            if len(p) >= 2 and p.startswith("/") and p.endswith("/"):
+                raise ValueError(f"--image-platform must be an exact platform such as 'linux/amd64', not a regex: {p}")
+        return value
 
 
 class BakerySettings(BaseModel):
