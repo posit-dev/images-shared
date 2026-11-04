@@ -163,7 +163,7 @@ ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 :param jupyterlab_version_pin: An optional version specifier to pin the jupyterlab version to, e.g. "<5"
 :param pwb_jupyterlab_version_pin: An optional version specifier to pin the pwb_jupyterlab version to, e.g. "<2"
 :param extra_packages: A list of additional packages to install in the JupyterLab virtual environment, e.g. ["numpy", "pandas"]. Optional.
-:param strip_tests: Whether to remove the jupyterlab tests directory after installation. Defaults to True.
+:param strip_tests: Whether to remove the jupyterlab tests and galata directories and the tornado test directory (contains a test.key fixture flagged by secret scanners) after installation. Defaults to True.
 :param strip_staging: Whether to remove the jupyterlab staging yarn.lock file after installation. Defaults to True.
 #}
 {% macro install_jupyterlab_workbench(python_version, jupyter_venv_name = "jupyter", jupyterlab_version_pin = "", pwb_jupyterlab_version_pin = "", extra_packages = [], strip_tests = True, strip_staging = True) -%}
@@ -176,6 +176,7 @@ ln -s {{ get_version_directory(version) }}/bin/{{ bin_name }} {{ target }}
 {% if strip_tests -%}
 rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/tests && \
 rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/galata && \
+rm -rf {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/tornado/test && \
 {% endif -%}
 {% if strip_staging -%}
 rm -f {{ get_version_directory(jupyter_venv_name) }}/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \

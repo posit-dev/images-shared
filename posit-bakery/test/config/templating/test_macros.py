@@ -1711,6 +1711,7 @@ class TestPythonMacros:
                 "pwb_jupyterlab" && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
             rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
@@ -1735,6 +1736,7 @@ class TestPythonMacros:
                 "pwb_jupyterlab<2" && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
             rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
@@ -1761,6 +1763,7 @@ class TestPythonMacros:
                 pandas && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
             rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
             rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
@@ -1785,6 +1788,7 @@ class TestPythonMacros:
                 "pwb_jupyterlab" && \\
             rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/tests && \\
             rm -rf /opt/python/lab/lib/python*/site-packages/jupyterlab/galata && \\
+            rm -rf /opt/python/lab/lib/python*/site-packages/tornado/test && \\
             rm -f /opt/python/lab/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
             ln -s /opt/python/lab/bin/jupyter /usr/local/bin/jupyter
             """
@@ -1808,6 +1812,7 @@ class TestPythonMacros:
                         "pwb_jupyterlab" && \\
                     rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
                     rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
                     rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
@@ -1827,6 +1832,7 @@ class TestPythonMacros:
                         "pwb_jupyterlab" && \\
                     rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
                     rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+                    rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
                     ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
                     """
                 ),
@@ -1896,6 +1902,7 @@ class TestPythonMacros:
                     "pwb_jupyterlab" && \\
                 rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/tests && \\
                 rm -rf /opt/python/jupyter/lib/python*/site-packages/jupyterlab/galata && \\
+                rm -rf /opt/python/jupyter/lib/python*/site-packages/tornado/test && \\
                 rm -f /opt/python/jupyter/lib/python*/site-packages/jupyterlab/staging/yarn.lock && \\
                 ln -s /opt/python/jupyter/bin/jupyter /usr/local/bin/jupyter
             """
