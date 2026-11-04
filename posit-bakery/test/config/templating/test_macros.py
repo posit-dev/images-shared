@@ -2049,13 +2049,13 @@ class TestQuartoMacros:
             pytest.param(
                 False,
                 "/root",
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR \'~/.texlive/texmf-var\'',
                 id="with-home-path",
             ),
             pytest.param(
                 True,
                 "/root",
-                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --update-path',
+                'GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/1.8.24/bin/quarto install tinytex --no-prompt --update-path && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR \'~/.texlive/texmf-var\'',
                 id="with-home-path-and-update-path",
             ),
         ],
@@ -2149,7 +2149,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR '~/.texlive/texmf-var'"""
                 ),
                 id="with-tinytex-home-path",
             ),
@@ -2166,7 +2166,7 @@ class TestQuartoMacros:
                     apt-mark hold quarto && \\
                     apt-get clean -yqq && \\
                     rm -rf /var/lib/apt/lists/* && \\
-                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
+                    GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt --update-path && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR '~/.texlive/texmf-var'"""
                 ),
                 id="with-tinytex-home-path-update-path",
             ),
@@ -2288,7 +2288,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR '~/.texlive/texmf-var'"""
                 ),
                 id="single-version-with-tinytex-home-path",
             ),
@@ -2303,7 +2303,7 @@ class TestQuartoMacros:
                         apt-mark hold quarto && \\
                         apt-get clean -yqq && \\
                         rm -rf /var/lib/apt/lists/* && \\
-                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt --update-path"""
+                        GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" HOME="/root" CI=true /opt/quarto/bin/quarto install tinytex --no-prompt --update-path && "/root"/.TinyTeX/bin/*/tlmgr conf texmf TEXMFVAR '~/.texlive/texmf-var'"""
                 ),
                 id="single-version-with-tinytex-home-path-update-path",
             ),
