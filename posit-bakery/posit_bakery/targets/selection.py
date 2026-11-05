@@ -5,7 +5,6 @@ loading and validation.
 """
 
 import logging
-import re
 from typing import TYPE_CHECKING
 
 import typer
@@ -16,6 +15,7 @@ from posit_bakery.const import DevVersionInclusionEnum, MatrixVersionInclusionEn
 from posit_bakery.error import BakeryError
 from posit_bakery.image.image_target import ImageTarget, ImageTargetSettings
 from posit_bakery.log import stderr_console
+from posit_bakery.util import filter_matches
 
 if TYPE_CHECKING:
     from posit_bakery.config.config import BakeryConfig
@@ -62,13 +62,24 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
     :return: List of ImageTarget objects matching the filters.
     """
     targets: list[ImageTarget] = []
+    image_names = [i.name for i in config.model.images]
+    # Candidate sets are repo-wide so a bare filter's exact-vs-legacy meaning doesn't vary per image.
+    variant_names = {v.name for i in config.model.images for v in i.variants or []}
+    os_names = {
+        o.name
+        for i in config.model.images
+        for v in (*i.versions, *([i.matrix] if i.matrix else []))
+        for o in v.os or []
+    }
     for image in config.model.images:
-        if settings.filter.image_name is not None and re.search(settings.filter.image_name, image.name) is None:
+        if settings.filter.image_name is not None and not filter_matches(
+            settings.filter.image_name, image.name, image_names
+        ):
             log.debug(f"Skipping image '{image.name}' due to not matching name filter '{settings.filter.image_name}'")
             continue
         versions = list(image.versions)
-        image_name_filter_matched = settings.filter.image_name is not None and re.search(
-            settings.filter.image_name, image.name
+        image_name_filter_matched = settings.filter.image_name is not None and filter_matches(
+            settings.filter.image_name, image.name, image_names
         )
         if (image.matrix is None and settings.matrix_versions == MatrixVersionInclusionEnum.ONLY) or (
             image.matrix is not None and settings.matrix_versions == MatrixVersionInclusionEnum.EXCLUDE
@@ -133,9 +144,8 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                     log.debug(f"Skipping version '{version.name}' in image '{image.name}': {reason}")
                 continue
             for variant in image.variants or [None]:
-                if (
-                    settings.filter.image_variant is not None
-                    and re.search(settings.filter.image_variant, variant.name) is None
+                if settings.filter.image_variant is not None and not filter_matches(
+                    settings.filter.image_variant, variant.name, variant_names
                 ):
                     log.debug(
                         f"Skipping image variant '{variant.name}' in image '{image.name}' "
@@ -148,7 +158,9 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                             f"Image '{image.name}' version '{version.name}' has no OS defined but --image-os "
                             "filter is set. --image-os filter will be ignored for this image version."
                         )
-                    elif settings.filter.image_os is not None and re.search(settings.filter.image_os, _os.name) is None:
+                    elif settings.filter.image_os is not None and not filter_matches(
+                        settings.filter.image_os, _os.name, os_names
+                    ):
                         log.debug(
                             f"Skipping image OS '{_os.name}' in image '{image.name}' "
                             f"due to not matching OS filter '{settings.filter.image_os}'"
@@ -160,7 +172,7 @@ def select_targets(config: "BakeryConfig", settings: BakerySettings, *, sort: bo
                             "filter is set. --image-platform filter will be ignored for this image version."
                         )
                     elif settings.filter.image_platform and all(
-                        re.search(filter_platform, platform) is None
+                        platform != filter_platform
                         for platform in _os.platforms
                         for filter_platform in settings.filter.image_platform
                     ):

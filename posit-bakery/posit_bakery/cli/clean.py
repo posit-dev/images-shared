@@ -57,7 +57,7 @@ def cache_registry(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image name or a regex pattern to isolate clean operations to.",
+            help="The exact image name, or /regex/ for a regular expression, to isolate clean operations to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -167,7 +167,7 @@ def temp_registry(
         Optional[str],
         typer.Option(
             show_default=False,
-            help="The image name or a regex pattern to isolate clean operations to.",
+            help="The exact image name, or /regex/ for a regular expression, to isolate clean operations to.",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
