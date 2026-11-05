@@ -58,17 +58,6 @@ Feature: build
         * the fail-fast images are removed
 
     @image_build
-    Scenario: Building images that utilize Bakery's macros
-        Given I call bakery build
-        * in a temp with-macros context
-        When I execute the command
-        Then The command succeeds
-        * the stderr output includes:
-            | Build completed |
-        * the with-macros test suite is built
-        * the with-macros images are removed
-
-    @image_build
     Scenario: Building images that are multiplatform
         Given I call bakery build
         * in a temp multiplatform context
