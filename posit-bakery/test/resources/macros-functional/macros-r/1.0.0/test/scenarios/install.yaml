@@ -1,0 +1,30 @@
+# run_install() + symlink_version() + symlink_binary().
+file:
+  /opt/R/default:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/R/4.6.1
+  /usr/local/bin/R:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/R/4.6.1/bin/R
+  /usr/local/bin/Rscript:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/R/4.6.1/bin/Rscript
+
+command:
+  R --version:
+    exit-status: 0
+    stdout:
+      - "R version 4.6.1"
+  r-4.6.1-runs:
+    exec: "/opt/R/4.6.1/bin/Rscript -e 'cat(format(getRversion()))'"
+    exit-status: 0
+    stdout:
+      - "4.6.1"
+  r-4.5.3-runs:
+    exec: "/opt/R/4.5.3/bin/Rscript -e 'cat(format(getRversion()))'"
+    exit-status: 0
+    stdout:
+      - "4.5.3"

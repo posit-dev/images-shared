@@ -1,0 +1,23 @@
+# run_install_jupyterlab_workbench() into a venv built from the first Python version.
+file:
+  /usr/local/bin/jupyter:
+    exists: true
+    filetype: symlink
+    linked-to: /opt/python/jupyter/bin/jupyter
+  /opt/python/jupyter/lib/python3.14/site-packages/jupyterlab/tests:
+    exists: false
+  /opt/python/jupyter/lib/python3.14/site-packages/jupyterlab/galata:
+    exists: false
+  /opt/python/jupyter/lib/python3.14/site-packages/jupyterlab/staging/yarn.lock:
+    exists: false
+
+command:
+  /opt/python/jupyter/bin/python --version:
+    exit-status: 0
+    stdout:
+      - "Python 3.14.7"
+  jupyter-packages-importable:
+    exec: '/opt/python/jupyter/bin/python -c "import jupyterlab, notebook, pwb_jupyterlab"'
+    exit-status: 0
+  jupyter lab --version:
+    exit-status: 0

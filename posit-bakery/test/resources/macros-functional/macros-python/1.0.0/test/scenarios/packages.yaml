@@ -1,0 +1,15 @@
+# run_install_packages() with packages and multiple requirements files, across every
+# Python version.
+command:
+  python-3.14.7-packages-importable:
+    exec: '/opt/python/3.14.7/bin/python -c "import six, idna, packaging, typing_extensions"'
+    exit-status: 0
+  python-3.13.7-packages-importable:
+    exec: '/opt/python/3.13.7/bin/python -c "import six, idna, packaging, typing_extensions"'
+    exit-status: 0
+
+file:
+  /tmp/requirements-1.txt:
+    exists: false
+  /tmp/requirements-2.txt:
+    exists: false

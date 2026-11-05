@@ -1,0 +1,37 @@
+{#-
+Every Containerfile.<os>.jinja2 in this image is identical; OS differences branch on
+Image.OS so each scenario (variant) runs the same macros on every OS.
+-#}
+{%- import "apt.j2" as apt -%}
+{%- import "dnf.j2" as dnf -%}
+{%- import "r.j2" as r -%}
+{%- if Image.OS.Family == "debian" -%}
+{%- set pm = apt -%}
+{%- set base_image = "docker.io/library/ubuntu:" ~ Image.OS.Version -%}
+{%- else -%}
+{%- set pm = dnf -%}
+{%- set base_image = "docker.io/rockylinux/rockylinux:" ~ Image.OS.Version -%}
+{%- endif -%}
+{%- set default_version = Dependencies.R[0] -%}
+
+FROM {{ base_image }}
+LABEL org.opencontainers.image.base.name="{{ base_image }}"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+{{ pm.run_setup(open_repo=True) }}
+
+{{ r.run_install(Dependencies.R, os_family=Image.OS.Family) }}
+
+{% if Image.Variant == "install" -%}
+RUN {{ r.symlink_version(default_version, "/opt/R/default") }} && \
+    {{ r.symlink_binary(default_version, "R", "/usr/local/bin/R") }} && \
+    {{ r.symlink_binary(default_version, "Rscript", "/usr/local/bin/Rscript") }}
+{%- elif Image.Variant == "packages" -%}
+COPY {{ Path.Version }}/deps/packages-1.txt /tmp/r-packages-1.txt
+COPY {{ Path.Version }}/deps/packages-2.txt /tmp/r-packages-2.txt
+{{ r.run_install_packages(Dependencies.R, ["R6", "jsonlite"], ["/tmp/r-packages-1.txt", "/tmp/r-packages-2.txt"], _os=Image.OS) }}
+{%- else -%}
+{{ raise("Unhandled variant '" ~ Image.Variant ~ "'") }}
+{%- endif %}
