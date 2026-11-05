@@ -14,7 +14,7 @@
   "target": {
     "scratch-1-0-0-scratch": {
       "context": ".",
-      "dockerfile": "scratch/1.0.0/Containerfile.scratch",
+      "dockerfile": "scratch/1.0.0/Containerfile",
       "labels": {
         "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
         "org.opencontainers.image.source": "https://github.com/posit-images-shared/posit-images-shared",
@@ -30,9 +30,7 @@
       },
       "tags": [
         "ghcr.io/posit-dev/scratch:1.0.0",
-        "ghcr.io/posit-dev/scratch:1.0.0-scratch",
-        "ghcr.io/posit-dev/scratch:latest",
-        "ghcr.io/posit-dev/scratch:scratch"
+        "ghcr.io/posit-dev/scratch:latest"
       ],
       "args": {},
       "platforms": [
@@ -41,13 +39,13 @@
       "cache_from": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch-amd64"
+          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0--amd64"
         }
       ],
       "cache_to": [
         {
           "type": "registry",
-          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0-scratch-amd64",
+          "ref": "ghcr.io/posit-dev/scratch/cache:1.0.0--amd64",
           "mode": "max",
           "compression": "zstd",
           "oci-mediatypes": "true"
