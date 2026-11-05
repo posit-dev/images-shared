@@ -1,0 +1,87 @@
+# Functional (blackbox) tests for Bakery's Jinja2 macros. See README.md.
+#
+# One image per macro module, one variant per test scenario. Each variant's
+# goss assertions live in <image>/template/test/scenarios/<variant name>.yaml.
+repository:
+  url: "github.com/posit-dev/images-shared"
+  vendor: "Posit Software, PBC"
+  maintainer:
+    name: "Posit Docker Team"
+    email: "docker@posit.co"
+
+registries:
+  - host: "ghcr.io"
+    namespace: "posit-dev"
+
+images:
+  - name: "macros-syspkg"
+    variants:
+      - name: "setup"
+        primary: true
+      - name: "install"
+      - name: "no-clean"
+      - name: "upgrade"
+    versions:
+      - name: 1.0.0
+        latest: true
+        os: &os
+          - name: Ubuntu 24.04
+            primary: true
+          - name: Ubuntu 22.04
+          - name: Ubuntu 26.04
+          - name: Rocky Linux 9
+            extension: rocky9
+            tagDisplayName: rocky-9
+          - name: Rocky Linux 10
+            extension: rocky10
+            tagDisplayName: rocky-10
+
+  - name: "macros-python"
+    variants:
+      - name: "install"
+        primary: true
+      - name: "packages"
+      - name: "jupyter"
+    versions:
+      - name: 1.0.0
+        latest: true
+        os: *os
+        # Two versions so multi-version macro loops are exercised.
+        dependencies:
+          - dependency: python
+            versions:
+              - 3.14.7
+              - 3.13.7
+
+  - name: "macros-r"
+    variants:
+      - name: "install"
+        primary: true
+      - name: "packages"
+    versions:
+      - name: 1.0.0
+        latest: true
+        os: *os
+        # Two versions so multi-version macro loops are exercised.
+        dependencies:
+          - dependency: R
+            versions:
+              - 4.6.1
+              - 4.5.3
+
+  - name: "macros-quarto"
+    buildSecrets:
+      # Avoids GitHub API rate limits when installing TinyTeX.
+      - id: github_token
+        envVar: GITHUB_TOKEN
+    variants:
+      - name: "install"
+        primary: true
+      - name: "tinytex"
+    versions:
+      - name: 1.0.0
+        latest: true
+        os: *os
+        dependencies:
+          - dependency: quarto
+            version: 1.9.38

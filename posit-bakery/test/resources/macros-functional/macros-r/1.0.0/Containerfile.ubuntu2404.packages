@@ -1,0 +1,45 @@
+FROM docker.io/library/ubuntu:24.04
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:24.04"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' > /etc/apt/apt.conf.d/99-retries && \
+    apt-get update -yqq --fix-missing && \
+    apt-get upgrade -yqq && \
+    apt-get dist-upgrade -yqq && \
+    apt-get autoremove -yqq --purge && \
+    apt-get install -yqq --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+        tar && \
+    apt-get install -yqq --no-install-recommends locales && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
+    bash -c "$(curl -1fsSL 'https://dl.posit.co/public/open/setup.deb.sh')" && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+RUN apt-get update -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        r-4.6.1 && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get update -yqq && \
+    apt-get install -yqq --no-install-recommends \
+        r-4.5.3 && \
+    apt-get clean -yqq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY macros-r/1.0.0/deps/packages-1.txt /tmp/r-packages-1.txt
+COPY macros-r/1.0.0/deps/packages-2.txt /tmp/r-packages-2.txt
+RUN /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(c("R6", "jsonlite"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)' && \
+    /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-1.txt"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)' && \
+    /opt/R/4.6.1/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-2.txt"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)'
+RUN /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(c("R6", "jsonlite"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)' && \
+    /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-1.txt"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)' && \
+    /opt/R/4.5.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/r-packages-2.txt"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)' && \
+    rm -f /tmp/r-packages-1.txt /tmp/r-packages-2.txt

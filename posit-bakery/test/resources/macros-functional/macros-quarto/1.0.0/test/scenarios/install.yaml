@@ -1,0 +1,19 @@
+# run_install() from the Posit Open repository.
+package:
+  quarto:
+    installed: true
+
+file:
+  /opt/quarto/bin/quarto:
+    exists: true
+
+command:
+  quarto --version:
+    exit-status: 0
+    stdout:
+      - "1.9.38"
+  quarto-package-held:
+    exec: '{{ if eq .Env.IMAGE_OS_FAMILY "debian" }}apt-mark showhold{{ else }}cat /etc/dnf/plugins/versionlock.list{{ end }}'
+    exit-status: 0
+    stdout:
+      - "quarto"

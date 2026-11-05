@@ -1,0 +1,15 @@
+# run_install_packages() with packages and multiple package list files, across every
+# R version.
+command:
+  r-4.6.1-packages-loadable:
+    exec: "/opt/R/4.6.1/bin/Rscript -e 'library(R6); library(jsonlite); library(glue); library(magrittr)'"
+    exit-status: 0
+  r-4.5.3-packages-loadable:
+    exec: "/opt/R/4.5.3/bin/Rscript -e 'library(R6); library(jsonlite); library(glue); library(magrittr)'"
+    exit-status: 0
+
+file:
+  /tmp/r-packages-1.txt:
+    exists: false
+  /tmp/r-packages-2.txt:
+    exists: false
