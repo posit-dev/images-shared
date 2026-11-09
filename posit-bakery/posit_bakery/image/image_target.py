@@ -601,9 +601,8 @@ class ImageTarget(BaseModel):
         if self.image_os:
             labels[f"{POSIT_LABEL_PREFIX}.os"] = self.image_os.name
         if self.image_version.dependencies:
-            if not self.image_variant or (self.image_variant and self.image_variant.name != "Minimal"):
-                for dependency in self.image_version.dependencies:
-                    labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
+            for dependency in self.image_version.dependencies:
+                labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
 
         return labels
 
