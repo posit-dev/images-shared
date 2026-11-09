@@ -14,10 +14,10 @@ bakery
 
     Options:
       --install-completion  Install completion for the current shell.  [default:
-                            <object object at 0x7f727e2953e0>]
+                            <object object at 0x73fb4d3813c0>]
       --show-completion     Show completion for the current shell, to copy it or
                             customize the installation.  [default: <object object
-                            at 0x7f727e2953e0>]
+                            at 0x73fb4d3813c0>]
       --help                Show this message and exit.
 
     Commands:
@@ -33,6 +33,7 @@ bakery
       dgoss       Run Goss tests against container images
       hadolint    Lint Containerfiles using hadolint
       imagetools  Merge and SOCI-convert multi-platform images (ORAS + SOCI)
+      trivy       Scan container images for vulnerabilities with Trivy
       wizcli      Scan container images for vulnerabilities with WizCLI
 
 Back to top

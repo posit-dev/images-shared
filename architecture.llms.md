@@ -212,7 +212,7 @@ flowchart TD
     results[/"Test & Scan results"/]
 
     trivy[[trivy]]
-    runTrivy[[bakery trivy run]]
+    runTrivy[[bakery trivy scan]]
     runTrivy --> trivy
     image -.-> trivy -.-> results
 
@@ -235,7 +235,6 @@ flowchart TD
     class trivy,openscap,wizcli external
 
     %% Mark what we are working on and is in flight %%
-    class inprogress,trivy todo
     class openscap,results todo
 ```
 

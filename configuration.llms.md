@@ -427,6 +427,16 @@ At the version level, dependency versions are specified explicitly.
 
 You must specify either `version` or `versions`.
 
+In matrix builds, each dependency’s version is passed to the build as `<DEPENDENCY>_VERSION` (e.g. `R_VERSION`, `PYTHON_VERSION`) unless `buildArgName` overrides it. Matrix `values` are passed as their upper-cased key.
+
+``` yaml
+matrix:
+  dependencies:
+    - dependency: R
+      versions: ["4.5.1", "4.4.3"]
+      buildArgName: R_VER  # passed as --build-arg R_VER=4.5.1
+```
+
 #### Example Dependency Version List
 
 ``` yaml
@@ -549,6 +559,40 @@ images:
             platforms:
               - linux/amd64
               - linux/arm64
+```
+
+#### TrivyOptions
+
+A TrivyOption configures [Trivy](https://trivy.dev/) vulnerability scans run by `bakery trivy scan` against an image target. Scans require the image to exist in the local Docker daemon (run `bakery build` first); results are written as SARIF to `results/trivy/`. The `trivy` binary is located via `TRIVY_PATH` or `PATH`.
+
+Trivy options can be set in the `options` array of an [Image](#image) or an [ImageVariant](#imagevariant). When both are present, the variant’s options are merged over the image’s options, with any field not explicitly set on the variant inheriting the image-level value. All fields other than `tool` are optional; unset fields use Trivy’s own defaults.
+
+Matching `bakery trivy scan` flags (`--severity`, `--ignore-unfixed/--no-ignore-unfixed`, `--skip-files`, `--skip-dirs`, `--exit-code`, `--scanners`, `--timeout`, `--fail-on-severity`) override `bakery.yaml` values when explicitly passed. List flags take comma-separated values.
+
+[TABLE]
+
+##### Example TrivyOptions
+
+``` yaml
+images:
+  - name: connect
+    options:
+      - tool: trivy
+        severity:
+          - CRITICAL
+          - HIGH
+        ignoreUnfixed: true
+        timeout: 10m0s
+    variants:
+      - name: Standard
+        extension: std
+        tagDisplayName: std
+        primary: true
+        options:
+          # Inherits severity, ignoreUnfixed, and timeout from the image; adds failureSeverity.
+          - tool: trivy
+            failureSeverity:
+              - CRITICAL
 ```
 
 ### DevBuildSpec
