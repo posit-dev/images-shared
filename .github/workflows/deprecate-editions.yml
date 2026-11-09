@@ -7,11 +7,6 @@ on:
         description: "Space-separated list of versioned image names to deprecate"
         required: true
         type: string
-      update-positron-min:
-        description: "Update workbench-positron-init min constraint to the cutoff edition"
-        required: false
-        type: boolean
-        default: false
     secrets:
       CLIENT_ID:
         description: "GitHub App client ID for creating tokens"
@@ -98,17 +93,6 @@ jobs:
           PYEOF
 
           CUTOFF="$CUTOFF" uv run --with pyyaml python3 /tmp/remove_expired.py
-
-      - name: Update positron min
-        if: inputs.update-positron-min
-        env:
-          CUTOFF: ${{ steps.remove.outputs.cutoff }}
-        run: |
-          # Case 1 (first run): replace count: N with min: "CUTOFF"
-          sed -i "s/count: [0-9][0-9]*/min: \"${CUTOFF}\"/" bakery.yaml
-          # Case 2 (subsequent runs): update existing min: "YYYY.MM" to new cutoff.
-          # The YYYY.MM pattern won't match R/Python mins like "4.2" or "3.10".
-          sed -i "s/min: \"[0-9]\{4\}\.[0-9]\{2\}\"/min: \"${CUTOFF}\"/" bakery.yaml
 
       - name: Create pull request
         env:
