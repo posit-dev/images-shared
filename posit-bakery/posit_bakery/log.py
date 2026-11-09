@@ -23,7 +23,7 @@ NON_TTY_DEFAULT_WIDTH = 160
 
 
 def _console_width(stream) -> int | None:
-    if os.environ.get("COLUMNS") or stream.isatty():
+    if os.environ.get("COLUMNS") or getattr(stream, "isatty", lambda: False)():
         return None
     return NON_TTY_DEFAULT_WIDTH
 

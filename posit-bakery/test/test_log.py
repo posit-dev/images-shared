@@ -109,5 +109,6 @@ def test_console_width_non_tty_default(monkeypatch):
 
     monkeypatch.delenv("COLUMNS", raising=False)
     assert _console_width(Stream()) == NON_TTY_DEFAULT_WIDTH
+    assert _console_width(object()) == NON_TTY_DEFAULT_WIDTH
     monkeypatch.setenv("COLUMNS", "100")
     assert _console_width(Stream()) is None
