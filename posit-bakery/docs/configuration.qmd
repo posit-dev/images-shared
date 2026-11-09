@@ -338,6 +338,7 @@ own `Containerfile.<os>.<variant>`.
 | `tagAliases`<br/>*string array*      | Additional variant names to render wherever `{{ Variant }}` is used. Aliases retain the variant's primary filtering behavior.                                    | `[]`                                                                  | <pre>- default</pre>                                                                     |
 | `tagPatterns`<br/>*TagPattern array* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                  | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
 | `options`<br/>*ToolOptions array*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre>   | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
+| `toolLabels`<br/>*bool*              | Emit `co.posit.image.tools.*` labels for the image version's resolved dependencies. Set to `false` for variants that do not install those tools. | `true` | `false` |
 
 #### Common Image Variants
 
@@ -354,6 +355,7 @@ variants:
   - name: Minimal
     extension: min
     tagDisplayName: min
+    toolLabels: false  # this variant does not install the resolved dependencies
 ```
 
 ### ImageMatrix
