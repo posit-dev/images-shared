@@ -106,26 +106,6 @@ class BakeryConfigDocument(BakeryPathMixin, BakeryYAMLModel):
             image.parent = self
         return self
 
-    @model_validator(mode="after")
-    def check_inherited_tool_labels(self) -> Self:
-        """Ensures variants with toolLabels 'inherit' reference a resolvable base image and same-named variant."""
-        errors = []
-        for image in self.images:
-            for variant in image.variants:
-                if variant.toolLabels != "inherit":
-                    continue
-                where = f"Variant '{variant.name}' of image '{image.name}' sets toolLabels: inherit"
-                base = self.get_image(image.baseImage) if image.baseImage else None
-                if not image.baseImage:
-                    errors.append(f"{where} but the image does not set 'baseImage'.")
-                elif base is None:
-                    errors.append(f"{where} but baseImage '{image.baseImage}' is not an image in this config.")
-                elif base.get_variant(variant.name) is None:
-                    errors.append(f"{where} but baseImage '{base.name}' has no variant named '{variant.name}'.")
-        if errors:
-            raise ValueError("\n".join(errors))
-        return self
-
     @property
     def path(self) -> Path | None:
         """Returns the path to the bakery config parent directory."""

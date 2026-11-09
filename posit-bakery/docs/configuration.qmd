@@ -169,7 +169,6 @@ An Image represents a container image managed by the project. Each image has one
 | `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries.       | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*                                     | The list of tag patterns to apply to all versions of this image.                                                                          | [Default Tag Patterns](#default-patterns) | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
 | `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array*       | List of dependencies to install in the image. Versions are calculated from a [VersionConstraint](#versionconstraint)                       | `[]`                                      | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre>                |
-| `baseImage`<br/>*string*                                                                | Name of another image in this config that this image is built `FROM`. Required when a variant sets `toolLabels: inherit`.                  |                                           | `workbench-session`                                                                                   |
 | `variants`<br/>*[ImageVariant](#imagevariant) array*                                    | The list of variants for the image. Each variant should have its own `Containerfile`.                                                     | `[]`                                      | `- name: Minimal`                                                                                     |
 | `versions`<br/>*[ImageVersion](#imageversion) array*                                    | The list of versions for the image. Each version should have its own directory under the image's `subpath`. Cannot be used with `matrix`. | `[]`                                      | `- name: 2025.07.0`                                                                                   |
 | `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`.               |                                           | See [ImageMatrix](#imagematrix)                                                                       |
@@ -361,22 +360,18 @@ variants:
 
 #### Inheriting tool labels
 
-An image built `FROM` another bakery image may install no dependencies of its own yet still contain the base image's
-tools. Set the image's `baseImage` to the base image's name and the variant's `toolLabels` to `inherit`:
+An image built `FROM` another Posit image may install no dependencies of its own yet still contain the base image's
+tools. Set the variant's `toolLabels` to `inherit`:
 
 ```yaml
-images:
-  - name: workbench-session-complete
-    baseImage: workbench-session
-    variants:
-      - name: Standard
-        toolLabels: inherit
+variants:
+  - name: Standard
+    toolLabels: inherit
 ```
 
-The tool labels are taken from the resolved dependencies of the base image's variant with the **same name** and the
-version with the **same name** (matrix versions included). If the base variant itself sets `toolLabels: inherit`, the
-chain is followed; if it sets `false`, nothing is emitted. A missing `baseImage`, base image, or base variant is a
-configuration error at load time; a missing base version is an error when labels are generated.
+Bakery reads the final `FROM` of the variant's Containerfile (resolving `ARG` defaults and build args), inspects that
+image in its registry, and copies its `co.posit.image.tools.*` labels. If the base image cannot be determined, cannot be
+inspected, or has no tool labels, a warning is logged and no tool labels are emitted.
 
 ### ImageMatrix
 

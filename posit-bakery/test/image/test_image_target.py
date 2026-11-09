@@ -1,12 +1,10 @@
 import datetime
 import re
-import textwrap
 from unittest.mock import patch, MagicMock
 
 import pytest
 import python_on_whales
 
-from posit_bakery.config import BakeryConfig
 from posit_bakery.config.dependencies import PythonDependencyVersions, RDependencyVersions
 from posit_bakery.config.image.parsed_version import ParsedVersion
 from posit_bakery.config.image.posit_product.const import ReleaseChannelEnum
@@ -882,60 +880,37 @@ class TestImageTarget:
         assert f"{POSIT_LABEL_PREFIX}.tools.R" not in basic_minimal_image_target.labels
 
     @staticmethod
-    def _inherit_config(tmp_path, base_image="base", base_version="1.0.0", base_variant="Standard"):
-        (tmp_path / "bakery.yaml").write_text(
-            textwrap.dedent(f"""\
-            repository:
-              url: https://github.com/posit-dev/images-shared
-            images:
-              - name: base
-                variants:
-                  - name: Standard
-                versions:
-                  - name: 1.0.0
-                    os: [{{name: Ubuntu 22.04}}]
-                    dependencies:
-                      - dependency: R
-                        versions: ["4.4.3"]
-              - name: child
-                baseImage: {base_image}
-                variants:
-                  - name: {base_variant}
-                    toolLabels: inherit
-                versions:
-                  - name: {base_version}
-                    os: [{{name: Ubuntu 22.04}}]
-            """)
+    def _inherit_target(target, containerfile_text, monkeypatch):
+        target.image_variant.toolLabels = "inherit"
+        monkeypatch.setattr("pathlib.Path.read_text", lambda self, *a, **k: containerfile_text)
+        return target
+
+    def test_base_image_ref_resolves_args_and_stages(self, basic_standard_image_target, monkeypatch):
+        target = self._inherit_target(
+            basic_standard_image_target,
+            "ARG BASE=ghcr.io/posit-dev/base:1.0\nFROM ${BASE} AS build\nFROM build\n",
+            monkeypatch,
         )
-        return tmp_path / "bakery.yaml"
+        assert target.base_image_ref() == "ghcr.io/posit-dev/base:1.0"
 
-    def _child_target(self, path):
-        config = BakeryConfig.from_context(path.parent)
-        return next(t for t in select_targets(config, config.settings) if t.image_name == "child")
+    def test_inherited_tool_labels_copied(self, basic_standard_image_target, monkeypatch):
+        target = self._inherit_target(basic_standard_image_target, "FROM ghcr.io/posit-dev/base:1.0\n", monkeypatch)
+        out = '{"config": {"Labels": {"%s.tools.R": "4.4.3", "other": "x"}}}' % POSIT_LABEL_PREFIX
+        with patch("posit_bakery.image.image_target.subprocess.run", return_value=MagicMock(stdout=out)):
+            labels = target.labels
+        assert labels[f"{POSIT_LABEL_PREFIX}.tools.R"] == "4.4.3"
+        assert "other" not in labels
 
-    def test_labels_tools_inherited_from_base_image(self, tmp_path):
-        """toolLabels: inherit copies labels from the same-named variant/version of baseImage."""
-        target = self._child_target(self._inherit_config(tmp_path))
-        assert target.labels[f"{POSIT_LABEL_PREFIX}.tools.R"] == "4.4.3"
+    def test_inherited_tool_labels_warn_when_missing(self, basic_standard_image_target, caplog, monkeypatch):
+        target = self._inherit_target(basic_standard_image_target, "FROM ghcr.io/posit-dev/base:1.0\n", monkeypatch)
+        with patch("posit_bakery.image.image_target.subprocess.run", return_value=MagicMock(stdout='{"config": {}}')):
+            assert not [k for k in target.labels if ".tools." in k]
+        assert "has no" in caplog.text
 
-    def test_labels_tools_inherit_missing_base_version_errors(self, tmp_path):
-        """An unmatched base version fails rather than silently emitting nothing."""
-        target = self._child_target(self._inherit_config(tmp_path, base_version="2.0.0"))
-        with pytest.raises(ValueError, match="version '2.0.0'"):
-            target.labels
-
-    @pytest.mark.parametrize(
-        "kwargs,match",
-        [
-            ({"base_image": "nope"}, "not an image in this config"),
-            ({"base_variant": "Minimal"}, "has no variant named 'Minimal'"),
-        ],
-    )
-    def test_inherit_invalid_base_fails_validation(self, tmp_path, kwargs, match):
-        """Unresolvable baseImage or variant is rejected at config load."""
-        path = self._inherit_config(tmp_path, **kwargs)
-        with pytest.raises(Exception, match=match):
-            BakeryConfig.from_context(path.parent)
+    def test_inherited_tool_labels_warn_when_base_unknown(self, basic_standard_image_target, caplog, monkeypatch):
+        target = self._inherit_target(basic_standard_image_target, "FROM ${UNSET}\n", monkeypatch)
+        assert not [k for k in target.labels if ".tools." in k]
+        assert "could not be determined" in caplog.text
 
     def test_temp_name(self, basic_standard_image_target):
         """Test the temp_name property of an ImageTarget."""

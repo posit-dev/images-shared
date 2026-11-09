@@ -56,8 +56,8 @@ class ImageVariant(BakeryYAMLModel):
         Field(
             default=True,
             description="Emit co.posit.image.tools.* labels for this variant's resolved dependencies. Set to false "
-            "if the variant does not install them, or 'inherit' to copy the labels from the same-named variant and "
-            "version of the image named by the image's 'baseImage'.",
+            "if the variant does not install them, or 'inherit' to copy the co.posit.image.tools.* labels from the base "
+            "image named in the Containerfile's final FROM.",
         ),
     ]
 

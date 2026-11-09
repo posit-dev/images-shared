@@ -118,14 +118,6 @@ class Image(BakeryPathMixin, BakeryYAMLModel):
             description="Dependencies to install, specified by a version constraint.",
         ),
     ]
-    baseImage: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Name of another image in this bakery config that this image is built FROM. Required when "
-            "a variant sets toolLabels to 'inherit'.",
-        ),
-    ]
     variants: Annotated[
         list[ImageVariant],
         Field(

@@ -1,6 +1,8 @@
 import logging
+import json
 import os
 import re
+import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -600,38 +602,77 @@ class ImageTarget(BaseModel):
             labels[f"{POSIT_LABEL_PREFIX}.variant"] = self.image_variant.name
         if self.image_os:
             labels[f"{POSIT_LABEL_PREFIX}.os"] = self.image_os.name
-        for dependency in self.tool_dependencies():
-            labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
+        if self.image_variant and self.image_variant.toolLabels == "inherit":
+            labels.update(self.inherited_tool_labels())
+        elif self.image_version.dependencies and (not self.image_variant or self.image_variant.toolLabels):
+            for dependency in self.image_version.dependencies:
+                labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
 
         return labels
 
-    def tool_dependencies(self) -> list:
-        """Dependencies to emit as tool labels, following ``toolLabels: inherit`` through base images.
+    def base_image_ref(self) -> str | None:
+        """Resolve the image in the Containerfile's final ``FROM``, following earlier stage names and ``ARG`` values.
 
-        :raises ValueError: If an inherited base image, variant, or version cannot be resolved.
+        Returns None if the Containerfile or base cannot be determined.
         """
-        version, variant = self.image_version, self.image_variant
+        try:
+            lines = (self.context.base_path / self.containerfile).read_text().splitlines()
+        except (OSError, ValueError):
+            return None
+        args: dict[str, str] = {}
+        stages: dict[str, str] = {}  # stage alias -> its FROM ref
+        ref = None
+        for line in lines:
+            m = re.match(r"\s*ARG\s+(\w+)(?:=(\S*))?", line, re.IGNORECASE)
+            if m and m.group(2) is not None:
+                args[m.group(1)] = m.group(2).strip("\"'")
+                continue
+            m = re.match(r"\s*FROM\s+(?:--\S+\s+)*(\S+)(?:\s+AS\s+(\S+))?", line, re.IGNORECASE)
+            if m:
+                ref = m.group(1)
+                if m.group(2):
+                    stages[m.group(2).lower()] = ref
+        values = {**args, **self.build_args}
         seen = set()
-        while variant is not None and variant.toolLabels == "inherit":
-            image = version.parent
-            if (image.name, version.name) in seen:
-                raise ValueError(f"Circular baseImage chain while inheriting tool labels at image '{image.name}'.")
-            seen.add((image.name, version.name))
-            base = image.parent.get_image(image.baseImage) if image.baseImage and image.parent else None
-            if base is None:
-                raise ValueError(f"Cannot inherit tool labels: baseImage of image '{image.name}' is not resolvable.")
-            base_variant = base.get_variant(variant.name)
-            base_version = base.get_version(version.name)
-            if base_variant is None or base_version is None:
-                raise ValueError(
-                    f"Cannot inherit tool labels: base image '{base.name}' has no variant '{variant.name}' and "
-                    f"version '{version.name}' (needed by image '{image.name}')."
-                )
-            variant = base_variant
-            version = base_version
-        if variant is not None and variant.toolLabels is False:
-            return []
-        return list(version.dependencies)
+        while ref and ref.lower() in stages and ref.lower() not in seen:
+            seen.add(ref.lower())
+            ref = stages[ref.lower()]
+        if not ref:
+            return None
+        ref = re.sub(r"\$\{(\w+)\}|\$(\w+)", lambda x: values.get(x.group(1) or x.group(2), x.group(0)), ref)
+        return None if "$" in ref or ref.lower() == "scratch" else ref
+
+    def inherited_tool_labels(self) -> dict[str, str]:
+        """Copy ``co.posit.image.tools.*`` labels from the base image in the Containerfile's ``FROM``.
+
+        Logs a warning and returns no labels if the base cannot be determined or has no tool labels.
+        """
+        prefix = f"{POSIT_LABEL_PREFIX}.tools."
+        ref = self.base_image_ref()
+        if not ref:
+            log.warning(
+                f"[{self.uid}] toolLabels is 'inherit' but the base image in the Containerfile FROM could not be determined."
+            )
+            return {}
+        try:
+            result = subprocess.run(
+                ["docker", "buildx", "imagetools", "inspect", "--format", "{{json .Image}}", ref],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            config = json.loads(result.stdout)
+        except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            log.warning(f"[{self.uid}] toolLabels is 'inherit' but base image '{ref}' could not be inspected: {e}")
+            return {}
+        # Multi-platform images map platform -> config; prefer ours, else the first.
+        if "config" not in config and config:
+            config = config.get(f"linux/{SETTINGS.architecture}") or next(iter(config.values()))
+        base_labels = (config.get("config") or {}).get("Labels") or {}
+        inherited = {k: v for k, v in base_labels.items() if k.startswith(prefix)}
+        if not inherited:
+            log.warning(f"[{self.uid}] toolLabels is 'inherit' but base image '{ref}' has no {prefix}* labels.")
+        return inherited
 
     def cache_name(self, platform: str | None = None) -> str | None:
         """Generate the image name and tag to use for a build cache.
