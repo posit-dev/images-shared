@@ -600,11 +600,38 @@ class ImageTarget(BaseModel):
             labels[f"{POSIT_LABEL_PREFIX}.variant"] = self.image_variant.name
         if self.image_os:
             labels[f"{POSIT_LABEL_PREFIX}.os"] = self.image_os.name
-        if self.image_version.dependencies and (not self.image_variant or self.image_variant.toolLabels):
-            for dependency in self.image_version.dependencies:
-                labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
+        for dependency in self.tool_dependencies():
+            labels[f"{POSIT_LABEL_PREFIX}.tools.{dependency.dependency}"] = ", ".join(dependency.versions)
 
         return labels
+
+    def tool_dependencies(self) -> list:
+        """Dependencies to emit as tool labels, following ``toolLabels: inherit`` through base images.
+
+        :raises ValueError: If an inherited base image, variant, or version cannot be resolved.
+        """
+        version, variant = self.image_version, self.image_variant
+        seen = set()
+        while variant is not None and variant.toolLabels == "inherit":
+            image = version.parent
+            if (image.name, version.name) in seen:
+                raise ValueError(f"Circular baseImage chain while inheriting tool labels at image '{image.name}'.")
+            seen.add((image.name, version.name))
+            base = image.parent.get_image(image.baseImage) if image.baseImage and image.parent else None
+            if base is None:
+                raise ValueError(f"Cannot inherit tool labels: baseImage of image '{image.name}' is not resolvable.")
+            base_variant = base.get_variant(variant.name)
+            base_version = base.get_version(version.name)
+            if base_variant is None or base_version is None:
+                raise ValueError(
+                    f"Cannot inherit tool labels: base image '{base.name}' has no variant '{variant.name}' and "
+                    f"version '{version.name}' (needed by image '{image.name}')."
+                )
+            variant = base_variant
+            version = base_version
+        if variant is not None and variant.toolLabels is False:
+            return []
+        return list(version.dependencies)
 
     def cache_name(self, platform: str | None = None) -> str | None:
         """Generate the image name and tag to use for a build cache.

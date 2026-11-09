@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, Union
+from typing import Annotated, Literal, Union
 
 from pydantic import Field
 
@@ -52,11 +52,12 @@ class ImageVariant(BakeryYAMLModel):
         Field(default_factory=default_tool_options, description="List of tool options for this variant."),
     ]
     toolLabels: Annotated[
-        bool,
+        bool | Literal["inherit"],
         Field(
             default=True,
             description="Emit co.posit.image.tools.* labels for this variant's resolved dependencies. Set to false "
-            "if the variant does not install them.",
+            "if the variant does not install them, or 'inherit' to copy the labels from the same-named variant and "
+            "version of the image named by the image's 'baseImage'.",
         ),
     ]
 

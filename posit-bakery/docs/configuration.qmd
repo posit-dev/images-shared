@@ -169,6 +169,7 @@ An Image represents a container image managed by the project. Each image has one
 | `overrideRegistries`<br/>*[Registry](#registry) or [BaseRegistry](#baseregistry) array* | If set, overrides the global `registries` in [bakery.yaml](#bakery-configuration) for this image with the given list of registries.       | `[]`                                      | <pre>- host: docker.io<br/>  namespace: posit</pre>                                                   |
 | `tagPatterns`<br/>*[TagPattern](#tagpattern) array*                                     | The list of tag patterns to apply to all versions of this image.                                                                          | [Default Tag Patterns](#default-patterns) | <pre>- patterns: ["{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/>    - "primaryVariant"</pre> |
 | `dependencyConstraints`<br/>*[DependencyConstraint](#dependencyConstraint) array*       | List of dependencies to install in the image. Versions are calculated from a [VersionConstraint](#versionconstraint)                       | `[]`                                      | <pre>- dependency: python<br/>  constraint:<br/>    latest: true<br/>    count:2</pre>                |
+| `baseImage`<br/>*string*                                                                | Name of another image in this config that this image is built `FROM`. Required when a variant sets `toolLabels: inherit`.                  |                                           | `workbench-session`                                                                                   |
 | `variants`<br/>*[ImageVariant](#imagevariant) array*                                    | The list of variants for the image. Each variant should have its own `Containerfile`.                                                     | `[]`                                      | `- name: Minimal`                                                                                     |
 | `versions`<br/>*[ImageVersion](#imageversion) array*                                    | The list of versions for the image. Each version should have its own directory under the image's `subpath`. Cannot be used with `matrix`. | `[]`                                      | `- name: 2025.07.0`                                                                                   |
 | `matrix`<br/>*[ImageMatrix](#imagematrix)*                                              | A matrix configuration for generating multiple image versions from dependency combinations. Cannot be used with `versions`.               |                                           | See [ImageMatrix](#imagematrix)                                                                       |
@@ -338,7 +339,7 @@ own `Containerfile.<os>.<variant>`.
 | `tagAliases`<br/>*string array*      | Additional variant names to render wherever `{{ Variant }}` is used. Aliases retain the variant's primary filtering behavior.                                    | `[]`                                                                  | <pre>- default</pre>                                                                     |
 | `tagPatterns`<br/>*TagPattern array* | The list of tag patterns to apply to all image targets of this image variant. These patterns are merged with those defined for the variant's parent [Image](#image). | `[]`                                                                  | <pre>- patterns: [minimal-"{{ Version }}"]<br/>  only:<br/>    - "primaryOS"<br/></pre> |
 | `options`<br/>*ToolOptions array*    | A list of options to pass to a supported tool when performing an action against this image variant.                                                                  | <pre>- tool: goss<br/>  wait: 0<br/>  command: sleep infinity</pre>   | <pre>- tool: goss<br/>  wait: 10<br/>  command: "my-custom command"</pre>               |
-| `toolLabels`<br/>*bool*              | Emit `co.posit.image.tools.*` labels for the image version's resolved dependencies. Set to `false` for variants that do not install those tools. | `true` | `false` |
+| `toolLabels`<br/>*bool or `inherit`* | Emit `co.posit.image.tools.*` labels for the image version's resolved dependencies. Set to `false` for variants that do not install those tools, or `inherit` to copy the labels from the base image (see [Inheriting tool labels](#inheriting-tool-labels)). | `true` | `false`, `inherit` |
 
 #### Common Image Variants
 
@@ -357,6 +358,25 @@ variants:
     tagDisplayName: min
     toolLabels: false  # this variant does not install the resolved dependencies
 ```
+
+#### Inheriting tool labels
+
+An image built `FROM` another bakery image may install no dependencies of its own yet still contain the base image's
+tools. Set the image's `baseImage` to the base image's name and the variant's `toolLabels` to `inherit`:
+
+```yaml
+images:
+  - name: workbench-session-complete
+    baseImage: workbench-session
+    variants:
+      - name: Standard
+        toolLabels: inherit
+```
+
+The tool labels are taken from the resolved dependencies of the base image's variant with the **same name** and the
+version with the **same name** (matrix versions included). If the base variant itself sets `toolLabels: inherit`, the
+chain is followed; if it sets `false`, nothing is emitted. A missing `baseImage`, base image, or base variant is a
+configuration error at load time; a missing base version is an error when labels are generated.
 
 ### ImageMatrix
 
