@@ -271,6 +271,40 @@ jobs:
         run: |
           uv build
 
+      # Install the built wheel in isolation and check that `bakery version`
+      # reports the version in the distribution metadata. On tag pushes, also
+      # require a plain x.y.z version that matches the tag before publishing.
+      - name: Verify built version
+        working-directory: ./posit-bakery
+        env:
+          IS_RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          wheel=$(echo dist/*.whl)
+          # Wheel filenames are <name>-<version>-<tags>.whl
+          built=$(basename "$wheel" | cut -d- -f2)
+          if [[ ! -f "dist/posit_bakery-${built}.tar.gz" ]]; then
+            echo "::error::sdist for version ${built} not found in dist/"
+            exit 1
+          fi
+          reported=$(uv run --isolated --no-project --with "$wheel" bakery version)
+          echo "Built version: ${built}"
+          echo "bakery version: ${reported}"
+          if [[ "$reported" != "Posit Bakery v${built}" ]]; then
+            echo "::error::bakery version reports '${reported}', expected 'Posit Bakery v${built}'"
+            exit 1
+          fi
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            if [[ ! "$built" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Release version '${built}' is not x.y.z"
+              exit 1
+            fi
+            if [[ "$built" != "${REF_NAME#v}" ]]; then
+              echo "::error::Release version '${built}' does not match tag '${REF_NAME}'"
+              exit 1
+            fi
+          fi
+
       - name: Upload snapshot artifacts
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
