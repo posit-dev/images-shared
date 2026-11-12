@@ -9,7 +9,8 @@ scenarios(
 
 VERSION_OUTPUT_REGEX = re.compile(
     r"^Posit Bakery v(\d+!)?(\d+)(\.\d+)+([.\-_])?"
-    r"((a(lpha)?|b(eta)?|c|r(c|ev)?|pre(view)?)\d*)?(\.?(post|dev)\d*)?(\+[a-z0-9]+([.\-_][a-z0-9]+)*)?$"
+    r"((a(lpha)?|b(eta)?|c|r(c|ev)?|pre(view)?)\d*)?(\.?(post|dev)\d*)?"
+    r"(\+[a-z0-9]+([.\-_][a-z0-9]+)*)?$"
 )
 
 
