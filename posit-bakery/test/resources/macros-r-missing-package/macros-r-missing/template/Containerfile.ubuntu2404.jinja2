@@ -1,0 +1,15 @@
+{%- import "apt.j2" as apt -%}
+{%- import "r.j2" as r -%}
+
+FROM docker.io/library/ubuntu:{{ Image.OS.Version }}
+LABEL org.opencontainers.image.base.name="docker.io/library/ubuntu:{{ Image.OS.Version }}"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+{{ apt.run_setup(open_repo=True) }}
+
+{{ r.run_install(Dependencies.R, os_family=Image.OS.Family) }}
+
+# R6 installs; the second package does not exist on CRAN, so this step must fail the build.
+{{ r.run_install_packages(Dependencies.R, ["R6", "nonexistentpkgxyz"], _os=Image.OS) }}

@@ -21,6 +21,7 @@ pytestmark = [
 RENDERED_CONTEXTS = [
     "with-macros",
     "macros-functional",
+    "macros-r-missing-package",
 ]
 
 

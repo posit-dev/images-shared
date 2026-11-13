@@ -58,6 +58,19 @@ Feature: build
         * the fail-fast images are removed
 
     @image_build
+    Scenario: Building an R image with a package that cannot be installed fails the build
+        Given I call bakery build
+        * in a temp macros-r-missing-package context
+        * with the arguments:
+            | --strategy | build | --jobs | 1 |
+        When I execute the command
+        Then The command exits with code 1
+        * the stderr output includes:
+            | Build failed |
+        * the macros-r-missing-package test suite is not built
+        * the macros-r-missing-package images are removed
+
+    @image_build
     Scenario: Building images that are multiplatform
         Given I call bakery build
         * in a temp multiplatform context
