@@ -1575,10 +1575,10 @@ class TestPythonMacros:
     def _python_link_run(directory):
         return textwrap.dedent(
             f"""\
-            RUN {{ if [ -L /usr/local/bin/python ] && [ ! -e /usr/local/bin/python ]; then rm /usr/local/bin/python; fi; [ -e /usr/local/bin/python ] || ln -s {directory}/bin/python /usr/local/bin/python; }} && \\
-                {{ if [ -L /usr/local/bin/python3 ] && [ ! -e /usr/local/bin/python3 ]; then rm /usr/local/bin/python3; fi; [ -e /usr/local/bin/python3 ] || ln -s {directory}/bin/python3 /usr/local/bin/python3; }} && \\
-                {{ if [ -L /usr/local/bin/pip ] && [ ! -e /usr/local/bin/pip ]; then rm /usr/local/bin/pip; fi; [ -e /usr/local/bin/pip ] || ln -s {directory}/bin/pip /usr/local/bin/pip; }} && \\
-                {{ if [ -L /usr/local/bin/pip3 ] && [ ! -e /usr/local/bin/pip3 ]; then rm /usr/local/bin/pip3; fi; [ -e /usr/local/bin/pip3 ] || ln -s {directory}/bin/pip3 /usr/local/bin/pip3; }}"""
+            RUN [ -e /usr/local/bin/python ] || ln -sf {directory}/bin/python /usr/local/bin/python && \\
+                [ -e /usr/local/bin/python3 ] || ln -sf {directory}/bin/python3 /usr/local/bin/python3 && \\
+                [ -e /usr/local/bin/pip ] || ln -sf {directory}/bin/pip /usr/local/bin/pip && \\
+                [ -e /usr/local/bin/pip3 ] || ln -sf {directory}/bin/pip3 /usr/local/bin/pip3"""
         )
 
     @pytest.mark.parametrize(
@@ -1633,8 +1633,7 @@ class TestPythonMacros:
                 newest="$(ls /opt/python | grep -E '^[0-9]+\\.[0-9]+(\\.[0-9]+)?$' | sort -V | tail -n 1 || true)"; \\
                 if [ -z "$newest" ]; then echo "link_to_path: no X.Y or X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \\
                 for bin in python python3 pip pip3; do \\
-                    if [ -L "/usr/local/bin/$bin" ] && [ ! -e "/usr/local/bin/$bin" ]; then rm "/usr/local/bin/$bin"; fi; \\
-                    [ -e "/usr/local/bin/$bin" ] || ln -s "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
+                    [ -e "/usr/local/bin/$bin" ] || ln -sf "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
                 done"""
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -2813,11 +2812,11 @@ class TestRMacros:
         rendered = environment_with_macros.from_string(template).render()
         expected_link = textwrap.dedent(
             f"""\
-            RUN {{ if [ -L /usr/local/bin/R ] && [ ! -e /usr/local/bin/R ]; then rm /usr/local/bin/R; fi; [ -e /usr/local/bin/R ] || ln -s {directory}/bin/R /usr/local/bin/R; }} && \\
-                {{ if [ -L /usr/local/bin/Rscript ] && [ ! -e /usr/local/bin/Rscript ]; then rm /usr/local/bin/Rscript; fi; [ -e /usr/local/bin/Rscript ] || ln -s {directory}/bin/Rscript /usr/local/bin/Rscript; }}"""
+            RUN [ -e /usr/local/bin/R ] || ln -sf {directory}/bin/R /usr/local/bin/R && \\
+                [ -e /usr/local/bin/Rscript ] || ln -sf {directory}/bin/Rscript /usr/local/bin/Rscript"""
         )
         assert rendered.endswith("\n\n" + expected_link)
-        assert rendered.count("ln -s") == 2
+        assert rendered.count("ln -sf") == 2
 
     @pytest.mark.parametrize("versions", ["[]", "''"])
     def test_run_install_link_to_path_empty_versions_raises(self, environment_with_macros, versions):
@@ -2833,8 +2832,8 @@ class TestRMacros:
                     R-4.4.3 && \\
                 dnf clean all -yq
 
-            RUN { if [ -L /usr/local/bin/R ] && [ ! -e /usr/local/bin/R ]; then rm /usr/local/bin/R; fi; [ -e /usr/local/bin/R ] || ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R; } && \\
-                { if [ -L /usr/local/bin/Rscript ] && [ ! -e /usr/local/bin/Rscript ]; then rm /usr/local/bin/Rscript; fi; [ -e /usr/local/bin/Rscript ] || ln -s /opt/R/4.4.3/bin/Rscript /usr/local/bin/Rscript; }"""
+            RUN [ -e /usr/local/bin/R ] || ln -sf /opt/R/4.4.3/bin/R /usr/local/bin/R && \\
+                [ -e /usr/local/bin/Rscript ] || ln -sf /opt/R/4.4.3/bin/Rscript /usr/local/bin/Rscript"""
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
