@@ -70,13 +70,11 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 
 **REQUIRES** python.build_stage() to be called first
 
-:param versions: Optional list or comma separated string of the Python versions installed in the build stage. Only
-    used when link_to_path is True. When given, the newest version (by `maxVersion`) is chosen at render time and a
-    single version is used as-is, so a build-time placeholder such as `${PYTHON_VERSION}` can be passed. Pre-releases
-    are accepted here (`3.14.0rc1` beats `3.13.7`). An empty list or string is an error; it does not fall back to
-    build-time detection. When omitted, the newest version is detected at build time from the directories in
-    /opt/python (`X.Y` or `X.Y.Z`). Unlike the render-time path, build-time detection ignores pre-releases and any
-    other directory names. The RUN fails with a message if no match is found.
+:param versions: List or comma separated string of the Python versions installed in the build stage. Required when
+    link_to_path is True (e.g. pass `Dependencies.python` or `python.build_arg()`); ignored otherwise. The newest
+    version (by `maxVersion`) is chosen at render time and a single version is used as-is, so a build-time placeholder
+    such as `${PYTHON_VERSION}` can be passed. Pre-releases are accepted here (`3.14.0rc1` beats `3.13.7`). An empty
+    list or string is an error.
 :param link_to_path: Whether to link `python`, `python3`, `pip` and `pip3` from the newest version into
     /usr/local/bin. A dangling symlink at /usr/local/bin/<bin> is replaced; the link is skipped only if a valid
     file or symlink already exists there, so a system binary elsewhere on PATH (such as /usr/bin/python3) is shadowed.
@@ -89,7 +87,9 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 COPY --from=python-builder /opt/python /opt/python
 {%- if link_to_path %}
 {%- set bins = ["python", "python3", "pip", "pip3"] %}
-{%- if versions is not none %}
+{%- if versions is none %}
+{{ raise("python.copy_from_build_stage: `versions` is required when link_to_path is True, e.g. pass Dependencies.python or python.build_arg()") }}
+{%- endif %}
 {%- if versions is string -%}
 {%- set versions = versions | split(",") | map('trim') | list -%}
 {%- endif %}
@@ -99,15 +99,6 @@ RUN {% for bin in bins -%}
 [ -e /usr/local/bin/{{ bin }} ] || ln -sf {{ get_version_directory(newest) }}/bin/{{ bin }} /usr/local/bin/{{ bin }}{% if not loop.last %} && \
     {% endif %}
 {%- endfor %}
-{%- else %}
-
-RUN set -e; \
-    newest="$(ls /opt/python | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -V | tail -n 1 || true)"; \
-    if [ -z "$newest" ]; then echo "link_to_path: no X.Y or X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \
-    for bin in {{ bins | join(' ') }}; do \
-        [ -e "/usr/local/bin/$bin" ] || ln -sf "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \
-    done
-{%- endif %}
 {%- endif %}
 {%- endmacro %}
 

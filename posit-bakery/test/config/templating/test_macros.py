@@ -1602,7 +1602,7 @@ class TestPythonMacros:
 
     @pytest.mark.parametrize("versions", ["[]", "''"])
     def test_copy_from_build_stage_link_to_path_empty_versions_raises(self, environment_with_macros, versions):
-        """An empty versions value is an error; it does not fall back to build-time detection."""
+        """An empty versions value is an error from maxVersion."""
         template = (
             '{%- import "python.j2" as python -%}'
             "{{ python.copy_from_build_stage(versions=" + versions + ", link_to_path=True) }}"
@@ -1619,101 +1619,18 @@ class TestPythonMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == "COPY --from=python-builder /opt/python /opt/python"
 
-    def test_copy_from_build_stage_link_to_path_detects_at_build_time(self, environment_with_macros):
-        template = textwrap.dedent(
-            """\
-            {%- import "python.j2" as python -%}
-            {{ python.copy_from_build_stage(link_to_path=True) }}"""
+    @pytest.mark.parametrize("call", ["", "versions=None, "])
+    def test_copy_from_build_stage_link_to_path_without_versions_raises(self, environment_with_macros, call):
+        template = (
+            '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(' + call + "link_to_path=True) }}"
         )
-        expected = textwrap.dedent(
-            """\
-            COPY --from=python-builder /opt/python /opt/python
+        with pytest.raises(BakeryTemplateError, match="versions.*required"):
+            environment_with_macros.from_string(template).render()
 
-            RUN set -e; \\
-                newest="$(ls /opt/python | grep -E '^[0-9]+\\.[0-9]+(\\.[0-9]+)?$' | sort -V | tail -n 1 || true)"; \\
-                if [ -z "$newest" ]; then echo "link_to_path: no X.Y or X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \\
-                for bin in python python3 pip pip3; do \\
-                    [ -e "/usr/local/bin/$bin" ] || ln -sf "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
-                done"""
-        )
+    def test_copy_from_build_stage_zero_args_unchanged(self, environment_with_macros):
+        template = '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(link_to_path=False) }}'
         rendered = environment_with_macros.from_string(template).render()
-        assert rendered == expected
-
-    @staticmethod
-    def _run_detection_script(
-        tmp_path,
-        entries,
-        existing_on_path=(),
-        existing_in_local_bin=(),
-        dangling_in_local_bin=(),
-        valid_link_in_local_bin=None,
-    ):
-        """Run the rendered build-time detection script against a fake /opt/python and /usr/local/bin."""
-        template = '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(link_to_path=True) }}'
-
-        def setup(opt, local_bin):
-            for name in existing_in_local_bin:
-                (local_bin / name).touch()
-            for name in dangling_in_local_bin:
-                (local_bin / name).symlink_to("/nonexistent")
-            for name, target in (valid_link_in_local_bin or {}).items():
-                (local_bin / name).symlink_to(target)
-            for entry in entries:
-                (opt / entry / "bin").mkdir(parents=True)
-                for name in ("python", "python3", "pip", "pip3"):
-                    (opt / entry / "bin" / name).touch()
-
-        return run_link_script(tmp_path, template, "/opt/python", setup, existing_on_path)
-
-    def test_link_to_path_detection_picks_newest_release(self, tmp_path):
-        result, local_bin = self._run_detection_script(tmp_path, ["3.9.20", "3.13.7", "3.14.0rc1", "3.12.11"])
-        assert result.returncode == 0, result.stderr
-        assert sorted(p.name for p in local_bin.iterdir()) == ["pip", "pip3", "python", "python3"]
-        assert (local_bin / "python").readlink() == tmp_path / "opt" / "3.13.7" / "bin" / "python"
-
-    @pytest.mark.parametrize(
-        "entries,expected",
-        [
-            pytest.param(["3.11", "3.12"], "3.12", id="minor-only"),
-            pytest.param(["3.9", "3.13"], "3.13", id="minor-only-numeric-ordering"),
-            pytest.param(["3.12", "3.13.7"], "3.13.7", id="mixed-minor-and-patch"),
-            pytest.param(["3.13.7", "3.13.7-dev", "default", "3.14.0rc1"], "3.13.7", id="ignores-non-release-names"),
-        ],
-    )
-    def test_link_to_path_detection_accepts_minor_only_dirs(self, tmp_path, entries, expected):
-        result, local_bin = self._run_detection_script(tmp_path, entries)
-        assert result.returncode == 0, result.stderr
-        assert (local_bin / "python").readlink() == tmp_path / "opt" / expected / "bin" / "python"
-
-    def test_link_to_path_detection_keeps_existing_binary(self, tmp_path):
-        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], existing_in_local_bin=["python"])
-        assert result.returncode == 0, result.stderr
-        assert sorted(p.name for p in local_bin.iterdir()) == ["pip", "pip3", "python", "python3"]
-        assert not (local_bin / "python").is_symlink()
-
-    def test_link_to_path_detection_replaces_dangling_symlink(self, tmp_path):
-        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], dangling_in_local_bin=["python3"])
-        assert result.returncode == 0, result.stderr
-        assert (local_bin / "python3").readlink() == tmp_path / "opt" / "3.13.7" / "bin" / "python3"
-        assert (local_bin / "python3").exists()
-
-    def test_link_to_path_detection_keeps_valid_symlink(self, tmp_path):
-        target = tmp_path / "other-python"
-        target.touch()
-        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], valid_link_in_local_bin={"python": target})
-        assert result.returncode == 0, result.stderr
-        assert (local_bin / "python").readlink() == target
-
-    def test_link_to_path_detection_shadows_binary_elsewhere_on_path(self, tmp_path):
-        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], existing_on_path=["python3"])
-        assert result.returncode == 0, result.stderr
-        assert (local_bin / "python3").readlink() == tmp_path / "opt" / "3.13.7" / "bin" / "python3"
-
-    def test_link_to_path_detection_fails_without_match(self, tmp_path):
-        result, local_bin = self._run_detection_script(tmp_path, ["3.14.0rc1"])
-        assert result.returncode != 0
-        assert "no X.Y or X.Y.Z Python version found" in result.stderr
-        assert list(local_bin.iterdir()) == []
+        assert rendered == "COPY --from=python-builder /opt/python /opt/python"
 
     @pytest.mark.parametrize(
         "python_version,break_system_packages,expected",
