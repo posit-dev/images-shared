@@ -1,0 +1,5 @@
+# Runs only the scenario for the variant under test. dgoss copies just this file into
+# the container, so the include must be an absolute path: Bakery mounts the rendered
+# version directory at $IMAGE_VERSION_MOUNT.
+gossfile:
+  "{{ .Env.IMAGE_VERSION_MOUNT }}/test/scenarios/{{ .Env.IMAGE_VARIANT }}.yaml": {}

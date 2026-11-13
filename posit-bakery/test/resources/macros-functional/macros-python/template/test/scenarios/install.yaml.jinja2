@@ -1,0 +1,28 @@
+{%- import "python.j2" as python -%}
+{%- set default_dir = python.get_version_directory(Dependencies.python[0]) -%}
+# build_stage() + copy_from_build_stage() + symlink_version() + symlink_binary().
+file:
+  /opt/python/default:
+    exists: true
+    filetype: symlink
+    linked-to: {{ default_dir }}
+  /usr/local/bin/python:
+    exists: true
+    filetype: symlink
+    linked-to: {{ default_dir }}/bin/python
+
+command:
+  python --version:
+    exit-status: 0
+    stdout:
+      - "Python {{ Dependencies.python[0] }}"
+{%- for version in Dependencies.python %}
+  {{ python.get_version_directory(version) }}/bin/python --version:
+    exit-status: 0
+    stdout:
+      - "Python {{ version }}"
+  python{{ version | stripPatch }} --version:
+    exit-status: 0
+    stdout:
+      - "Python {{ version }}"
+{%- endfor %}

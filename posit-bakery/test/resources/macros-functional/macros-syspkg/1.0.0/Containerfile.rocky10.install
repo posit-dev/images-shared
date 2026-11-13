@@ -1,0 +1,23 @@
+FROM docker.io/rockylinux/rockylinux:10
+LABEL org.opencontainers.image.base.name="docker.io/rockylinux/rockylinux:10"
+
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+RUN dnf upgrade -yq && \
+    dnf install -yq --allowerasing \
+        curl \
+        ca-certificates \
+        findutils \
+        gnupg \
+        tar && \
+    dnf clean all -yq
+
+COPY macros-syspkg/1.0.0/deps/packages-1.txt /tmp/packages-1.txt
+COPY macros-syspkg/1.0.0/deps/packages-2.txt /tmp/packages-2.txt
+RUN dnf install -yq \
+        jq \
+        tree && \
+    test -f /tmp/packages-1.txt && sed 's/#.*//' /tmp/packages-1.txt | xargs -r dnf install -yq && \
+    test -f /tmp/packages-2.txt && sed 's/#.*//' /tmp/packages-2.txt | xargs -r dnf install -yq && \
+    dnf clean all -yq
