@@ -94,7 +94,8 @@ class DGossPlugin(BakeryToolPlugin):
                 Optional[str],
                 typer.Option(
                     show_default=SETTINGS.get_host_architecture(),
-                    help="Filters which image build platform to run tests for, e.g. 'linux/amd64'. Image test targets "
+                    help="Exact image build platform to run tests for, e.g. 'linux/amd64' (regex not supported). "
+                    "Image test targets "
                     "incompatible with the given platform(s) will be skipped. Requires a compatible goss binary.",
                     rich_help_panel=RichHelpPanelEnum.FILTERS,
                 ),

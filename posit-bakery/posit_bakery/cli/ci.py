@@ -163,7 +163,9 @@ def _version_selected(ver: ImageVersion, cs: ImageChangeSet) -> bool:
 @app.command()
 @with_verbosity_flags
 def matrix(
-    image_name: Annotated[str | None, typer.Argument(help="The image name to isolate matrix to.")] = None,
+    image_name: Annotated[
+        str | None, typer.Argument(help="Exact image name, or /regex/ for a regular expression, to isolate matrix to.")
+    ] = None,
     dev_versions: Annotated[
         Optional[DevVersionInclusionEnum],
         typer.Option(
@@ -384,7 +386,7 @@ def merge(
     image_name: Annotated[
         Optional[str],
         typer.Option(
-            help="Filter merge to a specific image name (regex, e.g. '^workbench$').",
+            help="Filter merge to a specific image name (exact name, or /regex/ for a regular expression).",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,
@@ -456,7 +458,7 @@ def publish(
     image_name: Annotated[
         Optional[str],
         typer.Option(
-            help="Filter publish to a specific image name (regex, e.g. '^workbench$').",
+            help="Filter publish to a specific image name (exact name, or /regex/ for a regular expression).",
             rich_help_panel=RichHelpPanelEnum.FILTERS,
         ),
     ] = None,

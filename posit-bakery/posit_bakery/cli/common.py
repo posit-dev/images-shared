@@ -42,6 +42,8 @@ def normalize_platform(image_platform: str | None) -> str:
     and silently matched zero targets.
     """
     platform = image_platform or SETTINGS.architecture
+    if len(platform) >= 2 and platform.startswith("/") and platform.endswith("/"):
+        raise typer.BadParameter(f"--image-platform must be an exact platform, not a regex: {platform}")
     if not platform.startswith("linux/"):
         platform = f"linux/{platform}"
     return platform

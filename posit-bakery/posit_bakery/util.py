@@ -1,5 +1,7 @@
 import logging
 import os
+import re
+from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from shutil import which
@@ -11,6 +13,27 @@ from requests_cache import CachedSession
 from posit_bakery.error import BakeryToolNotFoundError
 
 log = logging.getLogger(__name__)
+
+_warned_filter_patterns: set[str] = set()
+
+
+def filter_matches(pattern: str, value: str, candidates: Iterable[str]) -> bool:
+    """Match a CLI filter pattern against a value.
+
+    ``/regex/`` is searched as a regular expression. A bare pattern equal to one of ``candidates`` must equal
+    ``value``. Any other bare pattern falls back to a deprecated ``re.search``.
+    """
+    if len(pattern) >= 2 and pattern.startswith("/") and pattern.endswith("/"):
+        return re.search(pattern[1:-1], value) is not None
+    if pattern in candidates:
+        return pattern == value
+    if pattern not in _warned_filter_patterns:
+        _warned_filter_patterns.add(pattern)
+        log.warning(
+            f"Filter '{pattern}' matched as a regular expression; this is deprecated. "
+            f"Use an exact name or wrap a regular expression in slashes, e.g. '/{pattern}/'."
+        )
+    return re.search(pattern, value) is not None
 
 
 def find_bin(context: Union[str, bytes, os.PathLike], bin_name: str, bin_env_var: str):

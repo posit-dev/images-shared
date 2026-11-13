@@ -1,5 +1,6 @@
 import json
 
+import typer
 import pytest
 
 from posit_bakery.cli.common import (
@@ -469,6 +470,11 @@ class TestParseDependencyVersions:
         input_str = '{"dependency": "python", "versions": ["3.12.2", "3.10.12", "3.11.8"]}'
         result = parse_dependency_versions(input_str)
         assert result.versions == ["3.12.2", "3.10.12", "3.11.8"]
+
+
+def test_normalize_platform_rejects_regex():
+    with pytest.raises(typer.BadParameter, match="not a regex"):
+        normalize_platform("/amd64/")
 
 
 class TestNormalizePlatform:
