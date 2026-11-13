@@ -70,10 +70,42 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 
 **REQUIRES** python.build_stage() to be called first
 
-:return: A COPY command to copy the installations to the current build stage
+:param versions: Optional list or comma separated string of the Python versions installed in the build stage. Only
+    used when link_to_path is True. When given, the newest version (by `maxVersion`) is chosen at render time and a
+    single version is used as-is, so a build-time placeholder such as `${PYTHON_VERSION}` can be passed. When omitted,
+    the newest release version is detected at build time from the directories in /opt/python (`X.Y.Z` only, so
+    pre-releases are excluded) and the RUN fails with a message if none is found.
+:param link_to_path: Whether to link `python`, `python3`, `pip` and `pip3` from the newest version into
+    /usr/local/bin. A binary that already exists on PATH is left alone. Note that uv installs mark the interpreter as
+    externally managed (PEP 668), so `pip` refuses to install into it without `--break-system-packages`; use a virtual
+    environment instead. Defaults to False.
+:return: A COPY command to copy the installations to the current build stage, followed by a RUN linking the
+    binaries if link_to_path is True
 #}
-{% macro copy_from_build_stage() -%}
+{% macro copy_from_build_stage(versions = None, link_to_path = False) -%}
 COPY --from=python-builder /opt/python /opt/python
+{%- if link_to_path %}
+{%- set bins = ["python", "python3", "pip", "pip3"] %}
+{%- if versions is not none %}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") | map('trim') | list -%}
+{%- endif %}
+{%- set newest = versions | maxVersion %}
+
+RUN {% for bin in bins -%}
+command -v {{ bin }} >/dev/null || ln -s {{ get_version_directory(newest) }}/bin/{{ bin }} /usr/local/bin/{{ bin }}{% if not loop.last %} && \
+    {% endif %}
+{%- endfor %}
+{%- else %}
+
+RUN set -e; \
+    newest="$(ls /opt/python | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"; \
+    if [ -z "$newest" ]; then echo "link_to_path: no X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \
+    for bin in {{ bins | join(' ') }}; do \
+        command -v "$bin" >/dev/null || ln -s "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \
+    done
+{%- endif %}
+{%- endif %}
 {%- endmacro %}
 
 {# Root command and common arguments for a pip install command #}

@@ -1,6 +1,7 @@
 import jinja2
 import pytest
 
+from posit_bakery.error import BakeryTemplateError
 from posit_bakery.config.templating.render import jinja2_env, normalize_rendered_output
 
 
@@ -19,6 +20,7 @@ class TestJinja2Env:
         assert "stripPatch" in env.filters.keys()
         assert "condense" in env.filters.keys()
         assert "regexReplace" in env.filters.keys()
+        assert "maxVersion" in env.filters.keys()
 
     def test_tagSafe_filter(self):
         """Test the tagSafe filter."""
@@ -68,6 +70,42 @@ class TestJinja2Env:
         assert env.from_string("{{ 'hello world' | regexReplace('world', 'there') }}").render() == "hello there"
         assert env.from_string("{{ 'foo-bar-baz' | regexReplace('-', '_') }}").render() == "foo_bar_baz"
         assert env.from_string(r"{{ '123-456-789' | regexReplace('\d', 'X') }}").render() == "XXX-XXX-XXX"
+
+    @pytest.mark.parametrize(
+        "expression,expected",
+        [
+            pytest.param("['3.12.11', '3.13.7']", "3.13.7", id="list"),
+            pytest.param("['3.13.7', '3.9.20']", "3.13.7", id="numeric-not-lexical"),
+            pytest.param("'3.12.11, 3.13.7'", "3.13.7", id="comma-string-trims"),
+            pytest.param("['3.12.11']", "3.12.11", id="single"),
+            pytest.param("'${PYTHON_VERSION}'", "${PYTHON_VERSION}", id="single-placeholder-unparsed"),
+            pytest.param("['3.14.0rc1', '3.13.7']", "3.14.0rc1", id="prerelease-accepted"),
+            pytest.param("['3.14.0rc1', '3.14.0']", "3.14.0", id="release-beats-prerelease"),
+            pytest.param("['2026.04.0-212', '2026.03.1']", "2026.04.0-212", id="original-string-returned"),
+            pytest.param("['3.12', '3.12.0']", "3.12.0", id="tie-goes-to-later"),
+            pytest.param("['3.12.0', '3.12']", "3.12", id="tie-goes-to-later-reversed"),
+        ],
+    )
+    def test_maxVersion_filter(self, expression, expected):
+        """Test the maxVersion filter."""
+        env = jinja2_env()
+        assert env.from_string("{{ " + expression + " | maxVersion }}").render() == expected
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            pytest.param("[]", id="empty-list"),
+            pytest.param("''", id="empty-string"),
+            pytest.param("['3.12.11', '']", id="empty-entry"),
+            pytest.param("'3.12.11,'", id="trailing-comma"),
+            pytest.param("['3.12.11', '${PYTHON_VERSION}']", id="unparseable-among-many"),
+        ],
+    )
+    def test_maxVersion_filter_errors(self, expression):
+        """Test that the maxVersion filter raises on empty or unparseable input."""
+        env = jinja2_env()
+        with pytest.raises(BakeryTemplateError):
+            env.from_string("{{ " + expression + " | maxVersion }}").render()
 
 
 def test_render_template():

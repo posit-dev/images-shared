@@ -63,15 +63,36 @@ install() above.
 
 :param versions: A list of R versions or a comma separated string of R versions to install
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
+:param link_to_path: Whether to append a RUN that links `R` and `Rscript` from the newest installed version (by
+    `maxVersion`) into /usr/local/bin. An existing `R` or `Rscript` on PATH is left alone. Defaults to False.
 #}
-{% macro run_install(versions, os_family = "debian") -%}
+{% macro run_install(versions, os_family = "debian", link_to_path = False) -%}
 {%- if versions is string -%}
-{%- set versions = versions | split(",") | map('trim') -%}
+{%- set versions = versions | split(",") | map('trim') | list -%}
 {%- endif -%}
 {% for version in versions -%}
 RUN {{ install(version, os_family) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
+{%- endfor %}
+{%- if link_to_path %}
+
+{{ run_link_to_path(versions) }}
+{%- endif %}
+{%- endmacro %}
+
+{# Links `R` and `Rscript` from the newest R version into /usr/local/bin.
+
+Only the newest version (by the `maxVersion` filter) is linked. A binary that already exists on PATH is left alone.
+A single version is used as-is, so a build-time placeholder such as `${R_VERSION}` can be passed.
+
+:param versions: A list of R versions or a comma separated string of R versions
+#}
+{% macro run_link_to_path(versions) -%}
+{%- set newest = versions | maxVersion -%}
+RUN {% for bin in ["R", "Rscript"] -%}
+command -v {{ bin }} >/dev/null || ln -s {{ get_version_directory(newest) }}/bin/{{ bin }} /usr/local/bin/{{ bin }}{% if not loop.last %} && \
+    {% endif %}
 {%- endfor %}
 {%- endmacro %}
 

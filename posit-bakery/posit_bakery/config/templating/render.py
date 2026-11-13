@@ -1,8 +1,9 @@
 import re
 
 import jinja2
+from packaging.version import InvalidVersion
 
-from posit_bakery.config.dependencies.version import strip_patch
+from posit_bakery.config.dependencies.version import DependencyVersion, strip_patch
 from posit_bakery.const import REGEX_IMAGE_TAG_SUFFIX_ALLOWED_CHARACTERS_PATTERN
 from posit_bakery.error import BakeryTemplateError
 
@@ -15,6 +16,37 @@ def raise_template_exception(message: str) -> None:
     :raises ValueError: Always raises a ValueError with the provided message.
     """
     raise BakeryTemplateError(message)
+
+
+def max_version(versions: str | list[str] | tuple[str, ...]) -> str:
+    """Returns the highest version from a list or comma-separated string of versions.
+
+    Versions are compared with ``DependencyVersion`` (semver-style, pre-releases accepted). The original string of the
+    winning entry is returned. Ties go to the later entry. A single entry is returned as-is without being parsed, which
+    lets placeholders such as ``${PYTHON_VERSION}`` pass through.
+
+    :param versions: A list of version strings or a comma-separated string of versions.
+
+    :raises BakeryTemplateError: If the input is empty or contains an entry that is not a valid version.
+    :return: The highest version string.
+    """
+    if isinstance(versions, str):
+        versions = versions.split(",")
+    entries = [str(v).strip() for v in versions]
+    if not entries or any(not e for e in entries):
+        raise BakeryTemplateError(f"maxVersion requires at least one non-empty version, got: {versions!r}")
+    if len(entries) == 1:
+        return entries[0]
+    best_version: DependencyVersion | None = None
+    best_entry = entries[0]
+    for entry in entries:
+        try:
+            parsed = DependencyVersion(entry)
+        except InvalidVersion as e:
+            raise BakeryTemplateError(f"maxVersion could not parse version '{entry}': {e}") from e
+        if best_version is None or parsed >= best_version:
+            best_version, best_entry = parsed, entry
+    return best_entry
 
 
 def jinja2_env(**kwargs) -> jinja2.Environment:
@@ -30,6 +62,7 @@ def jinja2_env(**kwargs) -> jinja2.Environment:
     env.filters["condense"] = lambda s: re.sub(r"[ .-]", "", s)
     env.filters["regexReplace"] = lambda s, find, replace: re.sub(find, replace, s)
     env.filters["quote"] = lambda s: '"' + s + '"'
+    env.filters["maxVersion"] = max_version
     env.filters["split"] = lambda s, sep: s.split(sep)
     env.globals["raise"] = raise_template_exception
     return env

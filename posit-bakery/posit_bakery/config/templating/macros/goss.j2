@@ -4,3 +4,23 @@
 {% macro build_arg_env_var(name) -%}
 {% raw %}{{ {% endraw %}.Env.BUILD_ARG_{{ name }}{% raw %} }}{% endraw %}
 {%- endmacro %}
+
+{# Generates goss `command` entries checking that binaries on PATH resolve to a specific version directory.
+
+Use with python.copy_from_build_stage(link_to_path=True) or r.run_install(link_to_path=True). The output is a set of
+entries to be placed under an existing `command:` key (indented two spaces).
+
+:param binaries: A list or comma separated string of binary names, e.g. ["python", "pip"]
+:param version_directory: The directory of the newest version, e.g. "/opt/python/3.14.10". For example, compute it
+    with `python.get_version_directory(Dependencies.python | maxVersion)`.
+#}
+{% macro path_link_checks(binaries, version_directory) -%}
+{%- if binaries is string -%}
+{%- set binaries = binaries | split(",") | map('trim') | list -%}
+{%- endif -%}
+{%- for bin in binaries %}
+  {{ bin }}-on-path-is-newest:
+    exec: test "$(readlink -f "$(command -v {{ bin }})")" = "$(readlink -f {{ version_directory }}/bin/{{ bin }})"
+    exit-status: 0
+{%- endfor %}
+{%- endmacro %}

@@ -1,8 +1,10 @@
+import shutil
 import subprocess
 import textwrap
 
 import jinja2
 import pytest
+from ruamel.yaml import YAML
 from jinja2 import PackageLoader, StrictUndefined
 
 from posit_bakery.config.templating import jinja2_env
@@ -1278,6 +1280,30 @@ class TestGossMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    @pytest.mark.parametrize("binaries", ['["python", "pip"]', '"python, pip"'])
+    def test_path_link_checks(self, environment_with_macros, binaries):
+        template = textwrap.dedent(
+            """\
+            {%- import "goss.j2" as goss -%}
+            command:{{ goss.path_link_checks(BINARIES, "/opt/python/3.14.10") }}
+            """
+        ).replace("BINARIES", binaries)
+        expected = textwrap.dedent(
+            """\
+            command:
+              python-on-path-is-newest:
+                exec: test "$(readlink -f "$(command -v python)")" = "$(readlink -f /opt/python/3.14.10/bin/python)"
+                exit-status: 0
+              pip-on-path-is-newest:
+                exec: test "$(readlink -f "$(command -v pip)")" = "$(readlink -f /opt/python/3.14.10/bin/pip)"
+                exit-status: 0
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+        parsed = YAML(typ="safe").load(rendered)
+        assert set(parsed["command"]) == {"python-on-path-is-newest", "pip-on-path-is-newest"}
+
 
 class TestPythonMacros:
     def test_declare_build_arg_default(self, environment_with_macros):
@@ -1444,6 +1470,111 @@ class TestPythonMacros:
         expected = "COPY --from=python-builder /opt/python /opt/python"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+    PYTHON_LINK_COPY = "COPY --from=python-builder /opt/python /opt/python\n\n"
+
+    @staticmethod
+    def _python_link_run(directory):
+        return textwrap.dedent(
+            f"""\
+            RUN command -v python >/dev/null || ln -s {directory}/bin/python /usr/local/bin/python && \\
+                command -v python3 >/dev/null || ln -s {directory}/bin/python3 /usr/local/bin/python3 && \\
+                command -v pip >/dev/null || ln -s {directory}/bin/pip /usr/local/bin/pip && \\
+                command -v pip3 >/dev/null || ln -s {directory}/bin/pip3 /usr/local/bin/pip3"""
+        )
+
+    @pytest.mark.parametrize(
+        "versions,directory",
+        [
+            pytest.param('["3.12.11", "3.13.7"]', "/opt/python/3.13.7", id="list"),
+            pytest.param('["3.13.7", "3.9.20"]', "/opt/python/3.13.7", id="numeric-ordering"),
+            pytest.param('"3.12.11,3.13.7"', "/opt/python/3.13.7", id="string"),
+            pytest.param('["3.12.11"]', "/opt/python/3.12.11", id="single"),
+            pytest.param('"${PYTHON_VERSION}"', "/opt/python/${PYTHON_VERSION}", id="placeholder"),
+            pytest.param("python.build_arg()", "/opt/python/$PYTHON_VERSION", id="build-arg"),
+        ],
+    )
+    def test_copy_from_build_stage_link_to_path_with_versions(self, environment_with_macros, versions, directory):
+        template = (
+            '{%- import "python.j2" as python -%}\n'
+            "{{ python.copy_from_build_stage(versions=" + versions + ", link_to_path=True) }}"
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == self.PYTHON_LINK_COPY + self._python_link_run(directory)
+
+    def test_copy_from_build_stage_versions_ignored_without_link(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.copy_from_build_stage(versions=["3.12.11", "3.13.7"]) }}"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == "COPY --from=python-builder /opt/python /opt/python"
+
+    def test_copy_from_build_stage_link_to_path_detects_at_build_time(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.copy_from_build_stage(link_to_path=True) }}"""
+        )
+        expected = textwrap.dedent(
+            """\
+            COPY --from=python-builder /opt/python /opt/python
+
+            RUN set -e; \\
+                newest="$(ls /opt/python | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | tail -n 1 || true)"; \\
+                if [ -z "$newest" ]; then echo "link_to_path: no X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \\
+                for bin in python python3 pip pip3; do \\
+                    command -v "$bin" >/dev/null || ln -s "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
+                done"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    @staticmethod
+    def _run_detection_script(tmp_path, entries, existing_on_path=()):
+        """Run the rendered build-time detection script against a fake /opt/python and /usr/local/bin."""
+        template = '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(link_to_path=True) }}'
+        rendered = (
+            jinja2_env(loader=PackageLoader("posit_bakery.config.templating", "macros"), undefined=StrictUndefined)
+            .from_string(template)
+            .render()
+        )
+        script = rendered.split("RUN ", 1)[1].replace("\\\n", "\n")
+        opt, local_bin = tmp_path / "opt", tmp_path / "local-bin"
+        local_bin.mkdir()
+        for entry in entries:
+            (opt / entry / "bin").mkdir(parents=True)
+            for name in ("python", "python3", "pip", "pip3"):
+                (opt / entry / "bin" / name).touch()
+        opt.mkdir(exist_ok=True)
+        script = script.replace("/opt/python", str(opt)).replace("/usr/local/bin", str(local_bin))
+        # Restrict PATH to the few tools the script needs, so the host's own python/pip are not found.
+        tools = tmp_path / "tools"
+        tools.mkdir()
+        for tool in ("ls", "grep", "sort", "tail", "ln"):
+            (tools / tool).symlink_to(str(shutil.which(tool)))
+        for name in existing_on_path:
+            (tools / name).touch(mode=0o755)
+        result = subprocess.run(["/bin/sh", "-c", script], capture_output=True, text=True, env={"PATH": str(tools)})
+        return result, local_bin
+
+    def test_link_to_path_detection_picks_newest_release(self, tmp_path):
+        result, local_bin = self._run_detection_script(tmp_path, ["3.9.20", "3.13.7", "3.14.0rc1", "3.12.11"])
+        assert result.returncode == 0, result.stderr
+        assert sorted(p.name for p in local_bin.iterdir()) == ["pip", "pip3", "python", "python3"]
+        assert "3.13.7" in str((local_bin / "python").readlink())
+
+    def test_link_to_path_detection_keeps_existing_binary(self, tmp_path):
+        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], existing_on_path=["python"])
+        assert result.returncode == 0, result.stderr
+        assert sorted(p.name for p in local_bin.iterdir()) == ["pip", "pip3", "python3"]
+
+    def test_link_to_path_detection_fails_without_match(self, tmp_path):
+        result, local_bin = self._run_detection_script(tmp_path, ["3.14.0rc1"])
+        assert result.returncode != 0
+        assert "no X.Y.Z Python version found" in result.stderr
+        assert list(local_bin.iterdir()) == []
 
     @pytest.mark.parametrize(
         "python_version,break_system_packages,expected",
@@ -2518,6 +2649,47 @@ class TestRMacros:
     )
     def test_run_install(self, environment_with_macros, input, expected):
         template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + str(input) + ") }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
+    def test_run_install_link_to_path_off_by_default(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3", "4.5.0"]) }}'
+        rendered = environment_with_macros.from_string(template).render()
+        assert "ln -s" not in rendered
+
+    @pytest.mark.parametrize(
+        "versions,directory",
+        [
+            pytest.param('["4.4.3", "4.5.0"]', "/opt/R/4.5.0", id="list"),
+            pytest.param('["4.5.0", "4.4.3"]', "/opt/R/4.5.0", id="list-reversed"),
+            pytest.param('["4.9.0", "4.10.0"]', "/opt/R/4.10.0", id="numeric-ordering"),
+            pytest.param('"4.4.3, 4.5.0"', "/opt/R/4.5.0", id="string"),
+            pytest.param('["4.4.3"]', "/opt/R/4.4.3", id="single"),
+            pytest.param("r.build_arg()", "/opt/R/$R_VERSION", id="build-arg-placeholder"),
+        ],
+    )
+    def test_run_install_link_to_path(self, environment_with_macros, versions, directory):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + versions + ", link_to_path=True) }}"
+        rendered = environment_with_macros.from_string(template).render()
+        expected_link = textwrap.dedent(
+            f"""\
+            RUN command -v R >/dev/null || ln -s {directory}/bin/R /usr/local/bin/R && \\
+                command -v Rscript >/dev/null || ln -s {directory}/bin/Rscript /usr/local/bin/Rscript"""
+        )
+        assert rendered.endswith("\n\n" + expected_link)
+        assert rendered.count("ln -s") == 2
+
+    def test_run_install_link_to_path_rhel(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3"], os_family="rhel", link_to_path=True) }}'
+        expected = textwrap.dedent(
+            """\
+            RUN dnf install -yq \\
+                    R-4.4.3 && \\
+                dnf clean all -yq
+
+            RUN command -v R >/dev/null || ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R && \\
+                command -v Rscript >/dev/null || ln -s /opt/R/4.4.3/bin/Rscript /usr/local/bin/Rscript"""
+        )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 

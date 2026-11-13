@@ -48,6 +48,7 @@ In addition to the built-in Jinja2 filters, the following custom filters are ava
 - `regexReplace <find> <replace>`: Replaces occurrences of the `find` regex with `replace`.
 - `quote`: Wraps a string in double quotes.
 - `split`: Splits a string by a separator (e.g. `{{ "a,b,c" | split(",") }}`).
+- `maxVersion`: Returns the highest version from a list or comma-separated string (e.g. `{{ Dependencies.python | maxVersion }}`). Versions are compared as semantic versions, pre-releases are accepted, and ties go to the later entry. The original string is returned. A single entry is returned as-is without parsing, so build-time placeholders such as `${PYTHON_VERSION}` pass through. Empty or unparseable input raises a render error.
 
 ## Templating Macros
 
@@ -257,6 +258,25 @@ To copy the Python installations from the build stage to the current stage, use:
 {{ python.copy_from_build_stage() }}
 ```
 
+To also link the newest Python onto `PATH`, set `link_to_path=True`. This appends a `RUN` that links `python`, `python3`, `pip` and `pip3` into `/usr/local/bin`. A binary that already exists on `PATH` is left alone.
+
+```jinja2
+{# Newest version is chosen at render time with the maxVersion filter #}
+{{ python.copy_from_build_stage(Dependencies.python, link_to_path=True) }}
+
+{# A single version, or a build-time placeholder, is used as-is #}
+{{ python.copy_from_build_stage(python.build_arg(), link_to_path=True) }}
+
+{# No versions: the newest X.Y.Z directory in /opt/python is detected at build time #}
+{{ python.copy_from_build_stage(link_to_path=True) }}
+```
+
+Build-time detection ignores pre-release directories and fails the `RUN` with a clear message if no `X.Y.Z` directory is found.
+
+::: {.callout-note}
+uv-managed Pythons include an `EXTERNALLY-MANAGED` marker (PEP 668). A `pip` on `PATH` that points at one will refuse to install packages unless `--break-system-packages` is passed. Install into a virtual environment instead.
+:::
+
 #### Declare Build Argument
 Declares a Docker `ARG` for a Python version. Useful as a `prerun` parameter to `build_stage()` or in Containerfiles that need a Python version as a build argument.
 
@@ -360,6 +380,12 @@ Usually, this should be called with `Dependencies.R` to dynamically specify vers
 
 ```jinja2
 {{ r.run_install(Dependencies.R) }}
+```
+
+To also link the newest R onto `PATH`, set `link_to_path=True`. This appends one `RUN` that links `R` and `Rscript` from the newest installed version (chosen with the `maxVersion` filter) into `/usr/local/bin`. A binary that already exists on `PATH` is left alone, and only the newest version is linked.
+
+```jinja2
+{{ r.run_install(Dependencies.R, link_to_path=True) }}
 ```
 
 #### Get Version Directory
@@ -489,6 +515,13 @@ Returns a reference to a build argument passed as an environment variable to Gos
 ```
 
 This outputs `{{ .Env.BUILD_ARG_PYTHON_VERSION }}` which Goss will substitute with the value of the `BUILD_ARG_PYTHON_VERSION` environment variable at test runtime.
+
+#### PATH Link Checks
+Generates Goss `command` entries that check each binary on `PATH` resolves to the same file as the one in the newest version directory. Use it to verify `link_to_path=True`. Place the output under an existing `command:` key.
+
+```jinja2
+command:{{ goss.path_link_checks(["python", "python3", "pip", "pip3"], python.get_version_directory(Dependencies.python | maxVersion)) }}
+```
 
 ### wait-for-it
 
