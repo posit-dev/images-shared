@@ -14,7 +14,7 @@
   "target": {
     "scratch-1-0-0-scratch": {
       "context": ".",
-      "dockerfile": "scratch/1.0.0/Containerfile.scratch",
+      "dockerfile": "scratch/1.0.0/Containerfile",
       "labels": {
         "org.opencontainers.image.created": "2025-01-01T00:00:00+00:00",
         "org.opencontainers.image.source": "https://github.com/posit-images-shared/posit-images-shared",
