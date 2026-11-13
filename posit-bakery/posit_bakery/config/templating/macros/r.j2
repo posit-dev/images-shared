@@ -83,7 +83,8 @@ RUN {{ install(version, os_family) | indent(4) }}
 
 {# Links `R` and `Rscript` from the newest R version into /usr/local/bin.
 
-Only the newest version (by the `maxVersion` filter) is linked. A binary that already exists on PATH is left alone.
+Only the newest version (by the `maxVersion` filter) is linked. A link is skipped only if /usr/local/bin/<bin> already exists, so a binary elsewhere on PATH
+(such as one in /usr/bin) is shadowed by the new link.
 A single version is used as-is, so a build-time placeholder such as `${R_VERSION}` can be passed.
 
 :param versions: A list of R versions or a comma separated string of R versions
@@ -91,7 +92,7 @@ A single version is used as-is, so a build-time placeholder such as `${R_VERSION
 {% macro run_link_to_path(versions) -%}
 {%- set newest = versions | maxVersion -%}
 RUN {% for bin in ["R", "Rscript"] -%}
-command -v {{ bin }} >/dev/null || ln -s {{ get_version_directory(newest) }}/bin/{{ bin }} /usr/local/bin/{{ bin }}{% if not loop.last %} && \
+[ -e /usr/local/bin/{{ bin }} ] || [ -L /usr/local/bin/{{ bin }} ] || ln -s {{ get_version_directory(newest) }}/bin/{{ bin }} /usr/local/bin/{{ bin }}{% if not loop.last %} && \
     {% endif %}
 {%- endfor %}
 {%- endmacro %}

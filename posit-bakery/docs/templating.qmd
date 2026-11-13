@@ -258,7 +258,7 @@ To copy the Python installations from the build stage to the current stage, use:
 {{ python.copy_from_build_stage() }}
 ```
 
-To also link the newest Python onto `PATH`, set `link_to_path=True`. This appends a `RUN` that links `python`, `python3`, `pip` and `pip3` into `/usr/local/bin`. A binary that already exists on `PATH` is left alone.
+To also link the newest Python onto `PATH`, set `link_to_path=True`. This appends a `RUN` that links `python`, `python3`, `pip` and `pip3` into `/usr/local/bin`. A link is skipped only if `/usr/local/bin/<bin>` already exists (a file or a dangling symlink); nothing there is overwritten. A binary elsewhere on `PATH`, such as the system `/usr/bin/python3`, does not block the link and is shadowed by it. Anything that calls `python3` through `PATH` then gets the uv Python, which lacks distro dist-packages such as `python3-apt`. Scripts with an absolute `/usr/bin/python3` shebang are unaffected.
 
 ```jinja2
 {# Newest version is chosen at render time with the maxVersion filter #}
@@ -382,7 +382,7 @@ Usually, this should be called with `Dependencies.R` to dynamically specify vers
 {{ r.run_install(Dependencies.R) }}
 ```
 
-To also link the newest R onto `PATH`, set `link_to_path=True`. This appends one `RUN` that links `R` and `Rscript` from the newest installed version (chosen with the `maxVersion` filter) into `/usr/local/bin`. A binary that already exists on `PATH` is left alone, and only the newest version is linked.
+To also link the newest R onto `PATH`, set `link_to_path=True`. This appends one `RUN` that links `R` and `Rscript` from the newest installed version (chosen with the `maxVersion` filter) into `/usr/local/bin`. A link is skipped only if `/usr/local/bin/<bin>` already exists (a file or a dangling symlink), so a binary elsewhere on `PATH` such as `/usr/bin/R` is shadowed. Only the newest version is linked.
 
 ```jinja2
 {{ r.run_install(Dependencies.R, link_to_path=True) }}
