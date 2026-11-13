@@ -146,9 +146,9 @@ options(warn = 2); install.packages({{ packages_expr | safe }}, repos={{ repo_ur
 #}
 {% macro install_packages_from_file(version, package_list_file, _os = None) -%}
 {%- set package_list_file = package_list_file | quote | safe %}
-{%- set file_readlines = 'Filter(nzchar, trimws(readLines(' + package_list_file + ')))' -%}
+{%- set package_scan = 'scan(' | safe + package_list_file + ', what = "", quiet = TRUE)' | safe -%}
 {%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
-{{ r_expression(version, install_expression(file_readlines, repo_url)) }}
+{{ r_expression(version, install_expression(package_scan, repo_url)) }}
 {%- endmacro %}
 
 {# Installs one or more R packages and/or text files containing line separated lists of R packages to install to a
