@@ -116,6 +116,30 @@ build would silently continue. options(warn = 2) turns warnings into errors, whi
 options(warn = 2); install.packages({{ packages_expr | safe }}, repos={{ repo_url | safe }}, clean = TRUE)
 {%- endmacro %}
 
+{# Returns an R expression that fails the build if any of the packages are not installed.
+
+This catches install failures that raise no warning. installed.packages() only reads package metadata and does not
+load anything, so no warnings can fire here.
+
+:param packages_expr: An R expression evaluating to a character vector of package names, e.g. 'c("dplyr")'
+#}
+{% macro verify_expression(packages_expr) -%}
+not_installed <- setdiff({{ packages_expr | safe }}, rownames(installed.packages())); if (length(not_installed)) stop("Failed to install R packages: ", paste(not_installed, collapse = ", "))
+{%- endmacro %}
+
+{# Installs packages with one R call, then verifies they are installed with a second R call.
+
+Both calls are joined with && so they run in the same RUN layer.
+
+:param version: The R version to install packages to, e.g. "4.4.3"
+:param packages_expr: An R expression evaluating to a character vector of package names, e.g. 'c("dplyr")'
+:param repo_url: The quoted CRAN repository URL to install from
+#}
+{% macro install_and_verify(version, packages_expr, repo_url) -%}
+{{ r_expression(version, install_expression(packages_expr, repo_url)) }} && \
+{{ r_expression(version, verify_expression(packages_expr)) }}
+{%- endmacro %}
+
 {# Installs one or more R packages from a list of packages or a comma separated string of packages
 
 :param version: The R version to install packages to, e.g. "4.4.3"
@@ -131,7 +155,7 @@ options(warn = 2); install.packages({{ packages_expr | safe }}, repos={{ repo_ur
 {%- set package_string_list = packages | map('trim') | map('quote') | join(', ') -%}
 {%- set package_array = 'c(' + package_string_list | safe + ')' -%}
 {%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
-{{ r_expression(version, install_expression(package_array, repo_url)) }}
+{{ install_and_verify(version, package_array, repo_url) }}
 {%- endmacro %}
 
 {# Installs one or more R packages from a text file containing a line separated list of packages
@@ -148,7 +172,7 @@ options(warn = 2); install.packages({{ packages_expr | safe }}, repos={{ repo_ur
 {%- set package_list_file = package_list_file | quote | safe %}
 {%- set package_scan = 'scan(' | safe + package_list_file + ', what = "", quiet = TRUE)' | safe -%}
 {%- set repo_url = get_p3m_cran_repo(_os) | quote | safe -%}
-{{ r_expression(version, install_expression(package_scan, repo_url)) }}
+{{ install_and_verify(version, package_scan, repo_url) }}
 {%- endmacro %}
 
 {# Installs one or more R packages and/or text files containing line separated lists of R packages to install to a
