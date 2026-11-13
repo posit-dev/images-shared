@@ -1477,10 +1477,10 @@ class TestPythonMacros:
     def _python_link_run(directory):
         return textwrap.dedent(
             f"""\
-            RUN [ -e /usr/local/bin/python ] || [ -L /usr/local/bin/python ] || ln -s {directory}/bin/python /usr/local/bin/python && \\
-                [ -e /usr/local/bin/python3 ] || [ -L /usr/local/bin/python3 ] || ln -s {directory}/bin/python3 /usr/local/bin/python3 && \\
-                [ -e /usr/local/bin/pip ] || [ -L /usr/local/bin/pip ] || ln -s {directory}/bin/pip /usr/local/bin/pip && \\
-                [ -e /usr/local/bin/pip3 ] || [ -L /usr/local/bin/pip3 ] || ln -s {directory}/bin/pip3 /usr/local/bin/pip3"""
+            RUN {{ if [ -L /usr/local/bin/python ] && [ ! -e /usr/local/bin/python ]; then rm /usr/local/bin/python; fi; [ -e /usr/local/bin/python ] || ln -s {directory}/bin/python /usr/local/bin/python; }} && \\
+                {{ if [ -L /usr/local/bin/python3 ] && [ ! -e /usr/local/bin/python3 ]; then rm /usr/local/bin/python3; fi; [ -e /usr/local/bin/python3 ] || ln -s {directory}/bin/python3 /usr/local/bin/python3; }} && \\
+                {{ if [ -L /usr/local/bin/pip ] && [ ! -e /usr/local/bin/pip ]; then rm /usr/local/bin/pip; fi; [ -e /usr/local/bin/pip ] || ln -s {directory}/bin/pip /usr/local/bin/pip; }} && \\
+                {{ if [ -L /usr/local/bin/pip3 ] && [ ! -e /usr/local/bin/pip3 ]; then rm /usr/local/bin/pip3; fi; [ -e /usr/local/bin/pip3 ] || ln -s {directory}/bin/pip3 /usr/local/bin/pip3; }}"""
         )
 
     @pytest.mark.parametrize(
@@ -1525,7 +1525,8 @@ class TestPythonMacros:
                 newest="$(ls /opt/python | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | tail -n 1 || true)"; \\
                 if [ -z "$newest" ]; then echo "link_to_path: no X.Y.Z Python version found in /opt/python" >&2; exit 1; fi; \\
                 for bin in python python3 pip pip3; do \\
-                    [ -e "/usr/local/bin/$bin" ] || [ -L "/usr/local/bin/$bin" ] || ln -s "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
+                    if [ -L "/usr/local/bin/$bin" ] && [ ! -e "/usr/local/bin/$bin" ]; then rm "/usr/local/bin/$bin"; fi; \\
+                    [ -e "/usr/local/bin/$bin" ] || ln -s "/opt/python/$newest/bin/$bin" "/usr/local/bin/$bin"; \\
                 done"""
         )
         rendered = environment_with_macros.from_string(template).render()
@@ -1533,7 +1534,12 @@ class TestPythonMacros:
 
     @staticmethod
     def _run_detection_script(
-        tmp_path, entries, existing_on_path=(), existing_in_local_bin=(), dangling_in_local_bin=()
+        tmp_path,
+        entries,
+        existing_on_path=(),
+        existing_in_local_bin=(),
+        dangling_in_local_bin=(),
+        valid_link_in_local_bin=None,
     ):
         """Run the rendered build-time detection script against a fake /opt/python and /usr/local/bin."""
         template = '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(link_to_path=True) }}'
@@ -1549,6 +1555,8 @@ class TestPythonMacros:
             (local_bin / name).touch()
         for name in dangling_in_local_bin:
             (local_bin / name).symlink_to("/nonexistent")
+        for name, target in (valid_link_in_local_bin or {}).items():
+            (local_bin / name).symlink_to(target)
         for entry in entries:
             (opt / entry / "bin").mkdir(parents=True)
             for name in ("python", "python3", "pip", "pip3"):
@@ -1558,7 +1566,7 @@ class TestPythonMacros:
         # Restrict PATH to the few tools the script needs, so the host's own python/pip are not found.
         tools = tmp_path / "tools"
         tools.mkdir()
-        for tool in ("ls", "grep", "sort", "tail", "ln"):
+        for tool in ("ls", "grep", "sort", "tail", "ln", "rm"):
             (tools / tool).symlink_to(str(shutil.which(tool)))
         for name in existing_on_path:
             (tools / name).touch(mode=0o755)
@@ -1577,11 +1585,18 @@ class TestPythonMacros:
         assert sorted(p.name for p in local_bin.iterdir()) == ["pip", "pip3", "python", "python3"]
         assert not (local_bin / "python").is_symlink()
 
-    def test_link_to_path_detection_keeps_dangling_symlink(self, tmp_path):
+    def test_link_to_path_detection_replaces_dangling_symlink(self, tmp_path):
         result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], dangling_in_local_bin=["python3"])
         assert result.returncode == 0, result.stderr
-        assert str((local_bin / "python3").readlink()) == "/nonexistent"
-        assert "3.13.7" in str((local_bin / "pip3").readlink())
+        assert "3.13.7" in str((local_bin / "python3").readlink())
+        assert (local_bin / "python3").exists()
+
+    def test_link_to_path_detection_keeps_valid_symlink(self, tmp_path):
+        target = tmp_path / "other-python"
+        target.touch()
+        result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], valid_link_in_local_bin={"python": target})
+        assert result.returncode == 0, result.stderr
+        assert (local_bin / "python").readlink() == target
 
     def test_link_to_path_detection_shadows_binary_elsewhere_on_path(self, tmp_path):
         result, local_bin = self._run_detection_script(tmp_path, ["3.13.7"], existing_on_path=["python3"])
@@ -1598,7 +1613,8 @@ class TestPythonMacros:
             rendered = environment_with_macros.from_string(template).render()
             assert "command -v" not in rendered
             assert "[ -e /usr/local/bin/" in rendered or '[ -e "/usr/local/bin/$bin" ]' in rendered
-            assert " -L " in rendered
+            assert "[ ! -e " in rendered
+            assert "ln -sf" not in rendered and "ln -fs" not in rendered
 
     def test_link_to_path_detection_fails_without_match(self, tmp_path):
         result, local_bin = self._run_detection_script(tmp_path, ["3.14.0rc1"])
@@ -2703,8 +2719,8 @@ class TestRMacros:
         rendered = environment_with_macros.from_string(template).render()
         expected_link = textwrap.dedent(
             f"""\
-            RUN [ -e /usr/local/bin/R ] || [ -L /usr/local/bin/R ] || ln -s {directory}/bin/R /usr/local/bin/R && \\
-                [ -e /usr/local/bin/Rscript ] || [ -L /usr/local/bin/Rscript ] || ln -s {directory}/bin/Rscript /usr/local/bin/Rscript"""
+            RUN {{ if [ -L /usr/local/bin/R ] && [ ! -e /usr/local/bin/R ]; then rm /usr/local/bin/R; fi; [ -e /usr/local/bin/R ] || ln -s {directory}/bin/R /usr/local/bin/R; }} && \\
+                {{ if [ -L /usr/local/bin/Rscript ] && [ ! -e /usr/local/bin/Rscript ]; then rm /usr/local/bin/Rscript; fi; [ -e /usr/local/bin/Rscript ] || ln -s {directory}/bin/Rscript /usr/local/bin/Rscript; }}"""
         )
         assert rendered.endswith("\n\n" + expected_link)
         assert rendered.count("ln -s") == 2
@@ -2717,8 +2733,8 @@ class TestRMacros:
                     R-4.4.3 && \\
                 dnf clean all -yq
 
-            RUN [ -e /usr/local/bin/R ] || [ -L /usr/local/bin/R ] || ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R && \\
-                [ -e /usr/local/bin/Rscript ] || [ -L /usr/local/bin/Rscript ] || ln -s /opt/R/4.4.3/bin/Rscript /usr/local/bin/Rscript"""
+            RUN { if [ -L /usr/local/bin/R ] && [ ! -e /usr/local/bin/R ]; then rm /usr/local/bin/R; fi; [ -e /usr/local/bin/R ] || ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R; } && \\
+                { if [ -L /usr/local/bin/Rscript ] && [ ! -e /usr/local/bin/Rscript ]; then rm /usr/local/bin/Rscript; fi; [ -e /usr/local/bin/Rscript ] || ln -s /opt/R/4.4.3/bin/Rscript /usr/local/bin/Rscript; }"""
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
@@ -3119,3 +3135,47 @@ class TestRMacros:
         expected = "ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+
+class TestLinkGuardShellLogic:
+    """Run the versioned (`&&` chain) guard against a temp /usr/local/bin for each starting state."""
+
+    @staticmethod
+    def _run(tmp_path, setup):
+        template = '{%- import "r.j2" as r -%}{{ r.run_install("4.4.3", link_to_path=True) }}'
+        rendered = (
+            jinja2_env(loader=PackageLoader("posit_bakery.config.templating", "macros"), undefined=StrictUndefined)
+            .from_string(template)
+            .render()
+        )
+        line = rendered[rendered.rindex("RUN ") + 4 :].replace("\\\n", "\n")
+        local_bin = tmp_path / "bin"
+        local_bin.mkdir()
+        setup(local_bin)
+        script = line.replace("/usr/local/bin", str(local_bin)).replace("/opt/R", str(tmp_path / "opt"))
+        result = subprocess.run(["/bin/sh", "-c", script], capture_output=True, text=True)
+        return result, local_bin
+
+    def test_nothing_present_creates_links(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: None)
+        assert result.returncode == 0, result.stderr
+        assert (local_bin / "R").is_symlink() and (local_bin / "Rscript").is_symlink()
+
+    def test_valid_symlink_is_kept(self, tmp_path):
+        target = tmp_path / "keep"
+        target.touch()
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").symlink_to(target))
+        assert result.returncode == 0, result.stderr
+        assert (local_bin / "R").readlink() == target
+        assert "opt" in str((local_bin / "Rscript").readlink())
+
+    def test_real_file_is_kept(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").write_text("real"))
+        assert result.returncode == 0, result.stderr
+        assert not (local_bin / "R").is_symlink()
+        assert (local_bin / "R").read_text() == "real"
+
+    def test_dangling_symlink_is_replaced(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").symlink_to("/nonexistent"))
+        assert result.returncode == 0, result.stderr
+        assert "opt" in str((local_bin / "R").readlink())
