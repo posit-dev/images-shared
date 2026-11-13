@@ -1,4 +1,7 @@
+import os
+import shutil
 import subprocess
+import tarfile
 import textwrap
 
 import jinja2
@@ -2586,37 +2589,37 @@ class TestRMacros:
         [
             pytest.param(
                 None,
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="no-os",
             ),
             pytest.param(
                 {"Name": "gentoo"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="unsupported-os",
             ),
             pytest.param(
                 {"Name": "ubuntu", "Codename": "jammy"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/jammy/latest", clean = TRUE)\'',
                 id="ubuntu-jammy",
             ),
             pytest.param(
                 {"Name": "ubuntu", "Codename": "noble"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/noble/latest", clean = TRUE)\'',
                 id="ubuntu-noble",
             ),
             pytest.param(
                 {"Name": "debian", "Codename": "bookworm"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/bookworm/latest", clean = TRUE)\'',
                 id="debian-bookworm",
             ),
             pytest.param(
                 {"Name": "debian", "Codename": "trixie"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/trixie/latest", clean = TRUE)\'',
                 id="debian-trixie",
             ),
             pytest.param(
                 {"Name": "rhel", "Version": "8"},
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "odbc"), repos="https://p3m.dev/cran/__linux__/rhel8/latest", clean = TRUE)\'',
                 id="rhel-8",
             ),
         ],
@@ -2629,6 +2632,36 @@ class TestRMacros:
         )
         rendered = environment_with_macros.from_string(template).render(os_release=_os)
         assert rendered.strip() == expected.strip()
+
+    @pytest.mark.skipif(shutil.which("Rscript") is None, reason="Rscript is not installed")
+    @pytest.mark.parametrize("packages,returncode_ok", [("nonexistentpkgxyz", False), ("fakepkg", True)])
+    def test_install_expression_runs(self, environment_with_macros, tmp_path, packages, returncode_ok):
+        # An empty local repo keeps the test offline: unknown packages fail fast as "not available".
+        (tmp_path / "repo/src/contrib").mkdir(parents=True)
+        # fakepkg is a minimal installable source package so the success path runs without network.
+        pkg_dir = tmp_path / "fakepkg"
+        pkg_dir.mkdir()
+        (pkg_dir / "DESCRIPTION").write_text(
+            "Package: fakepkg\nVersion: 0.0.1\nTitle: Fake\nDescription: Fake.\nLicense: GPL-2\n"
+        )
+        (pkg_dir / "NAMESPACE").touch()
+        with tarfile.open(tmp_path / "repo/src/contrib/fakepkg_0.0.1.tar.gz", "w:gz") as tar:
+            tar.add(pkg_dir, arcname="fakepkg")
+        (tmp_path / "repo/src/contrib/PACKAGES").write_text("Package: fakepkg\nVersion: 0.0.1\n\n")
+        template = textwrap.dedent(
+            """\
+            {%- import "r.j2" as r -%}
+            {{ r.install_expression('c("' ~ packages ~ '")', repo_url) }}"""
+        )
+        expression = "options(pkgType = 'source'); " + environment_with_macros.from_string(template).render(
+            packages=packages, repo_url=f'"file://{tmp_path}/repo"'
+        )
+        result = subprocess.run(
+            ["Rscript", "--vanilla", "-e", expression],
+            capture_output=True,
+            env={**os.environ, "R_LIBS_USER": str(tmp_path), "LANGUAGE": "en"},
+        )
+        assert (result.returncode == 0) == returncode_ok, result.stderr.decode()
 
     def test_r_expression(self, environment_with_macros):
         template = textwrap.dedent(
@@ -2645,22 +2678,22 @@ class TestRMacros:
         [
             pytest.param(
                 ("'4.4.3'", ["dplyr"], None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="single-package-list",
             ),
             pytest.param(
                 ("'4.4.3'", "'dplyr'", None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="single-package-string",
             ),
             pytest.param(
                 ("'4.4.3'", ["dplyr", "ggplot2"], None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="multi-package-list",
             ),
             pytest.param(
                 ("'4.4.3'", "'dplyr,ggplot2'", None),
-                '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
+                '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)\'',
                 id="multi-package-string",
             ),
         ],
@@ -2678,7 +2711,7 @@ class TestRMacros:
             {%- import "r.j2" as r -%}
             {{ r.install_packages_from_file("4.4.3", "/tmp/packages.txt") }}"""
         )
-        expected = '/opt/R/4.4.3/bin/R --vanilla -e \'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)\''
+        expected = '/opt/R/4.4.3/bin/R --vanilla -e \'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)\''
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
@@ -2689,7 +2722,7 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot2"], None, None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
 
                     """
                 ),
@@ -2699,7 +2732,7 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2709,7 +2742,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2719,7 +2752,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="single-file-string-noclean",
@@ -2728,8 +2761,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                     rm -f /tmp/packages.txt /tmp/extra.txt
                     """
                 ),
@@ -2739,8 +2772,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                     rm -f /tmp/packages.txt /tmp/extra.txt
                     """
                 ),
@@ -2750,8 +2783,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="multi-file-list-noclean",
@@ -2760,8 +2793,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="multi-file-string-noclean",
@@ -2770,8 +2803,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None, True),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                     rm -f /tmp/packages.txt
                     """
                 ),
@@ -2781,8 +2814,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None, False),
                 textwrap.dedent(
                     """\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                    /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="packages-and-file-list-noclean",
@@ -2801,7 +2834,7 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="only-packages-list",
@@ -2810,9 +2843,9 @@ class TestRMacros:
                 ("'4.4.3,4.3.3'", ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
 
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="multi-version-string-packages-list",
@@ -2821,9 +2854,9 @@ class TestRMacros:
                 (["4.4.3", "4.3.3"], ["dplyr", "ggplot2"], None, None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
 
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot2"), repos="https://p3m.dev/cran/latest", clean = TRUE)'
                     """
                 ),
                 id="multi-version-list-packages-list",
@@ -2832,7 +2865,7 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="single-file-list",
@@ -2841,7 +2874,7 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt'", None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="single-file-string",
@@ -2850,8 +2883,8 @@ class TestRMacros:
                 ("'4.4.3'", None, ["/tmp/packages.txt", "/tmp/extra.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-file-list",
@@ -2860,11 +2893,11 @@ class TestRMacros:
                 (["4.4.3", "4.3.3"], None, ["/tmp/packages.txt", "/tmp/extra.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt
-                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.3.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.3.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-version-multi-file-list",
@@ -2873,8 +2906,8 @@ class TestRMacros:
                 ("'4.4.3'", None, "'/tmp/packages.txt,/tmp/extra.txt'", None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/extra.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/extra.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt /tmp/extra.txt"""
                 ),
                 id="multi-file-string",
@@ -2883,8 +2916,8 @@ class TestRMacros:
                 ("'4.4.3'", ["dplyr", "ggplot"], ["/tmp/packages.txt"], None),
                 textwrap.dedent(
                     """\
-                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
-                        /opt/R/4.4.3/bin/R --vanilla -e 'install.packages(readLines("/tmp/packages.txt"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                    RUN /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(c("dplyr", "ggplot"), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
+                        /opt/R/4.4.3/bin/R --vanilla -e 'options(warn = 2); install.packages(scan("/tmp/packages.txt", what = "", quiet = TRUE), repos="https://p3m.dev/cran/latest", clean = TRUE)' && \\
                         rm -f /tmp/packages.txt"""
                 ),
                 id="packages-and-file-list",
