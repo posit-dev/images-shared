@@ -267,11 +267,11 @@ To also link the newest Python onto `PATH`, set `link_to_path=True`. This append
 {# A single version, or a build-time placeholder, is used as-is #}
 {{ python.copy_from_build_stage(python.build_arg(), link_to_path=True) }}
 
-{# No versions: the newest X.Y.Z directory in /opt/python is detected at build time #}
+{# No versions: the newest `X.Y` or `X.Y.Z` directory in /opt/python is detected at build time #}
 {{ python.copy_from_build_stage(link_to_path=True) }}
 ```
 
-Build-time detection ignores pre-release directories and fails the `RUN` with a clear message if no `X.Y.Z` directory is found.
+The two modes differ on pre-releases: the render-time `maxVersion` accepts them (`3.14.0rc1` beats `3.13.7`), while build-time detection only considers stable `X.Y` or `X.Y.Z` directories and ignores everything else. Build-time detection fails the `RUN` with a clear message if no such directory is found. An empty `versions` list or string is a render error; it does not fall back to build-time detection.
 
 ::: {.callout-note}
 uv-managed Pythons include an `EXTERNALLY-MANAGED` marker (PEP 668). A `pip` on `PATH` that points at one will refuse to install packages unless `--break-system-packages` is passed. Install into a virtual environment instead.
@@ -521,6 +521,14 @@ Generates Goss `command` entries that check each binary on `PATH` resolves to th
 
 ```jinja2
 command:{{ goss.path_link_checks(["python", "python3", "pip", "pip3"], python.get_version_directory(Dependencies.python | maxVersion)) }}
+```
+
+#### PATH Link Targets
+Generates Goss `command` entries asserting that `/usr/local/bin/<bin>` is a symlink whose `readlink` target is exactly `<version_directory>/bin/<bin>`. It fails for a dangling link, a real file or a link to another version. Pass the same binary list as `path_link_checks` (for example from one `{% set %}` variable) so the two cannot drift.
+
+```jinja2
+{% set bins = ["python", "python3", "pip", "pip3"] %}
+command:{{ goss.path_link_checks(bins, dir) }}{{ goss.path_link_targets(bins, dir) }}
 ```
 
 ### wait-for-it

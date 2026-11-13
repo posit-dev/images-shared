@@ -64,7 +64,8 @@ install() above.
 :param versions: A list of R versions or a comma separated string of R versions to install
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 :param link_to_path: Whether to append a RUN that links `R` and `Rscript` from the newest installed version (by
-    `maxVersion`) into /usr/local/bin. An existing `R` or `Rscript` on PATH is left alone. Defaults to False.
+    `maxVersion`, so pre-releases are accepted) into /usr/local/bin. A binary elsewhere on PATH (such as /usr/bin/R)
+    is shadowed; only an existing valid /usr/local/bin/R or Rscript is kept. Defaults to False.
 #}
 {% macro run_install(versions, os_family = "debian", link_to_path = False) -%}
 {%- if versions is string -%}
@@ -83,9 +84,9 @@ RUN {{ install(version, os_family) | indent(4) }}
 
 {# Links `R` and `Rscript` from the newest R version into /usr/local/bin.
 
-Only the newest version (by the `maxVersion` filter) is linked. A dangling symlink at /usr/local/bin/<bin> is removed first; the link is skipped only if a valid file or
-symlink already exists there, so a binary elsewhere on PATH
-(such as one in /usr/bin) is shadowed by the new link.
+Only the newest version (by the `maxVersion` filter, so pre-releases are accepted) is linked. A dangling symlink at
+/usr/local/bin/<bin> is removed first; the link is skipped only if a valid file or symlink already exists there, so a
+binary elsewhere on PATH (such as one in /usr/bin) is shadowed by the new link.
 A single version is used as-is, so a build-time placeholder such as `${R_VERSION}` can be passed.
 
 :param versions: A list of R versions or a comma separated string of R versions

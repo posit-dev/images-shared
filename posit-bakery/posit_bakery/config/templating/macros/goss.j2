@@ -24,3 +24,23 @@ entries to be placed under an existing `command:` key (indented two spaces).
     exit-status: 0
 {%- endfor %}
 {%- endmacro %}
+
+{# Generates Goss `command` entries asserting each binary in /usr/local/bin is a symlink to the newest version.
+
+Complements path_link_checks(): this one checks the link itself (`readlink` of /usr/local/bin/<bin>, one level), so it
+fails for a dangling link, a real file, or a link to another version. Pass the same binaries list to both macros so they
+cannot drift. The output is a set of entries to be placed under an existing `command:` key (indented two spaces).
+
+:param binaries: A list or comma separated string of binary names, e.g. ["python", "pip"]
+:param version_directory: The directory of the newest version, e.g. "/opt/python/3.14.10".
+#}
+{% macro path_link_targets(binaries, version_directory) -%}
+{%- if binaries is string -%}
+{%- set binaries = binaries | split(",") | map('trim') | list -%}
+{%- endif -%}
+{%- for bin in binaries %}
+  {{ bin }}-link-targets-newest:
+    exec: test "$(readlink /usr/local/bin/{{ bin }})" = "{{ version_directory }}/bin/{{ bin }}"
+    exit-status: 0
+{%- endfor %}
+{%- endmacro %}
