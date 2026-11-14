@@ -4,10 +4,20 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^setup-goss\\/action\\.yml$/"
+        "/^setup-goss\\/action\\.yml$/",
+        "/^setup-openscap\\/action\\.yml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\s+default: \\\"(?<currentValue>[^\\\"]+)\\\""
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( extractVersion=(?<extractVersion>[^\\s]+))?\\s+default: \\\"(?<currentValue>[^\\\"]+)\\\""
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^posit-bakery\\/posit_bakery\\/plugins\\/builtin\\/openscap\\/content\\.py$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+) extractVersion=(?<extractVersion>[^\\s]+)\\s+DEFAULT_CONTENT_VERSION = \"(?<currentValue>[^\"]+)\""
       ]
     }
   ],
