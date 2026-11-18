@@ -192,7 +192,7 @@ class TestOsHandling:
 
     def test_empty_os_logs_warning(self, caplog):
         ImageDevelopmentVersionFromDependency(dependency="positron", os=[])
-        assert "No OSes defined for image development version" in caplog.text
+        assert "No OSes defined for the image configuration" in caplog.text
 
     def test_no_primary_os_logs_warning(self, caplog):
         ImageDevelopmentVersionFromDependency(

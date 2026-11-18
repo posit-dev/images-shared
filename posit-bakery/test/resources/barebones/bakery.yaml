@@ -16,3 +16,4 @@ images:
         latest: true
         os:
           - name: "Scratch"
+            extension: ""
