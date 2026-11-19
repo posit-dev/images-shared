@@ -863,6 +863,22 @@ class TestImageTarget:
             assert key in labels
             assert labels[key] == value
 
+    def test_labels_tools_emitted_for_minimal_variant(self, basic_minimal_image_target):
+        """Tool labels reflect resolved dependencies regardless of variant name."""
+        basic_minimal_image_target.image_version.dependencies = [
+            RDependencyVersions(dependency="R", versions=["4.4.3", "4.5.0"])
+        ]
+        labels = basic_minimal_image_target.labels
+        assert labels[f"{POSIT_LABEL_PREFIX}.tools.R"] == "4.4.3, 4.5.0"
+
+    def test_labels_tools_omitted_when_variant_disables_tool_labels(self, basic_minimal_image_target):
+        """A variant with toolLabels: false emits no tool labels."""
+        basic_minimal_image_target.image_version.dependencies = [
+            RDependencyVersions(dependency="R", versions=["4.4.3"])
+        ]
+        basic_minimal_image_target.image_variant.toolLabels = False
+        assert f"{POSIT_LABEL_PREFIX}.tools.R" not in basic_minimal_image_target.labels
+
     def test_temp_name(self, basic_standard_image_target):
         """Test the temp_name property of an ImageTarget."""
         assert basic_standard_image_target.temp_name is None

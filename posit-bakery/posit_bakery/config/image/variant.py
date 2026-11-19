@@ -51,6 +51,14 @@ class ImageVariant(BakeryYAMLModel):
         list[ToolField],
         Field(default_factory=default_tool_options, description="List of tool options for this variant."),
     ]
+    toolLabels: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Emit co.posit.image.tools.* labels for this variant's resolved dependencies. Set to false "
+            "if the variant does not install them.",
+        ),
+    ]
 
     def __hash__(self):
         """Unique hash for an ImageVariant object."""
