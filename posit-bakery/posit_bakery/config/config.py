@@ -2,7 +2,6 @@ import atexit
 import io
 import logging
 import os
-import re
 import shutil
 from pathlib import Path
 from typing import Annotated, Self
@@ -686,9 +685,10 @@ class BakeryConfig:
         _filter = _filter or BakeryConfigFilter()
         regex_filters = regex_filters or []
         exceptions = []
+        image_names = [i.name for i in self.model.images]
 
         for image in self.model.images:
-            if _filter.image_name is not None and re.search(_filter.image_name, image.name) is None:
+            if _filter.image_name is not None and not util.filter_matches(_filter.image_name, image.name, image_names):
                 log.debug(f"Skipping image '{image.name}' due to not matching name filter '{_filter.image_name}'")
                 continue
             if image.versions:

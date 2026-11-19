@@ -33,7 +33,7 @@ on:
         required: false
         type: number
       image-name:
-        description: "Filter to a specific image name or pattern (e.g., 'workbench', '^workbench$')"
+        description: "Filter by exact image name, or /regex/ (e.g., 'workbench', '/^workbench/')"
         default: ""
         required: false
         type: string
@@ -452,7 +452,7 @@ jobs:
           bakery build \
             --strategy bake --pull \
             --retry "$RETRY" \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -501,7 +501,7 @@ jobs:
           GOSS_PATH=${GITHUB_WORKSPACE}/tools/goss \
           DGOSS_PATH=${GITHUB_WORKSPACE}/tools/dgoss \
           bakery dgoss run \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -539,7 +539,7 @@ jobs:
           DEV_SPEC_FLAGS=()
           [[ -n "$DEV_SPEC_RESOLVED" ]] && DEV_SPEC_FLAGS=(--dev-spec "$DEV_SPEC_RESOLVED")
           bakery trivy scan \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -579,7 +579,7 @@ jobs:
           [[ "$DEV_VERSIONS" != "only" ]] && LATEST_FLAGS=(--latest)
           WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli scan \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -620,7 +620,7 @@ jobs:
           # dev-only builds and needs the runtime check).
           WIZCLI_PATH=${GITHUB_WORKSPACE}/tools/wizcli \
           bakery wizcli tag \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --image-version "$IMAGE_VERSION" \
             --image-platform "$IMAGE_PLATFORM" \
             --dev-versions "$DEV_VERSIONS" \
@@ -777,7 +777,7 @@ jobs:
           bakery ci publish \
             --jobs "$(nproc)" \
             --context "$CONTEXT" \
-            --image-name "^${IMAGE_NAME}$" \
+            --image-name "${IMAGE_NAME}" \
             --temp-registry "$TEMP_REGISTRY" \
             "${DEV_SPEC_FLAGS[@]}" \
             $PUSH_FLAG \
