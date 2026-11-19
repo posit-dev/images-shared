@@ -6,9 +6,61 @@ import textwrap
 
 import jinja2
 import pytest
+from ruamel.yaml import YAML
 from jinja2 import PackageLoader, StrictUndefined
 
 from posit_bakery.config.templating import jinja2_env
+from posit_bakery.error import BakeryTemplateError
+
+
+LINK_TOOLS = ("ln", "readlink")
+
+
+def link_run(root, directory, bins):
+    """Expected output of link.run_link_default() for a version directory."""
+    return textwrap.dedent(
+        f"""\
+        RUN ln -sfn {directory} {root}/default && \\
+            for bin in {" ".join(bins)}; do \\
+                case "$(readlink /usr/local/bin/$bin || true)" in \\
+                    {root}/*) ;; \\
+                    *) if [ -e /usr/local/bin/$bin ]; then echo "Keeping existing /usr/local/bin/$bin" >&2; continue; fi ;; \\
+                esac; \\
+                ln -sf {root}/default/bin/$bin /usr/local/bin/$bin; \\
+            done"""
+    )
+
+
+def run_link_script(tmp_path, template, opt_from, setup=None, on_path=()):
+    """Render a macro and run its final RUN as a shell script against a fake /opt tree and /usr/local/bin.
+
+    Shared by the Python and R link_to_path tests. PATH is restricted to the few tools the script needs so the host's
+    own interpreters are not found; `on_path` names are created as executables elsewhere on that PATH.
+
+    :param opt_from: The absolute directory in the script to redirect to ``tmp_path / "opt"``, e.g. "/opt/python".
+    :param setup: Optional callable receiving ``(opt, local_bin)`` to populate the fake filesystem.
+    :return: The completed process and the fake /usr/local/bin path.
+    """
+    rendered = (
+        jinja2_env(loader=PackageLoader("posit_bakery.config.templating", "macros"), undefined=StrictUndefined)
+        .from_string(template)
+        .render()
+    )
+    script = rendered[rendered.rindex("RUN ") + 4 :].replace("\\\n", "\n")
+    opt, local_bin, tools = tmp_path / "opt", tmp_path / "local-bin", tmp_path / "tools"
+    for d in (opt, local_bin, tools):
+        d.mkdir()
+    if setup:
+        setup(opt, local_bin)
+    script = script.replace(opt_from, str(opt)).replace("/usr/local/bin", str(local_bin))
+    for tool in LINK_TOOLS:
+        found = shutil.which(tool)
+        assert found, f"{tool} not found on host"
+        (tools / tool).symlink_to(found)
+    for name in on_path:
+        (tools / name).touch(mode=0o755)
+    result = subprocess.run(["/bin/sh", "-c", script], capture_output=True, text=True, env={"PATH": str(tools)})
+    return result, local_bin
 
 
 @pytest.fixture
@@ -1281,6 +1333,92 @@ class TestGossMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    @pytest.mark.parametrize("binaries", ['["python", "pip"]', '"python, pip"'])
+    def test_path_link_checks(self, environment_with_macros, binaries):
+        template = textwrap.dedent(
+            """\
+            {%- import "goss.j2" as goss -%}
+            command:{{ goss.path_link_checks(BINARIES, "/opt/python/3.14.10") }}
+            """
+        ).replace("BINARIES", binaries)
+        expected = textwrap.dedent(
+            """\
+            command:
+              python-on-path-is-newest:
+                exec: test "$(readlink -f "$(command -v python)")" = "$(readlink -f /opt/python/3.14.10/bin/python)"
+                exit-status: 0
+              pip-on-path-is-newest:
+                exec: test "$(readlink -f "$(command -v pip)")" = "$(readlink -f /opt/python/3.14.10/bin/pip)"
+                exit-status: 0
+            """
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+        parsed = YAML(typ="safe").load(rendered)
+        assert set(parsed["command"]) == {"python-on-path-is-newest", "pip-on-path-is-newest"}
+
+    def test_path_link_checks_single_string(self, environment_with_macros):
+        template = (
+            '{%- import "goss.j2" as goss -%}command:{{ goss.path_link_checks("python", "/opt/python/3.14.10") }}'
+        )
+        parsed = YAML(typ="safe").load(environment_with_macros.from_string(template).render())
+        assert list(parsed["command"]) == ["python-on-path-is-newest"]
+
+    def test_path_link_checks_empty_list_renders_no_entries(self, environment_with_macros):
+        """An empty binary list yields a bare `command:` key (null), so callers should not pass one."""
+        template = '{%- import "goss.j2" as goss -%}command:{{ goss.path_link_checks([], "/opt/python/3.14.10") }}'
+        rendered = environment_with_macros.from_string(template).render()
+        assert YAML(typ="safe").load(rendered) == {"command": None}
+
+    @pytest.mark.parametrize(
+        "link_to,expected_status",
+        [
+            pytest.param("3.14.10", 0, id="link-is-newest"),
+            pytest.param("3.13.7", 1, id="link-is-older"),
+            pytest.param(None, 1, id="link-missing"),
+        ],
+    )
+    def test_path_link_checks_exec_runs(self, environment_with_macros, tmp_path, link_to, expected_status):
+        """Run the generated exec line in sh with a temporary PATH."""
+        template = '{%- import "goss.j2" as goss -%}command:{{ goss.path_link_checks("python", DIR) }}'.replace(
+            "DIR", f'"{tmp_path}/opt/python/3.14.10"'
+        )
+        parsed = YAML(typ="safe").load(environment_with_macros.from_string(template).render())
+        exec_line = parsed["command"]["python-on-path-is-newest"]["exec"]
+        for version in ("3.14.10", "3.13.7"):
+            (tmp_path / "opt" / "python" / version / "bin").mkdir(parents=True)
+            (tmp_path / "opt" / "python" / version / "bin" / "python").touch(mode=0o755)
+        path_dir = tmp_path / "path"
+        path_dir.mkdir()
+        readlink = shutil.which("readlink")
+        assert readlink, "readlink not found on host"
+        (path_dir / "readlink").symlink_to(readlink)
+        if link_to:
+            (path_dir / "python").symlink_to(tmp_path / "opt" / "python" / link_to / "bin" / "python")
+        result = subprocess.run(["/bin/sh", "-c", exec_line], env={"PATH": str(path_dir)}, capture_output=True)
+        assert result.returncode == expected_status, result.stderr
+
+    def test_path_link_targets(self, environment_with_macros, tmp_path):
+        template = '{%- import "goss.j2" as goss -%}command:{{ goss.path_link_targets(BINS, DIR) }}'.replace(
+            "BINS", '["python", "pip"]'
+        ).replace("DIR", f'"{tmp_path}/opt/python/3.14.10"')
+        parsed = YAML(typ="safe").load(environment_with_macros.from_string(template).render())
+        assert set(parsed["command"]) == {"python-link-targets-newest", "pip-link-targets-newest"}
+        exec_line = parsed["command"]["python-link-targets-newest"]["exec"]
+        assert parsed["command"]["python-link-targets-newest"]["exit-status"] == 0
+        # Run against a fake /usr/local/bin by redirecting the path in the exec line.
+        target = tmp_path / "opt" / "python" / "3.14.10" / "bin" / "python"
+        for link, expected in (("good", 0), ("wrong", 1), ("missing", 1)):
+            local_bin = tmp_path / link
+            local_bin.mkdir()
+            if link == "good":
+                (local_bin / "python").symlink_to(target)
+            elif link == "wrong":
+                (local_bin / "python").symlink_to("/opt/python/3.13.7/bin/python")
+            script = exec_line.replace("/usr/local/bin", str(local_bin))
+            result = subprocess.run(["/bin/sh", "-c", script], env={"PATH": "/usr/bin:/bin"}, capture_output=True)
+            assert result.returncode == expected, link
+
 
 class TestPythonMacros:
     def test_declare_build_arg_default(self, environment_with_macros):
@@ -1447,6 +1585,64 @@ class TestPythonMacros:
         expected = "COPY --from=python-builder /opt/python /opt/python"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+    PYTHON_LINK_COPY = "COPY --from=python-builder /opt/python /opt/python\n\n"
+
+    @staticmethod
+    def _python_link_run(directory):
+        return link_run("/opt/python", directory, ["python", "python3", "pip", "pip3"])
+
+    @pytest.mark.parametrize(
+        "versions,directory",
+        [
+            pytest.param('["3.12.11", "3.13.7"]', "/opt/python/3.13.7", id="list"),
+            pytest.param('["3.13.7", "3.9.20"]', "/opt/python/3.13.7", id="numeric-ordering"),
+            pytest.param('["3.13.7", "3.14.0rc1"]', "/opt/python/3.13.7", id="stable-beats-prerelease"),
+            pytest.param('"3.12.11,3.13.7"', "/opt/python/3.13.7", id="string"),
+            pytest.param('["3.12.11"]', "/opt/python/3.12.11", id="single"),
+            pytest.param('"${PYTHON_VERSION}"', "/opt/python/${PYTHON_VERSION}", id="placeholder"),
+            pytest.param("python.build_arg()", "/opt/python/$PYTHON_VERSION", id="build-arg"),
+        ],
+    )
+    def test_copy_from_build_stage_link_to_path_with_versions(self, environment_with_macros, versions, directory):
+        template = (
+            '{%- import "python.j2" as python -%}\n'
+            "{{ python.copy_from_build_stage(versions=" + versions + ", link_to_path=True) }}"
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == self.PYTHON_LINK_COPY + self._python_link_run(directory)
+
+    @pytest.mark.parametrize("versions", ["[]", "''"])
+    def test_copy_from_build_stage_link_to_path_empty_versions_raises(self, environment_with_macros, versions):
+        """An empty versions value is an error from maxVersion."""
+        template = (
+            '{%- import "python.j2" as python -%}'
+            "{{ python.copy_from_build_stage(versions=" + versions + ", link_to_path=True) }}"
+        )
+        with pytest.raises(BakeryTemplateError, match="maxVersion"):
+            environment_with_macros.from_string(template).render()
+
+    def test_copy_from_build_stage_versions_ignored_without_link(self, environment_with_macros):
+        template = textwrap.dedent(
+            """\
+            {%- import "python.j2" as python -%}
+            {{ python.copy_from_build_stage(versions=["3.12.11", "3.13.7"]) }}"""
+        )
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == "COPY --from=python-builder /opt/python /opt/python"
+
+    @pytest.mark.parametrize("call", ["", "versions=None, "])
+    def test_copy_from_build_stage_link_to_path_without_versions_raises(self, environment_with_macros, call):
+        template = (
+            '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(' + call + "link_to_path=True) }}"
+        )
+        with pytest.raises(BakeryTemplateError, match="versions.*required"):
+            environment_with_macros.from_string(template).render()
+
+    def test_copy_from_build_stage_zero_args_unchanged(self, environment_with_macros):
+        template = '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage(link_to_path=False) }}'
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == "COPY --from=python-builder /opt/python /opt/python"
 
     @pytest.mark.parametrize(
         "python_version,break_system_packages,expected",
@@ -2524,6 +2720,47 @@ class TestRMacros:
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
 
+    def test_run_install_link_to_path_off_by_default(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3", "4.5.0"]) }}'
+        rendered = environment_with_macros.from_string(template).render()
+        assert "ln -s" not in rendered
+
+    @pytest.mark.parametrize(
+        "versions,directory",
+        [
+            pytest.param('["4.4.3", "4.5.0"]', "/opt/R/4.5.0", id="list"),
+            pytest.param('["4.5.0", "4.4.3"]', "/opt/R/4.5.0", id="list-reversed"),
+            pytest.param('["4.9.0", "4.10.0"]', "/opt/R/4.10.0", id="numeric-ordering"),
+            pytest.param('"4.4.3, 4.5.0"', "/opt/R/4.5.0", id="string"),
+            pytest.param('["4.4.3"]', "/opt/R/4.4.3", id="single"),
+            pytest.param("r.build_arg()", "/opt/R/$R_VERSION", id="build-arg-placeholder"),
+        ],
+    )
+    def test_run_install_link_to_path(self, environment_with_macros, versions, directory):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(' + versions + ", link_to_path=True) }}"
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered.endswith("\n\n" + link_run("/opt/R", directory, ["R", "Rscript"]))
+        assert rendered.count("ln -sfn") == 1
+
+    @pytest.mark.parametrize("versions", ["[]", "''"])
+    def test_run_install_link_to_path_empty_versions_raises(self, environment_with_macros, versions):
+        template = '{%- import "r.j2" as r -%}{{ r.run_install(' + versions + ", link_to_path=True) }}"
+        with pytest.raises(BakeryTemplateError, match="maxVersion"):
+            environment_with_macros.from_string(template).render()
+
+    def test_run_install_link_to_path_rhel(self, environment_with_macros):
+        template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3"], os_family="rhel", link_to_path=True) }}'
+        expected = textwrap.dedent(
+            """\
+            RUN dnf install -yq \\
+                    R-4.4.3 && \\
+                dnf clean all -yq
+
+            """
+        ) + link_run("/opt/R", "/opt/R/4.4.3", ["R", "Rscript"])
+        rendered = environment_with_macros.from_string(template).render()
+        assert rendered == expected
+
     def test_run_install_rhel(self, environment_with_macros):
         template = '{%- import "r.j2" as r -%}\n{{ r.run_install(["4.4.3"], os_family="rhel") }}'
         expected = textwrap.dedent(
@@ -2983,3 +3220,99 @@ class TestRMacros:
         expected = "ln -s /opt/R/4.4.3/bin/R /usr/local/bin/R"
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+
+class TestLinkGuardShellLogic:
+    """Run link.run_link_default() against a temp /opt and /usr/local/bin for each starting state."""
+
+    @staticmethod
+    def _run(tmp_path, setup, version="4.4.3"):
+        template = '{%- import "r.j2" as r -%}{{ r.run_link_to_path("' + version + '") }}'
+        return run_link_script(tmp_path, template, "/opt/R", lambda opt, b: setup(b))
+
+    @staticmethod
+    def _assert_default(tmp_path, local_bin, version, bins=("R", "Rscript")):
+        opt = tmp_path / "opt"
+        assert (opt / "default").readlink() == opt / version
+        for name in bins:
+            assert (local_bin / name).readlink() == opt / "default" / "bin" / name
+
+    @pytest.mark.parametrize(
+        "template,opt_from,bins,version",
+        [
+            pytest.param(
+                '{%- import "r.j2" as r -%}{{ r.run_install("4.4.3", link_to_path=True) }}',
+                "/opt/R",
+                ["R", "Rscript"],
+                "4.4.3",
+                id="r",
+            ),
+            pytest.param(
+                '{%- import "python.j2" as python -%}{{ python.copy_from_build_stage("3.13.7", link_to_path=True) }}',
+                "/opt/python",
+                ["python", "python3", "pip", "pip3"],
+                "3.13.7",
+                id="python",
+            ),
+        ],
+    )
+    def test_binary_elsewhere_on_path_is_shadowed(self, tmp_path, template, opt_from, bins, version):
+        result, local_bin = run_link_script(tmp_path, template, opt_from, on_path=bins)
+        assert result.returncode == 0, result.stderr
+        self._assert_default(tmp_path, local_bin, version, bins)
+
+    def test_nothing_present_creates_links(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: None)
+        assert result.returncode == 0, result.stderr
+        self._assert_default(tmp_path, local_bin, "4.4.3")
+
+    def test_rerun_with_newer_version_moves_default(self, tmp_path):
+        """A child image that installs a newer version and re-runs the step gets the new default."""
+
+        def parent_image(opt, local_bin):
+            (opt / "4.4.3" / "bin").mkdir(parents=True)
+            (opt / "default").symlink_to(opt / "4.4.3")
+            for name in ("R", "Rscript"):
+                (opt / "4.4.3" / "bin" / name).touch()
+                (local_bin / name).symlink_to(opt / "default" / "bin" / name)
+
+        template = '{%- import "r.j2" as r -%}{{ r.run_link_to_path("4.5.1") }}'
+        result, local_bin = run_link_script(tmp_path, template, "/opt/R", parent_image)
+        assert result.returncode == 0, result.stderr
+        assert "Keeping existing" not in result.stderr
+        self._assert_default(tmp_path, local_bin, "4.5.1")
+
+    def test_link_into_versioned_directory_is_refreshed(self, tmp_path):
+        """A link the image owns, e.g. straight to an older version, is re-pointed through default."""
+
+        def old_link(opt, local_bin):
+            (opt / "4.3.0" / "bin").mkdir(parents=True)
+            (opt / "4.3.0" / "bin" / "R").touch()
+            (local_bin / "R").symlink_to(opt / "4.3.0" / "bin" / "R")
+
+        template = '{%- import "r.j2" as r -%}{{ r.run_link_to_path("4.4.3") }}'
+        result, local_bin = run_link_script(tmp_path, template, "/opt/R", old_link)
+        assert result.returncode == 0, result.stderr
+        assert "Keeping existing" not in result.stderr
+        self._assert_default(tmp_path, local_bin, "4.4.3")
+
+    def test_valid_symlink_is_kept(self, tmp_path):
+        target = tmp_path / "keep"
+        target.touch()
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").symlink_to(target))
+        assert result.returncode == 0, result.stderr
+        assert "Keeping existing" in result.stderr
+        assert (local_bin / "R").readlink() == target
+        assert (local_bin / "Rscript").readlink() == tmp_path / "opt" / "default" / "bin" / "Rscript"
+
+    def test_real_file_is_kept(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").write_text("real"))
+        assert result.returncode == 0, result.stderr
+        assert "Keeping existing" in result.stderr
+        assert not (local_bin / "R").is_symlink()
+        assert (local_bin / "R").read_text() == "real"
+
+    def test_dangling_symlink_is_replaced(self, tmp_path):
+        result, local_bin = self._run(tmp_path, lambda b: (b / "R").symlink_to("/nonexistent"))
+        assert result.returncode == 0, result.stderr
+        self._assert_default(tmp_path, local_bin, "4.4.3")
