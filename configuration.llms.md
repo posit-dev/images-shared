@@ -292,6 +292,7 @@ variants:
   - name: Minimal
     extension: min
     tagDisplayName: min
+    toolLabels: false  # this variant does not install the resolved dependencies
 ```
 
 ### ImageMatrix

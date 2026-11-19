@@ -1194,6 +1194,12 @@ window.onload = function () {
 <td></td>
 <td></td>
 </tr>
+<tr class="even">
+<td><code>toolLabels</code><br><em>bool</em></td>
+<td>Emit <code>co.posit.image.tools.*</code> labels for the image version’s resolved dependencies. Set to <code>false</code> for variants that do not install those tools.</td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+</tr>
 </tbody>
 </table>
 <section id="common-image-variants" class="level4">
@@ -1207,7 +1213,8 @@ window.onload = function () {
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">primary</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Minimal</span></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">extension</span><span class="kw">:</span><span class="at"> min</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">tagDisplayName</span><span class="kw">:</span><span class="at"> min</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">tagDisplayName</span><span class="kw">:</span><span class="at"> min</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">toolLabels</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span><span class="co">  # this variant does not install the resolved dependencies</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="imagematrix" class="level3">
