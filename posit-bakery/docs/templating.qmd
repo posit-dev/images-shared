@@ -48,6 +48,7 @@ In addition to the built-in Jinja2 filters, the following custom filters are ava
 - `regexReplace <find> <replace>`: Replaces occurrences of the `find` regex with `replace`.
 - `quote`: Wraps a string in double quotes.
 - `split`: Splits a string by a separator (e.g. `{{ "a,b,c" | split(",") }}`).
+- `maxVersion`: Returns the highest version from a list or comma-separated string (e.g. `{{ Dependencies.python | maxVersion }}`). Versions are compared as semantic versions and ties go to the later entry. Pre-releases are skipped when any stable entry is present; pass `maxVersion(prerelease=True)` to let them win. The original string is returned. A single entry is returned as-is without parsing, so build-time placeholders such as `${PYTHON_VERSION}` pass through. Empty or unparseable input raises a render error.
 
 ## Templating Macros
 
@@ -257,6 +258,22 @@ To copy the Python installations from the build stage to the current stage, use:
 {{ python.copy_from_build_stage() }}
 ```
 
+To also put a default Python on `PATH`, set `link_to_path=True`. This appends a `RUN` that points `/opt/python/default` at the newest stable version and links `python`, `python3`, `pip` and `pip3` from `/opt/python/default/bin` into `/usr/local/bin` (see [Default Interpreter Links](#default-interpreter-links)). A binary elsewhere on `PATH`, such as the system `/usr/bin/python3`, is shadowed. Anything that calls `python3` through `PATH` then gets the uv Python, which lacks distro dist-packages such as `python3-apt`. Scripts with an absolute `/usr/bin/python3` shebang are unaffected.
+
+```jinja2
+{# Newest stable version is chosen at render time with the maxVersion filter #}
+{{ python.copy_from_build_stage(Dependencies.python, link_to_path=True) }}
+
+{# A single version, or a build-time placeholder, is used as-is. Use this to choose the default explicitly. #}
+{{ python.copy_from_build_stage(python.build_arg(), link_to_path=True) }}
+```
+
+`versions` is required with `link_to_path=True`; omitting it is a render error. An empty `versions` list or string is also a render error. Calls without `link_to_path` (including `{{ python.copy_from_build_stage() }}`) do not need `versions`.
+
+::: {.callout-note}
+uv-managed Pythons include an `EXTERNALLY-MANAGED` marker (PEP 668). A `pip` on `PATH` that points at one will refuse to install packages unless `--break-system-packages` is passed. Install into a virtual environment instead.
+:::
+
 #### Declare Build Argument
 Declares a Docker `ARG` for a Python version. Useful as a `prerun` parameter to `build_stage()` or in Containerfiles that need a Python version as a build argument.
 
@@ -361,6 +378,27 @@ Usually, this should be called with `Dependencies.R` to dynamically specify vers
 ```jinja2
 {{ r.run_install(Dependencies.R) }}
 ```
+
+To also put a default R on `PATH`, set `link_to_path=True`. This appends one `RUN` that points `/opt/R/default` at the newest stable installed version (chosen with the `maxVersion` filter) and links `R` and `Rscript` from `/opt/R/default/bin` into `/usr/local/bin` (see [Default Interpreter Links](#default-interpreter-links)). A binary elsewhere on `PATH` such as `/usr/bin/R` is shadowed. To choose the default explicitly, call `r.run_link_to_path()` with a single version instead.
+
+```jinja2
+{{ r.run_install(Dependencies.R, link_to_path=True) }}
+
+{# Or: install several versions, then make a specific one the default #}
+{{ r.run_install(Dependencies.R) }}
+{{ r.run_link_to_path("4.4.3") }}
+```
+
+#### Default Interpreter Links
+
+Both `link_to_path` options use the same step, `link.run_link_default(root, version, bins)`:
+
+- `<root>/default` (`/opt/R/default` or `/opt/python/default`) is pointed at `<root>/<version>`.
+- Each `/usr/local/bin/<bin>` is linked to `<root>/default/bin/<bin>`. A link that already points into `<root>` is refreshed, and a dangling link is replaced. Any other existing file or symlink is kept, and the build prints `Keeping existing /usr/local/bin/<bin>`.
+
+The step can be re-run. A child image that installs a newer version and repeats the step moves `default` to it, and the `/usr/local/bin` links follow.
+
+These links are a fallback for terminals, scripts and tools that look up `R` or `python3` on `PATH`. They live in `/usr/local/bin` rather than an `ENV PATH` entry, because `su -`, `sudo` (`secure_path`) and some login shells reset `PATH`, while `/usr/local/bin` stays on the default `PATH`. Workbench and Connect still select interpreters by their versioned paths, so a session or content item running a non-default version that calls a bare `Rscript` or `python3` gets the default instead. Create virtual environments from a versioned interpreter such as `/opt/python/3.13.7/bin/python`, not from `python3` on `PATH`. A virtual environment created through a link follows the link if the default changes later.
 
 #### Get Version Directory
 Returns the expected installation directory for an R version.
@@ -491,6 +529,21 @@ Returns a reference to a build argument passed as an environment variable to Gos
 ```
 
 This outputs `{{ .Env.BUILD_ARG_PYTHON_VERSION }}` which Goss will substitute with the value of the `BUILD_ARG_PYTHON_VERSION` environment variable at test runtime.
+
+#### PATH Link Checks
+Generates Goss `command` entries that check each binary on `PATH` resolves to the same file as the one in the newest version directory. Use it to verify `link_to_path=True`. Place the output under an existing `command:` key.
+
+```jinja2
+command:{{ goss.path_link_checks(["python", "python3", "pip", "pip3"], python.get_version_directory(Dependencies.python | maxVersion)) }}
+```
+
+#### PATH Link Targets
+Generates Goss `command` entries asserting that `/usr/local/bin/<bin>` is a symlink whose `readlink` target is exactly `<version_directory>/bin/<bin>`. It fails for a dangling link, a real file or a link to another version. With `link_to_path=True`, pass the `default` directory (e.g. `python.get_version_directory("default")`); `path_link_checks` then confirms that it resolves to the expected version. Pass the same binary list as `path_link_checks` (for example from one `{% set %}` variable) so the two cannot drift.
+
+```jinja2
+{% set bins = ["python", "python3", "pip", "pip3"] %}
+command:{{ goss.path_link_checks(bins, dir) }}{{ goss.path_link_targets(bins, python.get_version_directory("default")) }}
+```
 
 ### wait-for-it
 
