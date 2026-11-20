@@ -219,6 +219,17 @@ To wrap `install()` in a Docker RUN statement, use:
 {{ dnf.run_install(packages="git,curl", files="/tmp/packages.txt") }}
 ```
 
+### Pebble Installation
+
+On Ubuntu 22.04 and 24.04, `pebble.install()` installs Canonical's pinned standalone release to `/usr/local/bin/pebble` and verifies the archive SHA-256 for `amd64` or `arm64`. Call it in the target image stage as root, after installing `curl` and `ca-certificates`:
+
+```jinja2
+{% import "pebble.j2" as pebble %}
+{{ pebble.install() }}
+```
+
+This only installs the binary; it does not configure services or change the image's entrypoint. The macro includes the GPL license file. Address corresponding-source obligations before distributing images that include the binary.
+
 ### Python Installation and Package Management
 
 #### Importing

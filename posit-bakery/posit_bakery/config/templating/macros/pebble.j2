@@ -1,0 +1,18 @@
+{# Install Canonical's standalone Pebble release as root, after installing curl and ca-certificates. #}
+{% macro install() -%}
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+      amd64) sha256=e9d84f9e461a89abb4437af26a784917bd85cf1612c8de142a3b4449dff332d0 ;; \
+      arm64) sha256=0c19a80498da84e5615138bf804c85b782438c515832430fef8d40057418b4eb ;; \
+      *) echo "Unsupported Pebble architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac && \
+    version=v1.33.2 && \
+    tmpdir="$(mktemp -d)" && \
+    curl -fsSL "https://github.com/canonical/pebble/releases/download/${version}/pebble_${version}_linux_${TARGETARCH}.tar.gz" \
+      -o "$tmpdir/pebble.tar.gz" && \
+    printf '%s  %s\n' "$sha256" "$tmpdir/pebble.tar.gz" | sha256sum -c - && \
+    tar -xzf "$tmpdir/pebble.tar.gz" -C "$tmpdir" pebble COPYING && \
+    install -D -m 0755 "$tmpdir/pebble" /usr/local/bin/pebble && \
+    install -D -m 0644 "$tmpdir/COPYING" /usr/local/share/doc/pebble/COPYING && \
+    rm -rf "$tmpdir"
+{%- endmacro %}

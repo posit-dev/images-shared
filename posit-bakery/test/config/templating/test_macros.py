@@ -30,6 +30,7 @@ def test_import_all_macros_no_errors(environment_with_macros):
         """\
         {%- import "apt.j2" as apt -%}
         {%- import "dnf.j2" as dnf -%}
+        {%- import "pebble.j2" as pebble -%}
         {%- import "python.j2" as python -%}
         {%- import "quarto.j2" as quarto -%}
         {%- import "r.j2" as r -%}
@@ -1280,6 +1281,27 @@ class TestGossMacros:
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+
+def test_pebble_install_rejects_unsupported_arch(environment_with_macros):
+    template = textwrap.dedent(
+        """\
+        {%- import "pebble.j2" as pebble -%}
+        {{ pebble.install() }}
+        """
+    )
+    rendered = environment_with_macros.from_string(template).render()
+    arg, run = rendered.split("\n", 1)
+    assert arg == "ARG TARGETARCH"
+    assert run.startswith("RUN ")
+    result = subprocess.run(
+        ["sh", "-c", run.removeprefix("RUN ")],
+        env={**os.environ, "TARGETARCH": "s390x"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert result.stderr == "Unsupported Pebble architecture: s390x\n"
 
 
 class TestPythonMacros:
