@@ -232,16 +232,16 @@ On Ubuntu 22.04 and 24.04, `pebble.install()` installs Canonical's pinned standa
 
 #### Run Pebble as PID 1
 
-On Ubuntu 26.04, retain the base image's `/usr/bin/pebble` and use `use_base()` instead of `install()`. It verifies that the binary is executable and configures a separate Pebble directory with your service layer:
+Use `pebble.configure()` to check that Pebble is on PATH and set up a separate Pebble directory with your service layer. On Ubuntu 26.04, retain the base image's `/usr/bin/pebble`. On Ubuntu 22.04 and 24.04, call `pebble.install()` before configuring:
 
 ```jinja2
 {% import "pebble.j2" as pebble %}
-{{ pebble.use_base(Path.Version ~ "/pebble/001-product.yaml", "app:app") }}
+{{ pebble.configure(Path.Version ~ "/pebble/001-product.yaml", "app:app") }}
 USER app
 {{ pebble.entrypoint() }}
 ```
 
-On Ubuntu 22.04 and 24.04, call `pebble.install()` followed by `pebble.configure(layer, owner)` instead of `use_base()`. Configure the layer as root, after creating the runtime user and before switching `USER`. `owner` must match the user and group that run Pebble so it can write its socket and state. The layer path is relative to the build context.
+Configure the layer as root, after creating the runtime user and before switching `USER`. `owner` must match the user and group that run Pebble so it can write its socket and state. The layer path is relative to the build context.
 
 The service layer belongs to your image. For a single foreground service, set `startup: enabled` and use `on-success: shutdown` and `on-failure: shutdown` if you want the container to stop when the service exits. `entrypoint()` starts configured services and streams their logs. Remove the old startup `CMD`: arguments appended to the entrypoint are Pebble arguments, not a replacement application command.
 
