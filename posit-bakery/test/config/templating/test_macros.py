@@ -1304,6 +1304,35 @@ def test_pebble_install_rejects_unsupported_arch(environment_with_macros):
     assert result.stderr == "Unsupported Pebble architecture: s390x\n"
 
 
+@pytest.mark.parametrize("use_base", [False, True])
+def test_pebble_service_macros(environment_with_macros, use_base):
+    template = textwrap.dedent(
+        """\
+        {%- import "pebble.j2" as pebble -%}
+        {% if use_base -%}
+        {{ pebble.use_base("app files/service.yaml", "app:app") }}
+        {% else -%}
+        {{ pebble.configure("app files/service.yaml", "app:app") }}
+        {% endif -%}
+        USER app
+        {{ pebble.entrypoint() }}
+        """
+    )
+    expected = textwrap.dedent(
+        """\
+        ENV PEBBLE=/var/lib/posit-pebble
+        RUN install -d -m 0755 "$PEBBLE/layers" && chmod 0750 "$PEBBLE" && \\
+            chown "app:app" "$PEBBLE"
+        COPY --chmod=0644 ["app files/service.yaml", "/var/lib/posit-pebble/layers/001-product.yaml"]
+        USER app
+        ENTRYPOINT ["pebble", "run", "--verbose"]
+        """
+    )
+    if use_base:
+        expected = "RUN test -x /usr/bin/pebble\n" + expected
+    assert environment_with_macros.from_string(template).render(use_base=use_base) == expected
+
+
 class TestPythonMacros:
     def test_declare_build_arg_default(self, environment_with_macros):
         template = textwrap.dedent(

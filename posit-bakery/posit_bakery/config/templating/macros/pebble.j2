@@ -16,3 +16,21 @@ RUN case "$TARGETARCH" in \
     install -D -m 0644 "$tmpdir/COPYING" /usr/local/share/doc/pebble/COPYING && \
     rm -rf "$tmpdir"
 {%- endmacro %}
+
+{# Use a runtime-owned directory separate from the base image's Pebble plan. #}
+{% macro configure(layer, owner) -%}
+ENV PEBBLE=/var/lib/posit-pebble
+RUN install -d -m 0755 "$PEBBLE/layers" && chmod 0750 "$PEBBLE" && \
+    chown {{ owner | quote }} "$PEBBLE"
+COPY --chmod=0644 [{{ layer | tojson }}, "/var/lib/posit-pebble/layers/001-product.yaml"]
+{%- endmacro %}
+
+{% macro use_base(layer, owner) -%}
+RUN test -x /usr/bin/pebble
+{{ configure(layer, owner) }}
+{%- endmacro %}
+
+{# Both the base and standalone installations put Pebble on PATH. #}
+{% macro entrypoint() -%}
+ENTRYPOINT ["pebble", "run", "--verbose"]
+{%- endmacro %}
