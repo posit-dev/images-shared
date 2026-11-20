@@ -436,7 +436,7 @@ The versions can be defined explicitly as an array of strings, or in terms of a 
 
 | Field               | Description                          | Default Value | Example               |
 |---------------------|--------------------------------------|---------------|-----------------------|
-| `latest`<br/>*bool* | Include the latest version.          |               | `true`, `false`       |
+| `latest`<br/>*bool or negative integer* | `true` selects the newest minor release. `-N` skips the N newest eligible minor releases before applying `count`. For example, if Python 3.15 is newest, `latest: -1` selects the newest patch of 3.14. Resolution fails if no release remains after skipping. | | `true`, `false`, `-1` |
 | `count`<br/>*int*   | Number of minor versions to include. |               | `2`, `4`              |
 | `max`<br/>*string*  | Maximum version to include.          |               | `3.13.7`, `3.11`, `3` |
 | `min`<br/>*string*  | Minimum version to include.          |               | `4.2.1`, `4.3`, `4`   |
