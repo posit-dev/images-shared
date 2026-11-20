@@ -95,7 +95,7 @@ class DependencyVersion(Version):
         return self._original
 
     @property
-    def minor(self) -> int | None:
+    def minor(self) -> int | None:  # pyright: ignore[reportIncompatibleMethodOverride]  # Preserve omitted components.
         """Return the minor version, or None if not specified.
 
         This overrides the parent class to return 0 if the minor is unspecified.
@@ -107,7 +107,7 @@ class DependencyVersion(Version):
         return None
 
     @property
-    def micro(self) -> int | None:
+    def micro(self) -> int | None:  # pyright: ignore[reportIncompatibleMethodOverride]  # Preserve omitted components.
         """Return the micro version, or None if not specified.
 
         This overrides the parent class to return 0 if the micro is unspecified.
@@ -159,12 +159,15 @@ class VersionConstraint(BakeryYAMLModel):
 
     """
 
-    count: Annotated[
-        int | None, Field(default=None, gt=0, description="Number of versions to include. Must be greater than 0.")
-    ]
-    latest: Annotated[bool | None, Field(default=None, description="Include the latest version.")]
-    max: Annotated[str | None, Field(default=None, description="Maximum version to include.")]
-    min: Annotated[str | None, Field(default=None, description="Minimum version to include.")]
+    count: Annotated[int | None, Field(gt=0, description="Number of versions to include. Must be greater than 0.")] = (
+        None
+    )
+    latest: Annotated[
+        bool | Annotated[int, Field(strict=True, lt=0)] | None,
+        Field(description="Include the latest version, or skip N newest minor releases with -N."),
+    ] = None
+    max: Annotated[str | None, Field(description="Maximum version to include.")] = None
+    min: Annotated[str | None, Field(description="Minimum version to include.")] = None
 
     @field_validator("max", "min", mode="before")
     @classmethod
@@ -285,6 +288,12 @@ class VersionConstraint(BakeryYAMLModel):
         versions = self._filter_range(versions)
         # Filter to the most recent patch version for each minor version
         versions = self._filter_minor(versions)
+
+        if self.latest is not None and self.latest < 0:
+            offset = -self.latest
+            if offset >= len(versions):
+                raise ValueError(f"latest: {self.latest} requires at least {offset + 1} eligible minor releases.")
+            versions = versions[offset:]
 
         if self.count is not None:
             versions = versions[: self.count]

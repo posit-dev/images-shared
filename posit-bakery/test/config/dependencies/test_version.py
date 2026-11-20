@@ -211,6 +211,22 @@ class TestVersionConstraint:
 
 class TestDepencencyConstraintResolution:
     @pytest.mark.parametrize(
+        "constraint, expected",
+        [
+            ({"latest": -1}, ["3.14.4"]),
+            ({"latest": -1, "count": 2}, ["3.14.4", "3.12.0"]),
+            ({"latest": -2, "min": "3.12"}, ["3.12.0"]),
+        ],
+    )
+    def test_latest_offset(self, constraint, expected):
+        versions = [DependencyVersion(v) for v in ["3.14.1", "3.15.0", "3.12.0", "3.14.4"]]
+        assert [str(v) for v in VersionConstraint(**constraint).resolve_versions(versions)] == expected
+
+    def test_latest_offset_exhausted(self):
+        with pytest.raises(ValueError, match="requires at least 2 eligible minor releases"):
+            VersionConstraint.model_validate({"latest": -1}).resolve_versions([DependencyVersion("3.15.0")])
+
+    @pytest.mark.parametrize(
         "available_versions,expected_version",
         [
             pytest.param(["4.5.1"], "4.5.1", id="r-single"),
