@@ -30,6 +30,7 @@ def test_import_all_macros_no_errors(environment_with_macros):
         """\
         {%- import "apt.j2" as apt -%}
         {%- import "dnf.j2" as dnf -%}
+        {%- import "pebble.j2" as pebble -%}
         {%- import "python.j2" as python -%}
         {%- import "quarto.j2" as quarto -%}
         {%- import "r.j2" as r -%}
@@ -1280,6 +1281,56 @@ class TestGossMacros:
         )
         rendered = environment_with_macros.from_string(template).render()
         assert rendered == expected
+
+
+def test_pebble_install_rejects_unsupported_arch(environment_with_macros):
+    template = textwrap.dedent(
+        """\
+        {%- import "pebble.j2" as pebble -%}
+        {{ pebble.install() }}
+        """
+    )
+    rendered = environment_with_macros.from_string(template).render()
+    arg, run = rendered.split("\n", 1)
+    assert arg == "ARG TARGETARCH"
+    assert run.startswith("RUN ")
+    result = subprocess.run(
+        ["sh", "-c", run.removeprefix("RUN ")],
+        env={**os.environ, "TARGETARCH": "s390x"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert result.stderr == "Unsupported Pebble architecture: s390x\n"
+
+
+def test_pebble_service_macros(environment_with_macros):
+    template = textwrap.dedent(
+        """\
+        {%- import "pebble.j2" as pebble -%}
+        {{ pebble.configure("app files/service.yaml", "app:app") }}
+        USER app
+        {{ pebble.entrypoint() }}
+        """
+    )
+    expected = textwrap.dedent(
+        """\
+        ENV PEBBLE=/var/lib/posit-pebble
+        RUN command -v pebble >/dev/null || { echo "Pebble must be installed and on PATH" >&2; exit 1; }; \\
+            install -d -m 0755 "$PEBBLE/layers" && chmod 0750 "$PEBBLE" && \\
+            chown "app:app" "$PEBBLE"
+        COPY --chmod=0644 ["app files/service.yaml", "/var/lib/posit-pebble/layers/001-product.yaml"]
+        USER app
+        ENTRYPOINT ["pebble", "run", "--verbose"]
+        """
+    )
+    rendered = environment_with_macros.from_string(template).render()
+    assert rendered == expected
+
+    run = rendered.split("\nCOPY ", 1)[0].split("\nRUN ", 1)[1]
+    result = subprocess.run(["/bin/sh", "-c", run], env={"PATH": "/nonexistent"}, capture_output=True, text=True)
+    assert result.returncode == 1
+    assert result.stderr == "Pebble must be installed and on PATH\n"
 
 
 class TestPythonMacros:
