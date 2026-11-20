@@ -1,6 +1,8 @@
 import abc
 from typing import Any, List, Dict
 
+from posit_bakery.util import cached_session
+
 
 class AbstractResolver(abc.ABC):
     """ABC for resolvers, a general term for classes that take input data (usually a dict or str) and return a value."""
@@ -106,6 +108,45 @@ class ArrayPropertyResolver(AbstractResolver):
             if item.get(self._formatted_prop) == self._formatted_value:
                 return item
         return None
+
+
+class ReleaseBranchResolver(AbstractResolver):
+    """Resolver that selects a release entry from a list by the ``release_branch`` metadata value."""
+
+    def format(self):
+        return
+
+    def resolve(self, data: list[dict]) -> dict | None:
+        """Resolve the entry for the release branch.
+
+        :param data: The list of release entries. Each is expected to have "branch" and "version" properties.
+        :return: The first entry for "latest", otherwise the entry whose branch or version equals the release branch.
+                 None if there is no match.
+        """
+        release_branch = self.metadata["release_branch"]
+        if release_branch == "latest":
+            return data[0] if data else None
+        for item in data:
+            if release_branch in (item.get("branch"), item.get("version")):
+                return item
+        return None
+
+
+class UrlFetchResolver(AbstractResolver):
+    """Resolver for cases where the given data is a URL to a JSON document that holds the target value."""
+
+    def format(self):
+        return
+
+    def resolve(self, data: str) -> Any:
+        """Fetch the JSON document at the given URL.
+
+        :param data: The URL to fetch.
+        :return: The decoded JSON document.
+        """
+        response = cached_session().get(data)
+        response.raise_for_status()
+        return response.json()
 
 
 class ChainedResolver(AbstractResolver):

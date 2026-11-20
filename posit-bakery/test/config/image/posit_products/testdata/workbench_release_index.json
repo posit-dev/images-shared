@@ -1,0 +1,18 @@
+{
+  "released": [],
+  "in_development": [
+    {
+      "version": "2025.04",
+      "name": "Mariposa Orchid",
+      "branch": "apple-blossom",
+      "page_url": "https://dailies.rstudio.com/rstudio/apple-blossom/",
+      "latest_build": {
+        "build": "2025.04.0-daily+404.pro4",
+        "docs_version": "2025.04.0",
+        "page_url": "https://dailies.rstudio.com/version/2025.04.0-daily+404.pro4/",
+        "builds_url": "https://dailies.rstudio.com/api/v1/build/2025.04.0-daily+404.pro4/index.json"
+      }
+    }
+  ],
+  "upcoming": []
+}
