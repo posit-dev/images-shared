@@ -62,9 +62,12 @@ reset to a per-user directory; the quoted `~` is stored literally in
 `texmf.cnf` and expanded by kpathsea from each user's HOME at runtime.
 See https://github.com/posit-dev/images-shared/issues/855.
 
+`tlmgr` is a Perl script. If you set `home_path`, install `perl` (apt) or
+`perl-interpreter perl-File-Find` (dnf) before this command.
+
 :param quarto_binary: The path to the Quarto binary.
 :param update_path: Adds --update-path to the command to add TinyTeX binaries to the PATH. Defaults to False.
-:param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If provided, TEXMFVAR is also set to a per-user directory. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param home_path: An optional path to set the HOME environment variable for the command, which controls where TinyTeX is installed. If provided, TEXMFVAR is also set to a per-user directory, and the image must have Perl. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 #}
 {% macro install_tinytex_command(quarto_binary, update_path = False, home_path = None) -%}
 GH_TOKEN="$([ -s /run/secrets/github_token ] && cat /run/secrets/github_token)" {% if home_path %}HOME="{{ home_path }}" {% endif %}CI=true {{ quarto_binary }} install tinytex --no-prompt{% if update_path %} --update-path{% endif %}
@@ -90,7 +93,7 @@ installed because the TinyTeX release tarball is `.tar.xz`.
 :param version: The Quarto version to install, e.g. "1.9.37"
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
 :param tinytex_update_path: Adds --update-path to the TinyTeX install command to add TinyTeX binaries to the PATH. Defaults to False.
-:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If provided, the image must have Perl (see `install_tinytex_command`). If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
 {% macro install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, os_family = "debian") -%}
@@ -122,7 +125,7 @@ so only a single version is supported.
 
 :param version: A Quarto version string, or a single-element list (e.g. Dependencies.quarto).
 :param with_tinytex: Whether to install TinyTeX along with Quarto. Defaults to False.
-:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If not provided, TinyTeX will be installed to the default location under the current user's home directory.
+:param tinytex_home_path: An optional path to set the HOME environment variable for the TinyTeX install command, which controls where TinyTeX is installed. If provided, the image must have Perl (see `install_tinytex_command`). If not provided, TinyTeX will be installed to the default location under the current user's home directory.
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
 #}
 {% macro run_install(version, with_tinytex = False, tinytex_update_path = False, tinytex_home_path = None, os_family = "debian") -%}
