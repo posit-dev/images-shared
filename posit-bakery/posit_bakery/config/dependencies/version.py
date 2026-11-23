@@ -9,6 +9,7 @@ from ruamel.yaml.scalarint import ScalarInt
 from posit_bakery.config.shared import BakeryYAMLModel
 
 
+_ROLLING_MAX = ("stable", "oldstable")
 _STRIP_PATCH_RE = re.compile(r"(\d+\.\d+)(?:\.\d+)+")
 _VERSION_SUBSTRING_RE = re.compile(r"\d+(?:\.\d+)+")
 
@@ -209,9 +210,8 @@ class VersionConstraint(BakeryYAMLModel):
         """Ensure that the versions constraint has valid value combinations."""
 
         if self.max is not None and self.min is not None:
-            max_version = DependencyVersion(self.max)
             min_version = DependencyVersion(self.min)
-            if min_version > max_version:
+            if self.max not in _ROLLING_MAX and min_version > DependencyVersion(self.max):
                 raise ValueError("Cannot specify 'min' that is greater than 'max' in version constraint.")
 
         return self
@@ -235,7 +235,13 @@ class VersionConstraint(BakeryYAMLModel):
 
         filtered_versions = versions
 
-        if self.max is not None:
+        if self.max in _ROLLING_MAX:
+            filtered_versions = self._filter_minor([v for v in versions if not v.is_prerelease])
+            if self.max == "oldstable":
+                if len(filtered_versions) < 2:
+                    raise ValueError("max: oldstable requires at least two released minor versions.")
+                filtered_versions = filtered_versions[1:]
+        elif self.max is not None:
             max_ = DependencyVersion(self.max)
             filtered_versions = [
                 v

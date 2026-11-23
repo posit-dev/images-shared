@@ -209,6 +209,17 @@ class TestVersionConstraint:
             VersionConstraint(count=count, latest=latest, max=max, min=min)
 
 
+@pytest.mark.parametrize(("bound", "expected"), [("stable", "3.15.0"), ("oldstable", "3.14.2")])
+def test_rolling_max(bound, expected):
+    versions = list(map(DependencyVersion, ["3.14.1", "3.16.0rc1", "3.15.0", "3.14.2"]))
+    assert VersionConstraint(max=bound, count=1).resolve_versions(versions) == [DependencyVersion(expected)]
+
+
+def test_oldstable_requires_previous_minor():
+    with pytest.raises(ValueError, match="at least two released minor versions"):
+        VersionConstraint(max="oldstable").resolve_versions([DependencyVersion("3.14.1")])
+
+
 class TestDepencencyConstraintResolution:
     @pytest.mark.parametrize(
         "available_versions,expected_version",
