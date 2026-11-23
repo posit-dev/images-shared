@@ -2,86 +2,86 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://posit-dev.github.io/images-shared/templating.html</loc>
-    <lastmod>2026-11-23T21:00:53.603Z</lastmod>
+    <lastmod>2026-11-23T21:01:46.145Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.clean_registry.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersionMetadata.html</loc>
-    <lastmod>2026-11-23T21:01:24.214Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.129Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersion.html</loc>
-    <lastmod>2026-11-23T21:01:24.214Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.129Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.push_readmes.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.DockerhubClient.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/index.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/error.html</loc>
-    <lastmod>2026-11-23T21:01:24.214Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.129Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/index.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/index.html</loc>
-    <lastmod>2026-11-23T21:00:53.603Z</lastmod>
+    <lastmod>2026-11-23T21:01:46.145Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/architecture.html</loc>
-    <lastmod>2026-11-23T21:00:53.602Z</lastmod>
+    <lastmod>2026-11-23T21:01:46.144Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/configuration.html</loc>
-    <lastmod>2026-11-23T21:00:53.602Z</lastmod>
+    <lastmod>2026-11-23T21:01:46.144Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/cli/bakery.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/config.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/image.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/plugins.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.dockerhub.clean_registry.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRClient.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersionContainerMetadata.html</loc>
-    <lastmod>2026-11-23T21:01:24.214Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.129Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.GHCRPackageVersions.html</loc>
-    <lastmod>2026-11-23T21:01:24.214Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.129Z</lastmod>
   </url>
   <url>
     <loc>https://posit-dev.github.io/images-shared/reference/registry_management.ghcr.clean_temporary_artifacts.html</loc>
-    <lastmod>2026-11-23T21:01:24.213Z</lastmod>
+    <lastmod>2026-11-23T21:02:11.128Z</lastmod>
   </url>
 </urlset>
