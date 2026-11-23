@@ -164,6 +164,32 @@ class ReleaseChannelPath:
         return ReleaseChannelResult(**result)
 
 
+def _connect_daily_resolver(field: str) -> resolvers.ChainedResolver:
+    """Resolve a field from the matching Connect Daily platform package."""
+    return resolvers.ChainedResolver(
+        [
+            resolvers.StringMapPathResolver(["packages"]),
+            resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
+            resolvers.StringMapPathResolver([field]),
+        ]
+    )
+
+
+def _package_manager_resolver_map() -> OrderedDict[str, resolvers.AbstractResolver | str]:
+    """Return Package Manager's ordered version and download URL resolvers."""
+    return OrderedDict(
+        [
+            ("version", resolvers.TextResolver()),
+            (
+                "download_url",
+                "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
+                "rstudio-pm{os.packageVersionSeparator}{url_safe_version}{os.packageArchSeparator}"
+                "{arch_identifier}.{os.packageSuffix}",
+            ),
+        ]
+    )
+
+
 # This map connects products to their respective release channels. Each release channel has a ReleaseChannelPath object
 # that defines one URL to fetch data from and a map of resolvers that can be used to extract a specified property
 # from the fetched data as it is expected to be formatted.
@@ -179,27 +205,9 @@ product_release_channel_url_map = {
         ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             CONNECT_DAILY_URL,
             {
-                "version": resolvers.ChainedResolver(
-                    [
-                        resolvers.StringMapPathResolver(["packages"]),
-                        resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
-                        resolvers.StringMapPathResolver(["version"]),
-                    ]
-                ),
-                "download_url": resolvers.ChainedResolver(
-                    [
-                        resolvers.StringMapPathResolver(["packages"]),
-                        resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
-                        resolvers.StringMapPathResolver(["url"]),
-                    ]
-                ),
-                "primary_version": resolvers.ChainedResolver(
-                    [
-                        resolvers.StringMapPathResolver(["packages"]),
-                        resolvers.ArrayPropertyResolver("platform", "{connect_daily_os_name}/{arch_identifier}"),
-                        resolvers.StringMapPathResolver(["primary_version"]),
-                    ]
-                ),
+                "version": _connect_daily_resolver("version"),
+                "download_url": _connect_daily_resolver("url"),
+                "primary_version": _connect_daily_resolver("primary_version"),
             },
         ),
     },
@@ -213,34 +221,12 @@ product_release_channel_url_map = {
         ),
         ReleaseChannelEnum.PREVIEW: ReleaseChannelPath(
             PACKAGE_MANAGER_PREVIEW_URL,
-            # This is intentionally stored as an OrderedDict to ensure version is resolved first so it can be passed
-            # to the download_url resolver.
-            OrderedDict(
-                [
-                    ("version", resolvers.TextResolver()),
-                    (
-                        "download_url",
-                        "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
-                        "rstudio-pm{os.packageVersionSeparator}{url_safe_version}{os.packageArchSeparator}"
-                        "{arch_identifier}.{os.packageSuffix}",
-                    ),
-                ]
-            ),
+            _package_manager_resolver_map(),
             version_templatable=True,
         ),
         ReleaseChannelEnum.DAILY: ReleaseChannelPath(
             PACKAGE_MANAGER_DAILY_URL,
-            OrderedDict(
-                [
-                    ("version", resolvers.TextResolver()),
-                    (
-                        "download_url",
-                        "https://cdn.posit.co/package-manager/{os.packageSuffix}/{arch_identifier}/"
-                        "rstudio-pm{os.packageVersionSeparator}{url_safe_version}{os.packageArchSeparator}"
-                        "{arch_identifier}.{os.packageSuffix}",
-                    ),
-                ]
-            ),
+            _package_manager_resolver_map(),
             version_templatable=True,
         ),
     },
