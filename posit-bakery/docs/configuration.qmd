@@ -438,7 +438,7 @@ The versions can be defined explicitly as an array of strings, or in terms of a 
 |---------------------|--------------------------------------|---------------|-----------------------|
 | `latest`<br/>*bool* | Include the latest version.          |               | `true`, `false`       |
 | `count`<br/>*int*   | Number of minor versions to include. |               | `2`, `4`              |
-| `max`<br/>*string*  | Maximum version to include.          |               | `3.13.7`, `3.11`, `3` |
+| `max`<br/>*string*  | Inclusive upper bound. `stable` tracks the newest released minor; `oldstable` tracks the preceding released minor (requires at least two). Use `count: 1` to select only its latest patch. | | `3.13.7`, `3.11`, `3`, `stable`, `oldstable` |
 | `min`<br/>*string*  | Minimum version to include.          |               | `4.2.1`, `4.3`, `4`   |
 
 At least one of `latest` or `max` must be specified.
