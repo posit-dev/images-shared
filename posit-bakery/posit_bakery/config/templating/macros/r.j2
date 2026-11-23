@@ -2,6 +2,7 @@
 
 {%- import "apt.j2" as apt -%}
 {%- import "dnf.j2" as dnf -%}
+{%- import "link.j2" as link -%}
 
 {%- set _BUILD_ARG_NAME = "R_VERSION" -%}
 
@@ -63,16 +64,33 @@ install() above.
 
 :param versions: A list of R versions or a comma separated string of R versions to install
 :param os_family: The OS family ("debian" or "rhel"). Defaults to "debian".
+:param link_to_path: Whether to append run_link_to_path(versions), making the newest stable version the default.
+    Defaults to False.
 #}
-{% macro run_install(versions, os_family = "debian") -%}
+{% macro run_install(versions, os_family = "debian", link_to_path = False) -%}
 {%- if versions is string -%}
-{%- set versions = versions | split(",") | map('trim') -%}
+{%- set versions = versions | split(",") | map('trim') | list -%}
 {%- endif -%}
 {% for version in versions -%}
 RUN {{ install(version, os_family) | indent(4) }}
 {%- if not loop.last %}{# Handles whitespace for next RUN line if present #}
 {% endif %}
 {%- endfor %}
+{%- if link_to_path %}
+
+{{ run_link_to_path(versions) }}
+{%- endif %}
+{%- endmacro %}
+
+{# Points /opt/R/default at the newest stable R version and links `R` and `Rscript` into /usr/local/bin through it.
+
+Pass a single version to choose the default explicitly. A single version is used as-is, so a build-time placeholder
+such as `${R_VERSION}` can be passed. See link.run_link_default() for how existing files are handled.
+
+:param versions: A list of R versions or a comma separated string of R versions
+#}
+{% macro run_link_to_path(versions) -%}
+{{ link.run_link_default("/opt/R", versions | maxVersion, ["R", "Rscript"]) }}
 {%- endmacro %}
 
 {# Returns the appropriate Posit Package Manager CRAN repository URL for the given OS for binary packages

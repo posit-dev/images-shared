@@ -1,5 +1,7 @@
 {# Macros for installing Python and generating python or pip commands #}
 
+{%- import "link.j2" as link -%}
+
 {%- set _BUILD_ARG_NAME = "PYTHON_VERSION" -%}
 
 {# Declare a generic build argument for a Python version #}
@@ -70,10 +72,30 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 
 **REQUIRES** python.build_stage() to be called first
 
-:return: A COPY command to copy the installations to the current build stage
+:param versions: List or comma separated string of the Python versions installed in the build stage. Required when
+    link_to_path is True (e.g. pass `Dependencies.python` or `python.build_arg()`); ignored otherwise. The newest
+    stable version (by `maxVersion`) becomes the default; pass a single version to choose it explicitly. A single
+    version is used as-is, so a build-time placeholder such as `${PYTHON_VERSION}` can be passed. An empty list or
+    string is an error.
+:param link_to_path: Whether to point /opt/python/default at the default version and link `python`, `python3`, `pip`
+    and `pip3` into /usr/local/bin through it. See link.run_link_default() for how existing files are handled.
+    Note that uv installs mark the interpreter as externally managed (PEP 668), so `pip` refuses to install into it
+    without `--break-system-packages`; use a virtual environment instead. Defaults to False.
+:return: A COPY command to copy the installations to the current build stage, followed by a RUN linking the
+    binaries if link_to_path is True
 #}
-{% macro copy_from_build_stage() -%}
+{% macro copy_from_build_stage(versions = None, link_to_path = False) -%}
 COPY --from=python-builder /opt/python /opt/python
+{%- if link_to_path %}
+{%- if versions is none %}
+{{ raise("python.copy_from_build_stage: `versions` is required when link_to_path is True, e.g. pass Dependencies.python or python.build_arg()") }}
+{%- endif %}
+{%- if versions is string -%}
+{%- set versions = versions | split(",") | map('trim') | list -%}
+{%- endif %}
+
+{{ link.run_link_default("/opt/python", versions | maxVersion, ["python", "python3", "pip", "pip3"]) }}
+{%- endif %}
 {%- endmacro %}
 
 {# Root command and common arguments for a pip install command #}

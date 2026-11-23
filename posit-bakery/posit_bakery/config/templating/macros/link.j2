@@ -1,0 +1,22 @@
+{# Macros for linking an interpreter's default version onto PATH #}
+
+{# Generates a RUN that points <root>/default at <root>/<version> and links each binary into /usr/local/bin through it.
+
+Re-running it, e.g. in a child image that installs a newer version, moves <root>/default and refreshes links that
+already point into <root>. Any other existing /usr/local/bin/<bin> (a real file, or a valid symlink elsewhere) is kept
+and a warning is printed. A dangling link is replaced. A binary elsewhere on PATH, such as /usr/bin/python3, is shadowed.
+
+:param root: The directory holding one subdirectory per version, e.g. "/opt/R"
+:param version: The version to make the default, e.g. "4.5.1" or a build-time placeholder like "${R_VERSION}"
+:param bins: A list of binary names in <root>/<version>/bin to link, e.g. ["R", "Rscript"]
+#}
+{% macro run_link_default(root, version, bins) -%}
+RUN ln -sfn {{ root }}/{{ version | trim }} {{ root }}/default && \
+    for bin in {{ bins | join(" ") }}; do \
+        case "$(readlink /usr/local/bin/$bin || true)" in \
+            {{ root }}/*) ;; \
+            *) if [ -e /usr/local/bin/$bin ]; then echo "Keeping existing /usr/local/bin/$bin" >&2; continue; fi ;; \
+        esac; \
+        ln -sf {{ root }}/default/bin/$bin /usr/local/bin/$bin; \
+    done
+{%- endmacro %}
