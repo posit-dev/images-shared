@@ -221,14 +221,14 @@ To wrap `install()` in a Docker RUN statement, use:
 
 ### Pebble Installation
 
-On Ubuntu 22.04 and 24.04, `pebble.install()` installs Canonical's pinned standalone release to `/usr/local/bin/pebble` and verifies the archive SHA-256 for `amd64` or `arm64`. Call it in the target image stage as root, after installing `curl` and `ca-certificates`:
+On Ubuntu 22.04 and 24.04, `pebble.install()` installs Canonical's latest stable standalone release to `/usr/local/bin/pebble` and verifies the archive against the SHA-256 published in GitHub's release metadata for `amd64` or `arm64`. Call it in the target image stage as root, after installing `curl`, `ca-certificates`, and `jq`:
 
 ```jinja2
 {% import "pebble.j2" as pebble %}
 {{ pebble.install() }}
 ```
 
-`install()` only installs the binary and its GPL license file. Address corresponding-source obligations before distributing images that include the binary.
+The macro checks for the latest release when its Docker build step runs. Use `--no-cache` to force a fresh lookup. The macro installs only the binary and its GPL license file. Address corresponding-source obligations before distributing images that include the binary.
 
 #### Run Pebble as PID 1
 

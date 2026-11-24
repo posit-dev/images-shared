@@ -1,14 +1,18 @@
-{# Install Canonical's standalone Pebble release as root, after installing curl and ca-certificates. #}
+{# Install Canonical's latest stable standalone release as root, after installing curl, ca-certificates, and jq. #}
 {% macro install() -%}
 ARG TARGETARCH
 RUN case "$TARGETARCH" in \
-      amd64) sha256=e9d84f9e461a89abb4437af26a784917bd85cf1612c8de142a3b4449dff332d0 ;; \
-      arm64) sha256=0c19a80498da84e5615138bf804c85b782438c515832430fef8d40057418b4eb ;; \
+      amd64|arm64) ;; \
       *) echo "Unsupported Pebble architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac && \
-    version=v1.33.2 && \
     tmpdir="$(mktemp -d)" && \
-    curl -fsSL "https://github.com/canonical/pebble/releases/download/${version}/pebble_${version}_linux_${TARGETARCH}.tar.gz" \
+    curl -fsSL https://api.github.com/repos/canonical/pebble/releases/latest -o "$tmpdir/release.json" && \
+    version="$(jq -er '.tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' "$tmpdir/release.json")" && \
+    asset="pebble_${version}_linux_${TARGETARCH}.tar.gz" && \
+    sha256="$(jq -er --arg asset "$asset" \
+      '.assets[] | select(.name == $asset) | .digest | strings | select(test("^sha256:[0-9a-f]{64}$")) | ltrimstr("sha256:")' \
+      "$tmpdir/release.json")" && \
+    curl -fsSL "https://github.com/canonical/pebble/releases/download/${version}/${asset}" \
       -o "$tmpdir/pebble.tar.gz" && \
     printf '%s  %s\n' "$sha256" "$tmpdir/pebble.tar.gz" | sha256sum -c - && \
     tar -xzf "$tmpdir/pebble.tar.gz" -C "$tmpdir" pebble COPYING && \
