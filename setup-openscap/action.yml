@@ -1,0 +1,27 @@
+name: 'Setup OpenSCAP'
+description: >-
+  Caches and pre-fetches SCAP Security Guide content for
+  `bakery openscap scan`. Requires bakery on PATH.
+
+inputs:
+  content-version:
+    description: "The ComplianceAsCode (SCAP Security Guide) release to fetch"
+    required: false
+    # renovate: datasource=github-releases depName=ComplianceAsCode/content extractVersion=^v(?<version>.*)$
+    default: "0.1.82"
+
+runs:
+  using: "composite"
+  steps:
+    # oscap runs in a scanner image bakery builds on first use;
+    # only content is cached here (bakery's default cache location).
+    - name: Cache SCAP content
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ~/.cache/bakery/openscap
+        key: bakery-openscap-${{ inputs.content-version }}
+    - name: Fetch SCAP content
+      shell: bash
+      env:
+        CONTENT_VERSION: ${{ inputs.content-version }}
+      run: bakery openscap fetch --content-version "${CONTENT_VERSION}"

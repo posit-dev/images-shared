@@ -1,0 +1,20 @@
+###############################################################################
+# BEGIN fix (1 / 2) for 'xccdf_org.ssgproject.content_rule_package_telnet_removed'
+###############################################################################
+(>&2 echo "Remediating rule 1/2: 'xccdf_org.ssgproject.content_rule_package_telnet_removed'")
+
+
+
+DEBIAN_FRONTEND=noninteractive apt-get remove -y "telnet"
+
+# END fix for 'xccdf_org.ssgproject.content_rule_package_telnet_removed'
+
+###############################################################################
+# BEGIN fix (2 / 2) for 'xccdf_org.ssgproject.content_rule_accounts_umask_etc_bashrc'
+###############################################################################
+(>&2 echo "Remediating rule 2/2: 'xccdf_org.ssgproject.content_rule_accounts_umask_etc_bashrc'")
+var_accounts_user_umask='027'
+###############################################################################
+echo "umask $var_accounts_user_umask" >> /etc/bash.bashrc
+
+# END fix for 'xccdf_org.ssgproject.content_rule_accounts_umask_etc_bashrc'

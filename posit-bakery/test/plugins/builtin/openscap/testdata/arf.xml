@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trimmed from a real ARF: only the elements validate_scan() reads. -->
+<arf:asset-report-collection xmlns:arf="http://scap.nist.gov/schema/asset-reporting-format/1.1">
+  <oval_results>
+    <results><system>
+      <definitions>
+        <definition definition_id="oval:ssg-installed_OS_is_ubuntu2204:def:1" result="true" version="1"/>
+      </definitions>
+      <oval_system_characteristics>
+        <system_info>
+          <os_name>Ubuntu</os_name>
+          <os_version>22.04.5 LTS (Jammy Jellyfish)</os_version>
+          <architecture>Unknown</architecture>
+        </system_info>
+      </oval_system_characteristics>
+    </system></results>
+    <results><system><definitions>
+      <definition definition_id="oval:ssg-installed_OS_is_ubuntu2204:def:1" result="not evaluated" version="1"/>
+    </definitions></system></results>
+  </oval_results>
+</arf:asset-report-collection>

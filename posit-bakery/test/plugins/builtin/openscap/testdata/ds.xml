@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal stand-in for an ssg-*-ds.xml: content.py only scans it for Profile and Rule IDs. -->
+<ds:data-stream-collection xmlns:ds="http://scap.nist.gov/schema/scap/source/1.2" xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2">
+  <xccdf-1.2:Benchmark id="xccdf_org.ssgproject.content_benchmark_UBUNTU_22-04">
+    <xccdf-1.2:Profile id="xccdf_org.ssgproject.content_profile_cis_level1_server"><xccdf-1.2:title>L1</xccdf-1.2:title></xccdf-1.2:Profile>
+    <xccdf-1.2:Profile id="xccdf_org.ssgproject.content_profile_cis_server_l1"><xccdf-1.2:title>RHEL-style</xccdf-1.2:title></xccdf-1.2:Profile>
+    <xccdf-1.2:Rule selected="false" id="xccdf_org.ssgproject.content_rule_package_telnet_removed" severity="high"/>
+    <xccdf-1.2:Rule selected="false" id="xccdf_org.ssgproject.content_rule_sysctl_kernel_randomize_va_space" severity="medium"/>
+    <xccdf-1.2:Rule selected="false" id="xccdf_org.ssgproject.content_rule_kernel_module_cramfs_disabled" severity="low"/>
+    <xccdf-1.2:Rule selected="false" id="xccdf_org.ssgproject.content_rule_partition_for_tmp" severity="low"/>
+    <xccdf-1.2:Rule selected="false" id="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" severity="medium"/>
+  </xccdf-1.2:Benchmark>
+</ds:data-stream-collection>
