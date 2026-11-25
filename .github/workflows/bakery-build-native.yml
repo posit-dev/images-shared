@@ -591,6 +591,66 @@ jobs:
             --metadata-file "./${IMAGE_NAME}-${IMAGE_VERSION}-${NORMALIZED_PLATFORM}-metadata.json" \
             --context "$CONTEXT"
 
+      - name: Collect vulnerability reports
+        if: ${{ !cancelled() && (steps.trivy-scan.outcome != 'skipped' || steps.wiz-scan.outcome != 'skipped') }}
+        env:
+          CONTEXT: ${{ inputs.context }}
+          TRIVY_OUTCOME: ${{ steps.trivy-scan.outcome }}
+          WIZ_OUTCOME: ${{ steps.wiz-scan.outcome }}
+        run: |
+          uv run --no-project python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          results = Path(os.environ["CONTEXT"]) / "results"
+          destination = Path("vulnerability-reports")
+          destination.mkdir(parents=True, exist_ok=True)
+          (destination / "coverage.json").write_text(json.dumps({
+              "trivy": os.environ["TRIVY_OUTCOME"],
+              "wizcli": os.environ["WIZ_OUTCOME"],
+          }) + "\n")
+          for report in (results / "trivy").rglob("*.sarif"):
+              data = json.loads(report.read_text())
+              # Retain CVE findings only; Trivy also reports secrets in SARIF.
+              safe = {"version": "2.1.0", "runs": [
+                  {"tool": {"driver": {"name": "Trivy"}}, "results": [
+                      {"ruleId": result["ruleId"], "message": result["message"]}
+                      for result in run["results"]
+                      if re.fullmatch(r"CVE-\d{4}-\d{4,}", result["ruleId"])
+                  ]}
+                  for run in data["runs"]
+              ]}
+              target = destination / "trivy" / report.relative_to(results / "trivy")
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(json.dumps(safe) + "\n")
+          for report in (results / "wizcli").rglob("*.json"):
+              data = json.loads(report.read_text())
+              # Wiz reports can also contain secrets; retain only vulnerability fields.
+              packages = data["result"]["vulnerableSBOMArtifactsByNameVersion"] or []
+              safe = {"status": data["status"], "packages": [
+                  {"name": package["name"], "version": package["version"],
+                   "vulnerabilityFindings": {
+                       key: package["vulnerabilityFindings"].get(key)
+                       for key in ("severities", "fixedVersion")
+                   }}
+                  for package in packages
+              ]}
+              target = destination / "wizcli" / report.relative_to(results / "wizcli")
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(json.dumps(safe) + "\n")
+          PY
+
+      - name: Upload vulnerability reports
+        if: ${{ !cancelled() && (steps.trivy-scan.outcome != 'skipped' || steps.wiz-scan.outcome != 'skipped') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: "${{ steps.artifact-scope.outputs.hash }}-${{ matrix.img.image }}-${{ matrix.img.version }}-${{ steps.normalize-platform.outputs.platform }}-vulnerabilities"
+          path: vulnerability-reports/
+          if-no-files-found: warn
+          retention-days: 14
+
       # Run on the same machine as the local scan. The final repository aliases
       # exist only in this runner's Docker daemon; --digest binds each alias to
       # the immutable platform image that Wiz just scanned. Publishing happens
